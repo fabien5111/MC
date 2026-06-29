@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Le Saint-Honoré Traditionnel | Maryse-Club</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    "colors": {"on-primary-container":"#c1828b","tertiary-fixed-dim":"#e0bec2","primary-fixed-dim":"#fab4bd","secondary-container":"#ffc6ce","surface-tint":"#854f57","on-tertiary-fixed":"#291619","on-primary":"#ffffff","surface-variant":"#efdfde","secondary-fixed":"#ffd9de","outline":"#847374","outline-variant":"#d6c2c3","error-container":"#ffdad6","surface-dim":"#e7d6d6","surface-container-lowest":"#ffffff","on-secondary":"#ffffff","inverse-primary":"#fab4bd","on-tertiary":"#ffffff","tertiary-container":"#3b262a","on-tertiary-container":"#aa8c90","on-secondary-fixed":"#311118","secondary":"#7e5259","tertiary":"#251216","primary":"#300a12","inverse-surface":"#382e2e","primary-fixed":"#ffd9dd","tertiary-fixed":"#fddade","surface-container-high":"#f5e4e4","on-primary-fixed-variant":"#6a3840","surface-container-low":"#fff0f0","on-error":"#ffffff","on-surface-variant":"#514345","background":"#fff8f7","inverse-on-surface":"#feedec","secondary-fixed-dim":"#f0b8c0","primary-container":"#4a1e26","on-secondary-fixed-variant":"#633b42","surface":"#fff8f7","surface-container":"#fbeae9","on-tertiary-fixed-variant":"#584044","on-background":"#221a1a","surface-container-highest":"#efdfde","surface-bright":"#fff8f7","on-surface":"#221a1a","error":"#ba1a1a","on-primary-fixed":"#350e16","on-error-container":"#93000a","on-secondary-container":"#7b5056"},
+    "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    "spacing": {"gutter":"24px","margin-mobile":"16px","margin-desktop":"64px","unit":"8px","container-max":"1200px"},
+    "fontFamily": {"headline-lg":["Playfair Display"],"display-lg":["Playfair Display"],"headline-md":["Playfair Display"],"body-md":["Work Sans"],"body-lg":["Work Sans"],"label-md":["Work Sans"],"headline-lg-mobile":["Playfair Display"],"logo":["Great Vibes","cursive"]},
+    "fontSize": {"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}],"display-lg":["64px",{"lineHeight":"72px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-lg-mobile":["32px",{"lineHeight":"40px","fontWeight":"600"}]}
+  } } }
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .fill { font-variation-settings: 'FILL' 1; }
+  body { background-color:#fff8f7; color:#221a1a; font-family:'Work Sans',sans-serif; }
+  .ambient-shadow { box-shadow: 0 0 32px rgba(74,30,38,0.05); }
+  details summary::-webkit-details-marker { display:none; }
+  .maryse-logo-font { font-family:'Great Vibes',cursive; }
+  image-slot { display:block; }
+</style>
+</head>
+<body class="bg-background">
+
+<!-- ===== Unified Public Header ===== -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
+<div class="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
+<div class="flex items-center gap-10">
+<a class="maryse-logo-font text-4xl text-primary leading-none" href="index.html">maryse club</a>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="index.html">Accueil</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#planning">Planning</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html">Profil</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<a class="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
+<button class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1">search</button>
+<a class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
+<image-slot id="nav-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc69WbfNouydO2CAXMT1IbOzz9MHswuxhhs40X0A8Pl--MkrKI7wD9cqOKDDyHLidm3PX81QsauhNWuLc-B0A5U4O_RCtMCQ7ZMpSWpgBte-2NqzGr09v_GnozRyCjClWDOrrC0BjUdEsdeAheRL_WqN3H6C7ZpelLFySQhKE2lWvEUDWPMJoBwp2OvP6t8e7nKMZWUltZl-VWVtR3Obdb1vDn6Htyqy34YOcpz97L29kwgksEeszuXtuUL65QyiXcU6Y2yf6YyvY" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
+</a>
+</div>
+</div>
+</header>
+
+<!-- Breadcrumb -->
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-6">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
+<a class="hover:text-primary" href="index.html">Accueil</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary">Le Saint-Honoré Traditionnel</span>
+</div>
+</div>
+
+<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Main Column -->
+<div class="lg:col-span-8">
+<div class="flex flex-col gap-4 mb-8">
+<div class="flex items-baseline justify-between flex-wrap gap-4">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Le Saint-Honoré Traditionnel</h2>
+<div class="flex items-center gap-4">
+<span class="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">Publique</span>
+<div class="flex items-center gap-2">
+<div class="flex items-center text-[#4a1e26]">
+<span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined text-[18px]">star_half</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-md text-label-md text-primary"><span class="font-bold">4.8/5</span><span class="text-on-surface-variant opacity-70">(140)</span></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
+<span class="flex items-center gap-2">Par <a class="flex items-center gap-2 hover:text-primary transition-colors group" href="profil.html">
+<span class="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block"><image-slot id="recette-author" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc69WbfNouydO2CAXMT1IbOzz9MHswuxhhs40X0A8Pl--MkrKI7wD9cqOKDDyHLidm3PX81QsauhNWuLc-B0A5U4O_RCtMCQ7ZMpSWpgBte-2NqzGr09v_GnozRyCjClWDOrrC0BjUdEsdeAheRL_WqN3H6C7ZpelLFySQhKE2lWvEUDWPMJoBwp2OvP6t8e7nKMZWUltZl-VWVtR3Obdb1vDn6Htyqy34YOcpz97L29kwgksEeszuXtuUL65QyiXcU6Y2yf6YyvY" shape="circle" fit="cover" placeholder="Chef" style="width:100%;height:100%"></image-slot></span>
+<span class="border-b border-primary">Chef Antoine</span></a> <span class="ml-2 text-on-surface-variant opacity-70">• 12k followers</span></span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span>Publié le 12 Mars 2024</span>
+</div>
+<div class="flex justify-between mt-4 border-y border-outline-variant py-4 flex-wrap gap-4 flex-col"><div class="flex items-center gap-4 w-full justify-between">
+<div class="flex flex-wrap gap-3 text-secondary">
+<button class="fav-btn flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">favorite</span> Favori</button>
+<a class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors" href="profil.html#planning"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Planifier</a>
+<button class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">share</span> Partager</button>
+<button onclick="window.print()" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">print</span> Imprimer</button>
+</div>
+</div>
+<div class="flex gap-2 w-full">
+<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Pâtisserie</span>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Classique</span>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Expert</span>
+</div></div>
+</div>
+
+<!-- Hero Image -->
+<div class="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+<image-slot id="recette-hero" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDos_s9LjD9lTGqiVIySBGp_R4ZoTNAhHx2ENgPSXUfLbPEXnM8pGNFPExYlLnchdfaclb-obuLhW_bDwtaQ-vJZmp_mr2LDTurN1gtHqmlR87YPJalrHmiNzVZ75Bq7T4XzAveRYmdKrhW6HQohmfERnVNo4p8ph0xaU9NrI_R0ImxzNwA1LvqTiKSM4aZfJMoCV49HGmlxZZq4dW54oFtNPPDKDOl6fteiXvVL3twT_AyFICtUUyjRseERkq6Wa9xeIaJuPW25FM" shape="rect" fit="cover" placeholder="Le Saint-Honoré — photo principale (16:9)" style="width:100%;height:100%"></image-slot>
+</div>
+
+<!-- Technical Info Block -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4 bg-surface-container-low p-8 mb-12">
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Difficulté</span>
+<div class="flex items-center gap-1.5 h-8">
+<span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span>
+</div></div>
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Temps de prép</span><span class="font-body-lg text-body-lg font-bold text-primary">2h 30min</span></div>
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Cuisson</span><span class="font-body-lg text-body-lg font-bold text-primary">45min</span></div>
+<div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Durée totale</span><span class="font-body-lg text-body-lg font-bold text-primary">1 jour</span></div>
+</div>
+
+<!-- Utensils -->
+<div class="mb-12">
+<h3 class="font-headline-md text-headline-md text-primary mb-6">Ustensiles nécessaires</h3>
+<ul class="grid grid-cols-1 gap-y-2 list-none">
+<li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Poche à douille</li>
+<li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Fouet</li>
+<li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Maryse</li>
+<li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Thermomètre à sucre</li>
+<li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Plaque de cuisson</li>
+</ul>
+</div>
+
+<!-- Ingredients -->
+<div class="mb-12">
+<h3 class="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
+<div class="space-y-10">
+<div>
+<h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">Pâte Feuilletée</h4>
+<ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Beurre frais</span><span class="font-label-md text-label-md text-primary">250g</span></li>
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Farine T55</span><span class="font-label-md text-label-md text-primary">200g</span></li>
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sel fin</span><span class="font-label-md text-label-md text-primary">5g</span></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">Crème Chiboust</h4>
+<ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Lait entier</span><span class="font-label-md text-label-md text-primary">500ml</span></li>
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Oeufs bio</span><span class="font-label-md text-label-md text-primary">4</span></li>
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sucre semoule</span><span class="font-label-md text-label-md text-primary">100g</span></li>
+<li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Gélatine</span><span class="font-label-md text-label-md text-primary">2 feuilles</span></li>
+</ul>
+</div>
+</div>
+<details class="group border border-outline-variant mt-12">
+<summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">VOIR LA LISTE DE COURSES TOTALE</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+<div class="p-4 bg-white"><ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px"><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Beurre</span><span class="font-label-md text-label-md text-primary">250g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Farine</span><span class="font-label-md text-label-md text-primary">200g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sucre</span><span class="font-label-md text-label-md text-primary">105g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Lait entier</span><span class="font-label-md text-label-md text-primary">500ml</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Oeufs</span><span class="font-label-md text-label-md text-primary">4</span></li></ul></div>
+</details>
+</div>
+
+<!-- Advertisement -->
+<div class="mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
+<h4 class="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Tout le nécessaire pour réussir vos entremets à la maison.</p>
+</div>
+<button class="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all uppercase tracking-widest">En savoir plus</button>
+</div>
+
+<!-- Planning Schedule -->
+<div class="mb-12 py-10 border-y border-outline-variant">
+<h3 class="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
+<div class="relative flex flex-col md:flex-row justify-between gap-8">
+<div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>
+<div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 24H</span><p class="font-body-md text-body-md font-semibold">Pâte feuilletée &amp; Repos</p></div>
+<div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 3H</span><p class="font-body-md text-body-md font-semibold">Cuisson &amp; Caramel</p></div>
+<div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">3</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 1H</span><p class="font-body-md text-body-md font-semibold">Chiboust &amp; Montage</p></div>
+</div>
+</div>
+
+<!-- Steps -->
+<div class="space-y-16">
+<!-- Step 1 -->
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between border-b border-outline pb-4">
+<h4 class="font-headline-md text-headline-md text-primary">1. Réalisation de la pâte</h4>
+<div class="flex gap-4 text-on-surface-variant font-label-md text-[12px]"><span class="bg-surface-variant px-3 py-1">JOUR J - 3H</span><span class="bg-surface-variant px-3 py-1">PREP 45MIN</span></div>
+</div>
+<details class="group border border-outline-variant mb-6">
+<summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+<div class="p-4 bg-white"><ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px"><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Beurre frais</span><span class="font-label-md text-label-md text-primary">250g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Farine T55</span><span class="font-label-md text-label-md text-primary">200g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sel fin</span><span class="font-label-md text-label-md text-primary">5g</span></li></ul></div>
+</details>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">Commencez par abaisser votre pâte feuilletée sur 3mm d'épaisseur. Détaillez un disque de 22cm. Piquez-le généreusement à la fourchette pour éviter une pousse irrégulière. Préparez ensuite votre pâte à choux et pochez un boudin sur le pourtour du disque de pâte feuilletée ainsi que 16 petits choux individuels sur une plaque à part.</div>
+<div class="grid grid-cols-1 gap-4">
+<div class="aspect-video bg-surface-container-high border border-outline-variant overflow-hidden"><image-slot id="recette-step1a" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdsmA4gqn4KftZ0F1vtTQHWV13BUYGkpKAE1mJeQ5ykOoSih85XoaEnE3qqy4gu1-936A-KKmkJOGOUeUH8PSnYR5-YCRRyMLsRCTHQfkfOl9WlAQpmRsd_Cw3g4dTiq3vPsc8RzP77EdtDxDVmuCgEYD5to8TnFy8qOpgxrQwhpRA7vVccYAIP_sC4BcWjwk6DNKFCzTvb47uAvYUlLMcXR9Z_mqxGABO_EpZPeseLIAW8X8DZi8HgXT-YY7XEuJyWBSg2WJo3yo" shape="rect" fit="cover" placeholder="Étape 1 — visuel" style="width:100%;height:100%"></image-slot></div>
+<div class="grid grid-cols-2 gap-4">
+<div class="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden"><image-slot id="recette-step1b" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDos_s9LjD9lTGqiVIySBGp_R4ZoTNAhHx2ENgPSXUfLbPEXnM8pGNFPExYlLnchdfaclb-obuLhW_bDwtaQ-vJZmp_mr2LDTurN1gtHqmlR87YPJalrHmiNzVZ75Bq7T4XzAveRYmdKrhW6HQohmfERnVNo4p8ph0xaU9NrI_R0ImxzNwA1LvqTiKSM4aZfJMoCV49HGmlxZZq4dW54oFtNPPDKDOl6fteiXvVL3twT_AyFICtUUyjRseERkq6Wa9xeIaJuPW25FM" shape="rect" fit="cover" placeholder="Détail" style="width:100%;height:100%"></image-slot></div>
+<div class="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden"><image-slot id="recette-step1c" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNl0liJNmmem__6hx2cJdToi4xchvQIEiEc2jHSMSDso51v9UsBD8fC184HWUFar4na0tXZEe1i8DLkBMQvJYVoYnTGxqEcsdP_YzOwsth1W5y4zl2y8-HvvjmQ347foYsF1U16ragtDP9mvhJDs8gJvqrRTLFjU305Dp3_xVXNRqWZhfxIb4nY6apSoMi6v6gQCDKXbx897cPbTMRSyHHPCMNkggN_I0pucsxnm96dYafZF66_CKrN0A7LpPZfj01zH3nyssh1r8" shape="rect" fit="cover" placeholder="Détail" style="width:100%;height:100%"></image-slot></div>
+</div>
+</div>
+</div>
+<div class="mt-4">
+<details class="group border border-outline-variant">
+<summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+<div class="p-4 bg-white font-body-md text-body-md italic">Veillez à ce que le beurre soit bien froid pour obtenir un feuilletage optimal.</div>
+</details>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between border-b border-outline pb-4">
+<h4 class="font-headline-md text-headline-md text-primary">2. Crème Chiboust</h4>
+<div class="flex gap-4 text-on-surface-variant font-label-md text-[12px]"><span class="bg-surface-variant px-3 py-1">JOUR J - 1H</span><span class="bg-surface-variant px-3 py-1">PREP 30MIN</span></div>
+</div>
+<details class="group border border-outline-variant mb-6">
+<summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+<div class="p-4 bg-white"><ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px"><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Lait entier</span><span class="font-label-md text-label-md text-primary">500ml</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Oeufs bio</span><span class="font-label-md text-label-md text-primary">4</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sucre semoule</span><span class="font-label-md text-label-md text-primary">100g</span></li><li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Gélatine</span><span class="font-label-md text-label-md text-primary">2 feuilles</span></li></ul></div>
+</details>
+<div class="font-body-lg text-body-lg leading-relaxed text-on-surface max-w-2xl">Réalisez une crème pâtissière classique. Hors du feu, incorporez la gélatine réhydratée. Pendant que la crème est encore chaude, montez les blancs en neige avec le sucre pour obtenir une meringue italienne souple. Incorporez délicatement la meringue à la crème pâtissière encore tiède. Cette étape demande de la douceur pour conserver toute l'onctuosité et la légèreté de la Chiboust.</div>
+<div class="mt-8 aspect-video relative flex items-center justify-center group cursor-pointer border border-outline-variant overflow-hidden bg-black">
+<image-slot id="recette-step2-video" shape="rect" fit="cover" placeholder="Vidéo — poster de l'étape" style="width:100%;height:100%;position:absolute;inset:0"></image-slot>
+<span class="material-symbols-outlined text-white text-[64px] z-10 group-hover:scale-110 transition-transform relative drop-shadow-lg">play_circle</span>
+<div class="absolute bottom-4 left-4 text-white font-label-md text-[12px] bg-black/40 px-2 py-1 z-10">02:45</div>
+</div>
+<div class="mt-4">
+<details class="group border border-outline-variant">
+<summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+<div class="p-4 bg-white font-body-md text-body-md italic">Incorporez la meringue très délicatement pour ne pas faire retomber la crème.</div>
+</details>
+</div>
+</div>
+</div>
+
+<!-- Tips Block -->
+<div class="mt-20 bg-primary p-10 text-white relative overflow-hidden">
+<div class="absolute -right-10 -top-10 opacity-10"><span class="material-symbols-outlined text-[120px]">lightbulb</span></div>
+<h3 class="font-headline-md text-headline-md mb-4 flex items-center gap-3"><span class="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette</h3>
+<p class="font-body-lg text-body-lg italic opacity-90 leading-relaxed">"Pour un caramel parfait qui reste brillant et craquant, ne remuez jamais le sucre pendant la cuisson. Attendez qu'il atteigne une couleur ambre clair (environ 170°C) puis stoppez immédiatement la cuisson en plongeant le fond de la casserole dans un bain d'eau froide. Le Saint-Honoré se déguste idéalement dans les 3 heures suivant le montage."</p>
+<p class="mt-6 font-label-md text-label-md">— Antoine, Chef Pâtissier</p>
+</div>
+</div>
+
+<!-- Sidebar -->
+<aside class="lg:col-span-4 flex flex-col gap-12">
+<div class="relative">
+<input class="w-full border-0 border-b border-outline py-4 px-0 bg-transparent focus:ring-0 focus:border-primary font-body-md text-body-md placeholder:text-outline/60" placeholder="Rechercher une recette, un ingrédient..." type="text">
+<span class="material-symbols-outlined absolute right-0 top-4 text-outline">search</span>
+</div>
+<div class="flex flex-col gap-8">
+<h3 class="font-label-md text-label-md uppercase tracking-widest text-secondary">Recettes suggérées</h3>
+<a class="group cursor-pointer block" href="recette.html">
+<div class="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant"><image-slot id="recette-sugg1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEzVp4AYJog1Dv280v-4R42WDvpPZhCH5ZNyCjQNZWkK9kzTcvcpgnQ6f7kLSHcrPYZEVCg1yKe5p5OfgsV1TzAx1nqz57AfXBq2CgEZYNuUEYBEJsjfx9AP4Z9paApaY4MjlRgBjTGSiUL04rDpcaOARIdH8uqyu7x-dRwFe1Yf2t66vB8X-vRoFKJ58hzqhFmhfvX-BGhIFKHLKcDiduuTsCoIV5QoNSpXujfzb-V_Ux0m6dEcgaDUFxghyznCu84IzlkzOiN6Q" shape="rect" fit="cover" placeholder="Macarons à la Framboise" style="width:100%;height:100%"></image-slot></div>
+<span class="font-label-md text-[12px] text-secondary">INTERMÉDIAIRE</span>
+<h4 class="font-headline-md text-headline-md text-primary mt-1 group-hover:text-secondary transition-colors">Macarons à la Framboise</h4>
+</a>
+<div class="bg-surface-container-highest p-8 text-center border border-outline-variant py-20 flex flex-col items-center justify-center gap-4">
+<span class="font-label-md text-[10px] tracking-widest text-outline">PUBLICITÉ</span>
+<p class="font-headline-md text-headline-md text-primary">Masterclass : L'art du chocolat</p>
+<button class="mt-4 border border-primary px-6 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all">Découvrir</button>
+</div>
+<a class="group cursor-pointer block" href="recette.html">
+<div class="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant"><image-slot id="recette-sugg2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsoh8IDjaed0PGxAEiHqTbujQyPol7ecVDmkMJBEr58oPqJadrnYA6gbSQ_HPmi9A7qtnHifBt1D4ilHfm74HHzd4VrUkAbhOmxsOxVkMMP-u7JQgrtunND1MdeYFLmdfI0awX5yqJjfWotKzrwaru6vUuUNFbV2ApbYcBFBErMkgu7irv-EyibPMG8Mrq2GI8NVBAweIL46VKBqn6c8qU5Re4bMD3C-StTeFzFIWJ5vur2bXGjjNj56XJwyICQY6U8QVep-52sWU" shape="rect" fit="cover" placeholder="Mille-Feuille Vanille" style="width:100%;height:100%"></image-slot></div>
+<span class="font-label-md text-[12px] text-secondary">AVANCÉ</span>
+<h4 class="font-headline-md text-headline-md text-primary mt-1 group-hover:text-secondary transition-colors">Mille-Feuille Vanille Bourbon</h4>
+</a>
+</div>
+</aside>
+</main>
+
+<!-- Footer -->
+<footer class="bg-surface-container-high w-full py-16 px-margin-mobile md:px-margin-desktop mt-20 border-t border-outline-variant/30">
+<div class="max-w-[1200px] mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-12 border-b border-outline-variant/30 pb-12 mb-12">
+<div class="flex flex-col gap-6">
+<a class="maryse-logo-font text-5xl text-primary leading-none" href="index.html">maryse club</a>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-sm leading-relaxed">L'excellence de la pâtisserie française partagée avec passion. Rejoignez notre communauté de gourmets et apprenez les techniques des chefs.</p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-x-16 gap-y-10">
+<div class="flex flex-col gap-4"><h4 class="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">Le Club</h4><ul class="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant"><li><a class="hover:text-primary transition-colors" href="#">Notre Histoire</a></li><li><a class="hover:text-primary transition-colors" href="connexion.html">Connexion</a></li><li><a class="hover:text-primary transition-colors" href="#">Contact</a></li></ul></div>
+<div class="flex flex-col gap-4"><h4 class="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">Légal</h4><ul class="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant"><li><a class="hover:text-primary transition-colors" href="#">Conditions</a></li><li><a class="hover:text-primary transition-colors" href="#">Confidentialité</a></li></ul></div>
+<div class="flex flex-col gap-4"><h4 class="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">Suivre</h4><div class="flex gap-6"><span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">share</span><span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">mail</span></div></div>
+</div>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<p class="font-label-md text-[12px] text-on-tertiary-container italic opacity-70">© 2024 Maryse-Club. The Modern Pâtissier.</p>
+<div class="flex gap-8"><span class="font-label-md text-[12px] text-on-tertiary-container uppercase tracking-widest">Fait avec passion à Paris</span></div>
+</div>
+</div>
+</footer>
+
+<script src="image-slot.js"></script>
+<script>
+  document.querySelectorAll('.fav-btn').forEach(b=>b.addEventListener('click',function(){
+    const s=this.querySelector('.material-symbols-outlined');
+    const f=s.style.fontVariationSettings==="'FILL' 1";
+    s.style.fontVariationSettings=f?"'FILL' 0":"'FILL' 1";
+  }));
+</script>
+</body>
+</html>
