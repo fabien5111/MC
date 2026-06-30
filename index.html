@@ -196,56 +196,49 @@
 </nav>
 
 <script src="image-slot.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
 <script>
-  const IMG = {
-    "card-1":"https://lh3.googleusercontent.com/aida-public/AB6AXuDHTKlfTm8YqTM8FYSaTsj2S_r2aRDzQR9xnOaiwJFBfF-qvOJQ1k-gzVImnZdPCrN-bSNVTE13Vy2iV_jPhKSQ8ubtjxNIjjeonIJaQ2IoxAItBhpKLw9XIyVYLcmyVFvbchtPKxo1EED6sETVXiMtDH_FGknuByWwy9V2KeQLxTa-r7nvSqXsWN0HCKEBNfPcW3pt58btKDp0ce4dINpXXI-JuoynNPwRRZtIA65bz_VnAO6lLk910gI1n4AMMlVd9651EvtP_aU",
-    "card-2":"https://lh3.googleusercontent.com/aida-public/AB6AXuCr1XzJJ8kDpMR_HHRBtdMIgCNKUxGA0rh0zl4mMOt9c7-0I0M9Yo0dVPtPVQYk_QEntJGX1s3XXzcpxri80UlaLuIxhfZ-RDAWBgcO5FLLYi64LhCs6osUga3B9ij3TIcnpbzj3rK-n9BugtPcHaRXi9o0lmiKd0VVxRyb7WajAcppjnInxpFmKjP7_5eF7X4Oon_eYzpe5noDeHg103yjJsBwPUMKakSmyhBMjxg1OxPPzBt60yH7yW6U3T10-t5Lc0KsKskL4mk",
-    "card-3":"https://lh3.googleusercontent.com/aida-public/AB6AXuDBRwgdDUbhDb7C6lMY5rYJoSe5LOyM3gSH9GJsN6IzRRpSR-6lR_1LggoAeQcA2E1XztqiNCr0iv4TiA8Rf7MzL2OvYUDsWFO4uhQWCH4cCz5FQ5FG47rGEWwvrrKqmxaqrPTReHHAtKW1BkOyUhgWc4g2Yi8qYIGuxOtHJpxA6WbAWJkSjY6owPzJyQQYGo7zhA4wmJGGcaV_nyR2j73WoBkLPDVNjSNxGu9ycEwK-LzRW7trfPYzDWPtt0GiWgXN-v-FKZspX-o",
-    "card-4":"https://lh3.googleusercontent.com/aida-public/AB6AXuCpAc_JAaFZLH_8gac7KWz6ko5l53iMpxCCY7f3KHzaX8am7rhFlfjnviUIjBApc6HuX8nti62z2lRedX0ZfXrp0YIB4bm1bFAm_Ddfcb26pOFQI_uRRdzRHdfkrKMZlsFIar2b0aDx_lu-jjjqOjE_wmmuJYjS1KEEiCEBeLaJzBQFnVucZ3Ru5VMVHgwSU6Hs-Jq1q7_kD7s0V4tiVzSvWEIP3_qrWHdkm2iQSis6yO5K0X_OCKVefHuv-0w55ss4E41MxjQCUMA",
-    "card-5":"https://lh3.googleusercontent.com/aida-public/AB6AXuANJ0ieXCpxhK3uQ-dFOJsRmE2GpCYh_FY483wjKrW4tVMntWdR9AXo95JqIbogxeldjxEU1IyaiZvFwbbGq1-Y13beZD_ucLMCb77sYY8RuHeQgoOgeO8NXuwaDGjr9G5gY-lDhInwx3Zb9l70UwuWrhhD-VonVaoco9_VPh-Z2SzFAPEZ7broCBC_oiAphVp4uqm0fXtqiWb4JENaz-XgiVBfYiWXMuqPNSCwIqtJw05xFbLDlL52UD1Ni47G9NTSS-KEccKykR8",
-    "card-6":"https://lh3.googleusercontent.com/aida-public/AB6AXuBsoh8IDjaed0PGxAEiHqTbujQyPol7ecVDmkMJBEr58oPqJadrnYA6gbSQ_HPmi9A7qtnHifBt1D4ilHfm74HHzd4VrUkAbhOmxsOxVkMMP-u7JQgrtunND1MdeYFLmdfI0awX5yqJjfWotKzrwaru6vUuUNFbV2ApbYcBFBErMkgu7irv-EyibPMG8Mrq2GI8NVBAweIL46VKBqn6c8qU5Re4bMD3C-StTeFzFIWJ5vur2bXGjjNj56XJwyICQY6U8QVep-52sWU"
-  };
-  const cards = [
-    {id:'card-1', cat:'Chocolat', title:'Tartelettes Miroir au Chocolat Noir', desc:'Une ganache onctueuse et un glaçage miroir parfait pour épater vos convives.', author:'Par Chef Antoine', time:'45m'},
-    {id:'card-2', cat:'Iconique', title:'Macarons à la Rose et Framboise', desc:'Le secret pour réussir ses coques à tous les coups et une ganache intensément fruitée.', author:'Par Marie-Claire', time:'1h'},
-    {id:'card-3', cat:'Agrumes', title:'Tarte au Citron Meringuée', desc:"L'équilibre parfait entre l'acidité du citron et la douceur de la meringue italienne.", author:'Par Jean-Pierre', time:'1h15'},
-    {id:'card-4', cat:'Boulangerie', title:'Croissants au Beurre AOP', desc:'Maîtrisez le feuilletage traditionnel pour des matins gourmands.', author:'Par Chef Luc', time:'3h'},
-    {id:'card-5', cat:'Expert', title:"L'Opéra Classique", desc:'Un défi technique récompensé par une harmonie parfaite de saveurs café et chocolat.', author:'Par Chef Antoine', time:'2h'},
-    {id:'card-6', cat:'Pâte Feuilletée', title:'Mille-Feuille Vanille Bourbon', desc:'La croustillance légendaire alliée à la douceur de la vanille de Madagascar.', author:'Par Marie-Claire', time:'2h30'},
-  ];
-  document.getElementById('cards-grid').innerHTML = cards.map(c => `
-    <article class="bg-white rounded-xl overflow-hidden luxury-shadow group flex flex-col transition-all hover:-translate-y-1">
-      <a href="recette.html" class="relative overflow-hidden h-64 block">
-        <image-slot id="${c.id}" src="${IMG[c.id]}" shape="rect" fit="cover" placeholder="${c.title}" style="width:100%;height:100%"></image-slot>
-        <div class="absolute bottom-4 right-4">
-          <div class="bg-white/90 backdrop-blur-sm p-2 rounded-full flex gap-1 items-center shadow-md">
-            <span class="material-symbols-outlined text-secondary text-sm">timer</span>
-            <span class="font-label-md text-[12px]">${c.time}</span>
+  async function init() {
+    // Auth UI
+    await initAuthUI();
+
+    // Grille recettes depuis Supabase (fallback vers données statiques si vide)
+    const grid = document.getElementById('cards-grid');
+    const recipes = await getRecipes({ limit: 6 });
+
+    if (recipes.length > 0) {
+      grid.innerHTML = recipes.map(r => recipeCardHTML(r)).join('');
+    } else {
+      // Données de démonstration tant que la base est vide
+      const demos = [
+        { title:'Tartelettes Miroir au Chocolat Noir', cat:'Chocolat', desc:'Une ganache onctueuse et un glaçage miroir parfait pour épater vos convives.', author:'Chef Antoine', time:'45 min' },
+        { title:'Macarons à la Rose et Framboise', cat:'Iconique', desc:'Le secret pour réussir ses coques à tous les coups et une ganache intensément fruitée.', author:'Marie-Claire', time:'1h' },
+        { title:'Tarte au Citron Meringuée', cat:'Agrumes', desc:"L'équilibre parfait entre l'acidité du citron et la douceur de la meringue italienne.", author:'Jean-Pierre', time:'1h15' },
+        { title:'Croissants au Beurre AOP', cat:'Boulangerie', desc:'Maîtrisez le feuilletage traditionnel pour des matins gourmands.', author:'Chef Luc', time:'3h' },
+        { title:"L'Opéra Classique", cat:'Expert', desc:'Un défi technique récompensé par une harmonie parfaite de saveurs café et chocolat.', author:'Chef Antoine', time:'2h' },
+        { title:'Mille-Feuille Vanille Bourbon', cat:'Pâte Feuilletée', desc:'La croustillance légendaire alliée à la douceur de la vanille de Madagascar.', author:'Marie-Claire', time:'2h30' },
+      ];
+      grid.innerHTML = demos.map(c => `
+        <article class="bg-white rounded-xl overflow-hidden luxury-shadow group flex flex-col transition-all hover:-translate-y-1">
+          <div class="h-64 bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-5xl text-on-surface-variant">cake</span>
           </div>
-        </div>
-      </a>
-      <div class="p-6 flex-grow flex flex-col">
-        <div class="flex gap-2 mb-4"><span class="bg-secondary-container text-on-secondary-container px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-widest">${c.cat}</span></div>
-        <a href="recette.html"><h3 class="font-headline-md text-headline-md text-primary mb-3 leading-snug group-hover:text-secondary transition-colors">${c.title}</h3></a>
-        <p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6">${c.desc}</p>
-        <div class="mt-auto pt-4 border-t border-surface-variant flex justify-between items-center">
-          <span class="font-label-md text-[12px] text-outline italic">${c.author}</span>
-          <button class="fav-btn material-symbols-outlined text-primary hover:text-secondary transition-colors" aria-label="Ajouter aux favoris">favorite</button>
-        </div>
-      </div>
-    </article>`).join('');
+          <div class="p-6 flex-grow flex flex-col">
+            <div class="flex gap-2 mb-4"><span class="bg-secondary-container text-on-secondary-container px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-widest">${c.cat}</span></div>
+            <h3 class="font-headline-md text-headline-md text-primary mb-3 leading-snug">${c.title}</h3>
+            <p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6">${c.desc}</p>
+            <div class="mt-auto pt-4 border-t border-surface-variant flex justify-between items-center">
+              <span class="font-label-md text-[12px] text-outline italic">Par ${c.author}</span>
+              <span class="font-label-md text-[12px] text-outline">${c.time}</span>
+            </div>
+          </div>
+        </article>`).join('');
+    }
 
-  document.querySelectorAll('.fav-btn').forEach(btn => {
-    btn.addEventListener('click', function(e){
-      e.preventDefault();
-      const filled = this.style.fontVariationSettings === "'FILL' 1";
-      this.style.fontVariationSettings = filled ? "'FILL' 0" : "'FILL' 1";
-    });
-  });
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  init();
 </script>
 </body>
 </html>

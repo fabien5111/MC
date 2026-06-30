@@ -101,7 +101,12 @@
 </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
 <script>
+  // Si déjà connecté → rediriger
+  getUser().then(u => { if (u) window.location.href = 'index.html'; });
+
   let mode = 'signup';
   function toggleAuth(){ setMode(mode === 'signup' ? 'login' : 'signup'); }
   function setMode(m){
@@ -117,12 +122,56 @@
       ? 'Déjà membre ? <a class="text-primary font-semibold underline underline-offset-4 hover:text-secondary transition-colors ml-1" href="#" onclick="event.preventDefault();toggleAuth();">Se connecter</a>'
       : 'Pas encore de compte ? <a class="text-primary font-semibold underline underline-offset-4 hover:text-secondary transition-colors ml-1" href="#" onclick="event.preventDefault();toggleAuth();">S\'inscrire</a>';
   }
+
   document.getElementById('pw-toggle').addEventListener('click', function(){
     const pw = document.getElementById('password');
     const isPw = pw.type === 'password';
     pw.type = isPw ? 'text' : 'password';
     this.querySelector('span').textContent = isPw ? 'visibility_off' : 'visibility';
   });
+
+  document.querySelector('form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('auth-submit');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('auth-error');
+
+    btn.disabled = true;
+    btn.textContent = 'Chargement...';
+    if (errEl) errEl.remove();
+
+    try {
+      let result;
+      if (mode === 'signup') {
+        const fullName = document.getElementById('name').value.trim();
+        result = await authSignUp(email, password, fullName);
+      } else {
+        result = await authSignIn(email, password);
+      }
+
+      if (result.error) throw result.error;
+
+      if (mode === 'signup') {
+        showMsg('Vérifiez vos e-mails pour confirmer votre compte.', 'info');
+      } else {
+        window.location.href = 'index.html';
+      }
+    } catch (err) {
+      showMsg(err.message || 'Une erreur est survenue.', 'error');
+      btn.disabled = false;
+      btn.textContent = mode === 'signup' ? "S'inscrire" : 'Se connecter';
+    }
+  });
+
+  function showMsg(msg, type) {
+    const el = document.createElement('p');
+    el.id = 'auth-error';
+    el.className = `mt-4 text-sm text-center font-body-md ${type === 'error' ? 'text-error' : 'text-primary'}`;
+    el.textContent = msg;
+    document.querySelector('form').after(el);
+  }
+
   if (location.hash === '#login' || location.search.includes('login')) setMode('login');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>

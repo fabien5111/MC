@@ -325,12 +325,57 @@
 </nav>
 
 <script src="image-slot.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
 <script>
-  document.querySelectorAll('.fav-btn').forEach(b => b.addEventListener('click', function(){
+  // Favorite toggle (statique)
+  document.querySelectorAll('.fav-btn').forEach(b => b.addEventListener('click', async function(){
     const s = this.querySelector('.material-symbols-outlined');
-    const f = s.style.fontVariationSettings === "'FILL' 1";
-    s.style.fontVariationSettings = f ? "'FILL' 0" : "'FILL' 1";
+    const recipeId = new URLSearchParams(location.search).get('id');
+    if (recipeId) {
+      const isFav = await toggleFavorite(recipeId);
+      s.style.fontVariationSettings = isFav ? "'FILL' 1" : "'FILL' 0";
+    } else {
+      const f = s.style.fontVariationSettings === "'FILL' 1";
+      s.style.fontVariationSettings = f ? "'FILL' 0" : "'FILL' 1";
+    }
   }));
+
+  // Charger la recette depuis Supabase si ?id= présent
+  async function loadRecipeFromDB() {
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) return;
+
+    const recipe = await getRecipe(id);
+    if (!recipe) return;
+
+    // Titre
+    const titleEl = document.querySelector('h1');
+    if (titleEl) titleEl.textContent = recipe.title;
+    document.title = `Maryse-Club | ${recipe.title}`;
+
+    // Description
+    const descEl = document.querySelector('[data-recipe-desc]');
+    if (descEl) descEl.textContent = recipe.description || '';
+
+    // Auteur
+    const authorEl = document.querySelector('[data-recipe-author]');
+    if (authorEl && recipe.profiles) authorEl.textContent = recipe.profiles.full_name;
+
+    // Image hero
+    if (recipe.hero_image_url) {
+      const heroSlot = document.querySelector('image-slot[id="recette-hero"]');
+      if (heroSlot) heroSlot.setAttribute('src', recipe.hero_image_url);
+    }
+
+    // Init favoris
+    const isFav = await isFavorite(id);
+    document.querySelectorAll('.fav-btn .material-symbols-outlined').forEach(s => {
+      s.style.fontVariationSettings = isFav ? "'FILL' 1" : "'FILL' 0";
+    });
+  }
+
+  loadRecipeFromDB();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>

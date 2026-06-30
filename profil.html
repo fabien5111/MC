@@ -286,5 +286,88 @@
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  async function loadProfil() {
+    const user = await getUser();
+    if (!user) return;
+
+    const profile = await getProfile(user.id);
+    if (!profile) return;
+
+    // Nom et bio
+    document.querySelectorAll('[data-user-name]').forEach(el => {
+      el.textContent = profile.full_name || user.email;
+    });
+    const bioEl = document.querySelector('[data-user-bio]');
+    if (bioEl && profile.bio) bioEl.textContent = profile.bio;
+
+    // Avatar
+    if (profile.avatar_url) {
+      document.querySelectorAll('image-slot[id="profil-avatar"]').forEach(el => {
+        el.setAttribute('src', profile.avatar_url);
+      });
+    }
+
+    // Recettes de l'utilisateur
+    const userRecipes = await getUserRecipes(user.id);
+    const carnetGrid = document.getElementById('carnet-grid');
+    if (carnetGrid && userRecipes.length > 0) {
+      const addCard = carnetGrid.querySelector('[data-add-card]');
+      userRecipes.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'relative group';
+        div.innerHTML = `
+          <a href="recette.html?id=${r.id}" class="block border border-outline-variant overflow-hidden hover:shadow-md transition-all">
+            <div class="aspect-video bg-surface-container flex items-center justify-center">
+              ${r.hero_image_url ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-3xl text-on-surface-variant">cake</span>'}
+            </div>
+            <div class="p-4">
+              <p class="font-body-md font-medium text-on-surface text-sm">${r.title}</p>
+              <span class="text-xs text-on-surface-variant">${r.status === 'published' ? 'Publié' : r.status === 'pending' ? 'En attente' : 'Brouillon'}</span>
+            </div>
+          </a>`;
+        if (addCard) carnetGrid.insertBefore(div, addCard);
+        else carnetGrid.appendChild(div);
+      });
+    }
+
+    // Favoris
+    const favs = await getFavorites(user.id);
+    const favGrid = document.getElementById('favoris-grid');
+    if (favGrid && favs.length > 0) {
+      favGrid.innerHTML = favs.map(f => {
+        const r = f.recipes;
+        return `<a href="recette.html?id=${r.id}" class="block border border-outline-variant overflow-hidden hover:shadow-md transition-all">
+          <div class="aspect-video bg-surface-container flex items-center justify-center">
+            ${r.hero_image_url ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-3xl text-on-surface-variant">cake</span>'}
+          </div>
+          <div class="p-4"><p class="font-body-md font-medium text-on-surface text-sm">${r.title}</p></div>
+        </a>`;
+      }).join('');
+    }
+
+    // Planning
+    const planList = document.getElementById('planning-list');
+    if (planList) {
+      const plans = await getPlanning(user.id);
+      if (plans.length > 0) {
+        planList.innerHTML = plans.map(p => `
+          <li class="flex items-center gap-4 py-3 border-b border-outline-variant last:border-0">
+            <div class="w-12 h-12 bg-surface-container flex items-center justify-center shrink-0">
+              ${p.recipes?.hero_image_url ? `<img src="${p.recipes.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-on-surface-variant">cake</span>'}
+            </div>
+            <div class="flex-1">
+              <p class="font-body-md font-medium text-sm">${p.recipes?.title || ''}</p>
+              <p class="text-xs text-on-surface-variant">${p.planned_date ? new Date(p.planned_date).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : ''}</p>
+            </div>
+          </li>`).join('');
+      }
+    }
+  }
+
+  loadProfil();
+</script>
 </body>
 </html>

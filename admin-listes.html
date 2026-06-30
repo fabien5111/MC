@@ -100,5 +100,43 @@
 </div>
 </footer>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  async function loadListes() {
+    const [types, tags, molds, diffs, units] = await Promise.all([
+      getRecipeTypes(), getTags(), getMoldTypes(), getDifficulties(), getUnits()
+    ]);
+
+    const totalEntries = types.length + tags.length + molds.length + diffs.length + units.length;
+    const countEl = document.querySelectorAll('.text-3xl.font-serif')[1];
+    if (countEl) countEl.textContent = totalEntries;
+
+    // Mettre à jour le tableau
+    const rows = [
+      { name: 'Types de recettes', desc: 'Classification principale des plats', type: 'Taxonomie', typeCls: 'bg-secondary-container text-on-secondary-container', count: types.length, status: 'Publié', dot: 'bg-green-600' },
+      { name: 'Tags de saveurs',   desc: 'Mots-clés pour le filtrage',          type: 'Étiquettes', typeCls: 'bg-tertiary-fixed text-on-tertiary-fixed',     count: tags.length,  status: 'Publié', dot: 'bg-green-600' },
+      { name: 'Types de moules',   desc: 'Ustensiles de cuisson spécifiques',   type: 'Matériel',   typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: molds.length, status: 'Publié', dot: 'bg-green-600' },
+      { name: 'Difficultés',       desc: 'Niveaux de complexité technique',      type: 'Notation',   typeCls: 'bg-secondary-container text-on-secondary-container', count: diffs.length, status: 'Publié', dot: 'bg-green-600' },
+      { name: 'Unités de mesure',  desc: 'Système métrique et impérial',         type: 'Global',     typeCls: 'bg-outline-variant text-on-surface-variant',    count: units.length, status: 'Publié', dot: 'bg-green-600' },
+    ];
+
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-surface-container-low transition-colors">
+          <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.name}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
+          <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.typeCls} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
+          <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
+          <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${r.dot}"></div><span class="text-sm">${r.status}</span></div></td>
+          <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2">
+            <button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button>
+            <button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button>
+          </div></td>
+        </tr>`).join('');
+    }
+  }
+  loadListes();
+</script>
 </body>
 </html>

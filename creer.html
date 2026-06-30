@@ -350,5 +350,32 @@
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  // Publier → sauvegarder en base
+  document.querySelector('button[type="submit"]')?.addEventListener('click', async function(e) {
+    e.preventDefault();
+    const title = document.querySelector('input[placeholder*="Nom de la recette"], input[placeholder*="recette"]')?.value?.trim()
+                || document.querySelector('input[type="text"]')?.value?.trim();
+    if (!title) { alert('Donnez un titre à votre recette.'); return; }
+
+    this.disabled = true;
+    this.textContent = 'Publication en cours...';
+
+    try {
+      const user = await getUser();
+      if (!user) { window.location.href = 'connexion.html'; return; }
+
+      const desc = document.querySelector('textarea')?.value?.trim() || '';
+      const recipe = await createRecipe({ title, description: desc });
+      window.location.href = `recette.html?id=${recipe.id}`;
+    } catch (err) {
+      alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
+      this.disabled = false;
+      this.textContent = 'Publier la recette';
+    }
+  });
+</script>
 </body>
 </html>
