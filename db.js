@@ -80,7 +80,7 @@ async function initAuthUI() {
 // ── RECETTES ─────────────────────────────────────────────────
 async function getRecipes({ limit = 12, status = 'published', authorId = null, typeId = null } = {}) {
   let q = db.from('recipes')
-    .select('id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, profiles!author_id(full_name, avatar_url), recipe_types(name), difficulties(name, level)')
+    .select('id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level)')
     .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -95,7 +95,7 @@ async function getRecipe(id) {
   const { data, error } = await db.from('recipes')
     .select(`
       *,
-      profiles!author_id(full_name, avatar_url, username),
+      profiles!recipes_author_id_fkey(full_name, avatar_url, username),
       recipe_types(name),
       difficulties(name, level),
       mold_types(name),
@@ -237,7 +237,7 @@ async function getUnits() {
 // ── ADMIN ─────────────────────────────────────────────────────
 async function getPendingRecipes() {
   const { data } = await db.from('recipes')
-    .select('*, profiles!author_id(full_name)')
+    .select('*, profiles!recipes_author_id_fkey(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return data || [];
