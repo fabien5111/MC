@@ -80,7 +80,7 @@ async function initAuthUI() {
 // ── RECETTES ─────────────────────────────────────────────────
 async function getRecipes({ limit = 12, status = 'published', authorId = null, typeId = null } = {}) {
   let q = db.from('recipes')
-    .select('id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, profiles(full_name, avatar_url), recipe_types(name), difficulties(name, level)')
+    .select('id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, profiles!author_id(full_name, avatar_url), recipe_types(name), difficulties(name, level)')
     .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -95,7 +95,7 @@ async function getRecipe(id) {
   const { data, error } = await db.from('recipes')
     .select(`
       *,
-      profiles(full_name, avatar_url, username),
+      profiles!author_id(full_name, avatar_url, username),
       recipe_types(name),
       difficulties(name, level),
       mold_types(name),
@@ -237,7 +237,7 @@ async function getUnits() {
 // ── ADMIN ─────────────────────────────────────────────────────
 async function getPendingRecipes() {
   const { data } = await db.from('recipes')
-    .select('*, profiles(full_name)')
+    .select('*, profiles!author_id(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return data || [];
@@ -316,7 +316,7 @@ function recipeCardHTML(r) {
           <h3 class="font-headline-md text-xl text-on-surface mb-2 group-hover:text-primary transition-colors">${r.title}</h3>
           <p class="text-sm text-on-surface-variant line-clamp-2 mb-4">${r.description || ''}</p>
           <div class="flex items-center justify-between">
-            <span class="text-xs text-secondary">${r.profiles?.full_name || ''}</span>
+            <span class="text-xs text-secondary">${r.profiles?.full_name || r.author_name || ''}</span>
             <span class="text-xs text-secondary">${r.rating_avg ? `${parseFloat(r.rating_avg).toFixed(1)} ★` : ''}</span>
           </div>
         </div>
