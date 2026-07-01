@@ -14,6 +14,20 @@ async function authSignIn(email, password) {
   return db.auth.signInWithPassword({ email, password });
 }
 
+async function signInWithGoogle() {
+  return db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + '/index.html' }
+  });
+}
+
+async function signInWithFacebook() {
+  return db.auth.signInWithOAuth({
+    provider: 'facebook',
+    options: { redirectTo: window.location.origin + '/index.html' }
+  });
+}
+
 async function authSignOut() {
   await db.auth.signOut();
   window.location.href = 'connexion.html';
