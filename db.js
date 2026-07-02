@@ -285,16 +285,15 @@ async function getAdminStats() {
 
 // ── PHOTOS PROFIL ────────────────────────────────────────────
 async function uploadPhoto(userId, file, type) {
-  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${userId}/${type}.${ext}`;
-  const { error } = await db.storage.from('avatars').upload(path, file, {
-    upsert: true,
-    contentType: file.type
-  });
+  // Supprime l'ancien fichier avant d'uploader (évite les conflits upsert)
+  await db.storage.from('avatars').remove([path]);
+  const { error } = await db.storage.from('avatars').upload(path, file);
   if (error) throw error;
   const { data: { publicUrl } } = db.storage.from('avatars').getPublicUrl(path);
   const field = type === 'avatar' ? 'avatar_url' : 'banner_url';
-  await updateProfile(userId, { [field]: publicUrl });
+  await db.from('profiles').upsert({ id: userId, [field]: publicUrl });
   return publicUrl;
 }
 
