@@ -283,6 +283,21 @@ async function getAdminStats() {
   return { totalRecipes: r.count || 0, pendingRecipes: p.count || 0, pendingComments: c.count || 0 };
 }
 
+// ── PHOTOS PROFIL ────────────────────────────────────────────
+async function uploadPhoto(userId, file, type) {
+  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `${userId}/${type}.${ext}`;
+  const { error } = await db.storage.from('avatars').upload(path, file, {
+    upsert: true,
+    contentType: file.type
+  });
+  if (error) throw error;
+  const { data: { publicUrl } } = db.storage.from('avatars').getPublicUrl(path);
+  const field = type === 'avatar' ? 'avatar_url' : 'banner_url';
+  await updateProfile(userId, { [field]: publicUrl });
+  return publicUrl;
+}
+
 // ── UTILITAIRES ──────────────────────────────────────────────
 function formatTime(minutes) {
   if (!minutes) return '—';

@@ -54,11 +54,14 @@
   <section class="relative mt-8">
     <div class="h-64 md:h-80 w-full rounded-xl overflow-hidden bg-surface-container-high relative">
       <image-slot id="profil-banner" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoZP4YqauQBOsvCfa-7_XjEM0KMQEJb94WNv7BPefzOCvsoeGuHuHSby0oev0N6aUlmSA40lBm9FVYHPcSdWeckqmVUW53MssVJLz8JEfSUO-GKRWWwdDkMkD0Isy36MWThYeJzF8PZ7AbescmN-dK8M-mGlN_-1HzDT_JGnfRTnvi3PLn6ySq3fR6-58V_G8ZWg9ubtNOdn3nFpwKp4dqDkuJNqTzGOY81xktMzNPHH0TLtAGdJZgAFCqcF7QPMBjLfb1FmNFKHM" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
-      <button class="absolute bottom-4 right-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-primary font-label-md hover:bg-white transition-all shadow-sm z-10"><span class="material-symbols-outlined text-[18px]">photo_camera</span> Modifier la bannière</button>
+      <button id="btn-banner" onclick="document.getElementById('input-banner').click()" class="absolute bottom-4 right-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-primary font-label-md hover:bg-white transition-all shadow-sm z-10"><span class="material-symbols-outlined text-[18px]">photo_camera</span> Modifier la bannière</button>
     </div>
     <div class="px-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
-      <div class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg">
+      <div class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg relative cursor-pointer group" onclick="document.getElementById('input-avatar').click()">
         <image-slot id="profil-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAw7RE_ari9f6ekIcK2Hm-XQCZ2U9lMyFCXSWgwi6Xw5XQ7UTNT2iBeRlp6Zoer5KumktarfqhSaFkCDiY9C8TpsolsyPizf4_nLKEN5PERAHLJ9muKNH0CbaQHa8NsL3ykdREb7_iB-WqwOT_TTHjFm0wIs_UjgfUfxOndx4dt9Y1NoN1UfnIccg9GBe6FYcGOLiEtl_xX9oft_3WBXgL3hxMey0WDceyaZiwH9ysVQSdKpnk2bOOpTSYyTl9FGo88CbKD5NGJUpA" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
+        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <span class="material-symbols-outlined text-white text-3xl">photo_camera</span>
+        </div>
       </div>
       <div class="flex-1 pb-4 text-center md:text-left">
         <h1 class="font-headline-lg text-headline-lg text-primary" id="profil-name">Camille Laurent</h1>
@@ -289,6 +292,36 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
+  // ── Helpers upload ────────────────────────────────────────
+  function setSlotSrc(id, url) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.setAttribute('src', url);
+    // Force update si image-slot a déjà rendu un <img> interne
+    const img = el.querySelector('img') || el.shadowRoot?.querySelector('img');
+    if (img) img.src = url;
+  }
+
+  async function handlePhotoUpload(file, type) {
+    const user = await getUser();
+    if (!user) return;
+    const btn = type === 'banner' ? document.getElementById('btn-banner') : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_empty</span> Envoi...'; }
+    try {
+      const url = await uploadPhoto(user.id, file, type);
+      if (type === 'avatar') {
+        setSlotSrc('profil-avatar', url);
+        setSlotSrc('nav-avatar', url);
+      } else {
+        setSlotSrc('profil-banner', url);
+      }
+    } catch (err) {
+      alert('Erreur lors du téléchargement : ' + err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">photo_camera</span> Modifier la bannière'; }
+    }
+  }
+
   async function loadProfil() {
     const user = await requireAuth();
     if (!user) return;
@@ -302,8 +335,8 @@
     if (nameEl) nameEl.textContent = immediateFullName;
 
     if (immediateAvatarUrl) {
-      document.getElementById('profil-avatar')?.setAttribute('src', immediateAvatarUrl);
-      document.getElementById('nav-avatar')?.setAttribute('src', immediateAvatarUrl);
+      setSlotSrc('profil-avatar', immediateAvatarUrl);
+      setSlotSrc('nav-avatar', immediateAvatarUrl);
     }
 
     // ── Sync avec la base de données (async, ne bloque pas l'affichage) ──
@@ -326,8 +359,12 @@
     if (bioEl && profile?.bio) bioEl.textContent = profile.bio;
 
     if (avatarUrl) {
-      document.getElementById('profil-avatar')?.setAttribute('src', avatarUrl);
-      document.getElementById('nav-avatar')?.setAttribute('src', avatarUrl);
+      setSlotSrc('profil-avatar', avatarUrl);
+      setSlotSrc('nav-avatar', avatarUrl);
+    }
+
+    if (profile?.banner_url) {
+      setSlotSrc('profil-banner', profile.banner_url);
     }
 
     // Recettes de l'utilisateur
@@ -388,6 +425,24 @@
   }
 
   loadProfil();
+
+  // ── Inputs fichiers cachés ─────────────────────────────────
+  document.body.insertAdjacentHTML('beforeend', `
+    <input type="file" id="input-avatar" accept="image/*" class="hidden">
+    <input type="file" id="input-banner" accept="image/*" class="hidden">
+  `);
+
+  document.getElementById('input-avatar').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) handlePhotoUpload(file, 'avatar');
+    e.target.value = '';
+  });
+
+  document.getElementById('input-banner').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) handlePhotoUpload(file, 'banner');
+    e.target.value = '';
+  });
 </script>
 </body>
 </html>
