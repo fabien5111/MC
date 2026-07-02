@@ -290,39 +290,44 @@
 <script src="db.js"></script>
 <script>
   async function loadProfil() {
-    const user = await getUser();
+    const user = await requireAuth();
     if (!user) return;
 
-    // Récupérer ou créer le profil
+    // ── Mise à jour immédiate depuis les métadonnées Google (pas de DB requis) ──
+    const meta = user.user_metadata || {};
+    const immediateFullName = meta.full_name || meta.name || user.email;
+    const immediateAvatarUrl = meta.avatar_url || meta.picture;
+
+    const nameEl = document.getElementById('profil-name');
+    if (nameEl) nameEl.textContent = immediateFullName;
+
+    if (immediateAvatarUrl) {
+      document.getElementById('profil-avatar')?.setAttribute('src', immediateAvatarUrl);
+      document.getElementById('nav-avatar')?.setAttribute('src', immediateAvatarUrl);
+    }
+
+    // ── Sync avec la base de données (async, ne bloque pas l'affichage) ──
     let profile = await getProfile(user.id);
     if (!profile) {
-      // Profil absent (compte créé avant le trigger) → on le crée maintenant
-      const meta = user.user_metadata || {};
       await db.from('profiles').upsert({
         id: user.id,
-        full_name: meta.full_name || meta.name || user.email,
-        avatar_url: meta.avatar_url || meta.picture || null
+        full_name: immediateFullName,
+        avatar_url: immediateAvatarUrl || null
       });
       profile = await getProfile(user.id);
     }
 
-    const fullName = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email;
-    const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture;
+    const fullName = profile?.full_name || immediateFullName;
+    const avatarUrl = profile?.avatar_url || immediateAvatarUrl;
 
-    // Nom
-    const nameEl = document.getElementById('profil-name');
     if (nameEl) nameEl.textContent = fullName;
 
-    // Bio
     const bioEl = document.getElementById('profil-bio');
     if (bioEl && profile?.bio) bioEl.textContent = profile.bio;
 
-    // Avatar
     if (avatarUrl) {
-      const slot = document.getElementById('profil-avatar');
-      if (slot) slot.setAttribute('src', avatarUrl);
-      const navSlot = document.getElementById('nav-avatar');
-      if (navSlot) navSlot.setAttribute('src', avatarUrl);
+      document.getElementById('profil-avatar')?.setAttribute('src', avatarUrl);
+      document.getElementById('nav-avatar')?.setAttribute('src', avatarUrl);
     }
 
     // Recettes de l'utilisateur

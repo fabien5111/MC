@@ -34,6 +34,10 @@ async function authSignOut() {
 }
 
 async function getUser() {
+  // getSession reads from localStorage (no network) — faster and works offline
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) return session.user;
+  // Fallback: server verification
   const { data: { user } } = await db.auth.getUser();
   return user;
 }
