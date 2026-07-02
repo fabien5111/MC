@@ -61,8 +61,8 @@
         <image-slot id="profil-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAw7RE_ari9f6ekIcK2Hm-XQCZ2U9lMyFCXSWgwi6Xw5XQ7UTNT2iBeRlp6Zoer5KumktarfqhSaFkCDiY9C8TpsolsyPizf4_nLKEN5PERAHLJ9muKNH0CbaQHa8NsL3ykdREb7_iB-WqwOT_TTHjFm0wIs_UjgfUfxOndx4dt9Y1NoN1UfnIccg9GBe6FYcGOLiEtl_xX9oft_3WBXgL3hxMey0WDceyaZiwH9ysVQSdKpnk2bOOpTSYyTl9FGo88CbKD5NGJUpA" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
       </div>
       <div class="flex-1 pb-4 text-center md:text-left">
-        <h1 class="font-headline-lg text-headline-lg text-primary">Camille Laurent</h1>
-        <p class="font-body-md text-on-surface-variant max-w-xl">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
+        <h1 class="font-headline-lg text-headline-lg text-primary" id="profil-name">Camille Laurent</h1>
+        <p class="font-body-md text-on-surface-variant max-w-xl" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
       </div>
       <div class="flex gap-3 pb-6">
         <button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-md hover:opacity-90 transition-all active:scale-95 shadow-md">Modifier le profil</button>
@@ -294,20 +294,28 @@
     if (!user) return;
 
     const profile = await getProfile(user.id);
-    if (!profile) return;
 
-    // Nom et bio
-    document.querySelectorAll('[data-user-name]').forEach(el => {
-      el.textContent = profile.full_name || user.email;
-    });
-    const bioEl = document.querySelector('[data-user-bio]');
-    if (bioEl && profile.bio) bioEl.textContent = profile.bio;
+    // Nom
+    const nameEl = document.getElementById('profil-name');
+    if (nameEl) nameEl.textContent = profile?.full_name || user.email;
 
-    // Avatar
-    if (profile.avatar_url) {
-      document.querySelectorAll('image-slot[id="profil-avatar"]').forEach(el => {
-        el.setAttribute('src', profile.avatar_url);
-      });
+    // Bio
+    const bioEl = document.getElementById('profil-bio');
+    if (bioEl && profile?.bio) bioEl.textContent = profile.bio;
+
+    // Avatar depuis Google
+    const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
+    if (avatarUrl) {
+      const slot = document.getElementById('profil-avatar');
+      if (slot) slot.setAttribute('src', avatarUrl);
+      const navSlot = document.getElementById('nav-avatar');
+      if (navSlot) navSlot.setAttribute('src', avatarUrl);
+    }
+
+    // Abonnés
+    if (profile?.followers_count !== undefined) {
+      const followEl = document.querySelector('#profil-name')?.closest('div.flex-1')?.parentElement?.nextElementSibling?.querySelector('span.block');
+      if (followEl) followEl.textContent = profile.followers_count;
     }
 
     // Recettes de l'utilisateur
