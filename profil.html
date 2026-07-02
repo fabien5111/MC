@@ -293,29 +293,36 @@
     const user = await getUser();
     if (!user) return;
 
-    const profile = await getProfile(user.id);
+    // Récupérer ou créer le profil
+    let profile = await getProfile(user.id);
+    if (!profile) {
+      // Profil absent (compte créé avant le trigger) → on le crée maintenant
+      const meta = user.user_metadata || {};
+      await db.from('profiles').upsert({
+        id: user.id,
+        full_name: meta.full_name || meta.name || user.email,
+        avatar_url: meta.avatar_url || meta.picture || null
+      });
+      profile = await getProfile(user.id);
+    }
+
+    const fullName = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+    const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture;
 
     // Nom
     const nameEl = document.getElementById('profil-name');
-    if (nameEl) nameEl.textContent = profile?.full_name || user.email;
+    if (nameEl) nameEl.textContent = fullName;
 
     // Bio
     const bioEl = document.getElementById('profil-bio');
     if (bioEl && profile?.bio) bioEl.textContent = profile.bio;
 
-    // Avatar depuis Google
-    const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
+    // Avatar
     if (avatarUrl) {
       const slot = document.getElementById('profil-avatar');
       if (slot) slot.setAttribute('src', avatarUrl);
       const navSlot = document.getElementById('nav-avatar');
       if (navSlot) navSlot.setAttribute('src', avatarUrl);
-    }
-
-    // Abonnés
-    if (profile?.followers_count !== undefined) {
-      const followEl = document.querySelector('#profil-name')?.closest('div.flex-1')?.parentElement?.nextElementSibling?.querySelector('span.block');
-      if (followEl) followEl.textContent = profile.followers_count;
     }
 
     // Recettes de l'utilisateur

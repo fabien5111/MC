@@ -59,20 +59,19 @@ async function requireAuth() {
 // Affiche/masque éléments selon l'état de connexion
 async function initAuthUI() {
   const user = await getUser();
-  document.querySelectorAll('[data-auth="logged-in"]').forEach(el => {
-    el.style.display = user ? '' : 'none';
-  });
-  document.querySelectorAll('[data-auth="logged-out"]').forEach(el => {
-    el.style.display = user ? 'none' : '';
-  });
+  document.querySelectorAll('[data-auth="logged-in"]').forEach(el => el.style.display = user ? '' : 'none');
+  document.querySelectorAll('[data-auth="logged-out"]').forEach(el => el.style.display = user ? 'none' : '');
   if (user) {
-    const profile = await getProfile(user.id);
-    document.querySelectorAll('[data-user-name]').forEach(el => {
-      el.textContent = profile?.full_name || user.email;
-    });
-    document.querySelectorAll('[data-user-avatar]').forEach(el => {
-      if (profile?.avatar_url) el.src = profile.avatar_url;
-    });
+    const meta = user.user_metadata || {};
+    const name = meta.full_name || meta.name || user.email;
+    const avatar = meta.avatar_url || meta.picture;
+    document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = name);
+    document.querySelectorAll('[data-user-avatar]').forEach(el => { if (avatar) el.src = avatar; });
+    // Mettre à jour l'avatar de nav
+    if (avatar) {
+      const navSlot = document.getElementById('nav-avatar');
+      if (navSlot) navSlot.setAttribute('src', avatar);
+    }
   }
   return user;
 }
