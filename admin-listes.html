@@ -80,7 +80,7 @@
               <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Liste</th>
               <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type</th>
               <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-center">Entrées</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Accès rapide</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
             </tr>
           </thead>
           <tbody id="summary-tbody" class="divide-y divide-outline-variant">
@@ -90,199 +90,41 @@
       </div>
     </div>
 
-    <!-- ── Types de recettes ── -->
-    <div id="section-recipe_types" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-        <div>
-          <h3 class="font-serif text-lg font-semibold">Types de recettes <span id="recipe_types-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Classification principale des recettes</p>
-        </div>
-        <button onclick="openFormPanel('recipe_types')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
-        </button>
-      </div>
-      <div class="px-6 py-3 border-b border-outline-variant">
-        <div class="relative inline-block">
-          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="recipe_types-search" oninput="renderSectionTable('recipe_types')" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="recipe_types-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="2" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <!-- Bloc unique de gestion -->
+    <div id="list-block" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden" style="display:none">
 
-    <!-- ── Tags ── -->
-    <div id="section-tags" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <!-- En-tête du bloc -->
       <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
         <div>
-          <h3 class="font-serif text-lg font-semibold">Tags <span id="tags-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Mots-clés pour le filtrage des recettes</p>
+          <h3 id="block-title" class="font-serif text-lg font-semibold"></h3>
+          <p id="block-desc" class="text-xs text-on-surface-variant mt-0.5"></p>
         </div>
-        <button onclick="openFormPanel('tags')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
+        <button onclick="openFormPanel()" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
           <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
         </button>
       </div>
-      <div class="px-6 py-3 border-b border-outline-variant">
-        <div class="relative inline-block">
-          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="tags-search" oninput="renderSectionTable('tags')" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Slug URL</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tags-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
-    <!-- ── Types de moules ── -->
-    <div id="section-mold_types" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-        <div>
-          <h3 class="font-serif text-lg font-semibold">Types de moules <span id="mold_types-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Catégories de moules utilisées dans les recettes</p>
-        </div>
-        <button onclick="openFormPanel('mold_types')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
-        </button>
-      </div>
-      <div class="px-6 py-3 border-b border-outline-variant">
-        <div class="relative inline-block">
-          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="mold_types-search" oninput="renderSectionTable('mold_types')" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="mold_types-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="2" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── Moules ── -->
-    <div id="section-molds" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-        <div>
-          <h3 class="font-serif text-lg font-semibold">Moules <span id="molds-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Moules référencés dans les recettes</p>
-        </div>
-        <button onclick="openFormPanel('molds')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
-        </button>
-      </div>
-      <div class="px-6 py-3 border-b border-outline-variant flex flex-wrap gap-2 items-center">
+      <!-- Filtres par type (moules uniquement) -->
+      <div id="block-type-filters" class="px-6 py-3 border-b border-outline-variant flex flex-wrap gap-2 items-center" style="display:none !important">
         <button onclick="filterMolds(null)" id="mfilter-all" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary">Tous</button>
         <div id="mold-type-filters" class="flex flex-wrap gap-2"></div>
-        <div class="ml-auto relative">
-          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="molds-search" oninput="renderMoldsTable()" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
-        </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="molds-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
-    <!-- ── Difficultés ── -->
-    <div id="section-difficulties" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-        <div>
-          <h3 class="font-serif text-lg font-semibold">Difficultés <span id="difficulties-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Niveaux de complexité des recettes</p>
-        </div>
-        <button onclick="openFormPanel('difficulties')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
-        </button>
-      </div>
+      <!-- Recherche -->
       <div class="px-6 py-3 border-b border-outline-variant">
         <div class="relative inline-block">
           <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="difficulties-search" oninput="renderSectionTable('difficulties')" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
+          <input id="block-search" oninput="renderBlockTable()" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Niveau</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="difficulties-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
-    <!-- ── Unités de mesure ── -->
-    <div id="section-units" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-        <div>
-          <h3 class="font-serif text-lg font-semibold">Unités de mesure <span id="units-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-          <p class="text-xs text-on-surface-variant mt-0.5">Unités disponibles dans les recettes</p>
-        </div>
-        <button onclick="openFormPanel('units')" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
-        </button>
-      </div>
-      <div class="px-6 py-3 border-b border-outline-variant">
-        <div class="relative inline-block">
-          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-          <input id="units-search" oninput="renderSectionTable('units')" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
-        </div>
-      </div>
+      <!-- Tableau -->
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
-            <tr class="bg-surface-container-low border-b border-outline-variant">
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
-              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-            </tr>
+            <tr id="block-thead" class="bg-surface-container-low border-b border-outline-variant"></tr>
           </thead>
-          <tbody id="units-tbody" class="divide-y divide-outline-variant">
-            <tr><td colspan="2" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
-          </tbody>
+          <tbody id="block-tbody" class="divide-y divide-outline-variant"></tbody>
         </table>
       </div>
     </div>
@@ -294,7 +136,7 @@
   </footer>
 </main>
 
-<!-- ═══ PANNEAU FORMULAIRE (partagé pour toutes les listes) ═══ -->
+<!-- ═══ PANNEAU FORMULAIRE ═══ -->
 <div id="form-overlay" class="fixed inset-0 bg-black/30 z-40 hidden" onclick="closeFormPanel()"></div>
 <aside id="form-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col" style="transform:translateX(100%);transition:transform .3s">
   <div class="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
@@ -314,43 +156,48 @@
 const LIST_CONFIGS = {
   recipe_types: {
     label: 'Types de recettes', table: 'recipe_types', orderBy: 'id',
-    badge: 'bg-secondary-container text-on-secondary-container', type: 'Taxonomie', desc: 'Classification principale',
+    badge: 'bg-secondary-container text-on-secondary-container', type: 'Taxonomie', desc: 'Classification principale des recettes',
     fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Entremets', required: true }],
   },
   tags: {
     label: 'Tags', table: 'tags', orderBy: 'name',
-    badge: 'bg-tertiary-fixed text-on-tertiary-fixed', type: 'Étiquettes', desc: 'Mots-clés pour le filtrage',
+    badge: 'bg-tertiary-fixed text-on-tertiary-fixed', type: 'Étiquettes', desc: 'Mots-clés pour le filtrage des recettes',
     fields: [
-      { key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Chocolat', required: true },
+      { key: 'name', label: 'Nom',     type: 'text', placeholder: 'ex : Chocolat',  required: true },
       { key: 'slug', label: 'Slug URL', type: 'text', placeholder: 'ex : chocolat' },
     ],
   },
   mold_types: {
     label: 'Types de moules', table: 'mold_types', orderBy: 'name',
-    badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Catégories de moules',
+    badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Catégories de moules utilisées dans les recettes',
     fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Cercle', required: true }],
+  },
+  molds: {
+    label: 'Moules', table: 'molds', orderBy: 'name',
+    badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Moules référencés dans les recettes',
+    fields: [], // géré spécifiquement (name + type_id select)
   },
   difficulties: {
     label: 'Difficultés', table: 'difficulties', orderBy: 'level',
-    badge: 'bg-secondary-container text-on-secondary-container', type: 'Notation', desc: 'Niveaux de complexité',
+    badge: 'bg-secondary-container text-on-secondary-container', type: 'Notation', desc: 'Niveaux de complexité des recettes',
     fields: [
-      { key: 'name',  label: 'Nom',          type: 'text',   placeholder: 'ex : Débutant', required: true },
-      { key: 'level', label: 'Niveau (1–5)',  type: 'number', placeholder: '1',             required: true },
+      { key: 'name',  label: 'Nom',         type: 'text',   placeholder: 'ex : Débutant', required: true },
+      { key: 'level', label: 'Niveau (1–5)', type: 'number', placeholder: '1',             required: true },
     ],
   },
   units: {
     label: 'Unités de mesure', table: 'units', orderBy: 'name',
-    badge: 'bg-outline-variant text-on-surface-variant', type: 'Global', desc: 'Système métrique',
+    badge: 'bg-outline-variant text-on-surface-variant', type: 'Global', desc: 'Unités disponibles dans les recettes',
     fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : gramme', required: true }],
   },
 };
 
 // ── État ─────────────────────────────────────────────────────
-let sectionData = { recipe_types: [], tags: [], mold_types: [], difficulties: [], units: [], molds: [] };
-let moldTypes = [];
+let sectionData  = { recipe_types: [], tags: [], mold_types: [], molds: [], difficulties: [], units: [] };
+let moldTypes    = [];
+let activeKey    = null;
 let activeMoldTypeFilter = null;
-let formKey  = null;
-let formEntry = null;
+let formEntry    = null;
 
 // ── Chargement initial ───────────────────────────────────────
 async function loadAll() {
@@ -362,77 +209,126 @@ async function loadAll() {
     getListEntries('units', 'name'),
     getMolds(),
   ]);
-  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, difficulties: diffs, units, molds: moldsList };
+  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, molds: moldsList, difficulties: diffs, units };
   moldTypes = moldTypesList;
-
   renderSummary();
-  Object.keys(LIST_CONFIGS).forEach(k => renderSectionTable(k));
-  renderMoldTypeFilters();
-  renderMoldsTable();
 }
 
 // ── Vue d'ensemble ───────────────────────────────────────────
 function renderSummary() {
-  const rows = [
-    ...Object.entries(LIST_CONFIGS).map(([key, cfg]) => ({
-      key, label: cfg.label, desc: cfg.desc, type: cfg.type, badge: cfg.badge,
-      count: sectionData[key].length, anchor: `section-${key}`,
-    })),
-    { key: 'molds', label: 'Moules', desc: 'Moules référencés', type: 'Matériel',
-      badge: 'bg-primary-fixed text-on-primary-fixed', count: sectionData.molds.length, anchor: 'section-molds' },
-  ];
+  const rows = Object.entries(LIST_CONFIGS).map(([key, cfg]) => ({
+    key, label: cfg.label, desc: cfg.desc, type: cfg.type, badge: cfg.badge,
+    count: sectionData[key].length,
+  }));
   document.getElementById('summary-tbody').innerHTML = rows.map(r => `
-    <tr class="hover:bg-surface-container-low transition-colors">
+    <tr id="summary-row-${r.key}" onclick="selectList('${r.key}')" class="cursor-pointer hover:bg-surface-container-low transition-colors ${activeKey === r.key ? 'bg-primary-container/40' : ''}">
       <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.label}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
       <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.badge} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
       <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
       <td class="px-6 py-4 text-right">
-        <a href="#${r.anchor}" class="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:opacity-70">
-          <span class="material-symbols-outlined text-sm">arrow_downward</span> Voir
-        </a>
+        <span class="inline-flex items-center gap-1 text-xs font-semibold ${activeKey === r.key ? 'text-primary' : 'text-on-surface-variant'}">
+          <span class="material-symbols-outlined text-sm">${activeKey === r.key ? 'expand_less' : 'edit_note'}</span>
+          ${activeKey === r.key ? 'Actif' : 'Gérer'}
+        </span>
       </td>
     </tr>`).join('');
 }
 
-// ── Sections génériques ──────────────────────────────────────
-function renderSectionTable(key) {
+// ── Sélection d'une liste ────────────────────────────────────
+function selectList(key) {
+  // Désélectionner si on reclique sur la liste active
+  if (activeKey === key) {
+    activeKey = null;
+    document.getElementById('list-block').style.display = 'none';
+    renderSummary();
+    return;
+  }
+  activeKey = key;
+  activeMoldTypeFilter = null;
+  document.getElementById('block-search').value = '';
+
   const cfg = LIST_CONFIGS[key];
-  const q = (document.getElementById(`${key}-search`)?.value || '').toLowerCase();
-  const entries = sectionData[key].filter(e =>
-    cfg.fields.some(f => String(e[f.key] || '').toLowerCase().includes(q))
-  );
-  document.getElementById(`${key}-count`).textContent = `(${entries.length})`;
-  const colspan = cfg.fields.length + 1;
-  const tbody = document.getElementById(`${key}-tbody`);
+  document.getElementById('block-title').textContent = cfg.label;
+  document.getElementById('block-desc').textContent  = cfg.desc;
+
+  // Filtres par type (moules uniquement)
+  const filtersRow = document.getElementById('block-type-filters');
+  if (key === 'molds') {
+    filtersRow.style.removeProperty('display');
+    document.getElementById('mold-type-filters').innerHTML = moldTypes.map(t => `
+      <button onclick="filterMolds(${t.id})" id="mfilter-${t.id}"
+        class="px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
+        ${t.name}
+      </button>`).join('');
+    document.getElementById('mfilter-all').className = 'px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary';
+  } else {
+    filtersRow.style.setProperty('display', 'none', 'important');
+  }
+
+  // En-têtes du tableau
+  const isMolds = key === 'molds';
+  const cols = isMolds
+    ? ['Libellé', 'Type de moule']
+    : cfg.fields.map(f => f.label);
+  document.getElementById('block-thead').innerHTML =
+    cols.map(c => `<th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">${c}</th>`).join('') +
+    '<th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>';
+
+  document.getElementById('list-block').style.display = '';
+  renderBlockTable();
+  renderSummary();
+}
+
+// ── Rendu du tableau du bloc ─────────────────────────────────
+function renderBlockTable() {
+  if (!activeKey) return;
+  const cfg = LIST_CONFIGS[activeKey];
+  const q   = (document.getElementById('block-search').value || '').toLowerCase();
+  const isMolds = activeKey === 'molds';
+
+  let entries = sectionData[activeKey];
+  if (isMolds && activeMoldTypeFilter !== null) {
+    entries = entries.filter(m => m.type_id === activeMoldTypeFilter);
+  }
+  if (q) {
+    entries = entries.filter(e => isMolds
+      ? e.name.toLowerCase().includes(q)
+      : cfg.fields.some(f => String(e[f.key] || '').toLowerCase().includes(q))
+    );
+  }
+
+  const colspan = (isMolds ? 2 : cfg.fields.length) + 1;
+  const tbody = document.getElementById('block-tbody');
   if (!entries.length) {
     tbody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucune entrée.</td></tr>`;
     return;
   }
-  tbody.innerHTML = entries.map(e => `
-    <tr class="hover:bg-surface-container-low transition-colors">
-      ${cfg.fields.map(f => `<td class="px-6 py-4 text-sm text-on-surface">${e[f.key] ?? '—'}</td>`).join('')}
-      <td class="px-6 py-4 text-right">
-        <div class="flex justify-end gap-2">
-          <button onclick='openFormPanel("${key}", ${JSON.stringify(e)})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
-            <span class="material-symbols-outlined text-xl">edit_note</span>
-          </button>
-          <button onclick='confirmDelete("${key}", ${e.id}, ${JSON.stringify(String(e[cfg.fields[0].key]))})' class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
-            <span class="material-symbols-outlined text-xl">delete</span>
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
+
+  tbody.innerHTML = entries.map(e => {
+    const cells = isMolds
+      ? `<td class="px-6 py-4 text-sm font-semibold text-on-surface">${e.name}</td>
+         <td class="px-6 py-4">${e.mold_types
+           ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${e.mold_types.name}</span>`
+           : '<span class="text-on-surface-variant text-xs">—</span>'}</td>`
+      : cfg.fields.map(f => `<td class="px-6 py-4 text-sm text-on-surface">${e[f.key] ?? '—'}</td>`).join('');
+    return `
+      <tr class="hover:bg-surface-container-low transition-colors">
+        ${cells}
+        <td class="px-6 py-4 text-right">
+          <div class="flex justify-end gap-2">
+            <button onclick='openFormPanel(${JSON.stringify(e)})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
+              <span class="material-symbols-outlined text-xl">edit_note</span>
+            </button>
+            <button onclick='confirmDelete(${e.id}, ${JSON.stringify(isMolds ? e.name : String(e[cfg.fields[0].key]))})' class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
+              <span class="material-symbols-outlined text-xl">delete</span>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
 }
 
-// ── Section Moules (spécifique) ──────────────────────────────
-function renderMoldTypeFilters() {
-  document.getElementById('mold-type-filters').innerHTML = moldTypes.map(t => `
-    <button onclick="filterMolds(${t.id})" id="mfilter-${t.id}"
-      class="px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
-      ${t.name}
-    </button>`).join('');
-}
-
+// ── Filtre moules par type ───────────────────────────────────
 function filterMolds(typeId) {
   activeMoldTypeFilter = typeId;
   const base = 'px-3 py-1 rounded-full text-xs font-semibold transition-all';
@@ -445,51 +341,17 @@ function filterMolds(typeId) {
       ? `${base} bg-primary text-on-primary`
       : `${base} border border-outline-variant text-on-surface-variant hover:bg-surface-container-high`;
   });
-  renderMoldsTable();
-}
-
-function renderMoldsTable() {
-  const q = (document.getElementById('molds-search')?.value || '').toLowerCase();
-  const filtered = sectionData.molds.filter(m =>
-    (activeMoldTypeFilter === null || m.type_id === activeMoldTypeFilter) &&
-    (!q || m.name.toLowerCase().includes(q))
-  );
-  document.getElementById('molds-count').textContent = `(${filtered.length})`;
-  const tbody = document.getElementById('molds-tbody');
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucun moule.</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = filtered.map(m => `
-    <tr class="hover:bg-surface-container-low transition-colors">
-      <td class="px-6 py-4 text-sm font-semibold text-on-surface">${m.name}</td>
-      <td class="px-6 py-4">
-        ${m.mold_types
-          ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${m.mold_types.name}</span>`
-          : '<span class="text-on-surface-variant text-xs">—</span>'}
-      </td>
-      <td class="px-6 py-4 text-right">
-        <div class="flex justify-end gap-2">
-          <button onclick='openFormPanel("molds", ${JSON.stringify(m)})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
-            <span class="material-symbols-outlined text-xl">edit_note</span>
-          </button>
-          <button onclick='confirmDelete("molds", ${m.id}, ${JSON.stringify(m.name)})' class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
-            <span class="material-symbols-outlined text-xl">delete</span>
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
+  renderBlockTable();
 }
 
 // ── Panneau formulaire ────────────────────────────────────────
-function openFormPanel(key, entry = null) {
-  formKey   = key;
+function openFormPanel(entry = null) {
   formEntry = entry;
-  const isMolds = key === 'molds';
-  const cfg = isMolds ? null : LIST_CONFIGS[key];
+  const isMolds = activeKey === 'molds';
+  const cfg = LIST_CONFIGS[activeKey];
 
   document.getElementById('form-panel-title').textContent =
-    entry ? `Modifier ${isMolds ? 'le moule' : 'l\'entrée'}` : `Ajouter ${isMolds ? 'un moule' : 'une entrée'}`;
+    entry ? `Modifier ${isMolds ? 'le moule' : "l'entrée"}` : `Ajouter ${isMolds ? 'un moule' : 'une entrée'}`;
 
   if (isMolds) {
     document.getElementById('form-panel-fields').innerHTML = `
@@ -525,15 +387,15 @@ function openFormPanel(key, entry = null) {
 function closeFormPanel() {
   document.getElementById('form-overlay').classList.add('hidden');
   document.getElementById('form-panel').style.transform = 'translateX(100%)';
-  formKey = null; formEntry = null;
+  formEntry = null;
 }
 
 async function saveFormPanel() {
   const btn = document.querySelector('#form-panel button[onclick="saveFormPanel()"]');
   btn.disabled = true; btn.textContent = '…';
   try {
-    if (formKey === 'molds') {
-      const name = document.getElementById('fp-name').value.trim();
+    if (activeKey === 'molds') {
+      const name   = document.getElementById('fp-name').value.trim();
       if (!name) { document.getElementById('fp-name').focus(); return; }
       const typeId = document.getElementById('fp-type_id').value || null;
       if (formEntry) {
@@ -545,9 +407,8 @@ async function saveFormPanel() {
         sectionData.molds.push({ ...created, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null });
       }
       sectionData.molds.sort((a, b) => a.name.localeCompare(b.name));
-      renderMoldsTable();
     } else {
-      const cfg = LIST_CONFIGS[formKey];
+      const cfg = LIST_CONFIGS[activeKey];
       const fields = {};
       let valid = true;
       for (const f of cfg.fields) {
@@ -556,21 +417,20 @@ async function saveFormPanel() {
         fields[f.key] = f.type === 'number' ? (Number(val) || null) : (val || null);
       }
       if (!valid) return;
-      // Auto-slug pour les tags
-      if (formKey === 'tags' && !fields.slug && fields.name) {
+      if (activeKey === 'tags' && !fields.slug && fields.name) {
         fields.slug = fields.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       }
       if (formEntry) {
         const updated = await updateListEntry(cfg.table, formEntry.id, fields);
-        const idx = sectionData[formKey].findIndex(e => e.id === formEntry.id);
-        if (idx !== -1) sectionData[formKey][idx] = updated;
+        const idx = sectionData[activeKey].findIndex(e => e.id === formEntry.id);
+        if (idx !== -1) sectionData[activeKey][idx] = updated;
       } else {
         const created = await addListEntry(cfg.table, fields);
-        sectionData[formKey].push(created);
+        sectionData[activeKey].push(created);
       }
-      renderSectionTable(formKey);
     }
     renderSummary();
+    renderBlockTable();
     closeFormPanel();
   } catch(e) {
     alert('Erreur : ' + e.message);
@@ -580,19 +440,18 @@ async function saveFormPanel() {
 }
 
 // ── Suppression ───────────────────────────────────────────────
-async function confirmDelete(key, id, label) {
+async function confirmDelete(id, label) {
   if (!confirm(`Supprimer « ${label} » ?`)) return;
   try {
-    if (key === 'molds') {
+    if (activeKey === 'molds') {
       await deleteMold(id);
       sectionData.molds = sectionData.molds.filter(m => m.id !== id);
-      renderMoldsTable();
     } else {
-      await deleteListEntry(LIST_CONFIGS[key].table, id);
-      sectionData[key] = sectionData[key].filter(e => e.id !== id);
-      renderSectionTable(key);
+      await deleteListEntry(LIST_CONFIGS[activeKey].table, id);
+      sectionData[activeKey] = sectionData[activeKey].filter(e => e.id !== id);
     }
     renderSummary();
+    renderBlockTable();
   } catch(e) { alert('Erreur : ' + e.message); }
 }
 
