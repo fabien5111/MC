@@ -232,6 +232,30 @@ async function getMoldTypes() {
   return data || [];
 }
 
+async function getMolds(typeId = null) {
+  let q = db.from('molds').select('*, mold_types(name)').order('name');
+  if (typeId) q = q.eq('type_id', typeId);
+  const { data } = await q;
+  return data || [];
+}
+
+async function addMold(name, typeId) {
+  const { data, error } = await db.from('molds').insert({ name, type_id: typeId || null }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateMold(id, name, typeId) {
+  const { data, error } = await db.from('molds').update({ name, type_id: typeId || null }).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteMold(id) {
+  const { error } = await db.from('molds').delete().eq('id', id);
+  if (error) throw error;
+}
+
 async function getUnits() {
   const { data } = await db.from('units').select('*').order('name');
   return data || [];

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta name="theme-color" content="#300a12">
+<title>Maryse-Club — Gestion des Moules</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = { darkMode:"class", theme:{ extend:{
+    "colors": {"surface-bright":"#fff8f7","on-surface":"#221a1a","inverse-surface":"#382e2e","on-error":"#ffffff","surface-container-high":"#f5e4e4","outline":"#847374","on-surface-variant":"#514345","surface-container":"#fbeae9","primary-fixed-dim":"#fab4bd","inverse-primary":"#fab4bd","primary-container":"#4a1e26","primary":"#300a12","outline-variant":"#d6c2c3","error":"#ba1a1a","on-primary-fixed":"#350e16","secondary":"#7e5259","surface-container-lowest":"#ffffff","surface-dim":"#e7d6d6","on-secondary-container":"#7b5056","on-secondary":"#ffffff","on-primary":"#ffffff","surface-variant":"#efdfde","surface-container-low":"#fff0f0","background":"#fff8f7","on-background":"#221a1a","secondary-container":"#ffc6ce","on-primary-container":"#c1828b","error-container":"#ffdad6","primary-fixed":"#ffd9dd","on-primary-fixed-variant":"#6a3840","tertiary-fixed":"#fddade","on-tertiary-fixed":"#291619","surface-container-highest":"#efdfde"},
+    "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    "spacing": {"margin-desktop":"64px","margin-mobile":"16px","gutter":"24px"},
+    "fontFamily": {"serif":["Playfair Display"],"sans":["Work Sans"],"logo":["Great Vibes","cursive"]}
+  } } }
+</script>
+<style>
+  body { background-color:#fff8f7; color:#221a1a; font-family:'Work Sans',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,.font-serif { font-family:'Playfair Display',serif; }
+  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; }
+</style>
+</head>
+<body class="flex min-h-screen bg-background">
+
+<!-- Sidebar -->
+<aside class="w-64 border-r border-outline-variant bg-surface-container-low flex flex-col sticky top-0 h-screen">
+  <a class="p-8 border-b border-outline-variant block" href="index.html">
+    <span class="font-logo text-3xl text-primary leading-none block">maryse club</span>
+    <p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest mt-1">Édition Premium · Admin</p>
+  </a>
+  <nav class="flex-1 overflow-y-auto py-6 px-4">
+    <div class="space-y-1">
+      <p class="px-4 text-[10px] font-semibold text-on-surface-variant uppercase tracking-[0.2em] mb-4">Administration</p>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">dashboard</span><span class="text-sm font-medium">Tableau de bord</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">menu_book</span><span class="text-sm font-medium">Recettes</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin-listes.html"><span class="material-symbols-outlined text-xl">list_alt</span><span class="text-sm font-medium">Listes du site</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded" href="admin-moules.html"><span class="material-symbols-outlined text-xl">cake</span><span class="text-sm font-medium">Moules</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">group</span><span class="text-sm font-medium">Membres</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">settings</span><span class="text-sm font-medium">Paramètres</span></a>
+    </div>
+  </nav>
+  <div class="p-6 border-t border-outline-variant">
+    <button onclick="authSignOut()" class="flex items-center gap-3 hover:opacity-80 transition-opacity w-full text-left">
+      <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed font-serif font-bold">A</div>
+      <div class="flex flex-col"><span class="text-sm font-semibold">Admin</span><span class="text-xs text-on-surface-variant">Se déconnecter</span></div>
+    </button>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col">
+  <header class="h-20 border-b border-outline-variant bg-surface-bright flex items-center justify-between px-margin-desktop sticky top-0 z-10">
+    <div>
+      <h2 class="text-xl font-serif font-semibold text-on-surface">Gestion des Moules</h2>
+      <div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
+        <a href="admin.html" class="hover:text-primary">Admin</a>
+        <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+        <a href="admin-listes.html" class="hover:text-primary">Listes</a>
+        <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+        <span>Moules</span>
+      </div>
+    </div>
+    <button onclick="openForm()" class="flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
+      <span class="material-symbols-outlined text-lg">add</span>
+      <span>Ajouter un moule</span>
+    </button>
+  </header>
+
+  <div class="p-margin-desktop flex flex-col gap-gutter">
+
+    <!-- Filtre par type -->
+    <div class="flex flex-wrap gap-2 items-center">
+      <button onclick="filterByType(null)" id="filter-all" class="px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-on-primary transition-all">Tous</button>
+      <div id="type-filters" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
+        <h3 class="font-serif text-lg font-semibold">Moules <span id="total-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
+        <div class="relative max-w-xs w-full">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+          <input id="search-input" oninput="renderTable()" class="w-full pl-10 pr-4 py-2 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" placeholder="Rechercher un moule…" type="text">
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-surface-container-low border-b border-outline-variant">
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="molds-tbody" class="divide-y divide-outline-variant">
+            <tr><td colspan="3" class="px-6 py-12 text-center text-on-surface-variant">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-auto p-margin-desktop border-t border-outline-variant">
+    <p class="text-xs text-on-surface-variant uppercase tracking-widest font-medium">© 2024 Maryse-Club. Tous droits réservés.</p>
+  </footer>
+</main>
+
+<!-- Panneau latéral : formulaire ajout/édition -->
+<div id="form-overlay" class="fixed inset-0 bg-black/30 z-40 hidden" onclick="closeForm()"></div>
+<aside id="form-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col translate-x-full transition-transform duration-300">
+  <div class="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
+    <h3 id="form-title" class="font-serif text-xl font-semibold">Ajouter un moule</h3>
+    <button onclick="closeForm()" class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">close</span></button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+    <input type="hidden" id="edit-id">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé du moule *</label>
+      <input id="field-name" type="text" placeholder="ex : Cercle inox Ø 20cm" class="w-full border-b border-outline-variant bg-transparent py-2 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm">
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</label>
+      <div class="relative">
+        <select id="field-type" class="w-full border-b border-outline-variant bg-transparent py-2 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm appearance-none pr-6 cursor-pointer">
+          <option value="">— Sans type —</option>
+        </select>
+        <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+      </div>
+    </div>
+  </div>
+  <div class="px-8 py-6 border-t border-outline-variant flex gap-3">
+    <button onclick="saveMold()" class="flex-1 bg-primary text-on-primary py-3 rounded text-sm font-semibold hover:opacity-90 transition-all">Enregistrer</button>
+    <button onclick="closeForm()" class="px-6 py-3 border border-outline-variant rounded text-sm font-medium hover:bg-surface-container-high transition-colors">Annuler</button>
+  </div>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  let allMolds = [];
+  let moldTypes = [];
+  let activeTypeId = null;
+
+  async function load() {
+    [allMolds, moldTypes] = await Promise.all([getMolds(), getMoldTypes()]);
+    renderTypeFilters();
+    renderTable();
+    populateTypeSelect();
+  }
+
+  function renderTypeFilters() {
+    const container = document.getElementById('type-filters');
+    container.innerHTML = moldTypes.map(t => `
+      <button onclick="filterByType(${t.id})" id="filter-${t.id}"
+        class="px-4 py-1.5 rounded-full text-sm font-medium border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
+        ${t.name}
+      </button>`).join('');
+  }
+
+  function filterByType(typeId) {
+    activeTypeId = typeId;
+    document.getElementById('filter-all').className = typeId === null
+      ? 'px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-on-primary transition-all'
+      : 'px-4 py-1.5 rounded-full text-sm font-medium border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
+    moldTypes.forEach(t => {
+      const btn = document.getElementById(`filter-${t.id}`);
+      if (!btn) return;
+      btn.className = typeId === t.id
+        ? 'px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-on-primary transition-all'
+        : 'px-4 py-1.5 rounded-full text-sm font-medium border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
+    });
+    renderTable();
+  }
+
+  function renderTable() {
+    const query = document.getElementById('search-input').value.toLowerCase();
+    const filtered = allMolds.filter(m => {
+      const matchType = activeTypeId === null || m.type_id === activeTypeId;
+      const matchSearch = !query || m.name.toLowerCase().includes(query);
+      return matchType && matchSearch;
+    });
+
+    document.getElementById('total-count').textContent = `(${filtered.length})`;
+    const tbody = document.getElementById('molds-tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-on-surface-variant">Aucun moule trouvé.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map(m => `
+      <tr class="hover:bg-surface-container-low transition-colors">
+        <td class="px-6 py-4 text-sm font-semibold text-on-surface">${m.name}</td>
+        <td class="px-6 py-4">
+          ${m.mold_types ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${m.mold_types.name}</span>` : '<span class="text-on-surface-variant text-xs">—</span>'}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex items-center justify-end gap-2">
+            <button onclick="openForm(${JSON.stringify(m).replace(/"/g, '&quot;')})" class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant" title="Modifier">
+              <span class="material-symbols-outlined text-xl">edit_note</span>
+            </button>
+            <button onclick="confirmDelete(${m.id}, '${m.name.replace(/'/g, "\\'")}')" class="p-2 hover:bg-error/10 rounded transition-colors text-on-surface-variant hover:text-error" title="Supprimer">
+              <span class="material-symbols-outlined text-xl">delete</span>
+            </button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function populateTypeSelect() {
+    const sel = document.getElementById('field-type');
+    sel.innerHTML = '<option value="">— Sans type —</option>' +
+      moldTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+
+  function openForm(mold = null) {
+    document.getElementById('form-title').textContent = mold ? 'Modifier le moule' : 'Ajouter un moule';
+    document.getElementById('edit-id').value = mold ? mold.id : '';
+    document.getElementById('field-name').value = mold ? mold.name : '';
+    document.getElementById('field-type').value = mold?.type_id || '';
+    document.getElementById('form-overlay').classList.remove('hidden');
+    document.getElementById('form-panel').style.transform = 'translateX(0)';
+    setTimeout(() => document.getElementById('field-name').focus(), 300);
+  }
+
+  function closeForm() {
+    document.getElementById('form-overlay').classList.add('hidden');
+    document.getElementById('form-panel').style.transform = 'translateX(100%)';
+  }
+
+  async function saveMold() {
+    const name = document.getElementById('field-name').value.trim();
+    const typeId = document.getElementById('field-type').value || null;
+    const editId = document.getElementById('edit-id').value;
+    if (!name) { document.getElementById('field-name').focus(); return; }
+
+    const btn = document.querySelector('#form-panel button[onclick="saveMold()"]');
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+
+    try {
+      if (editId) {
+        const updated = await updateMold(Number(editId), name, typeId ? Number(typeId) : null);
+        const idx = allMolds.findIndex(m => m.id === Number(editId));
+        if (idx !== -1) allMolds[idx] = { ...allMolds[idx], ...updated, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null };
+      } else {
+        const created = await addMold(name, typeId ? Number(typeId) : null);
+        allMolds.push({ ...created, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null });
+      }
+      allMolds.sort((a, b) => a.name.localeCompare(b.name));
+      renderTable();
+      closeForm();
+    } catch(e) {
+      alert('Erreur : ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enregistrer';
+    }
+  }
+
+  async function confirmDelete(id, name) {
+    if (!confirm(`Supprimer le moule « ${name} » ?`)) return;
+    try {
+      await deleteMold(id);
+      allMolds = allMolds.filter(m => m.id !== id);
+      renderTable();
+    } catch(e) {
+      alert('Erreur : ' + e.message);
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
