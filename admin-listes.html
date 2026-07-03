@@ -41,7 +41,6 @@
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">dashboard</span><span class="text-sm font-medium">Tableau de bord</span></a>
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">menu_book</span><span class="text-sm font-medium">Recettes</span></a>
 <a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded" href="admin-listes.html"><span class="material-symbols-outlined text-xl">list_alt</span><span class="text-sm font-medium">Listes du site</span></a>
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin-moules.html"><span class="material-symbols-outlined text-xl">cake</span><span class="text-sm font-medium">Moules</span></a>
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">group</span><span class="text-sm font-medium">Membres</span></a>
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">settings</span><span class="text-sm font-medium">Paramètres</span></a>
 </div>
@@ -58,85 +57,253 @@
 <main class="flex-1 flex flex-col">
 <header class="h-20 border-b border-outline-variant bg-surface-bright flex items-center justify-between px-margin-desktop sticky top-0 z-10">
 <div><h2 class="text-xl font-serif font-semibold text-on-surface">Gestion des Listes</h2><div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5"><a href="admin.html" class="hover:text-primary">Admin</a><span class="material-symbols-outlined text-[10px]">chevron_right</span><span>Listes du site</span></div></div>
-<div class="flex items-center gap-4"><button class="flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm"><span class="material-symbols-outlined text-lg">add</span><span>Nouvelle Liste</span></button></div>
 </header>
 
 <div class="p-margin-desktop flex flex-col gap-gutter">
-<!-- Stats -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-<div class="bg-surface-container-low p-6 border border-outline-variant rounded"><p class="text-sm text-on-surface-variant mb-1">Total des Listes</p><p class="text-3xl font-serif font-semibold text-primary">12</p></div>
-<div class="bg-surface-container-low p-6 border border-outline-variant rounded"><p class="text-sm text-on-surface-variant mb-1">Entrées actives</p><p class="text-3xl font-serif font-semibold text-primary">148</p></div>
-<div class="bg-surface-container-low p-6 border border-outline-variant rounded"><p class="text-sm text-on-surface-variant mb-1">Dernière mise à jour</p><p class="text-lg font-serif font-semibold text-primary">Aujourd'hui, 14:30</p></div>
-</div>
 
-<!-- Table -->
-<div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-<div class="p-6 border-b border-outline-variant flex flex-col md:flex-row md:items-center justify-between gap-4">
-<h3 class="font-serif text-lg font-semibold">Toutes les Listes</h3>
-<div class="relative max-w-xs w-full"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span><input class="w-full pl-10 pr-4 py-2 border border-outline-variant rounded text-sm focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="Rechercher une liste..." type="text"></div>
-</div>
-<div class="overflow-x-auto">
-<table class="w-full text-left">
-<thead><tr class="bg-surface-container-low border-b border-outline-variant"><th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom de la Liste</th><th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de Données</th><th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-center">Entrées</th><th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Statut</th><th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th></tr></thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container-low transition-colors"><td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">Types de recettes</span><span class="text-xs text-on-surface-variant">Classification principale des plats</span></div></td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">Taxonomie</span></td><td class="px-6 py-4 text-center text-sm font-medium">8</td><td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-600"></div><span class="text-sm">Publié</span></div></td><td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant" title="Modifier"><span class="material-symbols-outlined text-xl">edit_note</span></button><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant" title="Paramètres"><span class="material-symbols-outlined text-xl">settings</span></button></div></td></tr>
-<tr class="hover:bg-surface-container-low transition-colors"><td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">Tags de saveurs</span><span class="text-xs text-on-surface-variant">Mots-clés pour le filtrage</span></div></td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold uppercase tracking-wider">Étiquettes</span></td><td class="px-6 py-4 text-center text-sm font-medium">24</td><td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-600"></div><span class="text-sm">Publié</span></div></td><td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button></div></td></tr>
-<tr class="hover:bg-surface-container-low transition-colors"><td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">Types de moules</span><span class="text-xs text-on-surface-variant">Ustensiles de cuisson spécifiques</span></div></td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">Matériel</span></td><td class="px-6 py-4 text-center text-sm font-medium">12</td><td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-600"></div><span class="text-sm">Publié</span></div></td><td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button></div></td></tr>
-<tr class="hover:bg-surface-container-low transition-colors"><td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">Difficultés</span><span class="text-xs text-on-surface-variant">Niveaux de complexité technique</span></div></td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">Notation</span></td><td class="px-6 py-4 text-center text-sm font-medium">5</td><td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-600"></div><span class="text-sm">Publié</span></div></td><td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button></div></td></tr>
-<tr class="hover:bg-surface-container-low transition-colors"><td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">Unités de mesure</span><span class="text-xs text-on-surface-variant">Système métrique et impérial</span></div></td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-outline-variant text-on-surface-variant text-[11px] font-bold uppercase tracking-wider">Global</span></td><td class="px-6 py-4 text-center text-sm font-medium">18</td><td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-orange-400"></div><span class="text-sm">Brouillon</span></div></td><td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2"><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button><button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button></div></td></tr>
-</tbody>
-</table>
-</div>
-<div class="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex items-center justify-between">
-<span class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold">Affichage 1-5 sur 12</span>
-<div class="flex items-center gap-2"><button class="p-1 border border-outline-variant rounded disabled:opacity-50" disabled><span class="material-symbols-outlined">chevron_left</span></button><button class="w-8 h-8 flex items-center justify-center bg-primary text-on-primary rounded text-xs font-bold">1</button><button class="w-8 h-8 flex items-center justify-center hover:bg-surface-container-high rounded text-xs font-bold">2</button><button class="w-8 h-8 flex items-center justify-center hover:bg-surface-container-high rounded text-xs font-bold">3</button><button class="p-1 border border-outline-variant rounded"><span class="material-symbols-outlined">chevron_right</span></button></div>
-</div>
-</div>
+  <!-- Résumé des listes -->
+  <div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+    <div class="p-6 border-b border-outline-variant">
+      <h3 class="font-serif text-lg font-semibold">Vue d'ensemble</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead><tr class="bg-surface-container-low border-b border-outline-variant">
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom de la Liste</th>
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type</th>
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-center">Entrées</th>
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+        </tr></thead>
+        <tbody id="summary-tbody" class="divide-y divide-outline-variant">
+          <tr><td colspan="4" class="px-6 py-8 text-center text-on-surface-variant">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section Moules -->
+  <div id="section-moules" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+    <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
+      <div>
+        <h3 class="font-serif text-lg font-semibold">Moules <span id="molds-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
+        <p class="text-xs text-on-surface-variant mt-0.5">Moules référencés dans les recettes</p>
+      </div>
+      <button onclick="openMoldForm()" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
+        <span class="material-symbols-outlined text-lg">add</span>
+        <span>Ajouter</span>
+      </button>
+    </div>
+
+    <!-- Filtres type -->
+    <div class="px-6 py-3 border-b border-outline-variant flex flex-wrap gap-2 items-center">
+      <button onclick="filterMolds(null)" id="mfilter-all" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all">Tous</button>
+      <div id="mold-type-filters" class="flex flex-wrap gap-2"></div>
+      <div class="ml-auto relative">
+        <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+        <input id="mold-search" oninput="renderMoldsTable()" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead><tr class="bg-surface-container-low border-b border-outline-variant">
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé</th>
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</th>
+          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+        </tr></thead>
+        <tbody id="molds-tbody" class="divide-y divide-outline-variant">
+          <tr><td colspan="3" class="px-6 py-12 text-center text-on-surface-variant">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <footer class="mt-auto p-margin-desktop border-t border-outline-variant">
 <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-on-surface-variant uppercase tracking-widest font-medium">
 <p>© 2024 Maryse-Club. Tous droits réservés.</p>
-<div class="flex gap-6"><a class="hover:text-primary transition-colors" href="#">Support Technique</a><a class="hover:text-primary transition-colors" href="#">Documentation API</a><a class="hover:text-primary transition-colors" href="#">Aide</a></div>
+<div class="flex gap-6"><a class="hover:text-primary transition-colors" href="#">Support</a><a class="hover:text-primary transition-colors" href="#">Aide</a></div>
 </div>
 </footer>
 </main>
+
+<!-- Panneau moule -->
+<div id="mold-overlay" class="fixed inset-0 bg-black/30 z-40 hidden" onclick="closeMoldForm()"></div>
+<aside id="mold-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col" style="transform:translateX(100%);transition:transform .3s">
+  <div class="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
+    <h3 id="mold-form-title" class="font-serif text-xl font-semibold">Ajouter un moule</h3>
+    <button onclick="closeMoldForm()" class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+    <input type="hidden" id="mold-edit-id">
+    <div class="flex flex-col gap-2">
+      <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé *</label>
+      <input id="mold-field-name" type="text" placeholder="ex : Cercle inox Ø 20cm" class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</label>
+      <div class="relative">
+        <select id="mold-field-type" class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors appearance-none pr-6 cursor-pointer">
+          <option value="">— Sans type —</option>
+        </select>
+        <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+      </div>
+    </div>
+  </div>
+  <div class="px-8 py-6 border-t border-outline-variant flex gap-3">
+    <button onclick="saveMold()" class="flex-1 bg-primary text-on-primary py-3 rounded text-sm font-semibold hover:opacity-90 transition-all">Enregistrer</button>
+    <button onclick="closeMoldForm()" class="px-6 py-3 border border-outline-variant rounded text-sm font-medium hover:bg-surface-container-high transition-colors">Annuler</button>
+  </div>
+</aside>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
+  let allMolds = [];
+  let moldTypes = [];
+  let activeMoldTypeId = null;
+
   async function loadListes() {
-    const [types, tags, molds, diffs, units] = await Promise.all([
-      getRecipeTypes(), getTags(), getMoldTypes(), getDifficulties(), getUnits()
+    const [types, tags, moldTypesList, diffs, units, moldsList] = await Promise.all([
+      getRecipeTypes(), getTags(), getMoldTypes(), getDifficulties(), getUnits(), getMolds()
     ]);
 
-    const totalEntries = types.length + tags.length + molds.length + diffs.length + units.length;
-    const countEl = document.querySelectorAll('.text-3xl.font-serif')[1];
-    if (countEl) countEl.textContent = totalEntries;
+    allMolds = moldsList;
+    moldTypes = moldTypesList;
 
-    // Mettre à jour le tableau
     const rows = [
-      { name: 'Types de recettes', desc: 'Classification principale des plats', type: 'Taxonomie', typeCls: 'bg-secondary-container text-on-secondary-container', count: types.length, status: 'Publié', dot: 'bg-green-600' },
-      { name: 'Tags de saveurs',   desc: 'Mots-clés pour le filtrage',          type: 'Étiquettes', typeCls: 'bg-tertiary-fixed text-on-tertiary-fixed',     count: tags.length,  status: 'Publié', dot: 'bg-green-600' },
-      { name: 'Types de moules',   desc: 'Ustensiles de cuisson spécifiques',   type: 'Matériel',   typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: molds.length, status: 'Publié', dot: 'bg-green-600' },
-      { name: 'Difficultés',       desc: 'Niveaux de complexité technique',      type: 'Notation',   typeCls: 'bg-secondary-container text-on-secondary-container', count: diffs.length, status: 'Publié', dot: 'bg-green-600' },
-      { name: 'Unités de mesure',  desc: 'Système métrique et impérial',         type: 'Global',     typeCls: 'bg-outline-variant text-on-surface-variant',    count: units.length, status: 'Publié', dot: 'bg-green-600' },
+      { name: 'Types de recettes', desc: 'Classification principale', type: 'Taxonomie', typeCls: 'bg-secondary-container text-on-secondary-container', count: types.length },
+      { name: 'Tags',              desc: 'Mots-clés pour le filtrage', type: 'Étiquettes', typeCls: 'bg-tertiary-fixed text-on-tertiary-fixed',     count: tags.length  },
+      { name: 'Types de moules',   desc: 'Catégories de moules',       type: 'Matériel',  typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: moldTypesList.length },
+      { name: 'Moules',            desc: 'Moules référencés',          type: 'Matériel',  typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: moldsList.length, anchor: 'section-moules' },
+      { name: 'Difficultés',       desc: 'Niveaux de complexité',      type: 'Notation',  typeCls: 'bg-secondary-container text-on-secondary-container', count: diffs.length },
+      { name: 'Unités de mesure',  desc: 'Système métrique',           type: 'Global',    typeCls: 'bg-outline-variant text-on-surface-variant',    count: units.length  },
     ];
 
-    const tbody = document.querySelector('tbody');
-    if (tbody) {
-      tbody.innerHTML = rows.map(r => `
-        <tr class="hover:bg-surface-container-low transition-colors">
-          <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.name}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
-          <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.typeCls} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
-          <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
-          <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${r.dot}"></div><span class="text-sm">${r.status}</span></div></td>
-          <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-2">
-            <button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button>
-            <button class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-xl">settings</span></button>
-          </div></td>
-        </tr>`).join('');
+    document.getElementById('summary-tbody').innerHTML = rows.map(r => `
+      <tr class="hover:bg-surface-container-low transition-colors">
+        <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.name}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
+        <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.typeCls} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
+        <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
+        <td class="px-6 py-4 text-right">
+          ${r.anchor ? `<a href="#${r.anchor}" class="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:opacity-70 transition-opacity"><span class="material-symbols-outlined text-sm">edit_note</span> Gérer</a>` : ''}
+        </td>
+      </tr>`).join('');
+
+    renderMoldTypeFilters();
+    renderMoldsTable();
+    populateMoldTypeSelect();
+  }
+
+  /* ── Moules ── */
+  function renderMoldTypeFilters() {
+    document.getElementById('mold-type-filters').innerHTML = moldTypes.map(t => `
+      <button onclick="filterMolds(${t.id})" id="mfilter-${t.id}"
+        class="px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
+        ${t.name}
+      </button>`).join('');
+  }
+
+  function filterMolds(typeId) {
+    activeMoldTypeId = typeId;
+    document.getElementById('mfilter-all').className = typeId === null
+      ? 'px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all'
+      : 'px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
+    moldTypes.forEach(t => {
+      const btn = document.getElementById(`mfilter-${t.id}`);
+      if (!btn) return;
+      btn.className = typeId === t.id
+        ? 'px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all'
+        : 'px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
+    });
+    renderMoldsTable();
+  }
+
+  function renderMoldsTable() {
+    const query = (document.getElementById('mold-search').value || '').toLowerCase();
+    const filtered = allMolds.filter(m =>
+      (activeMoldTypeId === null || m.type_id === activeMoldTypeId) &&
+      (!query || m.name.toLowerCase().includes(query))
+    );
+    document.getElementById('molds-count').textContent = `(${filtered.length})`;
+    const tbody = document.getElementById('molds-tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucun moule.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map(m => `
+      <tr class="hover:bg-surface-container-low transition-colors">
+        <td class="px-6 py-4 text-sm font-semibold text-on-surface">${m.name}</td>
+        <td class="px-6 py-4">
+          ${m.mold_types ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${m.mold_types.name}</span>` : '<span class="text-on-surface-variant text-xs">—</span>'}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex items-center justify-end gap-2">
+            <button onclick='openMoldForm(${JSON.stringify(m)})' class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant" title="Modifier"><span class="material-symbols-outlined text-xl">edit_note</span></button>
+            <button onclick="confirmDeleteMold(${m.id},'${m.name.replace(/'/g,"\\'")}')" class="p-2 hover:bg-error/10 rounded transition-colors text-on-surface-variant hover:text-error" title="Supprimer"><span class="material-symbols-outlined text-xl">delete</span></button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function populateMoldTypeSelect() {
+    document.getElementById('mold-field-type').innerHTML =
+      '<option value="">— Sans type —</option>' +
+      moldTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+
+  function openMoldForm(mold = null) {
+    document.getElementById('mold-form-title').textContent = mold ? 'Modifier le moule' : 'Ajouter un moule';
+    document.getElementById('mold-edit-id').value = mold ? mold.id : '';
+    document.getElementById('mold-field-name').value = mold ? mold.name : '';
+    document.getElementById('mold-field-type').value = mold?.type_id || '';
+    document.getElementById('mold-overlay').classList.remove('hidden');
+    document.getElementById('mold-panel').style.transform = 'translateX(0)';
+    setTimeout(() => document.getElementById('mold-field-name').focus(), 300);
+  }
+
+  function closeMoldForm() {
+    document.getElementById('mold-overlay').classList.add('hidden');
+    document.getElementById('mold-panel').style.transform = 'translateX(100%)';
+  }
+
+  async function saveMold() {
+    const name   = document.getElementById('mold-field-name').value.trim();
+    const typeId = document.getElementById('mold-field-type').value || null;
+    const editId = document.getElementById('mold-edit-id').value;
+    if (!name) { document.getElementById('mold-field-name').focus(); return; }
+
+    const btn = document.querySelector('#mold-panel button[onclick="saveMold()"]');
+    btn.disabled = true; btn.textContent = 'Enregistrement…';
+    try {
+      if (editId) {
+        const updated = await updateMold(Number(editId), name, typeId ? Number(typeId) : null);
+        const idx = allMolds.findIndex(m => m.id === Number(editId));
+        if (idx !== -1) allMolds[idx] = { ...allMolds[idx], ...updated, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null };
+      } else {
+        const created = await addMold(name, typeId ? Number(typeId) : null);
+        allMolds.push({ ...created, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null });
+      }
+      allMolds.sort((a, b) => a.name.localeCompare(b.name));
+      renderMoldsTable();
+      closeMoldForm();
+    } catch(e) {
+      alert('Erreur : ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enregistrer';
     }
   }
+
+  async function confirmDeleteMold(id, name) {
+    if (!confirm(`Supprimer « ${name} » ?`)) return;
+    try {
+      await deleteMold(id);
+      allMolds = allMolds.filter(m => m.id !== id);
+      renderMoldsTable();
+    } catch(e) { alert('Erreur : ' + e.message); }
+  }
+
   loadListes();
 </script>
 </body>
