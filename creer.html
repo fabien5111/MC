@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Maryse Club — Créer une nouvelle recette de pâtisserie.">
+<script>
+  // Guard synchrone : redirige avant tout rendu si pas de session Supabase
+  try {
+    const k = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    const s = k ? JSON.parse(localStorage.getItem(k)) : null;
+    if (!s?.access_token) window.location.replace('connexion.html');
+  } catch(e) { window.location.replace('connexion.html'); }
+</script>
 <meta name="theme-color" content="#300a12">
 <title>Maryse-Club | Créer une nouvelle recette</title>
 <link rel="manifest" href="manifest.json">
