@@ -12,18 +12,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <script id="tailwind-config">
   tailwind.config = { darkMode:"class", theme:{ extend:{
-    "colors": {"surface-bright":"#fff8f7","on-surface":"#221a1a","on-tertiary-fixed":"#291619","on-tertiary-container":"#aa8c90","inverse-surface":"#382e2e","tertiary-fixed":"#fddade","on-error":"#ffffff","surface-container-high":"#f5e4e4","on-secondary-fixed-variant":"#633b42","on-primary-fixed-variant":"#6a3840","primary-fixed":"#ffd9dd","tertiary-container":"#3b262a","on-tertiary-fixed-variant":"#584044","secondary-fixed-dim":"#f0b8c0","outline":"#847374","on-surface-variant":"#514345","tertiary-fixed-dim":"#e0bec2","secondary-fixed":"#ffd9de","surface-container":"#fbeae9","primary-fixed-dim":"#fab4bd","inverse-primary":"#fab4bd","primary-container":"#4a1e26","primary":"#300a12","outline-variant":"#d6c2c3","error":"#ba1a1a","on-primary-fixed":"#350e16","inverse-on-surface":"#feedec","secondary":"#7e5259","surface-container-lowest":"#ffffff","on-error-container":"#93000a","surface-dim":"#e7d6d6","on-secondary-container":"#7b5056","on-secondary":"#ffffff","on-primary":"#ffffff","surface-variant":"#efdfde","surface-container-low":"#fff0f0","background":"#fff8f7","on-background":"#221a1a","secondary-container":"#ffc6ce","surface-tint":"#854f57","on-secondary-fixed":"#311118","on-tertiary":"#ffffff","surface":"#fff8f7","tertiary":"#251216","surface-container-highest":"#efdfde","on-primary-container":"#c1828b","error-container":"#ffdad6","on-primary-fixed-variant":"#6a3840"},
+    "colors": {"surface-bright":"#fff8f7","on-surface":"#221a1a","on-tertiary-fixed":"#291619","on-tertiary-container":"#aa8c90","inverse-surface":"#382e2e","tertiary-fixed":"#fddade","on-error":"#ffffff","surface-container-high":"#f5e4e4","on-secondary-fixed-variant":"#633b42","on-primary-fixed-variant":"#6a3840","primary-fixed":"#ffd9dd","tertiary-container":"#3b262a","on-tertiary-fixed-variant":"#584044","secondary-fixed-dim":"#f0b8c0","outline":"#847374","on-surface-variant":"#514345","tertiary-fixed-dim":"#e0bec2","secondary-fixed":"#ffd9de","surface-container":"#fbeae9","primary-fixed-dim":"#fab4bd","inverse-primary":"#fab4bd","primary-container":"#4a1e26","primary":"#300a12","outline-variant":"#d6c2c3","error":"#ba1a1a","on-primary-fixed":"#350e16","inverse-on-surface":"#feedec","secondary":"#7e5259","surface-container-lowest":"#ffffff","on-error-container":"#93000a","surface-dim":"#e7d6d6","on-secondary-container":"#7b5056","on-secondary":"#ffffff","on-primary":"#ffffff","surface-variant":"#efdfde","surface-container-low":"#fff0f0","background":"#fff8f7","on-background":"#221a1a","secondary-container":"#ffc6ce","surface-tint":"#854f57","on-secondary-fixed":"#311118","on-tertiary":"#ffffff","surface":"#fff8f7","tertiary":"#251216","surface-container-highest":"#efdfde","on-primary-container":"#c1828b","error-container":"#ffdad6"},
     "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
     "spacing": {"margin-desktop":"64px","container-max":"1200px","unit":"8px","gutter":"24px","margin-mobile":"16px"},
-    "fontFamily": {"headline-lg":["Playfair Display"],"display-lg":["Playfair Display"],"body-md":["Work Sans"],"label-md":["Work Sans"],"headline-lg-mobile":["Playfair Display"],"headline-md":["Playfair Display"],"body-lg":["Work Sans"],"logo":["Great Vibes","cursive"]},
-    "fontSize": {"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}],"display-lg":["64px",{"lineHeight":"72px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-lg-mobile":["32px",{"lineHeight":"40px","fontWeight":"600"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}]}
+    "fontFamily": {"headline-lg":["Playfair Display"],"display-lg":["Playfair Display"],"body-md":["Work Sans"],"label-md":["Work Sans"],"headline-md":["Playfair Display"],"body-lg":["Work Sans"],"logo":["Great Vibes","cursive"]},
+    "fontSize": {"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}]}
   } } }
 </script>
 <style>
   body { background-color:#fff8f7; color:#221a1a; -webkit-font-smoothing:antialiased; font-family:'Work Sans',sans-serif; }
   h1,h2,h3,.font-serif { font-family:'Playfair Display',serif; }
   .brand-logo-font { font-family:'Great Vibes',cursive; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; }
   .custom-scrollbar::-webkit-scrollbar { width:4px; }
 </style>
 </head>
@@ -31,104 +31,156 @@
 
 <!-- Sidebar -->
 <aside class="w-64 border-r border-outline-variant bg-surface-container-low flex flex-col sticky top-0 h-screen">
-<a class="p-8 border-b border-outline-variant block" href="index.html">
-<span class="brand-logo-font text-3xl text-primary leading-none block">maryse club</span>
-<p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest mt-1">Édition Premium · Admin</p>
-</a>
-<nav class="flex-1 overflow-y-auto py-6 custom-scrollbar px-4">
-<div class="space-y-1">
-<p class="px-4 text-[10px] font-semibold text-on-surface-variant uppercase tracking-[0.2em] mb-4">Administration</p>
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">dashboard</span><span class="text-sm font-medium">Tableau de bord</span></a>
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">menu_book</span><span class="text-sm font-medium">Recettes</span></a>
-<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded" href="admin-listes.html"><span class="material-symbols-outlined text-xl">list_alt</span><span class="text-sm font-medium">Listes du site</span></a>
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">group</span><span class="text-sm font-medium">Membres</span></a>
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">settings</span><span class="text-sm font-medium">Paramètres</span></a>
-</div>
-</nav>
-<div class="p-6 border-t border-outline-variant">
-<a href="index.html" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
-<div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed font-serif font-bold">A</div>
-<div class="flex flex-col"><span class="text-sm font-semibold">Admin</span><span class="text-xs text-on-surface-variant">Se déconnecter</span></div>
-</a>
-</div>
+  <a class="p-8 border-b border-outline-variant block" href="index.html">
+    <span class="brand-logo-font text-3xl text-primary leading-none block">maryse club</span>
+    <p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest mt-1">Édition Premium · Admin</p>
+  </a>
+  <nav class="flex-1 overflow-y-auto py-6 custom-scrollbar px-4">
+    <div class="space-y-1">
+      <p class="px-4 text-[10px] font-semibold text-on-surface-variant uppercase tracking-[0.2em] mb-4">Administration</p>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">dashboard</span><span class="text-sm font-medium">Tableau de bord</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="admin.html"><span class="material-symbols-outlined text-xl">menu_book</span><span class="text-sm font-medium">Recettes</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded" href="admin-listes.html"><span class="material-symbols-outlined text-xl">list_alt</span><span class="text-sm font-medium">Listes du site</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">group</span><span class="text-sm font-medium">Membres</span></a>
+      <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded" href="#"><span class="material-symbols-outlined text-xl">settings</span><span class="text-sm font-medium">Paramètres</span></a>
+    </div>
+  </nav>
+  <div class="p-6 border-t border-outline-variant">
+    <a href="index.html" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed font-serif font-bold">A</div>
+      <div class="flex flex-col"><span class="text-sm font-semibold">Admin</span><span class="text-xs text-on-surface-variant">Se déconnecter</span></div>
+    </a>
+  </div>
 </aside>
 
 <!-- Main -->
-<main class="flex-1 flex flex-col">
-<header class="h-20 border-b border-outline-variant bg-surface-bright flex items-center justify-between px-margin-desktop sticky top-0 z-10">
-<div><h2 class="text-xl font-serif font-semibold text-on-surface">Gestion des Listes</h2><div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5"><a href="admin.html" class="hover:text-primary">Admin</a><span class="material-symbols-outlined text-[10px]">chevron_right</span><span>Listes du site</span></div></div>
-</header>
-
-<div class="p-margin-desktop flex flex-col gap-gutter">
-
-  <!-- Résumé des listes -->
-  <div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-    <div class="p-6 border-b border-outline-variant">
-      <h3 class="font-serif text-lg font-semibold">Vue d'ensemble</h3>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-left">
-        <thead><tr class="bg-surface-container-low border-b border-outline-variant">
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom de la Liste</th>
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type</th>
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-center">Entrées</th>
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
-        </tr></thead>
-        <tbody id="summary-tbody" class="divide-y divide-outline-variant">
-          <tr><td colspan="4" class="px-6 py-8 text-center text-on-surface-variant">Chargement…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Section Moules -->
-  <div id="section-moules" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
-    <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
-      <div>
-        <h3 class="font-serif text-lg font-semibold">Moules <span id="molds-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
-        <p class="text-xs text-on-surface-variant mt-0.5">Moules référencés dans les recettes</p>
+<main class="flex-1 flex flex-col min-w-0">
+  <header class="h-20 border-b border-outline-variant bg-surface-bright flex items-center px-margin-desktop sticky top-0 z-10">
+    <div>
+      <h2 class="text-xl font-serif font-semibold text-on-surface">Gestion des Listes</h2>
+      <div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
+        <a href="admin.html" class="hover:text-primary">Admin</a>
+        <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+        <span>Listes du site</span>
       </div>
-      <button onclick="openMoldForm()" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
-        <span class="material-symbols-outlined text-lg">add</span>
-        <span>Ajouter</span>
-      </button>
     </div>
+  </header>
 
-    <!-- Filtres type -->
-    <div class="px-6 py-3 border-b border-outline-variant flex flex-wrap gap-2 items-center">
-      <button onclick="filterMolds(null)" id="mfilter-all" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all">Tous</button>
-      <div id="mold-type-filters" class="flex flex-wrap gap-2"></div>
-      <div class="ml-auto relative">
-        <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-        <input id="mold-search" oninput="renderMoldsTable()" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
+  <div class="p-margin-desktop flex flex-col gap-gutter">
+
+    <!-- Vue d'ensemble -->
+    <div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div class="p-6 border-b border-outline-variant">
+        <h3 class="font-serif text-lg font-semibold">Vue d'ensemble</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-surface-container-low border-b border-outline-variant">
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom de la Liste</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-center">Entrées</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody" class="divide-y divide-outline-variant">
+            <tr><td colspan="4" class="px-6 py-8 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="w-full text-left">
-        <thead><tr class="bg-surface-container-low border-b border-outline-variant">
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé</th>
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</th>
-          <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-        </tr></thead>
-        <tbody id="molds-tbody" class="divide-y divide-outline-variant">
-          <tr><td colspan="3" class="px-6 py-12 text-center text-on-surface-variant">Chargement…</td></tr>
-        </tbody>
-      </table>
+    <!-- Section Moules (spécifique : lien avec mold_types) -->
+    <div id="section-moules" class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div class="p-6 border-b border-outline-variant flex items-center justify-between gap-4">
+        <div>
+          <h3 class="font-serif text-lg font-semibold">Moules <span id="molds-count" class="text-on-surface-variant font-sans text-sm font-normal"></span></h3>
+          <p class="text-xs text-on-surface-variant mt-0.5">Moules référencés dans les recettes</p>
+        </div>
+        <button onclick="openMoldForm()" class="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-lg">add</span><span>Ajouter</span>
+        </button>
+      </div>
+      <div class="px-6 py-3 border-b border-outline-variant flex flex-wrap gap-2 items-center">
+        <button onclick="filterMolds(null)" id="mfilter-all" class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary">Tous</button>
+        <div id="mold-type-filters" class="flex flex-wrap gap-2"></div>
+        <div class="ml-auto relative">
+          <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+          <input id="mold-search" oninput="renderMoldsTable()" placeholder="Rechercher…" class="pl-8 pr-3 py-1.5 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-surface-container-low border-b border-outline-variant">
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Libellé</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de moule</th>
+              <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="molds-tbody" class="divide-y divide-outline-variant">
+            <tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+
   </div>
 
-</div>
-
-<footer class="mt-auto p-margin-desktop border-t border-outline-variant">
-<div class="flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-on-surface-variant uppercase tracking-widest font-medium">
-<p>© 2024 Maryse-Club. Tous droits réservés.</p>
-<div class="flex gap-6"><a class="hover:text-primary transition-colors" href="#">Support</a><a class="hover:text-primary transition-colors" href="#">Aide</a></div>
-</div>
-</footer>
+  <footer class="mt-auto p-margin-desktop border-t border-outline-variant">
+    <p class="text-xs text-on-surface-variant uppercase tracking-widest font-medium">© 2024 Maryse-Club. Tous droits réservés.</p>
+  </footer>
 </main>
 
-<!-- Panneau moule -->
+<!-- ═══ PANNEAU GÉNÉRIQUE (toutes listes sauf Moules) ═══ -->
+<div id="list-overlay" class="fixed inset-0 bg-black/30 z-40 hidden" onclick="closeListPanel()"></div>
+<aside id="list-panel" class="fixed top-0 right-0 h-full w-full max-w-lg bg-surface-bright border-l border-outline-variant z-50 flex flex-col" style="transform:translateX(100%);transition:transform .3s">
+
+  <!-- En-tête panneau -->
+  <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+    <h3 id="panel-title" class="font-serif text-xl font-semibold"></h3>
+    <div class="flex items-center gap-3">
+      <button onclick="openEntryForm()" class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary text-sm font-medium rounded hover:opacity-90 transition-all">
+        <span class="material-symbols-outlined text-lg">add</span> Ajouter
+      </button>
+      <button onclick="closeListPanel()" class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+    </div>
+  </div>
+
+  <!-- Recherche + table -->
+  <div class="px-6 py-3 border-b border-outline-variant">
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+      <input id="panel-search" oninput="renderPanelTable()" placeholder="Rechercher…" class="w-full pl-9 pr-4 py-2 border border-outline-variant rounded text-sm bg-surface-container-low focus:outline-none focus:border-primary" type="text">
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto">
+    <table class="w-full text-left">
+      <thead class="sticky top-0">
+        <tr id="panel-thead" class="bg-surface-container-low border-b border-outline-variant"></tr>
+      </thead>
+      <tbody id="panel-tbody" class="divide-y divide-outline-variant">
+        <tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Formulaire inline add/edit -->
+  <div id="entry-form" class="border-t border-outline-variant bg-surface-container-low" style="display:none">
+    <div class="px-6 py-4 flex items-center justify-between">
+      <p id="entry-form-title" class="text-sm font-semibold text-on-surface">Ajouter une entrée</p>
+      <button onclick="closeEntryForm()" class="text-on-surface-variant hover:text-primary text-sm"><span class="material-symbols-outlined text-lg">close</span></button>
+    </div>
+    <div id="entry-form-fields" class="px-6 pb-4 flex flex-wrap gap-4 items-end"></div>
+    <div class="px-6 pb-5 flex gap-3">
+      <button onclick="saveEntry()" class="px-6 py-2.5 bg-primary text-on-primary text-sm font-semibold rounded hover:opacity-90 transition-all">Enregistrer</button>
+      <button onclick="closeEntryForm()" class="px-4 py-2.5 border border-outline-variant rounded text-sm hover:bg-surface-container-high transition-colors">Annuler</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ PANNEAU MOULE (formulaire add/edit) ═══ -->
 <div id="mold-overlay" class="fixed inset-0 bg-black/30 z-40 hidden" onclick="closeMoldForm()"></div>
 <aside id="mold-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col" style="transform:translateX(100%);transition:transform .3s">
   <div class="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
@@ -152,159 +204,366 @@
     </div>
   </div>
   <div class="px-8 py-6 border-t border-outline-variant flex gap-3">
-    <button onclick="saveMold()" class="flex-1 bg-primary text-on-primary py-3 rounded text-sm font-semibold hover:opacity-90 transition-all">Enregistrer</button>
-    <button onclick="closeMoldForm()" class="px-6 py-3 border border-outline-variant rounded text-sm font-medium hover:bg-surface-container-high transition-colors">Annuler</button>
+    <button onclick="saveMold()" class="flex-1 bg-primary text-on-primary py-3 rounded text-sm font-semibold hover:opacity-90">Enregistrer</button>
+    <button onclick="closeMoldForm()" class="px-6 py-3 border border-outline-variant rounded text-sm hover:bg-surface-container-high transition-colors">Annuler</button>
   </div>
 </aside>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
-  let allMolds = [];
-  let moldTypes = [];
-  let activeMoldTypeId = null;
+// ── Config des listes gérées génériquement ──────────────────
+const LIST_CONFIGS = {
+  recipe_types: {
+    label: 'Types de recettes',
+    table: 'recipe_types',
+    orderBy: 'id',
+    badge: 'bg-secondary-container text-on-secondary-container',
+    type: 'Taxonomie',
+    desc: 'Classification principale',
+    fields: [
+      { key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Entremets', required: true },
+    ],
+  },
+  tags: {
+    label: 'Tags',
+    table: 'tags',
+    orderBy: 'name',
+    badge: 'bg-tertiary-fixed text-on-tertiary-fixed',
+    type: 'Étiquettes',
+    desc: 'Mots-clés pour le filtrage',
+    fields: [
+      { key: 'name',  label: 'Nom',     type: 'text', placeholder: 'ex : Chocolat',  required: true },
+      { key: 'slug',  label: 'Slug URL', type: 'text', placeholder: 'ex : chocolat' },
+    ],
+  },
+  mold_types: {
+    label: 'Types de moules',
+    table: 'mold_types',
+    orderBy: 'name',
+    badge: 'bg-primary-fixed text-on-primary-fixed',
+    type: 'Matériel',
+    desc: 'Catégories de moules',
+    fields: [
+      { key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Cercle', required: true },
+    ],
+  },
+  difficulties: {
+    label: 'Difficultés',
+    table: 'difficulties',
+    orderBy: 'level',
+    badge: 'bg-secondary-container text-on-secondary-container',
+    type: 'Notation',
+    desc: 'Niveaux de complexité',
+    fields: [
+      { key: 'name',  label: 'Nom',        type: 'text',   placeholder: 'ex : Débutant', required: true },
+      { key: 'level', label: 'Niveau (1-5)', type: 'number', placeholder: '1',            required: true },
+    ],
+  },
+  units: {
+    label: 'Unités de mesure',
+    table: 'units',
+    orderBy: 'name',
+    badge: 'bg-outline-variant text-on-surface-variant',
+    type: 'Global',
+    desc: 'Système métrique',
+    fields: [
+      { key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : gramme', required: true },
+    ],
+  },
+};
 
-  async function loadListes() {
-    const [types, tags, moldTypesList, diffs, units, moldsList] = await Promise.all([
-      getRecipeTypes(), getTags(), getMoldTypes(), getDifficulties(), getUnits(), getMolds()
-    ]);
+// ── État ─────────────────────────────────────────────────────
+let summaryData  = {};   // { tableKey: entries[] }
+let activeConfig = null; // config de la liste ouverte dans le panneau
+let activeEntries = [];  // entrées chargées pour la liste ouverte
+let editingEntry  = null;
 
-    allMolds = moldsList;
-    moldTypes = moldTypesList;
+// ── Chargement initial ───────────────────────────────────────
+async function loadListes() {
+  const [types, tags, moldTypesList, diffs, units, moldsList] = await Promise.all([
+    getListEntries('recipe_types', 'id'),
+    getListEntries('tags', 'name'),
+    getListEntries('mold_types', 'name'),
+    getListEntries('difficulties', 'level'),
+    getListEntries('units', 'name'),
+    getMolds(),
+  ]);
 
-    const rows = [
-      { name: 'Types de recettes', desc: 'Classification principale', type: 'Taxonomie', typeCls: 'bg-secondary-container text-on-secondary-container', count: types.length },
-      { name: 'Tags',              desc: 'Mots-clés pour le filtrage', type: 'Étiquettes', typeCls: 'bg-tertiary-fixed text-on-tertiary-fixed',     count: tags.length  },
-      { name: 'Types de moules',   desc: 'Catégories de moules',       type: 'Matériel',  typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: moldTypesList.length },
-      { name: 'Moules',            desc: 'Moules référencés',          type: 'Matériel',  typeCls: 'bg-primary-fixed text-on-primary-fixed',        count: moldsList.length, anchor: 'section-moules' },
-      { name: 'Difficultés',       desc: 'Niveaux de complexité',      type: 'Notation',  typeCls: 'bg-secondary-container text-on-secondary-container', count: diffs.length },
-      { name: 'Unités de mesure',  desc: 'Système métrique',           type: 'Global',    typeCls: 'bg-outline-variant text-on-surface-variant',    count: units.length  },
-    ];
+  summaryData = { recipe_types: types, tags, mold_types: moldTypesList, difficulties: diffs, units };
+  allMolds     = moldsList;
+  moldTypes    = moldTypesList;
 
-    document.getElementById('summary-tbody').innerHTML = rows.map(r => `
-      <tr class="hover:bg-surface-container-low transition-colors">
-        <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.name}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
-        <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.typeCls} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
-        <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
-        <td class="px-6 py-4 text-right">
-          ${r.anchor ? `<a href="#${r.anchor}" class="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:opacity-70 transition-opacity"><span class="material-symbols-outlined text-sm">edit_note</span> Gérer</a>` : ''}
-        </td>
-      </tr>`).join('');
+  renderSummary();
+  renderMoldTypeFilters();
+  renderMoldsTable();
+  populateMoldTypeSelect();
+}
 
-    renderMoldTypeFilters();
-    renderMoldsTable();
-    populateMoldTypeSelect();
+function renderSummary() {
+  const rows = [
+    ...Object.entries(LIST_CONFIGS).map(([key, cfg]) => ({
+      key, label: cfg.label, desc: cfg.desc, type: cfg.type, badge: cfg.badge,
+      count: (summaryData[key] || []).length,
+    })),
+    { key: 'molds', label: 'Moules', desc: 'Moules référencés', type: 'Matériel',
+      badge: 'bg-primary-fixed text-on-primary-fixed', count: allMolds.length, anchor: 'section-moules' },
+  ];
+
+  document.getElementById('summary-tbody').innerHTML = rows.map(r => `
+    <tr class="hover:bg-surface-container-low transition-colors">
+      <td class="px-6 py-4"><div class="flex flex-col"><span class="text-sm font-semibold text-on-surface">${r.label}</span><span class="text-xs text-on-surface-variant">${r.desc}</span></div></td>
+      <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full ${r.badge} text-[11px] font-bold uppercase tracking-wider">${r.type}</span></td>
+      <td class="px-6 py-4 text-center text-sm font-medium">${r.count}</td>
+      <td class="px-6 py-4 text-right">
+        ${r.anchor
+          ? `<a href="#${r.anchor}" class="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:opacity-70"><span class="material-symbols-outlined text-sm">edit_note</span> Gérer</a>`
+          : `<button onclick="openListPanel('${r.key}')" class="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:opacity-70"><span class="material-symbols-outlined text-sm">edit_note</span> Gérer</button>`
+        }
+      </td>
+    </tr>`).join('');
+}
+
+// ── Panneau générique ────────────────────────────────────────
+async function openListPanel(key) {
+  activeConfig  = LIST_CONFIGS[key];
+  activeEntries = await getListEntries(activeConfig.table, activeConfig.orderBy);
+  editingEntry  = null;
+
+  document.getElementById('panel-title').textContent = activeConfig.label;
+  document.getElementById('panel-search').value = '';
+  closeEntryForm();
+  renderPanelTable();
+
+  document.getElementById('list-overlay').classList.remove('hidden');
+  document.getElementById('list-panel').style.transform = 'translateX(0)';
+}
+
+function closeListPanel() {
+  document.getElementById('list-overlay').classList.add('hidden');
+  document.getElementById('list-panel').style.transform = 'translateX(100%)';
+  activeConfig = null;
+}
+
+function renderPanelTable() {
+  if (!activeConfig) return;
+  const q = (document.getElementById('panel-search').value || '').toLowerCase();
+  const filtered = activeEntries.filter(e =>
+    activeConfig.fields.some(f => String(e[f.key] || '').toLowerCase().includes(q))
+  );
+
+  // En-têtes
+  const colKeys = activeConfig.fields.map(f => f.key);
+  document.getElementById('panel-thead').innerHTML =
+    activeConfig.fields.map(f => `<th class="px-6 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">${f.label}</th>`).join('') +
+    '<th class="px-6 py-3 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Actions</th>';
+
+  const tbody = document.getElementById('panel-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="${colKeys.length + 1}" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucune entrée.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => `
+    <tr class="hover:bg-surface-container-low transition-colors">
+      ${activeConfig.fields.map(f => `<td class="px-6 py-3 text-sm text-on-surface">${e[f.key] ?? '—'}</td>`).join('')}
+      <td class="px-6 py-3 text-right">
+        <div class="flex justify-end gap-1">
+          <button onclick='openEntryForm(${JSON.stringify(e)})' class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier"><span class="material-symbols-outlined text-lg">edit_note</span></button>
+          <button onclick="confirmDeleteEntry(${e.id},'${String(e[activeConfig.fields[0].key]).replace(/'/g,"\\'")}')" class="p-1.5 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer"><span class="material-symbols-outlined text-lg">delete</span></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function openEntryForm(entry = null) {
+  editingEntry = entry;
+  document.getElementById('entry-form-title').textContent = entry ? 'Modifier' : 'Ajouter une entrée';
+  document.getElementById('entry-form-fields').innerHTML = activeConfig.fields.map(f => `
+    <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+      <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">${f.label}${f.required ? ' *' : ''}</label>
+      <input id="ef-${f.key}" type="${f.type}" value="${entry ? (entry[f.key] ?? '') : ''}"
+        placeholder="${f.placeholder || ''}"
+        class="border-b border-outline-variant bg-transparent py-1.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
+    </div>`).join('');
+  document.getElementById('entry-form').style.display = '';
+  document.getElementById(`ef-${activeConfig.fields[0].key}`)?.focus();
+}
+
+function closeEntryForm() {
+  editingEntry = null;
+  document.getElementById('entry-form').style.display = 'none';
+}
+
+async function saveEntry() {
+  const fields = {};
+  let valid = true;
+  for (const f of activeConfig.fields) {
+    const val = document.getElementById(`ef-${f.key}`)?.value.trim();
+    if (f.required && !val) { document.getElementById(`ef-${f.key}`).focus(); valid = false; break; }
+    fields[f.key] = f.type === 'number' ? (Number(val) || null) : (val || null);
+  }
+  if (!valid) return;
+
+  // Auto-slug pour les tags
+  if (activeConfig.table === 'tags' && !fields.slug && fields.name) {
+    fields.slug = fields.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
   }
 
-  /* ── Moules ── */
-  function renderMoldTypeFilters() {
-    document.getElementById('mold-type-filters').innerHTML = moldTypes.map(t => `
-      <button onclick="filterMolds(${t.id})" id="mfilter-${t.id}"
-        class="px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
-        ${t.name}
-      </button>`).join('');
-  }
-
-  function filterMolds(typeId) {
-    activeMoldTypeId = typeId;
-    document.getElementById('mfilter-all').className = typeId === null
-      ? 'px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all'
-      : 'px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
-    moldTypes.forEach(t => {
-      const btn = document.getElementById(`mfilter-${t.id}`);
-      if (!btn) return;
-      btn.className = typeId === t.id
-        ? 'px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary transition-all'
-        : 'px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all';
-    });
-    renderMoldsTable();
-  }
-
-  function renderMoldsTable() {
-    const query = (document.getElementById('mold-search').value || '').toLowerCase();
-    const filtered = allMolds.filter(m =>
-      (activeMoldTypeId === null || m.type_id === activeMoldTypeId) &&
-      (!query || m.name.toLowerCase().includes(query))
-    );
-    document.getElementById('molds-count').textContent = `(${filtered.length})`;
-    const tbody = document.getElementById('molds-tbody');
-    if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucun moule.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = filtered.map(m => `
-      <tr class="hover:bg-surface-container-low transition-colors">
-        <td class="px-6 py-4 text-sm font-semibold text-on-surface">${m.name}</td>
-        <td class="px-6 py-4">
-          ${m.mold_types ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${m.mold_types.name}</span>` : '<span class="text-on-surface-variant text-xs">—</span>'}
-        </td>
-        <td class="px-6 py-4 text-right">
-          <div class="flex items-center justify-end gap-2">
-            <button onclick='openMoldForm(${JSON.stringify(m)})' class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant" title="Modifier"><span class="material-symbols-outlined text-xl">edit_note</span></button>
-            <button onclick="confirmDeleteMold(${m.id},'${m.name.replace(/'/g,"\\'")}')" class="p-2 hover:bg-error/10 rounded transition-colors text-on-surface-variant hover:text-error" title="Supprimer"><span class="material-symbols-outlined text-xl">delete</span></button>
-          </div>
-        </td>
-      </tr>`).join('');
-  }
-
-  function populateMoldTypeSelect() {
-    document.getElementById('mold-field-type').innerHTML =
-      '<option value="">— Sans type —</option>' +
-      moldTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-  }
-
-  function openMoldForm(mold = null) {
-    document.getElementById('mold-form-title').textContent = mold ? 'Modifier le moule' : 'Ajouter un moule';
-    document.getElementById('mold-edit-id').value = mold ? mold.id : '';
-    document.getElementById('mold-field-name').value = mold ? mold.name : '';
-    document.getElementById('mold-field-type').value = mold?.type_id || '';
-    document.getElementById('mold-overlay').classList.remove('hidden');
-    document.getElementById('mold-panel').style.transform = 'translateX(0)';
-    setTimeout(() => document.getElementById('mold-field-name').focus(), 300);
-  }
-
-  function closeMoldForm() {
-    document.getElementById('mold-overlay').classList.add('hidden');
-    document.getElementById('mold-panel').style.transform = 'translateX(100%)';
-  }
-
-  async function saveMold() {
-    const name   = document.getElementById('mold-field-name').value.trim();
-    const typeId = document.getElementById('mold-field-type').value || null;
-    const editId = document.getElementById('mold-edit-id').value;
-    if (!name) { document.getElementById('mold-field-name').focus(); return; }
-
-    const btn = document.querySelector('#mold-panel button[onclick="saveMold()"]');
-    btn.disabled = true; btn.textContent = 'Enregistrement…';
-    try {
-      if (editId) {
-        const updated = await updateMold(Number(editId), name, typeId ? Number(typeId) : null);
-        const idx = allMolds.findIndex(m => m.id === Number(editId));
-        if (idx !== -1) allMolds[idx] = { ...allMolds[idx], ...updated, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null };
-      } else {
-        const created = await addMold(name, typeId ? Number(typeId) : null);
-        allMolds.push({ ...created, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null });
+  const btn = document.querySelector('#entry-form button[onclick="saveEntry()"]');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    if (editingEntry) {
+      const updated = await updateListEntry(activeConfig.table, editingEntry.id, fields);
+      const idx = activeEntries.findIndex(e => e.id === editingEntry.id);
+      if (idx !== -1) activeEntries[idx] = updated;
+      // Mettre à jour summaryData
+      if (summaryData[Object.keys(LIST_CONFIGS).find(k => LIST_CONFIGS[k].table === activeConfig.table)]) {
+        const sKey = Object.keys(LIST_CONFIGS).find(k => LIST_CONFIGS[k].table === activeConfig.table);
+        const si = summaryData[sKey].findIndex(e => e.id === editingEntry.id);
+        if (si !== -1) summaryData[sKey][si] = updated;
+        renderSummary();
       }
-      allMolds.sort((a, b) => a.name.localeCompare(b.name));
-      renderMoldsTable();
-      closeMoldForm();
-    } catch(e) {
-      alert('Erreur : ' + e.message);
-    } finally {
-      btn.disabled = false; btn.textContent = 'Enregistrer';
+    } else {
+      const created = await addListEntry(activeConfig.table, fields);
+      activeEntries.push(created);
+      const sKey = Object.keys(LIST_CONFIGS).find(k => LIST_CONFIGS[k].table === activeConfig.table);
+      if (sKey) { summaryData[sKey].push(created); renderSummary(); }
     }
+    renderPanelTable();
+    closeEntryForm();
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer';
   }
+}
 
-  async function confirmDeleteMold(id, name) {
-    if (!confirm(`Supprimer « ${name} » ?`)) return;
-    try {
-      await deleteMold(id);
-      allMolds = allMolds.filter(m => m.id !== id);
-      renderMoldsTable();
-    } catch(e) { alert('Erreur : ' + e.message); }
+async function confirmDeleteEntry(id, label) {
+  if (!confirm(`Supprimer « ${label} » ?`)) return;
+  try {
+    await deleteListEntry(activeConfig.table, id);
+    activeEntries = activeEntries.filter(e => e.id !== id);
+    const sKey = Object.keys(LIST_CONFIGS).find(k => LIST_CONFIGS[k].table === activeConfig.table);
+    if (sKey) { summaryData[sKey] = summaryData[sKey].filter(e => e.id !== id); renderSummary(); }
+    renderPanelTable();
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+// ── Moules (spécifique) ──────────────────────────────────────
+let allMolds = [], moldTypes = [], activeMoldTypeId = null;
+
+function renderMoldTypeFilters() {
+  document.getElementById('mold-type-filters').innerHTML = moldTypes.map(t => `
+    <button onclick="filterMolds(${t.id})" id="mfilter-${t.id}"
+      class="px-3 py-1 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-all">
+      ${t.name}
+    </button>`).join('');
+}
+
+function filterMolds(typeId) {
+  activeMoldTypeId = typeId;
+  const base = 'px-3 py-1 rounded-full text-xs font-semibold transition-all';
+  document.getElementById('mfilter-all').className = typeId === null
+    ? `${base} bg-primary text-on-primary`
+    : `${base} border border-outline-variant text-on-surface-variant hover:bg-surface-container-high`;
+  moldTypes.forEach(t => {
+    const btn = document.getElementById(`mfilter-${t.id}`);
+    if (btn) btn.className = typeId === t.id
+      ? `${base} bg-primary text-on-primary`
+      : `${base} border border-outline-variant text-on-surface-variant hover:bg-surface-container-high`;
+  });
+  renderMoldsTable();
+}
+
+function renderMoldsTable() {
+  const q = (document.getElementById('mold-search').value || '').toLowerCase();
+  const filtered = allMolds.filter(m =>
+    (activeMoldTypeId === null || m.type_id === activeMoldTypeId) &&
+    (!q || m.name.toLowerCase().includes(q))
+  );
+  document.getElementById('molds-count').textContent = `(${filtered.length})`;
+  const tbody = document.getElementById('molds-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-on-surface-variant text-sm">Aucun moule.</td></tr>`;
+    return;
   }
+  tbody.innerHTML = filtered.map(m => `
+    <tr class="hover:bg-surface-container-low transition-colors">
+      <td class="px-6 py-4 text-sm font-semibold text-on-surface">${m.name}</td>
+      <td class="px-6 py-4">
+        ${m.mold_types
+          ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${m.mold_types.name}</span>`
+          : '<span class="text-on-surface-variant text-xs">—</span>'}
+      </td>
+      <td class="px-6 py-4 text-right">
+        <div class="flex justify-end gap-2">
+          <button onclick='openMoldForm(${JSON.stringify(m)})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant"><span class="material-symbols-outlined text-xl">edit_note</span></button>
+          <button onclick="confirmDeleteMold(${m.id},'${m.name.replace(/'/g,"\\'")}') " class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-xl">delete</span></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
 
-  loadListes();
+function populateMoldTypeSelect() {
+  document.getElementById('mold-field-type').innerHTML =
+    '<option value="">— Sans type —</option>' +
+    moldTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+function openMoldForm(mold = null) {
+  document.getElementById('mold-form-title').textContent = mold ? 'Modifier le moule' : 'Ajouter un moule';
+  document.getElementById('mold-edit-id').value   = mold ? mold.id : '';
+  document.getElementById('mold-field-name').value = mold ? mold.name : '';
+  document.getElementById('mold-field-type').value  = mold?.type_id || '';
+  document.getElementById('mold-overlay').classList.remove('hidden');
+  document.getElementById('mold-panel').style.transform = 'translateX(0)';
+  setTimeout(() => document.getElementById('mold-field-name').focus(), 300);
+}
+
+function closeMoldForm() {
+  document.getElementById('mold-overlay').classList.add('hidden');
+  document.getElementById('mold-panel').style.transform = 'translateX(100%)';
+}
+
+async function saveMold() {
+  const name   = document.getElementById('mold-field-name').value.trim();
+  const typeId = document.getElementById('mold-field-type').value || null;
+  const editId = document.getElementById('mold-edit-id').value;
+  if (!name) { document.getElementById('mold-field-name').focus(); return; }
+
+  const btn = document.querySelector('#mold-panel button[onclick="saveMold()"]');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    if (editId) {
+      const updated = await updateMold(Number(editId), name, typeId ? Number(typeId) : null);
+      const idx = allMolds.findIndex(m => m.id === Number(editId));
+      if (idx !== -1) allMolds[idx] = { ...allMolds[idx], ...updated, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null };
+    } else {
+      const created = await addMold(name, typeId ? Number(typeId) : null);
+      allMolds.push({ ...created, mold_types: moldTypes.find(t => t.id === Number(typeId)) || null });
+    }
+    allMolds.sort((a, b) => a.name.localeCompare(b.name));
+    renderMoldsTable();
+    renderSummary();
+    closeMoldForm();
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer';
+  }
+}
+
+async function confirmDeleteMold(id, name) {
+  if (!confirm(`Supprimer « ${name} » ?`)) return;
+  try {
+    await deleteMold(id);
+    allMolds = allMolds.filter(m => m.id !== id);
+    renderMoldsTable();
+    renderSummary();
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+loadListes();
 </script>
 </body>
 </html>

@@ -211,6 +211,29 @@ async function addComment(recipeId, content, rating = null) {
   return db.from('comments').insert({ recipe_id: recipeId, user_id: user.id, content, rating });
 }
 
+// ── CRUD GÉNÉRIQUE POUR LES LISTES ───────────────────────────
+async function getListEntries(tableName, orderBy = 'name') {
+  const { data } = await db.from(tableName).select('*').order(orderBy);
+  return data || [];
+}
+
+async function addListEntry(tableName, fields) {
+  const { data, error } = await db.from(tableName).insert(fields).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateListEntry(tableName, id, fields) {
+  const { data, error } = await db.from(tableName).update(fields).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteListEntry(tableName, id) {
+  const { error } = await db.from(tableName).delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── LISTES TAXONOMY ──────────────────────────────────────────
 async function getRecipeTypes() {
   const { data } = await db.from('recipe_types').select('*').eq('status', 'published').order('id');
