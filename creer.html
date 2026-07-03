@@ -133,12 +133,15 @@
             <!-- Panneau 1 : unités / poids -->
             <div id="panel-units" class="mt-4 flex flex-wrap gap-4 items-end">
               <input id="qty-amount" class="editorial-input font-body-md text-on-surface" style="width:6rem" placeholder="ex : 6" type="number" min="0" step="any">
-              <select id="qty-unit" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer" style="width:auto; min-width:8rem">
-                <option value="unite">Unité</option>
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="l">l</option>
-              </select>
+              <div class="relative flex items-end" style="min-width:8rem">
+                <select id="qty-unit" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
+                  <option value="unite">Unité(s)</option>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="l">l</option>
+                </select>
+                <span class="pointer-events-none absolute right-0 bottom-2 text-on-surface-variant" style="font-size:10px">▾</span>
+              </div>
             </div>
 
             <!-- Panneau 2 : moule / cercle -->
