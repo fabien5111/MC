@@ -107,19 +107,27 @@
             <div class="flex flex-wrap gap-6">
               <label class="flex items-center gap-3 cursor-pointer group">
                 <div class="relative flex items-center justify-center">
-                  <input checked class="sr-only peer" name="measure_type" type="radio" value="mold">
+                  <input checked class="sr-only peer" name="measure_type" type="radio" value="units">
                   <div class="w-5 h-5 border-2 border-outline rounded-full peer-checked:border-primary transition-colors"></div>
                   <div class="absolute w-2.5 h-2.5 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
                 </div>
-                <span class="font-body-md text-on-surface">Moule de référence</span>
+                <span class="font-body-md text-on-surface">Par nombre d'unités / poids</span>
               </label>
               <label class="flex items-center gap-3 cursor-pointer group">
                 <div class="relative flex items-center justify-center">
-                  <input class="sr-only peer" name="measure_type" type="radio" value="units">
+                  <input class="sr-only peer" name="measure_type" type="radio" value="mold">
                   <div class="w-5 h-5 border-2 border-outline rounded-full peer-checked:border-primary transition-colors"></div>
                   <div class="absolute w-2.5 h-2.5 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
                 </div>
-                <span class="font-body-md text-on-surface">Nombre d'unités / poids</span>
+                <span class="font-body-md text-on-surface">Par type de moule / cercle</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer group">
+                <div class="relative flex items-center justify-center">
+                  <input class="sr-only peer" name="measure_type" type="radio" value="dimensions">
+                  <div class="w-5 h-5 border-2 border-outline rounded-full peer-checked:border-primary transition-colors"></div>
+                  <div class="absolute w-2.5 h-2.5 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                </div>
+                <span class="font-body-md text-on-surface">Par dimensions <span class="text-on-surface-variant text-sm">(longueur × hauteur, diamètre…)</span></span>
               </label>
             </div>
             <div class="mt-4 flex flex-wrap gap-4 items-end">
