@@ -147,12 +147,15 @@
             <!-- Panneau 2 : moule / cercle -->
             <div id="panel-mold" class="mt-4 flex-wrap gap-4 items-end" style="display:none">
               <input class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
-              <select class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface bg-transparent border-b border-outline-variant focus:border-primary outline-none py-2 cursor-pointer bg-surface-container-low">
-                <option value="" disabled selected>Choisir le type de moule</option>
-                <option value="cercle">Cercle</option>
-                <option value="manque">Moule à manqué</option>
-                <option value="cadre">Cadre rectangulaire</option>
-              </select>
+              <div class="relative flex items-end flex-1 min-w-[200px]">
+                <select class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
+                  <option value="" disabled selected>Choisir le type de moule</option>
+                  <option value="cercle">Cercle</option>
+                  <option value="manque">Moule à manqué</option>
+                  <option value="cadre">Cadre rectangulaire</option>
+                </select>
+                <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+              </div>
               <div class="w-24 h-24 border border-dashed border-outline-variant rounded flex flex-col items-center justify-center bg-surface-container-low shrink-0 group cursor-pointer hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-outline-variant">shape_line</span>
                 <span class="text-[10px] uppercase font-label-md text-outline mt-1">Aperçu</span>
