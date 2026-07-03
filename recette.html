@@ -43,7 +43,7 @@
     </nav>
   </div>
   <div class="flex items-center gap-3">
-    <a class="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
+    <a data-auth="logged-in" class="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
     <button class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1" aria-label="Rechercher">search</button>
     <a data-auth="logged-in" class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
       <image-slot id="nav-avatar" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
@@ -319,7 +319,7 @@
 <nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50">
   <div class="flex justify-around items-center py-3">
     <a href="index.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">home</span><span class="text-[10px] mt-1 font-label-md">Accueil</span></a>
-    <a href="creer.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">add_circle</span><span class="text-[10px] mt-1 font-label-md">Créer</span></a>
+    <a data-auth="logged-in" href="creer.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">add_circle</span><span class="text-[10px] mt-1 font-label-md">Créer</span></a>
     <a href="profil.html#planning" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">calendar_month</span><span class="text-[10px] mt-1 font-label-md">Planning</span></a>
     <a href="profil.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">person</span><span class="text-[10px] mt-1 font-label-md">Profil</span></a>
   </div>
