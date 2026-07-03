@@ -130,7 +130,19 @@
                 <span class="font-body-md text-on-surface">Par dimensions <span class="text-on-surface-variant text-sm">(longueur × hauteur, diamètre…)</span></span>
               </label>
             </div>
-            <div class="mt-4 flex flex-wrap gap-4 items-end">
+            <!-- Panneau 1 : unités / poids -->
+            <div id="panel-units" class="mt-4 flex flex-wrap gap-4 items-end">
+              <input id="qty-amount" class="editorial-input w-32 font-body-md text-on-surface" placeholder="ex : 6" type="number" min="0" step="any">
+              <select id="qty-unit" class="editorial-input font-body-md text-on-surface bg-transparent border-b border-outline-variant focus:border-primary outline-none py-2 cursor-pointer bg-surface-container-low">
+                <option value="unite">Unité</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="l">l</option>
+              </select>
+            </div>
+
+            <!-- Panneau 2 : moule / cercle -->
+            <div id="panel-mold" class="mt-4 flex-wrap gap-4 items-end" style="display:none">
               <input class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
               <select class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface bg-transparent border-b border-outline-variant focus:border-primary outline-none py-2 cursor-pointer bg-surface-container-low">
                 <option value="" disabled selected>Choisir le type de moule</option>
@@ -142,6 +154,12 @@
                 <span class="material-symbols-outlined text-outline-variant">shape_line</span>
                 <span class="text-[10px] uppercase font-label-md text-outline mt-1">Aperçu</span>
               </div>
+            </div>
+
+            <!-- Panneau 3 : dimensions libres -->
+            <div id="panel-dimensions" class="mt-4" style="display:none">
+              <input class="editorial-input w-full font-body-md text-on-surface" placeholder="ex : 20cm × 5cm, Ø 22cm…" type="text">
+            </div>
             </div>
           </div>
         </div>
@@ -385,6 +403,15 @@
       this.disabled = false;
       this.textContent = 'Publier la recette';
     }
+  });
+
+  // Affichage conditionnel selon le type de mesure
+  document.querySelectorAll('input[name="measure_type"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+      document.getElementById('panel-units').style.display      = this.value === 'units'      ? 'flex'  : 'none';
+      document.getElementById('panel-mold').style.display       = this.value === 'mold'       ? 'flex'  : 'none';
+      document.getElementById('panel-dimensions').style.display = this.value === 'dimensions' ? 'block' : 'none';
+    });
   });
 
   (async () => {
