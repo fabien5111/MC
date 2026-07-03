@@ -51,9 +51,10 @@
   <div class="flex items-center gap-3">
     <a class="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
     <button class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1" aria-label="Rechercher">search</button>
-    <a class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
-      <image-slot id="nav-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc69WbfNouydO2CAXMT1IbOzz9MHswuxhhs40X0A8Pl--MkrKI7wD9cqOKDDyHLidm3PX81QsauhNWuLc-B0A5U4O_RCtMCQ7ZMpSWpgBte-2NqzGr09v_GnozRyCjClWDOrrC0BjUdEsdeAheRL_WqN3H6C7ZpelLFySQhKE2lWvEUDWPMJoBwp2OvP6t8e7nKMZWUltZl-VWVtR3Obdb1vDn6Htyqy34YOcpz97L29kwgksEeszuXtuUL65QyiXcU6Y2yf6YyvY" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
+    <a data-auth="logged-in" class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
+      <image-slot id="nav-avatar" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
     </a>
+    <a data-auth="logged-out" href="connexion.html" class="font-label-md bg-primary text-on-primary px-4 py-2 rounded-full text-sm hover:opacity-90 transition-all active:scale-95">Connexion</a>
   </div>
 </div>
 </header>
