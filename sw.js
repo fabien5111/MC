@@ -1,4 +1,4 @@
-const CACHE = 'maryse-club-v3';
+const CACHE = 'maryse-club-v4';
 const STATIC = [
   '/',
   '/index.html',
@@ -30,16 +30,33 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 && e.request.url.startsWith(self.location.origin)) {
+  const url = new URL(e.request.url);
+  const isHtml = url.pathname.endsWith('.html') || url.pathname === '/';
+
+  if (isHtml) {
+    // Network-first pour les pages HTML : toujours la version fraîche
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.status === 200) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      }).catch(() => cached);
-    })
-  );
+      }).catch(() => caches.match(e.request))
+    );
+  } else {
+    // Cache-first pour les assets (JS, CSS, images)
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res && res.status === 200 && url.origin === self.location.origin) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        }).catch(() => cached);
+      })
+    );
+  }
 });
