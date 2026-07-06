@@ -85,10 +85,12 @@
         </div>
         <div class="space-y-4">
           <label class="font-label-md text-label-md text-outline uppercase">Catégories et Tags</label>
-          <div class="flex flex-wrap gap-2" id="tag-row">
-            <button class="tag-btn px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md" type="button">Pâtisserie</button>
-            <button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Classique</button>
-            <button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Expert</button>
+          <div class="flex flex-wrap gap-2 items-center" id="tag-row">
+            <!-- chips des tags sélectionnés injectées ici -->
+            <div class="relative" id="tag-picker-wrap">
+              <button id="btn-add-tag" type="button" class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors">+ Ajouter un tag</button>
+              <div id="tag-picker" class="hidden absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -305,18 +307,6 @@
     });
   });
 
-  // tags
-  document.querySelectorAll('#tag-row .tag-btn').forEach(b => b.addEventListener('click', function(){
-    const active = this.classList.contains('bg-primary-container');
-    if (active) {
-      this.classList.remove('bg-primary-container','text-white');
-      this.classList.add('border','border-outline-variant','text-on-surface-variant');
-    } else {
-      this.classList.add('bg-primary-container','text-white');
-      this.classList.remove('border','border-outline-variant','text-on-surface-variant');
-    }
-  }));
-
   // visibility toggle label
   document.getElementById('visibility-toggle').addEventListener('change', function(){
     document.getElementById('visibility-label').textContent = this.checked ? 'Public' : 'Privé';
@@ -405,6 +395,14 @@
       const desc = document.querySelector('textarea')?.value?.trim() || '';
       const isPublic = document.getElementById('visibility-toggle')?.checked ?? true;
       const recipe = await createRecipe({ title, description: desc, is_public: isPublic });
+
+      // Tags sélectionnés → recipe_tags
+      if (selectedTags.size > 0) {
+        const rows = [...selectedTags.keys()].map(tagId => ({ recipe_id: recipe.id, tag_id: tagId }));
+        const { error: tagErr } = await db.from('recipe_tags').insert(rows);
+        if (tagErr) console.error('Tags non enregistrés :', tagErr);
+      }
+
       window.location.href = `recette.html?id=${recipe.id}`;
     } catch (err) {
       alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
@@ -422,11 +420,54 @@
     });
   });
 
+  // ── Tags : sélection depuis la liste administrée (table tags) ──
+  let allTags = [];                 // [{id, name}] depuis la base
+  const selectedTags = new Map();   // id → name
+
+  function renderTags() {
+    const row = document.getElementById('tag-row');
+    const pickerWrap = document.getElementById('tag-picker-wrap');
+    // Chips sélectionnées (avant le bouton d'ajout)
+    row.querySelectorAll('.tag-chip').forEach(el => el.remove());
+    selectedTags.forEach((name, id) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tag-chip px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity';
+      chip.innerHTML = `${name}<span class="material-symbols-outlined text-[16px]">close</span>`;
+      chip.title = 'Retirer ce tag';
+      chip.addEventListener('click', () => { selectedTags.delete(id); renderTags(); });
+      row.insertBefore(chip, pickerWrap);
+    });
+    // Options restantes dans le menu
+    const picker = document.getElementById('tag-picker');
+    const remaining = allTags.filter(t => !selectedTags.has(t.id));
+    picker.innerHTML = remaining.length
+      ? remaining.map(t => `<button type="button" data-tag-id="${t.id}" class="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors">${t.name}</button>`).join('')
+      : '<p class="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>';
+    picker.querySelectorAll('[data-tag-id]').forEach(btn => btn.addEventListener('click', () => {
+      const id = +btn.dataset.tagId;
+      const tag = allTags.find(t => t.id === id);
+      if (tag) selectedTags.set(tag.id, tag.name);
+      picker.classList.add('hidden');
+      renderTags();
+    }));
+  }
+
+  document.getElementById('btn-add-tag').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('tag-picker').classList.toggle('hidden');
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#tag-picker-wrap')) document.getElementById('tag-picker').classList.add('hidden');
+  });
+
   (async () => {
     const user = await requireAuth();
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
+    allTags = await getTags();
+    renderTags();
   })();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
