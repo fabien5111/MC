@@ -301,9 +301,9 @@
 <script src="db.js"></script>
 <script>
 // ── État ─────────────────────────────────────────────────────
-let allMembers   = [];
-let activeFilter = 'all';
-let editingId    = null;
+let allMembers    = [];
+let activeFilter  = 'all';
+let editingMember = null;
 
 // ── Chargement ────────────────────────────────────────────────
 async function loadMembers() {
@@ -417,10 +417,10 @@ function renderTable() {
               <button onclick="copyInviteLinkFor('${m.email}')" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Copier le lien d'invitation">
                 <span class="material-symbols-outlined text-lg">link</span>
               </button>` : ''}
-            <button onclick="openEditPanel(${m.id})" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
+            <button onclick="openEditPanel('${m.id}')" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
               <span class="material-symbols-outlined text-lg">edit_note</span>
             </button>
-            <button onclick='confirmDeleteMemberById(${m.id}, "${m.email.replace(/"/g,'&quot;')}")' class="p-1.5 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
+            <button onclick="confirmDeleteMemberById('${m.id}')" class="p-1.5 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
               <span class="material-symbols-outlined text-lg">delete</span>
             </button>
           </div>
@@ -449,7 +449,10 @@ async function inviteMemberUI() {
 
   try {
     const created = await inviteMember(email, { role, plan, is_demo: isDemo, notes: notes || null });
-    allMembers.unshift({ ...created, profile: null });
+    allMembers.unshift({
+      _source: 'allowlist', _profileId: null, _allowlistId: created.id,
+      id: `a-${created.id}`, ...created, profile: null,
+    });
     renderStats();
     renderTable();
     document.getElementById('invite-email').value  = '';
@@ -471,7 +474,7 @@ function showMsg(el, type, text) {
 function openEditPanel(id) {
   const m = allMembers.find(x => x.id === id);
   if (!m) return;
-  editingId = id;
+  editingMember = m;
 
   const name = m.profile?.full_name || '';
   const initials = name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) : m.email[0].toUpperCase();
@@ -515,11 +518,11 @@ function openEditPanel(id) {
 function closeEditPanel() {
   document.getElementById('edit-overlay').classList.add('hidden');
   document.getElementById('edit-panel').style.transform = 'translateX(100%)';
-  editingId = null;
+  editingMember = null;
 }
 
 async function saveEditPanel() {
-  if (!editingId) return;
+  if (!editingMember) return;
   const btn = document.querySelector('#edit-panel button[onclick="saveEditPanel()"]');
   btn.disabled = true; btn.textContent = '…';
   try {
@@ -530,9 +533,9 @@ async function saveEditPanel() {
       is_demo: document.getElementById('edit-demo').checked,
       notes:   document.getElementById('edit-notes').value.trim() || null,
     };
-    const updated = await updateMember(editingId, fields);
-    const idx = allMembers.findIndex(m => m.id === editingId);
-    if (idx !== -1) allMembers[idx] = { ...allMembers[idx], ...updated };
+    await updateMember(editingMember, fields);
+    const idx = allMembers.findIndex(m => m.id === editingMember.id);
+    if (idx !== -1) allMembers[idx] = { ...allMembers[idx], ...fields };
     renderStats();
     renderTable();
     closeEditPanel();
@@ -544,22 +547,23 @@ async function saveEditPanel() {
 }
 
 // ── Suppression ───────────────────────────────────────────────
-async function confirmDeleteMemberById(id, email) {
-  if (!confirm(`Supprimer définitivement « ${email} » ?\n\nSes recettes et données resteront mais seront orphelinées.`)) return;
+async function confirmDeleteMemberById(id) {
+  const m = allMembers.find(x => x.id === id);
+  if (!m) return;
+  if (!confirm(`Supprimer définitivement « ${m.email} » ?\n\nSes recettes et données resteront mais seront orphelinées.`)) return;
   try {
-    await deleteMember(id);
-    allMembers = allMembers.filter(m => m.id !== id);
+    await deleteMember(m);
+    allMembers = allMembers.filter(x => x.id !== id);
     renderStats();
     renderTable();
   } catch(e) { alert('Erreur : ' + e.message); }
 }
 
 async function confirmDeleteMember() {
-  if (!editingId) return;
-  const m = allMembers.find(x => x.id === editingId);
-  if (!m) return;
+  if (!editingMember) return;
+  const id = editingMember.id;
   closeEditPanel();
-  await confirmDeleteMemberById(m.id, m.email);
+  await confirmDeleteMemberById(id);
 }
 
 // ── Lien invitation ───────────────────────────────────────────

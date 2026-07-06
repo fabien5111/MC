@@ -286,16 +286,61 @@ async function getUnits() {
 
 // ── MEMBRES / ALLOWLIST ──────────────────────────────────────
 async function getAllowlistMembers() {
-  const [{ data: allowlist }, { data: profiles }, { data: recipes }] = await Promise.all([
-    db.from('allowlist').select('*').order('invited_at', { ascending: false }),
-    db.from('profiles').select('id, email, full_name, avatar_url, provider, created_at'),
+  const [{ data: profiles }, { data: allowlist }, { data: recipes }] = await Promise.all([
+    db.from('profiles').select('id, email, full_name, avatar_url, provider, status, role, plan, is_demo, notes, created_at').order('created_at', { ascending: false }),
+    db.from('allowlist').select('*'),
     db.from('recipes').select('author_id'),
   ]);
+
   const recipeMap = {};
   (recipes || []).forEach(r => { recipeMap[r.author_id] = (recipeMap[r.author_id] || 0) + 1; });
-  const profileMap = {};
-  (profiles || []).forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = { ...p, recipeCount: recipeMap[p.id] || 0 }; });
-  return (allowlist || []).map(m => ({ ...m, profile: profileMap[m.email.toLowerCase()] || null }));
+
+  // Index allowlist par email
+  const allowlistByEmail = {};
+  (allowlist || []).forEach(a => { allowlistByEmail[a.email.toLowerCase()] = a; });
+
+  const usedEmails = new Set();
+
+  // Membres inscrits (depuis profiles)
+  const registered = (profiles || []).map(p => {
+    const emailKey = (p.email || '').toLowerCase();
+    const al = emailKey ? allowlistByEmail[emailKey] : null;
+    if (emailKey) usedEmails.add(emailKey);
+    return {
+      _source: 'profile',
+      _profileId: p.id,
+      _allowlistId: al?.id || null,
+      id: `p-${p.id}`,
+      email: p.email || '',
+      status: al?.status || p.status || 'active',
+      role: al?.role || p.role || 'member',
+      plan: al?.plan || p.plan || 'free',
+      is_demo: al?.is_demo ?? p.is_demo ?? false,
+      notes: al?.notes || p.notes || null,
+      invited_at: al?.invited_at || p.created_at,
+      profile: { ...p, recipeCount: recipeMap[p.id] || 0 },
+    };
+  });
+
+  // Invités en attente (dans allowlist mais jamais inscrits)
+  const pending = (allowlist || [])
+    .filter(a => !usedEmails.has(a.email.toLowerCase()))
+    .map(a => ({
+      _source: 'allowlist',
+      _profileId: null,
+      _allowlistId: a.id,
+      id: `a-${a.id}`,
+      email: a.email,
+      status: a.status,
+      role: a.role,
+      plan: a.plan,
+      is_demo: a.is_demo,
+      notes: a.notes,
+      invited_at: a.invited_at,
+      profile: null,
+    }));
+
+  return [...registered, ...pending];
 }
 
 async function inviteMember(email, options = {}) {
@@ -306,15 +351,29 @@ async function inviteMember(email, options = {}) {
   return data;
 }
 
-async function updateMember(id, fields) {
-  const { data, error } = await db.from('allowlist').update(fields).eq('id', id).select().single();
-  if (error) throw error;
-  return data;
+// Met à jour allowlist si entrée existe, sinon met à jour profiles directement
+async function updateMember(member, fields) {
+  if (member._allowlistId) {
+    const { data, error } = await db.from('allowlist').update(fields).eq('id', member._allowlistId).select().single();
+    if (error) throw error;
+    return data;
+  } else if (member._profileId) {
+    const { data, error } = await db.from('profiles').update(fields).eq('id', member._profileId).select().single();
+    if (error) throw error;
+    return data;
+  }
+  throw new Error('Membre introuvable');
 }
 
-async function deleteMember(id) {
-  const { error } = await db.from('allowlist').delete().eq('id', id);
-  if (error) throw error;
+async function deleteMember(member) {
+  if (member._allowlistId) {
+    const { error } = await db.from('allowlist').delete().eq('id', member._allowlistId);
+    if (error) throw error;
+  }
+  if (member._profileId) {
+    const { error } = await db.from('profiles').delete().eq('id', member._profileId);
+    if (error) throw error;
+  }
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
