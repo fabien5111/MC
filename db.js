@@ -61,8 +61,7 @@ async function requireAuth() {
 }
 
 // Affiche/masque éléments selon l'état de connexion
-async function initAuthUI() {
-  const user = await getUser();
+function _applyAuthUI(user) {
   document.querySelectorAll('[data-auth="logged-in"]').forEach(el => el.style.display = user ? '' : 'none');
   document.querySelectorAll('[data-auth="logged-out"]').forEach(el => el.style.display = user ? 'none' : '');
   if (user) {
@@ -71,13 +70,25 @@ async function initAuthUI() {
     const avatar = meta.avatar_url || meta.picture;
     document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = name);
     document.querySelectorAll('[data-user-avatar]').forEach(el => { if (avatar) el.src = avatar; });
-    // Mettre à jour l'avatar de nav
-    if (avatar) {
-      const navSlot = document.getElementById('nav-avatar');
-      if (navSlot) navSlot.setAttribute('src', avatar);
-    }
+    const navSlot = document.getElementById('nav-avatar');
+    if (navSlot && avatar) navSlot.setAttribute('src', avatar);
   }
-  return user;
+}
+
+async function initAuthUI() {
+  // onAuthStateChange always fires INITIAL_SESSION immediately with the current state.
+  // This is more reliable than getSession() for OAuth redirects (PKCE exchange is async).
+  return new Promise(resolve => {
+    let done = false;
+    db.auth.onAuthStateChange((event, session) => {
+      _applyAuthUI(session?.user || null);
+      if (!done && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
+        done = true;
+        resolve(session?.user || null);
+      }
+    });
+    setTimeout(() => { if (!done) { done = true; resolve(null); } }, 3000);
+  });
 }
 
 // ── RECETTES ─────────────────────────────────────────────────
