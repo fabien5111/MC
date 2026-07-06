@@ -1,4 +1,4 @@
-const CACHE = 'maryse-club-v6';
+const CACHE = 'maryse-club-v7';
 const STATIC = [
   '/',
   '/index.html',
@@ -9,10 +9,12 @@ const STATIC = [
   '/admin.html',
   '/admin-listes.html',
   '/admin-membres.html',
-  '/db.js',
   '/image-slot.js',
   '/manifest.json',
 ];
+
+// db.js est volontairement exclu du précache — network-first systématique
+// pour garantir que les nouvelles fonctions sont toujours disponibles.
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -33,10 +35,13 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  const isHtml = url.pathname.endsWith('.html') || url.pathname === '/';
 
-  if (isHtml) {
-    // Network-first pour les pages HTML : toujours la version fraîche
+  // Network-first : HTML + db.js (change souvent)
+  const isNetworkFirst = url.pathname.endsWith('.html')
+    || url.pathname === '/'
+    || url.pathname === '/db.js';
+
+  if (isNetworkFirst) {
     e.respondWith(
       fetch(e.request).then(res => {
         if (res && res.status === 200) {
@@ -47,7 +52,7 @@ self.addEventListener('fetch', e => {
       }).catch(() => caches.match(e.request))
     );
   } else {
-    // Cache-first pour les assets (JS, CSS, images)
+    // Cache-first pour les autres assets (images, fonts, etc.)
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) return cached;
