@@ -2,6 +2,7 @@
 <html class="light" lang="fr">
 <head>
 <meta charset="utf-8">
+<script>document.documentElement.style.visibility = 'hidden';</script>
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <meta name="description" content="Maryse Club — Tableau de bord administrateur.">
 <meta name="theme-color" content="#300a12">
@@ -187,7 +188,15 @@
     }
   }
 
-  loadAdmin();
+  (async () => {
+
+    if (!await requireAdmin()) return; // redirige si non connecté ou non admin
+
+    document.documentElement.style.visibility = '';
+
+    loadAdmin();
+
+  })();
 </script>
 </body>
 </html>

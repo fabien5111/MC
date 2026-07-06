@@ -2,6 +2,7 @@
 <html class="light" lang="fr">
 <head>
 <meta charset="utf-8">
+<script>document.documentElement.style.visibility = 'hidden';</script>
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <meta name="description" content="Maryse Club — Gestion des membres.">
 <meta name="theme-color" content="#300a12">
@@ -583,7 +584,15 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
 }
 
-loadMembers();
+(async () => {
+
+  if (!await requireAdmin()) return; // redirige si non connecté ou non admin
+
+  document.documentElement.style.visibility = '';
+
+  loadMembers();
+
+})();
 </script>
 </body>
 </html>

@@ -61,6 +61,16 @@ async function requireAuth() {
   return user;
 }
 
+// Pages admin : connecté ET administrateur (is_admin ou role='admin'),
+// sinon redirection. La vraie protection des données reste les policies RLS.
+async function requireAdmin() {
+  const user = await getUser();
+  if (!user) { window.location.href = 'connexion.html'; return null; }
+  const { data: p } = await db.from('profiles').select('is_admin, role').eq('id', user.id).maybeSingle();
+  if (!p?.is_admin && p?.role !== 'admin') { window.location.href = 'index.html'; return null; }
+  return user;
+}
+
 // Photo de l'utilisateur : priorité à la photo du site (profiles.avatar_url),
 // sinon photo Google (métadonnées de session).
 function _applyUserAvatar(url) {
