@@ -437,7 +437,7 @@
       <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
         <div class="relative">
           <input class="u-name editorial-input text-on-surface w-full pr-7" type="text" placeholder="Nom de l'ustensile" autocomplete="off">
-          <a class="u-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l'ustensile" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>
+          <a class="u-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l'ustensile" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>
           <div class="u-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>
         </div>
         <input class="u-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)">
@@ -445,44 +445,93 @@
       <button class="opacity-0 group-hover:opacity-100 transition-opacity text-error mt-2" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button>`;
     document.getElementById('utensils-list').appendChild(li);
 
-    const nameInput = li.querySelector('.u-name');
-    const suggest   = li.querySelector('.u-suggest');
-    const link      = li.querySelector('.u-link');
+    const nameInput    = li.querySelector('.u-name');
+    const commentInput = li.querySelector('.u-comment');
+    const suggest      = li.querySelector('.u-suggest');
+    const link         = li.querySelector('.u-link');
+
+    let matches = [];  // suggestions courantes
+    let hi = -1;       // index surligné (flèches clavier)
 
     // Ustensile choisi dans la liste de référence → URL liée au nom
     function setRef(u) {
       nameInput.value = u.name;
       if (u.url) { li.dataset.url = u.url; link.href = u.url; link.style.display = ''; }
       else { delete li.dataset.url; link.style.display = 'none'; }
-      suggest.style.display = 'none';
+      closeSuggest();
     }
     // Saisie libre → aucun lien, stocké uniquement avec la recette
     function clearRef() {
       delete li.dataset.url;
       link.style.display = 'none';
     }
+    function closeSuggest() {
+      suggest.style.display = 'none';
+      matches = []; hi = -1;
+    }
+    function paintHighlight() {
+      suggest.querySelectorAll('button').forEach((b, i) =>
+        b.classList.toggle('bg-surface-container', i === hi));
+    }
 
     nameInput.addEventListener('input', () => {
       clearRef();
       const q = nameInput.value.trim().toLowerCase();
-      if (!q) { suggest.style.display = 'none'; return; }
-      const matches = allUtensils.filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
-      if (!matches.length) { suggest.style.display = 'none'; return; }
+      if (!q) { closeSuggest(); return; }
+      matches = allUtensils.filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
+      hi = -1;
+      if (!matches.length) { closeSuggest(); return; }
       suggest.innerHTML = matches.map(u =>
-        `<button type="button" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
+        `<button type="button" tabindex="-1" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
       // mousedown (et pas click) pour passer avant le blur de l'input
       suggest.querySelectorAll('button').forEach((b, i) =>
-        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); }));
+        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); commentInput.focus(); }));
       suggest.style.display = '';
     });
+
+    // Navigation clavier : flèches pour surligner, Tab/Entrée pour choisir
+    nameInput.addEventListener('keydown', e => {
+      const open = suggest.style.display !== 'none' && matches.length > 0;
+      if (!open) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        hi = Math.min(hi + 1, matches.length - 1);
+        paintHighlight();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        hi = Math.max(hi - 1, -1);
+        paintHighlight();
+      } else if (e.key === 'Tab' && !e.shiftKey) {
+        // Tab valide l'élément surligné puis passe au commentaire (comportement natif)
+        if (hi >= 0) setRef(matches[hi]);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setRef(matches[hi >= 0 ? hi : 0]);
+        commentInput.focus();
+      } else if (e.key === 'Escape') {
+        closeSuggest();
+      }
+    });
+
     nameInput.addEventListener('blur', () => {
-      setTimeout(() => suggest.style.display = 'none', 150);
+      setTimeout(() => closeSuggest(), 150);
       // Nom tapé identique à une référence → on lie quand même l'URL
       if (!li.dataset.url) {
         const exact = allUtensils.find(u => u.name.toLowerCase() === nameInput.value.trim().toLowerCase());
         if (exact) setRef(exact);
       }
     });
+
+    // Tab depuis le commentaire de la dernière ligne → nouvelle ligne d'ustensile
+    commentInput.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && !e.shiftKey
+          && li === li.parentElement.lastElementChild
+          && nameInput.value.trim()) {
+        e.preventDefault();
+        addUtensilRow(true);
+      }
+    });
+
     if (focus) nameInput.focus();
     return li;
   }
