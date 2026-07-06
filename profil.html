@@ -326,8 +326,9 @@
   }
 
   async function loadProfil() {
-    const user = await requireAuth();
-    if (!user) return;
+    // initAuthUI met à jour la nav (Déconnexion/avatar) et retourne l'utilisateur
+    const user = await initAuthUI();
+    if (!user) { window.location.href = 'connexion.html'; return; }
 
     // ── Mise à jour immédiate depuis les métadonnées Google (pas de DB requis) ──
     const meta = user.user_metadata || {};
