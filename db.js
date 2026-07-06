@@ -284,6 +284,39 @@ async function getUnits() {
   return data || [];
 }
 
+// ── MEMBRES / ALLOWLIST ──────────────────────────────────────
+async function getAllowlistMembers() {
+  const [{ data: allowlist }, { data: profiles }, { data: recipes }] = await Promise.all([
+    db.from('allowlist').select('*').order('invited_at', { ascending: false }),
+    db.from('profiles').select('id, email, full_name, avatar_url, provider, created_at'),
+    db.from('recipes').select('author_id'),
+  ]);
+  const recipeMap = {};
+  (recipes || []).forEach(r => { recipeMap[r.author_id] = (recipeMap[r.author_id] || 0) + 1; });
+  const profileMap = {};
+  (profiles || []).forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = { ...p, recipeCount: recipeMap[p.id] || 0 }; });
+  return (allowlist || []).map(m => ({ ...m, profile: profileMap[m.email.toLowerCase()] || null }));
+}
+
+async function inviteMember(email, options = {}) {
+  const { data, error } = await db.from('allowlist')
+    .insert({ email: email.toLowerCase().trim(), ...options })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateMember(id, fields) {
+  const { data, error } = await db.from('allowlist').update(fields).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteMember(id) {
+  const { error } = await db.from('allowlist').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── ADMIN ─────────────────────────────────────────────────────
 async function getPendingRecipes() {
   const { data } = await db.from('recipes')
