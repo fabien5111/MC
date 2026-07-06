@@ -127,7 +127,7 @@
     <!-- Utensils -->
     <div class="mb-12">
       <h3 class="font-headline-md text-headline-md text-primary mb-6">Ustensiles nécessaires</h3>
-      <ul class="grid grid-cols-1 gap-y-2 list-none">
+      <ul class="grid grid-cols-1 gap-y-2 list-none" id="utensils-ul">
         <li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Poche à douille</li>
         <li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Fouet</li>
         <li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">Maryse</li>
@@ -370,6 +370,20 @@
     if (recipe.hero_image_url) {
       const heroSlot = document.querySelector('image-slot[id="recette-hero"]');
       if (heroSlot) heroSlot.setAttribute('src', recipe.hero_image_url);
+    }
+
+    // Ustensiles (nom en lien si issu de la liste de référence, + commentaire)
+    const ulU = document.getElementById('utensils-ul');
+    if (ulU && recipe.recipe_utensils?.length) {
+      ulU.innerHTML = [...recipe.recipe_utensils]
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+        .map(u => `
+          <li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">
+            ${u.url
+              ? `<a href="${u.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${u.name}</a>`
+              : u.name}
+            ${u.comment ? `<span class="text-on-surface-variant text-sm italic"> — ${u.comment}</span>` : ''}
+          </li>`).join('');
     }
 
     // Init favoris

@@ -178,7 +178,7 @@ async function getRecipe(id) {
       difficulties(name, level),
       mold_types(name),
       recipe_tags(tags(name, slug)),
-      recipe_utensils(name, order_index),
+      recipe_utensils(name, comment, url, order_index),
       ingredient_groups(*, ingredients(name, quantity, unit, order_index)),
       recipe_steps(*, step_photos(url, caption, order_index))
     `)

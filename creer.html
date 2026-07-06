@@ -197,8 +197,7 @@
     <section class="space-y-8">
       <h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
       <ul class="space-y-4" id="utensils-list">
-        <li class="flex items-center gap-4 group"><span class="material-symbols-outlined text-outline-variant cursor-grab">drag_indicator</span><input class="flex-grow editorial-input text-on-surface" type="text" value="Poche à douille n°10"><button class="opacity-0 group-hover:opacity-100 transition-opacity text-error" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button></li>
-        <li class="flex items-center gap-4 group"><span class="material-symbols-outlined text-outline-variant cursor-grab">drag_indicator</span><input class="flex-grow editorial-input text-on-surface" type="text" value="Thermomètre à sonde"><button class="opacity-0 group-hover:opacity-100 transition-opacity text-error" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button></li>
+        <!-- lignes ajoutées par addUtensilRow() -->
       </ul>
       <button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button" id="add-utensil"><span class="material-symbols-outlined">add</span> Ajouter un ustensile</button>
     </section>
@@ -313,14 +312,7 @@
     document.getElementById('visibility-label').textContent = this.checked ? 'Public' : 'Privé';
   });
 
-  // add utensil
-  document.getElementById('add-utensil').addEventListener('click', function(){
-    const li = document.createElement('li');
-    li.className = 'flex items-center gap-4 group';
-    li.innerHTML = '<span class="material-symbols-outlined text-outline-variant cursor-grab">drag_indicator</span><input class="flex-grow editorial-input text-on-surface" type="text" placeholder="Nom de l\'ustensile"><button class="opacity-0 group-hover:opacity-100 transition-opacity text-error" type="button" onclick="this.closest(\'li\').remove()"><span class="material-symbols-outlined">delete</span></button>';
-    document.getElementById('utensils-list').appendChild(li);
-    li.querySelector('input').focus();
-  });
+  // add utensil : géré plus bas (addUtensilRow, avec autocomplétion)
 
   // add ingredient line
   function addIngredientLine(btn) {
@@ -404,6 +396,19 @@
         if (tagErr) console.error('Tags non enregistrés :', tagErr);
       }
 
+      // Ustensiles → recipe_utensils (la liste de référence n'est jamais modifiée)
+      const utensils = [...document.querySelectorAll('#utensils-list li')].map((li, i) => ({
+        recipe_id: recipe.id,
+        name: li.querySelector('.u-name')?.value.trim() || '',
+        comment: li.querySelector('.u-comment')?.value.trim() || null,
+        url: li.dataset.url || null,
+        order_index: i,
+      })).filter(u => u.name);
+      if (utensils.length) {
+        const { error: utErr } = await db.from('recipe_utensils').insert(utensils);
+        if (utErr) console.error('Ustensiles non enregistrés :', utErr);
+      }
+
       window.location.href = `recette.html?id=${recipe.id}`;
     } catch (err) {
       alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
@@ -420,6 +425,69 @@
       document.getElementById('panel-dimensions').style.display = this.value === 'dimensions' ? 'block' : 'none';
     });
   });
+
+  // ── Ustensiles : autocomplétion depuis la liste de référence ──
+  let allUtensils = []; // [{id, name, url, ...}] — table utensils
+
+  function addUtensilRow(focus = true) {
+    const li = document.createElement('li');
+    li.className = 'utensil-row flex items-start gap-4 group';
+    li.innerHTML = `
+      <span class="material-symbols-outlined text-outline-variant cursor-grab mt-2">drag_indicator</span>
+      <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+        <div class="relative">
+          <input class="u-name editorial-input text-on-surface w-full pr-7" type="text" placeholder="Nom de l'ustensile" autocomplete="off">
+          <a class="u-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l'ustensile" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>
+          <div class="u-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>
+        </div>
+        <input class="u-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)">
+      </div>
+      <button class="opacity-0 group-hover:opacity-100 transition-opacity text-error mt-2" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button>`;
+    document.getElementById('utensils-list').appendChild(li);
+
+    const nameInput = li.querySelector('.u-name');
+    const suggest   = li.querySelector('.u-suggest');
+    const link      = li.querySelector('.u-link');
+
+    // Ustensile choisi dans la liste de référence → URL liée au nom
+    function setRef(u) {
+      nameInput.value = u.name;
+      if (u.url) { li.dataset.url = u.url; link.href = u.url; link.style.display = ''; }
+      else { delete li.dataset.url; link.style.display = 'none'; }
+      suggest.style.display = 'none';
+    }
+    // Saisie libre → aucun lien, stocké uniquement avec la recette
+    function clearRef() {
+      delete li.dataset.url;
+      link.style.display = 'none';
+    }
+
+    nameInput.addEventListener('input', () => {
+      clearRef();
+      const q = nameInput.value.trim().toLowerCase();
+      if (!q) { suggest.style.display = 'none'; return; }
+      const matches = allUtensils.filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
+      if (!matches.length) { suggest.style.display = 'none'; return; }
+      suggest.innerHTML = matches.map(u =>
+        `<button type="button" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
+      // mousedown (et pas click) pour passer avant le blur de l'input
+      suggest.querySelectorAll('button').forEach((b, i) =>
+        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); }));
+      suggest.style.display = '';
+    });
+    nameInput.addEventListener('blur', () => {
+      setTimeout(() => suggest.style.display = 'none', 150);
+      // Nom tapé identique à une référence → on lie quand même l'URL
+      if (!li.dataset.url) {
+        const exact = allUtensils.find(u => u.name.toLowerCase() === nameInput.value.trim().toLowerCase());
+        if (exact) setRef(exact);
+      }
+    });
+    if (focus) nameInput.focus();
+    return li;
+  }
+
+  document.getElementById('add-utensil').addEventListener('click', () => addUtensilRow());
 
   // ── Tags : sélection depuis la liste administrée (table tags) ──
   let allTags = [];                 // [{id, name}] depuis la base
@@ -467,8 +535,12 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    allTags = await getTags();
+    [allTags, allUtensils] = await Promise.all([
+      getTags(),
+      getListEntries('utensils', 'name'),
+    ]);
     renderTags();
+    addUtensilRow(false); // première ligne vide
   })();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
