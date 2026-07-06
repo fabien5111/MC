@@ -207,11 +207,8 @@
       <h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ingrédients</h2>
       <div class="space-y-8" id="ingredients-container">
         <div class="ingredient-group">
-          <input class="font-label-md text-label-md text-primary uppercase border-none focus:ring-0 w-full mb-4 bg-transparent" type="text" value="Pâte Feuilletée">
-          <div class="space-y-4 ingredient-lines">
-            <div class="flex items-center gap-4"><input class="w-24 editorial-input text-on-surface" type="text" value="250g"><input class="flex-grow editorial-input text-on-surface" type="text" value="Farine T55"><button class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest('div').remove()"><span class="material-symbols-outlined">delete</span></button></div>
-            <div class="flex items-center gap-4"><input class="w-24 editorial-input text-on-surface" type="text" value="200g"><input class="flex-grow editorial-input text-on-surface" type="text" value="Beurre de tourage"><button class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest('div').remove()"><span class="material-symbols-outlined">delete</span></button></div>
-          </div>
+          <input class="group-name font-label-md text-label-md text-primary uppercase border-none focus:ring-0 w-full mb-4 bg-transparent" type="text" placeholder="Nom du groupe (ex : Pâte sucrée)">
+          <div class="space-y-4 ingredient-lines"></div>
           <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
         </div>
       </div>
@@ -252,7 +249,6 @@
             </div>
             <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
             <div class="space-y-4">
-              <details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Ingrédients de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4 space-y-2 text-on-surface-variant"><p>• Farine T55 (250g)</p><p>• Sel fin (5g)</p><p>• Eau froide (125g)</p></div></details>
               <details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
             </div>
           </div>
@@ -314,14 +310,19 @@
 
   // add utensil : géré plus bas (addUtensilRow, avec autocomplétion)
 
-  // add ingredient line
-  function addIngredientLine(btn) {
+  // add ingredient line (unités remplies depuis la liste de référence)
+  function addIngredientLine(btn, focus = true) {
     const container = btn.previousElementSibling;
     const div = document.createElement('div');
     div.className = 'flex items-center gap-4';
-    div.innerHTML = '<input class="w-24 editorial-input text-on-surface" type="text" placeholder="Qté"><input class="flex-grow editorial-input text-on-surface" type="text" placeholder="Ingrédient"><button class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
+    div.innerHTML = '<input class="ing-qty w-20 editorial-input text-on-surface" type="text" placeholder="Qté">'
+      + '<select class="ing-unit w-32 editorial-input text-on-surface bg-transparent cursor-pointer">'
+      + (window.unitOptionsHTML ? window.unitOptionsHTML() : '<option value="">— unité —</option>')
+      + '</select>'
+      + '<input class="ing-name flex-grow editorial-input text-on-surface" type="text" placeholder="Ingrédient">'
+      + '<button class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
     container.appendChild(div);
-    div.querySelector('input').focus();
+    if (focus) div.querySelector('input').focus();
   }
 
   // add ingredient group
@@ -330,7 +331,7 @@
     groupCount++;
     const div = document.createElement('div');
     div.className = 'ingredient-group';
-    div.innerHTML = `<input class="font-label-md text-label-md text-primary uppercase border-none focus:ring-0 w-full mb-4 bg-transparent" type="text" placeholder="Nom du groupe (ex: Crème Chiboust)">
+    div.innerHTML = `<input class="group-name font-label-md text-label-md text-primary uppercase border-none focus:ring-0 w-full mb-4 bg-transparent" type="text" placeholder="Nom du groupe (ex: Crème Chiboust)">
     <div class="space-y-4 ingredient-lines"></div>
     <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>`;
     document.getElementById('ingredients-container').appendChild(div);
@@ -409,6 +410,25 @@
         if (utErr) console.error('Ustensiles non enregistrés :', utErr);
       }
 
+      // Ingrédients → ingredient_groups + ingredients
+      const groupEls = [...document.querySelectorAll('#ingredients-container .ingredient-group')];
+      for (let gi = 0; gi < groupEls.length; gi++) {
+        const lines = [...groupEls[gi].querySelectorAll('.ingredient-lines > div')].map((d, i) => ({
+          name: d.querySelector('.ing-name')?.value.trim() || '',
+          quantity: d.querySelector('.ing-qty')?.value.trim() || null,
+          unit: d.querySelector('.ing-unit')?.value || null,
+          order_index: i,
+        })).filter(l => l.name);
+        if (!lines.length) continue;
+        const groupName = groupEls[gi].querySelector('.group-name')?.value.trim() || 'Ingrédients';
+        const { data: grp, error: grpErr } = await db.from('ingredient_groups')
+          .insert({ recipe_id: recipe.id, name: groupName, order_index: gi }).select().single();
+        if (grpErr) { console.error('Groupe non enregistré :', grpErr); continue; }
+        const { error: ingErr } = await db.from('ingredients')
+          .insert(lines.map(l => ({ ...l, group_id: grp.id })));
+        if (ingErr) console.error('Ingrédients non enregistrés :', ingErr);
+      }
+
       window.location.href = `recette.html?id=${recipe.id}`;
     } catch (err) {
       alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
@@ -425,6 +445,12 @@
       document.getElementById('panel-dimensions').style.display = this.value === 'dimensions' ? 'block' : 'none';
     });
   });
+
+  // ── Unités de mesure : liste de référence pour les ingrédients ──
+  let allUnits = []; // [{id, name}] — table units
+  window.unitOptionsHTML = (selected = '') =>
+    '<option value="">— unité —</option>'
+    + allUnits.map(u => `<option value="${u.name}"${u.name === selected ? ' selected' : ''}>${u.name}</option>`).join('');
 
   // ── Ustensiles : autocomplétion depuis la liste de référence ──
   let allUtensils = []; // [{id, name, url, ...}] — table utensils
@@ -584,12 +610,14 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    [allTags, allUtensils] = await Promise.all([
+    [allTags, allUtensils, allUnits] = await Promise.all([
       getTags(),
       getListEntries('utensils', 'name'),
+      getUnits(),
     ]);
     renderTags();
     addUtensilRow(false); // première ligne vide
+    addIngredientLine(document.querySelector('#ingredients-container .ingredient-group button'), false);
   })();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

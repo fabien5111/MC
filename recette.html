@@ -139,7 +139,7 @@
     <!-- Ingredients -->
     <div class="mb-12">
       <h3 class="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
-      <div class="space-y-10">
+      <div class="space-y-10" id="ingredients-display">
         <div>
           <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">Pâte Feuilletée</h4>
           <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
@@ -384,6 +384,26 @@
               : u.name}
             ${u.comment ? `<span class="text-on-surface-variant text-sm italic"> — ${u.comment}</span>` : ''}
           </li>`).join('');
+    }
+
+    // Ingrédients (groupes + lignes quantité/unité/nom)
+    const ingWrap = document.getElementById('ingredients-display');
+    if (ingWrap && recipe.ingredient_groups?.length) {
+      ingWrap.innerHTML = [...recipe.ingredient_groups]
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+        .map(g => `
+          <div>
+            <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">${g.name}</h4>
+            <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+              ${[...(g.ingredients || [])]
+                .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                .map(i => `
+                  <li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+                    <span class="font-body-md text-body-md">${i.name}</span>
+                    <span class="font-label-md text-label-md text-primary">${[i.quantity, i.unit].filter(Boolean).join(' ')}</span>
+                  </li>`).join('')}
+            </ul>
+          </div>`).join('');
     }
 
     // Init favoris
