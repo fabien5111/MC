@@ -29,6 +29,7 @@ async function signInWithFacebook() {
 }
 
 async function authSignOut() {
+  localStorage.removeItem('mc-avatar');
   await db.auth.signOut();
   window.location.href = 'connexion.html';
 }
@@ -60,6 +61,15 @@ async function requireAuth() {
   return user;
 }
 
+// Photo de l'utilisateur : priorité à la photo du site (profiles.avatar_url),
+// sinon photo Google (métadonnées de session).
+function _applyUserAvatar(url) {
+  if (!url) return;
+  document.querySelectorAll('[data-user-avatar]').forEach(el => el.src = url);
+  const navSlot = document.getElementById('nav-avatar');
+  if (navSlot) navSlot.setAttribute('src', url);
+}
+
 // Affiche/masque éléments selon l'état de connexion
 function _applyAuthUI(user) {
   // Lève le pré-masquage CSS (html:not(.auth-ready) [data-auth="logged-in"])
@@ -69,12 +79,32 @@ function _applyAuthUI(user) {
   if (user) {
     const meta = user.user_metadata || {};
     const name = meta.full_name || meta.name || user.email;
-    const avatar = meta.avatar_url || meta.picture;
     document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = name);
-    document.querySelectorAll('[data-user-avatar]').forEach(el => { if (avatar) el.src = avatar; });
-    const navSlot = document.getElementById('nav-avatar');
-    if (navSlot && avatar) navSlot.setAttribute('src', avatar);
+    // Photo du site en cache local si connue, sinon photo Google en attendant
+    _applyUserAvatar(localStorage.getItem('mc-avatar') || meta.avatar_url || meta.picture);
   }
+}
+
+// Une photo "site" est une photo choisie par l'utilisateur (upload = data-URL).
+// L'ancien code copiait l'URL Google dans profiles.avatar_url : on l'ignore
+// pour que la photo Google reste un simple repli.
+function isSiteAvatar(url) {
+  return !!url && !url.includes('googleusercontent.com');
+}
+
+// Récupère la photo du site en base et l'applique si elle existe (async, non bloquant)
+async function _syncProfileAvatar(user) {
+  try {
+    const { data: p } = await db.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle();
+    if (isSiteAvatar(p?.avatar_url)) {
+      localStorage.setItem('mc-avatar', p.avatar_url);
+      _applyUserAvatar(p.avatar_url);
+    } else {
+      localStorage.removeItem('mc-avatar');
+      const meta = user.user_metadata || {};
+      _applyUserAvatar(meta.avatar_url || meta.picture);
+    }
+  } catch (_) { /* réseau indisponible : on garde le fallback affiché */ }
 }
 
 async function initAuthUI() {
@@ -86,6 +116,7 @@ async function initAuthUI() {
       _applyAuthUI(session?.user || null);
       if (!done && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
         done = true;
+        if (session?.user) _syncProfileAvatar(session.user);
         resolve(session?.user || null);
       }
     });
@@ -460,6 +491,10 @@ async function uploadPhoto(userId, file, type) {
   const field = type === 'avatar' ? 'avatar_url' : 'banner_url';
   const { error } = await db.from('profiles').upsert({ id: userId, [field]: dataUrl });
   if (error) throw error;
+  if (type === 'avatar') {
+    localStorage.setItem('mc-avatar', dataUrl);
+    _applyUserAvatar(dataUrl);
+  }
   return dataUrl;
 }
 

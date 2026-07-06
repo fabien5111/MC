@@ -338,24 +338,21 @@
     const nameEl = document.getElementById('profil-name');
     if (nameEl) nameEl.textContent = immediateFullName;
 
-    if (immediateAvatarUrl) {
-      setSlotSrc('profil-avatar', immediateAvatarUrl);
-      setSlotSrc('nav-avatar', immediateAvatarUrl);
-    }
-
-    // ── Sync avec la base de données (async, ne bloque pas l'affichage) ──
+    // ── Sync avec la base de données ──
+    // avatar_url n'est jamais initialisé avec la photo Google : la colonne ne
+    // contient que la photo choisie sur le site, la photo Google reste un repli.
     let profile = await getProfile(user.id);
     if (!profile) {
       await db.from('profiles').upsert({
         id: user.id,
-        full_name: immediateFullName,
-        avatar_url: immediateAvatarUrl || null
+        full_name: immediateFullName
       });
       profile = await getProfile(user.id);
     }
 
     const fullName = profile?.full_name || immediateFullName;
-    const avatarUrl = profile?.avatar_url || immediateAvatarUrl;
+    // Photo du site prioritaire, photo Google en repli
+    const avatarUrl = (isSiteAvatar(profile?.avatar_url) ? profile.avatar_url : null) || immediateAvatarUrl;
 
     if (nameEl) nameEl.textContent = fullName;
 
