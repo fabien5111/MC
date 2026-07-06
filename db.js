@@ -62,13 +62,13 @@ async function requireAuth() {
   return user;
 }
 
-// Pages admin : connecté ET administrateur (is_admin ou role='admin'),
+// Pages admin : connecté ET administrateur (profiles.role = 'admin'),
 // sinon redirection. La vraie protection des données reste les policies RLS.
 async function requireAdmin() {
   const user = await getUser();
   if (!user) { window.location.href = 'connexion.html'; return null; }
-  const { data: p } = await db.from('profiles').select('is_admin, role').eq('id', user.id).maybeSingle();
-  if (!p?.is_admin && p?.role !== 'admin') { window.location.href = 'index.html'; return null; }
+  const { data: p } = await db.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (p?.role !== 'admin') { window.location.href = 'index.html'; return null; }
   return user;
 }
 
@@ -115,7 +115,7 @@ function _applyAdminUI(isAdmin) {
 // Récupère photo du site + rôle admin en base et les applique (async, non bloquant)
 async function _syncProfileAvatar(user) {
   try {
-    const { data: p } = await db.from('profiles').select('avatar_url, is_admin, role').eq('id', user.id).maybeSingle();
+    const { data: p } = await db.from('profiles').select('avatar_url, role').eq('id', user.id).maybeSingle();
     if (isSiteAvatar(p?.avatar_url)) {
       localStorage.setItem('mc-avatar', p.avatar_url);
       _applyUserAvatar(p.avatar_url);
@@ -124,7 +124,7 @@ async function _syncProfileAvatar(user) {
       const meta = user.user_metadata || {};
       _applyUserAvatar(meta.avatar_url || meta.picture);
     }
-    const isAdmin = !!(p?.is_admin || p?.role === 'admin');
+    const isAdmin = p?.role === 'admin';
     if (isAdmin) localStorage.setItem('mc-admin', '1'); else localStorage.removeItem('mc-admin');
     _applyAdminUI(isAdmin);
   } catch (_) { /* réseau indisponible : on garde le fallback affiché */ }
