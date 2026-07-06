@@ -190,10 +190,19 @@ const LIST_CONFIGS = {
     badge: 'bg-outline-variant text-on-surface-variant', type: 'Global', desc: 'Unités disponibles dans les recettes',
     fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : gramme', required: true }],
   },
+  utensils: {
+    label: 'Ustensiles', table: 'utensils', orderBy: 'name',
+    badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Ustensiles de référence pour les recettes',
+    fields: [
+      { key: 'name',    label: 'Nom',         type: 'text', placeholder: 'ex : Maryse', required: true },
+      { key: 'comment', label: 'Commentaire', type: 'text', placeholder: 'ex : spatule souple indispensable' },
+      { key: 'url',     label: 'URL',         type: 'url',  placeholder: 'https://…' },
+    ],
+  },
 };
 
 // ── État ─────────────────────────────────────────────────────
-let sectionData  = { recipe_types: [], tags: [], mold_types: [], molds: [], difficulties: [], units: [] };
+let sectionData  = { recipe_types: [], tags: [], mold_types: [], molds: [], difficulties: [], units: [], utensils: [] };
 let moldTypes    = [];
 let activeKey    = null;
 let activeMoldTypeFilter = null;
@@ -201,15 +210,16 @@ let formEntry    = null;
 
 // ── Chargement initial ───────────────────────────────────────
 async function loadAll() {
-  const [types, tags, moldTypesList, diffs, units, moldsList] = await Promise.all([
+  const [types, tags, moldTypesList, diffs, units, moldsList, utensilsList] = await Promise.all([
     getListEntries('recipe_types', 'id'),
     getListEntries('tags', 'name'),
     getListEntries('mold_types', 'name'),
     getListEntries('difficulties', 'level'),
     getListEntries('units', 'name'),
     getMolds(),
+    getListEntries('utensils', 'name'),
   ]);
-  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, molds: moldsList, difficulties: diffs, units };
+  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, molds: moldsList, difficulties: diffs, units, utensils: utensilsList };
   moldTypes = moldTypesList;
   renderSummary();
 }
@@ -310,16 +320,24 @@ function renderBlockTable() {
          <td class="px-6 py-4">${e.mold_types
            ? `<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">${e.mold_types.name}</span>`
            : '<span class="text-on-surface-variant text-xs">—</span>'}</td>`
-      : cfg.fields.map(f => `<td class="px-6 py-4 text-sm text-on-surface">${e[f.key] ?? '—'}</td>`).join('');
+      : cfg.fields.map(f => {
+          const val = e[f.key];
+          if (f.type === 'url' && val) {
+            return `<td class="px-6 py-4 text-sm"><a href="${val}" target="_blank" rel="noopener" class="text-secondary hover:text-primary underline underline-offset-2 break-all">${val}</a></td>`;
+          }
+          return `<td class="px-6 py-4 text-sm text-on-surface">${val ?? '—'}</td>`;
+        }).join('');
+    // Échappe les apostrophes pour les attributs onclick délimités par '
+    const esc = s => s.replace(/'/g, '&#39;');
     return `
       <tr class="hover:bg-surface-container-low transition-colors">
         ${cells}
         <td class="px-6 py-4 text-right">
           <div class="flex justify-end gap-2">
-            <button onclick='openFormPanel(${JSON.stringify(e)})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
+            <button onclick='openFormPanel(${esc(JSON.stringify(e))})' class="p-2 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
               <span class="material-symbols-outlined text-xl">edit_note</span>
             </button>
-            <button onclick='confirmDelete(${e.id}, ${JSON.stringify(isMolds ? e.name : String(e[cfg.fields[0].key]))})' class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
+            <button onclick='confirmDelete(${e.id}, ${esc(JSON.stringify(isMolds ? e.name : String(e[cfg.fields[0].key])))})' class="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
               <span class="material-symbols-outlined text-xl">delete</span>
             </button>
           </div>
