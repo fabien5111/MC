@@ -67,7 +67,15 @@ async function requireAuth() {
 async function requireAdmin() {
   const user = await getUser();
   if (!user) { window.location.href = 'connexion.html'; return null; }
-  const { data: p } = await db.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  const { data: p, error } = await db.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (error) {
+    // Erreur technique (ex : cache de schéma pas rafraîchi) — on l'affiche
+    // au lieu de rediriger silencieusement comme un simple non-admin.
+    console.error('requireAdmin:', error);
+    alert('Vérification du statut admin impossible : ' + error.message);
+    window.location.href = 'index.html';
+    return null;
+  }
   if (p?.role !== 'admin') { window.location.href = 'index.html'; return null; }
   return user;
 }
