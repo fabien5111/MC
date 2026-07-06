@@ -77,11 +77,11 @@
         </div>
         <div class="flex items-center justify-between py-4 border-b border-outline-variant">
           <div><span class="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span><span class="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span></div>
-          <div class="relative inline-flex items-center cursor-pointer">
+          <label class="relative inline-flex items-center cursor-pointer">
             <input checked class="sr-only peer" id="visibility-toggle" type="checkbox">
             <div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
             <span class="ml-3 font-label-md text-label-md text-primary" id="visibility-label">Public</span>
-          </div>
+          </label>
         </div>
         <div class="space-y-4">
           <label class="font-label-md text-label-md text-outline uppercase">Catégories et Tags</label>
@@ -89,7 +89,6 @@
             <button class="tag-btn px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md" type="button">Pâtisserie</button>
             <button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Classique</button>
             <button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Expert</button>
-            <button class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">+ Ajouter un tag</button>
           </div>
         </div>
       </div>
@@ -404,7 +403,8 @@
       if (!user) { window.location.href = 'connexion.html'; return; }
 
       const desc = document.querySelector('textarea')?.value?.trim() || '';
-      const recipe = await createRecipe({ title, description: desc });
+      const isPublic = document.getElementById('visibility-toggle')?.checked ?? true;
+      const recipe = await createRecipe({ title, description: desc, is_public: isPublic });
       window.location.href = `recette.html?id=${recipe.id}`;
     } catch (err) {
       alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
