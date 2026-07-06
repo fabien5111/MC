@@ -28,7 +28,7 @@
 </script>
 <style>
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; transition: all 0.3s ease; }
-  [data-auth="logged-in"] { display: none; }
+  html:not(.auth-ready) [data-auth="logged-in"] { display: none !important; }
   .hero-frame { border: 1px solid rgba(48, 10, 18, 0.05); padding: 12px; background-color: #ffffff; }
   .luxury-shadow { box-shadow: 0px 4px 20px rgba(48, 10, 18, 0.06); }
   .ad-banner-placeholder { background: linear-gradient(135deg, #fbeae9 0%, #efdfde 100%); border: 1px dashed #d6c2c3; }

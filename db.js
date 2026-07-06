@@ -62,6 +62,8 @@ async function requireAuth() {
 
 // Affiche/masque éléments selon l'état de connexion
 function _applyAuthUI(user) {
+  // Lève le pré-masquage CSS (html:not(.auth-ready) [data-auth="logged-in"])
+  document.documentElement.classList.add('auth-ready');
   document.querySelectorAll('[data-auth="logged-in"]').forEach(el => el.style.display = user ? '' : 'none');
   document.querySelectorAll('[data-auth="logged-out"]').forEach(el => el.style.display = user ? 'none' : '');
   if (user) {
