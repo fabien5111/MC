@@ -30,6 +30,7 @@ async function signInWithFacebook() {
 
 async function authSignOut() {
   localStorage.removeItem('mc-avatar');
+  localStorage.removeItem('mc-admin');
   await db.auth.signOut();
   window.location.href = 'connexion.html';
 }
@@ -92,6 +93,10 @@ function _applyAuthUI(user) {
     document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = name);
     // Photo du site en cache local si connue, sinon photo Google en attendant
     _applyUserAvatar(localStorage.getItem('mc-avatar') || meta.avatar_url || meta.picture);
+    // Statut admin connu du dernier chargement (confirmé ensuite par _syncProfileAvatar)
+    if (localStorage.getItem('mc-admin')) _applyAdminUI(true);
+  } else {
+    _applyAdminUI(false);
   }
 }
 
@@ -102,10 +107,15 @@ function isSiteAvatar(url) {
   return !!url && !url.includes('googleusercontent.com');
 }
 
-// Récupère la photo du site en base et l'applique si elle existe (async, non bloquant)
+// Liens réservés aux admins (data-auth="admin", masqués par style inline dans le HTML)
+function _applyAdminUI(isAdmin) {
+  document.querySelectorAll('[data-auth="admin"]').forEach(el => el.style.display = isAdmin ? '' : 'none');
+}
+
+// Récupère photo du site + rôle admin en base et les applique (async, non bloquant)
 async function _syncProfileAvatar(user) {
   try {
-    const { data: p } = await db.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle();
+    const { data: p } = await db.from('profiles').select('avatar_url, is_admin, role').eq('id', user.id).maybeSingle();
     if (isSiteAvatar(p?.avatar_url)) {
       localStorage.setItem('mc-avatar', p.avatar_url);
       _applyUserAvatar(p.avatar_url);
@@ -114,6 +124,9 @@ async function _syncProfileAvatar(user) {
       const meta = user.user_metadata || {};
       _applyUserAvatar(meta.avatar_url || meta.picture);
     }
+    const isAdmin = !!(p?.is_admin || p?.role === 'admin');
+    if (isAdmin) localStorage.setItem('mc-admin', '1'); else localStorage.removeItem('mc-admin');
+    _applyAdminUI(isAdmin);
   } catch (_) { /* réseau indisponible : on garde le fallback affiché */ }
 }
 
