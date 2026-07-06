@@ -320,8 +320,20 @@
       + (window.unitOptionsHTML ? window.unitOptionsHTML() : '<option value="">— unité —</option>')
       + '</select>'
       + '<input class="ing-name flex-grow editorial-input text-on-surface" type="text" placeholder="Ingrédient">'
-      + '<button class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
+      + '<button tabindex="-1" class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
     container.appendChild(div);
+
+    // Tab depuis le champ ingrédient de la dernière ligne remplie → nouvelle ligne
+    const nameEl = div.querySelector('.ing-name');
+    nameEl.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && !e.shiftKey
+          && div === container.lastElementChild
+          && nameEl.value.trim()) {
+        e.preventDefault();
+        addIngredientLine(btn);
+      }
+    });
+
     if (focus) div.querySelector('input').focus();
   }
 
@@ -468,7 +480,7 @@
         </div>
         <input class="u-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)">
       </div>
-      <button class="opacity-0 group-hover:opacity-100 transition-opacity text-error mt-2" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button>`;
+      <button tabindex="-1" class="opacity-0 group-hover:opacity-100 transition-opacity text-error mt-2" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button>`;
     document.getElementById('utensils-list').appendChild(li);
 
     const nameInput    = li.querySelector('.u-name');
