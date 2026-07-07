@@ -225,6 +225,12 @@
       </div>
     </section>
 
+    <!-- Conseils et astuces de la recette -->
+    <section class="space-y-8">
+      <h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+      <textarea id="recipe-tips" class="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic" placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..." rows="4"></textarea>
+    </section>
+
     <!-- Preparation Planning (généré depuis les étapes saisies) -->
     <section class="space-y-8">
       <div class="flex justify-between items-end border-b border-primary pb-4">
@@ -265,18 +271,23 @@
       </div>
     </section>
 
+    <!-- Récapitulatif des ingrédients (lecture seule, généré depuis les étapes) -->
+    <section class="space-y-8">
+      <div class="flex justify-between items-end border-b border-primary pb-4">
+        <h2 class="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+        <span class="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
+      </div>
+      <div id="ingredients-recap" class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-8"></div>
+    </section>
+
     <!-- Footer Section -->
     <section class="pt-16 border-t-2 border-primary">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        <div class="lg:col-span-8">
-          <h2 class="font-headline-lg text-headline-lg text-primary mb-6">Conseils et astuces de la recette</h2>
-          <textarea class="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic" placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..." rows="4"></textarea>
+      <div class="flex flex-col items-center gap-6">
+        <div class="flex flex-col sm:flex-row items-stretch gap-6 w-full max-w-3xl">
+          <button class="flex-1 py-6 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-4" type="submit">Publier la recette<span class="material-symbols-outlined">send</span></button>
+          <a href="profil.html" class="flex-1 py-6 border border-outline-variant text-primary font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all flex items-center justify-center">Enregistrer en brouillon</a>
         </div>
-        <div class="lg:col-span-4 flex flex-col gap-6">
-          <button class="w-full py-6 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-4" type="submit">Publier la recette<span class="material-symbols-outlined">send</span></button>
-          <a href="profil.html" class="w-full py-4 border border-outline-variant text-primary text-center font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all block">Enregistrer en brouillon</a>
-          <p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
-        </div>
+        <p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
       </div>
     </section>
   </form>
@@ -435,12 +446,45 @@
       </div>`;
     }).join('');
   }
-  // Mise à jour en direct : titre d'étape ou champ "jour J −"
+  // ── Récapitulatif des ingrédients (lecture seule) ──
+  function renderIngredientsRecap() {
+    const wrap = document.getElementById('ingredients-recap');
+    if (!wrap) return;
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const groups = [...document.querySelectorAll('#steps-container .step-block')].map((b, i) => ({
+      title: b.querySelector('input.font-headline-md')?.value.trim() || `Étape ${i + 1}`,
+      items: [...b.querySelectorAll('.ingredient-lines > div')].map(d => ({
+        qty:  d.querySelector('.ing-qty')?.value.trim() || '',
+        unit: d.querySelector('.ing-unit')?.value || '',
+        name: d.querySelector('.ing-name')?.value.trim() || '',
+      })).filter(x => x.name),
+    })).filter(g => g.items.length);
+    if (!groups.length) {
+      wrap.innerHTML = '<p class="text-on-surface-variant italic text-sm md:col-span-2">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>';
+      return;
+    }
+    wrap.innerHTML = groups.map(g => `
+      <div>
+        <h4 class="font-label-md text-label-md text-secondary uppercase border-b border-outline-variant pb-2 mb-3">${esc(g.title)}</h4>
+        <ul class="space-y-1.5">
+          ${g.items.map(it => `<li class="font-body-md text-body-md text-on-surface flex justify-between gap-6"><span>${esc(it.name)}</span><span class="font-label-md text-label-md text-primary whitespace-nowrap">${esc([it.qty, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
+        </ul>
+      </div>`).join('');
+  }
+
+  // Mise à jour en direct : titre d'étape, jour J −, temps, ingrédients
   document.getElementById('steps-container').addEventListener('input', e => {
     if (e.target.classList.contains('font-headline-md') || e.target.classList.contains('step-day-offset')) renderPlanning();
     if (/step-(prep|wait|cook)\b/.test(e.target.className)) recalcGlobalTimes();
+    renderIngredientsRecap();
   });
+  // Les <select> d'unité émettent change, et la suppression d'une ligne
+  // ne déclenche aucun événement de saisie → observer les mutations.
+  document.getElementById('steps-container').addEventListener('change', renderIngredientsRecap);
+  new MutationObserver(renderIngredientsRecap)
+    .observe(document.getElementById('steps-container'), { childList: true, subtree: true });
   renderPlanning();
+  renderIngredientsRecap();
 
   // add step
   let stepCount = 1;
