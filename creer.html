@@ -277,7 +277,7 @@
         <h2 class="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
         <span class="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
       </div>
-      <div id="ingredients-recap" class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-8"></div>
+      <div id="ingredients-recap" class="max-w-2xl"></div>
     </section>
 
     <!-- Footer Section -->
@@ -466,7 +466,7 @@
       });
     });
     if (!items.length) {
-      wrap.innerHTML = '<p class="text-on-surface-variant italic text-sm md:col-span-2">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>';
+      wrap.innerHTML = '<p class="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>';
       return;
     }
 
