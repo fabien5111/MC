@@ -395,6 +395,7 @@
     });
 
     if (focus) div.querySelector('input').focus();
+    return div;
   }
 
   // ── Planning de préparation : étapes saisies + Dégustation finale ──
@@ -523,7 +524,7 @@
         </div>
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
-    addIngredientLine(div.querySelector('.step-ingredients button'), false);
+    addIngredientLine(div.querySelector('.step-ingredients > button'), false);
     renderPlanning();
     div.querySelector('input').focus();
   });
@@ -562,7 +563,7 @@
         const v = document.querySelector(sel)?.value.trim();
         return v ? Math.max(0, parseInt(v, 10) || 0) : null;
       };
-      const recipe = await createRecipe({
+      const payload = {
         title, description: desc, is_public: isPublic, status,
         tips: document.getElementById('recipe-tips')?.value.trim() || null,
         prep_time: globalMin('.recipe-prep'),
@@ -570,7 +571,20 @@
         cook_time: globalMin('.recipe-cook'),
         total_time: globalMin('.recipe-total'),
         ...(heroUrl ? { hero_image_url: heroUrl } : {}),
-      });
+      };
+      let recipe;
+      if (editingId) {
+        // Mode édition : mise à jour puis réinsertion complète des données liées
+        const { error: upErr } = await db.from('recipes').update(payload).eq('id', editingId);
+        if (upErr) throw upErr;
+        recipe = { id: editingId };
+        await db.from('recipe_tags').delete().eq('recipe_id', editingId);
+        await db.from('recipe_utensils').delete().eq('recipe_id', editingId);
+        await db.from('ingredient_groups').delete().eq('recipe_id', editingId);
+        await db.from('recipe_steps').delete().eq('recipe_id', editingId);
+      } else {
+        recipe = await createRecipe(payload);
+      }
 
       // Tags sélectionnés → recipe_tags
       if (selectedTags.size > 0) {
@@ -851,6 +865,79 @@
     if (!e.target.closest('#tag-picker-wrap')) document.getElementById('tag-picker').classList.add('hidden');
   });
 
+  let editingId = null; // renseigné en mode édition (?id=…)
+
+  function prefillRecipe(r) {
+    const sortIdx = arr => [...(arr || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+    document.querySelector('input.editorial-input.font-headline-lg').value = r.title || '';
+    const visToggle = document.getElementById('visibility-toggle');
+    visToggle.checked = r.is_public !== false;
+    document.getElementById('visibility-label').textContent = visToggle.checked ? 'Public' : 'Privé';
+    if (r.hero_image_url) document.getElementById('creer-main')?.setAttribute('src', r.hero_image_url);
+    document.getElementById('recipe-tips').value = r.tips || '';
+
+    // Tags
+    (r.recipe_tags || []).forEach(t => { if (t.tags?.id) selectedTags.set(t.tags.id, t.tags.name); });
+    renderTags();
+
+    // Ustensiles
+    sortIdx(r.recipe_utensils).forEach((u, i) => {
+      const li = i === 0 ? document.querySelector('#utensils-list li') : addUtensilRow(false);
+      li.querySelector('.u-name').value = u.name || '';
+      li.querySelector('.u-comment').value = u.comment || '';
+      if (u.url) {
+        li.dataset.url = u.url;
+        const lk = li.querySelector('.u-link');
+        lk.href = u.url; lk.style.display = '';
+      }
+    });
+
+    // Étapes (+ ingrédients du groupe de même order_index, + photos)
+    const groupsByOrder = {};
+    (r.ingredient_groups || []).forEach(g => { groupsByOrder[g.order_index || 0] = g; });
+    sortIdx(r.recipe_steps).forEach((s, i) => {
+      if (i > 0) document.getElementById('add-step').click();
+      const b = document.querySelectorAll('#steps-container .step-block')[i];
+      b.querySelector('input.font-headline-md').value = s.title || '';
+      b.querySelector('.step-prep').value = s.prep_time ?? '';
+      b.querySelector('.step-wait').value = s.wait_time ?? '';
+      b.querySelector('.step-cook').value = s.cook_time ?? '';
+      b.querySelector('.step-day-offset').value = s.day_offset || '';
+      b.querySelector('textarea').value = s.description || '';
+      const tipsTa = b.querySelector('details textarea');
+      if (tipsTa) tipsTa.value = s.tips || '';
+      sortIdx(s.step_photos).slice(0, 4).forEach((p, pi) => {
+        b.querySelectorAll('image-slot')[pi]?.setAttribute('src', p.url);
+      });
+      sortIdx(groupsByOrder[s.order_index || 0]?.ingredients).forEach((ing, li_) => {
+        const line = li_ === 0
+          ? b.querySelector('.ingredient-lines > div')
+          : addIngredientLine(b.querySelector('.step-ingredients > button'), false);
+        line.querySelector('.ing-qty').value = ing.quantity || '';
+        line.querySelector('.ing-unit').value = ing.unit || '';
+        line.querySelector('.ing-name').value = ing.name || '';
+        line.querySelector('.ing-comment').value = ing.comment || '';
+        if (ing.url) {
+          line.dataset.url = ing.url;
+          const lk = line.querySelector('.ing-link');
+          lk.href = ing.url; lk.style.display = '';
+        }
+      });
+    });
+
+    // Temps globaux : valeurs stockées, verrouillées via l'événement input
+    [['prep', r.prep_time], ['wait', r.wait_time], ['cook', r.cook_time], ['total', r.total_time]].forEach(([k, v]) => {
+      const el = document.querySelector('.recipe-' + k);
+      if (el && v != null) { el.value = v; el.dispatchEvent(new Event('input')); }
+    });
+
+    renderPlanning();
+    renderIngredientsRecap();
+    document.querySelector('h1').textContent = 'Modifier la recette';
+    document.title = 'Maryse-Club | Modifier ' + (r.title || 'la recette');
+  }
+
   (async () => {
     const user = await requireAuth();
     if (!user) return; // requireAuth redirige vers connexion.html
@@ -864,7 +951,14 @@
     ]);
     renderTags();
     addUtensilRow(false); // première ligne vide
-    addIngredientLine(document.querySelector('#steps-container .step-ingredients button'), false);
+    addIngredientLine(document.querySelector('#steps-container .step-ingredients > button'), false);
+
+    // Mode édition : ?id=… → préremplir tous les champs
+    const editParam = new URLSearchParams(location.search).get('id');
+    if (editParam) {
+      const r = await getRecipe(editParam);
+      if (r) { editingId = r.id; prefillRecipe(r); }
+    }
   })();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

@@ -301,6 +301,18 @@
     }
   }
 
+  // Suppression d'une recette depuis le carnet (cascade sur étapes/ingrédients…)
+  window.deleteMyRecipe = async function (id, title, btn) {
+    if (!confirm(`Supprimer « ${title} » ?\nCette action est définitive.`)) return;
+    try {
+      const { error } = await db.from('recipes').delete().eq('id', id);
+      if (error) throw error;
+      btn.closest('.group')?.remove();
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    }
+  };
+
   async function loadProfil() {
     // initAuthUI met à jour la nav (Déconnexion/avatar) et retourne l'utilisateur
     const user = await initAuthUI();
@@ -371,8 +383,11 @@
           <div class="p-4">
             <a href="recette.html?id=${r.id}"><h3 class="font-headline-md text-[20px] text-primary mb-2">${r.title}</h3></a>
             <div class="flex justify-between items-center border-t border-outline-variant/30 pt-4 mt-2">
-              <span class="text-[12px] font-label-md text-on-surface-variant">${formatDate(r.created_at)}</span>
-              <span class="text-[12px] font-label-md text-on-surface-variant">${r.rating_avg ? parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
+              <span class="text-[12px] font-label-md text-on-surface-variant">${formatDate(r.created_at)}${r.rating_avg ? ' · ' + parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
+              <div class="flex items-center gap-1">
+                <a href="creer.html?id=${r.id}" title="Modifier" class="p-1.5 rounded hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-primary text-[20px]">edit_note</span></a>
+                <button type="button" title="Supprimer" onclick='deleteMyRecipe(${JSON.stringify(r.id)}, ${JSON.stringify(String(r.title)).replace(/'/g, '&#39;')}, this)' class="p-1.5 rounded hover:bg-error/10 transition-colors"><span class="material-symbols-outlined text-error text-[20px]">delete</span></button>
+              </div>
             </div>
           </div>`;
         if (addCard) carnetGrid.insertBefore(div, addCard);
