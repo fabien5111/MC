@@ -174,7 +174,7 @@
           </div>
         </div>
         <div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-16 gap-y-12">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-x-10 gap-y-12">
             <div class="flex flex-col border-b border-outline-variant pb-4">
               <label class="font-label-md text-label-md text-outline uppercase">Difficulté</label>
               <div class="flex gap-2 mt-4" id="difficulty">
@@ -186,6 +186,7 @@
               </div>
             </div>
             <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="recipe-prep editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="90" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">ATTENTE</label><div class="flex items-baseline gap-2"><input class="recipe-wait editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="60" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
             <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><div class="flex items-baseline gap-2"><input class="recipe-cook editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="45" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
             <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><div class="flex items-baseline gap-2"><input class="recipe-total editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="135" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
           </div>
@@ -301,17 +302,19 @@
   // Durée totale = prép + cuisson, tant que l'utilisateur ne l'a pas modifiée
   (function () {
     const prep = document.querySelector('.recipe-prep');
+    const wait = document.querySelector('.recipe-wait');
     const cook = document.querySelector('.recipe-cook');
     const total = document.querySelector('.recipe-total');
     let touched = false;
     total.addEventListener('input', () => { touched = true; });
     const sync = () => {
       if (touched && total.value.trim()) return;
-      const t = (parseInt(prep.value, 10) || 0) + (parseInt(cook.value, 10) || 0);
+      const t = (parseInt(prep.value, 10) || 0) + (parseInt(wait.value, 10) || 0) + (parseInt(cook.value, 10) || 0);
       total.value = t > 0 ? t : '';
       touched = false;
     };
     prep.addEventListener('input', sync);
+    wait.addEventListener('input', sync);
     cook.addEventListener('input', sync);
   })();
 
@@ -502,6 +505,7 @@
       const recipe = await createRecipe({
         title, description: desc, is_public: isPublic,
         prep_time: globalMin('.recipe-prep'),
+        wait_time: globalMin('.recipe-wait'),
         cook_time: globalMin('.recipe-cook'),
         total_time: globalMin('.recipe-total'),
         ...(heroUrl ? { hero_image_url: heroUrl } : {}),
