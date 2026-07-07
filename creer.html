@@ -564,6 +564,7 @@
       };
       const recipe = await createRecipe({
         title, description: desc, is_public: isPublic, status,
+        tips: document.getElementById('recipe-tips')?.value.trim() || null,
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
         cook_time: globalMin('.recipe-cook'),

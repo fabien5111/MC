@@ -61,7 +61,7 @@
   <div class="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
     <a class="hover:text-primary" href="index.html">Accueil</a>
     <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-    <span class="text-primary">Le Saint-Honoré Traditionnel</span>
+    <span class="text-primary" id="breadcrumb-title">Le Saint-Honoré Traditionnel</span>
   </div>
 </div>
 
@@ -72,8 +72,8 @@
       <div class="flex items-baseline justify-between flex-wrap gap-4">
         <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Le Saint-Honoré Traditionnel</h1>
         <div class="flex items-center gap-4">
-          <span class="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">Publique</span>
-          <div class="flex items-center gap-2">
+          <span id="recipe-visibility" class="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">Publique</span>
+          <div class="flex items-center gap-2" id="recipe-rating">
             <div class="flex items-center text-[#4a1e26]">
               <span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined text-[18px]">star_half</span>
             </div>
@@ -84,9 +84,9 @@
       <div class="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
         <span class="flex items-center gap-2">Par <a class="flex items-center gap-2 hover:text-primary transition-colors group" href="profil.html">
           <span class="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block"><image-slot id="recette-author" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc69WbfNouydO2CAXMT1IbOzz9MHswuxhhs40X0A8Pl--MkrKI7wD9cqOKDDyHLidm3PX81QsauhNWuLc-B0A5U4O_RCtMCQ7ZMpSWpgBte-2NqzGr09v_GnozRyCjClWDOrrC0BjUdEsdeAheRL_WqN3H6C7ZpelLFySQhKE2lWvEUDWPMJoBwp2OvP6t8e7nKMZWUltZl-VWVtR3Obdb1vDn6Htyqy34YOcpz97L29kwgksEeszuXtuUL65QyiXcU6Y2yf6YyvY" shape="circle" fit="cover" placeholder="Chef" style="width:100%;height:100%"></image-slot></span>
-          <span class="border-b border-primary">Chef Antoine</span></a> <span class="ml-2 text-on-surface-variant opacity-70">• 12k followers</span></span>
+          <span class="border-b border-primary" data-recipe-author>Chef Antoine</span></a> <span class="ml-2 text-on-surface-variant opacity-70" id="author-followers">• 12k followers</span></span>
         <span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-        <span>Publié le 12 Mars 2024</span>
+        <span id="recipe-date">Publié le 12 Mars 2024</span>
       </div>
       <div class="flex justify-between mt-4 border-y border-outline-variant py-4 flex-wrap gap-4 flex-col">
         <div class="flex items-center gap-4 w-full justify-between">
@@ -97,7 +97,7 @@
             <button onclick="window.print()" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">print</span> Imprimer</button>
           </div>
         </div>
-        <div class="flex gap-2 w-full">
+        <div class="flex gap-2 w-full flex-wrap" id="recipe-tags">
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Pâtisserie</span>
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Classique</span>
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Expert</span>
@@ -112,16 +112,16 @@
 
     <!-- Technical Info Block -->
     <div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4 bg-surface-container-low p-8 mb-12">
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
+      <div class="flex flex-col gap-1" id="tech-portions"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
+      <div class="flex flex-col gap-1" id="tech-taille"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
       <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Difficulté</span>
-        <div class="flex items-center gap-1.5 h-8">
+        <div class="flex items-center gap-1.5 h-8" id="tech-difficulty">
           <span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span>
         </div>
       </div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Temps de prép</span><span class="font-body-lg text-body-lg font-bold text-primary">2h 30min</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Cuisson</span><span class="font-body-lg text-body-lg font-bold text-primary">45min</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Durée totale</span><span class="font-body-lg text-body-lg font-bold text-primary">1 jour</span></div>
+      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Temps de prép</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-prep">2h 30min</span></div>
+      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Cuisson</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-cook">45min</span></div>
+      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Durée totale</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-total">1 jour</span></div>
     </div>
 
     <!-- Utensils -->
@@ -183,9 +183,9 @@
     </div>
 
     <!-- Planning Schedule -->
-    <div class="mb-12 py-10 border-y border-outline-variant">
+    <div class="mb-12 py-10 border-y border-outline-variant" id="recipe-planning-section">
       <h3 class="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
-      <div class="relative flex flex-col md:flex-row justify-between gap-8">
+      <div class="relative flex flex-col md:flex-row justify-between gap-8" id="recipe-planning">
         <div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>
         <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 24H</span><p class="font-body-md text-body-md font-semibold">Pâte feuilletée &amp; Repos</p></div>
         <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 3H</span><p class="font-body-md text-body-md font-semibold">Cuisson &amp; Caramel</p></div>
@@ -194,7 +194,7 @@
     </div>
 
     <!-- Steps -->
-    <div class="space-y-16">
+    <div class="space-y-16" id="recipe-steps">
       <!-- Step 1 -->
       <div class="flex flex-col gap-6">
         <div class="flex items-center justify-between border-b border-outline pb-4">
@@ -262,11 +262,11 @@
     </div>
 
     <!-- Tips Block -->
-    <div class="mt-20 bg-primary p-10 text-white relative overflow-hidden">
+    <div class="mt-20 bg-primary p-10 text-white relative overflow-hidden" id="recipe-tips-block">
       <div class="absolute -right-10 -top-10 opacity-10"><span class="material-symbols-outlined text-[120px]">lightbulb</span></div>
       <h3 class="font-headline-md text-headline-md mb-4 flex items-center gap-3"><span class="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette</h3>
-      <p class="font-body-lg text-body-lg italic opacity-90 leading-relaxed">"Pour un caramel parfait qui reste brillant et craquant, ne remuez jamais le sucre pendant la cuisson. Attendez qu'il atteigne une couleur ambre clair (environ 170°C) puis stoppez immédiatement la cuisson en plongeant le fond de la casserole dans un bain d'eau froide. Le Saint-Honoré se déguste idéalement dans les 3 heures suivant le montage."</p>
-      <p class="mt-6 font-label-md text-label-md">— Antoine, Chef Pâtissier</p>
+      <p class="font-body-lg text-body-lg italic opacity-90 leading-relaxed" id="recipe-tips-text">"Pour un caramel parfait qui reste brillant et craquant, ne remuez jamais le sucre pendant la cuisson. Attendez qu'il atteigne une couleur ambre clair (environ 170°C) puis stoppez immédiatement la cuisson en plongeant le fond de la casserole dans un bain d'eau froide. Le Saint-Honoré se déguste idéalement dans les 3 heures suivant le montage."</p>
+      <p class="mt-6 font-label-md text-label-md" id="recipe-tips-author">— Antoine, Chef Pâtissier</p>
     </div>
   </div>
 
@@ -406,6 +406,136 @@
                   </li>`).join('')}
             </ul>
           </div>`).join('');
+    }
+
+    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+    // Fil d'ariane, visibilité, note
+    const bc = document.getElementById('breadcrumb-title');
+    if (bc) bc.textContent = recipe.title;
+    const vis = document.getElementById('recipe-visibility');
+    if (vis) vis.textContent = recipe.is_public === false ? 'Privée' : 'Publique';
+    const rating = document.getElementById('recipe-rating');
+    if (rating) {
+      if (recipe.rating_count > 0) {
+        rating.innerHTML = `<span class="font-label-md text-label-md text-primary font-bold">${parseFloat(recipe.rating_avg || 0).toFixed(1)}/5</span><span class="font-label-md text-label-md text-on-surface-variant opacity-70">(${recipe.rating_count})</span>`;
+      } else rating.style.display = 'none';
+    }
+
+    // Auteur : avatar, pas de followers fictifs, vraie date
+    if (recipe.profiles?.avatar_url) {
+      document.getElementById('recette-author')?.setAttribute('src', recipe.profiles.avatar_url);
+    }
+    const followers = document.getElementById('author-followers');
+    if (followers) followers.style.display = 'none';
+    const dateEl = document.getElementById('recipe-date');
+    if (dateEl) dateEl.textContent = (recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at);
+
+    // Tags
+    const tagsRow = document.getElementById('recipe-tags');
+    if (tagsRow) {
+      const tags = (recipe.recipe_tags || []).map(t => t.tags?.name).filter(Boolean);
+      if (tags.length) {
+        tagsRow.innerHTML = tags.map(n => `<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">${esc(n)}</span>`).join('');
+      } else tagsRow.style.display = 'none';
+    }
+
+    // Bloc technique : portions/taille non gérés → masqués ; difficulté + temps réels
+    document.getElementById('tech-portions')?.style.setProperty('display', 'none');
+    document.getElementById('tech-taille')?.style.setProperty('display', 'none');
+    const diffEl = document.getElementById('tech-difficulty');
+    if (diffEl) {
+      const level = recipe.difficulties?.level || 0;
+      diffEl.innerHTML = level
+        ? [1, 2, 3, 4, 5].map(i => `<span class="w-5 h-2.5 rounded-full ${i <= level ? 'bg-primary' : 'bg-outline-variant'}"></span>`).join('')
+        : '<span class="text-sm text-on-surface-variant">—</span>';
+    }
+    const setTime = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? formatTime(v) : '—'; };
+    setTime('tech-prep', recipe.prep_time);
+    setTime('tech-cook', recipe.cook_time);
+    setTime('tech-total', recipe.total_time);
+
+    // Étapes triées + groupes d'ingrédients associés (même order_index)
+    const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const groupsByOrder = {};
+    (recipe.ingredient_groups || []).forEach(g => { groupsByOrder[g.order_index || 0] = g; });
+    const dayLabel = o => o > 0 ? `JOUR J − ${o}` : 'JOUR J';
+
+    // Planning de préparation regroupé par jour (comme à la création)
+    const planEl = document.getElementById('recipe-planning');
+    const planSection = document.getElementById('recipe-planning-section');
+    if (planEl) {
+      if (steps.length) {
+        const days = [];
+        [...steps].sort((a, b) => (b.day_offset || 0) - (a.day_offset || 0) || (a.order_index || 0) - (b.order_index || 0))
+          .concat([{ title: 'Dégustation', day_offset: 0 }])
+          .forEach(s => {
+            const o = Math.max(0, s.day_offset || 0);
+            let d = days.find(x => x.offset === o);
+            if (!d) { d = { offset: o, items: [] }; days.push(d); }
+            d.items.push(s.title || '');
+          });
+        planEl.innerHTML = '<div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>'
+          + days.map((d, i) => `
+            <div class="relative flex flex-col gap-4 z-10">
+              <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">${i + 1}</div>
+              <span class="font-label-md text-[12px] text-secondary">${dayLabel(d.offset)}</span>
+              ${d.items.map(t => `<p class="font-body-md text-body-md font-semibold">${esc(t)}</p>`).join('')}
+            </div>`).join('');
+      } else if (planSection) planSection.style.display = 'none';
+    }
+
+    // Détail des étapes
+    const stepsWrap = document.getElementById('recipe-steps');
+    if (stepsWrap) {
+      if (steps.length) {
+        stepsWrap.innerHTML = steps.map((s, i) => {
+          const grp = groupsByOrder[s.order_index || 0];
+          const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+          const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+          const badges = [
+            `<span class="bg-surface-variant px-3 py-1">${dayLabel(Math.max(0, s.day_offset || 0))}</span>`,
+            s.prep_time ? `<span class="bg-surface-variant px-3 py-1">PRÉP ${formatTime(s.prep_time).toUpperCase()}</span>` : '',
+            s.wait_time ? `<span class="bg-surface-variant px-3 py-1">ATTENTE ${formatTime(s.wait_time).toUpperCase()}</span>` : '',
+            s.cook_time ? `<span class="bg-surface-variant px-3 py-1">CUISSON ${formatTime(s.cook_time).toUpperCase()}</span>` : '',
+          ].filter(Boolean).join('');
+          return `
+          <div class="flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
+              <h4 class="font-headline-md text-headline-md text-primary">${i + 1}. ${esc(s.title || 'Étape ' + (i + 1))}</h4>
+              <div class="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">${badges}</div>
+            </div>
+            ${ings.length ? `
+            <details class="group border border-outline-variant mb-2" open>
+              <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+              <div class="p-4 bg-white">
+                <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+                  ${ings.map(it => `<li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
+                </ul>
+              </div>
+            </details>` : ''}
+            ${s.description ? `<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">${esc(s.description).replace(/\n/g, '<br>')}</div>` : ''}
+            ${photos.length ? `
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              ${photos.map(p => `<div class="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden"><img src="${p.url}" class="w-full h-full object-cover"></div>`).join('')}
+            </div>` : ''}
+            ${s.tips ? `
+            <details class="group border border-outline-variant">
+              <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+              <div class="p-4 bg-white font-body-md text-body-md italic">${esc(s.tips)}</div>
+            </details>` : ''}
+          </div>`;
+        }).join('');
+      } else stepsWrap.style.display = 'none';
+    }
+
+    // Conseils et astuces de la recette
+    const tipsBlock = document.getElementById('recipe-tips-block');
+    if (tipsBlock) {
+      if (recipe.tips) {
+        document.getElementById('recipe-tips-text').textContent = recipe.tips;
+        document.getElementById('recipe-tips-author').textContent = recipe.profiles?.full_name ? `— ${recipe.profiles.full_name}` : '';
+      } else tipsBlock.style.display = 'none';
     }
 
     // Init favoris
