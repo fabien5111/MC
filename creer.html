@@ -361,6 +361,20 @@
       order: i,
       isLast: false,
     }));
+    const line = track.previousElementSibling; // trait horizontal de la frise
+
+    // Tout se fait le jour J (aucun timing saisi ou tout à 0) → simple message
+    if (steps.every(s => s.offset === 0)) {
+      if (line) line.style.display = 'none';
+      track.innerHTML = `
+        <div class="w-full flex items-center justify-center gap-3">
+          <span class="material-symbols-outlined text-secondary">celebration</span>
+          <span class="font-body-lg text-body-lg italic text-primary">Peut être dégusté le jour de la préparation</span>
+        </div>`;
+      return;
+    }
+    if (line) line.style.display = '';
+
     // Ordre chronologique : le plus grand J−n d'abord, puis l'ordre de saisie
     steps.sort((a, b) => b.offset - a.offset || a.order - b.order);
     steps.push({ title: 'Dégustation', offset: 0, isLast: true });
