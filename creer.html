@@ -363,13 +363,27 @@
     }));
     // Ordre chronologique : le plus grand J−n d'abord, puis l'ordre de saisie
     steps.sort((a, b) => b.offset - a.offset || a.order - b.order);
-    const items = [...steps, { title: 'Dégustation', offset: 0, isLast: true }];
-    track.innerHTML = items.map(it => `
+    steps.push({ title: 'Dégustation', offset: 0, isLast: true });
+
+    // Regroupement par jour : un seul point J−n, les étapes empilées dessous
+    const days = [];
+    steps.forEach(s => {
+      let day = days.find(d => d.offset === s.offset);
+      if (!day) { day = { offset: s.offset, items: [] }; days.push(day); }
+      day.items.push(s);
+    });
+
+    track.innerHTML = days.map(day => {
+      const onlyFinal = day.items.every(it => it.isLast);
+      return `
       <div class="flex flex-col items-center gap-2">
-        <span class="font-label-md text-[10px] font-bold tracking-widest ${it.isLast ? 'text-secondary' : 'text-primary'}">${it.offset > 0 ? 'J − ' + it.offset : 'JOUR J'}</span>
-        <div class="w-4 h-4 rounded-full ${it.isLast ? 'bg-secondary' : 'bg-primary'} z-10"></div>
-        <span class="font-label-md text-[10px] uppercase ${it.isLast ? 'text-secondary' : 'text-primary'} text-center max-w-[140px]">${esc(it.title)}</span>
-      </div>`).join('');
+        <span class="font-label-md text-[10px] font-bold tracking-widest ${onlyFinal ? 'text-secondary' : 'text-primary'}">${day.offset > 0 ? 'J − ' + day.offset : 'JOUR J'}</span>
+        <div class="w-4 h-4 rounded-full ${onlyFinal ? 'bg-secondary' : 'bg-primary'} z-10"></div>
+        <div class="flex flex-col items-center gap-1">
+          ${day.items.map(it => `<span class="font-label-md text-[10px] uppercase ${it.isLast ? 'text-secondary' : 'text-primary'} text-center max-w-[140px]">${esc(it.title)}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
   }
   // Mise à jour en direct : titre d'étape ou champ "jour J −"
   document.getElementById('steps-container').addEventListener('input', e => {
