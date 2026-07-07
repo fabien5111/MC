@@ -192,7 +192,7 @@ async function createRecipe(recipeData) {
   const user = await getUser();
   if (!user) throw new Error('Non connecté');
   const { data, error } = await db.from('recipes')
-    .insert({ ...recipeData, author_id: user.id, status: 'pending' })
+    .insert({ status: 'pending', ...recipeData, author_id: user.id })
     .select().single();
   if (error) throw error;
   return data;

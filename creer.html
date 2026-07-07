@@ -285,7 +285,7 @@
       <div class="flex flex-col items-center gap-6">
         <div class="flex flex-col sm:flex-row items-stretch gap-6 w-full max-w-3xl">
           <button class="flex-1 py-6 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-4" type="submit">Publier la recette<span class="material-symbols-outlined">send</span></button>
-          <a href="profil.html" class="flex-1 py-6 border border-outline-variant text-primary font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all flex items-center justify-center">Enregistrer en brouillon</a>
+          <button type="button" id="btn-draft" class="flex-1 py-6 border border-outline-variant text-primary font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all flex items-center justify-center">Enregistrer en brouillon</button>
         </div>
         <p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
       </div>
@@ -533,15 +533,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
-  // Publier → sauvegarder en base
-  document.querySelector('button[type="submit"]')?.addEventListener('click', async function(e) {
-    e.preventDefault();
+  // Publier ou enregistrer en brouillon → sauvegarder en base
+  async function saveRecipe(status, btn) {
     const title = document.querySelector('input[placeholder*="Saint-Honoré"], input.editorial-input.font-headline-lg')?.value?.trim()
                 || document.querySelector('input[type="text"]')?.value?.trim();
     if (!title) { alert('Donnez un titre à votre recette.'); return; }
 
-    this.disabled = true;
-    this.textContent = 'Publication en cours...';
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = status === 'draft' ? 'Enregistrement…' : 'Publication en cours...';
 
     try {
       const user = await getUser();
@@ -563,7 +563,7 @@
         return v ? Math.max(0, parseInt(v, 10) || 0) : null;
       };
       const recipe = await createRecipe({
-        title, description: desc, is_public: isPublic,
+        title, description: desc, is_public: isPublic, status,
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
         cook_time: globalMin('.recipe-cook'),
@@ -657,12 +657,21 @@
         if (ingErr) console.error('Ingrédients non enregistrés :', ingErr);
       }
 
-      window.location.href = `recette.html?id=${recipe.id}`;
+      // Brouillon → profil (rubrique Mon carnet) ; publication → page de la recette
+      window.location.href = status === 'draft' ? 'profil.html' : `recette.html?id=${recipe.id}`;
     } catch (err) {
-      alert('Erreur : ' + (err.message || 'Impossible de publier la recette.'));
-      this.disabled = false;
-      this.textContent = 'Publier la recette';
+      alert('Erreur : ' + (err.message || 'Impossible d\'enregistrer la recette.'));
+      btn.disabled = false;
+      btn.innerHTML = originalHTML;
     }
+  }
+
+  document.querySelector('button[type="submit"]')?.addEventListener('click', e => {
+    e.preventDefault();
+    saveRecipe('pending', e.currentTarget);
+  });
+  document.getElementById('btn-draft')?.addEventListener('click', e => {
+    saveRecipe('draft', e.currentTarget);
   });
 
   // Affichage conditionnel selon le type de mesure
