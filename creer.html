@@ -202,25 +202,6 @@
       <button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button" id="add-utensil"><span class="material-symbols-outlined">add</span> Ajouter un ustensile</button>
     </section>
 
-    <!-- Preparation Planning -->
-    <section class="space-y-8">
-      <div class="flex justify-between items-end border-b border-primary pb-4">
-        <h2 class="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
-        <span class="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
-      </div>
-      <div class="bg-surface-container-high p-gutter rounded overflow-x-auto hide-scrollbar">
-        <div class="min-w-[800px] h-32 relative flex items-center">
-          <div class="absolute h-0.5 w-full bg-outline-variant top-1/2 -translate-y-1/2"></div>
-          <div class="flex justify-between w-full relative">
-            <div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Préparation</span></div>
-            <div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-outline-variant z-10"></div><span class="font-label-md text-[10px] uppercase text-outline">Repos (2h)</span></div>
-            <div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Cuisson</span></div>
-            <div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Montage</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Step Details -->
     <section class="space-y-12" id="steps-container">
       <div class="step-block">
@@ -257,6 +238,22 @@
       </div>
       <div class="flex justify-center py-8">
         <button class="flex items-center gap-3 px-8 py-3 border border-primary text-primary hover:bg-primary-container hover:text-white transition-all font-label-md text-label-md uppercase tracking-widest" type="button" id="add-step"><span class="material-symbols-outlined">add_circle</span> Ajouter une étape</button>
+      </div>
+    </section>
+
+    <!-- Preparation Planning (généré depuis les étapes saisies) -->
+    <section class="space-y-8">
+      <div class="flex justify-between items-end border-b border-primary pb-4">
+        <h2 class="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
+        <span class="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
+      </div>
+      <div class="bg-surface-container-high p-gutter rounded overflow-x-auto hide-scrollbar">
+        <div class="min-w-[800px] h-32 relative flex items-center">
+          <div class="absolute h-0.5 w-full bg-outline-variant top-1/2 -translate-y-1/2"></div>
+          <div class="flex justify-between w-full relative" id="planning-track">
+            <!-- points générés par renderPlanning() -->
+          </div>
+        </div>
       </div>
     </section>
 
@@ -353,6 +350,28 @@
     if (focus) div.querySelector('input').focus();
   }
 
+  // ── Planning de préparation : étapes saisies + Dégustation finale ──
+  function renderPlanning() {
+    const track = document.getElementById('planning-track');
+    if (!track) return;
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const titles = [...document.querySelectorAll('#steps-container .step-block')].map((b, i) =>
+      b.querySelector('input')?.value.trim() || `Étape ${i + 1}`);
+    const items = [...titles, 'Dégustation'];
+    track.innerHTML = items.map((t, i) => {
+      const isLast = i === items.length - 1;
+      return `<div class="flex flex-col items-center gap-2">
+        <div class="w-4 h-4 rounded-full ${isLast ? 'bg-secondary' : 'bg-primary'} z-10"></div>
+        <span class="font-label-md text-[10px] uppercase ${isLast ? 'text-secondary' : 'text-primary'} text-center max-w-[140px]">${esc(t)}</span>
+      </div>`;
+    }).join('');
+  }
+  // Mise à jour en direct quand un titre d'étape change
+  document.getElementById('steps-container').addEventListener('input', e => {
+    if (e.target.classList.contains('font-headline-md')) renderPlanning();
+  });
+  renderPlanning();
+
   // add step
   let stepCount = 1;
   document.getElementById('add-step').addEventListener('click', function(){
@@ -390,6 +409,7 @@
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
     addIngredientLine(div.querySelector('.step-ingredients button'), false);
+    renderPlanning();
     div.querySelector('input').focus();
   });
 
