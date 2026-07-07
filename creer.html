@@ -173,24 +173,6 @@
             </div>
           </div>
         </div>
-        <div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-x-10 gap-y-12">
-            <div class="flex flex-col border-b border-outline-variant pb-4">
-              <label class="font-label-md text-label-md text-outline uppercase">Difficulté</label>
-              <div class="flex gap-2 mt-4" id="difficulty">
-                <span class="maryse-pill bg-primary" data-i="0"></span>
-                <span class="maryse-pill bg-primary" data-i="1"></span>
-                <span class="maryse-pill bg-primary" data-i="2"></span>
-                <span class="maryse-pill bg-outline-variant" data-i="3"></span>
-                <span class="maryse-pill bg-outline-variant" data-i="4"></span>
-              </div>
-            </div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="recipe-prep editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="90" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">ATTENTE</label><div class="flex items-baseline gap-2"><input class="recipe-wait editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="60" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><div class="flex items-baseline gap-2"><input class="recipe-cook editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="45" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><div class="flex items-baseline gap-2"><input class="recipe-total editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="135" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -259,6 +241,30 @@
       </div>
     </section>
 
+    <!-- Difficulté & temps globaux -->
+    <section class="space-y-8">
+      <div class="flex justify-between items-end border-b border-primary pb-4">
+        <h2 class="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
+        <span class="text-sm text-on-surface-variant italic">Temps pré-remplis depuis les étapes, modifiables</span>
+      </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-x-10 gap-y-12">
+        <div class="flex flex-col border-b border-outline-variant pb-4">
+          <label class="font-label-md text-label-md text-outline uppercase">Difficulté</label>
+          <div class="flex gap-2 mt-4" id="difficulty">
+        <span class="maryse-pill bg-primary" data-i="0"></span>
+        <span class="maryse-pill bg-primary" data-i="1"></span>
+        <span class="maryse-pill bg-primary" data-i="2"></span>
+        <span class="maryse-pill bg-outline-variant" data-i="3"></span>
+        <span class="maryse-pill bg-outline-variant" data-i="4"></span>
+          </div>
+        </div>
+        <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="recipe-prep editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="90" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+        <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">ATTENTE</label><div class="flex items-baseline gap-2"><input class="recipe-wait editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="60" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+        <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><div class="flex items-baseline gap-2"><input class="recipe-cook editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="45" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+        <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><div class="flex items-baseline gap-2"><input class="recipe-total editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="135" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+      </div>
+    </section>
+
     <!-- Footer Section -->
     <section class="pt-16 border-t-2 border-primary">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -299,23 +305,32 @@
     });
   });
 
-  // Durée totale = prép + cuisson, tant que l'utilisateur ne l'a pas modifiée
+  // Temps globaux : pré-remplis avec la somme des temps des étapes ;
+  // un champ modifié à la main garde sa valeur (le vider réactive l'auto).
   (function () {
-    const prep = document.querySelector('.recipe-prep');
-    const wait = document.querySelector('.recipe-wait');
-    const cook = document.querySelector('.recipe-cook');
-    const total = document.querySelector('.recipe-total');
-    let touched = false;
-    total.addEventListener('input', () => { touched = true; });
-    const sync = () => {
-      if (touched && total.value.trim()) return;
-      const t = (parseInt(prep.value, 10) || 0) + (parseInt(wait.value, 10) || 0) + (parseInt(cook.value, 10) || 0);
-      total.value = t > 0 ? t : '';
-      touched = false;
+    const els = {
+      prep:  document.querySelector('.recipe-prep'),
+      wait:  document.querySelector('.recipe-wait'),
+      cook:  document.querySelector('.recipe-cook'),
+      total: document.querySelector('.recipe-total'),
     };
-    prep.addEventListener('input', sync);
-    wait.addEventListener('input', sync);
-    cook.addEventListener('input', sync);
+    const touched = { prep: false, wait: false, cook: false, total: false };
+    Object.entries(els).forEach(([k, el]) =>
+      el.addEventListener('input', () => { touched[k] = el.value.trim() !== ''; recalcGlobalTimes(); }));
+
+    window.recalcGlobalTimes = function () {
+      const sum = cls => [...document.querySelectorAll('#steps-container ' + cls)]
+        .reduce((a, i) => a + (parseInt(i.value, 10) || 0), 0);
+      if (!touched.prep) els.prep.value = sum('.step-prep') || '';
+      if (!touched.wait) els.wait.value = sum('.step-wait') || '';
+      if (!touched.cook) els.cook.value = sum('.step-cook') || '';
+      if (!touched.total) {
+        const t = (parseInt(els.prep.value, 10) || 0)
+                + (parseInt(els.wait.value, 10) || 0)
+                + (parseInt(els.cook.value, 10) || 0);
+        els.total.value = t > 0 ? t : '';
+      }
+    };
   })();
 
   // visibility toggle label
@@ -423,6 +438,7 @@
   // Mise à jour en direct : titre d'étape ou champ "jour J −"
   document.getElementById('steps-container').addEventListener('input', e => {
     if (e.target.classList.contains('font-headline-md') || e.target.classList.contains('step-day-offset')) renderPlanning();
+    if (/step-(prep|wait|cook)\b/.test(e.target.className)) recalcGlobalTimes();
   });
   renderPlanning();
 
