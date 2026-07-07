@@ -209,30 +209,30 @@
           <span class="font-display-lg text-headline-lg text-primary">01</span>
           <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape (ex: Réalisation de la pâte)" type="text">
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-8">
-          <div class="lg:col-span-8 space-y-8">
-            <div class="flex gap-8">
-              <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
-              <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="2h (repos)" type="text"></div>
-            </div>
-            <div class="flex items-center gap-3">
-              <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
-              <input class="step-day-offset editorial-input text-on-surface w-20" type="number" min="0" step="1" placeholder="0">
-              <span class="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
-            </div>
-            <div class="flex flex-col step-ingredients">
-              <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
-              <div class="space-y-4 ingredient-lines"></div>
-              <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
-            </div>
-            <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
-            <div class="space-y-4">
-              <details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
-            </div>
+        <div class="space-y-8 mt-8">
+          <div class="flex flex-wrap gap-8">
+            <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
+            <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="2h (repos)" type="text"></div>
           </div>
-          <div class="lg:col-span-4 grid grid-cols-2 gap-4">
+          <div class="flex items-center gap-3">
+            <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
+            <input class="step-day-offset editorial-input text-on-surface w-20" type="number" min="0" step="1" placeholder="0">
+            <span class="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
+          </div>
+          <div class="flex flex-col step-ingredients">
+            <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+            <div class="space-y-4 ingredient-lines"></div>
+            <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
+          </div>
+          <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea></div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v1" shape="rect" fit="cover" placeholder="Visuel 1" style="width:100%;height:100%"></image-slot></div>
             <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v2" shape="rect" fit="cover" placeholder="Visuel 2" style="width:100%;height:100%"></image-slot></div>
+            <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v3" shape="rect" fit="cover" placeholder="Visuel 3" style="width:100%;height:100%"></image-slot></div>
+            <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v4" shape="rect" fit="cover" placeholder="Visuel 4" style="width:100%;height:100%"></image-slot></div>
+          </div>
+          <div class="space-y-4">
+            <details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
           </div>
         </div>
       </div>
@@ -417,27 +417,27 @@
         <span class="font-display-lg text-headline-lg text-primary">${num}</span>
         <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape" type="text">
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-8">
-        <div class="lg:col-span-8 space-y-8">
-          <div class="flex gap-8">
-            <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
-            <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="repos..." type="text"></div>
-          </div>
-          <div class="flex items-center gap-3">
-            <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
-            <input class="step-day-offset editorial-input text-on-surface w-20" type="number" min="0" step="1" placeholder="0">
-            <span class="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
-          </div>
-          <div class="flex flex-col step-ingredients">
-            <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
-            <div class="space-y-4 ingredient-lines"></div>
-            <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
-          </div>
-          <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
+      <div class="space-y-8 mt-8">
+        <div class="flex flex-wrap gap-8">
+          <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
+          <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="repos..." type="text"></div>
         </div>
-        <div class="lg:col-span-4 grid grid-cols-2 gap-4">
+        <div class="flex items-center gap-3">
+          <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
+          <input class="step-day-offset editorial-input text-on-surface w-20" type="number" min="0" step="1" placeholder="0">
+          <span class="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
+        </div>
+        <div class="flex flex-col step-ingredients">
+          <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+          <div class="space-y-4 ingredient-lines"></div>
+          <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
+        </div>
+        <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v1" shape="rect" fit="cover" placeholder="Visuel 1" style="width:100%;height:100%"></image-slot></div>
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v2" shape="rect" fit="cover" placeholder="Visuel 2" style="width:100%;height:100%"></image-slot></div>
+          <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v3" shape="rect" fit="cover" placeholder="Visuel 3" style="width:100%;height:100%"></image-slot></div>
+          <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v4" shape="rect" fit="cover" placeholder="Visuel 4" style="width:100%;height:100%"></image-slot></div>
         </div>
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
