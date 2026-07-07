@@ -448,28 +448,44 @@
     }).join('');
   }
   // ── Récapitulatif des ingrédients (lecture seule) ──
+  // Liste unique : les ingrédients identiques (même nom, même unité) sont
+  // fusionnés et leurs quantités numériques additionnées.
   function renderIngredientsRecap() {
     const wrap = document.getElementById('ingredients-recap');
     if (!wrap) return;
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const groups = [...document.querySelectorAll('#steps-container .step-block')].map((b, i) => ({
-      title: b.querySelector('input.font-headline-md')?.value.trim() || `Étape ${i + 1}`,
-      items: [...b.querySelectorAll('.ingredient-lines > div')].map(d => ({
+
+    const items = [];
+    document.querySelectorAll('#steps-container .ingredient-lines > div').forEach(d => {
+      const name = d.querySelector('.ing-name')?.value.trim();
+      if (!name) return;
+      items.push({
+        name,
         qty:  d.querySelector('.ing-qty')?.value.trim() || '',
         unit: d.querySelector('.ing-unit')?.value || '',
-        name: d.querySelector('.ing-name')?.value.trim() || '',
-      })).filter(x => x.name),
-    })).filter(g => g.items.length);
-    if (!groups.length) {
+      });
+    });
+    if (!items.length) {
       wrap.innerHTML = '<p class="text-on-surface-variant italic text-sm md:col-span-2">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>';
       return;
     }
-    wrap.innerHTML = groups.map(g => `
-      <div>
-        <h4 class="font-label-md text-label-md text-secondary uppercase border-b border-outline-variant pb-2 mb-3">${esc(g.title)}</h4>
-        <ul class="space-y-1.5">
-          ${g.items.map(it => `<li class="font-body-md text-body-md text-on-surface flex justify-between gap-6"><span>${esc(it.name)}</span><span class="font-label-md text-label-md text-primary whitespace-nowrap">${esc([it.qty, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
-        </ul>
+
+    const merged = [];
+    items.forEach(it => {
+      const key = it.name.toLowerCase() + '|' + it.unit.toLowerCase();
+      const ex = merged.find(m => m.key === key);
+      if (!ex) { merged.push({ key, ...it }); return; }
+      const a = parseFloat(String(ex.qty).replace(',', '.'));
+      const b = parseFloat(String(it.qty).replace(',', '.'));
+      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
+      else ex.qty = [ex.qty, it.qty].filter(Boolean).join(' + ');
+    });
+    merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+    wrap.innerHTML = merged.map(m => `
+      <div class="flex justify-between gap-6 border-b border-outline-variant/30 py-1.5">
+        <span class="font-body-md text-body-md text-on-surface">${esc(m.name)}</span>
+        <span class="font-label-md text-label-md text-primary whitespace-nowrap">${esc([m.qty, m.unit].filter(Boolean).join(' '))}</span>
       </div>`).join('');
   }
 
