@@ -202,19 +202,6 @@
       <button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button" id="add-utensil"><span class="material-symbols-outlined">add</span> Ajouter un ustensile</button>
     </section>
 
-    <!-- Ingredients -->
-    <section class="space-y-8">
-      <h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ingrédients</h2>
-      <div class="space-y-8" id="ingredients-container">
-        <div class="ingredient-group">
-          <input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom de l'étape (ex : Pâte sucrée)">
-          <div class="space-y-4 ingredient-lines"></div>
-          <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
-        </div>
-      </div>
-      <button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button" id="add-group"><span class="material-symbols-outlined">add_circle</span> Ajouter une étape</button>
-    </section>
-
     <!-- Preparation Planning -->
     <section class="space-y-8">
       <div class="flex justify-between items-end border-b border-primary pb-4">
@@ -246,6 +233,11 @@
             <div class="flex gap-8">
               <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
               <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="2h (repos)" type="text"></div>
+            </div>
+            <div class="flex flex-col step-ingredients">
+              <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+              <div class="space-y-4 ingredient-lines"></div>
+              <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
             </div>
             <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
             <div class="space-y-4">
@@ -356,19 +348,6 @@
     if (focus) div.querySelector('input').focus();
   }
 
-  // add ingredient group
-  let groupCount = 1;
-  document.getElementById('add-group').addEventListener('click', function(){
-    groupCount++;
-    const div = document.createElement('div');
-    div.className = 'ingredient-group';
-    div.innerHTML = `<input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom de l'étape (ex : Crème Chiboust)">
-    <div class="space-y-4 ingredient-lines"></div>
-    <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>`;
-    document.getElementById('ingredients-container').appendChild(div);
-    div.querySelector('input').focus();
-  });
-
   // add step
   let stepCount = 1;
   document.getElementById('add-step').addEventListener('click', function(){
@@ -387,6 +366,11 @@
             <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
             <div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="repos..." type="text"></div>
           </div>
+          <div class="flex flex-col step-ingredients">
+            <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+            <div class="space-y-4 ingredient-lines"></div>
+            <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
+          </div>
           <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
         </div>
         <div class="lg:col-span-4 grid grid-cols-2 gap-4">
@@ -395,6 +379,7 @@
         </div>
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
+    addIngredientLine(div.querySelector('.step-ingredients button'), false);
     div.querySelector('input').focus();
   });
 
@@ -441,10 +426,10 @@
         if (utErr) console.error('Ustensiles non enregistrés :', utErr);
       }
 
-      // Ingrédients → ingredient_groups + ingredients
-      const groupEls = [...document.querySelectorAll('#ingredients-container .ingredient-group')];
-      for (let gi = 0; gi < groupEls.length; gi++) {
-        const lines = [...groupEls[gi].querySelectorAll('.ingredient-lines > div')].map((d, i) => ({
+      // Ingrédients des étapes → un ingredient_group par étape (nom = titre de l'étape)
+      const stepEls = [...document.querySelectorAll('#steps-container .step-block')];
+      for (let gi = 0; gi < stepEls.length; gi++) {
+        const lines = [...stepEls[gi].querySelectorAll('.ingredient-lines > div')].map((d, i) => ({
           name: d.querySelector('.ing-name')?.value.trim() || '',
           quantity: d.querySelector('.ing-qty')?.value.trim() || null,
           unit: d.querySelector('.ing-unit')?.value || null,
@@ -453,7 +438,7 @@
           order_index: i,
         })).filter(l => l.name);
         if (!lines.length) continue;
-        const groupName = groupEls[gi].querySelector('.group-name')?.value.trim() || 'Ingrédients';
+        const groupName = stepEls[gi].querySelector('input')?.value.trim() || `Étape ${gi + 1}`;
         const { data: grp, error: grpErr } = await db.from('ingredient_groups')
           .insert({ recipe_id: recipe.id, name: groupName, order_index: gi }).select().single();
         if (grpErr) { console.error('Groupe non enregistré :', grpErr); continue; }
@@ -659,7 +644,7 @@
     ]);
     renderTags();
     addUtensilRow(false); // première ligne vide
-    addIngredientLine(document.querySelector('#ingredients-container .ingredient-group button'), false);
+    addIngredientLine(document.querySelector('#steps-container .step-ingredients button'), false);
   })();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
