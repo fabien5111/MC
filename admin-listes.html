@@ -190,6 +190,14 @@ const LIST_CONFIGS = {
     badge: 'bg-outline-variant text-on-surface-variant', type: 'Global', desc: 'Unités disponibles dans les recettes',
     fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : gramme', required: true }],
   },
+  ingredient_refs: {
+    label: 'Ingrédients', table: 'ingredient_refs', orderBy: 'name',
+    badge: 'bg-tertiary-fixed text-on-tertiary-fixed', type: 'Garde-manger', desc: 'Ingrédients de référence pour les recettes',
+    fields: [
+      { key: 'name', label: 'Libellé', type: 'text', placeholder: 'ex : Farine T55', required: true },
+      { key: 'url',  label: 'URL',     type: 'url',  placeholder: 'https://…' },
+    ],
+  },
   utensils: {
     label: 'Ustensiles', table: 'utensils', orderBy: 'name',
     badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Ustensiles de référence pour les recettes',
@@ -202,7 +210,7 @@ const LIST_CONFIGS = {
 };
 
 // ── État ─────────────────────────────────────────────────────
-let sectionData  = { recipe_types: [], tags: [], mold_types: [], molds: [], difficulties: [], units: [], utensils: [] };
+let sectionData  = { recipe_types: [], tags: [], mold_types: [], molds: [], difficulties: [], units: [], utensils: [], ingredient_refs: [] };
 let moldTypes    = [];
 let activeKey    = null;
 let activeMoldTypeFilter = null;
@@ -210,7 +218,7 @@ let formEntry    = null;
 
 // ── Chargement initial ───────────────────────────────────────
 async function loadAll() {
-  const [types, tags, moldTypesList, diffs, units, moldsList, utensilsList] = await Promise.all([
+  const [types, tags, moldTypesList, diffs, units, moldsList, utensilsList, ingredientRefs] = await Promise.all([
     getListEntries('recipe_types', 'id'),
     getListEntries('tags', 'name'),
     getListEntries('mold_types', 'name'),
@@ -218,8 +226,9 @@ async function loadAll() {
     getListEntries('units', 'name'),
     getMolds(),
     getListEntries('utensils', 'name'),
+    getListEntries('ingredient_refs', 'name'),
   ]);
-  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, molds: moldsList, difficulties: diffs, units, utensils: utensilsList };
+  sectionData = { recipe_types: types, tags, mold_types: moldTypesList, molds: moldsList, difficulties: diffs, units, utensils: utensilsList, ingredient_refs: ingredientRefs };
   moldTypes = moldTypesList;
   renderSummary();
 }

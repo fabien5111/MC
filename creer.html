@@ -310,7 +310,7 @@
 
   // add utensil : géré plus bas (addUtensilRow, avec autocomplétion)
 
-  // add ingredient line (unités remplies depuis la liste de référence)
+  // add ingredient line (unités + ingrédients depuis les listes de référence)
   function addIngredientLine(btn, focus = true) {
     const container = btn.previousElementSibling;
     const div = document.createElement('div');
@@ -319,13 +319,32 @@
       + '<select class="ing-unit w-32 editorial-input text-on-surface bg-transparent cursor-pointer">'
       + (window.unitOptionsHTML ? window.unitOptionsHTML() : '<option value="">— unité —</option>')
       + '</select>'
-      + '<input class="ing-name flex-grow editorial-input text-on-surface" type="text" placeholder="Ingrédient">'
+      + '<div class="relative flex-grow">'
+      +   '<input class="ing-name editorial-input text-on-surface w-full pr-7" type="text" placeholder="Ingrédient" autocomplete="off">'
+      +   '<a class="ing-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l\'ingrédient" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>'
+      +   '<div class="ing-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>'
+      + '</div>'
+      + '<input class="ing-comment editorial-input text-on-surface flex-grow" type="text" placeholder="Commentaire (optionnel)">'
       + '<button tabindex="-1" class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
     container.appendChild(div);
 
-    // Tab depuis le champ ingrédient de la dernière ligne remplie → nouvelle ligne
-    const nameEl = div.querySelector('.ing-name');
-    nameEl.addEventListener('keydown', e => {
+    const nameEl    = div.querySelector('.ing-name');
+    const commentEl = div.querySelector('.ing-comment');
+
+    // Autocomplétion depuis la liste de référence des ingrédients
+    if (window.attachRefAutocomplete) {
+      window.attachRefAutocomplete({
+        input: nameEl,
+        suggest: div.querySelector('.ing-suggest'),
+        link: div.querySelector('.ing-link'),
+        holder: div,
+        getItems: () => window.allIngredientRefs || [],
+        nextField: commentEl,
+      });
+    }
+
+    // Tab depuis le commentaire de la dernière ligne remplie → nouvelle ligne
+    commentEl.addEventListener('keydown', e => {
       if (e.key === 'Tab' && !e.shiftKey
           && div === container.lastElementChild
           && nameEl.value.trim()) {
@@ -429,6 +448,8 @@
           name: d.querySelector('.ing-name')?.value.trim() || '',
           quantity: d.querySelector('.ing-qty')?.value.trim() || null,
           unit: d.querySelector('.ing-unit')?.value || null,
+          comment: d.querySelector('.ing-comment')?.value.trim() || null,
+          url: d.dataset.url || null,
           order_index: i,
         })).filter(l => l.name);
         if (!lines.length) continue;
@@ -464,6 +485,79 @@
     '<option value="">— unité —</option>'
     + allUnits.map(u => `<option value="${u.name}"${u.name === selected ? ' selected' : ''}>${u.name}</option>`).join('');
 
+  // ── Autocomplétion générique depuis une liste de référence [{name, url}] ──
+  // input : champ texte ; suggest : menu déroulant ; link : icône lien ;
+  // holder : élément portant dataset.url ; nextField : focus après sélection.
+  // Clavier : ↓/↑ surlignent, Tab/Entrée valident, Échap ferme.
+  function attachRefAutocomplete({ input, suggest, link, holder, getItems, nextField }) {
+    let matches = [];
+    let hi = -1;
+
+    function setRef(u) {
+      input.value = u.name;
+      if (u.url) { holder.dataset.url = u.url; link.href = u.url; link.style.display = ''; }
+      else { delete holder.dataset.url; link.style.display = 'none'; }
+      closeSuggest();
+    }
+    function clearRef() { delete holder.dataset.url; link.style.display = 'none'; }
+    function closeSuggest() { suggest.style.display = 'none'; matches = []; hi = -1; }
+    function paintHighlight() {
+      suggest.querySelectorAll('button').forEach((b, i) =>
+        b.classList.toggle('bg-surface-container', i === hi));
+    }
+
+    input.addEventListener('input', () => {
+      clearRef();
+      const q = input.value.trim().toLowerCase();
+      if (!q) { closeSuggest(); return; }
+      matches = getItems().filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
+      hi = -1;
+      if (!matches.length) { closeSuggest(); return; }
+      suggest.innerHTML = matches.map(u =>
+        `<button type="button" tabindex="-1" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
+      // mousedown (et pas click) pour passer avant le blur de l'input
+      suggest.querySelectorAll('button').forEach((b, i) =>
+        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); nextField && nextField.focus(); }));
+      suggest.style.display = '';
+    });
+
+    input.addEventListener('keydown', e => {
+      const open = suggest.style.display !== 'none' && matches.length > 0;
+      if (!open) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        hi = Math.min(hi + 1, matches.length - 1);
+        paintHighlight();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        hi = Math.max(hi - 1, -1);
+        paintHighlight();
+      } else if (e.key === 'Tab' && !e.shiftKey) {
+        // Tab valide l'élément surligné puis continue vers le champ suivant
+        if (hi >= 0) setRef(matches[hi]);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setRef(matches[hi >= 0 ? hi : 0]);
+        nextField && nextField.focus();
+      } else if (e.key === 'Escape') {
+        closeSuggest();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => closeSuggest(), 150);
+      // Nom tapé identique à une référence → on lie quand même l'URL
+      if (!holder.dataset.url) {
+        const exact = getItems().find(u => u.name.toLowerCase() === input.value.trim().toLowerCase());
+        if (exact) setRef(exact);
+      }
+    });
+  }
+  window.attachRefAutocomplete = attachRefAutocomplete;
+
+  // ── Ingrédients de référence (autocomplétion des lignes d'ingrédients) ──
+  window.allIngredientRefs = []; // [{id, name, url}] — table ingredient_refs
+
   // ── Ustensiles : autocomplétion depuis la liste de référence ──
   let allUtensils = []; // [{id, name, url, ...}] — table utensils
 
@@ -485,79 +579,14 @@
 
     const nameInput    = li.querySelector('.u-name');
     const commentInput = li.querySelector('.u-comment');
-    const suggest      = li.querySelector('.u-suggest');
-    const link         = li.querySelector('.u-link');
 
-    let matches = [];  // suggestions courantes
-    let hi = -1;       // index surligné (flèches clavier)
-
-    // Ustensile choisi dans la liste de référence → URL liée au nom
-    function setRef(u) {
-      nameInput.value = u.name;
-      if (u.url) { li.dataset.url = u.url; link.href = u.url; link.style.display = ''; }
-      else { delete li.dataset.url; link.style.display = 'none'; }
-      closeSuggest();
-    }
-    // Saisie libre → aucun lien, stocké uniquement avec la recette
-    function clearRef() {
-      delete li.dataset.url;
-      link.style.display = 'none';
-    }
-    function closeSuggest() {
-      suggest.style.display = 'none';
-      matches = []; hi = -1;
-    }
-    function paintHighlight() {
-      suggest.querySelectorAll('button').forEach((b, i) =>
-        b.classList.toggle('bg-surface-container', i === hi));
-    }
-
-    nameInput.addEventListener('input', () => {
-      clearRef();
-      const q = nameInput.value.trim().toLowerCase();
-      if (!q) { closeSuggest(); return; }
-      matches = allUtensils.filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
-      hi = -1;
-      if (!matches.length) { closeSuggest(); return; }
-      suggest.innerHTML = matches.map(u =>
-        `<button type="button" tabindex="-1" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
-      // mousedown (et pas click) pour passer avant le blur de l'input
-      suggest.querySelectorAll('button').forEach((b, i) =>
-        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); commentInput.focus(); }));
-      suggest.style.display = '';
-    });
-
-    // Navigation clavier : flèches pour surligner, Tab/Entrée pour choisir
-    nameInput.addEventListener('keydown', e => {
-      const open = suggest.style.display !== 'none' && matches.length > 0;
-      if (!open) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        hi = Math.min(hi + 1, matches.length - 1);
-        paintHighlight();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        hi = Math.max(hi - 1, -1);
-        paintHighlight();
-      } else if (e.key === 'Tab' && !e.shiftKey) {
-        // Tab valide l'élément surligné puis passe au commentaire (comportement natif)
-        if (hi >= 0) setRef(matches[hi]);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        setRef(matches[hi >= 0 ? hi : 0]);
-        commentInput.focus();
-      } else if (e.key === 'Escape') {
-        closeSuggest();
-      }
-    });
-
-    nameInput.addEventListener('blur', () => {
-      setTimeout(() => closeSuggest(), 150);
-      // Nom tapé identique à une référence → on lie quand même l'URL
-      if (!li.dataset.url) {
-        const exact = allUtensils.find(u => u.name.toLowerCase() === nameInput.value.trim().toLowerCase());
-        if (exact) setRef(exact);
-      }
+    attachRefAutocomplete({
+      input: nameInput,
+      suggest: li.querySelector('.u-suggest'),
+      link: li.querySelector('.u-link'),
+      holder: li,
+      getItems: () => allUtensils,
+      nextField: commentInput,
     });
 
     // Tab depuis le commentaire de la dernière ligne → nouvelle ligne d'ustensile
@@ -622,10 +651,11 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    [allTags, allUtensils, allUnits] = await Promise.all([
+    [allTags, allUtensils, allUnits, window.allIngredientRefs] = await Promise.all([
       getTags(),
       getListEntries('utensils', 'name'),
       getUnits(),
+      getListEntries('ingredient_refs', 'name'),
     ]);
     renderTags();
     addUtensilRow(false); // première ligne vide
