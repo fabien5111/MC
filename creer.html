@@ -207,7 +207,7 @@
       <h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ingrédients</h2>
       <div class="space-y-8" id="ingredients-container">
         <div class="ingredient-group">
-          <input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom du groupe (ex : Pâte sucrée)">
+          <input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom de l'étape (ex : Pâte sucrée)">
           <div class="space-y-4 ingredient-lines"></div>
           <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
         </div>
@@ -343,7 +343,7 @@
     groupCount++;
     const div = document.createElement('div');
     div.className = 'ingredient-group';
-    div.innerHTML = `<input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom du groupe (ex: Crème Chiboust)">
+    div.innerHTML = `<input class="group-name editorial-input font-label-md text-label-md text-primary uppercase focus:ring-0 w-full mb-4" type="text" placeholder="Nom de l'étape (ex : Crème Chiboust)">
     <div class="space-y-4 ingredient-lines"></div>
     <button class="mt-4 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>`;
     document.getElementById('ingredients-container').appendChild(div);
