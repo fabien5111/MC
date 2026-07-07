@@ -200,7 +200,7 @@ async function createRecipe(recipeData) {
 
 async function getUserRecipes(userId) {
   const { data } = await db.from('recipes')
-    .select('id, title, hero_image_url, status, rating_avg, created_at')
+    .select('id, title, hero_image_url, status, is_public, rating_avg, created_at')
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
   return data || [];

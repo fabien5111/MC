@@ -100,33 +100,8 @@
 
     <!-- Tab: Recipes -->
     <div class="tab-content py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="tab-recipes">
-      <div class="group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300">
-        <a href="recette.html" class="aspect-[4/3] overflow-hidden rounded-md relative block">
-          <image-slot id="profil-recipe1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEzVp4AYJog1Dv280v-4R42WDvpPZhCH5ZNyCjQNZWkK9kzTcvcpgnQ6f7kLSHcrPYZEVCg1yKe5p5OfgsV1TzAx1nqz57AfXBq2CgEZYNuUEYBEJsjfx9AP4Z9paApaY4MjlRgBjTGSiUL04rDpcaOARIdH8uqyu7x-dRwFe1Yf2t66vB8X-vRoFKJ58hzqhFmhfvX-BGhIFKHLKcDiduuTsCoIV5QoNSpXujfzb-V_Ux0m6dEcgaDUFxghyznCu84IzlkzOiN6Q" shape="rect" fit="cover" placeholder="Tartelette Framboise" style="width:100%;height:100%"></image-slot>
-          <div class="absolute top-3 left-3 flex flex-wrap gap-2 z-10"><span class="bg-primary/90 text-white text-[10px] font-label-md px-2 py-1 rounded">Publiée</span><span class="bg-white/90 text-primary text-[10px] font-label-md px-2 py-1 rounded">Publique</span></div>
-        </a>
-        <div class="p-4">
-          <a href="recette.html"><h3 class="font-headline-md text-[20px] text-primary mb-2">Tartelette Framboise &amp; Verveine</h3></a>
-          <div class="flex justify-between items-center border-t border-outline-variant/30 pt-4 mt-2">
-            <div class="flex items-center gap-4 text-on-surface-variant font-label-md text-[12px]"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_today</span> 12 fois</span><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">favorite</span> 84</span></div>
-            <a href="creer.html" title="Modifier"><span class="material-symbols-outlined text-primary cursor-pointer hover:scale-110 transition-transform">edit_note</span></a>
-          </div>
-        </div>
-      </div>
-      <div class="group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300">
-        <a href="recette.html" class="aspect-[4/3] overflow-hidden rounded-md relative block grayscale-[0.5]">
-          <image-slot id="profil-recipe2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQY6tCL4e8eOkXf5Z7yagGIdSvrnGKW6bROO1G3P0H3XFGEZwLBF4Tv-Ka0UuIJyhFitLxu4eelK-P2LnG0vABnAtr0JQRROHqEoHDs0Njm8bJPVZPF8Mj7ixv8umcWBbMfZ6T0T25kO3mB9WoZ9pk6cQ87IaTSdVvowDUWCpc22l1_bAdRjLnlC7PjazFJejA5OOrNVGI50zveqxBU1zIgf7sbHSM2MX8MrIQQc_E8TjmEpAjkQlIOpInujlzVoXSDPrD4JjECn0" shape="rect" fit="cover" placeholder="Entremets Chocolat" style="width:100%;height:100%"></image-slot>
-          <div class="absolute top-3 left-3 flex flex-wrap gap-2 z-10"><span class="bg-secondary/90 text-white text-[10px] font-label-md px-2 py-1 rounded">En cours de rédaction</span><span class="bg-white/90 text-primary text-[10px] font-label-md px-2 py-1 rounded">Privée</span></div>
-        </a>
-        <div class="p-4">
-          <a href="creer.html"><h3 class="font-headline-md text-[20px] text-primary mb-2">Entremets Chocolat Noir 70%</h3></a>
-          <div class="flex justify-between items-center border-t border-outline-variant/30 pt-4 mt-2 opacity-50">
-            <div class="flex items-center gap-4 text-on-surface-variant font-label-md text-[12px]"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_today</span> 0 fois</span><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">favorite</span> 0</span></div>
-            <a href="creer.html" title="Modifier"><span class="material-symbols-outlined text-primary cursor-pointer">edit_note</span></a>
-          </div>
-        </div>
-      </div>
-      <a href="creer.html" class="group border border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center gap-3 text-on-surface-variant hover:text-primary hover:border-primary transition-colors min-h-[260px]">
+      <!-- cartes injectées par loadProfil() -->
+      <a href="creer.html" data-add-card class="group border border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center gap-3 text-on-surface-variant hover:text-primary hover:border-primary transition-colors min-h-[260px]">
         <span class="material-symbols-outlined text-[40px]">add_circle</span>
         <span class="font-label-md text-label-md">Créer une recette</span>
       </a>
@@ -369,24 +344,37 @@
       setSlotSrc('profil-banner', profile.banner_url);
     }
 
-    // Recettes de l'utilisateur
+    // Recettes de l'utilisateur (tous statuts : publiées, en attente, brouillons)
     const userRecipes = await getUserRecipes(user.id);
-    const carnetGrid = document.getElementById('carnet-grid');
+    const carnetGrid = document.getElementById('tab-recipes');
     if (carnetGrid && userRecipes.length > 0) {
       const addCard = carnetGrid.querySelector('[data-add-card]');
+      const STATUS = {
+        published: { label: 'Publiée',    badge: 'bg-primary/90' },
+        pending:   { label: 'En attente', badge: 'bg-secondary/90' },
+        draft:     { label: 'Brouillon',  badge: 'bg-secondary/90' },
+      };
       userRecipes.forEach(r => {
+        const st = STATUS[r.status] || STATUS.draft;
         const div = document.createElement('div');
-        div.className = 'relative group';
+        div.className = 'group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300';
         div.innerHTML = `
-          <a href="recette.html?id=${r.id}" class="block border border-outline-variant overflow-hidden hover:shadow-md transition-all">
-            <div class="aspect-video bg-surface-container flex items-center justify-center">
-              ${r.hero_image_url ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-3xl text-on-surface-variant">cake</span>'}
+          <a href="recette.html?id=${r.id}" class="aspect-[4/3] overflow-hidden rounded-md relative block">
+            ${r.hero_image_url
+              ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">`
+              : '<div class="w-full h-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface-variant">cake</span></div>'}
+            <div class="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
+              <span class="${st.badge} text-white text-[10px] font-label-md px-2 py-1 rounded">${st.label}</span>
+              <span class="bg-white/90 text-primary text-[10px] font-label-md px-2 py-1 rounded">${r.is_public === false ? 'Privée' : 'Publique'}</span>
             </div>
-            <div class="p-4">
-              <p class="font-body-md font-medium text-on-surface text-sm">${r.title}</p>
-              <span class="text-xs text-on-surface-variant">${r.status === 'published' ? 'Publié' : r.status === 'pending' ? 'En attente' : 'Brouillon'}</span>
+          </a>
+          <div class="p-4">
+            <a href="recette.html?id=${r.id}"><h3 class="font-headline-md text-[20px] text-primary mb-2">${r.title}</h3></a>
+            <div class="flex justify-between items-center border-t border-outline-variant/30 pt-4 mt-2">
+              <span class="text-[12px] font-label-md text-on-surface-variant">${formatDate(r.created_at)}</span>
+              <span class="text-[12px] font-label-md text-on-surface-variant">${r.rating_avg ? parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
             </div>
-          </a>`;
+          </div>`;
         if (addCard) carnetGrid.insertBefore(div, addCard);
         else carnetGrid.appendChild(div);
       });
