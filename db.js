@@ -497,6 +497,34 @@ async function getAdminStats() {
   return { totalRecipes: r.count || 0, pendingRecipes: p.count || 0, pendingComments: c.count || 0 };
 }
 
+// ── COMPRESSION D'IMAGES ─────────────────────────────────────
+// Redimensionne (côté le plus long ≤ maxDim) et encode en WebP.
+// Accepte une dataURL ou une URL ; retourne une dataURL compressée.
+function compressImageUrl(url, maxDim = 1200, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/webp', quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// Lit la photo affichée dans un <image-slot> (dataURL si déposée par l'utilisateur)
+function getSlotImage(slotId) {
+  const el = document.getElementById(slotId);
+  if (!el) return null;
+  const src = el.shadowRoot?.querySelector('img')?.src || el.getAttribute('src');
+  return src && src.startsWith('data:') ? src : null;
+}
+
 // ── PHOTOS PROFIL ────────────────────────────────────────────
 function resizeImage(file, maxWidth) {
   return new Promise((resolve, reject) => {

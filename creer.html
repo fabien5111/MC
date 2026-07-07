@@ -467,7 +467,19 @@
 
       const desc = document.querySelector('textarea')?.value?.trim() || '';
       const isPublic = document.getElementById('visibility-toggle')?.checked ?? true;
-      const recipe = await createRecipe({ title, description: desc, is_public: isPublic });
+
+      // Photo principale : recompression 1200px WebP avant stockage
+      let heroUrl = null;
+      const heroRaw = getSlotImage('creer-main');
+      if (heroRaw) {
+        try { heroUrl = await compressImageUrl(heroRaw, 1200, 0.8); }
+        catch (_) { heroUrl = heroRaw; }
+      }
+
+      const recipe = await createRecipe({
+        title, description: desc, is_public: isPublic,
+        ...(heroUrl ? { hero_image_url: heroUrl } : {}),
+      });
 
       // Tags sélectionnés → recipe_tags
       if (selectedTags.size > 0) {
@@ -489,9 +501,58 @@
         if (utErr) console.error('Ustensiles non enregistrés :', utErr);
       }
 
-      // Ingrédients des étapes → un ingredient_group par étape (nom = titre de l'étape)
+      // "20 min" → 20 ; "2h" → 120 ; "2h30" → 150 ; sinon null
+      const parseMinutes = txt => {
+        if (!txt) return null;
+        const hm = txt.toLowerCase().match(/(\d+)\s*h\s*(\d+)?/);
+        if (hm) return (+hm[1]) * 60 + (+(hm[2] || 0));
+        const mm = txt.match(/(\d+)/);
+        return mm ? +mm[1] : null;
+      };
+
+      // Étapes → recipe_steps (+ visuels compressés → step_photos)
+      // + un ingredient_group par étape (nom = titre de l'étape)
       const stepEls = [...document.querySelectorAll('#steps-container .step-block')];
       for (let gi = 0; gi < stepEls.length; gi++) {
+        const b = stepEls[gi];
+        const stepTitle = b.querySelector('input.font-headline-md')?.value.trim() || '';
+        const timeInputs = b.querySelectorAll('.flex-wrap input');
+        const stepDesc  = b.querySelector('textarea')?.value.trim() || '';
+        const stepTips  = b.querySelector('details textarea')?.value.trim() || '';
+        const dayOffset = Math.max(0, parseInt(b.querySelector('.step-day-offset')?.value, 10) || 0);
+        const photosRaw = [...b.querySelectorAll('image-slot')]
+          .map(s => s.shadowRoot?.querySelector('img')?.src)
+          .filter(u => u && u.startsWith('data:'));
+        const hasContent = stepTitle || stepDesc || photosRaw.length
+          || [...b.querySelectorAll('.ing-name')].some(i => i.value.trim());
+
+        if (hasContent) {
+          const { data: stepRow, error: stepErr } = await db.from('recipe_steps').insert({
+            recipe_id: recipe.id,
+            step_number: gi + 1,
+            title: stepTitle || `Étape ${gi + 1}`,
+            description: stepDesc || null,
+            prep_time: parseMinutes(timeInputs[0]?.value.trim()),
+            wait_time: parseMinutes(timeInputs[1]?.value.trim()),
+            day_offset: dayOffset,
+            tips: stepTips || null,
+            order_index: gi,
+          }).select().single();
+          if (stepErr) console.error('Étape non enregistrée :', stepErr);
+
+          // Visuels de l'étape : recompression 800px WebP avant stockage
+          if (stepRow && photosRaw.length) {
+            const photoRows = [];
+            for (let pi = 0; pi < photosRaw.length; pi++) {
+              let u = photosRaw[pi];
+              try { u = await compressImageUrl(u, 800, 0.8); } catch (_) {}
+              photoRows.push({ step_id: stepRow.id, url: u, order_index: pi });
+            }
+            const { error: phErr } = await db.from('step_photos').insert(photoRows);
+            if (phErr) console.error('Photos d\'étape non enregistrées :', phErr);
+          }
+        }
+
         const lines = [...stepEls[gi].querySelectorAll('.ingredient-lines > div')].map((d, i) => ({
           name: d.querySelector('.ing-name')?.value.trim() || '',
           quantity: d.querySelector('.ing-qty')?.value.trim() || null,
