@@ -185,9 +185,9 @@
                 <span class="maryse-pill bg-outline-variant" data-i="4"></span>
               </div>
             </div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="1h 30min" type="text"></div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="45min" type="text"></div>
-            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="2h 15min" type="text"></div>
+            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="recipe-prep editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="90" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><div class="flex items-baseline gap-2"><input class="recipe-cook editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="45" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><div class="flex items-baseline gap-2"><input class="recipe-total editorial-input font-headline-md text-headline-md text-primary" style="width:5.5rem" placeholder="135" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
           </div>
         </div>
       </div>
@@ -297,6 +297,23 @@
       });
     });
   });
+
+  // Durée totale = prép + cuisson, tant que l'utilisateur ne l'a pas modifiée
+  (function () {
+    const prep = document.querySelector('.recipe-prep');
+    const cook = document.querySelector('.recipe-cook');
+    const total = document.querySelector('.recipe-total');
+    let touched = false;
+    total.addEventListener('input', () => { touched = true; });
+    const sync = () => {
+      if (touched && total.value.trim()) return;
+      const t = (parseInt(prep.value, 10) || 0) + (parseInt(cook.value, 10) || 0);
+      total.value = t > 0 ? t : '';
+      touched = false;
+    };
+    prep.addEventListener('input', sync);
+    cook.addEventListener('input', sync);
+  })();
 
   // visibility toggle label
   document.getElementById('visibility-toggle').addEventListener('change', function(){
@@ -478,8 +495,15 @@
         catch (_) { heroUrl = heroRaw; }
       }
 
+      const globalMin = sel => {
+        const v = document.querySelector(sel)?.value.trim();
+        return v ? Math.max(0, parseInt(v, 10) || 0) : null;
+      };
       const recipe = await createRecipe({
         title, description: desc, is_public: isPublic,
+        prep_time: globalMin('.recipe-prep'),
+        cook_time: globalMin('.recipe-cook'),
+        total_time: globalMin('.recipe-total'),
         ...(heroUrl ? { hero_image_url: heroUrl } : {}),
       });
 
