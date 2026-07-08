@@ -186,7 +186,7 @@
     <!-- Planning Schedule -->
     <div class="mb-12 py-10 border-y border-outline-variant" id="recipe-planning-section">
       <h3 class="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
-      <div class="relative flex flex-col md:flex-row justify-between gap-8" id="recipe-planning">
+      <div class="relative flex flex-col md:flex-row gap-8" id="recipe-planning">
         <div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>
         <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 24H</span><p class="font-body-md text-body-md font-semibold">Pâte feuilletée &amp; Repos</p></div>
         <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 3H</span><p class="font-body-md text-body-md font-semibold">Cuisson &amp; Caramel</p></div>
@@ -485,7 +485,7 @@
           });
         planEl.innerHTML = '<div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>'
           + days.map((d, i) => `
-            <div class="relative flex flex-col items-center text-center gap-4 z-10">
+            <div class="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
               <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">${i + 1}</div>
               <span class="font-label-md text-[12px] text-secondary">${dayLabel(d.offset)}</span>
               ${d.items.map(t => `<p class="font-body-md text-body-md font-semibold">${esc(t)}</p>`).join('')}
