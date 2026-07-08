@@ -994,6 +994,10 @@
     renderIngredientsRecap();
     document.querySelector('h1').textContent = 'Modifier la recette';
     document.title = 'Maryse-Club | Modifier ' + (r.title || 'la recette');
+
+    // L'ajout des étapes a déplacé le focus/défilement : revenir en haut
+    document.activeElement?.blur?.();
+    window.scrollTo(0, 0);
   }
 
   (async () => {
