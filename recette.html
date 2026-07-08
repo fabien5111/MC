@@ -510,7 +510,7 @@
             stepTotal ? `<span class="bg-primary text-white px-3 py-1">TOTAL ${formatTime(stepTotal).toUpperCase()}</span>` : '',
           ].filter(Boolean).join('');
           return `
-          <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}">
             <div class="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
               <h4 class="font-headline-md text-headline-md text-primary">${i + 1}. ${esc(s.title || 'Étape ' + (i + 1))}</h4>
               <div class="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">${badges}</div>
@@ -567,7 +567,7 @@
       merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       if (merged.length) {
         fullUl.innerHTML = merged.map(m => `
-          <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+          <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
             <span class="font-body-md text-body-md">${esc(m.name)}</span>
             <span class="font-label-md text-label-md text-primary">${esc([m.qty, m.unit].filter(Boolean).join(' '))}</span>
           </li>`).join('');
