@@ -30,6 +30,9 @@
   .maryse-logo-font { font-family:'Great Vibes',cursive; }
   .maryse-pill { width:26px; height:13px; border-radius:9999px; cursor:pointer; transition:all .2s; }
   image-slot { display:block; }
+  .rich-content:empty:before { content: attr(data-placeholder); color:#a8999b; font-style:italic; pointer-events:none; }
+  .rich-content b, .rich-content strong { font-weight:700; }
+  .rich-content { white-space:pre-wrap; }
 </style>
 </head>
 <body class="bg-background text-on-background font-body-md min-h-screen pb-20 md:pb-0">
@@ -540,9 +543,56 @@
         </div>
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
+    upgradeStepEditors(div);
     addIngredientLine(div.querySelector('.step-ingredients > button'), false);
     renderPlanning();
     div.querySelector('input').focus();
+  });
+
+  // ── Éditeur enrichi (gras / italique) ────────────────────────
+  // Remplace un textarea par une zone contenteditable + barre d'outils.
+  function upgradeToRich(textarea, marker) {
+    if (!textarea) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'rich-editor bg-surface-container-low border border-outline-variant focus-within:border-primary transition-colors w-full';
+    const tb = document.createElement('div');
+    tb.className = 'flex gap-1 border-b border-outline-variant/50 px-2 py-1';
+    tb.innerHTML = '<button type="button" tabindex="-1" data-cmd="bold" title="Gras (Ctrl+B)" class="rich-btn p-1 rounded hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[20px]">format_bold</span></button>'
+      + '<button type="button" tabindex="-1" data-cmd="italic" title="Italique (Ctrl+I)" class="rich-btn p-1 rounded hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[20px]">format_italic</span></button>';
+    const content = document.createElement('div');
+    content.className = 'rich-content w-full p-4 font-body-md text-body-md outline-none' + (marker.startsWith('#') ? '' : ' ' + marker);
+    if (marker.startsWith('#')) content.id = marker.slice(1);
+    content.contentEditable = 'true';
+    content.dataset.placeholder = textarea.placeholder || '';
+    content.style.minHeight = ((textarea.rows || 4) * 1.6) + 'em';
+    if (textarea.value) content.innerHTML = textarea.value;
+    wrap.append(tb, content);
+    textarea.replaceWith(wrap);
+    return content;
+  }
+  function upgradeStepEditors(scope) {
+    scope.querySelectorAll('textarea').forEach(t =>
+      upgradeToRich(t, t.closest('details') ? 'step-tips' : 'step-desc'));
+  }
+  // Étape statique + conseils de la recette
+  document.querySelectorAll('#steps-container .step-block').forEach(upgradeStepEditors);
+  upgradeToRich(document.getElementById('recipe-tips'), '#recipe-tips');
+
+  // Boutons : mousedown (et pas click) pour conserver la sélection dans l'éditeur
+  document.addEventListener('mousedown', e => {
+    const btn = e.target.closest('.rich-btn');
+    if (!btn) return;
+    e.preventDefault();
+    document.execCommand(btn.dataset.cmd, false, null);
+  });
+  // État actif des boutons selon la sélection courante
+  document.addEventListener('selectionchange', () => {
+    const ed = document.activeElement?.closest?.('.rich-editor');
+    document.querySelectorAll('.rich-editor .rich-btn').forEach(b => {
+      const on = !!ed && b.closest('.rich-editor') === ed && document.queryCommandState(b.dataset.cmd);
+      b.classList.toggle('bg-primary', on);
+      b.classList.toggle('text-white', on);
+    });
   });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -564,7 +614,9 @@
       const user = await getUser();
       if (!user) { window.location.href = 'connexion.html'; return; }
 
-      const desc = document.querySelector('textarea')?.value?.trim() || '';
+      const richValue = el => (el && el.textContent.trim()) ? el.innerHTML.trim() : null;
+      // Description de la recette (cartes/accueil) : texte brut de la 1re étape
+      const desc = document.querySelector('#steps-container .step-desc')?.textContent.trim() || '';
       const isPublic = document.getElementById('visibility-toggle')?.checked ?? true;
 
       // Photo principale : recompression 1200px WebP avant stockage
@@ -581,7 +633,7 @@
       };
       const payload = {
         title, description: desc, is_public: isPublic, status,
-        tips: document.getElementById('recipe-tips')?.value.trim() || null,
+        tips: richValue(document.getElementById('recipe-tips')),
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
         cook_time: globalMin('.recipe-cook'),
@@ -633,8 +685,8 @@
           const v = b.querySelector(sel)?.value.trim();
           return v ? Math.max(0, parseInt(v, 10) || 0) : null;
         };
-        const stepDesc  = b.querySelector('textarea')?.value.trim() || '';
-        const stepTips  = b.querySelector('details textarea')?.value.trim() || '';
+        const stepDesc  = richValue(b.querySelector('.step-desc')) || '';
+        const stepTips  = richValue(b.querySelector('.step-tips')) || '';
         const dayOffset = Math.max(0, parseInt(b.querySelector('.step-day-offset')?.value, 10) || 0);
         const photosRaw = [...b.querySelectorAll('image-slot')]
           .map(s => s.shadowRoot?.querySelector('img')?.src)
@@ -891,7 +943,7 @@
     visToggle.checked = r.is_public !== false;
     document.getElementById('visibility-label').textContent = visToggle.checked ? 'Public' : 'Privé';
     if (r.hero_image_url) document.getElementById('creer-main')?.setAttribute('src', r.hero_image_url);
-    document.getElementById('recipe-tips').value = r.tips || '';
+    document.getElementById('recipe-tips').innerHTML = r.tips || '';
 
     // Tags
     (r.recipe_tags || []).forEach(t => { if (t.tags?.id) selectedTags.set(t.tags.id, t.tags.name); });
@@ -920,9 +972,9 @@
       b.querySelector('.step-wait').value = s.wait_time ?? '';
       b.querySelector('.step-cook').value = s.cook_time ?? '';
       b.querySelector('.step-day-offset').value = s.day_offset || '';
-      b.querySelector('textarea').value = s.description || '';
-      const tipsTa = b.querySelector('details textarea');
-      if (tipsTa) tipsTa.value = s.tips || '';
+      b.querySelector('.step-desc').innerHTML = s.description || '';
+      const tipsEd = b.querySelector('.step-tips');
+      if (tipsEd) tipsEd.innerHTML = s.tips || '';
       sortIdx(s.step_photos).slice(0, 4).forEach((p, pi) => {
         b.querySelectorAll('image-slot')[pi]?.setAttribute('src', p.url);
       });

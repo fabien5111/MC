@@ -557,6 +557,26 @@ async function uploadPhoto(userId, file, type) {
   return dataUrl;
 }
 
+// Nettoie un HTML issu de l'éditeur enrichi : ne conserve que
+// gras/italique/retours à la ligne, sans aucun attribut.
+function sanitizeRich(html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = String(html ?? '');
+  const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'BR', 'P', 'DIV']);
+  (function walk(node) {
+    [...node.children].forEach(child => {
+      walk(child);
+      if (!ALLOWED.has(child.tagName)) {
+        while (child.firstChild) node.insertBefore(child.firstChild, child);
+        child.remove();
+      } else {
+        [...child.attributes].forEach(a => child.removeAttribute(a.name));
+      }
+    });
+  })(tpl.content);
+  return tpl.innerHTML;
+}
+
 // ── UTILITAIRES ──────────────────────────────────────────────
 function formatTime(minutes) {
   if (!minutes) return '—';
