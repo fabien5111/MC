@@ -621,8 +621,12 @@
         const v = document.querySelector(sel)?.value.trim();
         return v ? Math.max(0, parseInt(v, 10) || 0) : null;
       };
+      const level = document.querySelectorAll('#difficulty .maryse-pill.bg-primary').length;
+      const diffRow = (allDifficulties || []).reduce((best, d) =>
+        (!best || Math.abs(d.level - level) < Math.abs(best.level - level)) ? d : best, null);
       const payload = {
         title, description: desc, is_public: isPublic, status,
+        difficulty_id: diffRow?.id ?? null,
         tips: richValue(document.getElementById('recipe-tips')),
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
@@ -924,6 +928,7 @@
   });
 
   let editingId = null; // renseigné en mode édition (?id=…)
+  let allDifficulties = []; // [{id, name, level}] — table difficulties
 
   function prefillRecipe(r) {
     const sortIdx = arr => [...(arr || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -934,6 +939,16 @@
     document.getElementById('visibility-label').textContent = visToggle.checked ? 'Public' : 'Privé';
     if (r.hero_image_url) document.getElementById('creer-main')?.setAttribute('src', r.hero_image_url);
     document.getElementById('recipe-tips').innerHTML = r.tips || '';
+
+    // Difficulté
+    const lvl = r.difficulties?.level
+      ?? (allDifficulties.find(d => d.id === r.difficulty_id)?.level);
+    if (lvl) {
+      document.querySelectorAll('#difficulty .maryse-pill').forEach((q, j) => {
+        q.classList.toggle('bg-primary', j < lvl);
+        q.classList.toggle('bg-outline-variant', j >= lvl);
+      });
+    }
 
     // Tags
     (r.recipe_tags || []).forEach(t => { if (t.tags?.id) selectedTags.set(t.tags.id, t.tags.name); });
@@ -1005,11 +1020,12 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    [allTags, allUtensils, allUnits, window.allIngredientRefs] = await Promise.all([
+    [allTags, allUtensils, allUnits, window.allIngredientRefs, allDifficulties] = await Promise.all([
       getTags(),
       getListEntries('utensils', 'name'),
       getUnits(),
       getListEntries('ingredient_refs', 'name'),
+      getDifficulties(),
     ]);
     renderTags();
     addUtensilRow(false); // première ligne vide
