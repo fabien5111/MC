@@ -29,6 +29,7 @@
   details summary::-webkit-details-marker { display:none; }
   .maryse-logo-font { font-family:'Great Vibes',cursive; }
   image-slot { display:block; }
+  .maryse-pill { width:26px; height:13px; border-radius:9999px; }
 </style>
 </head>
 <body class="bg-background">
@@ -112,17 +113,22 @@
     </div>
 
     <!-- Technical Info Block -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4 bg-surface-container-low p-8 mb-12">
-      <div class="flex flex-col gap-1" id="tech-portions"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
-      <div class="flex flex-col gap-1" id="tech-taille"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Difficulté</span>
-        <div class="flex items-center gap-1.5 h-8" id="tech-difficulty">
-          <span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-primary"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span><span class="w-5 h-2.5 rounded-full bg-outline-variant"></span>
+    <div class="bg-surface-container-low p-8 mb-12 space-y-8">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4">
+        <div class="flex flex-col gap-1" id="tech-portions"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
+        <div class="flex flex-col gap-1" id="tech-taille"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
+        <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Difficulté</span>
+          <div class="flex items-center gap-2 h-8" id="tech-difficulty">
+            <span class="maryse-pill bg-primary"></span><span class="maryse-pill bg-primary"></span><span class="maryse-pill bg-primary"></span><span class="maryse-pill bg-outline-variant"></span><span class="maryse-pill bg-outline-variant"></span>
+          </div>
         </div>
       </div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Temps de prép</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-prep">2h 30min</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Cuisson</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-cook">45min</span></div>
-      <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Durée totale</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-total">1 jour</span></div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+        <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Temps de prép</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-prep">2h 30min</span></div>
+        <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Cuisson</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-cook">45min</span></div>
+        <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Attente</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-wait">—</span></div>
+        <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Durée totale</span><span class="font-body-lg text-body-lg font-bold text-primary" id="tech-total">1 jour</span></div>
+      </div>
     </div>
 
     <!-- Utensils -->
@@ -455,12 +461,13 @@
     if (diffEl) {
       const level = recipe.difficulties?.level || 0;
       diffEl.innerHTML = level
-        ? [1, 2, 3, 4, 5].map(i => `<span class="w-5 h-2.5 rounded-full ${i <= level ? 'bg-primary' : 'bg-outline-variant'}"></span>`).join('')
+        ? [1, 2, 3, 4, 5].map(i => `<span class="maryse-pill ${i <= level ? 'bg-primary' : 'bg-outline-variant'}"></span>`).join('')
         : '<span class="text-sm text-on-surface-variant">—</span>';
     }
     const setTime = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? formatTime(v) : '—'; };
     setTime('tech-prep', recipe.prep_time);
     setTime('tech-cook', recipe.cook_time);
+    setTime('tech-wait', recipe.wait_time);
     setTime('tech-total', recipe.total_time);
 
     // Étapes triées + groupes d'ingrédients associés (même order_index)
