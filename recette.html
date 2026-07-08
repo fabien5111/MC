@@ -159,10 +159,10 @@
           </ul>
         </div>
       </div>
-      <details class="group border border-outline-variant mt-12">
-        <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">VOIR LA LISTE DE COURSES TOTALE</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+      <details class="group border border-outline-variant mt-12" id="full-ingredients-block">
+        <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
         <div class="p-4 bg-white">
-          <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+          <ul id="full-ingredients-ul" style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
             <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Beurre</span><span class="font-label-md text-label-md text-primary">250g</span></li>
             <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Farine</span><span class="font-label-md text-label-md text-primary">200g</span></li>
             <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Sucre</span><span class="font-label-md text-label-md text-primary">105g</span></li>
@@ -546,6 +546,32 @@
         document.getElementById('recipe-tips-text').textContent = recipe.tips;
         document.getElementById('recipe-tips-author').textContent = recipe.profiles?.full_name ? `— ${recipe.profiles.full_name}` : '';
       } else tipsBlock.style.display = 'none';
+    }
+
+    // Liste complète des ingrédients (fusion des identiques : nom + unité)
+    const fullUl = document.getElementById('full-ingredients-ul');
+    const fullBlock = document.getElementById('full-ingredients-block');
+    if (fullUl) {
+      const merged = [];
+      (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
+        if (!it.name) return;
+        const unit = it.unit || '';
+        const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+        const ex = merged.find(m => m.key === key);
+        if (!ex) { merged.push({ key, name: it.name, qty: it.quantity || '', unit }); return; }
+        const a = parseFloat(String(ex.qty).replace(',', '.'));
+        const b = parseFloat(String(it.quantity || '').replace(',', '.'));
+        if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
+        else ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
+      }));
+      merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      if (merged.length) {
+        fullUl.innerHTML = merged.map(m => `
+          <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+            <span class="font-body-md text-body-md">${esc(m.name)}</span>
+            <span class="font-label-md text-label-md text-primary">${esc([m.qty, m.unit].filter(Boolean).join(' '))}</span>
+          </li>`).join('');
+      } else if (fullBlock) fullBlock.style.display = 'none';
     }
 
     // Init favoris
