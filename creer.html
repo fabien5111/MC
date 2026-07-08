@@ -240,12 +240,9 @@
         <h2 class="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
         <span class="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
       </div>
-      <div class="bg-surface-container-high p-gutter rounded overflow-x-auto hide-scrollbar">
-        <div class="min-w-[800px] h-32 relative flex items-center">
-          <div class="absolute h-0.5 w-full bg-outline-variant top-1/2 -translate-y-1/2"></div>
-          <div class="flex justify-between w-full relative" id="planning-track">
-            <!-- points générés par renderPlanning() -->
-          </div>
+      <div class="bg-surface-container-high p-gutter rounded">
+        <div class="relative flex flex-col md:flex-row gap-8" id="planning-track">
+          <!-- colonnes générées par renderPlanning() -->
         </div>
       </div>
     </section>
@@ -412,25 +409,21 @@
       order: i,
       isLast: false,
     }));
-    const line = track.previousElementSibling; // trait horizontal de la frise
-
     // Tout se fait le jour J (aucun timing saisi ou tout à 0) → simple message
     if (steps.every(s => s.offset === 0)) {
-      if (line) line.style.display = 'none';
       track.innerHTML = `
-        <div class="w-full flex items-center justify-center gap-3">
+        <div class="w-full flex items-center justify-center gap-3 py-6">
           <span class="material-symbols-outlined text-secondary">celebration</span>
           <span class="font-body-lg text-body-lg italic text-primary">Peut être dégusté le jour de la préparation</span>
         </div>`;
       return;
     }
-    if (line) line.style.display = '';
 
     // Ordre chronologique : le plus grand J−n d'abord, puis l'ordre de saisie
     steps.sort((a, b) => b.offset - a.offset || a.order - b.order);
     steps.push({ title: 'Dégustation', offset: 0, isLast: true });
 
-    // Regroupement par jour : un seul point J−n, les étapes empilées dessous
+    // Regroupement par jour : une colonne J−n, les étapes empilées dessous
     const days = [];
     steps.forEach(s => {
       let day = days.find(d => d.offset === s.offset);
@@ -438,17 +431,14 @@
       day.items.push(s);
     });
 
-    track.innerHTML = days.map(day => {
-      const onlyFinal = day.items.every(it => it.isLast);
-      return `
-      <div class="flex flex-col items-center gap-2">
-        <span class="font-label-md text-[10px] font-bold tracking-widest ${onlyFinal ? 'text-secondary' : 'text-primary'}">${day.offset > 0 ? 'J − ' + day.offset : 'JOUR J'}</span>
-        <div class="w-4 h-4 rounded-full ${onlyFinal ? 'bg-secondary' : 'bg-primary'} z-10"></div>
-        <div class="flex flex-col items-center gap-1">
-          ${day.items.map(it => `<span class="font-label-md text-[10px] uppercase ${it.isLast ? 'text-secondary' : 'text-primary'} text-center max-w-[140px]">${esc(it.title)}</span>`).join('')}
-        </div>
-      </div>`;
-    }).join('');
+    // Même mise en forme que la page de consultation
+    track.innerHTML = '<div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>'
+      + days.map((day, i) => `
+      <div class="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+        <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">${i + 1}</div>
+        <span class="font-label-md text-[12px] text-secondary">${day.offset > 0 ? 'J − ' + day.offset : 'JOUR J'}</span>
+        ${day.items.map(it => `<p class="font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}">${esc(it.title)}</p>`).join('')}
+      </div>`).join('');
   }
   // ── Récapitulatif des ingrédients (lecture seule) ──
   // Liste unique : les ingrédients identiques (même nom, même unité) sont
