@@ -493,11 +493,13 @@
           const grp = groupsByOrder[s.order_index || 0];
           const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
           const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+          const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
           const badges = [
             `<span class="bg-surface-variant px-3 py-1">${dayLabel(Math.max(0, s.day_offset || 0))}</span>`,
             s.prep_time ? `<span class="bg-surface-variant px-3 py-1">PRÉP ${formatTime(s.prep_time).toUpperCase()}</span>` : '',
             s.wait_time ? `<span class="bg-surface-variant px-3 py-1">ATTENTE ${formatTime(s.wait_time).toUpperCase()}</span>` : '',
             s.cook_time ? `<span class="bg-surface-variant px-3 py-1">CUISSON ${formatTime(s.cook_time).toUpperCase()}</span>` : '',
+            stepTotal ? `<span class="bg-primary text-white px-3 py-1">TOTAL ${formatTime(stepTotal).toUpperCase()}</span>` : '',
           ].filter(Boolean).join('');
           return `
           <div class="flex flex-col gap-6">
