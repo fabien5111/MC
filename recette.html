@@ -461,8 +461,23 @@
       } else tagsRow.style.display = 'none';
     }
 
-    // Bloc technique : portions/taille non gérés → masqués ; difficulté + temps réels
-    document.getElementById('tech-portions')?.style.setProperty('display', 'none');
+    // Bloc technique : quantité produite à côté de la difficulté
+    const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
+    const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
+    let yieldTxt = null;
+    if (recipe.measure_type === 'units' && recipe.yield_qty) {
+      yieldTxt = `${recipe.yield_qty} ${UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || ''}`.trim();
+    } else if (recipe.measure_type === 'mold') {
+      yieldTxt = [recipe.yield_desc, MOLDS_LBL[recipe.yield_unit]].filter(Boolean).join(' — ') || null;
+    } else if (recipe.measure_type === 'dimensions') {
+      yieldTxt = recipe.yield_desc || null;
+    }
+    const portionsCell = document.getElementById('tech-portions');
+    if (portionsCell) {
+      if (yieldTxt) {
+        portionsCell.innerHTML = `<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Quantité produite</span><span class="font-body-lg text-body-lg font-bold text-primary">${esc(yieldTxt)}</span>`;
+      } else portionsCell.style.setProperty('display', 'none');
+    }
     document.getElementById('tech-taille')?.style.setProperty('display', 'none');
     const diffEl = document.getElementById('tech-difficulty');
     if (diffEl) {

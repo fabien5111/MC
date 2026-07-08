@@ -153,9 +153,9 @@
 
             <!-- Panneau 2 : moule / cercle -->
             <div id="panel-mold" class="mt-4 flex-wrap gap-4 items-end" style="display:none">
-              <input class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
+              <input id="mold-desc" class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
               <div class="relative flex items-end flex-1 min-w-[200px]">
-                <select class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
+                <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
                   <option value="" disabled selected>Choisir le type de moule</option>
                   <option value="cercle">Cercle</option>
                   <option value="manque">Moule à manqué</option>
@@ -171,7 +171,7 @@
 
             <!-- Panneau 3 : dimensions libres -->
             <div id="panel-dimensions" class="mt-4" style="display:none">
-              <input class="editorial-input w-full font-body-md text-on-surface" placeholder="ex : 20cm × 5cm, Ø 22cm…" type="text">
+              <input id="dims-desc" class="editorial-input w-full font-body-md text-on-surface" placeholder="ex : 20cm × 5cm, Ø 22cm…" type="text">
             </div>
             </div>
           </div>
@@ -624,9 +624,22 @@
       const level = document.querySelectorAll('#difficulty .maryse-pill.bg-primary').length;
       const diffRow = (allDifficulties || []).reduce((best, d) =>
         (!best || Math.abs(d.level - level) < Math.abs(best.level - level)) ? d : best, null);
+      // Quantité produite (unités/poids, moule ou dimensions)
+      const mt = document.querySelector('input[name="measure_type"]:checked')?.value || 'units';
+      let yQty = null, yUnit = null, yDesc = null;
+      if (mt === 'units') {
+        yQty = document.getElementById('qty-amount')?.value.trim() || null;
+        yUnit = document.getElementById('qty-unit')?.value || null;
+      } else if (mt === 'mold') {
+        yDesc = document.getElementById('mold-desc')?.value.trim() || null;
+        yUnit = document.getElementById('mold-choice')?.value || null; // type de moule choisi
+      } else {
+        yDesc = document.getElementById('dims-desc')?.value.trim() || null;
+      }
       const payload = {
         title, description: desc, is_public: isPublic, status,
         difficulty_id: diffRow?.id ?? null,
+        measure_type: mt, yield_qty: yQty, yield_unit: yUnit, yield_desc: yDesc,
         tips: richValue(document.getElementById('recipe-tips')),
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
@@ -939,6 +952,21 @@
     document.getElementById('visibility-label').textContent = visToggle.checked ? 'Public' : 'Privé';
     if (r.hero_image_url) document.getElementById('creer-main')?.setAttribute('src', r.hero_image_url);
     document.getElementById('recipe-tips').innerHTML = r.tips || '';
+
+    // Quantité produite
+    if (r.measure_type) {
+      const radio = document.querySelector(`input[name="measure_type"][value="${r.measure_type}"]`);
+      if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+      if (r.measure_type === 'units') {
+        document.getElementById('qty-amount').value = r.yield_qty ?? '';
+        if (r.yield_unit) document.getElementById('qty-unit').value = r.yield_unit;
+      } else if (r.measure_type === 'mold') {
+        document.getElementById('mold-desc').value = r.yield_desc || '';
+        if (r.yield_unit) document.getElementById('mold-choice').value = r.yield_unit;
+      } else if (r.measure_type === 'dimensions') {
+        document.getElementById('dims-desc').value = r.yield_desc || '';
+      }
+    }
 
     // Difficulté
     const lvl = r.difficulties?.level
