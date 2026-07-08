@@ -520,7 +520,7 @@
               <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
               <div class="p-4 bg-white">
                 <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
-                  ${ings.map(it => `<li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
+                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
                 </ul>
               </div>
             </details>` : ''}
