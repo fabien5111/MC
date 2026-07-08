@@ -227,10 +227,12 @@ async function toggleFavorite(recipeId) {
   if (!user) { window.location.href = 'connexion.html'; return false; }
   const already = await isFavorite(recipeId);
   if (already) {
-    await db.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
+    const { error } = await db.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
+    if (error) { alert('Favori non retiré : ' + error.message); return true; }
     return false;
   } else {
-    await db.from('favorites').insert({ user_id: user.id, recipe_id: recipeId });
+    const { error } = await db.from('favorites').insert({ user_id: user.id, recipe_id: recipeId });
+    if (error) { alert('Favori non enregistré : ' + error.message); return false; }
     return true;
   }
 }

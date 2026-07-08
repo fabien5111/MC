@@ -109,7 +109,8 @@
 
     <!-- Tab: Favorites -->
     <div class="tab-content py-10 hidden" id="tab-favorites">
-      <div class="text-center py-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="favoris-grid" style="display:none"></div>
+      <div class="text-center py-12" id="favoris-empty">
         <span class="material-symbols-outlined text-[48px] text-on-surface-variant mb-4 block">star_outline</span>
         <h2 class="font-headline-md text-primary">Vos coups de cœur</h2>
         <p class="font-body-md text-on-surface-variant max-w-sm mx-auto mt-2">Retrouvez ici toutes les recettes que vous avez marquées comme favorites.</p>
@@ -399,13 +400,21 @@
     const favs = await getFavorites(user.id);
     const favGrid = document.getElementById('favoris-grid');
     if (favGrid && favs.length > 0) {
-      favGrid.innerHTML = favs.map(f => {
+      favGrid.style.display = '';
+      const emptyState = document.getElementById('favoris-empty');
+      if (emptyState) emptyState.style.display = 'none';
+      favGrid.innerHTML = favs.filter(f => f.recipes).map(f => {
         const r = f.recipes;
-        return `<a href="recette.html?id=${r.id}" class="block border border-outline-variant overflow-hidden hover:shadow-md transition-all">
-          <div class="aspect-video bg-surface-container flex items-center justify-center">
-            ${r.hero_image_url ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-3xl text-on-surface-variant">cake</span>'}
+        return `<a href="recette.html?id=${r.id}" class="group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300 block">
+          <div class="aspect-[4/3] overflow-hidden rounded-md">
+            ${r.hero_image_url
+              ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">`
+              : '<div class="w-full h-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface-variant">cake</span></div>'}
           </div>
-          <div class="p-4"><p class="font-body-md font-medium text-on-surface text-sm">${r.title}</p></div>
+          <div class="p-4">
+            <h3 class="font-headline-md text-[20px] text-primary mb-1">${r.title}</h3>
+            <span class="text-[12px] font-label-md text-on-surface-variant">${r.profiles?.full_name || ''}${r.rating_avg ? ' · ' + parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
+          </div>
         </a>`;
       }).join('');
     }
