@@ -429,6 +429,13 @@
     if (bc) bc.textContent = recipe.title;
     const vis = document.getElementById('recipe-visibility');
     if (vis) vis.textContent = recipe.is_public === false ? 'Privée' : 'Publique';
+    // Statut non publié affiché à côté du titre (Brouillon / En attente)
+    if (vis && recipe.status && recipe.status !== 'published') {
+      const st = document.createElement('span');
+      st.className = 'bg-secondary text-white px-3 py-1 font-label-md text-[10px] uppercase tracking-widest';
+      st.textContent = recipe.status === 'pending' ? 'En attente' : 'Brouillon';
+      vis.parentElement.insertBefore(st, vis);
+    }
     const rating = document.getElementById('recipe-rating');
     if (rating) {
       if (recipe.rating_count > 0) {
