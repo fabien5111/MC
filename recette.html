@@ -2,6 +2,7 @@
 <html class="light" lang="fr">
 <head>
 <meta charset="utf-8">
+<script>if (new URLSearchParams(location.search).get('id')) document.documentElement.style.visibility = 'hidden';</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Le Saint-Honoré Traditionnel — Fiche recette complète avec planning de préparation.">
 <meta name="theme-color" content="#300a12">
@@ -349,7 +350,14 @@
   async function loadRecipeFromDB() {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) return;
+    try {
+      await renderRecipeFromDB(id);
+    } finally {
+      document.documentElement.style.visibility = '';
+    }
+  }
 
+  async function renderRecipeFromDB(id) {
     const recipe = await getRecipe(id);
     if (!recipe) return;
 
