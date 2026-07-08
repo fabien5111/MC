@@ -553,11 +553,11 @@
                 </ul>
               </div>
             </details>` : ''}
-            ${s.description ? `<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">${sanitizeRich(s.description).replace(/\n/g, '<br>')}</div>` : ''}
             ${photos.length ? `
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               ${photos.map(p => `<div class="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden"><img src="${p.url}" class="w-full h-full object-cover"></div>`).join('')}
             </div>` : ''}
+            ${s.description ? `<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">${sanitizeRich(s.description).replace(/\n/g, '<br>')}</div>` : ''}
             ${s.tips ? `
             <details class="group border border-outline-variant">
               <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
