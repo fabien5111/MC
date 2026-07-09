@@ -215,6 +215,13 @@ async function getFavorites(userId) {
   return data || [];
 }
 
+async function getFavoriteIds() {
+  const user = await getUser();
+  if (!user) return new Set();
+  const { data } = await db.from('favorites').select('recipe_id').eq('user_id', user.id);
+  return new Set((data || []).map(f => f.recipe_id));
+}
+
 async function isFavorite(recipeId) {
   const user = await getUser();
   if (!user) return false;
@@ -598,7 +605,42 @@ function stars(avg) {
   return '★'.repeat(n) + '☆'.repeat(5 - n);
 }
 
-function recipeCardHTML(r) {
+function favHeartHTML(recipeId, isFav) {
+  return `<button type="button" data-fav-btn data-recipe-id="${recipeId}" onclick="favHeartClick(event, this)"
+      title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}"
+      class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform">
+      <span class="material-symbols-outlined text-[20px] ${isFav ? 'text-error' : 'text-on-surface-variant'}" style="${isFav ? "font-variation-settings:'FILL' 1" : ''}">favorite</span>
+    </button>`;
+}
+
+async function favHeartClick(event, btn) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const nowFav = await toggleFavorite(btn.dataset.recipeId);
+  const icon = btn.querySelector('span');
+  icon.classList.toggle('text-error', nowFav);
+  icon.classList.toggle('text-on-surface-variant', !nowFav);
+  icon.style.fontVariationSettings = nowFav ? "'FILL' 1" : '';
+  btn.title = nowFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
+  btn.disabled = false;
+  // Dans l'onglet Mes Favoris, retirer un favori enlève la carte
+  if (!nowFav) {
+    const favCard = btn.closest('[data-fav-card]');
+    if (favCard) {
+      favCard.remove();
+      const grid = document.getElementById('favoris-grid');
+      if (grid && grid.children.length === 0) {
+        grid.style.display = 'none';
+        const empty = document.getElementById('favoris-empty');
+        if (empty) empty.style.display = '';
+      }
+    }
+  }
+}
+
+function recipeCardHTML(r, favIds) {
   return `
     <article class="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <a href="recette.html?id=${r.id}" class="block">
@@ -607,6 +649,7 @@ function recipeCardHTML(r) {
             ? `<img src="${r.hero_image_url}" alt="${r.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">`
             : `<div class="w-full h-full flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-5xl">cake</span></div>`
           }
+          ${favHeartHTML(r.id, favIds instanceof Set && favIds.has(r.id))}
         </div>
         <div class="p-6">
           <div class="flex items-center justify-between mb-2">

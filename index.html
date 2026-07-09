@@ -209,10 +209,10 @@
 
     // Grille recettes depuis Supabase (fallback vers données statiques si vide)
     const grid = document.getElementById('cards-grid');
-    const recipes = await getRecipes({ limit: 6 });
+    const [recipes, favIds] = await Promise.all([getRecipes({ limit: 6 }), getFavoriteIds()]);
 
     if (recipes.length > 0) {
-      grid.innerHTML = recipes.map(r => recipeCardHTML(r)).join('');
+      grid.innerHTML = recipes.map(r => recipeCardHTML(r, favIds)).join('');
     } else {
       // Données de démonstration tant que la base est vide
       const demos = [

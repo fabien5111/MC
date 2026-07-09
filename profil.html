@@ -359,6 +359,7 @@
 
     // Recettes de l'utilisateur (tous statuts : publiées, en attente, brouillons)
     const userRecipes = await getUserRecipes(user.id);
+    const favIds = await getFavoriteIds();
     const carnetGrid = document.getElementById('tab-recipes');
     if (carnetGrid && userRecipes.length > 0) {
       const addCard = carnetGrid.querySelector('[data-add-card]');
@@ -380,6 +381,7 @@
               <span class="${st.badge} text-white text-[10px] font-label-md px-2 py-1 rounded">${st.label}</span>
               <span class="bg-white/90 text-primary text-[10px] font-label-md px-2 py-1 rounded">${r.is_public === false ? 'Privée' : 'Publique'}</span>
             </div>
+            ${favHeartHTML(r.id, favIds.has(r.id))}
           </a>
           <div class="p-4">
             <a href="recette.html?id=${r.id}"><h3 class="font-headline-md text-[20px] text-primary mb-2">${r.title}</h3></a>
@@ -405,11 +407,12 @@
       if (emptyState) emptyState.style.display = 'none';
       favGrid.innerHTML = favs.filter(f => f.recipes).map(f => {
         const r = f.recipes;
-        return `<a href="recette.html?id=${r.id}" class="group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300 block">
-          <div class="aspect-[4/3] overflow-hidden rounded-md">
+        return `<a href="recette.html?id=${r.id}" data-fav-card class="group bg-surface-container-lowest border border-outline-variant p-2 rounded-lg hover:shadow-lg transition-all duration-300 block">
+          <div class="aspect-[4/3] overflow-hidden rounded-md relative">
             ${r.hero_image_url
               ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">`
               : '<div class="w-full h-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface-variant">cake</span></div>'}
+            ${favHeartHTML(r.id, true)}
           </div>
           <div class="p-4">
             <h3 class="font-headline-md text-[20px] text-primary mb-1">${r.title}</h3>
