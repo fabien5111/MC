@@ -605,6 +605,15 @@ function stars(avg) {
   return '★'.repeat(n) + '☆'.repeat(5 - n);
 }
 
+function setSlotSrc(id, url) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.setAttribute('src', url);
+  // Force update si image-slot a déjà rendu un <img> interne
+  const img = el.querySelector('img') || el.shadowRoot?.querySelector('img');
+  if (img) img.src = url;
+}
+
 function favHeartHTML(recipeId, isFav) {
   return `<button type="button" data-fav-btn data-recipe-id="${recipeId}" onclick="favHeartClick(event, this)"
       title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}"

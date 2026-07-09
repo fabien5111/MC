@@ -85,21 +85,21 @@
   <section class="mb-20">
     <div class="hero-frame luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest">
       <div class="grid md:grid-cols-2 gap-0">
-        <a class="relative h-[400px] md:h-auto overflow-hidden block group" href="recette.html">
+        <a id="featured-link" class="relative h-[400px] md:h-auto overflow-hidden block group" href="recette.html">
           <image-slot id="home-featured" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2JZkIUaZ94Y29uyIHGEXwd7jO99RfQjT_It1YeKgydKRHiwVlXW8v4IqOOgUV56AV-yjmlvMiv4am4OJpeKYGdQMdMvcYB7vGOtjmHvasI6U0-ZS2gn28vPPdQR2NrYCqH0FtknrtmS5N1NpwNA1b2CDzjX1Fd9DaL-F4qRH5bL1bEfDNiM20WmvWoTrlKvwJJIZyP_GTU6-G5LUWUDTUe7Ze9dYEkTU1VMc2RuNQF6rxZMox9XcRl9BVrOu5dz4GdTa8ZAy0jXo" shape="rect" fit="cover" placeholder="Saint-Honoré — photo principale" style="width:100%;height:100%"></image-slot>
           <div class="absolute top-6 left-6">
             <span class="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">Recette du Mois</span>
           </div>
         </a>
         <div class="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
-          <span class="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">Classique Français</span>
-          <h1 class="font-headline-md text-headline-md text-primary mb-6 leading-tight">Le Saint-Honoré Traditionnel</h1>
-          <p class="font-body-md text-on-surface-variant mb-8 leading-relaxed" style="font-size:16px;line-height:24px">Découvrez les secrets de ce monument de la pâtisserie. Une pâte feuilletée croustillante, une crème Chiboust aérienne et des choux parfaitement caramélisés.</p>
+          <span id="featured-cat" class="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">Classique Français</span>
+          <h1 id="featured-title" class="font-headline-md text-headline-md text-primary mb-6 leading-tight">Le Saint-Honoré Traditionnel</h1>
+          <p id="featured-desc" class="font-body-md text-on-surface-variant mb-8 leading-relaxed" style="font-size:16px;line-height:24px">Découvrez les secrets de ce monument de la pâtisserie. Une pâte feuilletée croustillante, une crème Chiboust aérienne et des choux parfaitement caramélisés.</p>
           <div class="flex flex-wrap gap-8 mb-10">
-            <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">schedule</span><span class="font-label-md text-label-md text-on-surface">2h 30min</span></div>
-            <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">restaurant_menu</span><span class="font-label-md text-label-md text-on-surface">Expert</span></div>
+            <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">schedule</span><span id="featured-time" class="font-label-md text-label-md text-on-surface">2h 30min</span></div>
+            <div id="featured-level-row" class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">restaurant_menu</span><span id="featured-level" class="font-label-md text-label-md text-on-surface">Expert</span></div>
           </div>
-          <a class="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start" href="recette.html">Voir la recette</a>
+          <a id="featured-cta" class="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start" href="recette.html">Voir la recette</a>
         </div>
       </div>
     </div>
@@ -203,6 +203,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
+  // Recette du Mois : la recette publiée la plus récente remplace la maquette
+  function renderFeatured(r, favIds) {
+    const link = document.getElementById('featured-link');
+    const url = `recette.html?id=${r.id}`;
+    link.href = url;
+    document.getElementById('featured-cta').href = url;
+    document.getElementById('featured-title').textContent = r.title;
+    document.getElementById('featured-desc').textContent = r.description || '';
+    document.getElementById('featured-cat').textContent = r.recipe_types?.name || 'Recette de la communauté';
+    document.getElementById('featured-time').textContent = formatTime(r.total_time || r.prep_time) || '—';
+    const level = document.getElementById('featured-level');
+    if (r.difficulties?.name) level.textContent = r.difficulties.name;
+    else document.getElementById('featured-level-row').style.display = 'none';
+    if (r.hero_image_url) setSlotSrc('home-featured', r.hero_image_url);
+    link.insertAdjacentHTML('beforeend', favHeartHTML(r.id, favIds.has(r.id)).replace('top-3 right-3', 'top-6 right-6'));
+  }
+
   async function init() {
     // Auth UI
     await initAuthUI();
@@ -212,6 +229,7 @@
     const [recipes, favIds] = await Promise.all([getRecipes({ limit: 6 }), getFavoriteIds()]);
 
     if (recipes.length > 0) {
+      renderFeatured(recipes[0], favIds);
       grid.innerHTML = recipes.map(r => recipeCardHTML(r, favIds)).join('');
     } else {
       // Données de démonstration tant que la base est vide
