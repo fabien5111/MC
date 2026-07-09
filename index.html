@@ -220,7 +220,19 @@
     link.insertAdjacentHTML('beforeend', favHeartHTML(r.id, favIds.has(r.id)).replace('top-3 right-3', 'top-6 right-6'));
   }
 
+  // Bannière d'accueil : une photo par appareil (chargée dans l'administration),
+  // repli sur la version web puis sur l'image par défaut
+  async function loadBanner() {
+    const w = window.innerWidth;
+    const device = w >= 1024 ? 'web' : (w >= 768 ? 'tablette' : 'mobile');
+    const s = await getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']);
+    const url = s['banner_home_' + device] || s['banner_home_web'];
+    if (url) setSlotSrc('home-banner', url);
+  }
+
   async function init() {
+    loadBanner();
+
     // Auth UI
     await initAuthUI();
 

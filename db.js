@@ -245,6 +245,18 @@ async function toggleFavorite(recipeId) {
   }
 }
 
+// ── RÉGLAGES DU SITE (bannières par appareil…) ────────────────
+async function getSiteSettings(keys) {
+  const { data, error } = await db.from('site_settings').select('key, value').in('key', keys);
+  if (error) { console.error('getSiteSettings:', error); return {}; }
+  return Object.fromEntries((data || []).map(s => [s.key, s.value]));
+}
+
+async function setSiteSetting(key, value) {
+  const { error } = await db.from('site_settings').upsert({ key, value });
+  if (error) throw error;
+}
+
 // ── PLANNING ─────────────────────────────────────────────────
 async function getPlanning(userId) {
   const { data } = await db.from('planning')
