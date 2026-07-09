@@ -463,13 +463,14 @@
     const QTY_HEADER = scaled ? `
       <li class="pb-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
         <span></span>
-        <span class="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité × ${fTxt}</span>
+        <span></span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
         <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d'origine</span>
       </li>` : '';
     const qtyCells = (qty, unit) => scaled
-      ? `<span class="font-label-md text-label-md text-primary text-center">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
+      ? `<span class="font-label-md text-label-md text-on-surface-variant text-center">× ${fTxt}</span><span class="font-label-md text-label-md text-primary text-center">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
       : `<span class="font-label-md text-label-md text-primary text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`;
-    const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${scaled ? ' max-content' : ''};column-gap:40px`;
+    const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${scaled ? ' max-content max-content' : ''};column-gap:40px`;
 
     // Titre
     const titleEl = document.querySelector('h1');
