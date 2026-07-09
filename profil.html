@@ -435,7 +435,7 @@
       if (plans.length > 0) {
         planList.innerHTML = plans.map(p => `
           <div class="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center group hover:bg-surface-container transition-colors">
-            <a href="recette.html?id=${p.recipes?.id || p.recipe_id}" class="flex gap-4 items-center">
+            <a href="recette.html?id=${p.recipes?.id || p.recipe_id}&plan=${p.id}" class="flex gap-4 items-center">
               <div class="w-16 h-16 rounded bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0">
                 ${p.recipes?.hero_image_url ? `<img src="${p.recipes.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-on-surface-variant">cake</span>'}
               </div>

@@ -107,6 +107,12 @@
       </div>
     </div>
 
+    <!-- Contexte de planification (arrivée depuis « recettes planifiées ») -->
+    <div id="plan-notice" class="mb-12 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3" style="display:none">
+      <span class="material-symbols-outlined text-primary">event_available</span>
+      <span class="font-body-md text-on-surface" id="plan-notice-text"></span>
+    </div>
+
     <!-- Planification -->
     <div id="plan-panel" class="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl" style="display:none">
       <h3 class="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span>Planifier cette recette</h3>
@@ -360,6 +366,25 @@
   const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
   const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
   let currentRecipe = null;
+  let currentPlan = null; // entrée de planning quand on arrive via « recettes planifiées »
+
+  function planFactor() { return currentPlan && +currentPlan.factor > 0 ? +currentPlan.factor : 1; }
+
+  // Quantité multipliée par le facteur de planification (texte non numérique inchangé)
+  function scaleQty(q) {
+    const f = planFactor();
+    if (f === 1) return q;
+    const n = parseFloat(String(q ?? '').replace(',', '.'));
+    if (isNaN(n)) return q;
+    return String(+(n * f).toFixed(2)).replace('.', ',');
+  }
+
+  // Date réelle d'un « jour J − offset » par rapport à la date planifiée
+  function planDate(offset, opts) {
+    const d = new Date(currentPlan.planned_date + 'T00:00:00');
+    d.setDate(d.getDate() - (offset || 0));
+    return d.toLocaleDateString('fr-FR', opts || { weekday: 'short', day: 'numeric', month: 'short' });
+  }
 
   // Fusion des ingrédients identiques (nom + unité) de toutes les étapes
   function mergeIngredients(recipe) {
@@ -413,9 +438,15 @@
 
   // Charger la recette depuis Supabase si ?id= présent
   async function loadRecipeFromDB() {
-    const id = new URLSearchParams(location.search).get('id');
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
     if (!id) return;
     try {
+      const planId = params.get('plan');
+      if (planId) {
+        const p = await getPlanningEntry(planId);
+        if (p && String(p.recipe_id) === String(id)) currentPlan = p;
+      }
       await renderRecipeFromDB(id);
     } finally {
       document.documentElement.style.visibility = '';
@@ -523,11 +554,13 @@
     // Bloc technique : quantité produite à côté de la difficulté
     let yieldTxt = null;
     if (recipe.measure_type === 'units' && recipe.yield_qty) {
-      yieldTxt = `${recipe.yield_qty} ${UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || ''}`.trim();
+      yieldTxt = `${scaleQty(recipe.yield_qty)} ${UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || ''}`.trim();
     } else if (recipe.measure_type === 'mold') {
       yieldTxt = [recipe.yield_desc, MOLDS_LBL[recipe.yield_unit]].filter(Boolean).join(' — ') || null;
+      if (currentPlan?.adjust_label?.startsWith('Moule : ')) yieldTxt = currentPlan.adjust_label.slice('Moule : '.length);
     } else if (recipe.measure_type === 'dimensions') {
       yieldTxt = recipe.yield_desc || null;
+      if (currentPlan?.adjust_label?.startsWith('Dimensions : ')) yieldTxt = currentPlan.adjust_label.slice('Dimensions : '.length);
     }
     const portionsCell = document.getElementById('tech-portions');
     if (portionsCell) {
@@ -553,7 +586,10 @@
     const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     const groupsByOrder = {};
     (recipe.ingredient_groups || []).forEach(g => { groupsByOrder[g.order_index || 0] = g; });
-    const dayLabel = o => o > 0 ? `JOUR J − ${o}` : 'JOUR J';
+    // Avec un contexte de planification, « Jour J − n » devient la vraie date
+    const dayLabel = o => currentPlan
+      ? planDate(Math.max(0, o || 0)).toUpperCase()
+      : (o > 0 ? `JOUR J − ${o}` : 'JOUR J');
 
     // Planning de préparation regroupé par jour (comme à la création)
     const planEl = document.getElementById('recipe-planning');
@@ -606,7 +642,7 @@
               <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
               <div class="p-4 bg-white">
                 <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
-                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
+                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([scaleQty(it.quantity), it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
                 </ul>
               </div>
             </details>` : ''}
@@ -643,9 +679,23 @@
         fullUl.innerHTML = merged.map(m => `
           <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
             <span class="font-body-md text-body-md">${esc(m.name)}</span>
-            <span class="font-label-md text-label-md text-primary">${esc([m.qty, m.unit].filter(Boolean).join(' '))}</span>
+            <span class="font-label-md text-label-md text-primary">${esc([scaleQty(m.qty), m.unit].filter(Boolean).join(' '))}</span>
           </li>`).join('');
       } else if (fullBlock) fullBlock.style.display = 'none';
+    }
+
+    // Bandeau de contexte de planification
+    if (currentPlan) {
+      const notice = document.getElementById('plan-notice');
+      if (notice) {
+        const dTxt = new Date(currentPlan.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const f = planFactor();
+        const parts = [`Recette planifiée pour le ${dTxt}`];
+        if (f !== 1) parts.push(`quantités ajustées × ${String(f).replace('.', ',')}`);
+        else if (currentPlan.adjust_label) parts.push(currentPlan.adjust_label);
+        document.getElementById('plan-notice-text').textContent = parts.join(' — ');
+        notice.style.display = '';
+      }
     }
 
     // Init favoris

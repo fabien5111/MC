@@ -266,6 +266,12 @@ async function getPlanning(userId) {
   return data || [];
 }
 
+async function getPlanningEntry(id) {
+  const { data, error } = await db.from('planning').select('*').eq('id', id).maybeSingle();
+  if (error) console.error('getPlanningEntry:', error);
+  return data;
+}
+
 async function addToPlanning(recipeId, plannedDate, { factor = 1, adjustLabel = null, notes = '' } = {}) {
   const user = await getUser();
   if (!user) { window.location.href = 'connexion.html'; return { error: { message: 'Non connecté' } }; }
