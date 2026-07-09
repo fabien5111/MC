@@ -123,21 +123,8 @@
       <div class="flex flex-col lg:flex-row gap-12">
         <div class="flex-1">
           <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span> Recettes planifiées</h2>
-          <div class="space-y-4">
-            <div class="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center group hover:bg-surface-container transition-colors">
-              <a href="recette.html" class="flex gap-4 items-center">
-                <div class="w-16 h-16 rounded bg-surface-container-high overflow-hidden"><image-slot id="profil-plan1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-DW0AScQ6aknUCnkpg98Ow9uhLuDvFVXFj1gqd-uyLTKvmtOqZC8xdUm6ppGUQ-2dMxlaYzqwSpKk0pxeRsmW6zOtSvwDtQWE9rqcdFM_Z8UP6dtouWrfYIpqvNAf5S__RVhqlqvOVTiBfMVtPy8t69RNMP7lO_rD8fbqu6mDvfkATFITcq54wQb8QZOKmDjDfRcEymd8SEBAU_tKfGn-F0QqWKpB57aeC5cOraYiI4pzILOQE0W2gPI1r53NXa2VnIKGMR8rlQs" shape="rect" fit="cover" placeholder="Cake" style="width:100%;height:100%"></image-slot></div>
-                <div><p class="font-label-md text-primary">Cake Citron Pavot</p><p class="font-body-md text-[12px] text-on-surface-variant">Prévu pour Samedi 12 Oct.</p></div>
-              </a>
-              <button class="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined">more_vert</span></button>
-            </div>
-            <div class="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center group hover:bg-surface-container transition-colors">
-              <a href="recette.html" class="flex gap-4 items-center">
-                <div class="w-16 h-16 rounded bg-surface-container-high overflow-hidden"><image-slot id="profil-plan2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEzVp4AYJog1Dv280v-4R42WDvpPZhCH5ZNyCjQNZWkK9kzTcvcpgnQ6f7kLSHcrPYZEVCg1yKe5p5OfgsV1TzAx1nqz57AfXBq2CgEZYNuUEYBEJsjfx9AP4Z9paApaY4MjlRgBjTGSiUL04rDpcaOARIdH8uqyu7x-dRwFe1Yf2t66vB8X-vRoFKJ58hzqhFmhfvX-BGhIFKHLKcDiduuTsCoIV5QoNSpXujfzb-V_Ux0m6dEcgaDUFxghyznCu84IzlkzOiN6Q" shape="rect" fit="cover" placeholder="Macarons" style="width:100%;height:100%"></image-slot></div>
-                <div><p class="font-label-md text-primary">Macarons Framboise</p><p class="font-body-md text-[12px] text-on-surface-variant">Prévu pour Dimanche 20 Oct.</p></div>
-              </a>
-              <button class="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined">more_vert</span></button>
-            </div>
+          <div class="space-y-4" id="planning-list">
+            <p class="text-on-surface-variant italic" id="planning-empty">Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».</p>
           </div>
         </div>
         <div class="w-full lg:w-96">
@@ -302,6 +289,25 @@
     }
   }
 
+  // Retire une entrée du planning
+  window.removePlanning = async function (id, btn) {
+    if (!confirm('Retirer cette recette du planning ?')) return;
+    try {
+      const { error } = await db.from('planning').delete().eq('id', id);
+      if (error) throw error;
+      const card = btn.closest('.group');
+      const list = card?.parentElement;
+      card?.remove();
+      if (list && !list.querySelector('.group')) {
+        const empty = document.getElementById('planning-empty');
+        if (empty) list.appendChild(empty), empty.style.display = '';
+        else list.innerHTML = '<p class="text-on-surface-variant italic">Aucune recette planifiée pour le moment.</p>';
+      }
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    }
+  };
+
   // Suppression d'une recette depuis le carnet (cascade sur étapes/ingrédients…)
   window.deleteMyRecipe = async function (id, title, btn) {
     if (!confirm(`Supprimer « ${title} » ?\nCette action est définitive.`)) return;
@@ -428,15 +434,22 @@
       const plans = await getPlanning(user.id);
       if (plans.length > 0) {
         planList.innerHTML = plans.map(p => `
-          <li class="flex items-center gap-4 py-3 border-b border-outline-variant last:border-0">
-            <div class="w-12 h-12 bg-surface-container flex items-center justify-center shrink-0">
-              ${p.recipes?.hero_image_url ? `<img src="${p.recipes.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-on-surface-variant">cake</span>'}
-            </div>
-            <div class="flex-1">
-              <p class="font-body-md font-medium text-sm">${p.recipes?.title || ''}</p>
-              <p class="text-xs text-on-surface-variant">${p.planned_date ? new Date(p.planned_date).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : ''}</p>
-            </div>
-          </li>`).join('');
+          <div class="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center group hover:bg-surface-container transition-colors">
+            <a href="recette.html?id=${p.recipes?.id || p.recipe_id}" class="flex gap-4 items-center">
+              <div class="w-16 h-16 rounded bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0">
+                ${p.recipes?.hero_image_url ? `<img src="${p.recipes.hero_image_url}" class="w-full h-full object-cover">` : '<span class="material-symbols-outlined text-on-surface-variant">cake</span>'}
+              </div>
+              <div>
+                <p class="font-label-md text-primary">${p.recipes?.title || ''}</p>
+                <p class="font-body-md text-[12px] text-on-surface-variant">${[
+                  p.planned_date ? 'Prévu pour ' + new Date(p.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : '',
+                  p.adjust_label || '',
+                  p.factor && +p.factor !== 1 ? '× ' + String(+p.factor).replace('.', ',') : '',
+                ].filter(Boolean).join(' · ')}</p>
+              </div>
+            </a>
+            <button type="button" title="Retirer du planning" onclick="removePlanning(${JSON.stringify(p.id)}, this)" class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"><span class="material-symbols-outlined">delete</span></button>
+          </div>`).join('');
       }
     }
   }

@@ -94,7 +94,7 @@
         <div class="flex items-center gap-4 w-full justify-between">
           <div class="flex flex-wrap gap-3 text-secondary">
             <button class="fav-btn flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">favorite</span> Favori</button>
-            <a class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors" href="profil.html#planning"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Planifier</a>
+            <button type="button" id="btn-plan" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Planifier</button>
             <button class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">share</span> Partager</button>
             <button onclick="window.print()" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">print</span> Imprimer</button>
           </div>
@@ -103,6 +103,23 @@
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Pâtisserie</span>
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Classique</span>
           <span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">Expert</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planification -->
+    <div id="plan-panel" class="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl" style="display:none">
+      <h3 class="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span>Planifier cette recette</h3>
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-2" style="max-width:16rem">
+          <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]" for="plan-date">Date de dégustation</label>
+          <input id="plan-date" type="date" class="border border-outline-variant rounded px-4 py-2 bg-white font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary">
+        </div>
+        <div id="plan-adjust" class="flex flex-col gap-4"></div>
+        <div class="flex items-center gap-4 flex-wrap pt-2">
+          <button type="button" id="plan-validate" class="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] hover:shadow-xl active:scale-95 transition-all">Valider</button>
+          <button type="button" id="plan-cancel" class="border border-outline px-6 py-3 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
+          <span id="plan-status" class="text-sm text-secondary font-label-md"></span>
         </div>
       </div>
     </div>
@@ -339,6 +356,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="db.js"></script>
 <script>
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
+  const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
+  let currentRecipe = null;
+
+  // Fusion des ingrédients identiques (nom + unité) de toutes les étapes
+  function mergeIngredients(recipe) {
+    const merged = [];
+    (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
+      if (!it.name) return;
+      const unit = it.unit || '';
+      const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+      const ex = merged.find(m => m.key === key);
+      if (!ex) { merged.push({ key, name: it.name, qty: it.quantity || '', unit }); return; }
+      const a = parseFloat(String(ex.qty).replace(',', '.'));
+      const b = parseFloat(String(it.quantity || '').replace(',', '.'));
+      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
+      else ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
+    }));
+    merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return merged;
+  }
+
   // Favorite toggle (statique)
   document.querySelectorAll('.fav-btn').forEach(b => b.addEventListener('click', async function(){
     const s = this.querySelector('.material-symbols-outlined');
@@ -385,6 +425,7 @@
   async function renderRecipeFromDB(id) {
     const recipe = await getRecipe(id);
     if (!recipe) return;
+    currentRecipe = recipe;
 
     // Titre
     const titleEl = document.querySelector('h1');
@@ -441,7 +482,6 @@
           </div>`).join('');
     }
 
-    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
     // Fil d'ariane, visibilité, note
     const bc = document.getElementById('breadcrumb-title');
@@ -481,8 +521,6 @@
     }
 
     // Bloc technique : quantité produite à côté de la difficulté
-    const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
-    const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
     let yieldTxt = null;
     if (recipe.measure_type === 'units' && recipe.yield_qty) {
       yieldTxt = `${recipe.yield_qty} ${UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || ''}`.trim();
@@ -600,19 +638,7 @@
     const fullUl = document.getElementById('full-ingredients-ul');
     const fullBlock = document.getElementById('full-ingredients-block');
     if (fullUl) {
-      const merged = [];
-      (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
-        if (!it.name) return;
-        const unit = it.unit || '';
-        const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
-        const ex = merged.find(m => m.key === key);
-        if (!ex) { merged.push({ key, name: it.name, qty: it.quantity || '', unit }); return; }
-        const a = parseFloat(String(ex.qty).replace(',', '.'));
-        const b = parseFloat(String(it.quantity || '').replace(',', '.'));
-        if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-        else ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
-      }));
-      merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      const merged = mergeIngredients(recipe);
       if (merged.length) {
         fullUl.innerHTML = merged.map(m => `
           <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
@@ -628,6 +654,152 @@
       s.style.fontVariationSettings = isFav ? "'FILL' 1" : "'FILL' 0";
     });
   }
+
+  // ── Planification de la recette ─────────────────────────────
+  const planPanel = document.getElementById('plan-panel');
+  const INPUT_CLS = 'border border-outline-variant rounded px-4 py-2 bg-white font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary';
+  const LBL_CLS = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
+  let planMerged = [];
+  let planBuilt = false;
+
+  async function buildPlanPanel(r) {
+    // Date : aujourd'hui ou plus tard (date locale, pas UTC)
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dateEl = document.getElementById('plan-date');
+    dateEl.min = today;
+    if (!dateEl.value || dateEl.value < today) dateEl.value = today;
+    if (planBuilt) return;
+    planBuilt = true;
+
+    const zone = document.getElementById('plan-adjust');
+    if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
+      const unitLbl = UNITS_LBL[r.yield_unit] || r.yield_unit || '';
+      planMerged = mergeIngredients(r).filter(m => parseFloat(String(m.qty).replace(',', '.')) > 0);
+      zone.innerHTML = `
+        <div class="flex flex-wrap gap-6">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="plan-mode" value="qty" checked class="text-primary focus:ring-primary"><span class="font-body-md">Ajuster par quantité produite</span></label>
+          ${planMerged.length ? '<label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="plan-mode" value="ing" class="text-primary focus:ring-primary"><span class="font-body-md">Ajuster par quantité d’un ingrédient</span></label>' : ''}
+        </div>
+        <div id="plan-mode-qty" class="flex items-end gap-3">
+          <div class="flex flex-col gap-2">
+            <label class="${LBL_CLS}" for="plan-qty">Quantité à produire</label>
+            <input id="plan-qty" type="number" min="0" step="any" value="${esc(String(r.yield_qty))}" class="${INPUT_CLS}" style="width:8rem">
+          </div>
+          <span class="font-body-md text-on-surface-variant pb-2">${esc(unitLbl)}</span>
+        </div>
+        <div id="plan-mode-ing" class="flex flex-wrap items-end gap-4" style="display:none">
+          <div class="flex flex-col gap-2">
+            <label class="${LBL_CLS}" for="plan-ing">Ingrédient</label>
+            <select id="plan-ing" class="${INPUT_CLS}" style="min-width:14rem">${planMerged.map((m, i) => `<option value="${i}">${esc(m.name)}</option>`).join('')}</select>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="${LBL_CLS}" for="plan-ing-qty">Quantité souhaitée</label>
+            <input id="plan-ing-qty" type="number" min="0" step="any" class="${INPUT_CLS}" style="width:8rem">
+          </div>
+          <span id="plan-ing-unit" class="font-body-md text-on-surface-variant pb-2"></span>
+        </div>`;
+      const refreshMode = () => {
+        const mode = zone.querySelector('input[name="plan-mode"]:checked').value;
+        document.getElementById('plan-mode-qty').style.display = mode === 'qty' ? 'flex' : 'none';
+        document.getElementById('plan-mode-ing').style.display = mode === 'ing' ? 'flex' : 'none';
+      };
+      zone.querySelectorAll('input[name="plan-mode"]').forEach(rd => rd.addEventListener('change', refreshMode));
+      const ingSel = document.getElementById('plan-ing');
+      const refreshIng = () => {
+        const m = planMerged[+ingSel.value];
+        if (!m) return;
+        document.getElementById('plan-ing-qty').value = parseFloat(String(m.qty).replace(',', '.')) || '';
+        document.getElementById('plan-ing-unit').textContent = m.unit || '';
+      };
+      if (ingSel) { ingSel.addEventListener('change', refreshIng); refreshIng(); }
+    } else if (r.measure_type === 'mold') {
+      const molds = await getMolds();
+      const current = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ');
+      zone.innerHTML = `
+        <div class="flex flex-col gap-2" style="max-width:26rem">
+          <label class="${LBL_CLS}" for="plan-mold">Moule / cercle</label>
+          <select id="plan-mold" class="${INPUT_CLS}">
+            <option value="">${esc(current ? 'Moule de la recette — ' + current : 'Moule de la recette')}</option>
+            ${molds.map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.mold_types?.name ? ' (' + esc(m.mold_types.name) + ')' : ''}</option>`).join('')}
+          </select>
+          <p class="text-xs text-on-surface-variant">Choisissez un autre moule si besoin — les quantités de la recette restent inchangées.</p>
+        </div>`;
+    } else if (r.measure_type === 'dimensions') {
+      zone.innerHTML = `
+        <div class="flex flex-col gap-2" style="max-width:26rem">
+          <label class="${LBL_CLS}" for="plan-dims">Dimensions souhaitées</label>
+          <input id="plan-dims" type="text" value="${esc(r.yield_desc || '')}" class="${INPUT_CLS}" placeholder="ex : 20cm × 5cm, Ø 22cm…">
+        </div>`;
+    }
+  }
+
+  document.getElementById('btn-plan')?.addEventListener('click', async () => {
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id || !currentRecipe) { window.location.href = 'profil.html#planning'; return; }
+    const user = await getUser();
+    if (!user) { window.location.href = 'connexion.html'; return; }
+    if (planPanel.style.display === 'none') {
+      await buildPlanPanel(currentRecipe);
+      planPanel.style.display = '';
+      planPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else planPanel.style.display = 'none';
+  });
+
+  document.getElementById('plan-cancel')?.addEventListener('click', () => { planPanel.style.display = 'none'; });
+
+  document.getElementById('plan-validate')?.addEventListener('click', async () => {
+    const r = currentRecipe;
+    if (!r) return;
+    const dateEl = document.getElementById('plan-date');
+    if (!dateEl.value) { alert('Choisissez une date.'); return; }
+    if (dateEl.value < dateEl.min) { alert('La date doit être aujourd’hui ou dans le futur.'); return; }
+
+    let factor = 1, label = null;
+    if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
+      const unitLbl = UNITS_LBL[r.yield_unit] || r.yield_unit || '';
+      const mode = document.querySelector('input[name="plan-mode"]:checked')?.value;
+      if (mode === 'ing') {
+        const m = planMerged[+document.getElementById('plan-ing').value];
+        const base = parseFloat(String(m.qty).replace(',', '.'));
+        const want = parseFloat(String(document.getElementById('plan-ing-qty').value).replace(',', '.'));
+        if (!(want > 0)) { alert('Indiquez une quantité valide.'); return; }
+        factor = want / base;
+        label = `Base ${m.name} : ${want} ${m.unit || ''}`.trim();
+      } else {
+        const want = parseFloat(String(document.getElementById('plan-qty').value).replace(',', '.'));
+        if (!(want > 0)) { alert('Indiquez une quantité valide.'); return; }
+        factor = want / parseFloat(r.yield_qty);
+        label = `Quantité : ${want} ${unitLbl}`.trim();
+      }
+    } else if (r.measure_type === 'mold') {
+      const v = document.getElementById('plan-mold')?.value;
+      if (v) label = `Moule : ${v}`;
+    } else if (r.measure_type === 'dimensions') {
+      const v = document.getElementById('plan-dims')?.value.trim();
+      if (v && v !== (r.yield_desc || '')) label = `Dimensions : ${v}`;
+    }
+    factor = +factor.toFixed(3);
+
+    const dateTxt = new Date(dateEl.value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const lines = [`Planifier « ${r.title} » le ${dateTxt} ?`];
+    if (label) lines.push(label);
+    if (factor !== 1) lines.push(`Les quantités seront multipliées par ${String(factor).replace('.', ',')}.`);
+    if (!confirm(lines.join('\n'))) return;
+
+    const btn = document.getElementById('plan-validate');
+    btn.disabled = true;
+    try {
+      const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label });
+      if (error) throw error;
+      document.getElementById('plan-status').innerHTML = 'Recette planifiée ✓ <a href="profil.html#planning" class="underline text-primary">Voir mon planning</a>';
+      setTimeout(() => { planPanel.style.display = 'none'; document.getElementById('plan-status').textContent = ''; }, 4000);
+    } catch (e) {
+      alert('Erreur lors de la planification : ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   initAuthUI();
   loadRecipeFromDB();

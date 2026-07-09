@@ -266,10 +266,13 @@ async function getPlanning(userId) {
   return data || [];
 }
 
-async function addToPlanning(recipeId, plannedDate, notes = '') {
+async function addToPlanning(recipeId, plannedDate, { factor = 1, adjustLabel = null, notes = '' } = {}) {
   const user = await getUser();
-  if (!user) return;
-  return db.from('planning').insert({ user_id: user.id, recipe_id: recipeId, planned_date: plannedDate, notes });
+  if (!user) { window.location.href = 'connexion.html'; return { error: { message: 'Non connecté' } }; }
+  return db.from('planning').insert({
+    user_id: user.id, recipe_id: recipeId, planned_date: plannedDate,
+    factor, adjust_label: adjustLabel, notes,
+  });
 }
 
 async function removePlanning(id) {
