@@ -458,18 +458,29 @@
     }));
   }
 
+  // Ferme le panneau liste de courses et retire les cases à cocher
+  window.mcShoppingClose = function () {
+    document.getElementById('shopping-panel')?.remove();
+    document.querySelectorAll('#full-ingredients-ul .shop-pick').forEach(c => c.remove());
+  };
+
   window.mcShoppingOpen = async function () {
     if (!currentRecipe) { window.location.href = 'profil.html#planning'; return; }
     const user = await getUser();
     if (!user) { window.location.href = 'connexion.html'; return; }
     const block = document.getElementById('full-ingredients-block');
-    const existing = document.getElementById('shopping-panel');
-    if (existing) { existing.remove(); return; }
+    if (document.getElementById('shopping-panel')) { mcShoppingClose(); return; }
     block.open = true; // déplier la liste complète des ingrédients
+    // Case à cocher devant chaque ingrédient (cochée par défaut), dans l'ordre des lignes affichées
+    document.querySelectorAll('#full-ingredients-ul li').forEach(li => {
+      const nameSpan = li.querySelector('span');
+      if (!nameSpan || !nameSpan.textContent.trim()) return; // ligne d'en-tête
+      nameSpan.insertAdjacentHTML('afterbegin', '<input type="checkbox" checked class="shop-pick w-4 h-4 rounded border-outline text-primary focus:ring-primary mr-3 cursor-pointer">');
+    });
     const lists = await getShoppingLists();
     block.insertAdjacentHTML('afterend', `
       <div id="shopping-panel" class="border border-secondary bg-surface-container-low rounded-xl p-6 mt-4 flex flex-col gap-4">
-        <span class="font-label-md text-label-md text-primary">Ajouter les ingrédients à une liste de courses</span>
+        <span class="font-label-md text-label-md text-primary">Ajouter les ingrédients sélectionnés à une liste de courses</span>
         <div class="flex flex-wrap items-end gap-3">
           <label class="flex flex-col gap-1">
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Liste de courses</span>
@@ -483,7 +494,7 @@
             <input id="shopping-name" value="${esc('Courses — ' + (currentPlan ? new Date(currentPlan.planned_date + 'T00:00:00').toLocaleDateString('fr-FR') + ' — ' : '') + (currentRecipe.title || ''))}" class="border border-outline-variant rounded px-3 py-2 font-body-md text-sm" style="min-width:16rem">
           </label>
           <button type="button" onclick="mcShoppingValidate(this)" class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md text-[12px]">Valider</button>
-          <button type="button" onclick="document.getElementById('shopping-panel').remove()" class="border border-outline px-4 py-2 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
+          <button type="button" onclick="mcShoppingClose()" class="border border-outline px-4 py-2 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
         </div>
       </div>`);
     document.getElementById('shopping-choice').addEventListener('change', e => {
@@ -495,6 +506,10 @@
     const choice = document.getElementById('shopping-choice').value;
     btn.disabled = true;
     try {
+      const picks = [...document.querySelectorAll('#full-ingredients-ul .shop-pick')];
+      const items = shoppingItemsFromRecipe(currentRecipe)
+        .filter((_, k) => !picks.length || picks[k]?.checked);
+      if (!items.length) { alert('Sélectionnez au moins un ingrédient.'); btn.disabled = false; return; }
       let listId = choice;
       if (choice === '__new__') {
         const name = document.getElementById('shopping-name').value.trim();
@@ -502,7 +517,7 @@
         const l = await createShoppingList(name);
         listId = l.id;
       }
-      await addShoppingItems(listId, shoppingItemsFromRecipe(currentRecipe));
+      await addShoppingItems(listId, items);
       window.location.href = 'courses.html?id=' + listId;
     } catch (e) {
       alert('Erreur : ' + e.message);
