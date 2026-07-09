@@ -464,6 +464,7 @@
     const block = document.getElementById('full-ingredients-block');
     const existing = document.getElementById('shopping-panel');
     if (existing) { existing.remove(); return; }
+    block.open = true; // déplier la liste complète des ingrédients
     const lists = await getShoppingLists();
     block.insertAdjacentHTML('afterend', `
       <div id="shopping-panel" class="border border-secondary bg-surface-container-low rounded-xl p-6 mt-4 flex flex-col gap-4">
