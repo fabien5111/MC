@@ -1,10 +1,11 @@
-const CACHE = 'maryse-club-v9';
+const CACHE = 'maryse-club-v10';
 const STATIC = [
   '/',
   '/index.html',
   '/recette.html',
   '/creer.html',
   '/profil.html',
+  '/courses.html',
   '/connexion.html',
   '/admin.html',
   '/admin-listes.html',

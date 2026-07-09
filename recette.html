@@ -200,7 +200,7 @@
         </div>
       </div>
       <details class="group border border-outline-variant mt-12" id="full-ingredients-block">
-        <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
+        <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span><span class="flex items-center gap-3"><button type="button" onclick="event.preventDefault();event.stopPropagation();mcShoppingOpen()" class="flex items-center gap-1 border border-primary text-primary px-3 py-1 rounded-full font-label-md text-[12px] hover:bg-primary hover:text-white transition-colors"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Liste de courses</button><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></span></summary>
         <div class="p-4 bg-white">
           <ul id="full-ingredients-ul" style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
             <li class="py-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">Beurre</span><span class="font-label-md text-label-md text-primary">250g</span></li>
@@ -423,6 +423,90 @@
     if (m.qty != null) return base ? +(m.qty / base).toFixed(2) : null;
     return planFactor();
   }
+
+  // Fusion effective (mode planifié) : barrés exclus, ajustements appliqués, ajouts inclus
+  function effectiveMergedRows(recipe) {
+    const rows = [];
+    const push = (name, unit, adjN, origN, origRaw, added) => {
+      const key = (name || '').toLowerCase() + '|' + (unit || '').toLowerCase();
+      let r = rows.find(x => x.key === key);
+      if (!r) { r = { key, name, unit: unit || '', adj: null, orig: null, origTxt: [], added: false }; rows.push(r); }
+      if (adjN != null) r.adj = +((r.adj || 0) + adjN).toFixed(2);
+      if (origN != null) r.orig = +((r.orig || 0) + origN).toFixed(2);
+      else if (origRaw) r.origTxt.push(origRaw);
+      if (added) r.added = true;
+    };
+    (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
+      if (!it.name || isRemovedIng(it)) return;
+      push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
+    }));
+    planOverrides().added.forEach(a => { if (a.name) push(a.name, a.unit, numify(a.qty), null, '', true); });
+    rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return rows;
+  }
+
+  // Ingrédients à mettre dans une liste de courses : uniquement les quantités ajustées
+  function shoppingItemsFromRecipe(recipe) {
+    if (!currentPlan) {
+      return mergeIngredients(recipe).map(m => ({ name: m.name, quantity: String(m.qty || ''), unit: m.unit }));
+    }
+    return effectiveMergedRows(recipe).map(r => ({
+      name: r.name,
+      quantity: r.adj != null ? fmtNum(r.adj) : (r.origTxt.join(' + ') || ''),
+      unit: r.unit,
+    }));
+  }
+
+  window.mcShoppingOpen = async function () {
+    if (!currentRecipe) { window.location.href = 'profil.html#planning'; return; }
+    const user = await getUser();
+    if (!user) { window.location.href = 'connexion.html'; return; }
+    const block = document.getElementById('full-ingredients-block');
+    const existing = document.getElementById('shopping-panel');
+    if (existing) { existing.remove(); return; }
+    const lists = await getShoppingLists();
+    block.insertAdjacentHTML('afterend', `
+      <div id="shopping-panel" class="border border-secondary bg-surface-container-low rounded-xl p-6 mt-4 flex flex-col gap-4">
+        <span class="font-label-md text-label-md text-primary">Ajouter les ingrédients à une liste de courses</span>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Liste de courses</span>
+            <select id="shopping-choice" class="border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-white" style="min-width:14rem">
+              <option value="__new__">➕ Nouvelle liste…</option>
+              ${lists.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="flex flex-col gap-1" id="shopping-name-wrap">
+            <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Nom de la nouvelle liste</span>
+            <input id="shopping-name" value="${esc('Courses — ' + (currentRecipe.title || ''))}" class="border border-outline-variant rounded px-3 py-2 font-body-md text-sm" style="min-width:16rem">
+          </label>
+          <button type="button" onclick="mcShoppingValidate(this)" class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md text-[12px]">Valider</button>
+          <button type="button" onclick="document.getElementById('shopping-panel').remove()" class="border border-outline px-4 py-2 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
+        </div>
+      </div>`);
+    document.getElementById('shopping-choice').addEventListener('change', e => {
+      document.getElementById('shopping-name-wrap').style.display = e.target.value === '__new__' ? '' : 'none';
+    });
+  };
+
+  window.mcShoppingValidate = async function (btn) {
+    const choice = document.getElementById('shopping-choice').value;
+    btn.disabled = true;
+    try {
+      let listId = choice;
+      if (choice === '__new__') {
+        const name = document.getElementById('shopping-name').value.trim();
+        if (!name) { alert('Donnez un nom à la liste.'); btn.disabled = false; return; }
+        const l = await createShoppingList(name);
+        listId = l.id;
+      }
+      await addShoppingItems(listId, shoppingItemsFromRecipe(currentRecipe));
+      window.location.href = 'courses.html?id=' + listId;
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+      btn.disabled = false;
+    }
+  };
 
   // Crayon : formulaire d'édition en ligne (quantité ajustée ou coefficient)
   window.mcEditLine = function (ingId, btn) {
@@ -923,23 +1007,7 @@
             </li>`).join('');
         } else if (fullBlock) fullBlock.style.display = 'none';
       } else {
-        // Fusion effective : barrés exclus, ajustements appliqués, ajouts inclus
-        const rows = [];
-        const push = (name, unit, adjN, origN, origRaw, added) => {
-          const key = (name || '').toLowerCase() + '|' + (unit || '').toLowerCase();
-          let r = rows.find(x => x.key === key);
-          if (!r) { r = { key, name, unit: unit || '', adj: null, orig: null, origTxt: [], added: false }; rows.push(r); }
-          if (adjN != null) r.adj = +((r.adj || 0) + adjN).toFixed(2);
-          if (origN != null) r.orig = +((r.orig || 0) + origN).toFixed(2);
-          else if (origRaw) r.origTxt.push(origRaw);
-          if (added) r.added = true;
-        };
-        (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
-          if (!it.name || isRemovedIng(it)) return;
-          push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
-        }));
-        planOverrides().added.forEach(a => { if (a.name) push(a.name, a.unit, numify(a.qty), null, '', true); });
-        rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+        const rows = effectiveMergedRows(recipe);
         if (rows.length) {
           fullUl.style.cssText = qtyGridStyle;
           fullUl.innerHTML = QTY_HEADER + rows.map(r => {

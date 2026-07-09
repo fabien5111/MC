@@ -130,12 +130,9 @@
         <div class="w-full lg:w-96">
           <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> Listes de courses</h2>
           <div class="bg-surface-container-low p-8 rounded-lg border border-outline-variant/50">
-            <div class="flex justify-between items-center mb-6"><p class="font-label-md text-primary uppercase tracking-widest text-[11px]">En cours (4 articles)</p><span class="material-symbols-outlined text-primary cursor-pointer">add_circle</span></div>
-            <ul class="space-y-4">
-              <li class="flex items-center gap-3 font-body-md text-on-surface check-item"><span class="material-symbols-outlined text-[18px] text-outline cursor-pointer">check_box_outline_blank</span> 250g Beurre AOP</li>
-              <li class="flex items-center gap-3 font-body-md text-on-surface check-item"><span class="material-symbols-outlined text-[18px] text-outline cursor-pointer">check_box_outline_blank</span> Gousses de vanille (3)</li>
-              <li class="flex items-center gap-3 font-body-md text-on-surface check-item"><span class="material-symbols-outlined text-[18px] text-primary cursor-pointer" style="font-variation-settings:'FILL' 1;">check_box</span> <span class="line-through opacity-50">Farine T55</span></li>
-            </ul>
+            <div id="shopping-lists">
+              <p class="text-on-surface-variant italic text-sm">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -289,6 +286,17 @@
     }
   }
 
+  // Supprime une liste de courses
+  window.removeShoppingList = async function (id, name, btn) {
+    if (!confirm(`Supprimer la liste « ${name} » ?`)) return;
+    try {
+      await deleteShoppingList(id);
+      btn.closest('.group')?.remove();
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    }
+  };
+
   // Retire une entrée du planning
   window.removePlanning = async function (id, btn) {
     if (!confirm('Retirer cette recette du planning ?')) return;
@@ -426,6 +434,27 @@
           </div>
         </a>`;
       }).join('');
+    }
+
+    // Listes de courses
+    const shopWrap = document.getElementById('shopping-lists');
+    if (shopWrap) {
+      const escS = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const lists = await getShoppingLists();
+      if (lists.length) {
+        shopWrap.innerHTML = lists.map(l => {
+          const items = l.shopping_list_items || [];
+          const done = items.filter(i => i.checked).length;
+          return `
+            <div class="flex items-center justify-between py-3 border-b border-outline-variant/30 last:border-0 group">
+              <a href="courses.html?id=${l.id}" class="flex-1 min-w-0">
+                <p class="font-label-md text-primary truncate">${escS(l.name)}</p>
+                <p class="text-xs text-on-surface-variant">${items.length} article${items.length > 1 ? 's' : ''}${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</p>
+              </a>
+              <button type="button" title="Supprimer la liste" onclick="removeShoppingList(${JSON.stringify(l.id)}, ${JSON.stringify(String(l.name)).replace(/'/g, '&#39;')}, this)" class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+            </div>`;
+        }).join('');
+      }
     }
 
     // Planning

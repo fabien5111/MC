@@ -245,6 +245,51 @@ async function toggleFavorite(recipeId) {
   }
 }
 
+// ── LISTES DE COURSES ────────────────────────────────────────
+async function getShoppingLists() {
+  const user = await getUser();
+  if (!user) return [];
+  const { data, error } = await db.from('shopping_lists')
+    .select('*, shopping_list_items(id, checked)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) console.error('getShoppingLists:', error);
+  return data || [];
+}
+
+async function getShoppingList(id) {
+  const { data, error } = await db.from('shopping_lists')
+    .select('*, shopping_list_items(*)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) console.error('getShoppingList:', error);
+  return data;
+}
+
+async function createShoppingList(name) {
+  const user = await getUser();
+  if (!user) throw new Error('Non connecté');
+  const { data, error } = await db.from('shopping_lists').insert({ user_id: user.id, name }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function addShoppingItems(listId, items) {
+  const rows = items.map(i => ({ list_id: listId, name: i.name, quantity: i.quantity || null, unit: i.unit || null }));
+  const { error } = await db.from('shopping_list_items').insert(rows);
+  if (error) throw error;
+}
+
+async function setShoppingItemChecked(itemId, checked) {
+  const { error } = await db.from('shopping_list_items').update({ checked }).eq('id', itemId);
+  if (error) alert('Coche non enregistrée : ' + error.message);
+}
+
+async function deleteShoppingList(id) {
+  const { error } = await db.from('shopping_lists').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── RÉGLAGES DU SITE (bannières par appareil…) ────────────────
 async function getSiteSettings(keys) {
   const { data, error } = await db.from('site_settings').select('key, value').in('key', keys);
