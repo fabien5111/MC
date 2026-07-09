@@ -386,6 +386,118 @@
     return d.toLocaleDateString('fr-FR', opts || { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
+  // ── Ajustements par ligne d'ingrédient (mode planifié) ──────
+  const numify = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? null : n; };
+  const fmtNum = n => String(+(+n).toFixed(2)).replace('.', ',');
+
+  function planOverrides() {
+    if (!currentPlan) return { mods: {}, added: [] };
+    if (!currentPlan.overrides || typeof currentPlan.overrides !== 'object') currentPlan.overrides = {};
+    if (!currentPlan.overrides.mods) currentPlan.overrides.mods = {};
+    if (!currentPlan.overrides.added) currentPlan.overrides.added = [];
+    return currentPlan.overrides;
+  }
+
+  async function savePlanOverrides() {
+    const { error } = await db.from('planning').update({ overrides: planOverrides() }).eq('id', currentPlan.id);
+    if (error) alert('Modification non enregistrée : ' + error.message);
+  }
+
+  const ingMod = it => planOverrides().mods[String(it.id)] || {};
+  const isRemovedIng = it => !!ingMod(it).removed;
+  const isModifiedIng = it => ingMod(it).qty != null || ingMod(it).coef != null;
+
+  // Quantité ajustée effective d'une ligne : quantité forcée, sinon base × coefficient (de ligne ou global)
+  function effAdjustedQty(it) {
+    const m = ingMod(it);
+    if (m.qty != null) return m.qty;
+    const base = numify(it.quantity);
+    if (base == null) return null;
+    return +(base * (m.coef != null ? m.coef : planFactor())).toFixed(2);
+  }
+
+  function effCoef(it) {
+    const m = ingMod(it);
+    if (m.coef != null) return m.coef;
+    const base = numify(it.quantity);
+    if (m.qty != null) return base ? +(m.qty / base).toFixed(2) : null;
+    return planFactor();
+  }
+
+  window.mcEditQty = async function (ingId) {
+    const it = window._ingById?.[String(ingId)];
+    if (!it || !currentPlan) return;
+    const cur = effAdjustedQty(it);
+    const v = prompt(`Quantité ajustée pour « ${it.name} »${it.unit ? ' (' + it.unit + ')' : ''} :`, cur != null ? fmtNum(cur) : '');
+    if (v === null) return;
+    const n = numify(v);
+    if (n == null || n < 0) { alert('Quantité invalide.'); return; }
+    const ov = planOverrides();
+    ov.mods[String(ingId)] = { ...ov.mods[String(ingId)], qty: n };
+    delete ov.mods[String(ingId)].coef;
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
+  window.mcEditCoef = async function (ingId) {
+    const it = window._ingById?.[String(ingId)];
+    if (!it || !currentPlan) return;
+    const cur = effCoef(it);
+    const v = prompt(`Coefficient pour « ${it.name} » :`, cur != null ? fmtNum(cur) : '1');
+    if (v === null) return;
+    const n = numify(v);
+    if (n == null || n <= 0) { alert('Coefficient invalide.'); return; }
+    const ov = planOverrides();
+    ov.mods[String(ingId)] = { ...ov.mods[String(ingId)], coef: n };
+    delete ov.mods[String(ingId)].qty;
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
+  window.mcToggleRemove = async function (ingId) {
+    if (!currentPlan) return;
+    const ov = planOverrides();
+    const m = ov.mods[String(ingId)] || {};
+    m.removed = !m.removed;
+    ov.mods[String(ingId)] = m;
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
+  window.mcRemoveAdded = async function (idx) {
+    if (!currentPlan) return;
+    planOverrides().added.splice(idx, 1);
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
+  window.mcShowAddForm = function (groupId, btn) {
+    btn.style.display = 'none';
+    btn.insertAdjacentHTML('afterend', `
+      <div class="flex flex-wrap items-end gap-3 mt-2" data-add-form>
+        <input data-add-name placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:12rem">
+        <input data-add-qty placeholder="Quantité" type="number" min="0" step="any" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
+        <input data-add-unit placeholder="Unité" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
+        <button type="button" onclick="mcAddIng('${groupId}', this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">Ajouter</button>
+        <button type="button" onclick="this.closest('[data-add-form]').previousElementSibling.style.display='';this.closest('[data-add-form]').remove()" class="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
+      </div>`);
+    btn.nextElementSibling.querySelector('[data-add-name]').focus();
+  };
+
+  window.mcAddIng = async function (groupId, el) {
+    const form = el.closest('[data-add-form]');
+    const name = form.querySelector('[data-add-name]').value.trim();
+    if (!name) { alert('Indiquez un nom d’ingrédient.'); return; }
+    planOverrides().added.push({
+      group: groupId,
+      name,
+      qty: form.querySelector('[data-add-qty]').value.trim(),
+      unit: form.querySelector('[data-add-unit]').value.trim(),
+    });
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
   // Fusion des ingrédients identiques (nom + unité) de toutes les étapes
   function mergeIngredients(recipe) {
     const merged = [];
@@ -454,23 +566,52 @@
   }
 
   async function renderRecipeFromDB(id) {
-    const recipe = await getRecipe(id);
+    const recipe = (currentRecipe && String(currentRecipe.id) === String(id)) ? currentRecipe : await getRecipe(id);
     if (!recipe) return;
     currentRecipe = recipe;
-    // Contexte planifié avec coefficient ≠ 1 : colonne « quantité ajustée » en plus de l'origine
+    // Contexte planifié : colonnes coefficient + quantité ajustée + origine, lignes modifiables
     const scaled = planFactor() !== 1;
+    const editable = !!currentPlan;
     const fTxt = String(planFactor()).replace('.', ',');
-    const QTY_HEADER = scaled ? `
+    window._ingById = {};
+    (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => { window._ingById[String(it.id)] = it; }));
+
+    const QTY_HEADER = editable ? `
       <li class="pb-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
         <span></span>
-        <span></span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
         <span class="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
         <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d'origine</span>
       </li>` : '';
-    const qtyCells = (qty, unit) => scaled
-      ? `<span class="font-label-md text-label-md text-on-surface-variant text-center">× ${fTxt}</span><span class="font-label-md text-label-md text-primary text-center">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
-      : `<span class="font-label-md text-label-md text-primary text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`;
-    const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${scaled ? ' max-content max-content' : ''};column-gap:40px`;
+
+    // it._added : ligne ajoutée par l'utilisateur ; it._addIdx : index dans overrides.added
+    const nameCls = it => (editable && isRemovedIng(it)) ? ' line-through opacity-50' : '';
+    const qtyCells = it => {
+      if (!editable) return `<span class="font-label-md text-label-md text-primary text-center">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span>`;
+      const removed = isRemovedIng(it);
+      const mod = it._added || isModifiedIng(it);
+      const struck = removed ? ' line-through opacity-50' : '';
+      const modC = mod ? 'text-secondary font-bold' : '';
+      const coef = it._added ? null : effCoef(it);
+      const adj = it._added ? numify(it.quantity) : effAdjustedQty(it);
+      const adjTxt = adj != null ? [fmtNum(adj), it.unit].filter(Boolean).join(' ') : [it.quantity, it.unit].filter(Boolean).join(' ');
+      const origTxt = it._added ? '—' : [it.quantity, it.unit].filter(Boolean).join(' ');
+      return `<span class="font-label-md text-label-md text-center ${modC || 'text-on-surface-variant'}${struck}">${coef != null ? '× ' + fmtNum(coef) : '—'}</span>
+        <span class="font-label-md text-label-md text-center ${modC || 'text-primary'}${struck}">${esc(adjTxt)}</span>
+        <span class="font-label-md text-label-md text-on-surface-variant text-center${struck}">${esc(origTxt)}</span>`;
+    };
+    const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${editable ? ' max-content max-content' : ''};column-gap:40px`;
+
+    // Ingrédients effectifs d'un groupe : lignes de la recette + lignes ajoutées à la planification
+    const effGroupIngredients = g => {
+      const base = [...(g.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      if (!editable) return base;
+      const added = [];
+      planOverrides().added.forEach((a, idx) => {
+        if (String(a.group) === String(g.id)) added.push({ id: 'added-' + idx, name: a.name, quantity: a.qty, unit: a.unit, _added: true, _addIdx: idx });
+      });
+      return base.concat(added);
+    };
 
     // Titre
     const titleEl = document.querySelector('h1');
@@ -505,26 +646,50 @@
           </li>`).join('');
     }
 
+    // Cellules cliquables + action supprimer/rétablir (bloc groupé, mode planifié)
+    const clickableCells = it => {
+      const removed = isRemovedIng(it);
+      const struck = removed ? ' line-through opacity-50' : '';
+      if (it._added) {
+        return `<span class="font-label-md text-label-md text-center text-secondary font-bold">—</span>
+          <span class="font-label-md text-label-md text-center text-secondary font-bold">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span>
+          <span class="font-label-md text-label-md text-on-surface-variant text-center">—</span>`;
+      }
+      const modC = isModifiedIng(it) ? 'text-secondary font-bold' : '';
+      const coef = effCoef(it);
+      const adj = effAdjustedQty(it);
+      const adjTxt = adj != null ? [fmtNum(adj), it.unit].filter(Boolean).join(' ') : [it.quantity, it.unit].filter(Boolean).join(' ');
+      return `<button type="button" ${removed ? 'disabled' : `onclick="mcEditCoef('${it.id}')"`} title="Modifier le coefficient" class="font-label-md text-label-md text-center underline decoration-dotted underline-offset-4 ${modC || 'text-on-surface-variant'}${struck}">${coef != null ? '× ' + fmtNum(coef) : '—'}</button>
+        <button type="button" ${removed ? 'disabled' : `onclick="mcEditQty('${it.id}')"`} title="Modifier la quantité ajustée" class="font-label-md text-label-md text-center underline decoration-dotted underline-offset-4 ${modC || 'text-primary'}${struck}">${esc(adjTxt)}</button>
+        <span class="font-label-md text-label-md text-on-surface-variant text-center${struck}">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span>`;
+    };
+    const actionCell = it => it._added
+      ? `<button type="button" onclick="mcRemoveAdded(${it._addIdx})" title="Retirer cet ajout" class="justify-self-center text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">delete</span></button>`
+      : `<button type="button" onclick="mcToggleRemove('${it.id}')" title="${isRemovedIng(it) ? 'Rétablir l’ingrédient' : 'Supprimer (barrer) l’ingrédient'}" class="justify-self-center ${isRemovedIng(it) ? 'text-primary' : 'text-error'} hover:opacity-70"><span class="material-symbols-outlined text-[18px]">${isRemovedIng(it) ? 'undo' : 'delete'}</span></button>`;
+
     // Ingrédients (groupes + lignes quantité/unité/nom)
     const ingWrap = document.getElementById('ingredients-display');
     if (ingWrap && recipe.ingredient_groups?.length) {
+      const groupGrid = editable
+        ? 'display:grid;grid-template-columns:max-content max-content max-content max-content max-content;column-gap:32px'
+        : qtyGridStyle;
+      const groupHeader = editable ? QTY_HEADER.replace('</li>', '<span></span></li>') : '';
       ingWrap.innerHTML = [...recipe.ingredient_groups]
         .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
         .map(g => `
           <div>
             <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">${esc(g.name || '')}</h4>
-            <ul style="${qtyGridStyle}">
-              ${QTY_HEADER}
-              ${[...(g.ingredients || [])]
-                .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-                .map(i => `
-                  <li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
-                    <span class="font-body-md text-body-md">${i.url
-                      ? `<a href="${i.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${i.name}</a>`
-                      : i.name}${i.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${i.comment}</span>` : ''}</span>
-                    ${qtyCells(i.quantity, i.unit)}
+            <ul style="${groupGrid}">
+              ${groupHeader}
+              ${effGroupIngredients(g).map(i => `
+                  <li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center">
+                    <span class="font-body-md text-body-md${nameCls(i)}">${i.url
+                      ? `<a href="${i.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(i.name)}</a>`
+                      : esc(i.name)}${i.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(i.comment)}</span>` : ''}</span>
+                    ${editable ? clickableCells(i) + actionCell(i) : qtyCells(i)}
                   </li>`).join('')}
             </ul>
+            ${editable ? `<button type="button" onclick="mcShowAddForm('${g.id}', this)" class="mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline"><span class="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient</button>` : ''}
           </div>`).join('');
     }
 
@@ -645,7 +810,7 @@
       if (steps.length) {
         stepsWrap.innerHTML = steps.map((s, i) => {
           const grp = groupsByOrder[s.order_index || 0];
-          const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+          const ings = grp ? effGroupIngredients(grp) : [];
           const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
           const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
           const badges = [
@@ -667,7 +832,7 @@
               <div class="p-4 bg-white">
                 <ul style="${qtyGridStyle}">
                   ${QTY_HEADER}
-                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span>${qtyCells(it.quantity, it.unit)}</li>`).join('')}
+                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md${nameCls(it)}">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span>${qtyCells(it)}</li>`).join('')}
                 </ul>
               </div>
             </details>` : ''}
@@ -699,15 +864,55 @@
     const fullUl = document.getElementById('full-ingredients-ul');
     const fullBlock = document.getElementById('full-ingredients-block');
     if (fullUl) {
-      const merged = mergeIngredients(recipe);
-      if (merged.length) {
-        fullUl.style.cssText = qtyGridStyle;
-        fullUl.innerHTML = QTY_HEADER + merged.map(m => `
-          <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
-            <span class="font-body-md text-body-md">${esc(m.name)}</span>
-            ${qtyCells(m.qty, m.unit)}
-          </li>`).join('');
-      } else if (fullBlock) fullBlock.style.display = 'none';
+      if (!editable) {
+        const merged = mergeIngredients(recipe);
+        if (merged.length) {
+          fullUl.style.cssText = qtyGridStyle;
+          fullUl.innerHTML = merged.map(m => `
+            <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+              <span class="font-body-md text-body-md">${esc(m.name)}</span>
+              ${qtyCells({ quantity: m.qty, unit: m.unit })}
+            </li>`).join('');
+        } else if (fullBlock) fullBlock.style.display = 'none';
+      } else {
+        // Fusion effective : barrés exclus, ajustements appliqués, ajouts inclus
+        const rows = [];
+        const push = (name, unit, adjN, origN, origRaw, added) => {
+          const key = (name || '').toLowerCase() + '|' + (unit || '').toLowerCase();
+          let r = rows.find(x => x.key === key);
+          if (!r) { r = { key, name, unit: unit || '', adj: null, orig: null, origTxt: [], added: false }; rows.push(r); }
+          if (adjN != null) r.adj = +((r.adj || 0) + adjN).toFixed(2);
+          if (origN != null) r.orig = +((r.orig || 0) + origN).toFixed(2);
+          else if (origRaw) r.origTxt.push(origRaw);
+          if (added) r.added = true;
+        };
+        (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
+          if (!it.name || isRemovedIng(it)) return;
+          push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
+        }));
+        planOverrides().added.forEach(a => { if (a.name) push(a.name, a.unit, numify(a.qty), null, '', true); });
+        rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+        if (rows.length) {
+          fullUl.style.cssText = qtyGridStyle;
+          fullUl.innerHTML = QTY_HEADER + rows.map(r => {
+            const coef = (r.orig && r.adj != null) ? r.adj / r.orig : null;
+            const defAdj = r.orig != null ? +(r.orig * planFactor()).toFixed(2) : null;
+            const mod = r.added || (r.adj != null && (defAdj == null || Math.abs(r.adj - defAdj) > 0.001));
+            const modC = mod ? 'text-secondary font-bold' : '';
+            const adjTxt = r.adj != null ? [fmtNum(r.adj), r.unit].filter(Boolean).join(' ') : [r.origTxt.join(' + '), r.unit].filter(Boolean).join(' ');
+            const origTxt = r.orig != null
+              ? [[fmtNum(r.orig), ...r.origTxt].join(' + '), r.unit].filter(Boolean).join(' ')
+              : (r.origTxt.length ? [r.origTxt.join(' + '), r.unit].filter(Boolean).join(' ') : '—');
+            return `
+            <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+              <span class="font-body-md text-body-md">${esc(r.name)}</span>
+              <span class="font-label-md text-label-md text-center ${modC || 'text-on-surface-variant'}">${coef != null ? '× ' + fmtNum(coef) : '—'}</span>
+              <span class="font-label-md text-label-md text-center ${modC || 'text-primary'}">${esc(adjTxt)}</span>
+              <span class="font-label-md text-label-md text-on-surface-variant text-center">${esc(origTxt)}</span>
+            </li>`;
+          }).join('');
+        } else if (fullBlock) fullBlock.style.display = 'none';
+      }
     }
 
     // Bandeau de contexte de planification
