@@ -149,7 +149,7 @@
     <!-- Technical Info Block -->
     <div class="bg-surface-container-low p-8 mb-12 space-y-8">
       <div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4">
-        <div class="flex flex-col gap-1" id="tech-portions"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
+        <div class="flex flex-col gap-1 items-center text-center" id="tech-portions"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Portions</span><span class="font-headline-md text-headline-md text-primary">8 personnes</span></div>
         <div class="flex flex-col gap-1" id="tech-taille"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Taille</span><span class="font-headline-md text-headline-md text-primary">24cm</span></div>
         <div class="flex flex-col gap-1"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Difficulté</span>
           <div class="flex items-center gap-2 h-8" id="tech-difficulty">
@@ -463,12 +463,12 @@
     const QTY_HEADER = scaled ? `
       <li class="pb-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
         <span></span>
-        <span class="font-label-md text-[10px] uppercase tracking-widest text-primary">Quantité × ${fTxt}</span>
-        <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Quantité d'origine</span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité × ${fTxt}</span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d'origine</span>
       </li>` : '';
     const qtyCells = (qty, unit) => scaled
-      ? `<span class="font-label-md text-label-md text-primary">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
-      : `<span class="font-label-md text-label-md text-primary">${esc([qty, unit].filter(Boolean).join(' '))}</span>`;
+      ? `<span class="font-label-md text-label-md text-primary text-center">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
+      : `<span class="font-label-md text-label-md text-primary text-center">${esc([qty, unit].filter(Boolean).join(' '))}</span>`;
     const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${scaled ? ' max-content' : ''};column-gap:40px`;
 
     // Titre
