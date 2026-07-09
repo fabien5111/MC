@@ -436,15 +436,15 @@
       <li data-edit-form="${ingId}" style="grid-column:1/-1" class="py-3">
         <div class="flex flex-wrap items-end gap-3">
           <span class="font-body-md text-sm text-on-surface-variant pb-2">${esc(it.name)} :</span>
-          <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">Quantité ajustée${it.unit ? ' (' + esc(it.unit) + ')' : ''}</span>
-            <input data-edit-qty type="number" min="0" step="any" value="${adj != null ? adj : ''}" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:7rem"></label>
-          <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">ou coefficient</span>
+          <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">Coefficient</span>
             <input data-edit-coef type="number" min="0" step="any" value="${coef != null ? coef : ''}" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem"></label>
+          <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">ou quantité ajustée${it.unit ? ' (' + esc(it.unit) + ')' : ''}</span>
+            <input data-edit-qty type="number" min="0" step="any" value="${adj != null ? adj : ''}" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:7rem"></label>
           <button type="button" onclick="mcApplyEdit('${ingId}', this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">OK</button>
           <button type="button" onclick="this.closest('[data-edit-form]').remove()" class="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
         </div>
       </li>`);
-    li.nextElementSibling.querySelector('[data-edit-qty]').focus();
+    li.nextElementSibling.querySelector('[data-edit-coef]').focus();
   };
 
   window.mcApplyEdit = async function (ingId, el) {
