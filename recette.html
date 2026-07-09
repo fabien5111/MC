@@ -93,7 +93,7 @@
       <div class="flex justify-between mt-4 border-y border-outline-variant py-4 flex-wrap gap-4 flex-col">
         <div class="flex items-center gap-4 w-full justify-between">
           <div class="flex flex-wrap gap-3 text-secondary">
-            <button class="fav-btn flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">favorite</span> Favori</button>
+            <button class="fav-btn flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px] text-error">favorite</span> Favori</button>
             <button type="button" id="btn-plan" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Planifier</button>
             <button class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">share</span> Partager</button>
             <button onclick="window.print()" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">print</span> Imprimer</button>
@@ -111,6 +111,7 @@
     <div id="plan-notice" class="mb-12 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3" style="display:none">
       <span class="material-symbols-outlined text-primary">event_available</span>
       <span class="font-body-md text-on-surface" id="plan-notice-text"></span>
+      <button type="button" onclick="mcEditPlan()" title="Modifier la planification (date, quantité produite ou coefficient)" class="ml-auto text-primary hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">edit</span></button>
     </div>
 
     <!-- Planification -->
@@ -1033,6 +1034,12 @@
       }
     }
 
+    // Mode planifié : le bouton « Planifier » devient « Voir recette d'origine »
+    if (currentPlan) {
+      const btnPlan = document.getElementById('btn-plan');
+      if (btnPlan) btnPlan.innerHTML = '<span class="material-symbols-outlined text-[18px]">menu_book</span> Voir recette d&#39;origine';
+    }
+
     // Bandeau de contexte de planification
     if (currentPlan) {
       const notice = document.getElementById('plan-notice');
@@ -1133,9 +1140,36 @@
     }
   }
 
+  // Crayon du bandeau : modifier la date ou l'ajustement de la planification en cours
+  let planEditMode = false;
+  window.mcEditPlan = async function () {
+    if (!currentRecipe || !currentPlan) return;
+    await buildPlanPanel(currentRecipe);
+    planEditMode = true;
+    const dateEl = document.getElementById('plan-date');
+    dateEl.value = currentPlan.planned_date >= dateEl.min ? currentPlan.planned_date : dateEl.min;
+    const r = currentRecipe;
+    if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
+      const qtyMode = document.querySelector('input[name="plan-mode"][value="qty"]');
+      if (qtyMode && !qtyMode.checked) { qtyMode.checked = true; qtyMode.dispatchEvent(new Event('change')); }
+      const q = document.getElementById('plan-qty');
+      if (q) q.value = +(parseFloat(r.yield_qty) * planFactor()).toFixed(2);
+    } else if (r.measure_type === 'mold' && currentPlan.adjust_label?.startsWith('Moule : ')) {
+      const sel = document.getElementById('plan-mold');
+      if (sel) sel.value = currentPlan.adjust_label.slice('Moule : '.length);
+    } else if (r.measure_type === 'dimensions' && currentPlan.adjust_label?.startsWith('Dimensions : ')) {
+      const inp = document.getElementById('plan-dims');
+      if (inp) inp.value = currentPlan.adjust_label.slice('Dimensions : '.length);
+    }
+    planPanel.style.display = '';
+    planPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   document.getElementById('btn-plan')?.addEventListener('click', async () => {
     const id = new URLSearchParams(location.search).get('id');
     if (!id || !currentRecipe) { window.location.href = 'profil.html#planning'; return; }
+    // En mode planifié, le bouton renvoie vers la recette d'origine
+    if (currentPlan) { window.location.href = 'recette.html?id=' + currentRecipe.id; return; }
     const user = await getUser();
     if (!user) { window.location.href = 'connexion.html'; return; }
     if (planPanel.style.display === 'none') {
@@ -1145,7 +1179,7 @@
     } else planPanel.style.display = 'none';
   });
 
-  document.getElementById('plan-cancel')?.addEventListener('click', () => { planPanel.style.display = 'none'; });
+  document.getElementById('plan-cancel')?.addEventListener('click', () => { planPanel.style.display = 'none'; planEditMode = false; });
 
   document.getElementById('plan-validate')?.addEventListener('click', async () => {
     const r = currentRecipe;
@@ -1181,7 +1215,8 @@
     factor = +factor.toFixed(3);
 
     const dateTxt = new Date(dateEl.value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const lines = [`Planifier « ${r.title} » le ${dateTxt} ?`];
+    const editing = planEditMode && currentPlan;
+    const lines = [editing ? `Modifier la planification de « ${r.title} » pour le ${dateTxt} ?` : `Planifier « ${r.title} » le ${dateTxt} ?`];
     if (label) lines.push(label);
     if (factor !== 1) lines.push(`Les quantités seront multipliées par ${String(factor).replace('.', ',')}.`);
     if (!confirm(lines.join('\n'))) return;
@@ -1189,10 +1224,23 @@
     const btn = document.getElementById('plan-validate');
     btn.disabled = true;
     try {
-      const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label });
-      if (error) throw error;
-      document.getElementById('plan-status').innerHTML = 'Recette planifiée ✓ <a href="profil.html#planning" class="underline text-primary">Voir mon planning</a>';
-      setTimeout(() => { planPanel.style.display = 'none'; document.getElementById('plan-status').textContent = ''; }, 4000);
+      if (editing) {
+        const { error } = await db.from('planning')
+          .update({ planned_date: dateEl.value, factor, adjust_label: label })
+          .eq('id', currentPlan.id);
+        if (error) throw error;
+        currentPlan.planned_date = dateEl.value;
+        currentPlan.factor = factor;
+        currentPlan.adjust_label = label;
+        planEditMode = false;
+        planPanel.style.display = 'none';
+        await renderRecipeFromDB(r.id);
+      } else {
+        const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label });
+        if (error) throw error;
+        document.getElementById('plan-status').innerHTML = 'Recette planifiée ✓ <a href="profil.html#planning" class="underline text-primary">Voir mon planning</a>';
+        setTimeout(() => { planPanel.style.display = 'none'; document.getElementById('plan-status').textContent = ''; }, 4000);
+      }
     } catch (e) {
       alert('Erreur lors de la planification : ' + e.message);
     } finally {
