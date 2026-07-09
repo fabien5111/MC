@@ -478,7 +478,7 @@
           </label>
           <label class="flex flex-col gap-1" id="shopping-name-wrap">
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Nom de la nouvelle liste</span>
-            <input id="shopping-name" value="${esc('Courses — ' + (currentRecipe.title || ''))}" class="border border-outline-variant rounded px-3 py-2 font-body-md text-sm" style="min-width:16rem">
+            <input id="shopping-name" value="${esc('Courses — ' + (currentPlan ? new Date(currentPlan.planned_date + 'T00:00:00').toLocaleDateString('fr-FR') + ' — ' : '') + (currentRecipe.title || ''))}" class="border border-outline-variant rounded px-3 py-2 font-body-md text-sm" style="min-width:16rem">
           </label>
           <button type="button" onclick="mcShoppingValidate(this)" class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md text-[12px]">Valider</button>
           <button type="button" onclick="document.getElementById('shopping-panel').remove()" class="border border-outline px-4 py-2 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
