@@ -886,7 +886,7 @@
         portionsCell.innerHTML = `
           <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">${adjusted ? `Quantité ajustée${scaled ? ' × ' + fTxt : ''}` : 'Quantité produite'}</span>
           <span class="font-body-lg text-body-lg font-bold text-primary">${esc(yieldTxt)}</span>
-          ${adjusted ? `<span class="font-label-md text-[12px] text-on-surface-variant">Quantité initiale : ${esc(yieldOrig)}</span>` : ''}`;
+          ${adjusted ? `<span class="font-label-md text-[12px] text-on-surface-variant">Quantité d'origine : ${esc(yieldOrig)}</span>` : ''}`;
       } else portionsCell.style.setProperty('display', 'none');
     }
     document.getElementById('tech-taille')?.style.setProperty('display', 'none');
