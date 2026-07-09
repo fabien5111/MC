@@ -565,20 +565,29 @@
     }
 
     // Bloc technique : quantité produite à côté de la difficulté
-    let yieldTxt = null;
+    let yieldTxt = null, yieldOrig = null;
     if (recipe.measure_type === 'units' && recipe.yield_qty) {
-      yieldTxt = `${scaleQty(recipe.yield_qty)} ${UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || ''}`.trim();
+      const u = UNITS_LBL[recipe.yield_unit] || recipe.yield_unit || '';
+      yieldOrig = `${recipe.yield_qty} ${u}`.trim();
+      yieldTxt = `${scaleQty(recipe.yield_qty)} ${u}`.trim();
     } else if (recipe.measure_type === 'mold') {
-      yieldTxt = [recipe.yield_desc, MOLDS_LBL[recipe.yield_unit]].filter(Boolean).join(' — ') || null;
+      yieldOrig = [recipe.yield_desc, MOLDS_LBL[recipe.yield_unit]].filter(Boolean).join(' — ') || null;
+      yieldTxt = yieldOrig;
       if (currentPlan?.adjust_label?.startsWith('Moule : ')) yieldTxt = currentPlan.adjust_label.slice('Moule : '.length);
     } else if (recipe.measure_type === 'dimensions') {
-      yieldTxt = recipe.yield_desc || null;
+      yieldOrig = recipe.yield_desc || null;
+      yieldTxt = yieldOrig;
       if (currentPlan?.adjust_label?.startsWith('Dimensions : ')) yieldTxt = currentPlan.adjust_label.slice('Dimensions : '.length);
     }
     const portionsCell = document.getElementById('tech-portions');
     if (portionsCell) {
       if (yieldTxt) {
-        portionsCell.innerHTML = `<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Quantité produite</span><span class="font-body-lg text-body-lg font-bold text-primary">${esc(yieldTxt)}</span>`;
+        // Contexte planifié : quantité ajustée + rappel de la quantité initiale
+        const adjusted = currentPlan && yieldOrig && yieldOrig !== yieldTxt;
+        portionsCell.innerHTML = `
+          <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">${adjusted ? `Quantité ajustée${scaled ? ' × ' + fTxt : ''}` : 'Quantité produite'}</span>
+          <span class="font-body-lg text-body-lg font-bold text-primary">${esc(yieldTxt)}</span>
+          ${adjusted ? `<span class="font-label-md text-[12px] text-on-surface-variant">Quantité initiale : ${esc(yieldOrig)}</span>` : ''}`;
       } else portionsCell.style.setProperty('display', 'none');
     }
     document.getElementById('tech-taille')?.style.setProperty('display', 'none');
