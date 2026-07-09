@@ -511,8 +511,9 @@
         .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
         .map(g => `
           <div>
-            <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">${g.name}</h4>
-            <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
+            <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">${esc(g.name || '')}</h4>
+            <ul style="${qtyGridStyle}">
+              ${QTY_HEADER}
               ${[...(g.ingredients || [])]
                 .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                 .map(i => `
@@ -520,7 +521,7 @@
                     <span class="font-body-md text-body-md">${i.url
                       ? `<a href="${i.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${i.name}</a>`
                       : i.name}${i.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${i.comment}</span>` : ''}</span>
-                    <span class="font-label-md text-label-md text-primary">${[i.quantity, i.unit].filter(Boolean).join(' ')}</span>
+                    ${qtyCells(i.quantity, i.unit)}
                   </li>`).join('')}
             </ul>
           </div>`).join('');
