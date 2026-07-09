@@ -483,6 +483,43 @@
     renderRecipeFromDB(currentRecipe.id);
   };
 
+  // Crayon sur une ligne ajoutée : édition du nom, de la quantité et de l'unité
+  window.mcEditAdded = async function (idx, btn) {
+    const a = planOverrides().added[idx];
+    if (!a || !currentPlan) return;
+    if (!window._units) window._units = await getUnits();
+    const li = btn.closest('li');
+    if (li.nextElementSibling?.hasAttribute?.('data-edit-form')) { li.nextElementSibling.remove(); return; }
+    li.parentElement.querySelectorAll('[data-edit-form]').forEach(f => f.remove());
+    const unitOptions = (window._units || []).map(u => `<option value="${esc(u.name)}"${u.name === a.unit ? ' selected' : ''}>${esc(u.name)}</option>`).join('');
+    li.insertAdjacentHTML('afterend', `
+      <li data-edit-form="added-${idx}" style="grid-column:1/-1" class="py-3">
+        <div class="flex flex-wrap items-end gap-3">
+          <input data-add-name value="${esc(a.name)}" placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:12rem">
+          <input data-add-qty value="${esc(a.qty || '')}" placeholder="Quantité" type="number" min="0" step="any" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
+          <select data-add-unit class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem">
+            <option value="">— Unité —</option>${unitOptions}
+          </select>
+          <button type="button" onclick="mcApplyEditAdded(${idx}, this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">OK</button>
+          <button type="button" onclick="this.closest('[data-edit-form]').remove()" class="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
+        </div>
+      </li>`);
+    li.nextElementSibling.querySelector('[data-add-qty]').focus();
+  };
+
+  window.mcApplyEditAdded = async function (idx, el) {
+    const a = planOverrides().added[idx];
+    if (!a || !currentPlan) return;
+    const form = el.closest('[data-edit-form]');
+    const name = form.querySelector('[data-add-name]').value.trim();
+    if (!name) { alert('Indiquez un nom d’ingrédient.'); return; }
+    a.name = name;
+    a.qty = form.querySelector('[data-add-qty]').value.trim();
+    a.unit = form.querySelector('[data-add-unit]').value.trim();
+    await savePlanOverrides();
+    renderRecipeFromDB(currentRecipe.id);
+  };
+
   window.mcShowAddForm = async function (groupId, btn) {
     if (!window._units) window._units = await getUnits();
     btn.style.display = 'none';
@@ -670,6 +707,7 @@
     // Actions par ligne : crayon (éditer) + corbeille (barrer) / rétablir
     const actionCell = it => it._added
       ? `<span class="flex items-center gap-1 justify-self-center">
+          <button type="button" onclick="mcEditAdded(${it._addIdx}, this)" title="Modifier cet ajout" class="text-primary hover:opacity-70"><span class="material-symbols-outlined text-[18px]">edit</span></button>
           <button type="button" onclick="mcRemoveAdded(${it._addIdx})" title="Retirer cet ajout" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </span>`
       : `<span class="flex items-center gap-1 justify-self-center">
