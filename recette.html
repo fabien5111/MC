@@ -130,6 +130,17 @@
       </div>
     </div>
 
+    <!-- Planning Schedule -->
+    <div class="mb-12 py-10 border-y border-outline-variant" id="recipe-planning-section">
+      <h3 class="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
+      <div class="relative flex flex-col md:flex-row gap-8" id="recipe-planning">
+        <div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>
+        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 24H</span><p class="font-body-md text-body-md font-semibold">Pâte feuilletée &amp; Repos</p></div>
+        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 3H</span><p class="font-body-md text-body-md font-semibold">Cuisson &amp; Caramel</p></div>
+        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">3</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 1H</span><p class="font-body-md text-body-md font-semibold">Chiboust &amp; Montage</p></div>
+      </div>
+    </div>
+
     <!-- Hero Image -->
     <div class="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
       <image-slot id="recette-hero" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDos_s9LjD9lTGqiVIySBGp_R4ZoTNAhHx2ENgPSXUfLbPEXnM8pGNFPExYlLnchdfaclb-obuLhW_bDwtaQ-vJZmp_mr2LDTurN1gtHqmlR87YPJalrHmiNzVZ75Bq7T4XzAveRYmdKrhW6HQohmfERnVNo4p8ph0xaU9NrI_R0ImxzNwA1LvqTiKSM4aZfJMoCV49HGmlxZZq4dW54oFtNPPDKDOl6fteiXvVL3twT_AyFICtUUyjRseERkq6Wa9xeIaJuPW25FM" shape="rect" fit="cover" placeholder="Le Saint-Honoré — photo principale (16:9)" style="width:100%;height:100%"></image-slot>
@@ -210,17 +221,6 @@
         <p class="font-body-md text-body-md text-on-surface-variant">Tout le nécessaire pour réussir vos entremets à la maison.</p>
       </div>
       <button class="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all uppercase tracking-widest">En savoir plus</button>
-    </div>
-
-    <!-- Planning Schedule -->
-    <div class="mb-12 py-10 border-y border-outline-variant" id="recipe-planning-section">
-      <h3 class="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
-      <div class="relative flex flex-col md:flex-row gap-8" id="recipe-planning">
-        <div class="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant"></div>
-        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 24H</span><p class="font-body-md text-body-md font-semibold">Pâte feuilletée &amp; Repos</p></div>
-        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 3H</span><p class="font-body-md text-body-md font-semibold">Cuisson &amp; Caramel</p></div>
-        <div class="relative flex flex-col gap-4 z-10"><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">3</div><span class="font-label-md text-[12px] text-secondary">JOUR J - 1H</span><p class="font-body-md text-body-md font-semibold">Chiboust &amp; Montage</p></div>
-      </div>
     </div>
 
     <!-- Steps -->
@@ -457,6 +457,19 @@
     const recipe = await getRecipe(id);
     if (!recipe) return;
     currentRecipe = recipe;
+    // Contexte planifié avec coefficient ≠ 1 : colonne « quantité ajustée » en plus de l'origine
+    const scaled = planFactor() !== 1;
+    const fTxt = String(planFactor()).replace('.', ',');
+    const QTY_HEADER = scaled ? `
+      <li class="pb-1" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
+        <span></span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-primary">Quantité × ${fTxt}</span>
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Quantité d'origine</span>
+      </li>` : '';
+    const qtyCells = (qty, unit) => scaled
+      ? `<span class="font-label-md text-label-md text-primary">${esc([scaleQty(qty), unit].filter(Boolean).join(' '))}</span><span class="font-label-md text-label-md text-on-surface-variant">${esc([qty, unit].filter(Boolean).join(' '))}</span>`
+      : `<span class="font-label-md text-label-md text-primary">${esc([qty, unit].filter(Boolean).join(' '))}</span>`;
+    const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${scaled ? ' max-content' : ''};column-gap:40px`;
 
     // Titre
     const titleEl = document.querySelector('h1');
@@ -641,8 +654,9 @@
             <details class="group border border-outline-variant mb-2" open>
               <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Ingrédients de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
               <div class="p-4 bg-white">
-                <ul style="display:grid;grid-template-columns:max-content max-content;column-gap:40px">
-                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span><span class="font-label-md text-label-md text-primary">${esc([scaleQty(it.quantity), it.unit].filter(Boolean).join(' '))}</span></li>`).join('')}
+                <ul style="${qtyGridStyle}">
+                  ${QTY_HEADER}
+                  ${ings.map(it => `<li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1"><span class="font-body-md text-body-md">${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(it.name)}</a>` : esc(it.name)}${it.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(it.comment)}</span>` : ''}</span>${qtyCells(it.quantity, it.unit)}</li>`).join('')}
                 </ul>
               </div>
             </details>` : ''}
@@ -676,10 +690,11 @@
     if (fullUl) {
       const merged = mergeIngredients(recipe);
       if (merged.length) {
-        fullUl.innerHTML = merged.map(m => `
+        fullUl.style.cssText = qtyGridStyle;
+        fullUl.innerHTML = QTY_HEADER + merged.map(m => `
           <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
             <span class="font-body-md text-body-md">${esc(m.name)}</span>
-            <span class="font-label-md text-label-md text-primary">${esc([scaleQty(m.qty), m.unit].filter(Boolean).join(' '))}</span>
+            ${qtyCells(m.qty, m.unit)}
           </li>`).join('');
       } else if (fullBlock) fullBlock.style.display = 'none';
     }
