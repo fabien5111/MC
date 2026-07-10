@@ -94,7 +94,8 @@
     <div class="flex border-b border-outline-variant overflow-x-auto scrollbar-hide">
       <button class="tab-btn px-6 py-4 font-label-md text-primary border-b-2 border-primary whitespace-nowrap" data-tab="recipes" onclick="switchTab('recipes')">Mon Carnet de Recettes</button>
       <button class="tab-btn px-6 py-4 font-label-md text-on-surface-variant hover:text-primary whitespace-nowrap" data-tab="favorites" onclick="switchTab('favorites')">Mes Favoris</button>
-      <button class="tab-btn px-6 py-4 font-label-md text-on-surface-variant hover:text-primary whitespace-nowrap" data-tab="planning" onclick="switchTab('planning')">Planning &amp; Courses</button>
+      <button class="tab-btn px-6 py-4 font-label-md text-on-surface-variant hover:text-primary whitespace-nowrap" data-tab="planning" onclick="switchTab('planning')">Planning</button>
+      <button class="tab-btn px-6 py-4 font-label-md text-on-surface-variant hover:text-primary whitespace-nowrap" data-tab="courses" onclick="switchTab('courses')">Listes de courses</button>
       <button class="tab-btn px-6 py-4 font-label-md text-on-surface-variant hover:text-primary whitespace-nowrap" data-tab="messaging" onclick="switchTab('messaging')">Messagerie</button>
     </div>
 
@@ -120,21 +121,17 @@
 
     <!-- Tab: Planning -->
     <div class="tab-content py-10 hidden" id="tab-planning">
-      <div class="flex flex-col lg:flex-row gap-12">
-        <div class="flex-1">
-          <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span> Recettes planifiées</h2>
-          <div class="space-y-4" id="planning-list">
-            <p class="text-on-surface-variant italic" id="planning-empty">Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».</p>
-          </div>
-        </div>
-        <div class="w-full lg:w-96">
-          <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> Listes de courses</h2>
-          <div class="bg-surface-container-low p-8 rounded-lg border border-outline-variant/50">
-            <div id="shopping-lists">
-              <p class="text-on-surface-variant italic text-sm">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>
-            </div>
-          </div>
-        </div>
+      <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span> Recettes planifiées</h2>
+      <div class="space-y-4 max-w-3xl" id="planning-list">
+        <p class="text-on-surface-variant italic" id="planning-empty">Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».</p>
+      </div>
+    </div>
+
+    <!-- Tab: Listes de courses -->
+    <div class="tab-content py-10 hidden" id="tab-courses">
+      <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> Mes listes de courses</h2>
+      <div id="shopping-lists" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <p class="text-on-surface-variant italic text-sm col-span-full">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>
       </div>
     </div>
 
@@ -229,7 +226,7 @@
       btn.classList.toggle('border-primary', on);
       btn.classList.toggle('text-on-surface-variant', !on);
     });
-    history.replaceState(null, '', tabName === 'planning' ? '#planning' : location.pathname);
+    history.replaceState(null, '', tabName === 'planning' ? '#planning' : tabName === 'courses' ? '#courses' : location.pathname);
   }
 
   // shopping list check toggle
@@ -248,8 +245,9 @@
     }
   }));
 
-  // open planning tab if hash present
+  // open planning/courses tab if hash present
   if (location.hash === '#planning') switchTab('planning');
+  if (location.hash === '#courses') switchTab('courses');
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
@@ -446,12 +444,12 @@
           const items = l.shopping_list_items || [];
           const done = items.filter(i => i.checked).length;
           return `
-            <div class="flex items-center justify-between py-3 border-b border-outline-variant/30 last:border-0 group">
+            <div class="border border-outline-variant rounded-lg bg-white p-6 flex items-start justify-between gap-2 group hover:shadow-md transition-shadow">
               <a href="courses.html?id=${l.id}" class="flex-1 min-w-0">
-                <p class="font-label-md text-primary truncate">${escS(l.name)}</p>
-                <p class="text-xs text-on-surface-variant">${items.length} article${items.length > 1 ? 's' : ''}${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</p>
+                <p class="font-label-md text-primary text-[16px] truncate flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">shopping_bag</span>${escS(l.name)}</p>
+                <p class="text-xs text-on-surface-variant mt-1">${items.length} article${items.length > 1 ? 's' : ''}${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</p>
               </a>
-              <button type="button" title="Supprimer la liste" onclick="removeShoppingList(${JSON.stringify(l.id)}, ${JSON.stringify(String(l.name)).replace(/'/g, '&#39;')}, this)" class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+              <button type="button" title="Supprimer la liste" onclick="removeShoppingList(${JSON.stringify(l.id)}, ${JSON.stringify(String(l.name)).replace(/'/g, '&#39;')}, this)" class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10 shrink-0"><span class="material-symbols-outlined text-[18px]">delete</span></button>
             </div>`;
         }).join('');
       }
