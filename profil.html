@@ -57,11 +57,11 @@
   <!-- Profile Header -->
   <section class="relative mt-8">
     <div class="h-64 md:h-80 w-full rounded-xl overflow-hidden bg-surface-container-high relative">
-      <image-slot id="profil-banner" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoZP4YqauQBOsvCfa-7_XjEM0KMQEJb94WNv7BPefzOCvsoeGuHuHSby0oev0N6aUlmSA40lBm9FVYHPcSdWeckqmVUW53MssVJLz8JEfSUO-GKRWWwdDkMkD0Isy36MWThYeJzF8PZ7AbescmN-dK8M-mGlN_-1HzDT_JGnfRTnvi3PLn6ySq3fR6-58V_G8ZWg9ubtNOdn3nFpwKp4dqDkuJNqTzGOY81xktMzNPHH0TLtAGdJZgAFCqcF7QPMBjLfb1FmNFKHM" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
+      <image-slot id="profil-banner" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
     </div>
     <div class="px-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
       <div class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg relative cursor-pointer group" onclick="document.getElementById('input-avatar').click()">
-        <image-slot id="profil-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAw7RE_ari9f6ekIcK2Hm-XQCZ2U9lMyFCXSWgwi6Xw5XQ7UTNT2iBeRlp6Zoer5KumktarfqhSaFkCDiY9C8TpsolsyPizf4_nLKEN5PERAHLJ9muKNH0CbaQHa8NsL3ykdREb7_iB-WqwOT_TTHjFm0wIs_UjgfUfxOndx4dt9Y1NoN1UfnIccg9GBe6FYcGOLiEtl_xX9oft_3WBXgL3hxMey0WDceyaZiwH9ysVQSdKpnk2bOOpTSYyTl9FGo88CbKD5NGJUpA" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
+        <image-slot id="profil-avatar" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
         <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           <span class="material-symbols-outlined text-white text-3xl">photo_camera</span>
         </div>
@@ -586,6 +586,12 @@
 
     const nameEl = document.getElementById('profil-name');
     if (nameEl) nameEl.textContent = immediateFullName;
+
+    // Avatar immédiat : cache local (photo du site) sinon photo Google,
+    // en attendant la réponse de la base — évite le placeholder qui traîne.
+    const cachedAvatar = localStorage.getItem('mc-avatar');
+    if (cachedAvatar) setSlotSrc('profil-avatar', cachedAvatar);
+    else if (immediateAvatarUrl) setSlotSrc('profil-avatar', immediateAvatarUrl);
 
     // ── Sync avec la base de données ──
     // avatar_url n'est jamais initialisé avec la photo Google : la colonne ne
