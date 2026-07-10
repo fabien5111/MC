@@ -349,8 +349,11 @@
     switchTab('courses');
     const list = await getShoppingList(id);
     if (!list) { alert('Liste introuvable.'); return; }
+    if (!window._units) window._units = await getUnits();
+    const unitOptions = (window._units || []).map(u => `<option value="${escS(u.name)}">${escS(u.name)}</option>`).join('');
     const items = [...(list.shopping_list_items || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
     window._openList = items;
+    window._openListId = id;
     const detail = document.getElementById('courses-detail');
     detail.innerHTML = `
       <button type="button" onclick="closeShoppingList()" class="flex items-center gap-1 text-primary font-label-md text-label-md mb-6 hover:underline"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Retour aux listes</button>
@@ -366,11 +369,37 @@
             <span data-txt class="font-body-md text-body-md flex-1${i.checked ? ' line-through opacity-50' : ''}">${escS(i.name)}</span>
             <span data-txt class="font-label-md text-label-md text-primary whitespace-nowrap${i.checked ? ' line-through opacity-50' : ''}">${escS([i.quantity, i.unit].filter(Boolean).join(' '))}</span>
           </li>`).join('')}
-      </ul>` : '<p class="text-on-surface-variant italic">Cette liste est vide.</p>'}`;
+      </ul>` : '<p class="text-on-surface-variant italic">Cette liste est vide.</p>'}
+      <div class="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl" id="courses-add">
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">Ingrédient</span>
+          <input data-c-name placeholder="ex : Beurre" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:13rem"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">Quantité</span>
+          <input data-c-qty type="number" min="0" step="any" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase text-on-surface-variant">Unité</span>
+          <select data-c-unit class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem"><option value="">— Unité —</option>${unitOptions}</select></label>
+        <button type="button" onclick="addCourseItem(this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">add_circle</span> Ajouter</button>
+      </div>`;
     document.getElementById('courses-overview').style.display = 'none';
     detail.style.display = '';
     history.replaceState(null, '', '#courses=' + id);
     refreshCoursesCount();
+  };
+
+  // Ajoute un article à la liste ouverte
+  window.addCourseItem = async function (btn) {
+    const wrap = document.getElementById('courses-add');
+    const name = wrap.querySelector('[data-c-name]').value.trim();
+    if (!name) { alert('Indiquez un libellé.'); return; }
+    const quantity = wrap.querySelector('[data-c-qty]').value.trim();
+    const unit = wrap.querySelector('[data-c-unit]').value;
+    btn.disabled = true;
+    try {
+      await addShoppingItems(window._openListId, [{ name, quantity, unit }]);
+      await openShoppingList(window._openListId); // recharge la liste depuis la base
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+      btn.disabled = false;
+    }
   };
 
   window.closeShoppingList = function () {
