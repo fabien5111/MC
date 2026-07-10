@@ -111,7 +111,14 @@
     <div id="plan-notice" class="mb-12 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3" style="display:none">
       <span class="material-symbols-outlined text-primary">event_available</span>
       <span class="font-body-md text-on-surface" id="plan-notice-text"></span>
-      <button type="button" onclick="mcEditPlan()" title="Modifier la planification (date, quantité produite ou coefficient)" class="ml-auto text-primary hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+      <button type="button" onclick="mcStartExecution()" class="ml-auto flex items-center gap-1 bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] hover:shadow-lg transition-all active:scale-95 shrink-0"><span class="material-symbols-outlined text-[16px]">play_arrow</span> Démarrer la recette</button>
+      <button type="button" onclick="mcEditPlan()" title="Modifier la planification (date, quantité produite ou coefficient)" class="text-primary hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+    </div>
+
+    <!-- Historique des sessions de préparation (mode planifié) -->
+    <div id="exec-history" class="mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6" style="display:none">
+      <h3 class="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
+      <ul id="exec-history-ul" class="flex flex-col"></ul>
     </div>
 
     <!-- Planification -->
@@ -521,6 +528,133 @@
       window.location.href = 'profil.html#courses=' + listId;
     } catch (e) {
       alert('Erreur : ' + e.message);
+      btn.disabled = false;
+    }
+  };
+
+  // ── Mode exécution : snapshot figé au démarrage de la session ──
+  // Copie jalons > étapes > ingrédients avec les quantités AJUSTÉES du planning
+  // (coefficient + modifications par ligne). Le snapshot est ensuite autonome.
+  function buildExecutionSnapshot(recipe) {
+    const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const groupsByOrder = {};
+    (recipe.ingredient_groups || []).forEach(g => { groupsByOrder[g.order_index || 0] = g; });
+
+    const stepIngredients = grp => {
+      if (!grp) return [];
+      const rows = [...(grp.ingredients || [])]
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+        .filter(it => it.name && !isRemovedIng(it))
+        .map(it => ({
+          nom: it.name,
+          unite: it.unit || '',
+          quantite_prevue: effAdjustedQty(it) ?? (it.quantity || ''),
+          quantite_reelle: null,
+          fait: false,
+        }));
+      planOverrides().added.forEach(a => {
+        if (String(a.group) === String(grp.id) && a.name) {
+          rows.push({ nom: a.name, unite: a.unit || '', quantite_prevue: numify(a.qty) ?? (a.qty || ''), quantite_reelle: null, fait: false });
+        }
+      });
+      return rows;
+    };
+
+    const jalons = [];
+    steps.forEach(s => {
+      const offset = Math.max(0, s.day_offset || 0);
+      let j = jalons.find(x => x.offset === offset);
+      if (!j) { j = { offset, etapes: [] }; jalons.push(j); }
+      j.etapes.push({
+        id: s.id,
+        titre: s.title || '',
+        description: s.description || '',
+        tips: s.tips || '',
+        prep: s.prep_time || 0,
+        attente: s.wait_time || 0,
+        cuisson: s.cook_time || 0,
+        video: s.video_url || null,
+        faite: false,
+        date_faite: null,
+        commentaire: '',
+        ingredients: stepIngredients(groupsByOrder[s.order_index || 0]),
+      });
+    });
+    jalons.sort((a, b) => b.offset - a.offset); // du plus lointain au jour J
+
+    return {
+      titre: recipe.title,
+      jalons,
+      mise_en_place: {
+        ustensiles: [...(recipe.recipe_utensils || [])]
+          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+          .map(u => ({ nom: u.name, fait: false })),
+        ingredients: effectiveMergedRows(recipe).map(r => ({
+          nom: r.name,
+          unite: r.unit || '',
+          quantite: r.adj != null ? r.adj : (r.orig != null ? r.orig : (r.origTxt || []).join(' + ')),
+          fait: false,
+        })),
+      },
+    };
+  }
+
+  // Historique des exécutions de cette recette planifiée
+  async function loadExecHistory() {
+    const list = await getExecutions(currentPlan.id);
+    const wrap = document.getElementById('exec-history');
+    if (!wrap || !list.length) return;
+    const LBL = { en_cours: ['En cours', 'bg-secondary'], terminee: ['Terminée', 'bg-green-700'], abandonnee: ['Abandonnée', 'bg-error'] };
+    const fmtDur = (a, b) => {
+      const min = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
+      const j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+      return [j ? j + ' j' : '', h ? h + ' h' : '', (m || (!j && !h)) ? m + ' min' : ''].filter(Boolean).join(' ');
+    };
+    document.getElementById('exec-history-ul').innerHTML = list.map(x => `
+      <li class="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
+        <span class="font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${LBL[x.status]?.[1] || 'bg-secondary'}">${esc(LBL[x.status]?.[0] || x.status)}</span>
+        <span class="font-body-md text-sm flex-1 min-w-[180px]">${esc(new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span>
+        ${x.date_fin ? `<span class="text-sm text-on-surface-variant">durée : ${esc(fmtDur(x.date_debut, x.date_fin))}</span>` : ''}
+        <a href="execution.html?id=${x.id}${x.status !== 'en_cours' ? '&lecture=1' : ''}" class="font-label-md text-label-md text-primary hover:underline">${x.status === 'en_cours' ? 'Reprendre' : 'Voir'}</a>
+      </li>`).join('');
+    wrap.style.display = '';
+  }
+
+  window.mcStartExecution = async function () {
+    if (!currentRecipe || !currentPlan) return;
+    const user = await getUser();
+    if (!user) { window.location.href = 'connexion.html'; return; }
+    // Session en cours → proposer la reprise
+    const running = await getRunningExecution(currentPlan.id);
+    if (running) {
+      const d = new Date(running.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      if (confirm(`Une session démarrée le ${d} est déjà en cours pour cette recette.\n\nOK : reprendre cette session.\nAnnuler : en démarrer une nouvelle.`)) {
+        window.location.href = 'execution.html?id=' + running.id;
+        return;
+      }
+    }
+    if (document.getElementById('exec-start')) return;
+    const dateTxt = new Date(currentPlan.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('plan-notice').insertAdjacentHTML('afterend', `
+      <div id="exec-start" class="mb-12 border border-secondary bg-surface-container-low rounded-xl p-6 flex flex-wrap items-end gap-4">
+        <label class="flex flex-col gap-1">
+          <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Heure de dégustation le ${esc(dateTxt)}</span>
+          <input id="exec-time" type="time" value="12:00" class="border border-outline-variant rounded px-4 py-2 bg-white font-body-md">
+        </label>
+        <button type="button" onclick="mcConfirmStartExecution(this)" class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-label-md flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">play_arrow</span> Démarrer</button>
+        <button type="button" onclick="document.getElementById('exec-start').remove()" class="border border-outline px-5 py-2.5 rounded-full font-label-md text-label-md text-on-surface-variant">Annuler</button>
+      </div>`);
+  };
+
+  window.mcConfirmStartExecution = async function (btn) {
+    const time = document.getElementById('exec-time').value || '12:00';
+    btn.disabled = true;
+    try {
+      const degustationAt = new Date(`${currentPlan.planned_date}T${time}:00`).toISOString();
+      const exec = await createExecution(currentPlan.id, degustationAt, buildExecutionSnapshot(currentRecipe));
+      window.location.href = 'execution.html?id=' + exec.id;
+    } catch (e) {
+      alert('Erreur au démarrage de la session : ' + e.message);
       btn.disabled = false;
     }
   };
@@ -1067,6 +1201,7 @@
         document.getElementById('plan-notice-text').textContent = parts.join(' — ');
         notice.style.display = '';
       }
+      loadExecHistory();
     }
 
     // Init favoris
