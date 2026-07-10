@@ -60,11 +60,11 @@
       <image-slot id="profil-banner" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
     </div>
     <div class="px-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
-      <div class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg relative cursor-pointer group" onclick="document.getElementById('input-avatar').click()">
-        <image-slot id="profil-avatar" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
-        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <span class="material-symbols-outlined text-white text-3xl">photo_camera</span>
+      <div class="w-32 h-32 md:w-40 md:h-40 relative shrink-0">
+        <div class="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg">
+          <image-slot id="profil-avatar" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
         </div>
+        <button type="button" onclick="document.getElementById('input-avatar').click()" title="Changer la photo de profil" class="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"><span class="material-symbols-outlined text-[18px]">edit</span></button>
       </div>
       <div class="flex-1 pb-4 text-center md:text-left">
         <h1 class="font-headline-lg text-headline-lg text-primary" id="profil-name" style="position:relative;top:-5px">Camille Laurent</h1>
@@ -342,11 +342,6 @@
           <div class="flex flex-col gap-5">
             <label class="flex flex-col gap-1"><span class="${LBL}">Bio</span>
               <textarea id="pe-bio" rows="3" class="${IN}" placeholder="Quelques mots sur vous…">${escL(p.bio || '')}</textarea></label>
-            <div>
-              <span class="${LBL} block mb-2">Photo de bannière</span>
-              <button type="button" onclick="document.getElementById('input-banner').click()" class="border border-primary text-primary px-4 py-2 rounded-full font-label-md text-[12px] flex items-center gap-2 hover:bg-primary hover:text-white transition-colors"><span class="material-symbols-outlined text-[16px]">photo_camera</span> Choisir une photo</button>
-              <p class="text-xs text-on-surface-variant mt-2">Taille idéale : 1400 × 400 px — l'image est recadrée automatiquement, gardez le sujet au centre.</p>
-            </div>
             ${PROFILE_LINKS.map(l => `<label class="flex flex-col gap-1"><span class="${LBL}">${l.label}</span>
               <input id="pe-${l.field}" type="url" value="${escL(p[l.field] || '')}" placeholder="${l.ph}" class="${IN}"></label>`).join('')}
           </div>
