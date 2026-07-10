@@ -65,7 +65,7 @@
 <!-- ===== Hero banner ===== -->
 <section class="relative w-full">
   <div class="relative w-full aspect-[2.5/1] min-h-[420px] md:min-h-[520px] overflow-hidden" style="max-width:1983px;margin:0 auto;">
-    <image-slot id="home-banner" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU" shape="rect" fit="cover" placeholder="Bannière éditoriale — pâtisserie haut de gamme" style="width:100%;height:100%"></image-slot>
+    <image-slot id="home-banner" shape="rect" fit="cover" placeholder="Bannière éditoriale — pâtisserie haut de gamme" style="width:100%;height:100%"></image-slot>
   </div>
 </section>
 
@@ -226,8 +226,10 @@
     const w = window.innerWidth;
     const device = w >= 1024 ? 'web' : (w >= 768 ? 'tablette' : 'mobile');
     const s = await getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']);
-    const url = s['banner_home_' + device] || s['banner_home_web'];
-    if (url) setSlotSrc('home-banner', url);
+    // Repli sur l'image par défaut uniquement si aucune bannière n'est configurée :
+    // le fond neutre remplace l'ancien flash de la bannière de démonstration.
+    const FALLBACK = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
+    setSlotSrc('home-banner', s['banner_home_' + device] || s['banner_home_web'] || FALLBACK);
   }
 
   async function init() {

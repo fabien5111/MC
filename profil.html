@@ -25,6 +25,8 @@
   html:not(.auth-ready) [data-auth="logged-in"] { display: none !important; }
   .maryse-logo-font { font-family:'Great Vibes',cursive; }
   image-slot { display:block; }
+  /* Bio repliée : 3 lignes (24px de hauteur de ligne) */
+  #profil-bio.bio-clamp { max-height:72px; overflow:hidden; }
 </style>
 </head>
 <body class="bg-background text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed pb-20 md:pb-0">
@@ -76,7 +78,8 @@
           <button class="p-3 border border-outline-variant rounded-lg text-primary hover:bg-surface-container transition-all active:scale-95"><span class="material-symbols-outlined">share</span></button>
         </div>
         <h1 class="font-headline-lg text-headline-lg text-primary text-center md:text-left" id="profil-name" style="position:relative;top:-5px">Camille Laurent</h1>
-        <p class="font-body-md text-on-surface-variant text-justify" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
+        <p class="font-body-md text-on-surface-variant text-justify bio-clamp" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
+        <button id="bio-toggle" type="button" onclick="toggleBio()" class="font-label-md text-label-md text-primary hover:underline mt-1" style="display:none">Voir plus</button>
         <div style="clear:both"></div>
       </div>
     </div>
@@ -300,6 +303,29 @@
     }
   }
 
+  // ── Bio repliable : 3 lignes + « Voir plus » / « Replier » ──
+  function updateBioClamp() {
+    const bio = document.getElementById('profil-bio');
+    const btn = document.getElementById('bio-toggle');
+    if (!bio || !btn) return;
+    bio.classList.add('bio-clamp');
+    btn.textContent = 'Voir plus';
+    // le bouton n'apparaît que si la bio dépasse 3 lignes
+    btn.style.display = bio.scrollHeight > bio.clientHeight + 2 ? '' : 'none';
+  }
+
+  window.toggleBio = function () {
+    const bio = document.getElementById('profil-bio');
+    const btn = document.getElementById('bio-toggle');
+    if (bio.classList.contains('bio-clamp')) {
+      bio.classList.remove('bio-clamp');
+      btn.textContent = 'Replier';
+    } else {
+      bio.classList.add('bio-clamp');
+      btn.textContent = 'Voir plus';
+    }
+  };
+
   // ── Édition du profil : bio, bannière, liens web & réseaux ──
   // Logos officiels (tracés Simple Icons, licence CC0)
   const PROFILE_LINKS = [
@@ -371,6 +397,7 @@
       window._profile = { ...(window._profile || {}), ...fields };
       const bioEl = document.getElementById('profil-bio');
       if (bioEl) bioEl.textContent = fields.bio || '';
+      updateBioClamp();
       renderProfileLinks(window._profile);
       closeProfileEditor();
     } catch (e) {
@@ -621,6 +648,7 @@
 
     const bioEl = document.getElementById('profil-bio');
     if (bioEl && profile?.bio) bioEl.textContent = profile.bio;
+    updateBioClamp();
     window._profile = profile || {};
     renderProfileLinks(window._profile);
 
