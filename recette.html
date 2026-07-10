@@ -115,6 +115,12 @@
       <button type="button" onclick="mcEditPlan()" title="Modifier la planification (date, quantité produite ou coefficient)" class="text-primary hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">edit</span></button>
     </div>
 
+    <!-- Historique des sessions de préparation (mode planifié) -->
+    <div id="exec-history" class="mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6" style="display:none">
+      <h3 class="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
+      <ul id="exec-history-ul" class="flex flex-col"></ul>
+    </div>
+
     <!-- Planification -->
     <div id="plan-panel" class="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl" style="display:none">
       <h3 class="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">calendar_month</span>Planifier cette recette</h3>
@@ -591,6 +597,27 @@
         })),
       },
     };
+  }
+
+  // Historique des exécutions de cette recette planifiée
+  async function loadExecHistory() {
+    const list = await getExecutions(currentPlan.id);
+    const wrap = document.getElementById('exec-history');
+    if (!wrap || !list.length) return;
+    const LBL = { en_cours: ['En cours', 'bg-secondary'], terminee: ['Terminée', 'bg-green-700'], abandonnee: ['Abandonnée', 'bg-error'] };
+    const fmtDur = (a, b) => {
+      const min = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
+      const j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+      return [j ? j + ' j' : '', h ? h + ' h' : '', (m || (!j && !h)) ? m + ' min' : ''].filter(Boolean).join(' ');
+    };
+    document.getElementById('exec-history-ul').innerHTML = list.map(x => `
+      <li class="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
+        <span class="font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${LBL[x.status]?.[1] || 'bg-secondary'}">${esc(LBL[x.status]?.[0] || x.status)}</span>
+        <span class="font-body-md text-sm flex-1 min-w-[180px]">${esc(new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span>
+        ${x.date_fin ? `<span class="text-sm text-on-surface-variant">durée : ${esc(fmtDur(x.date_debut, x.date_fin))}</span>` : ''}
+        <a href="execution.html?id=${x.id}${x.status !== 'en_cours' ? '&lecture=1' : ''}" class="font-label-md text-label-md text-primary hover:underline">${x.status === 'en_cours' ? 'Reprendre' : 'Voir'}</a>
+      </li>`).join('');
+    wrap.style.display = '';
   }
 
   window.mcStartExecution = async function () {
@@ -1174,6 +1201,7 @@
         document.getElementById('plan-notice-text').textContent = parts.join(' — ');
         notice.style.display = '';
       }
+      loadExecHistory();
     }
 
     // Init favoris

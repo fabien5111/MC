@@ -275,6 +275,18 @@ async function getRunningExecution(planningId) {
   return (data || [])[0] || null;
 }
 
+// Exécutions passées avec snapshot (historique, commentaires des sessions précédentes)
+async function getPastExecutions(planningId, excludeId = null) {
+  let q = db.from('executions')
+    .select('id, status, date_debut, date_fin, snapshot')
+    .eq('planning_id', planningId)
+    .order('date_debut', { ascending: false });
+  if (excludeId != null) q = q.neq('id', excludeId);
+  const { data, error } = await q;
+  if (error) console.error('getPastExecutions:', error);
+  return data || [];
+}
+
 async function createExecution(planningId, degustationAt, snapshot) {
   const user = await getUser();
   if (!user) throw new Error('Non connecté');

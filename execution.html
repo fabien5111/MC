@@ -70,6 +70,14 @@
       return;
     }
     currentExec = exec;
+    // Commentaires laissés lors des exécutions précédentes (par id d'étape)
+    window._prevComments = {};
+    if (exec.status === 'en_cours') {
+      const past = await getPastExecutions(exec.planning_id, exec.id);
+      past.forEach(p => (p.snapshot?.jalons || []).forEach(j => (j.etapes || []).forEach(e => {
+        if (e.commentaire) (window._prevComments[e.id] = window._prevComments[e.id] || []).push({ date: p.date_debut, texte: e.commentaire });
+      })));
+    }
     const s = exec.snapshot || {};
     document.getElementById('exec-title').textContent = s.titre || 'Session de préparation';
     document.title = `Exécution — ${s.titre || ''} | Maryse-Club`;
@@ -169,6 +177,11 @@
           <p class="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
           <div class="font-body-md text-sm italic">${sanitizeRich(e.tips)}</div>
         </div>` : ''}
+        ${(window._prevComments?.[e.id] || []).length ? `
+        <div class="mx-4 mb-3 p-3 bg-surface-container-low border border-outline-variant/60 rounded">
+          <p class="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant mb-1">Sessions précédentes</p>
+          ${window._prevComments[e.id].map(c => `<p class="text-sm italic">« ${esc(c.texte)} » <span class="text-on-surface-variant not-italic">— ${esc(new Date(c.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }))}</span></p>`).join('')}
+        </div>` : ''}
         ${e.video ? `<div class="px-4 pb-3"><a href="${esc(e.video)}" target="_blank" rel="noopener" class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">play_circle</span> Voir la vidéo de l'étape</a></div>` : ''}
         <div class="px-4 pb-4">
           <textarea rows="2" placeholder="Commentaire sur cette étape (sauvegardé automatiquement)…" ${readOnly ? 'disabled' : ''}
@@ -178,10 +191,150 @@
       </div>`;
   }
 
+  const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
+
+  // ── Écran de mise en place (optionnel, passable) ─────────────
+  function mepHtml() {
+    const mep = currentExec.snapshot.mise_en_place || {};
+    const items = (kind, arr) => arr.map((it, i) => `
+      <li class="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
+        <input type="checkbox" ${it.fait ? 'checked' : ''} onchange="execToggleMep('${kind}', ${i}, this)"
+          class="w-6 h-6 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0">
+        <span data-mep-txt class="font-body-md flex-1${it.fait ? ' line-through opacity-50' : ''}">${esc(it.nom)}</span>
+        ${it.quantite != null && it.quantite !== '' ? `<span data-mep-qty class="font-label-md text-label-md text-primary whitespace-nowrap${it.fait ? ' line-through opacity-50' : ''}">${esc([typeof it.quantite === 'number' ? fmtNum(it.quantite) : it.quantite, it.unite].filter(Boolean).join(' '))}</span>` : ''}
+      </li>`).join('');
+    return `
+      <div class="border border-primary rounded-xl bg-surface-container-lowest p-6">
+        <h2 class="font-headline-md text-headline-md text-primary mb-1">Mise en place</h2>
+        <p class="text-on-surface-variant text-sm mb-6">Vérifiez que tout est prêt — ou passez directement à la recette.</p>
+        ${(mep.ustensiles || []).length ? `<p class="${LBL_CLS} mb-1">Ustensiles</p><ul class="mb-6">${items('ustensiles', mep.ustensiles)}</ul>` : ''}
+        ${(mep.ingredients || []).length ? `<p class="${LBL_CLS} mb-1">Ingrédients</p><ul class="mb-6">${items('ingredients', mep.ingredients)}</ul>` : ''}
+        <div class="flex gap-3">
+          <button type="button" onclick="execMepDone()" class="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md">Commencer</button>
+          <button type="button" onclick="execMepDone()" class="border border-outline px-6 py-3.5 rounded-full font-label-md text-label-md text-on-surface-variant">Passer</button>
+        </div>
+      </div>`;
+  }
+
+  window.execToggleMep = async function (kind, i, cb) {
+    const it = currentExec.snapshot.mise_en_place[kind][i];
+    it.fait = cb.checked;
+    cb.closest('li').querySelectorAll('[data-mep-txt],[data-mep-qty]').forEach(el => {
+      el.classList.toggle('line-through', cb.checked);
+      el.classList.toggle('opacity-50', cb.checked);
+    });
+    await saveSnapshot();
+  };
+
+  window.execMepDone = async function () {
+    currentExec.snapshot.mise_en_place = currentExec.snapshot.mise_en_place || {};
+    currentExec.snapshot.mise_en_place.passee = true;
+    await saveSnapshot();
+    renderExecution();
+    window.scrollTo(0, 0);
+  };
+
+  // ── Résumé de fin de session ─────────────────────────────────
+  function fmtDuree(ms) {
+    const min = Math.max(0, Math.round(ms / MIN));
+    const j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+    return [j ? j + ' j' : '', h ? h + ' h' : '', (m || (!j && !h)) ? m + ' min' : ''].filter(Boolean).join(' ');
+  }
+
+  function summaryHtml(lecture) {
+    const s = currentExec.snapshot || {};
+    const all = (s.jalons || []).flatMap(j => j.etapes || []);
+    const done = all.filter(e => e.faite).length;
+    const duree = currentExec.date_fin ? fmtDuree(new Date(currentExec.date_fin) - new Date(currentExec.date_debut)) : '—';
+    const jalonRows = (s.jalons || []).map(j => {
+      const label = j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J';
+      if (!(j.etapes || []).length) return '';
+      if (!(j.etapes || []).every(e => e.faite)) return `<li>${label} : <span class="text-on-surface-variant">non terminé</span></li>`;
+      const dates = j.etapes.filter(e => e.date_faite).map(e => new Date(e.date_faite).getTime());
+      if (!dates.length) return `<li>${label} : terminé</li>`;
+      const last = new Date(Math.max(...dates));
+      const deadline = jalonDate(j);
+      const diff = deadline ? Math.round((last - deadline) / MIN) : null;
+      const verdict = diff == null ? '' : (diff <= 0
+        ? ' — <span class="text-green-700 font-bold">dans les temps</span>'
+        : ` — <span class="text-error font-bold">en retard de ${esc(formatTime(diff))}</span>`);
+      return `<li>${label} : terminé le ${esc(fmtJour(last))} à ${esc(fmtHeure(last))}${verdict}</li>`;
+    }).join('');
+    const ecarts = [];
+    (s.jalons || []).forEach(j => (j.etapes || []).forEach(e => (e.ingredients || []).forEach(i => {
+      if (i.quantite_reelle != null && numify(i.quantite_prevue) !== i.quantite_reelle) {
+        const u = i.unite ? ' ' + esc(i.unite) : '';
+        ecarts.push(`<li>${esc(i.nom)} : prévu ${typeof i.quantite_prevue === 'number' ? fmtNum(i.quantite_prevue) : esc(i.quantite_prevue)}${u} → utilisé <span class="font-bold text-primary">${fmtNum(i.quantite_reelle)}${u}</span></li>`);
+      }
+    })));
+    const comms = [];
+    (s.jalons || []).forEach(j => (j.etapes || []).forEach(e => {
+      if (e.commentaire) comms.push(`<li><span class="font-bold">${esc(e.titre)} :</span> ${esc(e.commentaire)}</li>`);
+    }));
+    return `
+    <div class="border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
+      <h2 class="font-headline-md text-headline-md text-primary">Résumé de la session</h2>
+      <div class="flex flex-wrap gap-10">
+        <div><p class="${LBL_CLS}">Durée totale</p><p class="font-headline-md text-[22px] text-primary">${esc(duree)}</p></div>
+        <div><p class="${LBL_CLS}">Étapes réalisées</p><p class="font-headline-md text-[22px] text-primary">${done} / ${all.length}</p></div>
+      </div>
+      <div><p class="${LBL_CLS} mb-1">Respect des jalons</p><ul class="text-sm flex flex-col gap-1">${jalonRows || '<li>—</li>'}</ul></div>
+      ${ecarts.length ? `<div><p class="${LBL_CLS} mb-1">Écarts de quantités</p><ul class="text-sm flex flex-col gap-1">${ecarts.join('')}</ul></div>` : ''}
+      ${comms.length ? `<div><p class="${LBL_CLS} mb-1">Commentaires d'étapes</p><ul class="text-sm flex flex-col gap-1">${comms.join('')}</ul></div>` : ''}
+      <div>
+        <p class="${LBL_CLS} mb-1">Commentaire global</p>
+        <textarea rows="3" ${lecture ? 'disabled' : ''} oninput="execGlobalComment(this)" placeholder="Bilan de la session (sauvegardé automatiquement)…"
+          class="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary">${esc(currentExec.commentaire_global || '')}</textarea>
+      </div>
+    </div>`;
+  }
+
+  let globalTimer = null;
+  window.execGlobalComment = function (ta) {
+    clearTimeout(globalTimer);
+    globalTimer = setTimeout(async () => {
+      currentExec.commentaire_global = ta.value;
+      try { await updateExecution(currentExec.id, { commentaire_global: ta.value }); }
+      catch (e) { alert('Sauvegarde impossible : ' + e.message); }
+    }, 800);
+  };
+
+  // ── Fin de session ───────────────────────────────────────────
+  function actionBarHtml() {
+    return `
+    <div class="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" id="exec-actions">
+      <div class="max-w-[900px] mx-auto flex gap-3">
+        <button type="button" onclick="execFinish()" class="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">flag</span> Terminer</button>
+        <button type="button" onclick="execAbandon()" class="border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md">Abandonner</button>
+      </div>
+    </div>`;
+  }
+
+  async function endSession(status, message) {
+    if (!confirm(message)) return;
+    const fin = new Date().toISOString();
+    try { await updateExecution(currentExec.id, { status, date_fin: fin }); }
+    catch (e) { alert('Erreur : ' + e.message); return; }
+    currentExec.status = status;
+    currentExec.date_fin = fin;
+    document.getElementById('exec-status').textContent = STATUS_LBL[status];
+    renderExecution();
+    window.scrollTo(0, 0);
+  }
+  window.execFinish = () => endSession('terminee', 'Terminer la session ?');
+  window.execAbandon = () => endSession('abandonnee', 'Abandonner la session ?\nLa progression restera consultable dans l’historique.');
+
   function renderExecution() {
     const s = currentExec.snapshot || {};
+    const lecture = new URLSearchParams(location.search).get('lecture') === '1';
+    // Mise en place d'abord (session en cours, pas encore passée)
+    if (currentExec.status === 'en_cours' && !lecture && !s.mise_en_place?.passee
+        && ((s.mise_en_place?.ustensiles || []).length || (s.mise_en_place?.ingredients || []).length)) {
+      document.getElementById('exec-body').innerHTML = mepHtml();
+      return;
+    }
     const jalons = s.jalons || [];
-    const readOnly = currentExec.status !== 'en_cours' || new URLSearchParams(location.search).get('lecture') === '1';
+    const readOnly = currentExec.status !== 'en_cours' || lecture;
     const all = jalons.flatMap(j => j.etapes || []);
     const done = all.filter(e => e.faite).length;
     const curIdx = jalons.findIndex(j => (j.etapes || []).some(e => !e.faite));
@@ -214,6 +367,7 @@
     }).join('');
 
     document.getElementById('exec-body').innerHTML = `
+      ${currentExec.status !== 'en_cours' ? summaryHtml(lecture) : ''}
       <div class="flex items-center gap-4 flex-wrap">
         <div class="flex-1 min-w-[180px]">
           <div class="flex justify-between text-[12px] font-label-md text-on-surface-variant mb-1">
@@ -225,7 +379,8 @@
         </div>
         <span id="exec-tempo">${tempoChip()}</span>
       </div>
-      ${jalonsHtml}`;
+      ${jalonsHtml}
+      ${currentExec.status === 'en_cours' && !lecture ? actionBarHtml() : ''}`;
   }
 
   // ── Actions (persistance immédiate pour permettre la reprise) ──
