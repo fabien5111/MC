@@ -280,6 +280,11 @@ async function addShoppingItems(listId, items) {
   if (error) throw error;
 }
 
+async function updateShoppingItem(itemId, fields) {
+  const { error } = await db.from('shopping_list_items').update(fields).eq('id', itemId);
+  if (error) throw error;
+}
+
 async function setShoppingItemChecked(itemId, checked) {
   const { error } = await db.from('shopping_list_items').update({ checked }).eq('id', itemId);
   if (error) alert('Coche non enregistrée : ' + error.message);

@@ -368,6 +368,7 @@
             <input type="checkbox" ${i.checked ? 'checked' : ''} onchange="toggleCourseItem('${i.id}', this)" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0">
             <span data-txt class="font-body-md text-body-md flex-1${i.checked ? ' line-through opacity-50' : ''}">${escS(i.name)}</span>
             <span data-txt class="font-label-md text-label-md text-primary whitespace-nowrap${i.checked ? ' line-through opacity-50' : ''}">${escS([i.quantity, i.unit].filter(Boolean).join(' '))}</span>
+            <button type="button" onclick="editCourseItem('${i.id}', this)" title="Modifier cet article" class="text-primary hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">edit</span></button>
           </li>`).join('')}
       </ul>` : '<p class="text-on-surface-variant italic">Cette liste est vide.</p>'}
       <div class="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl" id="courses-add">
@@ -383,6 +384,45 @@
     detail.style.display = '';
     history.replaceState(null, '', '#courses=' + id);
     refreshCoursesCount();
+  };
+
+  // Crayon : édition d'un article de la liste ouverte
+  window.editCourseItem = function (id, btn) {
+    const it = (window._openList || []).find(i => String(i.id) === String(id));
+    if (!it) return;
+    const li = btn.closest('li');
+    if (li.nextElementSibling?.hasAttribute?.('data-item-edit')) { li.nextElementSibling.remove(); return; }
+    document.querySelectorAll('[data-item-edit]').forEach(f => f.remove());
+    const unitOptions = (window._units || []).map(u => `<option value="${escS(u.name)}"${u.name === it.unit ? ' selected' : ''}>${escS(u.name)}</option>`).join('');
+    li.insertAdjacentHTML('afterend', `
+      <li data-item-edit class="py-3 border-b border-outline-variant/30">
+        <div class="flex flex-wrap items-end gap-3">
+          <input data-e-name value="${escS(it.name)}" placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:13rem">
+          <input data-e-qty type="number" min="0" step="any" value="${escS(it.quantity || '')}" placeholder="Quantité" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
+          <select data-e-unit class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem"><option value="">— Unité —</option>${unitOptions}</select>
+          <button type="button" onclick="applyCourseItemEdit('${id}', this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">OK</button>
+          <button type="button" onclick="this.closest('[data-item-edit]').remove()" class="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">Annuler</button>
+        </div>
+      </li>`);
+    li.nextElementSibling.querySelector('[data-e-name]').focus();
+  };
+
+  window.applyCourseItemEdit = async function (id, el) {
+    const form = el.closest('[data-item-edit]');
+    const name = form.querySelector('[data-e-name]').value.trim();
+    if (!name) { alert('Indiquez un libellé.'); return; }
+    el.disabled = true;
+    try {
+      await updateShoppingItem(id, {
+        name,
+        quantity: form.querySelector('[data-e-qty]').value.trim() || null,
+        unit: form.querySelector('[data-e-unit]').value || null,
+      });
+      await openShoppingList(window._openListId); // recharge depuis la base
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+      el.disabled = false;
+    }
   };
 
   // Ajoute un article à la liste ouverte
