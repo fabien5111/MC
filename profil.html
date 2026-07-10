@@ -25,6 +25,8 @@
   html:not(.auth-ready) [data-auth="logged-in"] { display: none !important; }
   .maryse-logo-font { font-family:'Great Vibes',cursive; }
   image-slot { display:block; }
+  /* Bio : passe sous les boutons (pleine largeur), jamais sous la photo */
+  #profil-bio { clear: right; }
   /* Bio repliée : 3 lignes (24px de hauteur de ligne) */
   #profil-bio.bio-clamp { max-height:72px; overflow:hidden; }
 </style>
