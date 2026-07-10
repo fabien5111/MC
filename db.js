@@ -245,6 +245,55 @@ async function toggleFavorite(recipeId) {
   }
 }
 
+// ── EXÉCUTIONS DE RECETTES PLANIFIÉES ────────────────────────
+// Une exécution fige un snapshot (jalons > étapes > ingrédients ajustés) au
+// démarrage : les quantités réelles et les coches vivent uniquement ici,
+// jamais dans la recette ni dans le planning.
+async function getExecutions(planningId) {
+  const { data, error } = await db.from('executions')
+    .select('id, status, date_debut, date_fin, degustation_at, commentaire_global')
+    .eq('planning_id', planningId)
+    .order('date_debut', { ascending: false });
+  if (error) console.error('getExecutions:', error);
+  return data || [];
+}
+
+async function getExecution(id) {
+  const { data, error } = await db.from('executions').select('*').eq('id', id).maybeSingle();
+  if (error) console.error('getExecution:', error);
+  return data;
+}
+
+async function getRunningExecution(planningId) {
+  const { data, error } = await db.from('executions')
+    .select('id, date_debut')
+    .eq('planning_id', planningId)
+    .eq('status', 'en_cours')
+    .order('date_debut', { ascending: false })
+    .limit(1);
+  if (error) console.error('getRunningExecution:', error);
+  return (data || [])[0] || null;
+}
+
+async function createExecution(planningId, degustationAt, snapshot) {
+  const user = await getUser();
+  if (!user) throw new Error('Non connecté');
+  const { data, error } = await db.from('executions').insert({
+    planning_id: planningId,
+    user_id: user.id,
+    status: 'en_cours',
+    degustation_at: degustationAt,
+    snapshot,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateExecution(id, fields) {
+  const { error } = await db.from('executions').update(fields).eq('id', id);
+  if (error) throw error;
+}
+
 // ── LISTES DE COURSES ────────────────────────────────────────
 async function getShoppingLists() {
   const user = await getUser();
