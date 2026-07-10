@@ -129,10 +129,13 @@
 
     <!-- Tab: Listes de courses -->
     <div class="tab-content py-10 hidden" id="tab-courses">
-      <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> Mes listes de courses</h2>
-      <div id="shopping-lists" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <p class="text-on-surface-variant italic text-sm col-span-full">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>
+      <div id="courses-overview">
+        <h2 class="font-headline-md text-primary mb-6 flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> Mes listes de courses</h2>
+        <div id="shopping-lists" class="overflow-x-auto">
+          <p class="text-on-surface-variant italic text-sm">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>
+        </div>
       </div>
+      <div id="courses-detail" style="display:none"></div>
     </div>
 
     <!-- Tab: Messaging -->
@@ -245,9 +248,10 @@
     }
   }));
 
-  // open planning/courses tab if hash present
+  // open planning/courses tab if hash present (hash conservé pour le lien profond)
+  window._initialHash = location.hash;
   if (location.hash === '#planning') switchTab('planning');
-  if (location.hash === '#courses') switchTab('courses');
+  if (location.hash.startsWith('#courses')) switchTab('courses');
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
@@ -284,12 +288,104 @@
     }
   }
 
+  // ── Listes de courses : tableau + vue détail dans l'onglet ──
+  const escS = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  async function loadShoppingListsTable() {
+    const shopWrap = document.getElementById('shopping-lists');
+    if (!shopWrap) return;
+    const lists = await getShoppingLists();
+    if (!lists.length) {
+      shopWrap.innerHTML = '<p class="text-on-surface-variant italic text-sm">Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des ingrédients.</p>';
+      return;
+    }
+    shopWrap.innerHTML = `
+      <table class="w-full text-left border-collapse bg-white border border-outline-variant rounded-lg overflow-hidden">
+        <thead class="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
+          <tr>
+            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">Nom</th>
+            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs text-center">Articles</th>
+            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs text-center">Cochés</th>
+            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">Créée le</th>
+            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant font-body-md text-on-surface">
+          ${lists.map(l => {
+            const items = l.shopping_list_items || [];
+            const done = items.filter(i => i.checked).length;
+            return `
+              <tr class="hover:bg-surface-container-low transition-colors">
+                <td class="px-6 py-4"><button type="button" onclick="openShoppingList('${l.id}')" class="font-label-md text-primary hover:underline flex items-center gap-2 text-left"><span class="material-symbols-outlined text-[18px]">shopping_bag</span>${escS(l.name)}</button></td>
+                <td class="px-6 py-4 text-center text-on-surface-variant">${items.length}</td>
+                <td class="px-6 py-4 text-center text-on-surface-variant">${done}</td>
+                <td class="px-6 py-4 text-on-surface-variant">${l.created_at ? formatDate(l.created_at) : '—'}</td>
+                <td class="px-6 py-4 text-right">
+                  <button type="button" title="Supprimer la liste" onclick="removeShoppingList(${JSON.stringify(l.id)}, ${JSON.stringify(String(l.name)).replace(/'/g, '&#39;')}, this)" class="p-1.5 rounded text-error hover:bg-error/10 transition-colors"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function refreshCoursesCount() {
+    const items = window._openList || [];
+    const done = items.filter(i => i.checked).length;
+    const el = document.getElementById('courses-count');
+    if (el) el.textContent = `${items.length} article${items.length > 1 ? 's' : ''}${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}`;
+  }
+
+  window.toggleCourseItem = async function (id, cb) {
+    const it = (window._openList || []).find(i => String(i.id) === String(id));
+    if (it) it.checked = cb.checked;
+    cb.closest('li').querySelectorAll('[data-txt]').forEach(s => { s.classList.toggle('line-through', cb.checked); s.classList.toggle('opacity-50', cb.checked); });
+    refreshCoursesCount();
+    await setShoppingItemChecked(id, cb.checked);
+  };
+
+  // Ouvre le détail d'une liste dans l'onglet (les onglets restent visibles)
+  window.openShoppingList = async function (id) {
+    switchTab('courses');
+    const list = await getShoppingList(id);
+    if (!list) { alert('Liste introuvable.'); return; }
+    const items = [...(list.shopping_list_items || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+    window._openList = items;
+    const detail = document.getElementById('courses-detail');
+    detail.innerHTML = `
+      <button type="button" onclick="closeShoppingList()" class="flex items-center gap-1 text-primary font-label-md text-label-md mb-6 hover:underline"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Retour aux listes</button>
+      <div class="flex items-baseline justify-between flex-wrap gap-4 mb-6 border-b border-outline-variant pb-4">
+        <h2 class="font-headline-md text-primary flex items-center gap-3"><span class="material-symbols-outlined">shopping_bag</span> ${escS(list.name)}</h2>
+        <span id="courses-count" class="font-label-md text-label-md text-on-surface-variant"></span>
+      </div>
+      ${items.length ? `
+      <ul id="courses-items" class="flex flex-col max-w-2xl">
+        ${items.map(i => `
+          <li class="flex items-center gap-4 py-3 border-b border-outline-variant/30">
+            <input type="checkbox" ${i.checked ? 'checked' : ''} onchange="toggleCourseItem('${i.id}', this)" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0">
+            <span data-txt class="font-body-md text-body-md flex-1${i.checked ? ' line-through opacity-50' : ''}">${escS(i.name)}</span>
+            <span data-txt class="font-label-md text-label-md text-primary whitespace-nowrap${i.checked ? ' line-through opacity-50' : ''}">${escS([i.quantity, i.unit].filter(Boolean).join(' '))}</span>
+          </li>`).join('')}
+      </ul>` : '<p class="text-on-surface-variant italic">Cette liste est vide.</p>'}`;
+    document.getElementById('courses-overview').style.display = 'none';
+    detail.style.display = '';
+    history.replaceState(null, '', '#courses=' + id);
+    refreshCoursesCount();
+  };
+
+  window.closeShoppingList = function () {
+    document.getElementById('courses-detail').style.display = 'none';
+    document.getElementById('courses-overview').style.display = '';
+    history.replaceState(null, '', '#courses');
+    loadShoppingListsTable(); // rafraîchit les compteurs
+  };
+
   // Supprime une liste de courses
   window.removeShoppingList = async function (id, name, btn) {
     if (!confirm(`Supprimer la liste « ${name} » ?`)) return;
     try {
       await deleteShoppingList(id);
-      btn.closest('.group')?.remove();
+      btn.closest('tr')?.remove();
     } catch (e) {
       alert('Erreur : ' + e.message);
     }
@@ -435,25 +531,7 @@
     }
 
     // Listes de courses
-    const shopWrap = document.getElementById('shopping-lists');
-    if (shopWrap) {
-      const escS = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-      const lists = await getShoppingLists();
-      if (lists.length) {
-        shopWrap.innerHTML = lists.map(l => {
-          const items = l.shopping_list_items || [];
-          const done = items.filter(i => i.checked).length;
-          return `
-            <div class="border border-outline-variant rounded-lg bg-white p-6 flex items-start justify-between gap-2 group hover:shadow-md transition-shadow">
-              <a href="courses.html?id=${l.id}" class="flex-1 min-w-0">
-                <p class="font-label-md text-primary text-[16px] truncate flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">shopping_bag</span>${escS(l.name)}</p>
-                <p class="text-xs text-on-surface-variant mt-1">${items.length} article${items.length > 1 ? 's' : ''}${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</p>
-              </a>
-              <button type="button" title="Supprimer la liste" onclick="removeShoppingList(${JSON.stringify(l.id)}, ${JSON.stringify(String(l.name)).replace(/'/g, '&#39;')}, this)" class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10 shrink-0"><span class="material-symbols-outlined text-[18px]">delete</span></button>
-            </div>`;
-        }).join('');
-      }
-    }
+    await loadShoppingListsTable();
 
     // Planning
     const planList = document.getElementById('planning-list');
@@ -482,6 +560,12 @@
   }
 
   loadProfil();
+
+  // Lien profond vers le détail d'une liste (profil.html#courses=ID)
+  {
+    const m = (window._initialHash || location.hash).match(/^#courses=(.+)$/);
+    if (m) openShoppingList(decodeURIComponent(m[1]));
+  }
 
   // ── Inputs fichiers cachés ─────────────────────────────────
   document.body.insertAdjacentHTML('beforeend', `

@@ -518,7 +518,7 @@
         listId = l.id;
       }
       await addShoppingItems(listId, items);
-      window.location.href = 'courses.html?id=' + listId;
+      window.location.href = 'profil.html#courses=' + listId;
     } catch (e) {
       alert('Erreur : ' + e.message);
       btn.disabled = false;
