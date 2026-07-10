@@ -26,6 +26,10 @@
   details summary::-webkit-details-marker { display:none; }
   .maryse-logo-font { font-family:'Great Vibes',cursive; }
   image-slot { display:block; }
+  /* Mobile : évite le zoom iOS au focus des champs (min 16px) */
+  input, textarea, select { font-size: 16px; }
+  /* Barre d'actions au-dessus de la zone de geste système (encoche/barre home) */
+  #exec-actions { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
 </style>
 </head>
 <body class="bg-background">
@@ -90,6 +94,7 @@
       deg ? `Dégustation prévue ${deg}` : '',
       `${(s.jalons || []).length} jalon${(s.jalons || []).length > 1 ? 's' : ''} · ${nbEtapes} étape${nbEtapes > 1 ? 's' : ''}`,
     ].filter(Boolean).join(' — ');
+    if (new URLSearchParams(location.search).get('lecture') !== '1') acquireWakeLock();
     renderExecution();
   }
 
@@ -119,6 +124,24 @@
     try { await updateExecution(currentExec.id, { snapshot: currentExec.snapshot }); }
     catch (e) { alert('Sauvegarde impossible : ' + e.message); }
   }
+
+  // ── Wake Lock : empêche la mise en veille pendant une session en cours ──
+  let wakeLock = null;
+  async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return; // repli silencieux si non supporté
+    if (!currentExec || currentExec.status !== 'en_cours') return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) { /* refus (économie d'énergie…) : on continue sans */ }
+  }
+  async function releaseWakeLock() {
+    try { await wakeLock?.release?.(); } catch (e) { /* silencieux */ }
+    wakeLock = null;
+  }
+  // le verrou saute quand l'app passe en arrière-plan : on le reprend au retour
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') acquireWakeLock();
+  });
 
   // Tempo du jalon courant : heure attendue = cible + durées des étapes déjà faites
   function tempoChip() {
@@ -318,6 +341,7 @@
     currentExec.status = status;
     currentExec.date_fin = fin;
     document.getElementById('exec-status').textContent = STATUS_LBL[status];
+    releaseWakeLock();
     renderExecution();
     window.scrollTo(0, 0);
   }
