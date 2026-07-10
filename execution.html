@@ -160,6 +160,43 @@
     return '<span class="font-label-md text-[12px] px-3 py-1 rounded-full bg-secondary text-white">Dans les temps</span>';
   }
 
+  // Sous-étapes : la description est découpée sur les tirets « - » (un par ligne)
+  function subSteps(e) {
+    let html = sanitizeRich(e.description || '');
+    html = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div)>/gi, '\n').replace(/<(p|div)[^>]*>/gi, '');
+    return html.split(/(?:^|(?<=\s))[-•]\s+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  function descriptionHtml(ji, ei, e, readOnly) {
+    if (!e.description) return '';
+    const parts = subSteps(e);
+    if (parts.length <= 1) {
+      return `<div class="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface">${sanitizeRich(e.description)}</div>`;
+    }
+    return `<ul class="px-4 pb-3 flex flex-col gap-4">${parts.map((p, si) => {
+      const fait = !!(e.sous_etapes && e.sous_etapes[si] && e.sous_etapes[si].fait);
+      return `
+      <li class="flex items-start gap-3">
+        <input type="checkbox" ${fait ? 'checked' : ''} ${readOnly ? 'disabled' : ''} onchange="execToggleSub(${ji},${ei},${si},this)"
+          class="w-6 h-6 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5">
+        <span data-sub-txt class="font-body-md text-body-md leading-relaxed${fait ? ' line-through opacity-50' : ''}">${p.replace(/\n+/g, '<br>')}</span>
+      </li>`;
+    }).join('')}</ul>`;
+  }
+
+  window.execToggleSub = async function (ji, ei, si, cb) {
+    const e = currentExec.snapshot.jalons[ji].etapes[ei];
+    const parts = subSteps(e);
+    if (!Array.isArray(e.sous_etapes) || e.sous_etapes.length !== parts.length) {
+      e.sous_etapes = parts.map(t => ({ texte: t.replace(/<[^>]+>/g, ''), fait: false }));
+    }
+    e.sous_etapes[si].fait = cb.checked;
+    const txt = cb.closest('li').querySelector('[data-sub-txt]');
+    txt.classList.toggle('line-through', cb.checked);
+    txt.classList.toggle('opacity-50', cb.checked);
+    await saveSnapshot();
+  };
+
   function ingredientRow(ji, ei, ii, ing, readOnly) {
     const prevTxt = [typeof ing.quantite_prevue === 'number' ? fmtNum(ing.quantite_prevue) : (ing.quantite_prevue || ''), ing.unite].filter(Boolean).join(' ');
     const struck = ing.fait ? ' line-through opacity-50' : '';
@@ -194,7 +231,7 @@
         </label>
         ${(e.ingredients || []).length ? `
         <ul class="px-4 pb-2">${e.ingredients.map((ing, ii) => ingredientRow(ji, ei, ii, ing, readOnly)).join('')}</ul>` : ''}
-        ${e.description ? `<div class="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface">${sanitizeRich(e.description)}</div>` : ''}
+        ${descriptionHtml(ji, ei, e, readOnly)}
         ${e.tips ? `
         <div class="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p class="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
