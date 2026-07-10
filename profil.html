@@ -299,10 +299,12 @@
 
   // ── Édition du profil : bio, bannière, liens web & réseaux ──
   const PROFILE_LINKS = [
-    { field: 'website_url', icon: 'language', label: 'Site web' },
-    { field: 'instagram_url', icon: 'photo_camera', label: 'Instagram' },
-    { field: 'facebook_url', icon: 'group', label: 'Facebook' },
-    { field: 'youtube_url', icon: 'smart_display', label: 'YouTube' },
+    { field: 'website_url', icon: 'language', label: 'Site web', ph: 'https://monsite.fr' },
+    { field: 'instagram_url', icon: 'photo_camera', label: 'Instagram', ph: 'https://instagram.com/…' },
+    { field: 'facebook_url', icon: 'group', label: 'Facebook', ph: 'https://facebook.com/…' },
+    { field: 'youtube_url', icon: 'smart_display', label: 'YouTube', ph: 'https://youtube.com/…' },
+    { field: 'tiktok_url', icon: 'music_note', label: 'TikTok', ph: 'https://tiktok.com/@…' },
+    { field: 'pinterest_url', icon: 'push_pin', label: 'Pinterest', ph: 'https://pinterest.fr/…' },
   ];
 
   function renderProfileLinks(p) {
@@ -336,14 +338,8 @@
               <span class="${LBL} block mb-2">Photo de bannière</span>
               <button type="button" onclick="document.getElementById('input-banner').click()" class="border border-primary text-primary px-4 py-2 rounded-full font-label-md text-[12px] flex items-center gap-2 hover:bg-primary hover:text-white transition-colors"><span class="material-symbols-outlined text-[16px]">photo_camera</span> Choisir une photo</button>
             </div>
-            <label class="flex flex-col gap-1"><span class="${LBL}">Site web</span>
-              <input id="pe-website_url" type="url" value="${escL(p.website_url || '')}" placeholder="https://monsite.fr" class="${IN}"></label>
-            <label class="flex flex-col gap-1"><span class="${LBL}">Instagram</span>
-              <input id="pe-instagram_url" type="url" value="${escL(p.instagram_url || '')}" placeholder="https://instagram.com/…" class="${IN}"></label>
-            <label class="flex flex-col gap-1"><span class="${LBL}">Facebook</span>
-              <input id="pe-facebook_url" type="url" value="${escL(p.facebook_url || '')}" placeholder="https://facebook.com/…" class="${IN}"></label>
-            <label class="flex flex-col gap-1"><span class="${LBL}">YouTube</span>
-              <input id="pe-youtube_url" type="url" value="${escL(p.youtube_url || '')}" placeholder="https://youtube.com/…" class="${IN}"></label>
+            ${PROFILE_LINKS.map(l => `<label class="flex flex-col gap-1"><span class="${LBL}">${l.label}</span>
+              <input id="pe-${l.field}" type="url" value="${escL(p[l.field] || '')}" placeholder="${l.ph}" class="${IN}"></label>`).join('')}
           </div>
           <div class="flex gap-3 mt-8">
             <button type="button" onclick="saveProfileEditor(this)" class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-label-md">Enregistrer</button>
