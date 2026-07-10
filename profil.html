@@ -39,7 +39,6 @@
       <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html">Mes recettes</a>
       <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#planning">Planning</a>
       <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#courses">Listes de courses</a>
-      <a data-auth="admin" style="display:none" class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="admin.html">Administration</a>
     </nav>
   </div>
   <div class="flex items-center gap-3">
@@ -73,6 +72,7 @@
         <p class="font-body-md text-on-surface-variant max-w-xl" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
       </div>
       <div class="flex gap-3 pb-6">
+        <a data-auth="admin" style="display:none" href="admin.html" class="flex items-center gap-2 border border-primary text-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary hover:text-white transition-all active:scale-95"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span> Administration</a>
         <button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-md hover:opacity-90 transition-all active:scale-95 shadow-md">Modifier le profil</button>
         <button class="p-3 border border-outline-variant rounded-lg text-primary hover:bg-surface-container transition-all active:scale-95"><span class="material-symbols-outlined">share</span></button>
       </div>
@@ -253,6 +253,18 @@
   window._initialHash = location.hash;
   if (location.hash === '#planning') switchTab('planning');
   if (location.hash.startsWith('#courses')) switchTab('courses');
+
+  // Navigation par le menu quand on est déjà sur la page profil : le hash
+  // change sans rechargement → on bascule l'onglet correspondant.
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#planning') switchTab('planning');
+    else if (location.hash.startsWith('#courses')) {
+      switchTab('courses');
+      const m = location.hash.match(/^#courses=(.+)$/);
+      if (m && window.openShoppingList) window.openShoppingList(decodeURIComponent(m[1]));
+      else if (window.closeShoppingList && document.getElementById('courses-detail')?.style.display !== 'none') window.closeShoppingList();
+    } else if (location.hash === '' || location.hash === '#') switchTab('recipes');
+  });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
