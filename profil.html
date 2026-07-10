@@ -60,22 +60,25 @@
       <image-slot id="profil-banner" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
       <button type="button" onclick="document.getElementById('input-banner').click()" title="Changer la bannière (taille idéale : 1400 × 400 px)" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20"><span class="material-symbols-outlined text-[18px]">edit</span></button>
     </div>
-    <div class="px-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
-      <div class="w-32 h-32 md:w-40 md:h-40 relative shrink-0">
+    <div class="px-8 relative z-10">
+      <!-- Photo (flottante à gauche) : les premières lignes de bio se calent à côté -->
+      <div class="w-32 h-32 md:w-40 md:h-40 relative -mt-16 mx-auto md:mx-0 md:float-left md:mr-8">
         <div class="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg">
           <image-slot id="profil-avatar" shape="circle" fit="cover" placeholder="Photo" style="width:100%;height:100%"></image-slot>
         </div>
         <button type="button" onclick="document.getElementById('input-avatar').click()" title="Changer la photo de profil" class="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"><span class="material-symbols-outlined text-[18px]">edit</span></button>
       </div>
-      <div class="flex-1 pb-4 text-center md:text-left">
-        <h1 class="font-headline-lg text-headline-lg text-primary" id="profil-name" style="position:relative;top:-5px">Camille Laurent</h1>
-        <p class="font-body-md text-on-surface-variant max-w-xl" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
-      </div>
-      <div class="flex gap-3 pb-6">
+      <!-- Boutons (flottants à droite) : la bio s'élargit une fois passée dessous -->
+      <div class="flex gap-3 justify-center md:justify-end mt-4 md:float-right md:ml-8">
         <a data-auth="admin" style="display:none" href="admin.html" class="flex items-center gap-2 border border-primary text-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary hover:text-white transition-all active:scale-95"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span> Administration</a>
         <button id="btn-edit-profile" onclick="openProfileEditor()" class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-md hover:opacity-90 transition-all active:scale-95 shadow-md">Modifier le profil</button>
         <button class="p-3 border border-outline-variant rounded-lg text-primary hover:bg-surface-container transition-all active:scale-95"><span class="material-symbols-outlined">share</span></button>
       </div>
+      <div class="pt-4 text-center md:text-left">
+        <h1 class="font-headline-lg text-headline-lg text-primary" id="profil-name" style="position:relative;top:-5px">Camille Laurent</h1>
+        <p class="font-body-md text-on-surface-variant" id="profil-bio">Passionnée de pâtisserie fine et de design minimaliste. Je partage ici mes explorations autour du sucre et des textures.</p>
+      </div>
+      <div style="clear:both"></div>
     </div>
     <div class="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-outline-variant/30">
       <div class="flex gap-8 mb-4 md:mb-0">
