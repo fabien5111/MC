@@ -58,6 +58,7 @@
   <section class="relative mt-8">
     <div class="h-64 md:h-80 w-full rounded-xl overflow-hidden bg-surface-container-high relative">
       <image-slot id="profil-banner" shape="rect" fit="cover" placeholder="Bannière du profil" style="width:100%;height:100%"></image-slot>
+      <button type="button" onclick="document.getElementById('input-banner').click()" title="Changer la bannière (taille idéale : 1400 × 400 px)" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"><span class="material-symbols-outlined text-[18px]">edit</span></button>
     </div>
     <div class="px-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
       <div class="w-32 h-32 md:w-40 md:h-40 relative shrink-0">
