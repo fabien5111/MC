@@ -211,7 +211,17 @@
             <div class="space-y-4 ingredient-lines"></div>
             <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
           </div>
-          <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea></div>
+          <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
+          <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
+        </div>
+        <div class="flex flex-col step-substeps" style="display:none">
+          <label class="font-label-md text-label-md text-outline mb-2">SOUS-ÉTAPES <span class="normal-case text-on-surface-variant font-body-md text-sm">(une par ligne, cochables pendant l'exécution)</span></label>
+          <div class="substep-rows space-y-3"></div>
+          <div class="flex flex-wrap gap-6 mt-3">
+            <button type="button" onclick="addSubstepRow(this.closest('.step-block'), '', true)" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">add</span> Ajouter une sous-étape</button>
+            <button type="button" onclick="mergeSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">notes</span> Revenir au texte libre</button>
+          </div>
+        </div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v1" shape="rect" fit="cover" placeholder="Visuel 1 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
             <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v2" shape="rect" fit="cover" placeholder="Visuel 2 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
@@ -524,7 +534,17 @@
           <div class="space-y-4 ingredient-lines"></div>
           <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
         </div>
-        <div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea></div>
+        <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
+          <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
+        </div>
+        <div class="flex flex-col step-substeps" style="display:none">
+          <label class="font-label-md text-label-md text-outline mb-2">SOUS-ÉTAPES <span class="normal-case text-on-surface-variant font-body-md text-sm">(une par ligne, cochables pendant l'exécution)</span></label>
+          <div class="substep-rows space-y-3"></div>
+          <div class="flex flex-wrap gap-6 mt-3">
+            <button type="button" onclick="addSubstepRow(this.closest('.step-block'), '', true)" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">add</span> Ajouter une sous-étape</button>
+            <button type="button" onclick="mergeSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">notes</span> Revenir au texte libre</button>
+          </div>
+        </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v1" shape="rect" fit="cover" placeholder="Visuel 1 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v2" shape="rect" fit="cover" placeholder="Visuel 2 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
@@ -538,6 +558,77 @@
     renderPlanning();
     div.querySelector('input').focus();
   });
+
+  // ── Sous-étapes : éclatement du texte, édition, déplacement ──
+  const escSub = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  function setSubstepMode(block, on) {
+    const zone = block.querySelector('.step-desc-zone');
+    const subs = block.querySelector('.step-substeps');
+    if (zone) zone.style.display = on ? 'none' : '';
+    if (subs) subs.style.display = on ? '' : 'none';
+  }
+
+  window.addSubstepRow = function (block, text = '', focus = false) {
+    const rows = block.querySelector('.substep-rows');
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 substep-row';
+    div.innerHTML = `
+      <span class="material-symbols-outlined text-outline-variant select-none">drag_indicator</span>
+      <input class="substep-input editorial-input flex-1 font-body-md text-on-surface" type="text" placeholder="Sous-étape…">
+      <button type="button" tabindex="-1" title="Monter" onclick="moveSubstep(this, -1)" class="p-1 text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+      <button type="button" tabindex="-1" title="Descendre" onclick="moveSubstep(this, 1)" class="p-1 text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+      <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">close</span></button>`;
+    const input = div.querySelector('input');
+    input.value = text;
+    // Entrée dans une sous-étape → nouvelle sous-étape juste après
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const next = addSubstepRow(block, '', false);
+        div.after(next); // déplacer AVANT de donner le focus, sinon il est perdu
+        next.querySelector('input').focus();
+      }
+    });
+    rows.appendChild(div);
+    if (focus) input.focus();
+    return div;
+  };
+
+  window.moveSubstep = function (btn, dir) {
+    const row = btn.closest('.substep-row');
+    const sib = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sib) return;
+    if (dir < 0) row.parentElement.insertBefore(row, sib);
+    else row.parentElement.insertBefore(sib, row);
+  };
+
+  // Éclate le texte de la description : puces, tirets, sauts de ligne.
+  // Sur un texte vide, crée simplement une première sous-étape (création directe).
+  window.splitToSubsteps = function (block) {
+    const desc = block.querySelector('.step-desc');
+    const txt = (desc ? desc.innerHTML : '')
+      .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li)>/gi, '\n').replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const parts = txt.split(/\n+/)
+      .flatMap(l => l.split(/(?:^|(?<=\s))[-•–*]\s+/))
+      .map(s => s.trim()).filter(Boolean);
+    const rows = block.querySelector('.substep-rows');
+    rows.innerHTML = '';
+    (parts.length ? parts : ['']).forEach(p => addSubstepRow(block, p));
+    if (desc) desc.innerHTML = ''; // le contenu vit désormais dans les sous-étapes
+    setSubstepMode(block, true);
+    rows.querySelector('input')?.focus();
+  };
+
+  // Fusionne les sous-étapes en texte libre (une par ligne, précédée d'un tiret)
+  window.mergeSubsteps = function (block) {
+    const texts = [...block.querySelectorAll('.substep-input')].map(i => i.value.trim()).filter(Boolean);
+    const desc = block.querySelector('.step-desc');
+    if (desc) desc.innerHTML = texts.map(t => '- ' + escSub(t)).join('<br>');
+    block.querySelector('.substep-rows').innerHTML = '';
+    setSubstepMode(block, false);
+  };
 
   // ── Éditeur enrichi (gras / italique) ────────────────────────
   // Remplace un textarea par une zone contenteditable + barre d'outils.
@@ -694,11 +785,15 @@
         };
         const stepDesc  = richValue(b.querySelector('.step-desc')) || '';
         const stepTips  = richValue(b.querySelector('.step-tips')) || '';
+        // Sous-étapes (mode liste actif) : conservées telles quelles pour l'exécution
+        const sousEtapes = (b.querySelector('.step-substeps')?.style.display !== 'none')
+          ? [...b.querySelectorAll('.substep-input')].map(i => i.value.trim()).filter(Boolean)
+          : [];
         const dayOffset = Math.max(0, parseInt(b.querySelector('.step-day-offset')?.value, 10) || 0);
         const photosRaw = [...b.querySelectorAll('image-slot')]
           .map(s => s.shadowRoot?.querySelector('img')?.src)
           .filter(u => u && u.startsWith('data:'));
-        const hasContent = stepTitle || stepDesc || photosRaw.length
+        const hasContent = stepTitle || stepDesc || sousEtapes.length || photosRaw.length
           || [...b.querySelectorAll('.ing-name')].some(i => i.value.trim());
 
         if (hasContent) {
@@ -712,6 +807,7 @@
             wait_time: minutes('.step-wait'),
             day_offset: dayOffset,
             tips: stepTips || null,
+            sous_etapes: sousEtapes.length ? sousEtapes : null,
             order_index: gi,
           }).select().single();
           if (stepErr) console.error('Étape non enregistrée :', stepErr);
@@ -1006,6 +1102,10 @@
       b.querySelector('.step-cook').value = s.cook_time ?? '';
       b.querySelector('.step-day-offset').value = s.day_offset || '';
       b.querySelector('.step-desc').innerHTML = s.description || '';
+      if (Array.isArray(s.sous_etapes) && s.sous_etapes.length) {
+        s.sous_etapes.forEach(t => addSubstepRow(b, t));
+        setSubstepMode(b, true);
+      }
       const tipsEd = b.querySelector('.step-tips');
       if (tipsEd) tipsEd.innerHTML = s.tips || '';
       sortIdx(s.step_photos).slice(0, 4).forEach((p, pi) => {

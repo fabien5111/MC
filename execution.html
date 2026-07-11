@@ -168,10 +168,16 @@
   }
 
   function descriptionHtml(ji, ei, e, readOnly) {
-    if (!e.description) return '';
-    const parts = subSteps(e);
-    if (parts.length <= 1) {
-      return `<div class="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface">${sanitizeRich(e.description)}</div>`;
+    let parts;
+    if (Array.isArray(e.sous_etapes) && e.sous_etapes.length) {
+      // sous-étapes définies à la création (ou déjà initialisées) : découpage prêt
+      parts = e.sous_etapes.map(x => esc(x.texte));
+    } else {
+      if (!e.description) return '';
+      parts = subSteps(e);
+      if (parts.length <= 1) {
+        return `<div class="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface">${sanitizeRich(e.description)}</div>`;
+      }
     }
     return `<ul class="px-4 pb-3 flex flex-col gap-4">${parts.map((p, si) => {
       const fait = !!(e.sous_etapes && e.sous_etapes[si] && e.sous_etapes[si].fait);
@@ -186,9 +192,8 @@
 
   window.execToggleSub = async function (ji, ei, si, cb) {
     const e = currentExec.snapshot.jalons[ji].etapes[ei];
-    const parts = subSteps(e);
-    if (!Array.isArray(e.sous_etapes) || e.sous_etapes.length !== parts.length) {
-      e.sous_etapes = parts.map(t => ({ texte: t.replace(/<[^>]+>/g, ''), fait: false }));
+    if (!Array.isArray(e.sous_etapes) || !e.sous_etapes[si]) {
+      e.sous_etapes = subSteps(e).map(t => ({ texte: t.replace(/<[^>]+>/g, ''), fait: false }));
     }
     e.sous_etapes[si].fait = cb.checked;
     const txt = cb.closest('li').querySelector('[data-sub-txt]');

@@ -569,6 +569,9 @@
         id: s.id,
         titre: s.title || '',
         description: s.description || '',
+        // sous-étapes définies à la création : découpage déjà prêt pour l'exécution
+        ...(Array.isArray(s.sous_etapes) && s.sous_etapes.length
+          ? { sous_etapes: s.sous_etapes.map(t => ({ texte: t, fait: false })) } : {}),
         tips: s.tips || '',
         prep: s.prep_time || 0,
         attente: s.wait_time || 0,
@@ -1123,7 +1126,10 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               ${photos.map(p => `<div class="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden"><img src="${p.url}" class="w-full h-full object-cover"></div>`).join('')}
             </div>` : ''}
-            ${s.description ? `<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">${sanitizeRich(s.description).replace(/\n/g, '<br>')}</div>` : ''}
+            ${Array.isArray(s.sous_etapes) && s.sous_etapes.length ? `
+            <ul class="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
+              ${s.sous_etapes.map(t => `<li class="flex gap-3"><span class="text-primary shrink-0">–</span><span>${esc(t)}</span></li>`).join('')}
+            </ul>` : (s.description ? `<div class="font-body-lg text-body-lg leading-relaxed text-on-surface">${sanitizeRich(s.description).replace(/\n/g, '<br>')}</div>` : '')}
             ${s.tips ? `
             <details class="group border border-outline-variant">
               <summary class="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none"><span class="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l'étape</span><span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span></summary>
