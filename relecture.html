@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Maryse Club — Relecture d'une recette importée.">
+<meta name="theme-color" content="#300a12">
+<title>Relecture d'un import | Maryse-Club</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    "colors": {"on-primary-container":"#c1828b","tertiary-fixed-dim":"#e0bec2","primary-fixed-dim":"#fab4bd","secondary-container":"#ffc6ce","surface-tint":"#854f57","on-tertiary-fixed":"#291619","on-primary":"#ffffff","surface-variant":"#efdfde","secondary-fixed":"#ffd9de","outline":"#847374","outline-variant":"#d6c2c3","error-container":"#ffdad6","surface-dim":"#e7d6d6","surface-container-lowest":"#ffffff","on-secondary":"#ffffff","inverse-primary":"#fab4bd","on-tertiary":"#ffffff","tertiary-container":"#3b262a","on-tertiary-container":"#aa8c90","on-secondary-fixed":"#311118","secondary":"#7e5259","tertiary":"#251216","primary":"#300a12","inverse-surface":"#382e2e","primary-fixed":"#ffd9dd","tertiary-fixed":"#fddade","surface-container-high":"#f5e4e4","on-primary-fixed-variant":"#6a3840","surface-container-low":"#fff0f0","on-error":"#ffffff","on-surface-variant":"#514345","background":"#fff8f7","inverse-on-surface":"#feedec","secondary-fixed-dim":"#f0b8c0","primary-container":"#4a1e26","on-secondary-fixed-variant":"#633b42","surface":"#fff8f7","surface-container":"#fbeae9","on-tertiary-fixed-variant":"#584044","on-background":"#221a1a","surface-container-highest":"#efdfde","surface-bright":"#fff8f7","on-surface":"#221a1a","error":"#ba1a1a","on-primary-fixed":"#350e16","on-error-container":"#93000a","on-secondary-container":"#7b5056"},
+    "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    "spacing": {"gutter":"24px","margin-mobile":"16px","margin-desktop":"64px","unit":"8px","container-max":"1200px"},
+    "fontFamily": {"headline-lg":["Playfair Display"],"display-lg":["Playfair Display"],"headline-md":["Playfair Display"],"body-md":["Work Sans"],"body-lg":["Work Sans"],"label-md":["Work Sans"],"headline-lg-mobile":["Playfair Display"],"logo":["Great Vibes","cursive"]},
+    "fontSize": {"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}],"display-lg":["64px",{"lineHeight":"72px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-lg-mobile":["32px",{"lineHeight":"40px","fontWeight":"600"}]}
+  } } }
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  html:not(.auth-ready) [data-auth="logged-in"] { display: none !important; }
+  body { background-color:#fff8f7; color:#221a1a; font-family:'Work Sans',sans-serif; }
+  .maryse-logo-font { font-family:'Great Vibes',cursive; }
+  image-slot { display:block; }
+  input::placeholder, textarea::placeholder { color:#e2d5d6 !important; opacity:1; font-style:italic; }
+  .champ { border:1px solid #d6c2c3; border-radius:4px; padding:6px 10px; background:#fff; font-size:15px; width:100%; }
+  .champ:focus { outline:none; border-color:#300a12; }
+</style>
+</head>
+<body class="bg-background pb-32">
+
+<!-- ===== Unified Public Header ===== -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
+<div class="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
+  <div class="flex items-center gap-10">
+    <a class="maryse-logo-font text-4xl text-primary leading-none" href="index.html">maryse club</a>
+    <nav class="hidden md:flex gap-8 items-center">
+      <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="index.html">Accueil</a>
+      <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html">Mes recettes</a>
+      <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#planning">Planning</a>
+      <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#courses">Listes de courses</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <a data-auth="logged-in" class="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
+    <a data-auth="logged-in" class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
+      <image-slot id="nav-avatar" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
+    </a>
+    <button data-auth="logged-in" onclick="authSignOut()" class="font-label-md bg-primary text-on-primary px-4 py-2 rounded-full text-sm hover:opacity-90 transition-all active:scale-95">Déconnexion</button>
+    <a data-auth="logged-out" href="connexion.html" class="font-label-md bg-primary text-on-primary px-4 py-2 rounded-full text-sm hover:opacity-90 transition-all active:scale-95">Connexion</a>
+  </div>
+</div>
+</header>
+
+<main class="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+  <a href="importer.html" class="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-6"><span class="material-symbols-outlined">arrow_back</span> Mes imports</a>
+
+  <div id="relecture-vide" class="text-on-surface-variant italic" style="display:none">Import introuvable (ou vous n'y avez pas accès).</div>
+
+  <div id="relecture" style="display:none">
+    <div class="flex items-baseline justify-between flex-wrap gap-4 mb-2">
+      <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Relecture de l'import</h1>
+      <span id="rel-statut" class="font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white bg-secondary"></span>
+    </div>
+    <p class="text-on-surface-variant mb-2">Corrigez ce qui doit l'être à droite (la colonne de gauche montre le contenu d'origine), puis créez la recette dans votre carnet : elle y arrivera en <strong>brouillon privé</strong>.</p>
+    <p id="rel-source" class="text-sm text-on-surface-variant mb-6"></p>
+
+    <div id="rel-alertes" class="mb-8 border border-error/40 bg-error-container/30 rounded-xl p-5" style="display:none">
+      <p class="font-label-md text-[11px] uppercase tracking-widest text-error mb-2">Points à vérifier</p>
+      <div id="rel-alertes-ul" class="flex flex-col gap-1"></div>
+    </div>
+
+    <!-- Infos générales -->
+    <section class="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
+      <h2 class="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="flex flex-col gap-1 md:col-span-2"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
+          <input id="f-titre" class="champ font-headline-md text-[20px]"></label>
+        <label class="flex flex-col gap-1 md:col-span-2"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
+          <textarea id="f-description" rows="2" class="champ"></textarea></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Temps de préparation (min)</span>
+          <input id="f-prep" type="number" min="0" class="champ"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Temps de cuisson (min)</span>
+          <input id="f-cuisson" type="number" min="0" class="champ"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Repos (min)</span>
+          <input id="f-repos" type="number" min="0" class="champ"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Congélation (min)</span>
+          <input id="f-congel" type="number" min="0" class="champ"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
+          <input id="f-rendement" class="champ" placeholder="8 parts, 20 pièces, cercle 20 cm…"></label>
+        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
+          <input id="f-notes" class="champ"></label>
+      </div>
+    </section>
+
+    <!-- Sous-préparations : gauche = origine, droite = corrigeable -->
+    <div id="rel-sps" class="flex flex-col gap-8"></div>
+
+    <div class="flex justify-start mt-6">
+      <button type="button" onclick="relAddSp()" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">add_circle</span> Ajouter une sous-préparation</button>
+    </div>
+  </div>
+</main>
+
+<!-- Barre d'actions fixe -->
+<div id="rel-actions" class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3" style="display:none; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
+  <div class="max-w-[1200px] mx-auto flex flex-wrap items-center gap-3">
+    <button type="button" id="btn-creer" onclick="relCreerRecette(this)" class="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95"><span class="material-symbols-outlined text-[18px]">menu_book</span> Créer la recette dans mon carnet</button>
+    <button type="button" id="btn-save" onclick="relSave(this)" class="border border-primary text-primary px-6 py-3 rounded-full font-label-md text-label-md hover:bg-primary hover:text-white transition-all active:scale-95">Enregistrer les corrections</button>
+    <span id="rel-save-status" class="text-sm text-secondary font-label-md"></span>
+    <button type="button" onclick="relSupprimer()" class="ml-auto flex items-center gap-2 text-error font-label-md text-label-md hover:underline"><span class="material-symbols-outlined text-[18px]">delete</span> Supprimer cet import</button>
+  </div>
+</div>
+
+<script src="image-slot.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let importRow = null;
+
+  const UNITE_OPTS = ['g', 'ml', 'piece'];
+  const UNITE_LBL = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
+
+  // Libellé lisible du rendement importé
+  function rendementTxt(r) {
+    if (!r) return '';
+    if (r.type === 'moule' && r.moule) return r.moule.libelle || [r.moule.forme, r.moule.diametre_cm && r.moule.diametre_cm + ' cm'].filter(Boolean).join(' ');
+    if (r.pieces) return `${r.pieces} pièces`;
+    if (r.portions) return `${r.portions} parts`;
+    return '';
+  }
+
+  function spHTML(sp, i) {
+    return `
+    <section class="border border-outline-variant rounded-xl overflow-hidden" data-sp="${i}" data-materiel="${encodeURIComponent(JSON.stringify(sp.materiel || []))}">
+      <div class="bg-surface-container-high px-6 py-3 flex items-center gap-3">
+        <span data-sp-num class="font-headline-md text-[18px] text-primary">${Number(i) + 1 || ''}.</span>
+        <input data-sp-nom class="champ font-headline-md text-[18px] flex-1" value="${esc(sp.nom || '')}" placeholder="Nom de la sous-préparation">
+        <button type="button" onclick="relDelSp(this)" title="Supprimer la sous-préparation" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2">
+        <!-- Origine (lecture seule) -->
+        <div class="p-6 bg-surface-container-low/60 border-b lg:border-b-0 lg:border-r border-outline-variant/50">
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Contenu importé</p>
+          ${(sp.ingredients || []).length ? `<ul class="flex flex-col gap-1 mb-4">${(sp.ingredients || []).map(g => `<li class="text-sm">• ${esc(g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' '))}</li>`).join('')}</ul>` : '<p class="text-sm italic text-on-surface-variant mb-4">Aucun ingrédient (montage ?)</p>'}
+          ${(sp.etapes || []).map(e => `<p class="text-sm mb-2"><span class="text-secondary font-label-md">${e.ordre ?? ''}.</span> ${esc(e.texte || '')}</p>`).join('')}
+        </div>
+        <!-- Corrigeable -->
+        <div class="p-6">
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Version corrigée</p>
+          <div class="mb-2 grid gap-2" style="grid-template-columns: 1fr 5.5rem 6.5rem 2rem">
+            <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Ingrédient</span>
+            <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Quantité</span>
+            <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Unité</span><span></span>
+          </div>
+          <div data-sp-ings class="flex flex-col gap-2 mb-2">
+            ${(sp.ingredients || []).map(g => ingRowHTML(g)).join('')}
+          </div>
+          <button type="button" onclick="relAddIng(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-5"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient</button>
+
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Étapes</p>
+          <div data-sp-etapes class="flex flex-col gap-2 mb-2">
+            ${(sp.etapes || []).map(e => etapeRowHTML(e)).join('')}
+          </div>
+          <button type="button" onclick="relAddEtape(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter une étape</button>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function ingRowHTML(g = {}) {
+    return `
+    <div data-ing>
+      <div class="grid gap-2 items-center" style="grid-template-columns: 1fr 5.5rem 6.5rem 2rem">
+        <input data-ing-nom class="champ" value="${esc(g.nom || '')}" placeholder="farine">
+        <input data-ing-qte type="number" min="0" step="any" class="champ text-center" value="${g.quantite ?? ''}">
+        <select data-ing-unite class="champ">${UNITE_OPTS.map(u => `<option value="${u}" ${g.unite === u ? 'selected' : ''}>${UNITE_LBL[u]}</option>`).join('')}</select>
+        <button type="button" onclick="this.closest('[data-ing]').remove()" tabindex="-1" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">close</span></button>
+      </div>
+      ${g.note ? `<input data-ing-note class="champ text-sm mt-1" value="${esc(g.note)}" placeholder="note (pommade, à froid…)">` : ''}
+    </div>`;
+  }
+
+  function etapeRowHTML(e = {}) {
+    return `
+    <div data-etape class="flex items-start gap-2">
+      <textarea data-etape-texte rows="2" class="champ flex-1">${esc(e.texte || '')}</textarea>
+      <input data-etape-duree type="number" min="0" class="champ text-center" style="width:4.5rem" title="Durée (min)" placeholder="min" value="${e.duree_min ?? ''}">
+      <input data-etape-temp type="number" min="0" class="champ text-center" style="width:4.5rem" title="Température (°C)" placeholder="°C" value="${e.temperature_c ?? ''}">
+      <button type="button" onclick="this.closest('[data-etape]').remove()" tabindex="-1" class="text-error hover:opacity-70 mt-2"><span class="material-symbols-outlined text-[18px]">close</span></button>
+    </div>`;
+  }
+
+  window.relAddIng = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', ingRowHTML());
+  window.relAddEtape = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', etapeRowHTML());
+  function renumSp() {
+    document.querySelectorAll('#rel-sps [data-sp]').forEach((s, k) => { s.querySelector('[data-sp-num]').textContent = (k + 1) + '.'; });
+  }
+  window.relDelSp = btn => {
+    if (!confirm('Supprimer cette sous-préparation ?')) return;
+    btn.closest('[data-sp]').remove();
+    renumSp();
+  };
+  window.relAddSp = () => {
+    const zone = document.getElementById('rel-sps');
+    zone.insertAdjacentHTML('beforeend', spHTML({ nom: '', ingredients: [], etapes: [{ texte: '' }] }, 'n' + Date.now()));
+    renumSp();
+    zone.lastElementChild.querySelector('[data-sp-nom]').focus();
+  };
+
+  // Relit le formulaire → pivot corrigé
+  function lireFormulaire() {
+    const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+    const p = JSON.parse(JSON.stringify(importRow.recette || {}));
+    p.titre = document.getElementById('f-titre').value.trim();
+    p.description = document.getElementById('f-description').value.trim() || null;
+    p.notes = document.getElementById('f-notes').value.trim() || null;
+    p.temps = {
+      preparation_min: num(document.getElementById('f-prep').value),
+      cuisson_min: num(document.getElementById('f-cuisson').value),
+      repos_min: num(document.getElementById('f-repos').value),
+      congelation_min: num(document.getElementById('f-congel').value),
+    };
+    p.rendement = p.rendement || {};
+    p.rendement.libelle_corrige = document.getElementById('f-rendement').value.trim() || null;
+    p.sous_preparations = [...document.querySelectorAll('[data-sp]')].map((sec, i) => ({
+      ordre: i + 1,
+      nom: sec.querySelector('[data-sp-nom]').value.trim() || `Sous-préparation ${i + 1}`,
+      ingredients: [...sec.querySelectorAll('[data-ing]')].map(row => ({
+        nom: row.querySelector('[data-ing-nom]').value.trim(),
+        quantite: num(row.querySelector('[data-ing-qte]').value),
+        unite: row.querySelector('[data-ing-unite]').value,
+        note: row.querySelector('[data-ing-note]')?.value.trim() || null,
+      })).filter(g => g.nom),
+      etapes: [...sec.querySelectorAll('[data-etape]')].map((row, k) => ({
+        ordre: k + 1,
+        texte: row.querySelector('[data-etape-texte]').value.trim(),
+        duree_min: num(row.querySelector('[data-etape-duree]').value),
+        temperature_c: num(row.querySelector('[data-etape-temp]').value),
+      })).filter(e => e.texte),
+      materiel: JSON.parse(decodeURIComponent(sec.dataset.materiel || '%5B%5D')),
+    }));
+    return p;
+  }
+
+  window.relSave = async function (btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const p = lireFormulaire();
+      await updateImport(importRow.id, { recette: p });
+      importRow.recette = p;
+      const st = document.getElementById('rel-save-status');
+      st.textContent = 'Corrections enregistrées ✓';
+      setTimeout(() => { st.textContent = ''; }, 3000);
+      return p;
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+      throw e;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  // ── Conversion pivot → tables recipes (recette privée, brouillon) ──
+  window.relCreerRecette = async function (btn) {
+    if (!confirm('Créer cette recette dans votre carnet (brouillon privé) ?')) return;
+    btn.disabled = true;
+    try {
+      const p = await relSave(null); // toujours convertir la dernière version corrigée
+      const t = p.temps || {};
+      const attente = (t.repos_min || 0) + (t.congelation_min || 0);
+      const total = (t.preparation_min || 0) + (t.cuisson_min || 0) + attente;
+
+      // Rendement → champs des recettes du site
+      let measure = { measure_type: 'units', yield_qty: null, yield_unit: 'unite', yield_desc: null };
+      const r = p.rendement || {};
+      if (r.type === 'moule' && r.moule) {
+        measure = { measure_type: 'mold', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige || r.moule.libelle || rendementTxt(r) || null };
+      } else if (r.pieces || r.portions) {
+        measure = { measure_type: 'units', yield_qty: r.pieces || r.portions, yield_unit: 'unite', yield_desc: r.libelle_corrige || null };
+      } else if (r.libelle_corrige) {
+        measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige };
+      }
+
+      const recipe = await createRecipe({
+        title: p.titre || 'Recette importée',
+        description: p.description || null,
+        is_public: false, // règle du schéma pivot : contenu tiers → privé
+        status: 'draft',
+        tips: p.notes || null,
+        prep_time: t.preparation_min ?? null,
+        cook_time: t.cuisson_min ?? null,
+        wait_time: attente || null,
+        total_time: total || null,
+        ...measure,
+      });
+
+      // Sous-préparations → une étape + un groupe d'ingrédients chacune
+      const sps = p.sous_preparations || [];
+      for (let i = 0; i < sps.length; i++) {
+        const sp = sps[i];
+        const sousEtapes = (sp.etapes || []).map(e => {
+          const infos = [e.duree_min ? `${e.duree_min} min` : null, e.temperature_c ? `${e.temperature_c} °C` : null].filter(Boolean).join(' à ');
+          return infos ? `${e.texte} (${infos})` : e.texte;
+        });
+        const cuissons = (sp.etapes || []).filter(e => e.temperature_c);
+        await db.from('recipe_steps').insert({
+          recipe_id: recipe.id,
+          step_number: i + 1,
+          title: sp.nom || `Étape ${i + 1}`,
+          description: null,
+          prep_time: null,
+          cook_time: cuissons.reduce((n, e) => n + (e.duree_min || 0), 0) || null,
+          cook_temp: cuissons.length ? Math.max(...cuissons.map(e => e.temperature_c)) : null,
+          wait_time: null,
+          day_offset: 0,
+          tips: null,
+          sous_etapes: sousEtapes.length ? sousEtapes : null,
+          order_index: i,
+        });
+        const lines = (sp.ingredients || []).map((g, k) => ({
+          name: g.nom,
+          quantity: g.quantite != null ? String(g.quantite) : null,
+          unit: UNITE_LBL[g.unite] || g.unite || null,
+          comment: g.note || null,
+          order_index: k,
+        })).filter(l => l.name);
+        if (lines.length) {
+          const { data: grp, error: grpErr } = await db.from('ingredient_groups')
+            .insert({ recipe_id: recipe.id, name: sp.nom || `Étape ${i + 1}`, order_index: i }).select().single();
+          if (grpErr) console.error('Groupe non enregistré :', grpErr);
+          else {
+            const { error: ingErr } = await db.from('ingredients').insert(lines.map(l => ({ ...l, group_id: grp.id })));
+            if (ingErr) console.error('Ingrédients non enregistrés :', ingErr);
+          }
+        }
+      }
+
+      // Matériel (dédoublonné) → ustensiles
+      const mats = [...new Set(sps.flatMap(sp => sp.materiel || []).map(m => String(m).trim()).filter(Boolean))];
+      if (mats.length) {
+        const { error: utErr } = await db.from('recipe_utensils')
+          .insert(mats.map((m, i) => ({ recipe_id: recipe.id, name: m, order_index: i })));
+        if (utErr) console.error('Ustensiles non enregistrés :', utErr);
+      }
+
+      await updateImport(importRow.id, { statut: 'verifiee', recipe_id: recipe.id });
+      window.location.href = 'recette.html?id=' + recipe.id;
+    } catch (e) {
+      alert('Erreur à la création : ' + e.message);
+      btn.disabled = false;
+    }
+  };
+
+  window.relSupprimer = async function () {
+    if (!confirm('Supprimer définitivement cet import ?')) return;
+    try {
+      await deleteImport(importRow.id);
+      window.location.href = 'importer.html';
+    } catch (e) { alert('Erreur : ' + e.message); }
+  };
+
+  (async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { window.location.href = 'connexion.html'; return; }
+    const id = new URLSearchParams(location.search).get('id');
+    importRow = id ? await getImport(id) : null;
+    if (!importRow) { document.getElementById('relecture-vide').style.display = ''; return; }
+
+    const p = importRow.recette || {};
+    const STATUT_LBL = { brouillon: ['Brouillon', 'bg-secondary'], verifiee: ['Vérifiée', 'bg-green-700'], publiee: ['Publiée', 'bg-primary'] };
+    const [lbl, cls] = STATUT_LBL[importRow.statut] || [importRow.statut, 'bg-secondary'];
+    const stEl = document.getElementById('rel-statut');
+    stEl.textContent = lbl; stEl.className = `font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${cls}`;
+
+    if (importRow.source_url) {
+      document.getElementById('rel-source').innerHTML =
+        `Source : <a href="${esc(importRow.source_url)}" target="_blank" rel="noopener" class="underline hover:text-primary">${esc(importRow.source_url)}</a>${p.source?.auteur_origine ? ' — par ' + esc(p.source.auteur_origine) : ''}`;
+    }
+
+    const alertes = importRow.alertes || [];
+    if (alertes.length) {
+      document.getElementById('rel-alertes').style.display = '';
+      document.getElementById('rel-alertes-ul').innerHTML = alertes.map(a => `<p class="text-sm">• ${esc(a)}</p>`).join('');
+    }
+
+    document.getElementById('f-titre').value = p.titre || '';
+    document.getElementById('f-description').value = p.description || '';
+    document.getElementById('f-notes').value = p.notes || '';
+    document.getElementById('f-prep').value = p.temps?.preparation_min ?? '';
+    document.getElementById('f-cuisson').value = p.temps?.cuisson_min ?? '';
+    document.getElementById('f-repos').value = p.temps?.repos_min ?? '';
+    document.getElementById('f-congel').value = p.temps?.congelation_min ?? '';
+    document.getElementById('f-rendement').value = p.rendement?.libelle_corrige || rendementTxt(p.rendement);
+
+    document.getElementById('rel-sps').innerHTML = (p.sous_preparations || []).map((sp, i) => spHTML(sp, i)).join('');
+
+    document.getElementById('relecture').style.display = '';
+    document.getElementById('rel-actions').style.display = '';
+
+    // Import déjà converti : lien vers la recette plutôt que re-création
+    if (importRow.statut !== 'brouillon' && importRow.recipe_id) {
+      const b = document.getElementById('btn-creer');
+      b.outerHTML = `<a href="recette.html?id=${esc(importRow.recipe_id)}" class="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all"><span class="material-symbols-outlined text-[18px]">menu_book</span> Voir la recette créée</a>`;
+    }
+  })();
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

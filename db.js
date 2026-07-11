@@ -257,6 +257,22 @@ async function getImports() {
   return data || [];
 }
 
+async function getImport(id) {
+  const { data, error } = await db.from('imports').select('*').eq('id', id).maybeSingle();
+  if (error) console.error('getImport:', error);
+  return data;
+}
+
+async function updateImport(id, updates) {
+  const { error } = await db.from('imports').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+async function deleteImport(id) {
+  const { error } = await db.from('imports').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── EXÉCUTIONS DE RECETTES PLANIFIÉES ────────────────────────
 // Une exécution fige un snapshot (jalons > étapes > ingrédients ajustés) au
 // démarrage : les quantités réelles et les coches vivent uniquement ici,

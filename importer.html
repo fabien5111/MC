@@ -144,7 +144,7 @@
             <p class="font-label-md text-[11px] uppercase tracking-widest text-error mb-1">À vérifier à la relecture</p>
             ${data.alertes.map(a => `<p class="text-sm">• ${esc(a)}</p>`).join('')}
           </div>` : ''}
-          <p class="text-sm text-on-surface-variant mt-3">L'écran de relecture (correction puis validation) arrive à la prochaine phase.</p>
+          <a href="relecture.html?id=${esc(data.import.id)}" class="inline-flex items-center gap-2 mt-3 text-primary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined text-[18px]">fact_check</span> Relire et créer la recette</a>
         </div>`);
       document.getElementById('import-url').value = '';
       loadImports();
@@ -169,13 +169,14 @@
       const [lbl, cls] = STATUT_LBL[i.statut] || [i.statut, 'bg-secondary'];
       const host = i.source_url ? new URL(i.source_url).hostname.replace(/^www\./, '') : i.source_type;
       return `
-      <div class="flex items-center gap-3 py-3 border-b border-outline-variant/30 flex-wrap">
+      <a href="relecture.html?id=${esc(i.id)}" class="flex items-center gap-3 py-3 border-b border-outline-variant/30 flex-wrap hover:bg-surface-container-low transition-colors group">
         <span class="font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${cls}">${esc(lbl)}</span>
-        <span class="font-body-md flex-1 min-w-[180px]">${esc(i.recette?.titre || 'Sans titre')}</span>
+        <span class="font-body-md flex-1 min-w-[180px] group-hover:text-primary">${esc(i.recette?.titre || 'Sans titre')}</span>
         <span class="text-sm text-on-surface-variant">${esc(host)}</span>
         ${(i.alertes || []).length ? `<span class="text-sm text-error" title="${esc((i.alertes || []).join('\n'))}">⚠ ${(i.alertes || []).length}</span>` : ''}
         <span class="text-sm text-on-surface-variant">${new Date(i.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-      </div>`;
+        <span class="material-symbols-outlined text-[18px] text-on-surface-variant group-hover:text-primary">chevron_right</span>
+      </a>`;
     }).join('');
   }
 
