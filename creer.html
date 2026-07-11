@@ -874,6 +874,9 @@
       } else {
         yDesc = document.getElementById('dims-desc')?.value.trim() || null;
       }
+      // Validation par un administrateur uniquement pour les recettes
+      // publiques ; une recette privée est publiée immédiatement
+      if (status === 'pending' && !isPublic) status = 'published';
       const payload = {
         title, description: desc, is_public: isPublic, status,
         difficulty_id: diffRow?.id ?? null,
