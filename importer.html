@@ -116,7 +116,7 @@
     setStatus(`
       <div class="border border-outline-variant rounded-xl bg-surface-container-low p-5 flex items-center gap-3">
         <span class="material-symbols-outlined text-primary spinner">progress_activity</span>
-        <span class="font-body-md">Extraction et analyse en cours… (jusqu'à 30 secondes)</span>
+        <span class="font-body-md">Extraction et analyse en cours… (1 à 2 minutes pour les pages longues)</span>
       </div>`);
     try {
       const r = await fetch('/api/import-url', {
@@ -124,7 +124,11 @@
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
         body: JSON.stringify({ url }),
       });
-      const data = await r.json().catch(() => ({ erreur: 'Réponse invalide du serveur.' }));
+      const data = await r.json().catch(() => ({
+        erreur: r.status === 504
+          ? "L'analyse a dépassé le temps imparti — réessayez, la seconde tentative est souvent plus rapide."
+          : `Réponse invalide du serveur (HTTP ${r.status}).`,
+      }));
       if (!r.ok) throw new Error(data.erreur || `Erreur ${r.status}`);
 
       const p = data.import.recette || {};

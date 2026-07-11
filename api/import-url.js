@@ -280,8 +280,10 @@ async function handler(req, res) {
   let { erreurs, alertes } = validatePivot(pivot);
   if (erreurs.length) {
     try {
-      const pivot2 = await normalizeWithRetry(apiKey,
-        `${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`);
+      // Un seul appel correctif (pas de re-relance JSON) pour borner la durée totale
+      const raw2 = await callClaude(apiKey,
+        `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`);
+      const pivot2 = parseStrictJson(raw2);
       const v2 = validatePivot(pivot2);
       if (!v2.erreurs.length) { pivot = pivot2; erreurs = v2.erreurs; alertes = v2.alertes; }
     } catch (e) { /* on conserve les erreurs de la première extraction */ }
