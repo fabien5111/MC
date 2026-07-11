@@ -190,13 +190,19 @@
 
     <!-- Step Details -->
     <section class="space-y-12" id="steps-container">
+      <div class="flex justify-end gap-6" id="steps-toolbar">
+        <button type="button" onclick="collapseAllSteps(true)" class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">unfold_less</span> Tout replier</button>
+        <button type="button" onclick="collapseAllSteps(false)" class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">unfold_more</span> Tout déplier</button>
+      </div>
       <div class="step-block">
         <div class="flex items-center gap-4 border-b border-primary pb-4">
           <span class="step-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer l'étape">drag_indicator</span>
           <span class="step-num font-display-lg text-headline-lg text-primary">01</span>
           <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape (ex: Réalisation de la pâte)" type="text">
+          <button type="button" onclick="insertStepBefore(this.closest('.step-block'))" title="Insérer une étape avant celle-ci" class="step-insert p-1 text-secondary hover:opacity-70 shrink-0"><span class="material-symbols-outlined">add_row_above</span></button>
+          <button type="button" onclick="toggleStepCollapse(this.closest('.step-block'))" title="Replier / déplier l'étape" class="step-collapse p-1 text-on-surface-variant hover:opacity-70 shrink-0"><span class="material-symbols-outlined">expand_less</span></button>
         </div>
-        <div class="space-y-8 mt-8">
+        <div class="step-body space-y-8 mt-8">
           <div class="flex flex-wrap gap-8">
             <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline justify-center gap-2"><input class="step-prep editorial-input text-on-surface text-center" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
             <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline justify-center gap-2"><input class="step-wait editorial-input text-on-surface text-center" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
@@ -512,7 +518,7 @@
 
   // add step
   let stepCount = 1;
-  document.getElementById('add-step').addEventListener('click', function(){
+  function createStepBlock() {
     stepCount++;
     const num = stepCount.toString().padStart(2, '0');
     const div = document.createElement('div');
@@ -522,8 +528,10 @@
         <span class="step-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer l'étape">drag_indicator</span>
         <span class="step-num font-display-lg text-headline-lg text-primary">${num}</span>
         <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape" type="text">
+        <button type="button" onclick="insertStepBefore(this.closest('.step-block'))" title="Insérer une étape avant celle-ci" class="step-insert p-1 text-secondary hover:opacity-70 shrink-0"><span class="material-symbols-outlined">add_row_above</span></button>
+        <button type="button" onclick="toggleStepCollapse(this.closest('.step-block'))" title="Replier / déplier l'étape" class="step-collapse p-1 text-on-surface-variant hover:opacity-70 shrink-0"><span class="material-symbols-outlined">expand_less</span></button>
       </div>
-      <div class="space-y-8 mt-8">
+      <div class="step-body space-y-8 mt-8">
         <div class="flex flex-wrap gap-8">
           <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline justify-center gap-2"><input class="step-prep editorial-input text-on-surface text-center" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
           <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline justify-center gap-2"><input class="step-wait editorial-input text-on-surface text-center" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
@@ -558,13 +566,38 @@
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v4" shape="rect" fit="cover" placeholder="Visuel 4 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
         </div>
       </div>`;
-    this.closest('section').insertBefore(div, this.parentElement);
     upgradeStepEditors(div);
     setupStepDrag(div);
     addIngredientLine(div.querySelector('.step-ingredients > button'), false);
+    return div;
+  }
+  document.getElementById('add-step').addEventListener('click', function(){
+    const div = createStepBlock();
+    this.closest('section').insertBefore(div, this.parentElement);
     renumberSteps();
     div.querySelector('input[type="text"]').focus();
   });
+
+  // Insérer une étape vierge juste avant une étape existante
+  window.insertStepBefore = function (block) {
+    const div = createStepBlock();
+    block.parentElement.insertBefore(div, block);
+    renumberSteps();
+    div.querySelector('input[type="text"]').focus();
+  };
+
+  // ── Replier / déplier : seul l'entête (numéro + titre) reste visible ──
+  window.toggleStepCollapse = function (block, collapsed) {
+    const body = block.querySelector('.step-body');
+    if (!body) return;
+    const on = collapsed !== undefined ? collapsed : body.style.display !== 'none';
+    body.style.display = on ? 'none' : '';
+    const ic = block.querySelector('.step-collapse .material-symbols-outlined');
+    if (ic) ic.textContent = on ? 'expand_more' : 'expand_less';
+  };
+  window.collapseAllSteps = function (on) {
+    document.querySelectorAll('#steps-container .step-block').forEach(b => toggleStepCollapse(b, on));
+  };
 
   // ── Réordonner les étapes : glisser-déposer par la poignée de l'entête ──
   // La numérotation 01, 02… et le planning suivent le nouvel ordre ; la
@@ -605,6 +638,7 @@
     // Tactile : déplacement au doigt sur la poignée
     handle.addEventListener('touchmove', e => {
       e.preventDefault();
+      dragAutoScroll(e.touches[0].clientY);
       placeStepBlock(block, e.touches[0].clientY);
     }, { passive: false });
     handle.addEventListener('touchend', renumberSteps);
@@ -614,6 +648,16 @@
     if (!dragging) return; // ne pas interférer avec le glisser des sous-étapes
     e.preventDefault();
     placeStepBlock(dragging, e.clientY);
+  });
+  // Près du bord haut ou bas de l'écran pendant un glisser → défilement
+  // automatique, sinon impossible de déposer hors de la zone visible
+  function dragAutoScroll(y) {
+    const margin = 90;
+    if (y < margin) window.scrollBy(0, -Math.ceil((margin - y) / 3));
+    else if (y > window.innerHeight - margin) window.scrollBy(0, Math.ceil((y - window.innerHeight + margin) / 3));
+  }
+  document.addEventListener('dragover', e => {
+    if (document.querySelector('#steps-container .dragging')) dragAutoScroll(e.clientY);
   });
   document.querySelectorAll('#steps-container .step-block').forEach(setupStepDrag);
 
