@@ -758,6 +758,16 @@ function setSlotSrc(id, url) {
   if (img) img.src = url;
 }
 
+// Pastille calendrier des vignettes : ouvre la recette avec le panneau de
+// planification déplié (bouton, pas de lien : les cartes sont déjà des <a>)
+function planIconHTML(recipeId) {
+  return `<button type="button" data-plan-btn title="Planifier cette recette"
+      onclick="event.preventDefault();event.stopPropagation();window.location.href='recette.html?id=${recipeId}&planifier=1'"
+      class="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform">
+      <span class="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+    </button>`;
+}
+
 function favHeartHTML(recipeId, isFav) {
   return `<button type="button" data-fav-btn data-recipe-id="${recipeId}" onclick="favHeartClick(event, this)"
       title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}"
@@ -803,6 +813,7 @@ function recipeCardHTML(r, favIds) {
             : `<div class="w-full h-full flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-5xl">cake</span></div>`
           }
           ${favHeartHTML(r.id, favIds instanceof Set && favIds.has(r.id))}
+          ${planIconHTML(r.id)}
         </div>
         <div class="p-6">
           <div class="flex items-center justify-between mb-2">

@@ -218,6 +218,7 @@
     else document.getElementById('featured-level-row').style.display = 'none';
     if (r.hero_image_url) setSlotSrc('home-featured', r.hero_image_url);
     link.insertAdjacentHTML('beforeend', favHeartHTML(r.id, favIds.has(r.id)).replace('top-3 right-3', 'top-6 right-6'));
+    link.insertAdjacentHTML('beforeend', planIconHTML(r.id).replace('top-3 right-14', 'top-6 right-[4.25rem]'));
   }
 
   // Bannière d'accueil : une photo par appareil (chargée dans l'administration),

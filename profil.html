@@ -692,6 +692,7 @@
               <span class="bg-white/90 text-primary text-[10px] font-label-md px-2 py-1 rounded">${r.is_public === false ? 'Privée' : 'Publique'}</span>
             </div>
             ${favHeartHTML(r.id, favIds.has(r.id))}
+            ${planIconHTML(r.id)}
           </a>
           <div class="p-4">
             <a href="recette.html?id=${r.id}"><h3 class="font-headline-md text-[20px] text-primary mb-2">${r.title}</h3></a>
@@ -723,6 +724,7 @@
               ? `<img src="${r.hero_image_url}" class="w-full h-full object-cover">`
               : '<div class="w-full h-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface-variant">cake</span></div>'}
             ${favHeartHTML(r.id, true)}
+            ${planIconHTML(r.id)}
           </div>
           <div class="p-4">
             <h3 class="font-headline-md text-[20px] text-primary mb-1">${r.title}</h3>

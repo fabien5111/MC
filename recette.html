@@ -837,7 +837,7 @@
       const slot = card.querySelector('image-slot');
       if (r.hero_image_url) setSlotSrc(slot.id, r.hero_image_url);
       else slot.removeAttribute('src');
-      card.querySelector('.sugg-thumb').insertAdjacentHTML('beforeend', favHeartHTML(r.id, favIds.has(r.id)));
+      card.querySelector('.sugg-thumb').insertAdjacentHTML('beforeend', favHeartHTML(r.id, favIds.has(r.id)) + planIconHTML(r.id));
     });
   }
 
@@ -853,6 +853,10 @@
         if (p && String(p.recipe_id) === String(id)) currentPlan = p;
       }
       await renderRecipeFromDB(id);
+      // Arrivée depuis la pastille calendrier d'une vignette : panneau déplié
+      if (!currentPlan && params.get('planifier') === '1') {
+        setTimeout(() => document.getElementById('btn-plan')?.click(), 100);
+      }
     } finally {
       document.documentElement.style.visibility = '';
     }
