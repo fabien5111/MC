@@ -101,6 +101,10 @@
         </div>
       </div>
       <div class="lg:col-span-12">
+        <label class="font-label-md text-label-md text-outline uppercase mb-2 block" for="recipe-desc">Description rapide</label>
+        <textarea id="recipe-desc" rows="2" class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez votre recette en quelques mots"></textarea>
+      </div>
+      <div class="lg:col-span-12">
         <div class="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
           <image-slot id="creer-main" shape="rect" fit="cover" placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px" style="width:100%;height:100%"></image-slot>
         </div>
@@ -838,8 +842,9 @@
       if (!user) { window.location.href = 'connexion.html'; return; }
 
       const richValue = el => (el && el.textContent.trim()) ? el.innerHTML.trim() : null;
-      // Description de la recette (cartes/accueil) : texte brut de la 1re étape
-      const desc = document.querySelector('#steps-container .step-desc')?.textContent.trim() || '';
+      // Description rapide (cartes/accueil) ; à défaut, texte brut de la 1re étape
+      const desc = document.getElementById('recipe-desc')?.value.trim()
+        || document.querySelector('#steps-container .step-desc')?.textContent.trim() || '';
       const isPublic = document.getElementById('visibility-toggle')?.checked ?? true;
 
       // Photo principale : recompression 1200px WebP avant stockage
@@ -1186,6 +1191,7 @@
     const sortIdx = arr => [...(arr || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
     document.querySelector('input.editorial-input.font-headline-lg').value = r.title || '';
+    document.getElementById('recipe-desc').value = r.description || '';
     const visToggle = document.getElementById('visibility-toggle');
     visToggle.checked = r.is_public !== false;
     document.getElementById('visibility-label').textContent = visToggle.checked ? 'Public' : 'Privé';

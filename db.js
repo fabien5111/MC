@@ -200,7 +200,7 @@ async function createRecipe(recipeData) {
 
 async function getUserRecipes(userId) {
   const { data } = await db.from('recipes')
-    .select('id, title, hero_image_url, status, is_public, rating_avg, created_at')
+    .select('id, title, description, hero_image_url, status, is_public, rating_avg, created_at')
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
   return data || [];
@@ -209,7 +209,7 @@ async function getUserRecipes(userId) {
 // ── FAVORIS ───────────────────────────────────────────────────
 async function getFavorites(userId) {
   const { data, error } = await db.from('favorites')
-    .select('recipe_id, created_at, recipes(id, title, hero_image_url, rating_avg, profiles!recipes_author_id_fkey(full_name))')
+    .select('recipe_id, created_at, recipes(id, title, description, hero_image_url, rating_avg, profiles!recipes_author_id_fkey(full_name))')
     .eq('user_id', userId);
   if (error) console.error('getFavorites:', error);
   return data || [];

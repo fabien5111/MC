@@ -697,6 +697,7 @@
           </a>
           <div class="p-4">
             <a href="recette.html?id=${r.id}"><h3 class="font-headline-md text-[20px] text-primary mb-2">${r.title}</h3></a>
+            ${r.description ? `<p class="text-sm text-on-surface-variant line-clamp-2 mb-2">${r.description}</p>` : ''}
             <div class="flex justify-between items-center border-t border-outline-variant/30 pt-4 mt-2">
               <span class="text-[12px] font-label-md text-on-surface-variant">${formatDate(r.created_at)}${r.rating_avg ? ' · ' + parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
               <div class="flex items-center gap-1">
@@ -730,6 +731,7 @@
           </div>
           <div class="p-4">
             <h3 class="font-headline-md text-[20px] text-primary mb-1">${r.title}</h3>
+            ${r.description ? `<p class="text-sm text-on-surface-variant line-clamp-2 mb-1">${r.description}</p>` : ''}
             <span class="text-[12px] font-label-md text-on-surface-variant">${r.profiles?.full_name || ''}${r.rating_avg ? ' · ' + parseFloat(r.rating_avg).toFixed(1) + ' ★' : ''}</span>
           </div>
         </a>`;
