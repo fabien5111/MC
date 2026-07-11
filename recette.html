@@ -94,6 +94,7 @@
         <div class="flex items-center gap-4 w-full justify-between">
           <div class="flex flex-wrap gap-3 text-secondary">
             <button class="fav-btn flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px] text-error">favorite</span> Favori</button>
+            <a id="btn-edit-recipe" style="display:none" href="#" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">edit_note</span> Éditer</a>
             <button type="button" id="btn-plan" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Planifier</button>
             <button class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">share</span> Partager</button>
             <button onclick="window.print()" class="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"><span class="material-symbols-outlined text-[18px]">print</span> Imprimer</button>
@@ -1210,6 +1211,16 @@
         notice.style.display = '';
       }
       loadExecHistory();
+    }
+
+    // Bouton Éditer : uniquement sur ses propres recettes
+    const me = await getUser();
+    if (me && recipe.author_id === me.id) {
+      const editBtn = document.getElementById('btn-edit-recipe');
+      if (editBtn) {
+        editBtn.href = 'creer.html?id=' + recipe.id;
+        editBtn.style.display = '';
+      }
     }
 
     // Init favoris
