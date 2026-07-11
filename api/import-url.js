@@ -140,8 +140,13 @@ function validatePivot(p) {
   let cuissonOuRepos = (p.temps && (p.temps.cuisson_min > 0 || p.temps.repos_min > 0 || p.temps.congelation_min > 0)) || false;
   sps.forEach((sp, i) => {
     const nom = sp.nom || `sous-préparation ${i + 1}`;
-    if (!Array.isArray(sp.ingredients) || !sp.ingredients.length) erreurs.push(`« ${nom} » : aucun ingrédient.`);
-    if (!Array.isArray(sp.etapes) || !sp.etapes.length) erreurs.push(`« ${nom} » : aucune étape.`);
+    // Un montage/assemblage n'a souvent aucun ingrédient propre (et un décor
+    // peut n'avoir aucune étape) : bloquant seulement si les DEUX manquent
+    const aIng = Array.isArray(sp.ingredients) && sp.ingredients.length > 0;
+    const aEtapes = Array.isArray(sp.etapes) && sp.etapes.length > 0;
+    if (!aIng && !aEtapes) erreurs.push(`« ${nom} » : ni ingrédient ni étape.`);
+    else if (!aIng) alertes.push(`« ${nom} » : aucun ingrédient (montage ou assemblage ?) — à vérifier.`);
+    else if (!aEtapes) alertes.push(`« ${nom} » : aucune étape — à vérifier.`);
     (sp.ingredients || []).forEach(ing => {
       if (ing.unite != null && !UNITES.has(ing.unite)) erreurs.push(`« ${nom} » / ${ing.nom} : unité « ${ing.unite} » hors {g, ml, piece}.`);
       if (ing.quantite != null && !(ing.quantite > 0)) erreurs.push(`« ${nom} » / ${ing.nom} : quantité invalide (${ing.quantite}).`);
