@@ -35,7 +35,7 @@
   .rich-content { white-space:pre-wrap; }
 </style>
 </head>
-<body class="bg-background text-on-background font-body-md min-h-screen pb-20 md:pb-0">
+<body class="bg-background text-on-background font-body-md min-h-screen pb-40 md:pb-24">
 
 <!-- ===== Unified Public Header ===== -->
 <header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
@@ -292,16 +292,18 @@
     </section>
 
     <!-- Footer Section -->
-    <section class="pt-16 border-t-2 border-primary">
-      <div class="flex flex-col items-center gap-6">
-        <div class="flex flex-col sm:flex-row items-stretch gap-6 w-full max-w-3xl">
-          <button class="flex-1 py-6 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-4" type="submit">Publier la recette<span class="material-symbols-outlined">send</span></button>
-          <button type="button" id="btn-draft" class="flex-1 py-6 border border-outline-variant text-primary font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all flex items-center justify-center">Enregistrer en brouillon</button>
-        </div>
-        <p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
-      </div>
+    <section class="pt-10 border-t-2 border-primary">
+      <p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
     </section>
   </form>
+
+  <!-- Barre d'actions fixe : Publier / Brouillon accessibles partout dans la page -->
+  <div class="fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3" style="padding-bottom:calc(0.75rem + env(safe-area-inset-bottom))">
+    <div class="max-w-[1200px] mx-auto flex justify-center gap-3 px-margin-mobile md:px-margin-desktop">
+      <button class="flex-1 max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md" type="submit">Publier la recette<span class="material-symbols-outlined text-[18px]">send</span></button>
+      <button type="button" id="btn-draft" class="flex-1 max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full">Enregistrer en brouillon</button>
+    </div>
+  </div>
 </main>
 
 <!-- Bottom Navigation (Mobile) -->
