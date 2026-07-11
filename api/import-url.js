@@ -81,7 +81,28 @@ function extractLdRecipe(html) {
   return null;
 }
 
-// Texte principal de la page (repli quand pas de ld+json Recipe)
+// Un bloc Recipe n'est exploitable seul que s'il contient réellement
+// les ingrédients ET les instructions (certains sites ne publient qu'un
+// bloc minimal : titre, photo, note — ex. blogs WordPress).
+function ldEstComplet(ld) {
+  if (!ld) return false;
+  const ing = ld.recipeIngredient, ins = ld.recipeInstructions;
+  const aIng = Array.isArray(ing) ? ing.length > 0 : !!ing;
+  const aIns = Array.isArray(ins) ? ins.length > 0 : !!ins;
+  return aIng && aIns;
+}
+
+// Contenu envoyé au modèle : ld+json seul si complet, sinon texte de la
+// page (accompagné du ld+json partiel s'il existe, pour le titre/les temps)
+function buildContenu(ld, html, url) {
+  if (ldEstComplet(ld)) return `Données schema.org "Recipe" extraites de ${url} :\n${JSON.stringify(ld)}`;
+  const texte = extractMainText(html);
+  return ld
+    ? `Données schema.org "Recipe" INCOMPLÈTES (sers-t'en pour le titre ou les temps, mais tire les ingrédients et les étapes du texte de la page) :\n${JSON.stringify(ld)}\n\nTexte de la page ${url} :\n${texte}`
+    : `Texte de la page ${url} :\n${texte}`;
+}
+
+// Texte principal de la page (repli quand pas de ld+json Recipe complet)
 function extractMainText(html) {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -95,7 +116,7 @@ function extractMainText(html) {
     .replace(/[ \t]+/g, ' ')
     .replace(/\n\s*\n+/g, '\n')
     .trim()
-    .slice(0, 30000);
+    .slice(0, 60000); // les blogs pâtissiers sont longs et la fiche recette est souvent en fin de page
 }
 
 // ── Volume du moule (clé de voûte du scaling) ────────────────
@@ -241,9 +262,9 @@ async function handler(req, res) {
     return res.status(422).json({ erreur: `Page inaccessible (${e.message}). Vérifiez l'URL, ou saisissez la recette manuellement.` });
   }
 
-  // 2. ld+json Recipe si présent (plus fiable et moins coûteux), sinon texte principal (§5)
+  // 2. ld+json Recipe si complet (plus fiable et moins coûteux), sinon texte principal (§5)
   const ld = extractLdRecipe(html);
-  const contenu = ld ? `Données schema.org "Recipe" extraites de ${url} :\n${JSON.stringify(ld)}` : `Texte de la page ${url} :\n${extractMainText(html)}`;
+  const contenu = buildContenu(ld, html, url);
 
   // 3. Normalisation par l'IA (avec une relance) puis validation — jamais de brouillon corrompu
   let pivot;
@@ -252,6 +273,20 @@ async function handler(req, res) {
   } catch (e) {
     return res.status(502).json({ erreur: "L'import a échoué, réessayez ou saisissez la recette manuellement." });
   }
+
+  // Validation avec une relance corrective : si l'extraction est incomplète
+  // (sous-préparations sans ingrédients/étapes…), le modèle relit le contenu
+  // avec la liste des manques constatés
+  let { erreurs, alertes } = validatePivot(pivot);
+  if (erreurs.length) {
+    try {
+      const pivot2 = await normalizeWithRetry(apiKey,
+        `${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`);
+      const v2 = validatePivot(pivot2);
+      if (!v2.erreurs.length) { pivot = pivot2; erreurs = v2.erreurs; alertes = v2.alertes; }
+    } catch (e) { /* on conserve les erreurs de la première extraction */ }
+  }
+  if (erreurs.length) return res.status(422).json({ erreur: 'Extraction incomplète : ' + erreurs.join(' '), erreurs });
 
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
@@ -262,9 +297,6 @@ async function handler(req, res) {
     importee_le: new Date().toISOString(),
   };
   if (typeof pivot.source.auteur_origine === 'object') pivot.source.auteur_origine = pivot.source.auteur_origine?.name || null;
-
-  const { erreurs, alertes } = validatePivot(pivot);
-  if (erreurs.length) return res.status(422).json({ erreur: 'Extraction incomplète : ' + erreurs.join(' '), erreurs });
 
   // 4. Volume du moule
   if (pivot.rendement && pivot.rendement.moule) {
@@ -289,4 +321,4 @@ async function handler(req, res) {
 
 module.exports = handler;
 // Exposé pour les tests unitaires uniquement
-module.exports._test = { extractLdRecipe, extractMainText, computeVolume, validatePivot, parseStrictJson, normalizeWithRetry };
+module.exports._test = { extractLdRecipe, extractMainText, computeVolume, validatePivot, parseStrictJson, normalizeWithRetry, ldEstComplet, buildContenu };
