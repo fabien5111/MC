@@ -131,6 +131,7 @@
           <input id="plan-date" type="date" class="border border-outline-variant rounded px-4 py-2 bg-white font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary">
         </div>
         <div id="plan-adjust" class="flex flex-col gap-4"></div>
+        <div id="plan-steps-done" class="flex flex-col gap-2" style="display:none"></div>
         <div class="flex items-center gap-4 flex-wrap pt-2">
           <button type="button" id="plan-validate" class="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] hover:shadow-xl active:scale-95 transition-all">Valider</button>
           <button type="button" id="plan-cancel" class="border border-outline px-6 py-3 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
@@ -400,11 +401,24 @@
   const fmtNum = n => String(+(+n).toFixed(2)).replace('.', ',');
 
   function planOverrides() {
-    if (!currentPlan) return { mods: {}, added: [] };
+    if (!currentPlan) return { mods: {}, added: [], etapes_faites: [] };
     if (!currentPlan.overrides || typeof currentPlan.overrides !== 'object') currentPlan.overrides = {};
     if (!currentPlan.overrides.mods) currentPlan.overrides.mods = {};
     if (!currentPlan.overrides.added) currentPlan.overrides.added = [];
+    if (!currentPlan.overrides.etapes_faites) currentPlan.overrides.etapes_faites = [];
     return currentPlan.overrides;
+  }
+
+  // Étapes déjà réalisées à la planification (ex : coques au congélateur)
+  const isStepDone = stepId => planOverrides().etapes_faites.map(String).includes(String(stepId));
+  // Groupes d'ingrédients « déjà en ma possession » (ceux des étapes réalisées)
+  function ownedGroupOrders() {
+    const owned = new Set();
+    if (!currentPlan || !currentRecipe) return owned;
+    (currentRecipe.recipe_steps || []).forEach(st => {
+      if (isStepDone(st.id)) owned.add(st.order_index || 0);
+    });
+    return owned;
   }
 
   async function savePlanOverrides() {
@@ -445,10 +459,14 @@
       else if (origRaw) r.origTxt.push(origRaw);
       if (added) r.added = true;
     };
-    (recipe.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(it => {
-      if (!it.name || isRemovedIng(it)) return;
-      push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
-    }));
+    const owned = ownedGroupOrders();
+    (recipe.ingredient_groups || []).forEach(g => {
+      if (owned.has(g.order_index || 0)) return; // déjà en ma possession : rien à acheter/peser
+      (g.ingredients || []).forEach(it => {
+        if (!it.name || isRemovedIng(it)) return;
+        push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
+      });
+    });
     planOverrides().added.forEach(a => { if (a.name) push(a.name, a.unit, numify(a.qty), null, '', true); });
     rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
     return rows;
@@ -541,7 +559,7 @@
     const groupsByOrder = {};
     (recipe.ingredient_groups || []).forEach(g => { groupsByOrder[g.order_index || 0] = g; });
 
-    const stepIngredients = grp => {
+    const stepIngredients = (grp, done) => {
       if (!grp) return [];
       const rows = [...(grp.ingredients || [])]
         .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
@@ -551,11 +569,11 @@
           unite: it.unit || '',
           quantite_prevue: effAdjustedQty(it) ?? (it.quantity || ''),
           quantite_reelle: null,
-          fait: false,
+          fait: !!done,
         }));
       planOverrides().added.forEach(a => {
         if (String(a.group) === String(grp.id) && a.name) {
-          rows.push({ nom: a.name, unite: a.unit || '', quantite_prevue: numify(a.qty) ?? (a.qty || ''), quantite_reelle: null, fait: false });
+          rows.push({ nom: a.name, unite: a.unit || '', quantite_prevue: numify(a.qty) ?? (a.qty || ''), quantite_reelle: null, fait: !!done });
         }
       });
       return rows;
@@ -566,23 +584,26 @@
       const offset = Math.max(0, s.day_offset || 0);
       let j = jalons.find(x => x.offset === offset);
       if (!j) { j = { offset, etapes: [] }; jalons.push(j); }
+      // Étape marquée "déjà réalisée" à la planification : démarre cochée,
+      // avec ses ingrédients et sous-étapes déjà faits
+      const done = isStepDone(s.id);
       j.etapes.push({
         id: s.id,
         titre: s.title || '',
         description: s.description || '',
         // sous-étapes définies à la création : découpage déjà prêt pour l'exécution
         ...(Array.isArray(s.sous_etapes) && s.sous_etapes.length
-          ? { sous_etapes: s.sous_etapes.map(t => ({ texte: t, fait: false })) } : {}),
+          ? { sous_etapes: s.sous_etapes.map(t => ({ texte: t, fait: done })) } : {}),
         tips: s.tips || '',
         prep: s.prep_time || 0,
         attente: s.wait_time || 0,
         cuisson: s.cook_time || 0,
         temperature: s.cook_temp || null,
         video: s.video_url || null,
-        faite: false,
+        faite: done,
         date_faite: null,
         commentaire: '',
-        ingredients: stepIngredients(groupsByOrder[s.order_index || 0]),
+        ingredients: stepIngredients(groupsByOrder[s.order_index || 0], done),
       });
     });
     jalons.sort((a, b) => b.offset - a.offset); // du plus lointain au jour J
@@ -886,6 +907,7 @@
     const lineTone = it => {
       if (!editable) return '';
       if (isRemovedIng(it)) return 'text-error line-through';
+      if (it._owned) return 'text-green-700 line-through opacity-70'; // déjà en ma possession
       if (it._added) return 'text-green-700';
       if (isModifiedIng(it)) return 'text-orange-600';
       return '';
@@ -907,12 +929,15 @@
     // Ingrédients effectifs d'un groupe : lignes de la recette + lignes ajoutées à la planification
     const effGroupIngredients = g => {
       const base = [...(g.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-      if (!editable) return base;
+      if (!editable) { base.forEach(it => { it._owned = false; }); return base; }
       const added = [];
       planOverrides().added.forEach((a, idx) => {
         if (String(a.group) === String(g.id)) added.push({ id: 'added-' + idx, name: a.name, quantity: a.qty, unit: a.unit, _added: true, _addIdx: idx });
       });
-      return base.concat(added);
+      const list = base.concat(added);
+      const own = ownedGroupOrders().has(g.order_index || 0);
+      list.forEach(it => { it._owned = own; });
+      return list;
     };
 
     // Titre
@@ -1106,6 +1131,7 @@
           const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
           const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
           const badges = [
+            (currentPlan && isStepDone(s.id)) ? '<span class="bg-green-700 text-white px-3 py-1">DÉJÀ RÉALISÉE ✓</span>' : '',
             `<span class="bg-surface-variant px-3 py-1">${dayLabel(Math.max(0, s.day_offset || 0))}</span>`,
             s.prep_time ? `<span class="bg-surface-variant px-3 py-1">PRÉP ${formatTime(s.prep_time).toUpperCase()}</span>` : '',
             s.wait_time ? `<span class="bg-surface-variant px-3 py-1">ATTENTE ${formatTime(s.wait_time).toUpperCase()}</span>` : '',
@@ -1251,6 +1277,21 @@
     if (planBuilt) return;
     planBuilt = true;
 
+    // Étapes déjà réalisées (ex : coques au congélateur) : les ingrédients
+    // correspondants seront marqués « déjà en ma possession »
+    const stepsSorted = [...(r.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    if (stepsSorted.length) {
+      const doneZone = document.getElementById('plan-steps-done');
+      doneZone.innerHTML = `
+        <span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">J'ai déjà réalisé ces étapes <span class="normal-case tracking-normal">(leurs ingrédients seront marqués comme déjà en votre possession)</span></span>
+        ${stepsSorted.map(s => `
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" value="${s.id}" class="plan-step-done w-5 h-5 rounded border-outline text-primary focus:ring-primary cursor-pointer">
+          <span class="font-body-md">${esc(s.title || 'Étape')}</span>
+        </label>`).join('')}`;
+      doneZone.style.display = '';
+    }
+
     const zone = document.getElementById('plan-adjust');
     if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
       const unitLbl = UNITS_LBL[r.yield_unit] || r.yield_unit || '';
@@ -1334,6 +1375,8 @@
       const inp = document.getElementById('plan-dims');
       if (inp) inp.value = currentPlan.adjust_label.slice('Dimensions : '.length);
     }
+    // Étapes déjà réalisées : refléter l'état enregistré
+    document.querySelectorAll('.plan-step-done').forEach(c => { c.checked = isStepDone(c.value); });
     planPanel.style.display = '';
     planPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -1387,29 +1430,36 @@
     }
     factor = +factor.toFixed(3);
 
+    const etapesFaites = [...document.querySelectorAll('.plan-step-done:checked')].map(c => c.value);
     const dateTxt = new Date(dateEl.value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const editing = planEditMode && currentPlan;
     const lines = [editing ? `Modifier la planification de « ${r.title} » pour le ${dateTxt} ?` : `Planifier « ${r.title} » le ${dateTxt} ?`];
     if (label) lines.push(label);
     if (factor !== 1) lines.push(`Les quantités seront multipliées par ${String(factor).replace('.', ',')}.`);
+    if (etapesFaites.length) lines.push(`${etapesFaites.length} étape${etapesFaites.length > 1 ? 's' : ''} déjà réalisée${etapesFaites.length > 1 ? 's' : ''} (ingrédients en votre possession).`);
     if (!confirm(lines.join('\n'))) return;
 
     const btn = document.getElementById('plan-validate');
     btn.disabled = true;
     try {
       if (editing) {
+        const overrides = { ...planOverrides(), etapes_faites: etapesFaites };
         const { error } = await db.from('planning')
-          .update({ planned_date: dateEl.value, factor, adjust_label: label })
+          .update({ planned_date: dateEl.value, factor, adjust_label: label, overrides })
           .eq('id', currentPlan.id);
         if (error) throw error;
         currentPlan.planned_date = dateEl.value;
         currentPlan.factor = factor;
         currentPlan.adjust_label = label;
+        currentPlan.overrides = overrides;
         planEditMode = false;
         planPanel.style.display = 'none';
         await renderRecipeFromDB(r.id);
       } else {
-        const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label });
+        const { error } = await addToPlanning(r.id, dateEl.value, {
+          factor, adjustLabel: label,
+          overrides: etapesFaites.length ? { mods: {}, added: [], etapes_faites: etapesFaites } : null,
+        });
         if (error) throw error;
         document.getElementById('plan-status').innerHTML = 'Recette planifiée ✓ <a href="profil.html#planning" class="underline text-primary">Voir mon planning</a>';
         setTimeout(() => { planPanel.style.display = 'none'; document.getElementById('plan-status').textContent = ''; }, 4000);

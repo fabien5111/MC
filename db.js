@@ -395,12 +395,12 @@ async function getPlanningEntry(id) {
   return data;
 }
 
-async function addToPlanning(recipeId, plannedDate, { factor = 1, adjustLabel = null, notes = '' } = {}) {
+async function addToPlanning(recipeId, plannedDate, { factor = 1, adjustLabel = null, overrides = null, notes = '' } = {}) {
   const user = await getUser();
   if (!user) { window.location.href = 'connexion.html'; return { error: { message: 'Non connecté' } }; }
   return db.from('planning').insert({
     user_id: user.id, recipe_id: recipeId, planned_date: plannedDate,
-    factor, adjust_label: adjustLabel, notes,
+    factor, adjust_label: adjustLabel, overrides, notes,
   });
 }
 
