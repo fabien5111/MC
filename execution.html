@@ -230,7 +230,7 @@
             <span class="text-[12px] font-label-md text-on-surface-variant">${[
               e.prep ? 'PRÉP ' + formatTime(e.prep).toUpperCase() : '',
               e.attente ? 'ATTENTE ' + formatTime(e.attente).toUpperCase() : '',
-              e.cuisson ? 'CUISSON ' + formatTime(e.cuisson).toUpperCase() : '',
+              e.cuisson ? 'CUISSON ' + formatTime(e.cuisson).toUpperCase() + (e.temperature ? ' · ' + e.temperature + ' °C' : '') : (e.temperature ? 'CUISSON ' + e.temperature + ' °C' : ''),
             ].filter(Boolean).join(' · ')}</span>
           </span>
         </label>

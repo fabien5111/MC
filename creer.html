@@ -197,9 +197,10 @@
         </div>
         <div class="space-y-8 mt-8">
           <div class="flex flex-wrap gap-8">
-            <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="step-prep editorial-input text-on-surface" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-            <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline gap-2"><input class="step-wait editorial-input text-on-surface" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-            <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE CUISSON</label><div class="flex items-baseline gap-2"><input class="step-cook editorial-input text-on-surface" style="width:40%" placeholder="30" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline justify-center gap-2"><input class="step-prep editorial-input text-on-surface text-center" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline justify-center gap-2"><input class="step-wait editorial-input text-on-surface text-center" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+            <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE CUISSON</label><div class="flex items-baseline justify-center gap-2"><input class="step-cook editorial-input text-on-surface text-center" style="width:40%" placeholder="30" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+          <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPÉRATURE DE CUISSON</label><div class="flex items-baseline justify-center gap-2"><input class="step-temp editorial-input text-on-surface text-center" style="width:40%" placeholder="180" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">°C</span></div></div>
           </div>
           <div class="flex items-center gap-3">
             <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
@@ -520,9 +521,10 @@
       </div>
       <div class="space-y-8 mt-8">
         <div class="flex flex-wrap gap-8">
-          <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline gap-2"><input class="step-prep editorial-input text-on-surface" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-          <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline gap-2"><input class="step-wait editorial-input text-on-surface" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
-          <div class="flex flex-col w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE CUISSON</label><div class="flex items-baseline gap-2"><input class="step-cook editorial-input text-on-surface" style="width:40%" placeholder="30" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+          <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><div class="flex items-baseline justify-center gap-2"><input class="step-prep editorial-input text-on-surface text-center" style="width:40%" placeholder="20" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+          <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><div class="flex items-baseline justify-center gap-2"><input class="step-wait editorial-input text-on-surface text-center" style="width:40%" placeholder="120" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+          <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPS DE CUISSON</label><div class="flex items-baseline justify-center gap-2"><input class="step-cook editorial-input text-on-surface text-center" style="width:40%" placeholder="30" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">min</span></div></div>
+          <div class="flex flex-col items-center text-center w-48"><label class="font-label-md text-label-md text-outline">TEMPÉRATURE DE CUISSON</label><div class="flex items-baseline justify-center gap-2"><input class="step-temp editorial-input text-on-surface text-center" style="width:40%" placeholder="180" type="number" min="0" step="1"><span class="text-sm text-on-surface-variant">°C</span></div></div>
         </div>
         <div class="flex items-center gap-3">
           <label class="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
@@ -842,6 +844,7 @@
             description: stepDesc || null,
             prep_time: minutes('.step-prep'),
             cook_time: minutes('.step-cook'),
+            cook_temp: minutes('.step-temp'),
             wait_time: minutes('.step-wait'),
             day_offset: dayOffset,
             tips: stepTips || null,
@@ -1138,6 +1141,7 @@
       b.querySelector('.step-prep').value = s.prep_time ?? '';
       b.querySelector('.step-wait').value = s.wait_time ?? '';
       b.querySelector('.step-cook').value = s.cook_time ?? '';
+      b.querySelector('.step-temp').value = s.cook_temp ?? '';
       b.querySelector('.step-day-offset').value = s.day_offset || '';
       b.querySelector('.step-desc').innerHTML = s.description || '';
       if (Array.isArray(s.sous_etapes) && s.sous_etapes.length) {

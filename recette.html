@@ -576,6 +576,7 @@
         prep: s.prep_time || 0,
         attente: s.wait_time || 0,
         cuisson: s.cook_time || 0,
+        temperature: s.cook_temp || null,
         video: s.video_url || null,
         faite: false,
         date_faite: null,
@@ -1103,7 +1104,8 @@
             `<span class="bg-surface-variant px-3 py-1">${dayLabel(Math.max(0, s.day_offset || 0))}</span>`,
             s.prep_time ? `<span class="bg-surface-variant px-3 py-1">PRÉP ${formatTime(s.prep_time).toUpperCase()}</span>` : '',
             s.wait_time ? `<span class="bg-surface-variant px-3 py-1">ATTENTE ${formatTime(s.wait_time).toUpperCase()}</span>` : '',
-            s.cook_time ? `<span class="bg-surface-variant px-3 py-1">CUISSON ${formatTime(s.cook_time).toUpperCase()}</span>` : '',
+            s.cook_time ? `<span class="bg-surface-variant px-3 py-1">CUISSON ${formatTime(s.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}</span>`
+              : (s.cook_temp ? `<span class="bg-surface-variant px-3 py-1">CUISSON ${s.cook_temp} °C</span>` : ''),
             stepTotal ? `<span class="bg-primary text-white px-3 py-1">TOTAL ${formatTime(stepTotal).toUpperCase()}</span>` : '',
           ].filter(Boolean).join('');
           return `
