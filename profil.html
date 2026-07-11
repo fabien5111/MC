@@ -76,7 +76,8 @@
       </div>
       <!-- Colonne contenu : boutons flottants à droite, la bio s'élargit dessous -->
       <div class="flex-1 min-w-0 pt-4">
-        <div class="flex gap-3 justify-center md:justify-end mt-4 md:mt-0 md:float-right md:ml-8 md:mb-2">
+        <!-- relative z-10 : passe au-dessus de la boîte du h1 (position:relative), sinon elle masque le haut des boutons -->
+        <div class="relative z-10 flex gap-3 justify-center md:justify-end mt-4 md:mt-0 md:float-right md:ml-8 md:mb-2">
           <a data-auth="admin" style="display:none" href="admin.html" class="flex items-center gap-2 border border-primary text-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary hover:text-white transition-all active:scale-95"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span> Administration</a>
           <button id="btn-edit-profile" onclick="openProfileEditor()" class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-md hover:opacity-90 transition-all active:scale-95 shadow-md">Modifier le profil</button>
           <button class="p-3 border border-outline-variant rounded-lg text-primary hover:bg-surface-container transition-all active:scale-95"><span class="material-symbols-outlined">share</span></button>
