@@ -646,6 +646,15 @@
     content.contentEditable = 'true';
     content.dataset.placeholder = textarea.placeholder || '';
     content.style.minHeight = ((textarea.rows || 4) * 1.6) + 'em';
+    // Collage en texte brut : préserve les retours à la ligne (→ <br>) et
+    // écarte la mise en forme de la source — indispensable pour l'éclatement
+    // en sous-étapes d'un texte collé.
+    content.addEventListener('paste', e => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData)?.getData('text/plain') || '';
+      const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\r?\n/g, '<br>');
+      document.execCommand('insertHTML', false, html);
+    });
     if (textarea.value) content.innerHTML = textarea.value;
     wrap.append(tb, content);
     textarea.replaceWith(wrap);
