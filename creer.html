@@ -192,7 +192,8 @@
     <section class="space-y-12" id="steps-container">
       <div class="step-block">
         <div class="flex items-center gap-4 border-b border-primary pb-4">
-          <span class="font-display-lg text-headline-lg text-primary">01</span>
+          <span class="step-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer l'étape">drag_indicator</span>
+          <span class="step-num font-display-lg text-headline-lg text-primary">01</span>
           <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape (ex: Réalisation de la pâte)" type="text">
         </div>
         <div class="space-y-8 mt-8">
@@ -518,7 +519,8 @@
     div.className = 'step-block mt-12';
     div.innerHTML = `
       <div class="flex items-center gap-4 border-b border-primary pb-4">
-        <span class="font-display-lg text-headline-lg text-primary">${num}</span>
+        <span class="step-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer l'étape">drag_indicator</span>
+        <span class="step-num font-display-lg text-headline-lg text-primary">${num}</span>
         <input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape" type="text">
       </div>
       <div class="space-y-8 mt-8">
@@ -558,10 +560,62 @@
       </div>`;
     this.closest('section').insertBefore(div, this.parentElement);
     upgradeStepEditors(div);
+    setupStepDrag(div);
     addIngredientLine(div.querySelector('.step-ingredients > button'), false);
-    renderPlanning();
-    div.querySelector('input').focus();
+    renumberSteps();
+    div.querySelector('input[type="text"]').focus();
   });
+
+  // ── Réordonner les étapes : glisser-déposer par la poignée de l'entête ──
+  // La numérotation 01, 02… et le planning suivent le nouvel ordre ; la
+  // sauvegarde lit les blocs dans l'ordre du DOM, rien d'autre à faire.
+  function renumberSteps() {
+    document.querySelectorAll('#steps-container .step-num').forEach((sp, i) => {
+      sp.textContent = String(i + 1).padStart(2, '0');
+    });
+    renderPlanning();
+  }
+  function stepBlockAfter(y) {
+    return [...document.querySelectorAll('#steps-container .step-block:not(.dragging)')].reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+    }, { offset: -Infinity, element: null }).element;
+  }
+  function placeStepBlock(block, y) {
+    const container = document.getElementById('steps-container');
+    const after = stepBlockAfter(y);
+    if (after && after !== block) container.insertBefore(block, after);
+    else if (!after) container.insertBefore(block, document.getElementById('add-step').parentElement);
+  }
+  function setupStepDrag(block) {
+    const handle = block.querySelector('.step-handle');
+    if (!handle) return;
+    handle.addEventListener('mousedown', () => { block.draggable = true; });
+    block.addEventListener('dragstart', e => {
+      block.classList.add('dragging', 'opacity-50');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', ''); } catch (_) {}
+    });
+    block.addEventListener('dragend', () => {
+      block.classList.remove('dragging', 'opacity-50');
+      block.draggable = false;
+      renumberSteps();
+    });
+    // Tactile : déplacement au doigt sur la poignée
+    handle.addEventListener('touchmove', e => {
+      e.preventDefault();
+      placeStepBlock(block, e.touches[0].clientY);
+    }, { passive: false });
+    handle.addEventListener('touchend', renumberSteps);
+  }
+  document.getElementById('steps-container').addEventListener('dragover', e => {
+    const dragging = document.querySelector('#steps-container .step-block.dragging');
+    if (!dragging) return; // ne pas interférer avec le glisser des sous-étapes
+    e.preventDefault();
+    placeStepBlock(dragging, e.clientY);
+  });
+  document.querySelectorAll('#steps-container .step-block').forEach(setupStepDrag);
 
   // ── Sous-étapes : éclatement du texte, édition, déplacement ──
   const escSub = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
