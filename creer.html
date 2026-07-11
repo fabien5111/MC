@@ -569,16 +569,53 @@
     if (subs) subs.style.display = on ? '' : 'none';
   }
 
+  // Réordonner par glisser-déposer : trouve la ligne devant laquelle insérer
+  function substepAfter(rows, y) {
+    return [...rows.querySelectorAll('.substep-row:not(.dragging)')].reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+    }, { offset: -Infinity, element: null }).element;
+  }
+
   window.addSubstepRow = function (block, text = '', focus = false) {
     const rows = block.querySelector('.substep-rows');
     const div = document.createElement('div');
     div.className = 'flex items-center gap-2 substep-row';
     div.innerHTML = `
-      <span class="material-symbols-outlined text-outline-variant select-none">drag_indicator</span>
+      <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer">drag_indicator</span>
       <input class="substep-input editorial-input flex-1 font-body-md text-on-surface" type="text" placeholder="Sous-étape…">
-      <button type="button" tabindex="-1" title="Monter" onclick="moveSubstep(this, -1)" class="p-1 text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
-      <button type="button" tabindex="-1" title="Descendre" onclick="moveSubstep(this, 1)" class="p-1 text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
       <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">close</span></button>`;
+
+    // Glisser-déposer par la poignée uniquement (souris)
+    const handle = div.querySelector('.substep-handle');
+    handle.addEventListener('mousedown', () => { div.draggable = true; });
+    div.addEventListener('dragstart', e => {
+      div.classList.add('dragging', 'opacity-50');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', ''); } catch (_) {}
+    });
+    div.addEventListener('dragend', () => { div.classList.remove('dragging', 'opacity-50'); div.draggable = false; });
+    // Tactile : déplacement au doigt sur la poignée
+    handle.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      const after = substepAfter(rows, y);
+      if (after && after !== div) rows.insertBefore(div, after);
+      else if (!after) rows.appendChild(div);
+    }, { passive: false });
+
+    if (!rows.dataset.dnd) {
+      rows.dataset.dnd = '1';
+      rows.addEventListener('dragover', e => {
+        e.preventDefault();
+        const dragging = rows.querySelector('.dragging');
+        if (!dragging) return;
+        const after = substepAfter(rows, e.clientY);
+        if (after) rows.insertBefore(dragging, after);
+        else rows.appendChild(dragging);
+      });
+    }
     const input = div.querySelector('input');
     input.value = text;
     // Entrée dans une sous-étape → nouvelle sous-étape juste après
@@ -593,14 +630,6 @@
     rows.appendChild(div);
     if (focus) input.focus();
     return div;
-  };
-
-  window.moveSubstep = function (btn, dir) {
-    const row = btn.closest('.substep-row');
-    const sib = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
-    if (!sib) return;
-    if (dir < 0) row.parentElement.insertBefore(row, sib);
-    else row.parentElement.insertBefore(sib, row);
   };
 
   // Éclate le texte de la description : puces, tirets, sauts de ligne.
