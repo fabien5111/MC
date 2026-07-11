@@ -1,4 +1,4 @@
-const CACHE = 'maryse-club-v11';
+const CACHE = 'maryse-club-v12';
 const STATIC = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const STATIC = [
   '/profil.html',
   '/courses.html',
   '/execution.html',
+  '/importer.html',
   '/connexion.html',
   '/admin.html',
   '/admin-listes.html',
@@ -38,6 +39,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+
+  // Les fonctions serverless ne passent jamais par le cache
+  if (url.pathname.startsWith('/api/')) return;
 
   // Network-first : HTML + db.js (change souvent)
   const isNetworkFirst = url.pathname.endsWith('.html')

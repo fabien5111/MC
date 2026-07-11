@@ -245,6 +245,18 @@ async function toggleFavorite(recipeId) {
   }
 }
 
+// ── IMPORTS DE RECETTES (schéma pivot v1.0) ──────────────────
+async function getImports() {
+  const user = await getUser();
+  if (!user) return [];
+  const { data, error } = await db.from('imports')
+    .select('id, source_type, source_url, statut, recette, alertes, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) console.error('getImports:', error);
+  return data || [];
+}
+
 // ── EXÉCUTIONS DE RECETTES PLANIFIÉES ────────────────────────
 // Une exécution fige un snapshot (jalons > étapes > ingrédients ajustés) au
 // démarrage : les quantités réelles et les coches vivent uniquement ici,
