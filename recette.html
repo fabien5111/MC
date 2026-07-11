@@ -110,6 +110,9 @@
       </div>
     </div>
 
+    <!-- Description rapide de la recette -->
+    <p id="recipe-desc-display" class="font-body-lg text-body-lg text-on-surface-variant text-justify mb-12" style="display:none"></p>
+
     <!-- Contexte de planification (arrivée depuis « recettes planifiées ») -->
     <div id="plan-notice" class="mb-12 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3" style="display:none">
       <span class="material-symbols-outlined text-primary">event_available</span>
@@ -952,8 +955,6 @@
     document.title = `Maryse-Club | ${recipe.title}`;
 
     // Description
-    const descEl = document.querySelector('[data-recipe-desc]');
-    if (descEl) descEl.textContent = recipe.description || '';
 
     // Auteur
     const authorEl = document.querySelector('[data-recipe-author]');
@@ -1044,6 +1045,13 @@
     if (followers) followers.style.display = 'none';
     const dateEl = document.getElementById('recipe-date');
     if (dateEl) dateEl.textContent = (recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at);
+
+    // Description rapide (entre les actions et le planning de préparation)
+    const descEl = document.getElementById('recipe-desc-display');
+    if (descEl) {
+      if (recipe.description) { descEl.textContent = recipe.description; descEl.style.display = ''; }
+      else descEl.style.display = 'none';
+    }
 
     // Tags
     const tagsRow = document.getElementById('recipe-tags');
