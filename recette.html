@@ -414,6 +414,9 @@
   document.addEventListener('focusout', e => { const s = e.target.closest?.('select.unit-select'); if (s) unitCollapse(s); });
   const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
   const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
+  // Libellé du type de moule : table de référence mold_types en priorité,
+  // repli sur l'ancien code yield_unit pour les recettes créées avant le lien.
+  const moldLbl = rec => (rec && (rec.mold_types?.name || MOLDS_LBL[rec.yield_unit] || rec.yield_unit)) || '';
   let currentRecipe = null;
   let currentPlan = null; // entrée de planning quand on arrive via « recettes planifiées »
 
@@ -1118,7 +1121,7 @@
       yieldOrig = `${recipe.yield_qty} ${u}`.trim();
       yieldTxt = `${scaleQty(recipe.yield_qty)} ${u}`.trim();
     } else if (recipe.measure_type === 'mold') {
-      yieldOrig = [recipe.yield_desc, MOLDS_LBL[recipe.yield_unit]].filter(Boolean).join(' — ') || null;
+      yieldOrig = [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null;
       yieldTxt = yieldOrig;
       if (currentPlan?.adjust_label?.startsWith('Moule : ')) yieldTxt = currentPlan.adjust_label.slice('Moule : '.length);
     } else if (recipe.measure_type === 'dimensions') {
@@ -1402,7 +1405,7 @@
       if (ingSel) { ingSel.addEventListener('change', refreshIng); refreshIng(); }
     } else if (r.measure_type === 'mold') {
       const molds = await getMolds();
-      const current = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ');
+      const current = [r.yield_desc, moldLbl(r)].filter(Boolean).join(' — ');
       // nombre de personnes par moule (table de référence) → affiché à la sélection
       planMoldServings = {};
       molds.forEach(m => { if (m.servings != null) planMoldServings[m.name] = m.servings; });
@@ -1464,7 +1467,7 @@
     btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Calcul en cours…';
     try {
       const merged = mergeIngredients(r).filter(m => parseFloat(String(m.qty).replace(',', '.')) > 0);
-      const rendement = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ') || null;
+      const rendement = [r.yield_desc, moldLbl(r)].filter(Boolean).join(' — ') || null;
       // Table de correspondance : moules de référence renseignés en nombre de
       // personnes → l'IA s'en sert pour un changement de moule (rapport des personnes)
       let moulesReference = [];

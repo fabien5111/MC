@@ -163,9 +163,7 @@
               <div class="relative flex items-end flex-1 min-w-[200px]">
                 <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
                   <option value="" disabled selected>Choisir le type de moule</option>
-                  <option value="cercle">Cercle</option>
-                  <option value="manque">Moule à manqué</option>
-                  <option value="cadre">Cadre rectangulaire</option>
+                  <!-- options alimentées depuis la table mold_types (voir init) -->
                 </select>
                 <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
               </div>
@@ -876,13 +874,13 @@
         (!best || Math.abs(d.level - level) < Math.abs(best.level - level)) ? d : best, null);
       // Quantité produite (unités/poids, moule ou dimensions)
       const mt = document.querySelector('input[name="measure_type"]:checked')?.value || 'units';
-      let yQty = null, yUnit = null, yDesc = null;
+      let yQty = null, yUnit = null, yDesc = null, moldTypeId = null;
       if (mt === 'units') {
         yQty = document.getElementById('qty-amount')?.value.trim() || null;
         yUnit = document.getElementById('qty-unit')?.value || null;
       } else if (mt === 'mold') {
         yDesc = document.getElementById('mold-desc')?.value.trim() || null;
-        yUnit = document.getElementById('mold-choice')?.value || null; // type de moule choisi
+        moldTypeId = Number(document.getElementById('mold-choice')?.value) || null; // id du type de moule (table mold_types)
       } else {
         yDesc = document.getElementById('dims-desc')?.value.trim() || null;
       }
@@ -893,6 +891,7 @@
         title, description: desc, is_public: isPublic, status,
         difficulty_id: diffRow?.id ?? null,
         measure_type: mt, yield_qty: yQty, yield_unit: yUnit, yield_desc: yDesc,
+        mold_type_id: moldTypeId,
         tips: richValue(document.getElementById('recipe-tips')),
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
@@ -1240,7 +1239,7 @@
         if (r.yield_unit) document.getElementById('qty-unit').value = r.yield_unit;
       } else if (r.measure_type === 'mold') {
         document.getElementById('mold-desc').value = r.yield_desc || '';
-        if (r.yield_unit) document.getElementById('mold-choice').value = r.yield_unit;
+        if (r.mold_type_id) document.getElementById('mold-choice').value = String(r.mold_type_id);
       } else if (r.measure_type === 'dimensions') {
         document.getElementById('dims-desc').value = r.yield_desc || '';
       }
@@ -1335,13 +1334,19 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    [allTags, allUtensils, allUnits, window.allIngredientRefs, allDifficulties] = await Promise.all([
+    let allMoldTypes;
+    [allTags, allUtensils, allUnits, window.allIngredientRefs, allDifficulties, allMoldTypes] = await Promise.all([
       getTags(),
       getListEntries('utensils', 'name'),
       getUnits(),
       getListEntries('ingredient_refs', 'name'),
       getDifficulties(),
+      getMoldTypes(),
     ]);
+    // Menu « type de moule » alimenté depuis la table mold_types (gérée en admin)
+    const moldSel = document.getElementById('mold-choice');
+    if (moldSel) moldSel.innerHTML = '<option value="" disabled selected>Choisir le type de moule</option>'
+      + (allMoldTypes || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     renderTags();
     addUtensilRow(false); // première ligne vide
     addIngredientLine(document.querySelector('#steps-container .step-ingredients > button'), false);
