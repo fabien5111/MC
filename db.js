@@ -647,6 +647,21 @@ async function approveRecipe(id) {
   return db.from('recipes').update({ status: 'published' }).eq('id', id);
 }
 
+// Recettes « refusées » : renvoyées à l'auteur en brouillon
+async function rejectRecipe(id) {
+  return db.from('recipes').update({ status: 'draft' }).eq('id', id);
+}
+
+// Recettes gérées : validées (publiées) et privées, plus récentes d'abord
+async function getManagedRecipes() {
+  const { data, error } = await db.from('recipes')
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
+    .eq('status', 'published')
+    .order('created_at', { ascending: false });
+  if (error) console.error('getManagedRecipes:', error);
+  return data || [];
+}
+
 async function deleteRecipe(id) {
   return db.from('recipes').delete().eq('id', id);
 }

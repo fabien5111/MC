@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.style.visibility = 'hidden';</script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta name="description" content="Maryse Club — Administration des recettes.">
+<meta name="theme-color" content="#300a12">
+<title>Maryse-Club | Administration des recettes</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = { darkMode:"class", theme:{ extend:{
+    "colors": {"primary-container":"#4a1e26","on-tertiary-container":"#aa8c90","primary-fixed":"#ffd9dd","on-background":"#221a1a","inverse-surface":"#382e2e","on-tertiary-fixed-variant":"#584044","tertiary-fixed":"#fddade","on-secondary-fixed-variant":"#633b42","on-primary-container":"#c1828b","surface-container-lowest":"#ffffff","on-surface-variant":"#514345","surface":"#fff8f7","outline":"#847374","tertiary":"#251216","surface-container-highest":"#efdfde","on-primary-fixed-variant":"#6a3840","on-tertiary":"#ffffff","on-secondary-fixed":"#311118","on-tertiary-fixed":"#291619","inverse-on-surface":"#feedec","tertiary-fixed-dim":"#e0bec2","surface-variant":"#efdfde","surface-tint":"#854f57","error-container":"#ffdad6","secondary-fixed-dim":"#f0b8c0","on-primary":"#ffffff","error":"#ba1a1a","surface-container-low":"#fff0f0","on-surface":"#221a1a","on-error-container":"#93000a","secondary":"#7e5259","outline-variant":"#d6c2c3","surface-dim":"#e7d6d6","secondary-container":"#ffc6ce","primary":"#300a12","on-secondary":"#ffffff","background":"#fff8f7","primary-fixed-dim":"#fab4bd","on-secondary-container":"#7b5056","on-error":"#ffffff","tertiary-container":"#3b262a","surface-bright":"#fff8f7","surface-container-high":"#f5e4e4","surface-container":"#fbeae9","secondary-fixed":"#ffd9de","inverse-primary":"#fab4bd","on-primary-fixed":"#350e16"},
+    "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    "spacing": {"margin-desktop":"64px","unit":"8px","gutter":"24px","container-max":"1200px","margin-mobile":"16px"},
+    "fontFamily": {"body-lg":["Work Sans"],"body-md":["Work Sans"],"headline-lg":["Playfair Display"],"display-lg":["Playfair Display"],"label-md":["Work Sans"],"headline-md":["Playfair Display"],"headline-lg-mobile":["Playfair Display"],"logo":["Great Vibes","cursive"]},
+    "fontSize": {"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}],"display-lg":["64px",{"lineHeight":"72px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}],"headline-lg-mobile":["32px",{"lineHeight":"40px","fontWeight":"600"}]}
+  } } }
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  .ambient-glow { box-shadow: 0 0 32px 0 rgba(74,30,38,0.05); }
+  ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:#fff8f7; } ::-webkit-scrollbar-thumb { background:#d6c2c3; border-radius:10px; }
+  .brand-logo-font { font-family:'Great Vibes', cursive; }
+  image-slot { display:block; }
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+
+<!-- Sidebar -->
+<aside class="hidden md:flex flex-col py-unit h-screen w-64 border-r border-outline-variant bg-surface z-30 shrink-0 sticky top-0">
+<a class="px-6 py-8 block" href="index.html">
+<div class="flex flex-col"><span class="brand-logo-font text-4xl text-primary leading-none">maryse club</span><span class="font-label-md text-xs tracking-[0.4em] uppercase text-secondary -mt-1 ml-1">Admin</span></div>
+<p class="font-body-md text-on-surface-variant text-xs opacity-70 mt-2">Pâtisserie d'Élite — Console</p>
+</a>
+<nav class="flex-1 px-2 space-y-1 py-4">
+<a class="flex items-center px-4 py-3 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="admin.html"><span class="material-symbols-outlined mr-3">dashboard</span><span class="font-body-md">Tableau de bord</span></a>
+<a class="flex items-center px-4 py-3 rounded text-primary font-semibold bg-primary-container/20 transition-colors duration-200" href="admin-recettes.html"><span class="material-symbols-outlined mr-3">menu_book</span><span class="font-body-md">Recettes</span></a>
+<a class="flex items-center px-4 py-3 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="admin.html#comments"><span class="material-symbols-outlined mr-3">forum</span><span class="font-body-md">Commentaires</span></a>
+<a class="flex items-center px-4 py-3 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="admin-membres.html"><span class="material-symbols-outlined mr-3">group</span><span class="font-body-md">Membres</span></a>
+<a class="flex items-center px-4 py-3 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="admin-listes.html"><span class="material-symbols-outlined mr-3">list_alt</span><span class="font-body-md">Gestion des listes</span></a>
+<a class="flex items-center px-4 py-3 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200" href="admin-photos.html"><span class="material-symbols-outlined mr-3">photo_library</span><span class="font-body-md">Photos du site</span></a>
+</nav>
+<div class="px-4 py-4 border-t border-outline-variant">
+<a class="w-full py-2 px-4 rounded font-label-md text-label-md flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors" href="index.html"><span class="material-symbols-outlined text-sm">logout</span> Retour au site</a>
+</div>
+</aside>
+
+<!-- Main -->
+<div class="flex-1 flex flex-col min-w-0">
+<header class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant sticky top-0 z-20">
+<span class="font-headline-md text-2xl text-primary">Recettes</span>
+<a class="font-label-md text-label-md flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors" href="admin.html"><span class="material-symbols-outlined text-sm">arrow_back</span> Tableau de bord</a>
+</header>
+
+<main class="flex-1 p-margin-mobile md:p-margin-desktop space-y-12 max-w-[1400px] w-full">
+
+  <!-- Table 1 : à valider -->
+  <section>
+    <div class="flex items-baseline gap-3 mb-6">
+      <h2 class="font-headline-md text-primary">Recettes à valider</h2>
+      <span id="pending-count" class="font-label-md text-label-md text-on-surface-variant"></span>
+    </div>
+    <div class="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto ambient-glow">
+      <table class="w-full text-left border-collapse min-w-[820px]">
+        <thead>
+          <tr class="border-b border-outline-variant bg-surface-container-low">
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Recette</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Auteur</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de plan</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Date</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Visibilité</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pending-tbody" class="divide-y divide-outline-variant">
+          <tr><td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Table 2 : validées et privées -->
+  <section>
+    <div class="flex items-baseline gap-3 mb-6">
+      <h2 class="font-headline-md text-primary">Recettes validées et privées</h2>
+      <span id="managed-count" class="font-label-md text-label-md text-on-surface-variant"></span>
+    </div>
+    <div class="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto ambient-glow">
+      <table class="w-full text-left border-collapse min-w-[820px]">
+        <thead>
+          <tr class="border-b border-outline-variant bg-surface-container-low">
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Recette</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Auteur</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type de plan</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Date</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Visibilité</th>
+            <th class="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="managed-tbody" class="divide-y divide-outline-variant">
+          <tr><td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script src="image-slot.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script>
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const PLAN_LBL = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
+
+  function planLabel(t) { return PLAN_LBL[t] || '—'; }
+
+  function recipeCell(r) {
+    const img = r.hero_image_url
+      ? `<img src="${esc(r.hero_image_url)}" class="w-14 h-14 rounded object-cover shrink-0">`
+      : '<div class="w-14 h-14 rounded bg-surface-container flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant">image</span></div>';
+    return `<div class="flex items-center gap-4">${img}<a href="recette.html?id=${esc(r.id)}" class="font-medium text-on-surface hover:text-primary">${esc(r.title || 'Sans titre')}</a></div>`;
+  }
+
+  function visibilityBadge(r) {
+    return r.is_public === false
+      ? '<span class="px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface-variant text-[11px] font-bold uppercase tracking-wider">Privée</span>'
+      : '<span class="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-wider">Publique</span>';
+  }
+
+  // Actions communes ; pending=true ajoute le bouton Valider
+  function actionsCell(r, pending) {
+    const valider = pending
+      ? `<button onclick="doValidate('${esc(r.id)}')" title="Valider" class="flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-on-primary text-xs font-label-md hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[16px]">check_circle</span> Valider</button>`
+      : '';
+    const modifier = `<a href="creer.html?id=${esc(r.id)}" title="Modifier" class="flex items-center gap-1 px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors"><span class="material-symbols-outlined text-[16px]">edit_note</span> Modifier</a>`;
+    const refuser = `<button onclick="doReject('${esc(r.id)}', ${pending})" title="${pending ? 'Refuser (renvoyer en brouillon)' : 'Retirer (repasser en brouillon)'}" class="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"><span class="material-symbols-outlined text-[16px]">block</span> Refuser</button>`;
+    return `<div class="flex justify-end gap-2 flex-wrap">${valider}${modifier}${refuser}</div>`;
+  }
+
+  function rowHTML(r, pending) {
+    return `
+      <tr class="hover:bg-surface-container-low transition-colors">
+        <td class="px-6 py-4">${recipeCell(r)}</td>
+        <td class="px-6 py-4 text-sm text-on-surface">${esc(r.profiles?.full_name || '—')}</td>
+        <td class="px-6 py-4 text-sm text-on-surface-variant">${esc(planLabel(r.measure_type))}</td>
+        <td class="px-6 py-4 text-sm text-on-surface-variant whitespace-nowrap">${new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+        <td class="px-6 py-4">${visibilityBadge(r)}</td>
+        <td class="px-6 py-4 text-right">${actionsCell(r, pending)}</td>
+      </tr>`;
+  }
+
+  async function loadRecipes() {
+    const [pending, managed] = await Promise.all([getPendingRecipes(), getManagedRecipes()]);
+
+    const pTbody = document.getElementById('pending-tbody');
+    document.getElementById('pending-count').textContent = `(${pending.length})`;
+    pTbody.innerHTML = pending.length
+      ? pending.map(r => rowHTML(r, true)).join('')
+      : '<tr><td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">Aucune recette en attente de validation.</td></tr>';
+
+    const mTbody = document.getElementById('managed-tbody');
+    document.getElementById('managed-count').textContent = `(${managed.length})`;
+    mTbody.innerHTML = managed.length
+      ? managed.map(r => rowHTML(r, false)).join('')
+      : '<tr><td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">Aucune recette validée ou privée.</td></tr>';
+  }
+
+  window.doValidate = async function (id) {
+    try { await approveRecipe(id); await loadRecipes(); }
+    catch (e) { alert('Erreur : ' + e.message); }
+  };
+
+  window.doReject = async function (id, pending) {
+    const msg = pending
+      ? 'Refuser cette recette ? Elle repassera en brouillon chez son auteur.'
+      : 'Retirer cette recette ? Elle repassera en brouillon chez son auteur.';
+    if (!confirm(msg)) return;
+    try { await rejectRecipe(id); await loadRecipes(); }
+    catch (e) { alert('Erreur : ' + e.message); }
+  };
+
+  (async () => {
+    if (!await requireAdmin()) return; // redirige si non connecté ou non admin
+    document.documentElement.style.visibility = '';
+    loadRecipes();
+  })();
+</script>
+</body>
+</html>
