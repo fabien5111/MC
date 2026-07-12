@@ -1060,12 +1060,22 @@
     if (bc) bc.textContent = recipe.title;
     const vis = document.getElementById('recipe-visibility');
     if (vis) vis.textContent = recipe.is_public === false ? 'Privée' : 'Publique';
-    // Statut non publié affiché à côté du titre (Brouillon / En attente)
-    if (vis && recipe.status && recipe.status !== 'published') {
-      const st = document.createElement('span');
-      st.className = 'bg-secondary text-white px-3 py-1 font-label-md text-[10px] uppercase tracking-widest';
-      st.textContent = recipe.status === 'pending' ? 'En attente de validation' : 'Brouillon';
-      vis.parentElement.insertBefore(st, vis);
+    // Statut affiché à côté du titre (visible surtout par l'auteur)
+    const me = await getUser();
+    const isOwner = !!(me && recipe.author_id === me.id);
+    if (vis && recipe.status) {
+      let label = null, cls = 'bg-secondary text-white', title = '';
+      if (recipe.status === 'pending') label = 'En attente de validation';
+      else if (recipe.status === 'draft') label = 'Brouillon';
+      else if (recipe.status === 'rejected') { label = 'Publication refusée'; cls = 'bg-error text-white'; title = 'Veuillez consulter vos messages pour plus d’informations'; }
+      else if (recipe.status === 'published' && isOwner) { label = 'Publiée'; cls = 'bg-green-700 text-white'; }
+      if (label) {
+        const st = document.createElement('span');
+        st.className = cls + ' px-3 py-1 font-label-md text-[10px] uppercase tracking-widest' + (title ? ' cursor-help inline-flex items-center gap-1' : '');
+        if (title) { st.title = title; st.innerHTML = `${esc(label)}<span class="material-symbols-outlined text-[13px]">info</span>`; }
+        else st.textContent = label;
+        vis.parentElement.insertBefore(st, vis);
+      }
     }
     const rating = document.getElementById('recipe-rating');
     if (rating) {
@@ -1299,8 +1309,7 @@
     }
 
     // Bouton Éditer : uniquement sur ses propres recettes
-    const me = await getUser();
-    if (me && recipe.author_id === me.id) {
+    if (isOwner) {
       const editBtn = document.getElementById('btn-edit-recipe');
       if (editBtn) {
         editBtn.href = 'creer.html?id=' + recipe.id;

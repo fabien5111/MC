@@ -178,8 +178,8 @@
 
   window.doReject = async function (id, pending) {
     const msg = pending
-      ? 'Refuser cette recette ? Elle repassera en brouillon chez son auteur.'
-      : 'Retirer cette recette ? Elle repassera en brouillon chez son auteur.';
+      ? 'Refuser cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.'
+      : 'Retirer cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.';
     if (!confirm(msg)) return;
     try { await rejectRecipe(id); await loadRecipes(); }
     catch (e) { alert('Erreur : ' + e.message); }

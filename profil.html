@@ -677,9 +677,10 @@
     if (carnetGrid && userRecipes.length > 0) {
       const addCard = carnetGrid.querySelector('[data-add-card]');
       const STATUS = {
-        published: { label: 'Publiée',    badge: 'bg-primary/90' },
-        pending:   { label: 'En attente', badge: 'bg-secondary/90' },
-        draft:     { label: 'Brouillon',  badge: 'bg-secondary/90' },
+        published: { label: 'Publiée',           badge: 'bg-primary/90' },
+        pending:   { label: 'En attente',        badge: 'bg-secondary/90' },
+        draft:     { label: 'Brouillon',         badge: 'bg-secondary/90' },
+        rejected:  { label: 'Publication refusée', badge: 'bg-error/90' },
       };
       userRecipes.forEach(r => {
         const st = STATUS[r.status] || STATUS.draft;

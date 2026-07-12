@@ -647,9 +647,9 @@ async function approveRecipe(id) {
   return db.from('recipes').update({ status: 'published' }).eq('id', id);
 }
 
-// Recettes « refusées » : renvoyées à l'auteur en brouillon
+// Recettes « refusées » : statut dédié, renvoyées à l'auteur
 async function rejectRecipe(id) {
-  return db.from('recipes').update({ status: 'draft' }).eq('id', id);
+  return db.from('recipes').update({ status: 'rejected' }).eq('id', id);
 }
 
 // Recettes gérées : validées (publiées) et privées, plus récentes d'abord
