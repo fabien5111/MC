@@ -110,8 +110,12 @@
       </div>
     </div>
 
-    <!-- Description rapide de la recette -->
-    <p id="recipe-desc-display" class="font-body-lg text-body-lg text-on-surface-variant text-justify mb-12" style="display:none"></p>
+    <!-- Description rapide de la recette (bloc mis en avant, sans auteur) -->
+    <div id="recipe-desc-display" class="bg-primary p-10 text-white relative overflow-hidden mb-12" style="display:none">
+      <div class="absolute -right-10 -top-10 opacity-10"><span class="material-symbols-outlined text-[120px]">restaurant_menu</span></div>
+      <h3 class="font-headline-md text-headline-md mb-4 flex items-center gap-3"><span class="material-symbols-outlined">auto_awesome</span>En quelques mots</h3>
+      <p class="font-body-lg text-body-lg italic opacity-90 leading-relaxed" id="recipe-desc-text"></p>
+    </div>
 
     <!-- Contexte de planification (arrivée depuis « recettes planifiées ») -->
     <div id="plan-notice" class="mb-12 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3" style="display:none">
@@ -1082,7 +1086,7 @@
     // Description rapide (entre les actions et le planning de préparation)
     const descEl = document.getElementById('recipe-desc-display');
     if (descEl) {
-      if (recipe.description) { descEl.textContent = recipe.description; descEl.style.display = ''; }
+      if (recipe.description) { document.getElementById('recipe-desc-text').textContent = recipe.description; descEl.style.display = ''; }
       else descEl.style.display = 'none';
     }
 
