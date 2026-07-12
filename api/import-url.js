@@ -248,28 +248,39 @@ async function handler(req, res) {
   const user = token ? await supabaseUser(token) : null;
   if (!user) return res.status(401).json({ erreur: 'Connexion requise.' });
 
+  // Deux sources possibles : une URL à récupérer, ou un texte collé tel quel
   const url = req.body && req.body.url;
-  if (!url || !/^https?:\/\//i.test(url)) return res.status(400).json({ erreur: 'URL invalide : elle doit commencer par http(s)://.' });
+  const texte = req.body && typeof req.body.texte === 'string' ? req.body.texte.trim() : '';
+  if (!texte && (!url || !/^https?:\/\//i.test(url))) {
+    return res.status(400).json({ erreur: 'URL invalide : elle doit commencer par http(s)://.' });
+  }
+  if (texte && texte.length < 80) {
+    return res.status(400).json({ erreur: 'Texte trop court pour être une recette : collez la recette complète (ingrédients et étapes).' });
+  }
 
   const quota = await quotaAtteint(token);
   if (quota.atteint) return res.status(429).json({ erreur: `Quota d'imports atteint (${QUOTA} par jour). Réessayez demain.` });
 
-  // 1. Récupération de la page
-  let html;
-  try {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 15000);
-    const page = await fetch(url, { signal: ctl.signal, headers: { 'user-agent': 'Mozilla/5.0 (MaryseClub Import)' }, redirect: 'follow' });
-    clearTimeout(timer);
-    if (!page.ok) throw new Error(`HTTP ${page.status}`);
-    html = await page.text();
-  } catch (e) {
-    return res.status(422).json({ erreur: `Page inaccessible (${e.message}). Vérifiez l'URL, ou saisissez la recette manuellement.` });
+  // 1+2. Contenu à analyser : texte collé directement, ou page récupérée
+  //      (ld+json Recipe si complet — plus fiable et moins coûteux —, sinon texte principal, §5)
+  let ld = null, contenu;
+  if (texte) {
+    contenu = `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
+  } else {
+    let html;
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 15000);
+      const page = await fetch(url, { signal: ctl.signal, headers: { 'user-agent': 'Mozilla/5.0 (MaryseClub Import)' }, redirect: 'follow' });
+      clearTimeout(timer);
+      if (!page.ok) throw new Error(`HTTP ${page.status}`);
+      html = await page.text();
+    } catch (e) {
+      return res.status(422).json({ erreur: `Page inaccessible (${e.message}). Vérifiez l'URL, ou saisissez la recette manuellement.` });
+    }
+    ld = extractLdRecipe(html);
+    contenu = buildContenu(ld, html, url);
   }
-
-  // 2. ld+json Recipe si complet (plus fiable et moins coûteux), sinon texte principal (§5)
-  const ld = extractLdRecipe(html);
-  const contenu = buildContenu(ld, html, url);
 
   // 3. Normalisation par l'IA (avec une relance) puis validation — jamais de brouillon corrompu
   let pivot;
@@ -297,9 +308,9 @@ async function handler(req, res) {
 
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
-  pivot.visibilite = 'privee'; // règle §5 : import URL → privée tant que l'utilisateur ne déclare pas en être l'auteur
+  pivot.visibilite = 'privee'; // règle §5 : contenu tiers (URL ou texte collé) → privée tant que l'utilisateur ne déclare pas en être l'auteur
   pivot.source = {
-    type: 'url', url, fichier_original: null,
+    type: texte ? 'texte' : 'url', url: url || null, fichier_original: null,
     auteur_origine: (pivot.source && pivot.source.auteur_origine) || (ld && (ld.author?.name || ld.author)) || null,
     importee_le: new Date().toISOString(),
   };
@@ -314,8 +325,8 @@ async function handler(req, res) {
   try {
     const row = await insertBrouillon(token, {
       user_id: user.id,
-      source_type: 'url',
-      source_url: url,
+      source_type: texte ? 'texte' : 'url',
+      source_url: url || null,
       statut: 'brouillon',
       recette: pivot,
       alertes,

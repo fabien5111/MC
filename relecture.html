@@ -380,6 +380,9 @@
     if (importRow.source_url) {
       document.getElementById('rel-source').innerHTML =
         `Source : <a href="${esc(importRow.source_url)}" target="_blank" rel="noopener" class="underline hover:text-primary">${esc(importRow.source_url)}</a>${p.source?.auteur_origine ? ' — par ' + esc(p.source.auteur_origine) : ''}`;
+    } else if (importRow.source_type === 'texte') {
+      document.getElementById('rel-source').textContent =
+        'Source : texte collé' + (p.source?.auteur_origine ? ' — par ' + p.source.auteur_origine : '');
     }
 
     const alertes = importRow.alertes || [];
