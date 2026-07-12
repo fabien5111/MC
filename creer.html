@@ -383,7 +383,7 @@
     const div = document.createElement('div');
     div.className = 'flex items-center gap-4';
     div.innerHTML = '<input class="ing-qty w-20 editorial-input text-on-surface" type="text" placeholder="Qté">'
-      + '<select class="ing-unit w-32 editorial-input text-on-surface bg-transparent cursor-pointer">'
+      + '<select class="ing-unit w-[5.6rem] editorial-input text-on-surface bg-transparent cursor-pointer">'
       + (window.unitOptionsHTML ? window.unitOptionsHTML() : '<option value="">— unité —</option>')
       + '</select>'
       + '<div class="relative flex-1 min-w-0">'
@@ -392,7 +392,7 @@
       +   '<div class="ing-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>'
       + '</div>'
       + '<div class="flex-1 min-w-0"><input class="ing-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)"></div>'
-      + '<button tabindex="-1" class="text-error opacity-0 hover:opacity-100 transition-opacity" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined">delete</span></button>';
+      + '<button tabindex="-1" title="Supprimer" class="p-1 text-error hover:opacity-70 transition-opacity shrink-0" type="button" onclick="this.closest(\'div\').remove()"><span class="material-symbols-outlined text-[18px]">delete</span></button>';
     container.appendChild(div);
 
     const nameEl    = div.querySelector('.ing-name');
@@ -693,7 +693,7 @@
     div.innerHTML = `
       <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer">drag_indicator</span>
       <input class="substep-input editorial-input flex-1 font-body-md text-on-surface" type="text" placeholder="Sous-étape…">
-      <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">close</span></button>`;
+      <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
 
     // Glisser-déposer par la poignée uniquement (souris)
     const handle = div.querySelector('.substep-handle');
@@ -1129,7 +1129,7 @@
         </div>
         <input class="u-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)">
       </div>
-      <button tabindex="-1" class="opacity-0 group-hover:opacity-100 transition-opacity text-error mt-2" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined">delete</span></button>`;
+      <button tabindex="-1" title="Supprimer" class="p-1 text-error hover:opacity-70 transition-opacity shrink-0 mt-1" type="button" onclick="this.closest('li').remove()"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
     document.getElementById('utensils-list').appendChild(li);
 
     const nameInput    = li.querySelector('.u-name');
