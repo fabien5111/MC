@@ -156,6 +156,7 @@
 <script>
 // Champ infobulle commun à toutes les listes de référence
 const TOOLTIP_FIELD = { key: 'tooltip', label: 'Infobulle', type: 'text', placeholder: "Texte d'aide affiché au survol" };
+const FORME_FIELD = { key: 'forme', label: 'Forme', type: 'select', options: ['cylindre', 'rectangulaire', 'demi-cylindre', 'oblong'] };
 const LIST_CONFIGS = {
   recipe_types: {
     label: 'Types de recettes', table: 'recipe_types', orderBy: 'id',
@@ -174,7 +175,7 @@ const LIST_CONFIGS = {
   mold_types: {
     label: 'Types de moules', table: 'mold_types', orderBy: 'name',
     badge: 'bg-primary-fixed text-on-primary-fixed', type: 'Matériel', desc: 'Catégories de moules utilisées dans les recettes',
-    fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Cercle', required: true }, TOOLTIP_FIELD],
+    fields: [{ key: 'name', label: 'Nom', type: 'text', placeholder: 'ex : Cercle', required: true }, FORME_FIELD, TOOLTIP_FIELD],
   },
   molds: {
     label: 'Moules', table: 'molds', orderBy: 'name',
@@ -417,12 +418,24 @@ function openFormPanel(entry = null) {
           class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
       </div>`;
   } else {
-    document.getElementById('form-panel-fields').innerHTML = cfg.fields.map(f => `
+    document.getElementById('form-panel-fields').innerHTML = cfg.fields.map(f => {
+      const cur = entry ? (entry[f.key] ?? '') : '';
+      const control = f.type === 'select'
+        ? `<div class="relative">
+            <select id="fp-${f.key}" class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors appearance-none pr-6 cursor-pointer">
+              <option value="">— choisir —</option>
+              ${f.options.map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o}</option>`).join('')}
+            </select>
+            <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+          </div>`
+        : `<input id="fp-${f.key}" type="${f.type}" value="${cur}" placeholder="${f.placeholder || ''}"
+            class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">`;
+      return `
       <div class="flex flex-col gap-2">
         <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">${f.label}${f.required ? ' *' : ''}</label>
-        <input id="fp-${f.key}" type="${f.type}" value="${entry ? (entry[f.key] ?? '') : ''}" placeholder="${f.placeholder || ''}"
-          class="w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors">
-      </div>`).join('');
+        ${control}
+      </div>`;
+    }).join('');
   }
 
   document.getElementById('form-overlay').classList.remove('hidden');

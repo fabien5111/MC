@@ -1,4 +1,4 @@
-const CACHE = 'maryse-club-v40';
+const CACHE = 'maryse-club-v41';
 const STATIC = [
   '/',
   '/index.html',
