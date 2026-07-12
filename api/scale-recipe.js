@@ -18,6 +18,9 @@ Règles :
 - Changement de moule ou de dimensions : coefficient = rapport des VOLUMES.
   Rond : π·(diamètre/2)²·hauteur. Carré/rectangle/cadre : L·l·h.
   Si une hauteur manque, suppose la même hauteur qu'à l'origine.
+  MAIS si une table « Moules de référence » est fournie et que le moule
+  de départ ET le moule cible y figurent (ou correspondent clairement),
+  utilise plutôt le rapport des NOMBRES DE PERSONNES : cible / départ.
 - « J'ai seulement X d'un ingrédient » : coefficient = X / quantité actuelle de cet ingrédient.
 - Arrondis le coefficient à 2 décimales. Il doit être strictement positif.
 - Si la demande est ambiguë, impossible ou sans rapport avec un redimensionnement,
@@ -57,19 +60,23 @@ async function supabaseUser(token) {
 }
 
 // Construit le contenu envoyé au modèle à partir du contexte recette + demande
-function buildContenu(recette, prompt) {
+function buildContenu(recette, prompt, moulesReference) {
   const r = recette || {};
   const ings = Array.isArray(r.ingredients) ? r.ingredients : [];
   const liste = ings.slice(0, 60)
     .map(i => `- ${i.nom || i.name}: ${i.quantite ?? i.quantity ?? ''} ${i.unite || i.unit || ''}`.trim())
     .join('\n');
+  const moules = Array.isArray(moulesReference) ? moulesReference.filter(m => m && m.personnes != null) : [];
+  const moulesTxt = moules.length
+    ? `\nMoules de référence (nom → personnes) :\n${moules.slice(0, 60).map(m => `- ${m.nom} : ${m.personnes} personnes`).join('\n')}\n`
+    : '';
   return `${PROMPT}
 
 Recette : ${r.titre || r.title || 'Sans titre'}
 Rendement actuel : ${r.rendement || '(non précisé)'}
 Ingrédients :
 ${liste || '(non fournis)'}
-
+${moulesTxt}
 Demande de l'utilisateur : "${String(prompt).slice(0, 1000)}"`;
 }
 
@@ -98,7 +105,7 @@ async function handler(req, res) {
 
   let resultat;
   try {
-    const raw = await callClaude(apiKey, buildContenu(req.body.recette, prompt));
+    const raw = await callClaude(apiKey, buildContenu(req.body.recette, prompt, req.body.moules_reference));
     resultat = normaliseResultat(parseStrictJson(raw));
   } catch (e) {
     return res.status(502).json({ erreur: "L'ajustement a échoué, réessayez ou saisissez le coefficient manuellement." });

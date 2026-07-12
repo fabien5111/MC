@@ -1417,12 +1417,21 @@
     try {
       const merged = mergeIngredients(r).filter(m => parseFloat(String(m.qty).replace(',', '.')) > 0);
       const rendement = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ') || null;
+      // Table de correspondance : moules de référence renseignés en nombre de
+      // personnes → l'IA s'en sert pour un changement de moule (rapport des personnes)
+      let moulesReference = [];
+      try {
+        moulesReference = (await getMolds())
+          .filter(m => m.servings != null)
+          .map(m => ({ nom: m.name, personnes: m.servings }));
+      } catch (_) {}
       const resp = await fetch('/api/scale-recipe', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
         body: JSON.stringify({
           prompt,
           recette: { titre: r.title, rendement, ingredients: merged.map(m => ({ nom: m.name, quantite: m.qty, unite: m.unit })) },
+          moules_reference: moulesReference,
         }),
       });
       const data = await resp.json().catch(() => ({ erreur: `Réponse invalide du serveur (HTTP ${resp.status}).` }));
