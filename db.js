@@ -463,15 +463,23 @@ async function getListEntries(tableName, orderBy = 'name') {
 }
 
 async function addListEntry(tableName, fields) {
-  const { data, error } = await db.from(tableName).insert(fields).select().single();
+  const { data, error } = await db.from(tableName).insert(fields).select();
   if (error) throw error;
-  return data;
+  if (!data || !data.length) {
+    throw new Error(`Ajout refusé sur « ${tableName} » : droits insuffisants (politique RLS d'administration manquante).`);
+  }
+  return data[0];
 }
 
 async function updateListEntry(tableName, id, fields) {
-  const { data, error } = await db.from(tableName).update(fields).eq('id', id).select().single();
+  const { data, error } = await db.from(tableName).update(fields).eq('id', id).select();
   if (error) throw error;
-  return data;
+  if (!data || !data.length) {
+    // 0 ligne renvoyée par un UPDATE ciblé sur l'id = la ligne existe mais
+    // l'écriture est bloquée (RLS) ; message clair plutôt que « Cannot coerce ».
+    throw new Error(`Modification refusée sur « ${tableName} » : droits insuffisants (politique RLS d'administration manquante).`);
+  }
+  return data[0];
 }
 
 async function deleteListEntry(tableName, id) {
