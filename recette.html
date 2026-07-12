@@ -160,9 +160,9 @@
       </div>
     </div>
 
-    <!-- Hero Image -->
-    <div class="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
-      <image-slot id="recette-hero" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDos_s9LjD9lTGqiVIySBGp_R4ZoTNAhHx2ENgPSXUfLbPEXnM8pGNFPExYlLnchdfaclb-obuLhW_bDwtaQ-vJZmp_mr2LDTurN1gtHqmlR87YPJalrHmiNzVZ75Bq7T4XzAveRYmdKrhW6HQohmfERnVNo4p8ph0xaU9NrI_R0ImxzNwA1LvqTiKSM4aZfJMoCV49HGmlxZZq4dW54oFtNPPDKDOl6fteiXvVL3twT_AyFICtUUyjRseERkq6Wa9xeIaJuPW25FM" shape="rect" fit="cover" placeholder="Le Saint-Honoré — photo principale (16:9)" style="width:100%;height:100%"></image-slot>
+    <!-- Hero Image (affichée uniquement si une photo a été chargée) -->
+    <div id="hero-wrap" class="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant" style="display:none">
+      <image-slot id="recette-hero" shape="rect" fit="cover" placeholder="Photo principale (16:9)" style="width:100%;height:100%"></image-slot>
     </div>
 
     <!-- Technical Info Block -->
@@ -997,10 +997,12 @@
     const authorEl = document.querySelector('[data-recipe-author]');
     if (authorEl && recipe.profiles) authorEl.textContent = recipe.profiles.full_name;
 
-    // Image hero
+    // Image hero : affichée uniquement si une photo a été chargée
     if (recipe.hero_image_url) {
       const heroSlot = document.querySelector('image-slot[id="recette-hero"]');
       if (heroSlot) heroSlot.setAttribute('src', recipe.hero_image_url);
+      const heroWrap = document.getElementById('hero-wrap');
+      if (heroWrap) heroWrap.style.display = '';
     }
 
     // Ustensiles (nom en lien si issu de la liste de référence, + commentaire)
