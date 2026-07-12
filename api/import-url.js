@@ -23,6 +23,7 @@ const SCHEMA_EXEMPLE = {
   sous_preparations: [{
     ordre: 1,
     nom: 'Biscuit madeleine',
+    day_offset: 2,
     ingredients: [
       { nom: 'beurre', quantite: 100, unite: 'g', texte_original: '100 g de beurre pommade', note: 'pommade', scaling: 'lineaire' },
       { nom: 'gélatine', quantite: 4, unite: 'g', texte_original: '2 feuilles de gélatine', note: 'feuilles de 2 g', scaling: 'lineaire_arrondi' },
@@ -53,6 +54,11 @@ Règles :
   "fixe" aux pincées et aux éléments de parfum, "lineaire" sinon.
 - Si le moule est mentionné, remplis rendement.moule ; sinon rendement.type
   = "portions" avec le nombre indiqué, ou null.
+- day_offset = nombre de jours AVANT la dégustation où l'on réalise la
+  sous-préparation. Si la recette donne un planning (« J−2 : réaliser le
+  sablé et les dacquoises ; J−1 : la mousse et le montage ; Jour J : le
+  glaçage »), reporte le bon J−n sur CHAQUE sous-préparation concernée
+  (J−2 → day_offset 2, J−1 → 1, Jour J → 0). Sans indication, mets 0.
 
 Schéma (exemple) : ${JSON.stringify(SCHEMA_EXEMPLE)}`;
 
@@ -305,6 +311,12 @@ async function handler(req, res) {
     } catch (e) { /* on conserve les erreurs de la première extraction */ }
   }
   if (erreurs.length) return res.status(422).json({ erreur: 'Extraction incomplète : ' + erreurs.join(' '), erreurs });
+
+  // J−n par sous-préparation : entier ≥ 0 (défaut 0)
+  (pivot.sous_preparations || []).forEach(sp => {
+    const d = parseInt(sp.day_offset, 10);
+    sp.day_offset = isNaN(d) || d < 0 ? 0 : d;
+  });
 
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
