@@ -1008,13 +1008,13 @@
     if (ulU && recipe.recipe_utensils?.length) {
       ulU.innerHTML = [...recipe.recipe_utensils]
         .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-        .map(u => `
+        .map(u => { const uUrl = u.utensils?.url || u.url; return `
           <li class="py-2 border-b border-outline-variant/30 font-body-md text-body-md">
-            ${u.url
-              ? `<a href="${u.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${u.name}</a>`
+            ${uUrl
+              ? `<a href="${uUrl}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${u.name}</a>`
               : u.name}
             ${u.comment ? `<span class="text-on-surface-variant text-sm italic"> — ${u.comment}</span>` : ''}
-          </li>`).join('');
+          </li>`; }).join('');
     }
 
     // Actions par ligne : crayon (éditer) + corbeille (barrer) / rétablir
@@ -1042,13 +1042,13 @@
             <h4 class="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">${esc(g.name || '')}</h4>
             <ul style="${groupGrid}">
               ${groupHeader}
-              ${effGroupIngredients(g).map(i => `
+              ${effGroupIngredients(g).map(i => { const iUrl = i.ingredient_refs?.url || i.url; return `
                   <li class="border-b border-outline-variant/30 py-2" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center">
-                    <span class="font-body-md text-body-md${nameCls(i)}">${i.url
-                      ? `<a href="${i.url}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(i.name)}</a>`
+                    <span class="font-body-md text-body-md${nameCls(i)}">${iUrl
+                      ? `<a href="${iUrl}" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-secondary">${esc(i.name)}</a>`
                       : esc(i.name)}${i.comment ? ` <span class="text-on-surface-variant text-sm italic">— ${esc(i.comment)}</span>` : ''}</span>
                     ${editable ? qtyCells(i) + actionCell(i) : qtyCells(i)}
-                  </li>`).join('')}
+                  </li>`; }).join('')}
             </ul>
             ${editable ? `<button type="button" onclick="mcShowAddForm('${g.id}', this)" class="mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline"><span class="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient</button>` : ''}
           </div>`).join('');

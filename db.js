@@ -178,8 +178,8 @@ async function getRecipe(id) {
       difficulties(name, level),
       mold_types(name),
       recipe_tags(tags(id, name, slug)),
-      recipe_utensils(*),
-      ingredient_groups(*, ingredients(*)),
+      recipe_utensils(*, utensils(url)),
+      ingredient_groups(*, ingredients(*, ingredient_refs(url))),
       recipe_steps(*, step_photos(*))
     `)
     .eq('id', id)

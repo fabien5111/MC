@@ -915,6 +915,7 @@
         name: li.querySelector('.u-name')?.value.trim() || '',
         comment: li.querySelector('.u-comment')?.value.trim() || null,
         url: li.dataset.url || null,
+        ref_id: li.dataset.refId || null,
         order_index: i,
       })).filter(u => u.name);
       if (utensils.length) {
@@ -982,6 +983,7 @@
           unit: d.querySelector('.ing-unit')?.value || null,
           comment: d.querySelector('.ing-comment')?.value.trim() || null,
           url: d.dataset.url || null,
+          ref_id: d.dataset.refId || null,
           order_index: i,
         })).filter(l => l.name);
         if (!lines.length) continue;
@@ -1052,9 +1054,11 @@
       input.value = u.name;
       if (u.url) { holder.dataset.url = u.url; link.href = u.url; link.style.display = ''; }
       else { delete holder.dataset.url; link.style.display = 'none'; }
+      // Lien vers la référence (id) → l'URL restera synchronisée avec la liste de référence
+      if (u.id) holder.dataset.refId = u.id; else delete holder.dataset.refId;
       closeSuggest();
     }
-    function clearRef() { delete holder.dataset.url; link.style.display = 'none'; }
+    function clearRef() { delete holder.dataset.url; delete holder.dataset.refId; link.style.display = 'none'; }
     function closeSuggest() { suggest.style.display = 'none'; matches = []; hi = -1; }
     function paintHighlight() {
       suggest.querySelectorAll('button').forEach((b, i) =>
@@ -1249,10 +1253,12 @@
       const li = i === 0 ? document.querySelector('#utensils-list li') : addUtensilRow(false);
       li.querySelector('.u-name').value = u.name || '';
       li.querySelector('.u-comment').value = u.comment || '';
-      if (u.url) {
-        li.dataset.url = u.url;
+      if (u.ref_id) li.dataset.refId = u.ref_id;
+      const uUrl = u.utensils?.url || u.url;
+      if (uUrl) {
+        li.dataset.url = uUrl;
         const lk = li.querySelector('.u-link');
-        lk.href = u.url; lk.style.display = '';
+        lk.href = uUrl; lk.style.display = '';
       }
     });
 
@@ -1286,10 +1292,12 @@
         line.querySelector('.ing-unit').value = ing.unit || '';
         line.querySelector('.ing-name').value = ing.name || '';
         line.querySelector('.ing-comment').value = ing.comment || '';
-        if (ing.url) {
-          line.dataset.url = ing.url;
+        if (ing.ref_id) line.dataset.refId = ing.ref_id;
+        const iUrl = ing.ingredient_refs?.url || ing.url;
+        if (iUrl) {
+          line.dataset.url = iUrl;
           const lk = line.querySelector('.ing-link');
-          lk.href = ing.url; lk.style.display = '';
+          lk.href = iUrl; lk.style.display = '';
         }
       });
     });
