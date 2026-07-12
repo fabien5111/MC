@@ -915,7 +915,7 @@
         name: li.querySelector('.u-name')?.value.trim() || '',
         comment: li.querySelector('.u-comment')?.value.trim() || null,
         url: li.dataset.url || null,
-        ref_id: li.dataset.refId || null,
+        ref_id: li.dataset.refId ? Number(li.dataset.refId) : null,
         order_index: i,
       })).filter(u => u.name);
       if (utensils.length) {
@@ -983,7 +983,7 @@
           unit: d.querySelector('.ing-unit')?.value || null,
           comment: d.querySelector('.ing-comment')?.value.trim() || null,
           url: d.dataset.url || null,
-          ref_id: d.dataset.refId || null,
+          ref_id: d.dataset.refId ? Number(d.dataset.refId) : null,
           order_index: i,
         })).filter(l => l.name);
         if (!lines.length) continue;
