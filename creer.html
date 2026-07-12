@@ -678,6 +678,11 @@
     const subs = block.querySelector('.step-substeps');
     if (zone) zone.style.display = on ? 'none' : '';
     if (subs) subs.style.display = on ? '' : 'none';
+    // Le panneau devient visible : recalculer la hauteur auto des champs
+    // (scrollHeight vaut 0 tant qu'ils sont masqués → sinon contenu long clippé)
+    if (on && subs) subs.querySelectorAll('.substep-input').forEach(ta => {
+      ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
+    });
   }
 
   // Réordonner par glisser-déposer : trouve la ligne devant laquelle insérer
@@ -695,7 +700,7 @@
     div.className = 'flex items-start gap-2 substep-row';
     div.innerHTML = `
       <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 touch-none" title="Glisser pour déplacer">drag_indicator</span>
-      <textarea class="substep-input editorial-input flex-1 font-body-md text-on-surface" rows="2" placeholder="Sous-étape…" style="resize:none;line-height:1.5"></textarea>
+      <textarea class="substep-input editorial-input flex-1 font-body-md text-on-surface" placeholder="Sous-étape…" style="resize:none;overflow:hidden;line-height:1.5;min-height:3.5rem"></textarea>
       <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70 shrink-0 self-start mt-1"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
 
     // Glisser-déposer par la poignée uniquement (souris)
@@ -728,6 +733,9 @@
       });
     }
     const input = div.querySelector('.substep-input');
+    // Hauteur auto : min. 2 lignes (min-height CSS), s'agrandit avec le contenu
+    const autoGrow = () => { input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px'; };
+    input.addEventListener('input', autoGrow);
     input.value = text;
     // Entrée dans une sous-étape → nouvelle sous-étape juste après
     input.addEventListener('keydown', e => {
@@ -739,6 +747,7 @@
       }
     });
     rows.appendChild(div);
+    autoGrow(); // ajuster la hauteur au contenu (élément désormais dans le DOM)
     if (focus) input.focus();
     return div;
   };
