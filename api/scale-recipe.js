@@ -8,26 +8,44 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://acbabqolghhyxksouaye.s
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_lWH25Aszggrc6ZttxyMTig_XwXs_IAG';
 const MODEL = process.env.IMPORT_MODEL || 'claude-sonnet-5';
 
-const PROMPT = `Tu es un assistant de pâtisserie. On te donne le rendement actuel d'une
-recette, ses ingrédients, et la demande d'adaptation d'un utilisateur.
-Déduis le COEFFICIENT MULTIPLICATEUR unique à appliquer à TOUTES les quantités
-pour satisfaire la demande.
+const PROMPT = `Tu es un assistant de pâtisserie expert en calcul de quantités. On te donne le
+rendement actuel d'une recette, ses ingrédients, et la demande d'adaptation d'un
+utilisateur. Déduis le COEFFICIENT MULTIPLICATEUR unique à appliquer à TOUTES les
+quantités pour satisfaire la demande.
 
 Règles :
 - Changement de nombre de portions/pièces : coefficient = cible / actuel.
-- Changement de moule ou de dimensions : coefficient = rapport des VOLUMES.
-  Rond : π·(diamètre/2)²·hauteur. Carré/rectangle/cadre : L·l·h.
-  Si une hauteur manque, suppose la même hauteur qu'à l'origine.
-  MAIS si une table « Moules de référence » est fournie et que le moule
-  de départ ET le moule cible y figurent (ou correspondent clairement),
-  utilise plutôt le rapport des NOMBRES DE PERSONNES : cible / départ.
+
+- Changement de moule ou de dimensions : DISTINGUE d'abord la nature de la préparation.
+  • CAS A — préparation qui REMPLIT le moule en volume (appareil, crème, mousse,
+    ganache, entremets, cake, flan, gâteau…) : coefficient = rapport des VOLUMES.
+    Rond/cylindre : π·(diamètre/2)²·hauteur. Carré/rectangle/cadre : L·l·h.
+  • CAS B — pâte abaissée en COUCHE d'épaisseur ~constante qui FONCE/TAPISSE le
+    moule (fond de tarte, pâte à foncer, pâte brisée/sablée/sucrée abaissée,
+    biscuit à chemiser) : l'épaisseur est fixe, donc la quantité est proportionnelle
+    à la SURFACE de pâte abaissée, MARGE DE FONÇAGE INCLUSE. Pour foncer un moule on
+    abaisse une pièce plus grande que le moule : on AJOUTE 2×hauteur à chaque
+    dimension au sol (le disque de pâte a un diamètre = diamètre du moule + 2×hauteur).
+    Rond : surface = π·((diamètre + 2·hauteur)/2)². Rectangle : (L+2h)·(l+2h).
+    Multiplie par le nombre de pièces de chaque configuration, puis
+    coefficient = surface totale cible / surface totale de départ.
+  Choisis A ou B d'après le TITRE et les INGRÉDIENTS : une pâte à tarte / à foncer
+  relève de B ; un appareil qui remplit le moule relève de A. En cas de doute pour
+  une pâte de fonçage, prends B.
+  Si une hauteur manque, suppose la même qu'à l'origine.
+  MAIS si une table « Moules de référence » est fournie et que le moule de départ
+  ET le moule cible y figurent (ou correspondent clairement), utilise plutôt le
+  rapport des NOMBRES DE PERSONNES : cible / départ.
+
 - « J'ai seulement X d'un ingrédient » : coefficient = X / quantité actuelle de cet ingrédient.
-- Arrondis le coefficient à 2 décimales. Il doit être strictement positif.
+- Le coefficient doit être strictement positif ; arrondis-le à 2 décimales.
 - Si la demande est ambiguë, impossible ou sans rapport avec un redimensionnement,
   renvoie coefficient null et explique brièvement pourquoi.
 
+Calcule d'abord, dans le champ "calcul", les surfaces ou volumes chiffrés de départ
+et cible ET leur rapport ; déduis-en SEULEMENT ENSUITE le coefficient.
 Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
-{"coefficient": <nombre ou null>, "explication": "<une phrase en français>"}`;
+{"calcul": "<surfaces/volumes chiffrés de départ et cible + le rapport, en une ligne>", "coefficient": <nombre ou null>, "explication": "<une phrase claire en français pour l'utilisateur, mentionnant la méthode employée>"}`;
 
 function parseStrictJson(text) {
   let t = String(text || '').trim();
