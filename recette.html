@@ -32,6 +32,8 @@
   .maryse-pill { width:26px; height:13px; border-radius:9999px; }
   /* Placeholders nettement plus clairs que le texte saisi */
   input::placeholder, textarea::placeholder { color:#e2d5d6 !important; opacity:1; font-style:italic; }
+  /* Unité avec infobulle : soulignée en pointillés, curseur d'aide */
+  .unit-tip { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
 </style>
 </head>
 <body class="bg-background">
@@ -380,6 +382,18 @@
 <script src="db.js"></script>
 <script>
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // Infobulle d'unité : l'unité devient survolable si une infobulle est définie
+  // dans la table de référence (window._unitTips, chargé au rendu)
+  function unitSpan(unit) {
+    if (!unit) return '';
+    const tip = window._unitTips && window._unitTips[String(unit).toLowerCase().trim()];
+    return tip ? `<span class="unit-tip" title="${esc(tip)}">${esc(unit)}</span>` : esc(unit);
+  }
+  // « texte unité » avec l'unité survolable (renvoie du HTML déjà échappé)
+  function withUnit(text, unit) {
+    const t = (text != null && String(text) !== '') ? esc(String(text)) : '';
+    return [t, unitSpan(unit)].filter(Boolean).join(' ');
+  }
   const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
   const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
   let currentRecipe = null;
@@ -896,6 +910,11 @@
     const recipe = (currentRecipe && String(currentRecipe.id) === String(id)) ? currentRecipe : await getRecipe(id);
     if (!recipe) return;
     currentRecipe = recipe;
+    // Infobulles d'unités (table de référence) : nom d'unité → texte d'aide
+    if (!window._unitTips) {
+      window._unitTips = {};
+      try { (await getUnits()).forEach(u => { if (u.tooltip) window._unitTips[String(u.name).toLowerCase().trim()] = u.tooltip; }); } catch (_) {}
+    }
     // Contexte planifié : colonnes coefficient + quantité ajustée + origine, lignes modifiables
     const scaled = planFactor() !== 1;
     const editable = !!currentPlan;
@@ -923,15 +942,15 @@
     };
     const nameCls = it => { const t = lineTone(it); return t ? ' ' + t : ''; };
     const qtyCells = it => {
-      if (!editable) return `<span class="font-label-md text-label-md text-primary text-center">${esc([it.quantity, it.unit].filter(Boolean).join(' '))}</span>`;
+      if (!editable) return `<span class="font-label-md text-label-md text-primary text-center">${withUnit(it.quantity, it.unit)}</span>`;
       const tone = lineTone(it);
       const coef = it._added ? null : effCoef(it);
       const adj = it._added ? numify(it.quantity) : effAdjustedQty(it);
-      const adjTxt = adj != null ? [fmtNum(adj), it.unit].filter(Boolean).join(' ') : [it.quantity, it.unit].filter(Boolean).join(' ');
-      const origTxt = it._added ? '—' : [it.quantity, it.unit].filter(Boolean).join(' ');
+      const adjTxt = adj != null ? withUnit(fmtNum(adj), it.unit) : withUnit(it.quantity, it.unit);
+      const origTxt = it._added ? '—' : withUnit(it.quantity, it.unit);
       return `<span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${coef != null ? '× ' + fmtNum(coef) : '—'}</span>
-        <span class="font-label-md text-label-md text-center ${tone || 'text-primary'}">${esc(adjTxt)}</span>
-        <span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${esc(origTxt)}</span>`;
+        <span class="font-label-md text-label-md text-center ${tone || 'text-primary'}">${adjTxt}</span>
+        <span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${origTxt}</span>`;
     };
     const qtyGridStyle = `display:grid;grid-template-columns:max-content max-content${editable ? ' max-content max-content' : ''};column-gap:40px`;
 
@@ -1224,16 +1243,16 @@
             const mod = r.added || (r.adj != null && (defAdj == null || Math.abs(r.adj - defAdj) > 0.001));
             const pureAdded = r.added && r.orig == null && !r.origTxt.length;
             const tone = pureAdded ? 'text-green-700' : (mod ? 'text-orange-600' : '');
-            const adjTxt = r.adj != null ? [fmtNum(r.adj), r.unit].filter(Boolean).join(' ') : [r.origTxt.join(' + '), r.unit].filter(Boolean).join(' ');
+            const adjTxt = r.adj != null ? withUnit(fmtNum(r.adj), r.unit) : withUnit(r.origTxt.join(' + '), r.unit);
             const origTxt = r.orig != null
-              ? [[fmtNum(r.orig), ...r.origTxt].join(' + '), r.unit].filter(Boolean).join(' ')
-              : (r.origTxt.length ? [r.origTxt.join(' + '), r.unit].filter(Boolean).join(' ') : '—');
+              ? withUnit([fmtNum(r.orig), ...r.origTxt].join(' + '), r.unit)
+              : (r.origTxt.length ? withUnit(r.origTxt.join(' + '), r.unit) : '—');
             return `
             <li class="py-2 border-b border-outline-variant/30" style="display:grid;grid-template-columns:subgrid;grid-column:1/-1">
               <span class="font-body-md text-body-md ${tone}">${esc(r.name)}</span>
               <span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${coef != null ? '× ' + fmtNum(coef) : '—'}</span>
-              <span class="font-label-md text-label-md text-center ${tone || 'text-primary'}">${esc(adjTxt)}</span>
-              <span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${esc(origTxt)}</span>
+              <span class="font-label-md text-label-md text-center ${tone || 'text-primary'}">${adjTxt}</span>
+              <span class="font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}">${origTxt}</span>
             </li>`;
           }).join('');
         } else if (fullBlock) fullBlock.style.display = 'none';
