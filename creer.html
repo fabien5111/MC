@@ -157,20 +157,17 @@
               </div>
             </div>
 
-            <!-- Panneau 2 : moule / cercle -->
-            <div id="panel-mold" class="mt-4 flex-wrap gap-4 items-end" style="display:none">
-              <input id="mold-desc" class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
-              <div class="relative flex items-end flex-1 min-w-[200px]">
+            <!-- Panneau 2 : type de moule (liste) + dimensions selon la forme -->
+            <div id="panel-mold" class="mt-4 space-y-4" style="display:none">
+              <div class="relative flex items-end max-w-md">
                 <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
                   <option value="" disabled selected>Choisir le type de moule</option>
                   <!-- options alimentées depuis la table mold_types (voir init) -->
                 </select>
                 <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
               </div>
-              <div class="w-24 h-24 border border-dashed border-outline-variant rounded flex flex-col items-center justify-center bg-surface-container-low shrink-0 group cursor-pointer hover:bg-surface-container-high transition-colors">
-                <span class="material-symbols-outlined text-outline-variant">shape_line</span>
-                <span class="text-[10px] uppercase font-label-md text-outline mt-1">Aperçu</span>
-              </div>
+              <!-- Champs de dimensions générés selon la forme du type choisi -->
+              <div id="mold-dims" class="flex flex-wrap gap-6 items-end"></div>
             </div>
 
             <!-- Panneau 3 : dimensions libres -->
@@ -874,13 +871,20 @@
         (!best || Math.abs(d.level - level) < Math.abs(best.level - level)) ? d : best, null);
       // Quantité produite (unités/poids, moule ou dimensions)
       const mt = document.querySelector('input[name="measure_type"]:checked')?.value || 'units';
-      let yQty = null, yUnit = null, yDesc = null, moldTypeId = null;
+      let yQty = null, yUnit = null, yDesc = null, moldTypeId = null, moldDims = null;
       if (mt === 'units') {
         yQty = document.getElementById('qty-amount')?.value.trim() || null;
         yUnit = document.getElementById('qty-unit')?.value || null;
       } else if (mt === 'mold') {
-        yDesc = document.getElementById('mold-desc')?.value.trim() || null;
         moldTypeId = Number(document.getElementById('mold-choice')?.value) || null; // id du type de moule (table mold_types)
+        const selType = allMoldTypes.find(t => String(t.id) === String(moldTypeId));
+        const dims = {};
+        document.querySelectorAll('#mold-dims .mold-dim').forEach(inp => {
+          const v = parseFloat(String(inp.value).replace(',', '.'));
+          if (!isNaN(v)) dims[inp.dataset.dim] = v;
+        });
+        moldDims = Object.keys(dims).length ? dims : null;
+        yDesc = composeMoldDesc(selType?.forme, dims); // résumé lisible pour la fiche
       } else {
         yDesc = document.getElementById('dims-desc')?.value.trim() || null;
       }
@@ -891,7 +895,7 @@
         title, description: desc, is_public: isPublic, status,
         difficulty_id: diffRow?.id ?? null,
         measure_type: mt, yield_qty: yQty, yield_unit: yUnit, yield_desc: yDesc,
-        mold_type_id: moldTypeId,
+        mold_type_id: moldTypeId, mold_dims: moldDims,
         tips: richValue(document.getElementById('recipe-tips')),
         prep_time: globalMin('.recipe-prep'),
         wait_time: globalMin('.recipe-wait'),
@@ -1028,10 +1032,49 @@
   document.querySelectorAll('input[name="measure_type"]').forEach(radio => {
     radio.addEventListener('change', function () {
       document.getElementById('panel-units').style.display      = this.value === 'units'      ? 'flex'  : 'none';
-      document.getElementById('panel-mold').style.display       = this.value === 'mold'       ? 'flex'  : 'none';
+      document.getElementById('panel-mold').style.display       = this.value === 'mold'       ? 'block' : 'none';
       document.getElementById('panel-dimensions').style.display = this.value === 'dimensions' ? 'block' : 'none';
+      if (this.value === 'mold') renderMoldDims();
     });
   });
+
+  // ── Type de moule → dimensions selon la forme (table mold_types.forme) ──
+  let allMoldTypes = [];            // [{id, name, forme, ...}] — table mold_types
+  const FORME_DIMS = {
+    'cylindre':      [{ key: 'diametre', label: 'Diamètre' }, { key: 'hauteur', label: 'Hauteur' }],
+    'rectangulaire': [{ key: 'longueur', label: 'Longueur' }, { key: 'largeur', label: 'Largeur' }, { key: 'hauteur', label: 'Hauteur' }],
+    'oblong':        [{ key: 'longueur', label: 'Longueur' }, { key: 'largeur', label: 'Largeur' }, { key: 'hauteur', label: 'Hauteur' }],
+    'demi-cylindre': [{ key: 'longueur', label: 'Longueur' }, { key: 'largeur', label: 'Largeur' }],
+  };
+  // Résumé lisible pour la fiche recette (ex. « Ø 22 × 5 cm », « 20 × 15 × 5 cm »)
+  function composeMoldDesc(forme, dims) {
+    const keys = (FORME_DIMS[forme] || []).map(d => d.key);
+    const parts = keys.filter(k => dims[k] != null).map(k => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
+    return parts.length ? parts.join(' × ') + ' cm' : null;
+  }
+  // Génère les champs de dimensions du type sélectionné ; preset = valeurs à préremplir.
+  function renderMoldDims(preset) {
+    const sel = document.getElementById('mold-choice');
+    const wrap = document.getElementById('mold-dims');
+    if (!sel || !wrap) return;
+    const t = allMoldTypes.find(mt => String(mt.id) === sel.value);
+    const dims = t ? (FORME_DIMS[t.forme] || []) : [];
+    if (!dims.length) {
+      wrap.innerHTML = (t && !t.forme)
+        ? `<p class="text-sm text-on-surface-variant italic">Renseignez la « forme » de ce type de moule dans l'administration des listes pour saisir des dimensions.</p>`
+        : '';
+      return;
+    }
+    wrap.innerHTML = dims.map(d => `
+      <div class="flex flex-col">
+        <label class="font-label-md text-label-md text-outline mb-1">${d.label}</label>
+        <div class="flex items-baseline gap-2">
+          <input class="mold-dim editorial-input text-on-surface" data-dim="${d.key}" type="number" min="0" step="any" style="width:5rem" placeholder="0" value="${preset && preset[d.key] != null ? preset[d.key] : ''}">
+          <span class="text-sm text-on-surface-variant">cm</span>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('mold-choice')?.addEventListener('change', () => renderMoldDims());
 
   // ── Unités de mesure : liste de référence pour les ingrédients ──
   let allUnits = []; // [{id, name, tooltip}] — table units
@@ -1238,8 +1281,8 @@
         document.getElementById('qty-amount').value = r.yield_qty ?? '';
         if (r.yield_unit) document.getElementById('qty-unit').value = r.yield_unit;
       } else if (r.measure_type === 'mold') {
-        document.getElementById('mold-desc').value = r.yield_desc || '';
         if (r.mold_type_id) document.getElementById('mold-choice').value = String(r.mold_type_id);
+        renderMoldDims(r.mold_dims || null);
       } else if (r.measure_type === 'dimensions') {
         document.getElementById('dims-desc').value = r.yield_desc || '';
       }
@@ -1334,7 +1377,6 @@
     if (!user) return; // requireAuth redirige vers connexion.html
     document.documentElement.style.visibility = '';
     initAuthUI();
-    let allMoldTypes;
     [allTags, allUtensils, allUnits, window.allIngredientRefs, allDifficulties, allMoldTypes] = await Promise.all([
       getTags(),
       getListEntries('utensils', 'name'),
