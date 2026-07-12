@@ -700,7 +700,7 @@
     div.className = 'flex items-start gap-2 substep-row';
     div.innerHTML = `
       <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 touch-none" title="Glisser pour déplacer">drag_indicator</span>
-      <textarea class="substep-input editorial-input flex-1 font-body-md text-on-surface" placeholder="Sous-étape…" style="resize:none;overflow:hidden;line-height:1.5;min-height:3.5rem"></textarea>
+      <textarea class="substep-input flex-1 font-body-md text-on-surface bg-surface-container-low border border-outline-variant focus:border-primary outline-none transition-colors px-3 py-2" placeholder="Sous-étape…" style="resize:none;overflow:hidden;line-height:1.5;min-height:3.5rem"></textarea>
       <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70 shrink-0 self-start mt-1"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
 
     // Glisser-déposer par la poignée uniquement (souris)
