@@ -466,7 +466,8 @@ async function saveFormPanel() {
         fields[f.key] = f.type === 'number' ? (Number(val) || null) : (val || null);
       }
       if (!valid) return;
-      if (activeKey === 'tags' && !fields.slug && fields.name) {
+      // Tables à colonne slug NOT NULL : générer le slug depuis le nom s'il est absent
+      if (['recipe_types', 'tags', 'mold_types'].includes(cfg.table) && !fields.slug && fields.name) {
         fields.slug = fields.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       }
       if (formEntry) {
