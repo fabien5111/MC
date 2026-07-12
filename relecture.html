@@ -190,34 +190,44 @@
         </label>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3">
-        <!-- Origine (lecture seule) — 1/3 -->
-        <div class="p-6 bg-surface-container-low/60 border-b lg:border-b-0 lg:border-r border-outline-variant/50">
-          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Contenu importé</p>
-          ${(sp.ingredients || []).length ? `<ul class="flex flex-col gap-1 mb-4">${(sp.ingredients || []).map(g => `<li class="text-sm">• ${esc(g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' '))}</li>`).join('')}</ul>` : '<p class="text-sm italic text-on-surface-variant mb-4">Aucun ingrédient (montage ?)</p>'}
-          ${(sp.etapes || []).map(e => `<p class="text-sm mb-2"><span class="text-secondary font-label-md">${e.ordre ?? ''}.</span> ${esc(e.texte || '')}</p>`).join('')}
-        </div>
-        <!-- Corrigeable — 2/3 -->
-        <div class="p-6 lg:col-span-2">
-          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Version corrigée</p>
-          <div class="mb-2 grid gap-2" style="grid-template-columns: 1fr 5.5rem 7rem 2rem">
+      <div class="p-6">
+        <!-- Ingrédients : chaque ligne importée en vis-à-vis de sa version corrigée -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Contenu importé</p>
+          <div class="hidden lg:grid gap-2" style="grid-template-columns: 1fr 5.5rem 7rem 2rem">
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Ingrédient</span>
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Quantité</span>
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Unité</span><span></span>
           </div>
-          <div data-sp-ings class="flex flex-col gap-2 mb-2">
-            ${(sp.ingredients || []).map(g => ingRowHTML(g)).join('')}
-          </div>
-          <button type="button" onclick="relAddIng(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-5"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient</button>
-
-          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Étapes</p>
-          <div data-sp-etapes class="flex flex-col gap-2 mb-2">
-            ${(sp.etapes || []).map(e => etapeRowHTML(e)).join('')}
-          </div>
-          <button type="button" onclick="relAddEtape(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter une étape</button>
         </div>
+        <div data-sp-ings class="flex flex-col mb-2">
+          ${(sp.ingredients || []).length
+            ? (sp.ingredients || []).map(g => ingCompareRow(g)).join('')
+            : `<div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 py-1"><p class="text-sm italic text-on-surface-variant">Aucun ingrédient importé (montage ?)</p><span></span></div>`}
+        </div>
+        <button type="button" onclick="relAddIng(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-6"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient</button>
+
+        <!-- Étapes : chaque sous-étape importée en vis-à-vis de sa version corrigée -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Sous-étapes importées</p>
+          <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Version corrigée</p>
+        </div>
+        <div data-sp-etapes class="flex flex-col gap-3 mb-2">
+          ${(sp.etapes || []).map(e => etapeCompareRow(e)).join('')}
+        </div>
+        <button type="button" onclick="relAddEtape(this)" class="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline"><span class="material-symbols-outlined text-[16px]">add</span> Ajouter une étape</button>
       </div>
     </section>`;
+  }
+
+  // Ligne de correspondance ingrédient : importé (1/3) | corrigé éditable (2/3)
+  function ingCompareRow(g = {}) {
+    const imp = g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' ');
+    return `
+    <div data-cmp class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start py-1.5 border-b border-outline-variant/20">
+      <div class="text-sm text-on-surface-variant lg:pt-1.5">${imp ? '• ' + esc(imp) : '<span class="italic opacity-60">ajouté</span>'}</div>
+      ${ingRowHTML(g)}
+    </div>`;
   }
 
   function ingRowHTML(g = {}) {
@@ -227,9 +237,18 @@
         <input data-ing-nom list="dl-ingredients" class="champ" value="${esc(g.nom || '')}" placeholder="farine" autocomplete="off">
         <input data-ing-qte type="number" min="0" step="any" class="champ text-center" value="${g.quantite ?? ''}">
         <select data-ing-unite class="champ">${uniteOptions(g.unite)}</select>
-        <button type="button" title="Supprimer" onclick="this.closest('[data-ing]').remove()" tabindex="-1" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        <button type="button" title="Supprimer" onclick="this.closest('[data-cmp]').remove()" tabindex="-1" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">delete</span></button>
       </div>
       ${g.note ? `<input data-ing-note class="champ text-sm mt-1" value="${esc(g.note)}" placeholder="note (pommade, à froid…)">` : ''}
+    </div>`;
+  }
+
+  // Ligne de correspondance étape : texte importé (1/3) | textarea corrigée (2/3)
+  function etapeCompareRow(e = {}) {
+    return `
+    <div data-cmp class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start border-b border-outline-variant/20 pb-3">
+      <div class="text-sm text-on-surface-variant lg:pt-2">${e.texte ? esc(e.texte) : '<span class="italic opacity-60">ajoutée</span>'}</div>
+      ${etapeRowHTML(e)}
     </div>`;
   }
 
@@ -237,7 +256,7 @@
     return `
     <div data-etape class="flex items-start gap-2">
       <textarea data-etape-texte rows="4" class="champ flex-1">${esc(e.texte || '')}</textarea>
-      <button type="button" title="Supprimer" onclick="this.closest('[data-etape]').remove()" tabindex="-1" class="text-error hover:opacity-70 mt-2"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+      <button type="button" title="Supprimer" onclick="this.closest('[data-cmp]').remove()" tabindex="-1" class="text-error hover:opacity-70 mt-2"><span class="material-symbols-outlined text-[18px]">delete</span></button>
     </div>`;
   }
 
@@ -278,8 +297,12 @@
       + item('Nombre d\'étapes', secs.length);
   }
 
-  window.relAddIng = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', ingRowHTML());
-  window.relAddEtape = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', etapeRowHTML());
+  window.relAddIng = btn => {
+    const box = btn.previousElementSibling; // data-sp-ings
+    if (!box.querySelector('[data-cmp]')) box.innerHTML = ''; // retire le repère « aucun ingrédient »
+    box.insertAdjacentHTML('beforeend', ingCompareRow());
+  };
+  window.relAddEtape = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', etapeCompareRow());
   function renumSp() {
     document.querySelectorAll('#rel-sps [data-sp]').forEach((s, k) => { s.querySelector('[data-sp-num]').textContent = (k + 1) + '.'; });
   }
