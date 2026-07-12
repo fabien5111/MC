@@ -1021,10 +1021,17 @@
   });
 
   // ── Unités de mesure : liste de référence pour les ingrédients ──
-  let allUnits = []; // [{id, name}] — table units
-  window.unitOptionsHTML = (selected = '') =>
-    '<option value="">— unité —</option>'
-    + allUnits.map(u => `<option value="${u.name}"${u.name === selected ? ' selected' : ''}>${u.name}</option>`).join('');
+  let allUnits = []; // [{id, name, tooltip}] — table units
+  // Le libellé de l'option affiche aussi l'infobulle (comme une colonne),
+  // mais la VALEUR reste le nom seul de l'unité.
+  window.unitOptionsHTML = (selected = '') => {
+    const e = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    return '<option value="">— unité —</option>'
+      + allUnits.map(u => {
+          const lbl = u.tooltip ? `${u.name} — ${u.tooltip}` : u.name;
+          return `<option value="${e(u.name)}"${u.name === selected ? ' selected' : ''}${u.tooltip ? ` title="${e(u.tooltip)}"` : ''}>${e(lbl)}</option>`;
+        }).join('');
+  };
 
   // ── Autocomplétion générique depuis une liste de référence [{name, url}] ──
   // input : champ texte ; suggest : menu déroulant ; link : icône lien ;

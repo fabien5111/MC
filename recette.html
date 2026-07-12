@@ -394,6 +394,15 @@
     const t = (text != null && String(text) !== '') ? esc(String(text)) : '';
     return [t, unitSpan(unit)].filter(Boolean).join(' ');
   }
+  // Options d'un <select> d'unité : le libellé affiche aussi l'infobulle
+  // (comme une colonne), mais la VALEUR reste le nom seul de l'unité
+  function unitOptionsHTML(units, selected) {
+    const eA = s => esc(s).replace(/"/g, '&quot;');
+    return (units || []).map(u => {
+      const lbl = u.tooltip ? `${u.name} — ${u.tooltip}` : u.name;
+      return `<option value="${eA(u.name)}"${u.name === selected ? ' selected' : ''}${u.tooltip ? ` title="${eA(u.tooltip)}"` : ''}>${esc(lbl)}</option>`;
+    }).join('');
+  }
   const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
   const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
   let currentRecipe = null;
@@ -773,7 +782,7 @@
     const li = btn.closest('li');
     if (li.nextElementSibling?.hasAttribute?.('data-edit-form')) { li.nextElementSibling.remove(); return; }
     li.parentElement.querySelectorAll('[data-edit-form]').forEach(f => f.remove());
-    const unitOptions = (window._units || []).map(u => `<option value="${esc(u.name)}"${u.name === a.unit ? ' selected' : ''}>${esc(u.name)}</option>`).join('');
+    const unitOptions = unitOptionsHTML(window._units, a.unit);
     li.insertAdjacentHTML('afterend', `
       <li data-edit-form="added-${idx}" style="grid-column:1/-1" class="py-3">
         <div class="flex flex-wrap items-end gap-3">
@@ -805,7 +814,7 @@
   window.mcShowAddForm = async function (groupId, btn) {
     if (!window._units) window._units = await getUnits();
     btn.style.display = 'none';
-    const unitOptions = (window._units || []).map(u => `<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+    const unitOptions = unitOptionsHTML(window._units);
     btn.insertAdjacentHTML('afterend', `
       <div class="flex flex-wrap items-end gap-3 mt-2" data-add-form>
         <input data-add-name placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:12rem">
