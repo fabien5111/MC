@@ -515,18 +515,21 @@ async function getMolds(typeId = null) {
   return data || [];
 }
 
-async function addMold(name, typeId, servings) {
-  const { data, error } = await db.from('molds')
-    .insert({ name, type_id: typeId || null, servings: servings ?? null }).select().single();
+// fields : objet partiel { name, type_id, servings, tooltip } — seules les
+// colonnes fournies sont écrites (ne pas écraser servings depuis une page
+// qui n'édite pas ce champ, ex. admin-listes)
+async function addMold(fields) {
+  const { data, error } = await db.from('molds').insert(fields).select();
   if (error) throw error;
-  return data;
+  if (!data || !data.length) throw new Error("Ajout du moule refusé : droits insuffisants (politique RLS d'administration manquante).");
+  return data[0];
 }
 
-async function updateMold(id, name, typeId, servings) {
-  const { data, error } = await db.from('molds')
-    .update({ name, type_id: typeId || null, servings: servings ?? null }).eq('id', id).select().single();
+async function updateMold(id, fields) {
+  const { data, error } = await db.from('molds').update(fields).eq('id', id).select();
   if (error) throw error;
-  return data;
+  if (!data || !data.length) throw new Error("Modification du moule refusée : droits insuffisants (politique RLS d'administration manquante).");
+  return data[0];
 }
 
 async function deleteMold(id) {
