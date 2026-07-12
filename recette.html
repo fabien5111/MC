@@ -1075,17 +1075,21 @@
     } else if (recipe.measure_type === 'dimensions') {
       yieldOrig = recipe.yield_desc || null;
       yieldTxt = yieldOrig;
-      if (currentPlan?.adjust_label?.startsWith('Dimensions : ')) yieldTxt = currentPlan.adjust_label.slice('Dimensions : '.length);
     }
+    // Recette « dimensions » planifiée : l'ajustement est un coefficient IA
+    // appliqué aux ingrédients ; le rendement affiché reste le même
+    const dimAiAdjusted = recipe.measure_type === 'dimensions' && currentPlan && scaled;
     const portionsCell = document.getElementById('tech-portions');
     if (portionsCell) {
       if (yieldTxt) {
         // Contexte planifié : quantité ajustée + rappel de la quantité initiale
         const adjusted = currentPlan && yieldOrig && yieldOrig !== yieldTxt;
         portionsCell.innerHTML = `
-          <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">${adjusted ? `Quantité ajustée${scaled ? ' × ' + fTxt : ''}` : 'Quantité produite'}</span>
+          <span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">${adjusted ? `Quantité ajustée${scaled ? ' × ' + fTxt : ''}` : (dimAiAdjusted ? `Ingrédients ajustés × ${fTxt}` : 'Quantité produite')}</span>
           <span class="font-body-lg text-body-lg font-bold text-primary">${esc(yieldTxt)}</span>
           ${adjusted ? `<span class="font-label-md text-[12px] text-on-surface-variant">Quantité d'origine : ${esc(yieldOrig)}</span>` : ''}`;
+      } else if (dimAiAdjusted) {
+        portionsCell.innerHTML = `<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Ingrédients ajustés × ${fTxt}</span>`;
       } else portionsCell.style.setProperty('display', 'none');
     }
     document.getElementById('tech-taille')?.style.setProperty('display', 'none');
@@ -1360,13 +1364,73 @@
           <p class="text-xs text-on-surface-variant">Choisissez un autre moule si besoin — les quantités de la recette restent inchangées.</p>
         </div>`;
     } else if (r.measure_type === 'dimensions') {
+      // Ajustement par IA : l'utilisateur décrit ce qu'il veut, l'IA déduit le coefficient
       zone.innerHTML = `
-        <div class="flex flex-col gap-2" style="max-width:26rem">
-          <label class="${LBL_CLS}" for="plan-dims">Dimensions souhaitées</label>
-          <input id="plan-dims" type="text" value="${esc(r.yield_desc || '')}" class="${INPUT_CLS}" placeholder="ex : 20cm × 5cm, Ø 22cm…">
+        <div class="flex flex-col gap-3" style="max-width:40rem">
+          <label class="${LBL_CLS}" for="plan-ai-prompt">Décrivez l'ajustement souhaité</label>
+          <textarea id="plan-ai-prompt" rows="3" class="${INPUT_CLS}" placeholder="ex : je veux un gâteau pour 12 personnes au lieu de 8, ou l'adapter pour un moule de 24 cm au lieu de 20 cm, ou je n'ai que 200 g de chocolat"></textarea>
+          <div>
+            <button type="button" id="plan-ai-btn" onclick="mcAskAiScale(this)" class="flex items-center gap-2 bg-secondary text-on-secondary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"><span class="material-symbols-outlined text-[18px]">auto_awesome</span> Calculer le coefficient avec l'IA</button>
+          </div>
+          <div id="plan-ai-result" style="display:none" class="border border-secondary rounded-xl bg-surface-container-low p-4 flex flex-col gap-3">
+            <p id="plan-ai-explication" class="font-body-md text-on-surface"></p>
+            <div id="plan-ai-coef-row" class="flex items-end gap-3">
+              <div class="flex flex-col gap-2">
+                <label class="${LBL_CLS}" for="plan-ai-coef">Coefficient proposé</label>
+                <input id="plan-ai-coef" type="number" min="0" step="any" class="${INPUT_CLS}" style="width:8rem">
+              </div>
+              <span class="text-xs text-on-surface-variant pb-2">Vous pouvez l'ajuster avant de valider.</span>
+            </div>
+          </div>
         </div>`;
     }
   }
+
+  // Ajustement par IA : envoie la demande + le contexte recette, propose un coefficient
+  window.mcAskAiScale = async function (btn) {
+    const r = currentRecipe;
+    const promptEl = document.getElementById('plan-ai-prompt');
+    const prompt = (promptEl?.value || '').trim();
+    if (prompt.length < 3) { alert("Décrivez l'ajustement souhaité."); return; }
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { window.location.href = 'connexion.html'; return; }
+    const resultZone = document.getElementById('plan-ai-result');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Calcul en cours…';
+    try {
+      const merged = mergeIngredients(r).filter(m => parseFloat(String(m.qty).replace(',', '.')) > 0);
+      const rendement = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ') || null;
+      const resp = await fetch('/api/scale-recipe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({
+          prompt,
+          recette: { titre: r.title, rendement, ingredients: merged.map(m => ({ nom: m.name, quantite: m.qty, unite: m.unit })) },
+        }),
+      });
+      const data = await resp.json().catch(() => ({ erreur: `Réponse invalide du serveur (HTTP ${resp.status}).` }));
+      if (!resp.ok) throw new Error(data.erreur || `Erreur ${resp.status}`);
+
+      resultZone.style.display = '';
+      document.getElementById('plan-ai-explication').textContent = data.explication || '';
+      const coefRow = document.getElementById('plan-ai-coef-row');
+      if (data.coefficient != null && data.coefficient > 0) {
+        coefRow.style.display = '';
+        document.getElementById('plan-ai-coef').value = data.coefficient;
+      } else {
+        // Demande non exploitable : pas de coefficient, on invite à reformuler
+        coefRow.style.display = 'none';
+      }
+    } catch (e) {
+      resultZone.style.display = '';
+      document.getElementById('plan-ai-explication').textContent = e.message;
+      document.getElementById('plan-ai-coef-row').style.display = 'none';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  };
 
   // Crayon du bandeau : modifier la date ou l'ajustement de la planification en cours
   let planEditMode = false;
@@ -1385,9 +1449,17 @@
     } else if (r.measure_type === 'mold' && currentPlan.adjust_label?.startsWith('Moule : ')) {
       const sel = document.getElementById('plan-mold');
       if (sel) sel.value = currentPlan.adjust_label.slice('Moule : '.length);
-    } else if (r.measure_type === 'dimensions' && currentPlan.adjust_label?.startsWith('Dimensions : ')) {
-      const inp = document.getElementById('plan-dims');
-      if (inp) inp.value = currentPlan.adjust_label.slice('Dimensions : '.length);
+    } else if (r.measure_type === 'dimensions') {
+      // Ajustement IA : reproposer le coefficient enregistré (et la demande d'origine)
+      const lbl = currentPlan.adjust_label || '';
+      const promptEl = document.getElementById('plan-ai-prompt');
+      if (promptEl && lbl.startsWith('IA : ')) promptEl.value = lbl.slice('IA : '.length).replace(/…$/, '');
+      if (planFactor() !== 1) {
+        document.getElementById('plan-ai-result').style.display = '';
+        document.getElementById('plan-ai-coef-row').style.display = '';
+        document.getElementById('plan-ai-coef').value = +planFactor().toFixed(2);
+        document.getElementById('plan-ai-explication').textContent = 'Coefficient actuel de la planification. Relancez le calcul IA pour le recalculer, ou ajustez-le à la main.';
+      }
     }
     // Étapes déjà réalisées : refléter l'état enregistré
     document.querySelectorAll('.plan-step-done').forEach(c => { c.checked = isStepDone(c.value); });
@@ -1439,8 +1511,19 @@
       const v = document.getElementById('plan-mold')?.value;
       if (v) label = `Moule : ${v}`;
     } else if (r.measure_type === 'dimensions') {
-      const v = document.getElementById('plan-dims')?.value.trim();
-      if (v && v !== (r.yield_desc || '')) label = `Dimensions : ${v}`;
+      // Ajustement par IA : coefficient issu de la proposition (modifiable)
+      const coefEl = document.getElementById('plan-ai-coef');
+      const coefRow = document.getElementById('plan-ai-coef-row');
+      const promptTxt = (document.getElementById('plan-ai-prompt')?.value || '').trim();
+      if (coefEl && coefRow && coefRow.style.display !== 'none') {
+        const c = parseFloat(String(coefEl.value).replace(',', '.'));
+        if (!(c > 0)) { alert('Coefficient invalide.'); return; }
+        factor = c;
+        label = promptTxt ? `IA : ${promptTxt.length > 60 ? promptTxt.slice(0, 60) + '…' : promptTxt}` : `Coefficient : ×${String(c).replace('.', ',')}`;
+      } else if (promptTxt) {
+        alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA » pour obtenir un coefficient.");
+        return;
+      }
     }
     factor = +factor.toFixed(3);
 
