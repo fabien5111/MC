@@ -243,7 +243,7 @@
             <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v4" shape="rect" fit="cover" placeholder="Visuel 4 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
           </div>
           <div class="space-y-4">
-            <details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
+            <details open class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
           </div>
         </div>
       </div>
@@ -571,6 +571,9 @@
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v3" shape="rect" fit="cover" placeholder="Visuel 3 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
           <div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step${stepCount}-v4" shape="rect" fit="cover" placeholder="Visuel 4 — taille idéale : 800 × 800 px" style="width:100%;height:100%"></image-slot></div>
         </div>
+        <div class="space-y-4">
+          <details open class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
+        </div>
       </div>`;
     upgradeStepEditors(div);
     setupStepDrag(div);
@@ -689,11 +692,11 @@
   window.addSubstepRow = function (block, text = '', focus = false) {
     const rows = block.querySelector('.substep-rows');
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-2 substep-row';
+    div.className = 'flex items-start gap-2 substep-row';
     div.innerHTML = `
-      <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 touch-none" title="Glisser pour déplacer">drag_indicator</span>
-      <input class="substep-input editorial-input flex-1 font-body-md text-on-surface" type="text" placeholder="Sous-étape…">
-      <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70 shrink-0"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
+      <span class="substep-handle material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 touch-none" title="Glisser pour déplacer">drag_indicator</span>
+      <textarea class="substep-input editorial-input flex-1 font-body-md text-on-surface" rows="2" placeholder="Sous-étape…" style="resize:none;line-height:1.5"></textarea>
+      <button type="button" tabindex="-1" title="Supprimer" onclick="this.closest('.substep-row').remove()" class="p-1 text-error hover:opacity-70 shrink-0 self-start mt-1"><span class="material-symbols-outlined text-[18px]">delete</span></button>`;
 
     // Glisser-déposer par la poignée uniquement (souris)
     const handle = div.querySelector('.substep-handle');
@@ -724,7 +727,7 @@
         else rows.appendChild(dragging);
       });
     }
-    const input = div.querySelector('input');
+    const input = div.querySelector('.substep-input');
     input.value = text;
     // Entrée dans une sous-étape → nouvelle sous-étape juste après
     input.addEventListener('keydown', e => {
@@ -732,7 +735,7 @@
         e.preventDefault();
         const next = addSubstepRow(block, '', false);
         div.after(next); // déplacer AVANT de donner le focus, sinon il est perdu
-        next.querySelector('input').focus();
+        next.querySelector('.substep-input').focus();
       }
     });
     rows.appendChild(div);
@@ -755,7 +758,7 @@
     (parts.length ? parts : ['']).forEach(p => addSubstepRow(block, p));
     if (desc) desc.innerHTML = ''; // le contenu vit désormais dans les sous-étapes
     setSubstepMode(block, true);
-    rows.querySelector('input')?.focus();
+    rows.querySelector('.substep-input')?.focus();
   };
 
   // Fusionne les sous-étapes en texte libre (une par ligne, précédée d'un tiret)
