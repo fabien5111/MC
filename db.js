@@ -507,14 +507,16 @@ async function getMolds(typeId = null) {
   return data || [];
 }
 
-async function addMold(name, typeId) {
-  const { data, error } = await db.from('molds').insert({ name, type_id: typeId || null }).select().single();
+async function addMold(name, typeId, servings) {
+  const { data, error } = await db.from('molds')
+    .insert({ name, type_id: typeId || null, servings: servings ?? null }).select().single();
   if (error) throw error;
   return data;
 }
 
-async function updateMold(id, name, typeId) {
-  const { data, error } = await db.from('molds').update({ name, type_id: typeId || null }).eq('id', id).select().single();
+async function updateMold(id, name, typeId, servings) {
+  const { data, error } = await db.from('molds')
+    .update({ name, type_id: typeId || null, servings: servings ?? null }).eq('id', id).select().single();
   if (error) throw error;
   return data;
 }

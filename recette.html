@@ -1283,6 +1283,7 @@
   const INPUT_CLS = 'border border-outline-variant rounded px-4 py-2 bg-white font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary';
   const LBL_CLS = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
   let planMerged = [];
+  let planMoldServings = {};
   let planBuilt = false;
 
   async function buildPlanPanel(r) {
@@ -1354,15 +1355,30 @@
     } else if (r.measure_type === 'mold') {
       const molds = await getMolds();
       const current = [r.yield_desc, MOLDS_LBL[r.yield_unit] || r.yield_unit].filter(Boolean).join(' — ');
+      // nombre de personnes par moule (table de référence) → affiché à la sélection
+      planMoldServings = {};
+      molds.forEach(m => { if (m.servings != null) planMoldServings[m.name] = m.servings; });
       zone.innerHTML = `
         <div class="flex flex-col gap-2" style="max-width:26rem">
           <label class="${LBL_CLS}" for="plan-mold">Moule / cercle</label>
           <select id="plan-mold" class="${INPUT_CLS}">
             <option value="">${esc(current ? 'Moule de la recette — ' + current : 'Moule de la recette')}</option>
-            ${molds.map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.mold_types?.name ? ' (' + esc(m.mold_types.name) + ')' : ''}</option>`).join('')}
+            ${molds.map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.mold_types?.name ? ' (' + esc(m.mold_types.name) + ')' : ''}${m.servings != null ? ' — ' + m.servings + ' pers.' : ''}</option>`).join('')}
           </select>
+          <p id="plan-mold-servings" class="text-sm font-label-md text-secondary" style="display:none"></p>
           <p class="text-xs text-on-surface-variant">Choisissez un autre moule si besoin — les quantités de la recette restent inchangées.</p>
         </div>`;
+      const moldSel = document.getElementById('plan-mold');
+      const servingsEl = document.getElementById('plan-mold-servings');
+      const refreshServings = () => {
+        const n = planMoldServings[moldSel.value];
+        if (n != null) {
+          servingsEl.innerHTML = `<span class="material-symbols-outlined text-[16px] align-middle">group</span> Ce moule convient pour ${n} personne${n > 1 ? 's' : ''}.`;
+          servingsEl.style.display = '';
+        } else servingsEl.style.display = 'none';
+      };
+      moldSel.addEventListener('change', refreshServings);
+      refreshServings();
     } else if (r.measure_type === 'dimensions') {
       // Ajustement par IA : l'utilisateur décrit ce qu'il veut, l'IA déduit le coefficient
       zone.innerHTML = `
