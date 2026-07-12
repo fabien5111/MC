@@ -75,16 +75,14 @@
   <!-- Main Column -->
   <div class="lg:col-span-8">
     <div class="flex flex-col gap-4 mb-8">
-      <div class="flex items-baseline justify-between flex-wrap gap-4">
-        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Le Saint-Honoré Traditionnel</h1>
-        <div class="flex items-center gap-4">
-          <span id="recipe-visibility" class="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">Publique</span>
-          <div class="flex items-center gap-2" id="recipe-rating">
-            <div class="flex items-center text-[#4a1e26]">
-              <span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined text-[18px]">star_half</span>
-            </div>
-            <div class="flex items-center gap-1.5 font-label-md text-label-md text-primary"><span class="font-bold">4.8/5</span><span class="text-on-surface-variant opacity-70">(140)</span></div>
+      <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary text-center">Le Saint-Honoré Traditionnel</h1>
+      <div class="flex items-center gap-4 flex-wrap">
+        <span id="recipe-visibility" class="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">Publique</span>
+        <div class="flex items-center gap-2" id="recipe-rating">
+          <div class="flex items-center text-[#4a1e26]">
+            <span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined fill text-[18px]">star</span><span class="material-symbols-outlined text-[18px]">star_half</span>
           </div>
+          <div class="flex items-center gap-1.5 font-label-md text-label-md text-primary"><span class="font-bold">4.8/5</span><span class="text-on-surface-variant opacity-70">(140)</span></div>
         </div>
       </div>
       <div class="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
@@ -1062,7 +1060,7 @@
     if (vis && recipe.status && recipe.status !== 'published') {
       const st = document.createElement('span');
       st.className = 'bg-secondary text-white px-3 py-1 font-label-md text-[10px] uppercase tracking-widest';
-      st.textContent = recipe.status === 'pending' ? 'En attente' : 'Brouillon';
+      st.textContent = recipe.status === 'pending' ? 'En attente de validation' : 'Brouillon';
       vis.parentElement.insertBefore(st, vis);
     }
     const rating = document.getElementById('recipe-rating');
