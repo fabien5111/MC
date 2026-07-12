@@ -394,15 +394,22 @@
     const t = (text != null && String(text) !== '') ? esc(String(text)) : '';
     return [t, unitSpan(unit)].filter(Boolean).join(' ');
   }
-  // Options d'un <select> d'unité : le libellé affiche aussi l'infobulle
-  // (comme une colonne), mais la VALEUR reste le nom seul de l'unité
+  // Options d'un <select> d'unité : le champ replié n'affiche que le libellé,
+  // la liste ouverte montre « libellé — infobulle » (développée à l'ouverture,
+  // repliée à la sélection). La VALEUR reste le nom seul de l'unité.
   function unitOptionsHTML(units, selected) {
     const eA = s => esc(s).replace(/"/g, '&quot;');
-    return (units || []).map(u => {
-      const lbl = u.tooltip ? `${u.name} — ${u.tooltip}` : u.name;
-      return `<option value="${eA(u.name)}"${u.name === selected ? ' selected' : ''}${u.tooltip ? ` title="${eA(u.tooltip)}"` : ''}>${esc(lbl)}</option>`;
-    }).join('');
+    return (units || []).map(u =>
+      `<option value="${eA(u.name)}" data-label="${eA(u.name)}"${u.tooltip ? ` data-tip="${eA(u.tooltip)}"` : ''}${u.name === selected ? ' selected' : ''}${u.tooltip ? ` title="${eA(u.tooltip)}"` : ''}>${esc(u.name)}</option>`
+    ).join('');
   }
+  // Développe/replie le texte des options d'un sélecteur d'unité
+  function unitExpand(sel) { [...sel.options].forEach(o => { o.textContent = o.dataset.tip ? `${o.dataset.label} — ${o.dataset.tip}` : (o.dataset.label ?? o.textContent); }); }
+  function unitCollapse(sel) { [...sel.options].forEach(o => { o.textContent = o.dataset.label ?? o.textContent; }); }
+  document.addEventListener('mousedown', e => { const s = e.target.closest?.('select.unit-select'); if (s) unitExpand(s); }, true);
+  document.addEventListener('focusin',  e => { const s = e.target.closest?.('select.unit-select'); if (s) unitExpand(s); });
+  document.addEventListener('change',   e => { const s = e.target.closest?.('select.unit-select'); if (s) unitCollapse(s); });
+  document.addEventListener('focusout', e => { const s = e.target.closest?.('select.unit-select'); if (s) unitCollapse(s); });
   const UNITS_LBL = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
   const MOLDS_LBL = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
   let currentRecipe = null;
@@ -788,7 +795,7 @@
         <div class="flex flex-wrap items-end gap-3">
           <input data-add-name value="${esc(a.name)}" placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:12rem">
           <input data-add-qty value="${esc(a.qty || '')}" placeholder="Quantité" type="number" min="0" step="any" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
-          <select data-add-unit class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem">
+          <select data-add-unit class="unit-select border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem">
             <option value="">— Unité —</option>${unitOptions}
           </select>
           <button type="button" onclick="mcApplyEditAdded(${idx}, this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">OK</button>
@@ -819,7 +826,7 @@
       <div class="flex flex-wrap items-end gap-3 mt-2" data-add-form>
         <input data-add-name placeholder="Ingrédient" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:12rem">
         <input data-add-qty placeholder="Quantité" type="number" min="0" step="any" class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm" style="width:6rem">
-        <select data-add-unit class="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem">
+        <select data-add-unit class="unit-select border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white" style="width:8rem">
           <option value="">— Unité —</option>${unitOptions}
         </select>
         <button type="button" onclick="mcAddIng('${groupId}', this)" class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">Ajouter</button>
