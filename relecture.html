@@ -81,28 +81,28 @@
           <input id="f-titre" class="champ font-headline-md text-[20px]"></label>
         <label class="flex flex-col gap-1 md:col-span-2"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
           <textarea id="f-description" rows="2" class="champ"></textarea></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Temps de préparation (min)</span>
-          <input id="f-prep" type="number" min="0" class="champ"></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Temps de cuisson (min)</span>
-          <input id="f-cuisson" type="number" min="0" class="champ"></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Repos (min)</span>
-          <input id="f-repos" type="number" min="0" class="champ"></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Congélation (min)</span>
-          <input id="f-congel" type="number" min="0" class="champ"></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
+        <label class="flex flex-col gap-1 md:col-span-2"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
           <input id="f-rendement" class="champ" placeholder="8 parts, 20 pièces, cercle 20 cm…"></label>
-        <label class="flex flex-col gap-1"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
-          <input id="f-notes" class="champ"></label>
+        <label class="flex flex-col gap-1 md:col-span-2"><span class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
+          <textarea id="f-notes" rows="2" class="champ" style="resize:vertical" placeholder="Conseils de conservation, variantes, astuces…"></textarea></label>
       </div>
     </section>
 
-    <!-- Sous-préparations : gauche = origine, droite = corrigeable -->
+    <!-- Sous-préparations : gauche = origine (1/3), droite = corrigeable (2/3) -->
     <div id="rel-sps" class="flex flex-col gap-8"></div>
 
     <div class="flex justify-start mt-6">
       <button type="button" onclick="relAddSp()" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">add_circle</span> Ajouter une sous-préparation</button>
     </div>
+
+    <!-- Récapitulatif global de la recette -->
+    <section id="rel-recap" class="mt-12 bg-primary text-white rounded-xl p-6 md:p-8">
+      <h2 class="font-headline-md text-[22px] mb-5 flex items-center gap-3"><span class="material-symbols-outlined">insights</span>Indications globales de la recette</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="rel-recap-grid"></div>
+    </section>
   </div>
+
+  <datalist id="dl-ingredients"></datalist>
 </main>
 
 <!-- Barre d'actions fixe -->
@@ -134,25 +134,73 @@
     return '';
   }
 
+  // Options d'unité : liste de référence (units) + l'unité importée si absente
+  function uniteOptions(selected) {
+    const ref = (window._units || []).map(u => u.name);
+    const opts = [...new Set([...ref, selected].filter(Boolean))];
+    if (!opts.length) return UNITE_OPTS.map(u => `<option value="${u}" ${selected === u ? 'selected' : ''}>${UNITE_LBL[u] || u}</option>`).join('');
+    return `<option value="" ${!selected ? 'selected' : ''}>—</option>` +
+      opts.map(u => `<option value="${esc(u)}" ${selected === u ? 'selected' : ''}>${esc(UNITE_LBL[u] || u)}</option>`).join('');
+  }
+
+  // Temps de l'étape (sous-préparation) préremplis : depuis sp.temps si présents,
+  // sinon estimés depuis les temps par ligne importés (cuisson = somme, T° = max)
+  function spTimes(sp) {
+    const t = sp.temps || {};
+    const lignesCuisson = (sp.etapes || []).reduce((n, e) => n + (e.duree_min || 0), 0);
+    const tMax = (sp.etapes || []).reduce((m, e) => Math.max(m, e.temperature_c || 0), 0);
+    return {
+      prep: t.preparation_min ?? '',
+      attente: t.attente_min ?? '',
+      cuisson: t.cuisson_min ?? (lignesCuisson || ''),
+      temp: sp.temperature_c ?? (tMax || ''),
+      jour: sp.day_offset ?? 0,
+    };
+  }
+
+  const TIME_FIELD = (attr, label, val, unit) => `
+    <label class="flex flex-col items-center text-center gap-1">
+      <span class="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">${label}</span>
+      <span class="flex items-baseline gap-1"><input ${attr} type="number" min="0" oninput="relTimeChanged(this)" class="champ text-center" style="width:4rem" value="${val}"><span class="text-xs text-on-surface-variant">${unit}</span></span>
+    </label>`;
+
   function spHTML(sp, i) {
+    const tm = spTimes(sp);
     return `
     <section class="border border-outline-variant rounded-xl overflow-hidden" data-sp="${i}" data-materiel="${encodeURIComponent(JSON.stringify(sp.materiel || []))}">
       <div class="bg-surface-container-high px-6 py-3 flex items-center gap-3">
         <span data-sp-num class="font-headline-md text-[18px] text-primary">${Number(i) + 1 || ''}.</span>
-        <input data-sp-nom class="champ font-headline-md text-[18px] flex-1" value="${esc(sp.nom || '')}" placeholder="Nom de la sous-préparation">
-        <button type="button" onclick="relDelSp(this)" title="Supprimer la sous-préparation" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+        <input data-sp-nom class="champ font-headline-md text-[18px] flex-1" value="${esc(sp.nom || '')}" placeholder="Nom de l'étape">
+        <button type="button" onclick="relDelSp(this)" title="Supprimer l'étape" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[20px]">delete</span></button>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2">
-        <!-- Origine (lecture seule) -->
+
+      <!-- Temps de l'étape + J− -->
+      <div class="px-6 py-4 bg-surface-container-low/40 border-b border-outline-variant/50 flex flex-wrap items-end gap-x-6 gap-y-3">
+        ${TIME_FIELD('data-sp-prep', 'Réalisation', tm.prep, 'min')}
+        ${TIME_FIELD('data-sp-attente', 'Attente', tm.attente, 'min')}
+        ${TIME_FIELD('data-sp-cuisson', 'Cuisson', tm.cuisson, 'min')}
+        ${TIME_FIELD('data-sp-temp', 'T°C cuisson', tm.temp, '°C')}
+        <label class="flex flex-col items-center text-center gap-1">
+          <span class="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">Total</span>
+          <span class="flex items-baseline gap-1"><span data-sp-total class="font-label-md text-primary" style="width:4rem;text-align:center">—</span></span>
+        </label>
+        <label class="flex flex-col items-center text-center gap-1">
+          <span class="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">À préparer</span>
+          <span class="flex items-baseline gap-1 text-sm"><span class="text-on-surface-variant">J −</span><input data-sp-jour type="number" min="0" oninput="relTimeChanged(this)" class="champ text-center" style="width:3.5rem" value="${tm.jour}"><span class="text-xs text-on-surface-variant">j</span></span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3">
+        <!-- Origine (lecture seule) — 1/3 -->
         <div class="p-6 bg-surface-container-low/60 border-b lg:border-b-0 lg:border-r border-outline-variant/50">
           <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Contenu importé</p>
           ${(sp.ingredients || []).length ? `<ul class="flex flex-col gap-1 mb-4">${(sp.ingredients || []).map(g => `<li class="text-sm">• ${esc(g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' '))}</li>`).join('')}</ul>` : '<p class="text-sm italic text-on-surface-variant mb-4">Aucun ingrédient (montage ?)</p>'}
           ${(sp.etapes || []).map(e => `<p class="text-sm mb-2"><span class="text-secondary font-label-md">${e.ordre ?? ''}.</span> ${esc(e.texte || '')}</p>`).join('')}
         </div>
-        <!-- Corrigeable -->
-        <div class="p-6">
+        <!-- Corrigeable — 2/3 -->
+        <div class="p-6 lg:col-span-2">
           <p class="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-3">Version corrigée</p>
-          <div class="mb-2 grid gap-2" style="grid-template-columns: 1fr 5.5rem 6.5rem 2rem">
+          <div class="mb-2 grid gap-2" style="grid-template-columns: 1fr 5.5rem 7rem 2rem">
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant">Ingrédient</span>
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Quantité</span>
             <span class="font-label-md text-[10px] uppercase text-on-surface-variant text-center">Unité</span><span></span>
@@ -175,11 +223,11 @@
   function ingRowHTML(g = {}) {
     return `
     <div data-ing>
-      <div class="grid gap-2 items-center" style="grid-template-columns: 1fr 5.5rem 6.5rem 2rem">
-        <input data-ing-nom class="champ" value="${esc(g.nom || '')}" placeholder="farine">
+      <div class="grid gap-2 items-center" style="grid-template-columns: 1fr 5.5rem 7rem 2rem">
+        <input data-ing-nom list="dl-ingredients" class="champ" value="${esc(g.nom || '')}" placeholder="farine" autocomplete="off">
         <input data-ing-qte type="number" min="0" step="any" class="champ text-center" value="${g.quantite ?? ''}">
-        <select data-ing-unite class="champ">${UNITE_OPTS.map(u => `<option value="${u}" ${g.unite === u ? 'selected' : ''}>${UNITE_LBL[u]}</option>`).join('')}</select>
-        <button type="button" onclick="this.closest('[data-ing]').remove()" tabindex="-1" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        <select data-ing-unite class="champ">${uniteOptions(g.unite)}</select>
+        <button type="button" title="Supprimer" onclick="this.closest('[data-ing]').remove()" tabindex="-1" class="text-error hover:opacity-70"><span class="material-symbols-outlined text-[18px]">delete</span></button>
       </div>
       ${g.note ? `<input data-ing-note class="champ text-sm mt-1" value="${esc(g.note)}" placeholder="note (pommade, à froid…)">` : ''}
     </div>`;
@@ -188,11 +236,46 @@
   function etapeRowHTML(e = {}) {
     return `
     <div data-etape class="flex items-start gap-2">
-      <textarea data-etape-texte rows="2" class="champ flex-1">${esc(e.texte || '')}</textarea>
-      <input data-etape-duree type="number" min="0" class="champ text-center" style="width:4.5rem" title="Durée (min)" placeholder="min" value="${e.duree_min ?? ''}">
-      <input data-etape-temp type="number" min="0" class="champ text-center" style="width:4.5rem" title="Température (°C)" placeholder="°C" value="${e.temperature_c ?? ''}">
-      <button type="button" onclick="this.closest('[data-etape]').remove()" tabindex="-1" class="text-error hover:opacity-70 mt-2"><span class="material-symbols-outlined text-[18px]">close</span></button>
+      <textarea data-etape-texte rows="4" class="champ flex-1">${esc(e.texte || '')}</textarea>
+      <button type="button" title="Supprimer" onclick="this.closest('[data-etape]').remove()" tabindex="-1" class="text-error hover:opacity-70 mt-2"><span class="material-symbols-outlined text-[18px]">delete</span></button>
     </div>`;
+  }
+
+  // Total d'une étape (min) + récap global recalculés à la saisie d'un temps
+  window.relTimeChanged = function () {
+    document.querySelectorAll('#rel-sps [data-sp]').forEach(sec => {
+      const v = a => parseFloat(sec.querySelector(a)?.value) || 0;
+      const tot = v('[data-sp-prep]') + v('[data-sp-attente]') + v('[data-sp-cuisson]');
+      const el = sec.querySelector('[data-sp-total]');
+      if (el) el.textContent = tot ? fmtDuree(tot) : '—';
+    });
+    updateRecap();
+  };
+
+  function fmtDuree(min) {
+    min = Math.round(min);
+    const j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+    return [j ? j + ' j' : '', h ? h + ' h' : '', (m || (!j && !h)) ? m + ' min' : ''].filter(Boolean).join(' ');
+  }
+
+  // Récapitulatif global : sommes des temps par étape + rendement + nb d'étapes
+  function updateRecap() {
+    let prep = 0, attente = 0, cuisson = 0;
+    const secs = [...document.querySelectorAll('#rel-sps [data-sp]')];
+    secs.forEach(sec => {
+      const v = a => parseFloat(sec.querySelector(a)?.value) || 0;
+      prep += v('[data-sp-prep]'); attente += v('[data-sp-attente]'); cuisson += v('[data-sp-cuisson]');
+    });
+    const total = prep + attente + cuisson;
+    const rendement = document.getElementById('f-rendement')?.value.trim() || '—';
+    const item = (lbl, val) => `<div><p class="font-label-md text-[10px] uppercase tracking-widest opacity-70 mb-1">${lbl}</p><p class="font-headline-md text-[20px]">${val}</p></div>`;
+    document.getElementById('rel-recap-grid').innerHTML =
+      item('Réalisation', prep ? fmtDuree(prep) : '—')
+      + item('Attente', attente ? fmtDuree(attente) : '—')
+      + item('Cuisson', cuisson ? fmtDuree(cuisson) : '—')
+      + item('Temps total', total ? fmtDuree(total) : '—')
+      + item('Rendement', esc(rendement))
+      + item('Nombre d\'étapes', secs.length);
   }
 
   window.relAddIng = btn => btn.previousElementSibling.insertAdjacentHTML('beforeend', ingRowHTML());
@@ -219,31 +302,38 @@
     p.titre = document.getElementById('f-titre').value.trim();
     p.description = document.getElementById('f-description').value.trim() || null;
     p.notes = document.getElementById('f-notes').value.trim() || null;
-    p.temps = {
-      preparation_min: num(document.getElementById('f-prep').value),
-      cuisson_min: num(document.getElementById('f-cuisson').value),
-      repos_min: num(document.getElementById('f-repos').value),
-      congelation_min: num(document.getElementById('f-congel').value),
-    };
     p.rendement = p.rendement || {};
     p.rendement.libelle_corrige = document.getElementById('f-rendement').value.trim() || null;
     p.sous_preparations = [...document.querySelectorAll('[data-sp]')].map((sec, i) => ({
       ordre: i + 1,
-      nom: sec.querySelector('[data-sp-nom]').value.trim() || `Sous-préparation ${i + 1}`,
+      nom: sec.querySelector('[data-sp-nom]').value.trim() || `Étape ${i + 1}`,
+      temps: {
+        preparation_min: num(sec.querySelector('[data-sp-prep]').value),
+        attente_min: num(sec.querySelector('[data-sp-attente]').value),
+        cuisson_min: num(sec.querySelector('[data-sp-cuisson]').value),
+      },
+      temperature_c: num(sec.querySelector('[data-sp-temp]').value),
+      day_offset: num(sec.querySelector('[data-sp-jour]').value) || 0,
       ingredients: [...sec.querySelectorAll('[data-ing]')].map(row => ({
         nom: row.querySelector('[data-ing-nom]').value.trim(),
         quantite: num(row.querySelector('[data-ing-qte]').value),
-        unite: row.querySelector('[data-ing-unite]').value,
+        unite: row.querySelector('[data-ing-unite]').value || null,
         note: row.querySelector('[data-ing-note]')?.value.trim() || null,
       })).filter(g => g.nom),
       etapes: [...sec.querySelectorAll('[data-etape]')].map((row, k) => ({
         ordre: k + 1,
         texte: row.querySelector('[data-etape-texte]').value.trim(),
-        duree_min: num(row.querySelector('[data-etape-duree]').value),
-        temperature_c: num(row.querySelector('[data-etape-temp]').value),
       })).filter(e => e.texte),
       materiel: JSON.parse(decodeURIComponent(sec.dataset.materiel || '%5B%5D')),
     }));
+    // Temps globaux = sommes des étapes (attente = repos + congélation regroupés)
+    const somme = k => p.sous_preparations.reduce((n, sp) => n + (sp.temps?.[k] || 0), 0);
+    p.temps = {
+      preparation_min: somme('preparation_min') || null,
+      cuisson_min: somme('cuisson_min') || null,
+      repos_min: somme('attente_min') || null,
+      congelation_min: null,
+    };
     return p;
   }
 
@@ -303,21 +393,18 @@
       const sps = p.sous_preparations || [];
       for (let i = 0; i < sps.length; i++) {
         const sp = sps[i];
-        const sousEtapes = (sp.etapes || []).map(e => {
-          const infos = [e.duree_min ? `${e.duree_min} min` : null, e.temperature_c ? `${e.temperature_c} °C` : null].filter(Boolean).join(' à ');
-          return infos ? `${e.texte} (${infos})` : e.texte;
-        });
-        const cuissons = (sp.etapes || []).filter(e => e.temperature_c);
+        const sousEtapes = (sp.etapes || []).map(e => e.texte).filter(Boolean);
+        const spt = sp.temps || {};
         await db.from('recipe_steps').insert({
           recipe_id: recipe.id,
           step_number: i + 1,
           title: sp.nom || `Étape ${i + 1}`,
           description: null,
-          prep_time: null,
-          cook_time: cuissons.reduce((n, e) => n + (e.duree_min || 0), 0) || null,
-          cook_temp: cuissons.length ? Math.max(...cuissons.map(e => e.temperature_c)) : null,
-          wait_time: null,
-          day_offset: 0,
+          prep_time: spt.preparation_min || null,
+          cook_time: spt.cuisson_min || null,
+          cook_temp: sp.temperature_c || null,
+          wait_time: spt.attente_min || null,
+          day_offset: sp.day_offset || 0,
           tips: null,
           sous_etapes: sousEtapes.length ? sousEtapes : null,
           order_index: i,
@@ -365,8 +452,18 @@
   };
 
   (async () => {
+    initAuthUI(); // affiche les boutons connecté / déconnecté dans l'en-tête
     const { data: { session } } = await db.auth.getSession();
     if (!session) { window.location.href = 'connexion.html'; return; }
+
+    // Listes de référence : ingrédients (autocomplétion) + unités (sélecteur)
+    try {
+      const [refs, units] = await Promise.all([getListEntries('ingredient_refs', 'name'), getUnits()]);
+      window._units = units || [];
+      document.getElementById('dl-ingredients').innerHTML =
+        (refs || []).map(r => `<option value="${esc(r.name)}"></option>`).join('');
+    } catch (_) { window._units = []; }
+
     const id = new URLSearchParams(location.search).get('id');
     importRow = id ? await getImport(id) : null;
     if (!importRow) { document.getElementById('relecture-vide').style.display = ''; return; }
@@ -394,16 +491,14 @@
     document.getElementById('f-titre').value = p.titre || '';
     document.getElementById('f-description').value = p.description || '';
     document.getElementById('f-notes').value = p.notes || '';
-    document.getElementById('f-prep').value = p.temps?.preparation_min ?? '';
-    document.getElementById('f-cuisson').value = p.temps?.cuisson_min ?? '';
-    document.getElementById('f-repos').value = p.temps?.repos_min ?? '';
-    document.getElementById('f-congel').value = p.temps?.congelation_min ?? '';
     document.getElementById('f-rendement').value = p.rendement?.libelle_corrige || rendementTxt(p.rendement);
+    document.getElementById('f-rendement').addEventListener('input', updateRecap);
 
     document.getElementById('rel-sps').innerHTML = (p.sous_preparations || []).map((sp, i) => spHTML(sp, i)).join('');
 
     document.getElementById('relecture').style.display = '';
     document.getElementById('rel-actions').style.display = '';
+    relTimeChanged(); // totaux par étape + récap global initiaux
 
     // Import déjà converti : lien vers la recette plutôt que re-création
     if (importRow.statut !== 'brouillon' && importRow.recipe_id) {
