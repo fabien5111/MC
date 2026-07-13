@@ -503,12 +503,31 @@
   const isModifiedIng = it => ingMod(it).qty != null || ingMod(it).coef != null;
 
   // Quantité ajustée effective d'une ligne : quantité forcée, sinon base × coefficient (de ligne ou global)
+  // Mode d'échelle (fonçage / remplissage / simple) d'un ingrédient, d'après son groupe
+  let _ingModeMap = null, _ingModeMapFor = null;
+  function ingScalingModeOf(id) {
+    if (_ingModeMapFor !== currentRecipe) {
+      _ingModeMap = {};
+      (currentRecipe?.ingredient_groups || []).forEach(g => (g.ingredients || []).forEach(ing => { _ingModeMap[String(ing.id)] = g.scaling_mode; }));
+      _ingModeMapFor = currentRecipe;
+    }
+    return _ingModeMap[String(id)];
+  }
+  // Coefficient issu de l'adaptation par moule (par composant), sans marquer la ligne comme modifiée
+  function moldCoefFor(it) {
+    const mc = currentPlan?.overrides?.mold_coefs;
+    if (!mc) return null;
+    const c = ingScalingModeOf(it.id) === 'foncage' ? (mc.surface ?? mc.volume) : (mc.volume ?? mc.surface);
+    return (c != null && c > 0) ? c : null;
+  }
+
   function effAdjustedQty(it) {
     const m = ingMod(it);
     if (m.qty != null) return m.qty;
     const base = numify(it.quantity);
     if (base == null) return null;
-    return +(base * (m.coef != null ? m.coef : planFactor())).toFixed(2);
+    const coef = m.coef != null ? m.coef : (moldCoefFor(it) ?? planFactor());
+    return +(base * coef).toFixed(2);
   }
 
   function effCoef(it) {
@@ -516,7 +535,7 @@
     if (m.coef != null) return m.coef;
     const base = numify(it.quantity);
     if (m.qty != null) return base ? +(m.qty / base).toFixed(2) : null;
-    return planFactor();
+    return moldCoefFor(it) ?? planFactor();
   }
 
   // Fusion effective (mode planifié) : barrés exclus, ajustements appliqués, ajouts inclus
@@ -1609,7 +1628,7 @@
     if (!dateEl.value) { alert('Choisissez une date.'); return; }
     if (dateEl.value < dateEl.min) { alert('La date doit être aujourd’hui ou dans le futur.'); return; }
 
-    let factor = 1, label = null, moldMods = null, moldTarget = null;
+    let factor = 1, label = null, moldCoefs = null, moldTarget = null;
     if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
       const unitLbl = UNITS_LBL[r.yield_unit] || r.yield_unit || '';
       const mode = document.querySelector('input[name="plan-mode"]:checked')?.value;
@@ -1643,15 +1662,10 @@
       const coefSurf = (src.surface > 0 && tgt.surface > 0) ? tgt.surface / src.surface : null;
       if (coefVol || coefSurf) {
         const round = x => +x.toFixed(3);
-        // fonçage/glaçage → surface ; remplissage & proportionnel simple → volume
-        const modeCoef = m => (m === 'foncage') ? (coefSurf ?? coefVol) : (coefVol ?? coefSurf);
-        const mods = { ...planOverrides().mods };
-        (r.ingredient_groups || []).forEach(g => {
-          const c = modeCoef(g.scaling_mode);
-          if (c == null) return;
-          (g.ingredients || []).forEach(ing => { mods[String(ing.id)] = { ...(mods[String(ing.id)] || {}), coef: round(c) }; });
-        });
-        moldMods = mods;
+        // Coefficients par composant : fonçage/glaçage → surface ; remplissage &
+        // proportionnel simple → volume. Appliqués à l'affichage sans marquer les
+        // lignes comme « modifiées manuellement » (l'orange reste pour l'utilisateur).
+        moldCoefs = { surface: coefSurf != null ? round(coefSurf) : null, volume: coefVol != null ? round(coefVol) : null };
         factor = round(coefVol ?? coefSurf);
       }
       const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v).join(' × ');
@@ -1689,7 +1703,7 @@
     try {
       if (editing) {
         const overrides = { ...planOverrides(), etapes_faites: etapesFaites };
-        if (moldMods) overrides.mods = moldMods;
+        if (moldCoefs) overrides.mold_coefs = moldCoefs;
         if (moldTarget) overrides.mold_target = moldTarget;
         const { error } = await db.from('planning')
           .update({ planned_date: dateEl.value, factor, adjust_label: label, overrides })
@@ -1703,8 +1717,8 @@
         planPanel.style.display = 'none';
         await renderRecipeFromDB(r.id);
       } else {
-        const ov = (etapesFaites.length || moldMods || moldTarget)
-          ? { mods: moldMods || {}, added: [], etapes_faites: etapesFaites, ...(moldTarget ? { mold_target: moldTarget } : {}) }
+        const ov = (etapesFaites.length || moldCoefs || moldTarget)
+          ? { mods: {}, added: [], etapes_faites: etapesFaites, ...(moldCoefs ? { mold_coefs: moldCoefs } : {}), ...(moldTarget ? { mold_target: moldTarget } : {}) }
           : null;
         const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label, overrides: ov });
         if (error) throw error;
