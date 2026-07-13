@@ -219,6 +219,14 @@
             <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
             <div class="space-y-4 ingredient-lines"></div>
             <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
+            <div class="mt-4 flex items-center gap-2 flex-wrap step-scaling-row">
+              <label class="font-label-md text-label-md text-outline">ADAPTATION AU MOULE</label>
+              <select class="step-scaling editorial-input text-on-surface bg-transparent cursor-pointer" style="width:auto">
+                <option value="simple">Proportionnel simple</option>
+                <option value="foncage">Tapisse le moule (fonçage → surface)</option>
+                <option value="remplissage">Remplit le moule (volume)</option>
+              </select>
+            </div>
           </div>
           <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
           <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
@@ -548,6 +556,14 @@
           <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
           <div class="space-y-4 ingredient-lines"></div>
           <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
+          <div class="mt-4 flex items-center gap-2 flex-wrap step-scaling-row">
+            <label class="font-label-md text-label-md text-outline">ADAPTATION AU MOULE</label>
+            <select class="step-scaling editorial-input text-on-surface bg-transparent cursor-pointer" style="width:auto">
+              <option value="simple">Proportionnel simple</option>
+              <option value="foncage">Tapisse le moule (fonçage → surface)</option>
+              <option value="remplissage">Remplit le moule (volume)</option>
+            </select>
+          </div>
         </div>
         <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
           <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
@@ -1003,8 +1019,9 @@
         })).filter(l => l.name);
         if (!lines.length) continue;
         const groupName = stepEls[gi].querySelector('input')?.value.trim() || `Étape ${gi + 1}`;
+        const scalingMode = stepEls[gi].querySelector('.step-scaling')?.value || 'simple';
         const { data: grp, error: grpErr } = await db.from('ingredient_groups')
-          .insert({ recipe_id: recipe.id, name: groupName, order_index: gi }).select().single();
+          .insert({ recipe_id: recipe.id, name: groupName, order_index: gi, scaling_mode: scalingMode }).select().single();
         if (grpErr) { console.error('Groupe non enregistré :', grpErr); continue; }
         const { error: ingErr } = await db.from('ingredients')
           .insert(lines.map(l => ({ ...l, group_id: grp.id })));
@@ -1338,7 +1355,9 @@
       sortIdx(s.step_photos).slice(0, 4).forEach((p, pi) => {
         b.querySelectorAll('image-slot')[pi]?.setAttribute('src', p.url);
       });
-      sortIdx(groupsByOrder[s.order_index || 0]?.ingredients).forEach((ing, li_) => {
+      const grpForStep = groupsByOrder[s.order_index || 0];
+      if (grpForStep?.scaling_mode) { const ss = b.querySelector('.step-scaling'); if (ss) ss.value = grpForStep.scaling_mode; }
+      sortIdx(grpForStep?.ingredients).forEach((ing, li_) => {
         const line = li_ === 0
           ? b.querySelector('.ingredient-lines > div')
           : addIngredientLine(b.querySelector('.step-ingredients > button'), false);
