@@ -417,6 +417,36 @@
   // Libellé du type de moule : table de référence mold_types en priorité,
   // repli sur l'ancien code yield_unit pour les recettes créées avant le lien.
   const moldLbl = rec => (rec && (rec.mold_types?.name || MOLDS_LBL[rec.yield_unit] || rec.yield_unit)) || '';
+
+  // ── Adaptation par moule : dimensions attendues par forme + métriques ──
+  const MOLD_FORME_DIMS = {
+    'cylindre':      ['diametre', 'hauteur'],
+    'rectangulaire': ['longueur', 'largeur', 'hauteur'],
+    'oblong':        ['longueur', 'largeur', 'hauteur'],
+    'demi-cylindre': ['longueur', 'largeur'],
+  };
+  const DIM_LABELS = { diametre: 'Diamètre', hauteur: 'Hauteur', longueur: 'Longueur', largeur: 'Largeur' };
+  // Surface de pâte (fonçage) et volume de cavité d'un moule (constantes gardées
+  // pour comparer deux formes différentes ; les ratios restent cohérents).
+  function moldMetrics(forme, d) {
+    const n = k => { const v = parseFloat(String(d?.[k]).replace(',', '.')); return isFinite(v) && v > 0 ? v : null; };
+    if (forme === 'cylindre') {
+      const dia = n('diametre'), h = n('hauteur');
+      return { volume: dia && h ? Math.PI * (dia/2)**2 * h : null,
+               surface: dia ? Math.PI * ((dia + 2*(h || 0))/2)**2 : null };
+    }
+    if (forme === 'rectangulaire' || forme === 'oblong') {
+      const L = n('longueur'), l = n('largeur'), h = n('hauteur');
+      return { volume: L && l && h ? L*l*h : null,
+               surface: L && l ? (L + 2*(h || 0)) * (l + 2*(h || 0)) : null };
+    }
+    if (forme === 'demi-cylindre') {
+      const L = n('longueur'), l = n('largeur'); // largeur = diamètre de la demi-lune
+      return { volume: L && l ? Math.PI * (l/2)**2 * L / 2 : null,
+               surface: L && l ? Math.PI * (l/2) * L : null };
+    }
+    return { volume: null, surface: null };
+  }
   let currentRecipe = null;
   let currentPlan = null; // entrée de planning quand on arrive via « recettes planifiées »
 
@@ -1404,32 +1434,45 @@
       };
       if (ingSel) { ingSel.addEventListener('change', refreshIng); refreshIng(); }
     } else if (r.measure_type === 'mold') {
-      const molds = await getMolds();
-      const current = [r.yield_desc, moldLbl(r)].filter(Boolean).join(' — ');
-      // nombre de personnes par moule (table de référence) → affiché à la sélection
-      planMoldServings = {};
-      molds.forEach(m => { if (m.servings != null) planMoldServings[m.name] = m.servings; });
+      const moldTypes = await getMoldTypes();
+      const srcForme = r.mold_types?.forme || '';
+      const srcDims = (r.mold_dims && typeof r.mold_dims === 'object') ? r.mold_dims : {};
+      const srcSummary = [r.yield_desc, moldLbl(r)].filter(Boolean).join(' — ');
       zone.innerHTML = `
-        <div class="flex flex-col gap-2" style="max-width:26rem">
-          <label class="${LBL_CLS}" for="plan-mold">Moule / cercle</label>
-          <select id="plan-mold" class="${INPUT_CLS}">
-            <option value="">${esc(current ? 'Moule de la recette — ' + current : 'Moule de la recette')}</option>
-            ${molds.map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.mold_types?.name ? ' (' + esc(m.mold_types.name) + ')' : ''}${m.servings != null ? ' — ' + m.servings + ' pers.' : ''}</option>`).join('')}
+        <div class="flex flex-col gap-3" style="max-width:32rem">
+          <label class="${LBL_CLS}" for="plan-mold-type">Moule / cercle visé</label>
+          <select id="plan-mold-type" class="${INPUT_CLS}">
+            <option value="" data-forme="${esc(srcForme)}">${esc(srcSummary ? 'Moule de la recette — ' + srcSummary : 'Moule de la recette')}</option>
+            ${moldTypes.map(t => `<option value="${t.id}" data-forme="${esc(t.forme || '')}">${esc(t.name)}${t.forme ? ' (' + esc(t.forme) + ')' : ''}</option>`).join('')}
           </select>
-          <p id="plan-mold-servings" class="text-sm font-label-md text-secondary" style="display:none"></p>
-          <p class="text-xs text-on-surface-variant">Choisissez un autre moule si besoin — les quantités de la recette restent inchangées.</p>
+          <div id="plan-mold-dims" class="flex flex-wrap gap-4 items-end"></div>
+          <p class="text-xs text-on-surface-variant">Renseignez les dimensions du moule visé : les quantités seront recalculées (pâte et glaçage selon la surface, appareil selon le volume). Laissez « Moule de la recette » pour ne rien changer.</p>
         </div>`;
-      const moldSel = document.getElementById('plan-mold');
-      const servingsEl = document.getElementById('plan-mold-servings');
-      const refreshServings = () => {
-        const n = planMoldServings[moldSel.value];
-        if (n != null) {
-          servingsEl.innerHTML = `<span class="material-symbols-outlined text-[16px] align-middle">group</span> Ce moule convient pour ${n} personne${n > 1 ? 's' : ''}.`;
-          servingsEl.style.display = '';
-        } else servingsEl.style.display = 'none';
+      const typeSel = document.getElementById('plan-mold-type');
+      const preset = (planEditMode && currentPlan?.overrides?.mold_target) ? currentPlan.overrides.mold_target : null;
+      const renderPlanDims = () => {
+        const opt = typeSel.selectedOptions[0];
+        const forme = opt?.dataset.forme || '';
+        const isSource = typeSel.value === '';
+        const keys = MOLD_FORME_DIMS[forme] || [];
+        const wrap = document.getElementById('plan-mold-dims');
+        if (!keys.length) {
+          wrap.innerHTML = forme ? '' : `<p class="text-xs text-on-surface-variant italic">Ce type de moule n'a pas de forme définie (à renseigner dans l'admin) : recalcul indisponible.</p>`;
+          return;
+        }
+        const vals = (preset && String(preset.type_id ?? '') === typeSel.value) ? (preset.dims || {}) : (isSource ? srcDims : {});
+        wrap.innerHTML = keys.map(k => `
+          <div class="flex flex-col">
+            <label class="${LBL_CLS}">${DIM_LABELS[k] || k}</label>
+            <div class="flex items-baseline gap-2">
+              <input class="plan-mold-dim ${INPUT_CLS}" data-dim="${k}" type="number" min="0" step="any" style="width:6.5rem" placeholder="0" value="${vals[k] != null ? vals[k] : ''}">
+              <span class="text-sm text-on-surface-variant">cm</span>
+            </div>
+          </div>`).join('');
       };
-      moldSel.addEventListener('change', refreshServings);
-      refreshServings();
+      typeSel.addEventListener('change', renderPlanDims);
+      if (preset) typeSel.value = String(preset.type_id ?? '');
+      renderPlanDims();
     } else if (r.measure_type === 'dimensions') {
       // Ajustement par IA : l'utilisateur décrit ce qu'il veut, l'IA déduit le coefficient
       zone.innerHTML = `
@@ -1566,7 +1609,7 @@
     if (!dateEl.value) { alert('Choisissez une date.'); return; }
     if (dateEl.value < dateEl.min) { alert('La date doit être aujourd’hui ou dans le futur.'); return; }
 
-    let factor = 1, label = null;
+    let factor = 1, label = null, moldMods = null, moldTarget = null;
     if (r.measure_type === 'units' && parseFloat(r.yield_qty) > 0) {
       const unitLbl = UNITS_LBL[r.yield_unit] || r.yield_unit || '';
       const mode = document.querySelector('input[name="plan-mode"]:checked')?.value;
@@ -1584,8 +1627,37 @@
         label = `Quantité : ${want} ${unitLbl}`.trim();
       }
     } else if (r.measure_type === 'mold') {
-      const v = document.getElementById('plan-mold')?.value;
-      if (v) label = `Moule : ${v}`;
+      const typeSel = document.getElementById('plan-mold-type');
+      const opt = typeSel?.selectedOptions[0];
+      const tgtForme = opt?.dataset.forme || null;
+      const tgtDims = {};
+      document.querySelectorAll('#plan-mold-dims .plan-mold-dim').forEach(i => {
+        const val = parseFloat(String(i.value).replace(',', '.'));
+        if (isFinite(val) && val > 0) tgtDims[i.dataset.dim] = val;
+      });
+      const srcForme = r.mold_types?.forme || null;
+      const srcDims = (r.mold_dims && typeof r.mold_dims === 'object') ? r.mold_dims : {};
+      const src = moldMetrics(srcForme, srcDims);
+      const tgt = moldMetrics(tgtForme, tgtDims);
+      const coefVol  = (src.volume  > 0 && tgt.volume  > 0) ? tgt.volume  / src.volume  : null;
+      const coefSurf = (src.surface > 0 && tgt.surface > 0) ? tgt.surface / src.surface : null;
+      if (coefVol || coefSurf) {
+        const round = x => +x.toFixed(3);
+        // fonçage/glaçage → surface ; remplissage & proportionnel simple → volume
+        const modeCoef = m => (m === 'foncage') ? (coefSurf ?? coefVol) : (coefVol ?? coefSurf);
+        const mods = { ...planOverrides().mods };
+        (r.ingredient_groups || []).forEach(g => {
+          const c = modeCoef(g.scaling_mode);
+          if (c == null) return;
+          (g.ingredients || []).forEach(ing => { mods[String(ing.id)] = { ...(mods[String(ing.id)] || {}), coef: round(c) }; });
+        });
+        moldMods = mods;
+        factor = round(coefVol ?? coefSurf);
+      }
+      const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v).join(' × ');
+      const tname = (typeSel && typeSel.value === '') ? 'Moule de la recette' : (opt ? opt.textContent.split(' (')[0].trim() : 'Moule');
+      label = `Moule : ${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
+      moldTarget = { type_id: (typeSel && typeSel.value) ? Number(typeSel.value) : null, forme: tgtForme || null, dims: tgtDims };
     } else if (r.measure_type === 'dimensions') {
       // Ajustement par IA : coefficient issu de la proposition (modifiable)
       const coefEl = document.getElementById('plan-ai-coef');
@@ -1617,6 +1689,8 @@
     try {
       if (editing) {
         const overrides = { ...planOverrides(), etapes_faites: etapesFaites };
+        if (moldMods) overrides.mods = moldMods;
+        if (moldTarget) overrides.mold_target = moldTarget;
         const { error } = await db.from('planning')
           .update({ planned_date: dateEl.value, factor, adjust_label: label, overrides })
           .eq('id', currentPlan.id);
@@ -1629,10 +1703,10 @@
         planPanel.style.display = 'none';
         await renderRecipeFromDB(r.id);
       } else {
-        const { error } = await addToPlanning(r.id, dateEl.value, {
-          factor, adjustLabel: label,
-          overrides: etapesFaites.length ? { mods: {}, added: [], etapes_faites: etapesFaites } : null,
-        });
+        const ov = (etapesFaites.length || moldMods || moldTarget)
+          ? { mods: moldMods || {}, added: [], etapes_faites: etapesFaites, ...(moldTarget ? { mold_target: moldTarget } : {}) }
+          : null;
+        const { error } = await addToPlanning(r.id, dateEl.value, { factor, adjustLabel: label, overrides: ov });
         if (error) throw error;
         document.getElementById('plan-status').innerHTML = 'Recette planifiée ✓ <a href="profil.html#planning" class="underline text-primary">Voir mon planning</a>';
         setTimeout(() => { planPanel.style.display = 'none'; document.getElementById('plan-status').textContent = ''; }, 4000);

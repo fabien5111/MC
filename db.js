@@ -176,7 +176,7 @@ async function getRecipe(id) {
       profiles!recipes_author_id_fkey(full_name, avatar_url, username),
       recipe_types(name),
       difficulties(name, level),
-      mold_types(name),
+      mold_types(name, forme),
       recipe_tags(tags(id, name, slug)),
       recipe_utensils(*, utensils(url)),
       ingredient_groups(*, ingredients(*, ingredient_refs(url))),
