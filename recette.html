@@ -1433,7 +1433,7 @@
             <select id="plan-ing" class="${INPUT_CLS}" style="min-width:14rem">${planMerged.map((m, i) => `<option value="${i}">${esc(m.name)}</option>`).join('')}</select>
           </div>
           <div class="flex flex-col gap-2">
-            <label class="${LBL_CLS}" for="plan-ing-qty">Quantité souhaitée</label>
+            <label class="${LBL_CLS}" for="plan-ing-qty">Quantité disponible</label>
             <input id="plan-ing-qty" type="number" min="0" step="any" class="${INPUT_CLS}" style="width:8rem">
           </div>
           <span id="plan-ing-unit" class="font-body-md text-on-surface-variant pb-2"></span>
