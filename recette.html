@@ -513,12 +513,19 @@
     }
     return _ingModeMap[String(id)];
   }
-  // Coefficient issu de l'adaptation par moule (par composant), sans marquer la ligne comme modifiée
-  function moldCoefFor(it) {
+  // Coefficient d'adaptation d'une ligne AVANT toute modification manuelle :
+  // « aucun » fige la quantité (×1) quel que soit le type de recette ; pour une
+  // recette moule, « fonçage » suit la surface, sinon le volume (mold_coefs) ;
+  // sinon (unités / description libre) l'ajustement global de la planification.
+  function baseScalingCoef(it) {
+    const mode = ingScalingModeOf(it.id);
+    if (mode === 'aucun') return 1;
     const mc = currentPlan?.overrides?.mold_coefs;
-    if (!mc) return null;
-    const c = ingScalingModeOf(it.id) === 'foncage' ? (mc.surface ?? mc.volume) : (mc.volume ?? mc.surface);
-    return (c != null && c > 0) ? c : null;
+    if (mc) {
+      const c = mode === 'foncage' ? (mc.surface ?? mc.volume) : (mc.volume ?? mc.surface);
+      if (c != null && c > 0) return c;
+    }
+    return planFactor();
   }
 
   function effAdjustedQty(it) {
@@ -526,7 +533,7 @@
     if (m.qty != null) return m.qty;
     const base = numify(it.quantity);
     if (base == null) return null;
-    const coef = m.coef != null ? m.coef : (moldCoefFor(it) ?? planFactor());
+    const coef = m.coef != null ? m.coef : baseScalingCoef(it);
     return +(base * coef).toFixed(2);
   }
 
@@ -535,27 +542,28 @@
     if (m.coef != null) return m.coef;
     const base = numify(it.quantity);
     if (m.qty != null) return base ? +(m.qty / base).toFixed(2) : null;
-    return moldCoefFor(it) ?? planFactor();
+    return baseScalingCoef(it);
   }
 
   // Fusion effective (mode planifié) : barrés exclus, ajustements appliqués, ajouts inclus
   function effectiveMergedRows(recipe) {
     const rows = [];
-    const push = (name, unit, adjN, origN, origRaw, added) => {
+    const push = (name, unit, adjN, origN, origRaw, added, modFlag) => {
       const key = (name || '').toLowerCase() + '|' + (unit || '').toLowerCase();
       let r = rows.find(x => x.key === key);
-      if (!r) { r = { key, name, unit: unit || '', adj: null, orig: null, origTxt: [], added: false }; rows.push(r); }
+      if (!r) { r = { key, name, unit: unit || '', adj: null, orig: null, origTxt: [], added: false, mod: false }; rows.push(r); }
       if (adjN != null) r.adj = +((r.adj || 0) + adjN).toFixed(2);
       if (origN != null) r.orig = +((r.orig || 0) + origN).toFixed(2);
       else if (origRaw) r.origTxt.push(origRaw);
       if (added) r.added = true;
+      if (modFlag) r.mod = true;
     };
     const owned = ownedGroupOrders();
     (recipe.ingredient_groups || []).forEach(g => {
       if (owned.has(g.order_index || 0)) return; // déjà en ma possession : rien à acheter/peser
       (g.ingredients || []).forEach(it => {
         if (!it.name || isRemovedIng(it)) return;
-        push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false);
+        push(it.name, it.unit, effAdjustedQty(it), numify(it.quantity), it.quantity, false, isModifiedIng(it));
       });
     });
     planOverrides().added.forEach(a => { if (a.name) push(a.name, a.unit, numify(a.qty), null, '', true); });
@@ -1321,8 +1329,7 @@
           fullUl.style.cssText = qtyGridStyle;
           fullUl.innerHTML = QTY_HEADER + rows.map(r => {
             const coef = (r.orig && r.adj != null) ? r.adj / r.orig : null;
-            const defAdj = r.orig != null ? +(r.orig * planFactor()).toFixed(2) : null;
-            const mod = r.added || (r.adj != null && (defAdj == null || Math.abs(r.adj - defAdj) > 0.001));
+            const mod = r.added || r.mod;
             const pureAdded = r.added && r.orig == null && !r.origTxt.length;
             const tone = pureAdded ? 'text-green-700' : (mod ? 'text-orange-600' : '');
             const adjTxt = r.adj != null ? withUnit(fmtNum(r.adj), r.unit) : withUnit(r.origTxt.join(' + '), r.unit);

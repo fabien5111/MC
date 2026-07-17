@@ -220,18 +220,8 @@
             <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
             <div class="space-y-4 ingredient-lines"></div>
             <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
-            <div class="mt-4 step-scaling-block border-t border-b border-outline-variant/60 py-4">
-              <p class="font-body-md text-sm text-on-surface-variant italic mb-2">Quand la recette est adaptée à un moule plus grand ou plus petit, les quantités changent — mais pas toutes de la même façon. Précisez comment cette préparation occupe le moule :</p>
-              <div class="flex items-center gap-3">
-                <label class="font-label-md text-label-md text-outline shrink-0">ADAPTATION AU MOULE</label>
-                <select class="step-scaling editorial-input text-on-surface bg-transparent cursor-pointer shrink-0" style="width:auto">
-                  <option value="simple">Proportionnel simple</option>
-                  <option value="foncage">Recouvre une surface (fonçage, glaçage…)</option>
-                  <option value="remplissage">Remplit le moule (volume)</option>
-                </select>
-                <span class="step-scaling-ex font-body-md text-sm text-on-surface-variant italic flex-1 min-w-0"></span>
-              </div>
-            </div>
+            <!-- Contenu généré par renderStepScalingBlock() selon le type de mesure choisi -->
+            <div class="mt-4 step-scaling-block border-t border-b border-outline-variant/60 py-4"></div>
           </div>
           <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
           <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
@@ -561,18 +551,8 @@
           <label class="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
           <div class="space-y-4 ingredient-lines"></div>
           <button class="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline" type="button" onclick="addIngredientLine(this)"><span class="material-symbols-outlined">add</span> Ajouter un ingrédient</button>
-          <div class="mt-4 step-scaling-block border-t border-b border-outline-variant/60 py-4">
-            <p class="font-body-md text-sm text-on-surface-variant italic mb-2">Quand la recette est adaptée à un moule plus grand ou plus petit, les quantités changent — mais pas toutes de la même façon. Précisez comment cette préparation occupe le moule :</p>
-            <div class="flex items-center gap-3">
-              <label class="font-label-md text-label-md text-outline shrink-0">ADAPTATION AU MOULE</label>
-              <select class="step-scaling editorial-input text-on-surface bg-transparent cursor-pointer shrink-0" style="width:auto">
-                <option value="simple">Proportionnel simple</option>
-                <option value="foncage">Recouvre une surface (fonçage, glaçage…)</option>
-                <option value="remplissage">Remplit le moule (volume)</option>
-              </select>
-              <span class="step-scaling-ex font-body-md text-sm text-on-surface-variant italic flex-1 min-w-0"></span>
-            </div>
-          </div>
+          <!-- Contenu généré par renderStepScalingBlock() selon le type de mesure choisi -->
+          <div class="mt-4 step-scaling-block border-t border-b border-outline-variant/60 py-4"></div>
         </div>
         <div class="flex flex-col step-desc-zone"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="8"></textarea>
           <div class="mt-2"><button type="button" onclick="splitToSubsteps(this.closest('.step-block'))" class="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"><span class="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes</button></div>
@@ -598,7 +578,7 @@
     upgradeStepEditors(div);
     setupStepDrag(div);
     addIngredientLine(div.querySelector('.step-ingredients > button'), false);
-    updateScalingEx(div.querySelector('.step-scaling'));
+    renderStepScalingBlock(div, document.querySelector('input[name="measure_type"]:checked')?.value || 'units');
     return div;
   }
   document.getElementById('add-step').addEventListener('click', function(){
@@ -1065,6 +1045,7 @@
       document.getElementById('panel-mold').style.display       = this.value === 'mold'       ? 'block' : 'none';
       document.getElementById('panel-dimensions').style.display = this.value === 'dimensions' ? 'block' : 'none';
       if (this.value === 'mold') renderMoldDims();
+      document.querySelectorAll('#steps-container .step-block').forEach(b => renderStepScalingBlock(b, this.value));
     });
   });
 
@@ -1113,19 +1094,68 @@
   }
   document.getElementById('mold-choice')?.addEventListener('change', () => renderMoldDims());
 
-  // ── Exemple affiché à côté du mode d'adaptation choisi ────────────────
-  const SCALING_EX = {
-    simple:      "Ex. : un décor, des fruits posés dessus — quantité au choix, sans lien avec la taille du moule.",
-    foncage:     "Ex. : pâte d'un fond de tarte, glaçage d'un entremets — la quantité suit la surface à couvrir.",
-    remplissage: "Ex. : crème d'amande, appareil à flan, mousse — la quantité suit le volume à remplir.",
+  // ── Adaptation par étape : options selon le type de mesure de la recette ──
+  // « simple » suit l'ajustement global (volume pour un moule, quantité produite
+  // sinon) ; « foncage » (moule uniquement) suit la surface ; « aucun » fige la
+  // quantité quelle que soit l'adaptation.
+  const escAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const SCALING_CONFIGS = {
+    mold: {
+      intro: "Quand la recette est adaptée à un moule plus grand ou plus petit, les quantités changent — mais pas toutes de la même façon. Précisez comment cette préparation occupe le moule :",
+      label: 'ADAPTATION AU MOULE',
+      options: [
+        { value: 'simple', label: 'Ajustement selon la taille du moule (volume)', ex: "Ex. : crème d'amande, appareil à flan, mousse — la quantité suit le volume du moule." },
+        { value: 'foncage', label: 'Recouvre une surface (fonçage, glaçage…)', ex: "Ex. : pâte d'un fond de tarte, glaçage d'un entremets — la quantité suit la surface à couvrir." },
+        { value: 'aucun', label: "Pas d'ajustement pour cette étape", ex: "Ex. : un décor, des fruits posés dessus — quantité fixe, quelle que soit la taille du moule." },
+      ],
+    },
+    units: {
+      intro: "Quand vous ajustez la quantité produite, les quantités changent — sauf si vous précisez qu'une étape doit rester fixe (ex. une pincée de colorant) :",
+      label: 'AJUSTEMENT DE CETTE ÉTAPE',
+      options: [
+        { value: 'simple', label: 'Ajustement des quantités selon la quantité à produire', ex: "Ex. : la plupart des ingrédients — la quantité suit ce que vous produisez." },
+        { value: 'aucun', label: "Pas d'ajustement des quantités pour cette étape", ex: "Ex. : une pincée de colorant, un ingrédient à dose fixe — quantité inchangée." },
+      ],
+    },
   };
+  SCALING_CONFIGS.dimensions = SCALING_CONFIGS.units; // description libre : un facteur global unique, même logique
+
   function updateScalingEx(sel) {
     if (!sel) return;
     const ex = sel.parentElement?.querySelector('.step-scaling-ex');
-    if (ex) ex.textContent = SCALING_EX[sel.value] || '';
+    if (ex) ex.textContent = sel.selectedOptions[0]?.dataset.ex || '';
   }
+
+  // (Re)construit le bloc d'adaptation d'une étape selon le type de mesure ;
+  // conserve la sélection si elle existe encore dans la nouvelle liste
+  // (l'ancienne valeur « remplissage », retirée, est traitée comme « simple »).
+  function renderStepScalingBlock(block, mode) {
+    const wrap = block.querySelector('.step-scaling-block');
+    if (!wrap) return;
+    const cfg = SCALING_CONFIGS[mode] || SCALING_CONFIGS.units;
+    const prevVal = wrap.querySelector('.step-scaling')?.value;
+    wrap.innerHTML = `
+      <p class="font-body-md text-sm text-on-surface-variant italic mb-2">${cfg.intro}</p>
+      <div class="flex items-center gap-3">
+        <label class="font-label-md text-label-md text-outline shrink-0">${cfg.label}</label>
+        <select class="step-scaling editorial-input text-on-surface bg-transparent cursor-pointer shrink-0" style="width:auto">
+          ${cfg.options.map(o => `<option value="${o.value}" data-ex="${escAttr(o.ex)}">${o.label}</option>`).join('')}
+        </select>
+        <span class="step-scaling-ex font-body-md text-sm text-on-surface-variant italic flex-1 min-w-0"></span>
+      </div>`;
+    const sel = wrap.querySelector('.step-scaling');
+    const normalized = prevVal === 'remplissage' ? 'simple' : prevVal;
+    if (normalized && cfg.options.some(o => o.value === normalized)) sel.value = normalized;
+    updateScalingEx(sel);
+  }
+  window.renderStepScalingBlock = renderStepScalingBlock;
+
   document.addEventListener('change', e => { const s = e.target.closest?.('.step-scaling'); if (s) updateScalingEx(s); });
-  document.querySelectorAll('.step-scaling').forEach(updateScalingEx); // étape statique au chargement
+  // Étape statique au chargement : rendu selon le type de mesure coché par défaut
+  renderStepScalingBlock(
+    document.querySelector('#steps-container .step-block'),
+    document.querySelector('input[name="measure_type"]:checked')?.value || 'units'
+  );
 
   // ── Unités de mesure : liste de référence pour les ingrédients ──
   let allUnits = []; // [{id, name, tooltip}] — table units
@@ -1390,7 +1420,12 @@
         b.querySelectorAll('image-slot')[pi]?.setAttribute('src', p.url);
       });
       const grpForStep = groupsByOrder[s.order_index || 0];
-      if (grpForStep?.scaling_mode) { const ss = b.querySelector('.step-scaling'); if (ss) { ss.value = grpForStep.scaling_mode; updateScalingEx(ss); } }
+      if (grpForStep?.scaling_mode) {
+        const ss = b.querySelector('.step-scaling');
+        // « remplissage » (retiré des options) équivalait à « simple » (volume) : on le mappe pour compat
+        const mode = grpForStep.scaling_mode === 'remplissage' ? 'simple' : grpForStep.scaling_mode;
+        if (ss && [...ss.options].some(o => o.value === mode)) { ss.value = mode; updateScalingEx(ss); }
+      }
       sortIdx(grpForStep?.ingredients).forEach((ing, li_) => {
         const line = li_ === 0
           ? b.querySelector('.ingredient-lines > div')
