@@ -157,22 +157,16 @@
               </div>
             </div>
 
-            <!-- Panneau 2 : nombre + type de moule (liste) + dimensions selon la forme -->
+            <!-- Panneau 2 : type de moule (liste) + nombre et dimensions selon la forme -->
             <div id="panel-mold" class="mt-4 space-y-4" style="display:none">
-              <div class="flex flex-wrap items-end gap-4">
-                <div class="flex flex-col">
-                  <label class="font-label-md text-label-md text-outline mb-1" for="mold-count">NOMBRE</label>
-                  <input id="mold-count" class="editorial-input text-on-surface" type="number" min="1" step="1" placeholder="ex : 6" style="width:6rem">
-                </div>
-                <div class="relative flex items-end flex-1 min-w-[240px]">
-                  <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
-                    <option value="" disabled selected>Choisir le type de moule</option>
-                    <!-- options alimentées depuis la table mold_types (voir init) -->
-                  </select>
-                  <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
-                </div>
+              <div class="relative flex items-end max-w-md">
+                <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
+                  <option value="" disabled selected>Choisir le type de moule</option>
+                  <!-- options alimentées depuis la table mold_types (voir init) -->
+                </select>
+                <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
               </div>
-              <!-- Champs de dimensions générés selon la forme du type choisi -->
+              <!-- Nombre + champs de dimensions générés selon la forme du type choisi -->
               <div id="mold-dims" class="flex flex-wrap gap-6 items-end"></div>
               <p class="text-xs text-on-surface-variant italic">Ex. : 6 tartes de 7 cm de diamètre et 2 cm de haut.</p>
             </div>
@@ -1088,20 +1082,27 @@
     const parts = keys.filter(k => dims[k] != null).map(k => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
     return parts.length ? parts.join(' × ') + ' cm' : null;
   }
-  // Génère les champs de dimensions du type sélectionné ; preset = valeurs à préremplir.
-  function renderMoldDims(preset) {
+  // Génère nombre + champs de dimensions du type sélectionné ;
+  // preset = dimensions à préremplir, presetCount = nombre à préremplir.
+  function renderMoldDims(preset, presetCount) {
     const sel = document.getElementById('mold-choice');
     const wrap = document.getElementById('mold-dims');
     if (!sel || !wrap) return;
     const t = allMoldTypes.find(mt => String(mt.id) === sel.value);
-    const dims = t ? (FORME_DIMS[t.forme] || []) : [];
+    if (!t) { wrap.innerHTML = ''; return; }
+    // Conserver le nombre déjà saisi lors d'un changement de type
+    const countVal = presetCount != null ? presetCount : (document.getElementById('mold-count')?.value || '');
+    const countField = `
+      <div class="flex flex-col">
+        <label class="font-label-md text-label-md text-outline mb-1" for="mold-count">Nombre</label>
+        <input id="mold-count" class="editorial-input text-on-surface" type="number" min="1" step="1" style="width:5rem" placeholder="ex : 6" value="${countVal}">
+      </div>`;
+    const dims = FORME_DIMS[t.forme] || [];
     if (!dims.length) {
-      wrap.innerHTML = (t && !t.forme)
-        ? `<p class="text-sm text-on-surface-variant italic">Renseignez la « forme » de ce type de moule dans l'administration des listes pour saisir des dimensions.</p>`
-        : '';
+      wrap.innerHTML = countField + (t.forme ? '' : `<p class="text-sm text-on-surface-variant italic">Renseignez la « forme » de ce type de moule dans l'administration des listes pour saisir des dimensions.</p>`);
       return;
     }
-    wrap.innerHTML = dims.map(d => `
+    wrap.innerHTML = countField + dims.map(d => `
       <div class="flex flex-col">
         <label class="font-label-md text-label-md text-outline mb-1">${d.label}</label>
         <div class="flex items-baseline gap-2">
@@ -1331,9 +1332,8 @@
         document.getElementById('qty-amount').value = r.yield_qty ?? '';
         if (r.yield_unit) document.getElementById('qty-unit').value = r.yield_unit;
       } else if (r.measure_type === 'mold') {
-        document.getElementById('mold-count').value = r.yield_qty ?? '';
         if (r.mold_type_id) document.getElementById('mold-choice').value = String(r.mold_type_id);
-        renderMoldDims(r.mold_dims || null);
+        renderMoldDims(r.mold_dims || null, r.yield_qty ?? '');
       } else if (r.measure_type === 'dimensions') {
         document.getElementById('dims-desc').value = r.yield_desc || '';
       }
