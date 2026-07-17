@@ -385,8 +385,11 @@
       + (window.unitOptionsHTML ? window.unitOptionsHTML() : '<option value="">— unité —</option>')
       + '</select>'
       + '<div class="relative flex-1 min-w-0">'
-      +   '<input class="ing-name editorial-input text-on-surface w-full pr-7" type="text" placeholder="Ingrédient" autocomplete="off">'
-      +   '<a class="ing-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l\'ingrédient" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>'
+      +   '<input class="ing-name editorial-input text-on-surface w-full pr-14" type="text" placeholder="Ingrédient" autocomplete="off">'
+      +   '<div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">'
+      +     '<button type="button" tabindex="-1" class="ing-add-ref p-0.5 text-primary hover:opacity-70" title="Ajouter à la liste de référence des ingrédients (admin)" style="display:none"><span class="material-symbols-outlined text-[18px]">add_circle</span></button>'
+      +     '<a class="ing-link text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l\'ingrédient" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>'
+      +   '</div>'
       +   '<div class="ing-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>'
       + '</div>'
       + '<div class="flex-1 min-w-0"><input class="ing-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)"></div>'
@@ -405,6 +408,9 @@
         holder: div,
         getItems: () => window.allIngredientRefs || [],
         nextField: commentEl,
+        addBtn: div.querySelector('.ing-add-ref'),
+        refTable: 'ingredient_refs',
+        addToList: entry => { (window.allIngredientRefs || (window.allIngredientRefs = [])).push(entry); },
       });
     }
 
@@ -1181,7 +1187,7 @@
   // input : champ texte ; suggest : menu déroulant ; link : icône lien ;
   // holder : élément portant dataset.url ; nextField : focus après sélection.
   // Clavier : ↓/↑ surlignent, Tab/Entrée valident, Échap ferme.
-  function attachRefAutocomplete({ input, suggest, link, holder, getItems, nextField }) {
+  function attachRefAutocomplete({ input, suggest, link, holder, getItems, nextField, addBtn, refTable, addToList }) {
     let matches = [];
     let hi = -1;
 
@@ -1200,9 +1206,39 @@
         b.classList.toggle('bg-surface-container', i === hi));
     }
 
+    // Bouton « + » : ajouter le nom tapé à la liste de référence (admin uniquement),
+    // visible seulement s'il ne correspond à aucune entrée existante.
+    function refreshAddBtn() {
+      if (!addBtn) return;
+      const isAdmin = localStorage.getItem('mc-admin') === '1';
+      const q = input.value.trim();
+      const exists = !q || getItems().some(u => u.name.toLowerCase() === q.toLowerCase());
+      addBtn.style.display = (isAdmin && q && !exists) ? '' : 'none';
+    }
+    if (addBtn && refTable) {
+      addBtn.addEventListener('mousedown', e => e.preventDefault()); // ne pas voler le focus avant le clic
+      addBtn.addEventListener('click', async () => {
+        const name = input.value.trim();
+        if (!name) return;
+        addBtn.disabled = true;
+        try {
+          const { data, error } = await db.from(refTable).insert({ name }).select().single();
+          if (error) throw error;
+          if (addToList) addToList(data);
+          setRef(data);
+          refreshAddBtn();
+        } catch (e) {
+          alert("Impossible d'ajouter à la liste de référence : " + (e.message || e));
+        } finally {
+          addBtn.disabled = false;
+        }
+      });
+    }
+
     input.addEventListener('input', () => {
       clearRef();
       const q = input.value.trim().toLowerCase();
+      refreshAddBtn();
       if (!q) { closeSuggest(); return; }
       matches = getItems().filter(u => u.name.toLowerCase().includes(q)).slice(0, 8);
       hi = -1;
@@ -1211,7 +1247,7 @@
         `<button type="button" tabindex="-1" class="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors">${u.name}</button>`).join('');
       // mousedown (et pas click) pour passer avant le blur de l'input
       suggest.querySelectorAll('button').forEach((b, i) =>
-        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); nextField && nextField.focus(); }));
+        b.addEventListener('mousedown', e => { e.preventDefault(); setRef(matches[i]); refreshAddBtn(); nextField && nextField.focus(); }));
       suggest.style.display = '';
     });
 
@@ -1228,10 +1264,11 @@
         paintHighlight();
       } else if (e.key === 'Tab' && !e.shiftKey) {
         // Tab valide l'élément surligné puis continue vers le champ suivant
-        if (hi >= 0) setRef(matches[hi]);
+        if (hi >= 0) { setRef(matches[hi]); refreshAddBtn(); }
       } else if (e.key === 'Enter') {
         e.preventDefault();
         setRef(matches[hi >= 0 ? hi : 0]);
+        refreshAddBtn();
         nextField && nextField.focus();
       } else if (e.key === 'Escape') {
         closeSuggest();
@@ -1243,9 +1280,11 @@
       // Nom tapé identique à une référence → on lie quand même l'URL
       if (!holder.dataset.url) {
         const exact = getItems().find(u => u.name.toLowerCase() === input.value.trim().toLowerCase());
-        if (exact) setRef(exact);
+        if (exact) { setRef(exact); refreshAddBtn(); }
       }
     });
+
+    refreshAddBtn(); // état initial (champ vide → bouton masqué)
   }
   window.attachRefAutocomplete = attachRefAutocomplete;
 
@@ -1262,8 +1301,11 @@
       <span class="material-symbols-outlined text-outline-variant cursor-grab mt-2">drag_indicator</span>
       <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
         <div class="relative">
-          <input class="u-name editorial-input text-on-surface w-full pr-7" type="text" placeholder="Nom de l'ustensile" autocomplete="off">
-          <a class="u-link absolute right-0 top-1/2 -translate-y-1/2 text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l'ustensile" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>
+          <input class="u-name editorial-input text-on-surface w-full pr-14" type="text" placeholder="Nom de l'ustensile" autocomplete="off">
+          <div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <button type="button" tabindex="-1" class="u-add-ref p-0.5 text-primary hover:opacity-70" title="Ajouter à la liste de référence des ustensiles (admin)" style="display:none"><span class="material-symbols-outlined text-[18px]">add_circle</span></button>
+            <a class="u-link text-secondary hover:text-primary" target="_blank" rel="noopener" title="Voir l'ustensile" tabindex="-1" style="display:none"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>
+          </div>
           <div class="u-suggest absolute z-20 top-full left-0 right-0 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto" style="display:none"></div>
         </div>
         <input class="u-comment editorial-input text-on-surface w-full" type="text" placeholder="Commentaire (optionnel)">
@@ -1281,6 +1323,9 @@
       holder: li,
       getItems: () => allUtensils,
       nextField: commentInput,
+      addBtn: li.querySelector('.u-add-ref'),
+      refTable: 'utensils',
+      addToList: entry => { allUtensils.push(entry); },
     });
 
     // Tab depuis le commentaire de la dernière ligne → nouvelle ligne d'ustensile
