@@ -157,17 +157,24 @@
               </div>
             </div>
 
-            <!-- Panneau 2 : type de moule (liste) + dimensions selon la forme -->
+            <!-- Panneau 2 : nombre + type de moule (liste) + dimensions selon la forme -->
             <div id="panel-mold" class="mt-4 space-y-4" style="display:none">
-              <div class="relative flex items-end max-w-md">
-                <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
-                  <option value="" disabled selected>Choisir le type de moule</option>
-                  <!-- options alimentées depuis la table mold_types (voir init) -->
-                </select>
-                <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+              <div class="flex flex-wrap items-end gap-4">
+                <div class="flex flex-col">
+                  <label class="font-label-md text-label-md text-outline mb-1" for="mold-count">NOMBRE</label>
+                  <input id="mold-count" class="editorial-input text-on-surface" type="number" min="1" step="1" placeholder="ex : 6" style="width:6rem">
+                </div>
+                <div class="relative flex items-end flex-1 min-w-[240px]">
+                  <select id="mold-choice" class="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6" style="width:100%">
+                    <option value="" disabled selected>Choisir le type de moule</option>
+                    <!-- options alimentées depuis la table mold_types (voir init) -->
+                  </select>
+                  <span class="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style="font-size:16px">▾</span>
+                </div>
               </div>
               <!-- Champs de dimensions générés selon la forme du type choisi -->
               <div id="mold-dims" class="flex flex-wrap gap-6 items-end"></div>
+              <p class="text-xs text-on-surface-variant italic">Ex. : 6 tartes de 7 cm de diamètre et 2 cm de haut.</p>
             </div>
 
             <!-- Panneau 3 : dimensions libres -->
@@ -909,7 +916,10 @@
           if (!isNaN(v)) dims[inp.dataset.dim] = v;
         });
         moldDims = Object.keys(dims).length ? dims : null;
-        yDesc = composeMoldDesc(selType?.forme, dims); // résumé lisible pour la fiche
+        yQty = parseInt(document.getElementById('mold-count')?.value, 10) > 0
+          ? parseInt(document.getElementById('mold-count').value, 10) : null; // nombre de pièces
+        const dimsTxt = composeMoldDesc(selType?.forme, dims);
+        yDesc = dimsTxt ? (yQty > 1 ? `${yQty} × ${dimsTxt}` : dimsTxt) : null; // résumé lisible pour la fiche
       } else {
         yDesc = document.getElementById('dims-desc')?.value.trim() || null;
       }
@@ -1321,6 +1331,7 @@
         document.getElementById('qty-amount').value = r.yield_qty ?? '';
         if (r.yield_unit) document.getElementById('qty-unit').value = r.yield_unit;
       } else if (r.measure_type === 'mold') {
+        document.getElementById('mold-count').value = r.yield_qty ?? '';
         if (r.mold_type_id) document.getElementById('mold-choice').value = String(r.mold_type_id);
         renderMoldDims(r.mold_dims || null);
       } else if (r.measure_type === 'dimensions') {

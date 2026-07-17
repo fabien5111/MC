@@ -1457,15 +1457,22 @@
       const srcForme = r.mold_types?.forme || '';
       const srcDims = (r.mold_dims && typeof r.mold_dims === 'object') ? r.mold_dims : {};
       const srcSummary = [r.yield_desc, moldLbl(r)].filter(Boolean).join(' — ');
+      const srcCount = parseInt(r.yield_qty, 10) > 0 ? parseInt(r.yield_qty, 10) : 1;
       zone.innerHTML = `
         <div class="flex flex-col gap-3" style="max-width:32rem">
           <label class="${LBL_CLS}" for="plan-mold-type">Moule / cercle visé</label>
-          <select id="plan-mold-type" class="${INPUT_CLS}">
-            <option value="" data-forme="${esc(srcForme)}">${esc(srcSummary ? 'Moule de la recette — ' + srcSummary : 'Moule de la recette')}</option>
-            ${moldTypes.map(t => `<option value="${t.id}" data-forme="${esc(t.forme || '')}">${esc(t.name)}${t.forme ? ' (' + esc(t.forme) + ')' : ''}</option>`).join('')}
-          </select>
+          <div class="flex flex-wrap items-end gap-4">
+            <div class="flex flex-col gap-1">
+              <label class="${LBL_CLS}" for="plan-mold-count">Nombre</label>
+              <input id="plan-mold-count" type="number" min="1" step="1" value="${srcCount}" class="${INPUT_CLS}" style="width:6rem">
+            </div>
+            <select id="plan-mold-type" class="${INPUT_CLS} flex-1 min-w-[220px]">
+              <option value="" data-forme="${esc(srcForme)}">${esc(srcSummary ? 'Moule de la recette — ' + srcSummary : 'Moule de la recette')}</option>
+              ${moldTypes.map(t => `<option value="${t.id}" data-forme="${esc(t.forme || '')}">${esc(t.name)}${t.forme ? ' (' + esc(t.forme) + ')' : ''}</option>`).join('')}
+            </select>
+          </div>
           <div id="plan-mold-dims" class="flex flex-wrap gap-4 items-end"></div>
-          <p class="text-xs text-on-surface-variant">Renseignez les dimensions du moule visé : les quantités seront recalculées (pâte et glaçage selon la surface, appareil selon le volume). Laissez « Moule de la recette » pour ne rien changer.</p>
+          <p class="text-xs text-on-surface-variant">Indiquez le nombre et les dimensions visés : les quantités seront recalculées (pâte et glaçage selon la surface, appareil selon le volume). Ex. : la recette fait 6 tartes de Ø 7 cm, vous en voulez 2 de Ø 16 cm.</p>
         </div>`;
       const typeSel = document.getElementById('plan-mold-type');
       const preset = (planEditMode && currentPlan?.overrides?.mold_target) ? currentPlan.overrides.mold_target : null;
@@ -1490,7 +1497,10 @@
           </div>`).join('');
       };
       typeSel.addEventListener('change', renderPlanDims);
-      if (preset) typeSel.value = String(preset.type_id ?? '');
+      if (preset) {
+        typeSel.value = String(preset.type_id ?? '');
+        if (preset.count > 0) document.getElementById('plan-mold-count').value = preset.count;
+      }
       renderPlanDims();
     } else if (r.measure_type === 'dimensions') {
       // Ajustement par IA : l'utilisateur décrit ce qu'il veut, l'IA déduit le coefficient
@@ -1658,20 +1668,29 @@
       const srcDims = (r.mold_dims && typeof r.mold_dims === 'object') ? r.mold_dims : {};
       const src = moldMetrics(srcForme, srcDims);
       const tgt = moldMetrics(tgtForme, tgtDims);
-      const coefVol  = (src.volume  > 0 && tgt.volume  > 0) ? tgt.volume  / src.volume  : null;
-      const coefSurf = (src.surface > 0 && tgt.surface > 0) ? tgt.surface / src.surface : null;
-      if (coefVol || coefSurf) {
+      // Nombre de pièces : source = yield_qty de la recette (défaut 1), cible = champ Nombre
+      const srcCount = parseInt(r.yield_qty, 10) > 0 ? parseInt(r.yield_qty, 10) : 1;
+      const tgtCountRaw = parseInt(document.getElementById('plan-mold-count')?.value, 10);
+      const tgtCount = tgtCountRaw > 0 ? tgtCountRaw : srcCount;
+      const nRatio = tgtCount / srcCount;
+      const coefVol  = (src.volume  > 0 && tgt.volume  > 0) ? nRatio * tgt.volume  / src.volume  : null;
+      const coefSurf = (src.surface > 0 && tgt.surface > 0) ? nRatio * tgt.surface / src.surface : null;
+      if (coefVol || coefSurf || nRatio !== 1) {
         const round = x => +x.toFixed(3);
         // Coefficients par composant : fonçage/glaçage → surface ; remplissage &
         // proportionnel simple → volume. Appliqués à l'affichage sans marquer les
         // lignes comme « modifiées manuellement » (l'orange reste pour l'utilisateur).
-        moldCoefs = { surface: coefSurf != null ? round(coefSurf) : null, volume: coefVol != null ? round(coefVol) : null };
-        factor = round(coefVol ?? coefSurf);
+        // Sans dimensions exploitables, seul le rapport des nombres s'applique.
+        moldCoefs = {
+          surface: coefSurf != null ? round(coefSurf) : round(nRatio),
+          volume:  coefVol  != null ? round(coefVol)  : round(nRatio),
+        };
+        factor = moldCoefs.volume;
       }
       const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v).join(' × ');
       const tname = (typeSel && typeSel.value === '') ? 'Moule de la recette' : (opt ? opt.textContent.split(' (')[0].trim() : 'Moule');
-      label = `Moule : ${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
-      moldTarget = { type_id: (typeSel && typeSel.value) ? Number(typeSel.value) : null, forme: tgtForme || null, dims: tgtDims };
+      label = `Moule : ${tgtCount > 1 ? tgtCount + ' × ' : ''}${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
+      moldTarget = { type_id: (typeSel && typeSel.value) ? Number(typeSel.value) : null, forme: tgtForme || null, dims: tgtDims, count: tgtCount };
     } else if (r.measure_type === 'dimensions') {
       // Ajustement par IA : coefficient issu de la proposition (modifiable)
       const coefEl = document.getElementById('plan-ai-coef');
