@@ -1,0 +1,50 @@
+name: Régénérer les types Supabase
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+# Régénère web/lib/database.types.ts depuis la base live et le committe sur la
+# branche cible. Nécessite le secret SUPABASE_ACCESS_TOKEN (Settings > Secrets
+# and variables > Actions).
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branche où écrire lib/database.types.ts
+        required: true
+        default: claude/project-technologies-fh35tl
+
+permissions:
+  contents: write
+
+jobs:
+  gen-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer la branche cible
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Générer les types depuis Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx --yes supabase@latest gen types typescript \
+            --project-id acbabqolghhyxksouaye \
+            --schema public > web/lib/database.types.ts
+
+      - name: Committer si le fichier a changé
+        run: |
+          if git diff --quiet -- web/lib/database.types.ts; then
+            echo "Types déjà à jour — rien à committer."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/lib/database.types.ts
+          git commit -m "Types : régénération authentique depuis Supabase (gen types)"
+          git push origin HEAD:${{ inputs.branch }}
