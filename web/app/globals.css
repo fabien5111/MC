@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Styles globaux repris du site vanilla (index.html > <style>) */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  transition: all 0.3s ease;
+}
+.luxury-shadow {
+  box-shadow: 0px 4px 20px rgba(48, 10, 18, 0.06);
+}
+.maryse-logo-font {
+  font-family: 'Great Vibes', cursive;
+}
