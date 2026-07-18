@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Styles globaux repris du site vanilla (index.html > <style>) */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  transition: all 0.3s ease;
+}
+.luxury-shadow {
+  box-shadow: 0px 4px 20px rgba(48, 10, 18, 0.06);
+}
+.maryse-logo-font {
+  font-family: 'Great Vibes', cursive;
+}
+.ad-banner-placeholder {
+  background: linear-gradient(135deg, #fbeae9 0%, #efdfde 100%);
+  border: 1px dashed #d6c2c3;
+}
+.ambient-shadow {
+  box-shadow: 0 0 32px rgba(74, 30, 38, 0.05);
+}
+.maryse-pill {
+  width: 26px;
+  height: 13px;
+  border-radius: 9999px;
+}
+/* Unité avec infobulle : soulignée en pointillés, curseur d'aide */
+.unit-tip {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
