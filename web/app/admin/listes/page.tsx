@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getListEntries } from '@/lib/admin';
-import { ListsManager, SECTIONS } from '@/components/admin/ListsManager';
+import { SECTIONS } from '@/lib/admin-lists-config';
+import { ListsManager } from '@/components/admin/ListsManager';
 
 export const metadata: Metadata = { title: 'Listes | Admin — Maryse Club' };
 
