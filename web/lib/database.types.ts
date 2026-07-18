@@ -29,6 +29,8 @@ export interface Database {
           followers_count: number;
           following_count: number;
           is_admin: boolean;
+          // La base live utilise profiles.role = 'admin' (drift vs schema.sql).
+          role: string | null;
           created_at: string;
         };
         Insert: {
@@ -43,6 +45,7 @@ export interface Database {
           followers_count?: number;
           following_count?: number;
           is_admin?: boolean;
+          role?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
