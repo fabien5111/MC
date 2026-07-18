@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import { UNITS_LBL, moldMetrics, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { Json } from '@/lib/database.types';
+import { usePlanCtx } from '@/components/recipe/PlanContext';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -47,6 +48,7 @@ export function PlanWidget({
   steps: { id: number; title: string | null }[];
 }) {
   const router = useRouter();
+  const { open, close } = usePlanCtx();
   const today = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -217,21 +219,21 @@ export function PlanWidget({
       setBusy(false);
       return;
     }
+    close();
     router.push('/profil#planning');
   }
+
+  if (!open) return null;
 
   const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary';
   const LBL = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
 
   return (
-    <details className="group border border-secondary bg-surface-container-low rounded-xl mt-4">
-      <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
-        <span className="font-label-md text-label-md text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px]">calendar_month</span> Planifier cette recette
-        </span>
-        <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-      </summary>
-      <div className="p-6 pt-0 flex flex-col gap-6">
+    <div className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
+      <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
+        <span className="material-symbols-outlined">calendar_month</span>Planifier cette recette
+      </h3>
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2" style={{ maxWidth: '16rem' }}>
           <label className={LBL} htmlFor="plan-date">
             Date de dégustation
@@ -403,8 +405,15 @@ export function PlanWidget({
           >
             {busy ? 'Enregistrement…' : 'Valider'}
           </button>
+          <button
+            type="button"
+            onClick={close}
+            className="border border-outline px-6 py-3 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            Annuler
+          </button>
         </div>
       </div>
-    </details>
+    </div>
   );
 }

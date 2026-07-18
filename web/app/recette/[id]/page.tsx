@@ -11,12 +11,15 @@ import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
-import { RecipeCard } from '@/components/RecipeCard';
+import { SuggestionCard } from '@/components/recipe/SuggestionCard';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { ScaleWidget } from '@/components/recipe/ScaleWidget';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
+import { PlanProvider } from '@/components/recipe/PlanContext';
+import { PlanToggleButton } from '@/components/recipe/PlanToggleButton';
+import { ShareButton } from '@/components/recipe/ShareButton';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -116,6 +119,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       </div>
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <PlanProvider>
         <div className="lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
@@ -146,7 +150,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                       <img src={recipe.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : null}
+                    ) : (
+                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant flex items-center justify-center w-full h-full">
+                        person
+                      </span>
+                    )}
                   </span>
                   <span className="border-b border-primary">{recipe.profiles?.full_name || 'Auteur'}</span>
                 </Link>
@@ -167,6 +175,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <span className="material-symbols-outlined text-[18px]">edit_note</span> Éditer
                   </Link>
                 )}
+                <PlanToggleButton />
+                <ShareButton title={recipe.title} />
                 <PrintButton />
               </div>
               {tags.length > 0 && (
@@ -180,6 +190,19 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
             </div>
           </div>
+
+          {/* Description */}
+          {recipe.description && (
+            <div className="bg-primary p-10 text-white relative overflow-hidden mb-12">
+              <div className="absolute -right-10 -top-10 opacity-10">
+                <span className="material-symbols-outlined text-[120px]">restaurant_menu</span>
+              </div>
+              <h3 className="font-headline-md text-headline-md mb-4 flex items-center gap-3">
+                <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
+              </h3>
+              <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed">{recipe.description}</p>
+            </div>
+          )}
 
           {/* Contexte planifié (bannière) */}
           {planContext && planContext.planned_date && (
@@ -223,19 +246,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
             ingredients={merged}
             steps={steps.map((s) => ({ id: s.id, title: s.title }))}
           />
-
-          {/* Description */}
-          {recipe.description && (
-            <div className="bg-primary p-10 text-white relative overflow-hidden mb-12">
-              <div className="absolute -right-10 -top-10 opacity-10">
-                <span className="material-symbols-outlined text-[120px]">restaurant_menu</span>
-              </div>
-              <h3 className="font-headline-md text-headline-md mb-4 flex items-center gap-3">
-                <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
-              </h3>
-              <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed">{recipe.description}</p>
-            </div>
-          )}
 
           {/* Planning de préparation */}
           {steps.length > 0 && (
@@ -413,6 +423,20 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Publicité */}
+          <div className="mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col gap-1">
+              <span className="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
+              <h4 className="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Tout le nécessaire pour réussir vos entremets à la maison.
+              </p>
+            </div>
+            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all uppercase tracking-widest">
+              En savoir plus
+            </button>
+          </div>
+
           {/* Étapes */}
           {steps.length > 0 && (
             <div className="space-y-16">
@@ -526,15 +550,30 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
         </div>
+        </PlanProvider>
 
         {/* Sidebar */}
         <aside className="lg:col-span-4 flex flex-col gap-12">
+          <div className="relative">
+            <input
+              className="w-full border-0 border-b border-outline py-4 px-0 bg-transparent focus:ring-0 focus:border-primary font-body-md text-body-md placeholder:text-outline/60"
+              placeholder="Rechercher une recette, un ingrédient..."
+              type="text"
+            />
+            <span className="material-symbols-outlined absolute right-0 top-4 text-outline">search</span>
+          </div>
           {suggestions.length > 0 && (
             <div className="flex flex-col gap-8">
               <h3 className="font-label-md text-label-md uppercase tracking-widest text-secondary">Recettes suggérées</h3>
-              {suggestions.map((r) => (
-                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
-              ))}
+              <SuggestionCard recipe={suggestions[0]} isFav={favIds.has(suggestions[0].id)} />
+              <div className="bg-surface-container-highest p-8 text-center border border-outline-variant py-20 flex flex-col items-center justify-center gap-4">
+                <span className="font-label-md text-[10px] tracking-widest text-outline">PUBLICITÉ</span>
+                <p className="font-headline-md text-headline-md text-primary">Masterclass : L&apos;art du chocolat</p>
+                <button className="mt-4 border border-primary px-6 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all">
+                  Découvrir
+                </button>
+              </div>
+              {suggestions[1] && <SuggestionCard recipe={suggestions[1]} isFav={favIds.has(suggestions[1].id)} />}
             </div>
           )}
         </aside>
