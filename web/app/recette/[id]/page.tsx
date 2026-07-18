@@ -4,7 +4,7 @@ import { getRecipeFull } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
-import { getUnits } from '@/lib/profile';
+import { getUnits, getShoppingLists } from '@/lib/profile';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl } from '@/lib/recipe-view';
 import { Header } from '@/components/Header';
@@ -14,6 +14,7 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { ScaleWidget } from '@/components/recipe/ScaleWidget';
+import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -46,6 +47,7 @@ export default async function RecettePage({ params }: Params) {
     getRecipes({ limit: 4 }),
   ]);
   const isOwner = !!user && recipe.author_id === user.id;
+  const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -346,11 +348,14 @@ export default async function RecettePage({ params }: Params) {
               )}
 
               {merged.length > 0 && (
-                <ScaleWidget
-                  recipeTitle={recipe.title}
-                  rendement={yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null}
-                  ingredients={merged}
-                />
+                <>
+                  <ShoppingWidget recipeTitle={recipe.title} ingredients={merged} lists={shoppingLists} isLoggedIn={!!user} />
+                  <ScaleWidget
+                    recipeTitle={recipe.title}
+                    rendement={yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null}
+                    ingredients={merged}
+                  />
+                </>
               )}
             </div>
           )}
