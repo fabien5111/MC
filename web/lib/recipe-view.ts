@@ -48,6 +48,57 @@ export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
   return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
 }
 
+// ── Moules : dimensions par forme + métriques (volume / surface) ──
+export const MOLD_FORME_DIMS: Record<string, string[]> = {
+  cylindre: ['diametre', 'hauteur'],
+  rectangulaire: ['longueur', 'largeur', 'hauteur'],
+  oblong: ['longueur', 'largeur', 'hauteur'],
+  'demi-cylindre': ['longueur', 'largeur'],
+};
+export const DIM_LABELS: Record<string, string> = {
+  diametre: 'Diamètre',
+  hauteur: 'Hauteur',
+  longueur: 'Longueur',
+  largeur: 'Largeur',
+};
+
+// Volume de cavité et surface de fonçage d'un moule (porté de recette.html).
+export function moldMetrics(
+  forme: string | null | undefined,
+  d: Record<string, number | string | null | undefined>,
+): { volume: number | null; surface: number | null } {
+  const n = (k: string): number | null => {
+    const v = parseFloat(String(d?.[k]).replace(',', '.'));
+    return isFinite(v) && v > 0 ? v : null;
+  };
+  if (forme === 'cylindre') {
+    const dia = n('diametre');
+    const h = n('hauteur');
+    return {
+      volume: dia && h ? Math.PI * (dia / 2) ** 2 * h : null,
+      surface: dia ? Math.PI * ((dia + 2 * (h || 0)) / 2) ** 2 : null,
+    };
+  }
+  if (forme === 'rectangulaire' || forme === 'oblong') {
+    const L = n('longueur');
+    const l = n('largeur');
+    const h = n('hauteur');
+    return {
+      volume: L && l && h ? L * l * h : null,
+      surface: L && l ? (L + 2 * (h || 0)) * (l + 2 * (h || 0)) : null,
+    };
+  }
+  if (forme === 'demi-cylindre') {
+    const L = n('longueur');
+    const l = n('largeur');
+    return {
+      volume: L && l ? (Math.PI * (l / 2) ** 2 * L) / 2 : null,
+      surface: L && l ? Math.PI * (l / 2) * L : null,
+    };
+  }
+  return { volume: null, surface: null };
+}
+
 // Étape « Jour J − n » (hors contexte de planification).
 export function dayLabel(offset: number | null | undefined): string {
   const o = offset || 0;

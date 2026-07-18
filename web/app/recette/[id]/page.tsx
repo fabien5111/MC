@@ -4,7 +4,8 @@ import { getRecipeFull } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
-import { getUnits, getShoppingLists } from '@/lib/profile';
+import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
+import { getMoldTypes } from '@/lib/admin';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl } from '@/lib/recipe-view';
 import { Header } from '@/components/Header';
@@ -15,8 +16,12 @@ import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { ScaleWidget } from '@/components/recipe/ScaleWidget';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
+import { PlanWidget } from '@/components/recipe/PlanWidget';
 
-type Params = { params: Promise<{ id: string }> };
+type Params = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ plan?: string }>;
+};
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
@@ -24,8 +29,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return { title: r ? `${r.title} | Maryse Club` : 'Recette | Maryse Club' };
 }
 
-export default async function RecettePage({ params }: Params) {
+export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
+  const { plan } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -40,12 +46,16 @@ export default async function RecettePage({ params }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
     getRecipes({ limit: 4 }),
+    getMoldTypes(),
   ]);
+  // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
+  const planEntry = plan && Number.isFinite(Number(plan)) ? await getPlanningEntry(Number(plan)) : null;
+  const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
   const isOwner = !!user && recipe.author_id === user.id;
   const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
   const unitTips: Record<string, string> = {};
@@ -170,6 +180,49 @@ export default async function RecettePage({ params }: Params) {
               )}
             </div>
           </div>
+
+          {/* Contexte planifié (bannière) */}
+          {planContext && planContext.planned_date && (
+            <div className="mb-8 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary">event_available</span>
+              <span className="font-body-md text-on-surface">
+                Recette planifiée pour le{' '}
+                {new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+                {planContext.factor && planContext.factor !== 1
+                  ? ` — quantités ajustées × ${String(planContext.factor).replace('.', ',')}`
+                  : planContext.adjust_label
+                    ? ` — ${planContext.adjust_label}`
+                    : ''}
+              </span>
+            </div>
+          )}
+
+          {/* Planifier */}
+          <PlanWidget
+            recipe={{
+              id: recipe.id,
+              title: recipe.title,
+              measureType: recipe.measure_type,
+              yieldQty: recipe.yield_qty,
+              yieldUnit: recipe.yield_unit,
+              yieldDesc: recipe.yield_desc,
+              moldForme: recipe.mold_types?.forme ?? null,
+              moldDims:
+                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
+                  ? (recipe.mold_dims as Record<string, number>)
+                  : null,
+              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+            }}
+            moldTypes={moldTypes}
+            ingredients={merged}
+            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
+          />
 
           {/* Description */}
           {recipe.description && (

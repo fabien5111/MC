@@ -70,6 +70,25 @@ export async function getShoppingLists(userId: string): Promise<ShoppingListSumm
   return (data as unknown as ShoppingListSummary[]) ?? [];
 }
 
+export type PlanningEntry = {
+  id: number;
+  recipe_id: string | null;
+  planned_date: string | null;
+  factor: number | null;
+  adjust_label: string | null;
+};
+
+// Une entrée de planning (contexte planifié d'une recette). null si absente/RLS.
+export async function getPlanningEntry(id: number): Promise<PlanningEntry | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('planning')
+    .select('id, recipe_id, planned_date, factor, adjust_label')
+    .eq('id', id)
+    .maybeSingle();
+  return (data as PlanningEntry | null) ?? null;
+}
+
 export async function getUnits(): Promise<Unit[]> {
   const supabase = await createClient();
   const { data } = await supabase.from('units').select('*').order('name');
