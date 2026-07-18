@@ -7,24 +7,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-
-type Field = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; required?: boolean };
-type Section = { table: string; label: string; fields: Field[] };
-
-const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
-export const SECTIONS: Section[] = [
-  { table: 'recipe_types', label: 'Types de recettes', fields: [{ key: 'name', label: 'Nom', required: true }, TOOLTIP] },
-  { table: 'tags', label: 'Tags', fields: [{ key: 'name', label: 'Nom', required: true }, { key: 'slug', label: 'Slug' }, TOOLTIP] },
-  {
-    table: 'mold_types',
-    label: 'Types de moules',
-    fields: [{ key: 'name', label: 'Nom', required: true }, { key: 'forme', label: 'Forme', type: 'select', options: ['cylindre', 'rectangulaire', 'demi-cylindre', 'oblong'] }, TOOLTIP],
-  },
-  { table: 'difficulties', label: 'Difficultés', fields: [{ key: 'name', label: 'Nom', required: true }, { key: 'level', label: 'Niveau (1–5)', type: 'number', required: true }, TOOLTIP] },
-  { table: 'units', label: 'Unités', fields: [{ key: 'name', label: 'Nom', required: true }, TOOLTIP] },
-  { table: 'ingredient_refs', label: 'Ingrédients', fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP] },
-  { table: 'utensils', label: 'Ustensiles', fields: [{ key: 'name', label: 'Nom', required: true }, { key: 'comment', label: 'Commentaire' }, { key: 'url', label: 'URL' }, TOOLTIP] },
-];
+import { SECTIONS, type Section } from '@/lib/admin-lists-config';
 
 type Entry = Record<string, unknown>;
 

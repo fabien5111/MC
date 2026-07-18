@@ -166,9 +166,18 @@ export async function getAllowlistMembers(): Promise<Member[]> {
 // ── Listes / taxonomies (CRUD générique) ─────────────────────
 export async function getListEntries(table: string, orderBy = 'name'): Promise<Record<string, unknown>[]> {
   const supabase = await createClient();
-  // Table dynamique : hors du typage statique, cast local assumé.
-  const { data } = await (supabase.from(table as never) as ReturnType<typeof supabase.from>)
-    .select('*')
-    .order(orderBy);
-  return (data as unknown as Record<string, unknown>[]) ?? [];
+  try {
+    // Table dynamique : hors du typage statique, cast local assumé.
+    const { data, error } = await (supabase.from(table as never) as ReturnType<typeof supabase.from>)
+      .select('*')
+      .order(orderBy);
+    if (error) {
+      console.error(`getListEntries(${table}):`, error.message);
+      return [];
+    }
+    return (data as unknown as Record<string, unknown>[]) ?? [];
+  } catch (e) {
+    console.error(`getListEntries(${table}) a levé une exception :`, (e as Error).message);
+    return [];
+  }
 }
