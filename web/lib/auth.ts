@@ -1,6 +1,7 @@
 // Helpers d'authentification côté serveur (Server Components / Route Handlers).
 // Remplacent requireAuth / requireAdmin / getUser du db.js vanilla, avec une
 // vérification réellement côté serveur (la session vit dans les cookies).
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
@@ -11,13 +12,15 @@ type User = NonNullable<
 >;
 
 // Utilisateur courant, ou null. Ne redirige pas.
-export async function getCurrentUser(): Promise<User | null> {
+// Mémoïsé par requête (React cache) : Header, MobileNav et la page partagent
+// un seul appel getUser au lieu d'en refaire un chacun.
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user ?? null;
-}
+});
 
 // Exige une session ; redirige vers /connexion sinon.
 export async function requireUser(next?: string): Promise<User> {

@@ -13,3 +13,7 @@
 .maryse-logo-font {
   font-family: 'Great Vibes', cursive;
 }
+.ad-banner-placeholder {
+  background: linear-gradient(135deg, #fbeae9 0%, #efdfde 100%);
+  border: 1px dashed #d6c2c3;
+}
