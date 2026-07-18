@@ -6,13 +6,14 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
 import { getUnits } from '@/lib/profile';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays } from '@/lib/recipe-view';
+import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl } from '@/lib/recipe-view';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
+import { ScaleWidget } from '@/components/recipe/ScaleWidget';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -342,6 +343,14 @@ export default async function RecettePage({ params }: Params) {
                     </ul>
                   </div>
                 </details>
+              )}
+
+              {merged.length > 0 && (
+                <ScaleWidget
+                  recipeTitle={recipe.title}
+                  rendement={yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null}
+                  ingredients={merged}
+                />
               )}
             </div>
           )}
