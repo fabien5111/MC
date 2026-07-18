@@ -41,6 +41,29 @@ npm run dev                        # http://localhost:3000
 - Modules d'accès données typés dans `lib/` (auth, recettes, planning…)
 - Gating payant/gratuit centralisé (middleware + helpers serveur)
 
+## Types de la base (source de vérité définitive)
+
+`lib/database.types.ts` est actuellement **reconstruit hors-ligne** depuis les
+migrations du repo (`schema.sql`, `setup-*.sql`) et l'usage réel dans le code —
+la génération automatique est impossible depuis l'environnement web (le réseau
+y bloque l'accès au projet Supabase). Les tables marquées « INFÉRÉ » (créées via
+le dashboard, sans migration dans le repo : `executions`, `utensils`,
+`ingredient_refs`, `shopping_lists`, `shopping_list_items`, `site_settings`) ont
+des colonnes déduites — à confirmer.
+
+Pour obtenir la version **100 % fidèle** à la base live, lance en local (accès
+réseau + token requis) :
+
+```bash
+cd web
+export SUPABASE_ACCESS_TOKEN=<ton_token>   # https://supabase.com/dashboard/account/tokens
+npm run gen:types                          # écrase lib/database.types.ts
+npm run typecheck                          # repérer les écarts éventuels
+```
+
+Committe le fichier régénéré : il devient la référence. En cas d'écart avec la
+reconstruction, on réaligne le code applicatif (`lib/*.ts`) en conséquence.
+
 ## Variables d'environnement
 
 Voir `.env.local.example`. `ANTHROPIC_API_KEY` reste **côté serveur

@@ -1,6 +1,15 @@
 // Types de la base Supabase « Maryse Club ».
-// Écrits à la main depuis schema.sql. À terme, régénérer avec :
-//   npm run gen:types   (supabase gen types typescript ...)
+//
+// Reconstruits hors-ligne depuis les migrations du repo (schema.sql,
+// setup-molds.sql, setup-membres.sql, setup-storage.sql) et l'usage réel dans
+// le code (db.js, admin-*.html). La génération automatique
+// (`supabase gen types`) est indisponible dans cet environnement : le réseau
+// bloque l'accès au projet Supabase.
+//
+// SOURCE DE VÉRITÉ DÉFINITIVE : lancer `npm run gen:types` en local (accès
+// réseau + access token) et committer le fichier régénéré. Les tables marquées
+// « INFÉRÉ » ci-dessous n'ont aucune migration dans le repo (créées via le
+// dashboard) : leurs colonnes sont déduites de l'usage et à confirmer.
 
 export type Json =
   | string
@@ -24,13 +33,20 @@ export interface Database {
           bio: string | null;
           avatar_url: string | null;
           cover_url: string | null;
+          banner_url: string | null; // setup-storage.sql
           instagram: string | null;
           website: string | null;
           followers_count: number;
           following_count: number;
           is_admin: boolean;
-          // La base live utilise profiles.role = 'admin' (drift vs schema.sql).
-          role: string | null;
+          // Extensions setup-membres.sql (NOT NULL DEFAULT côté base).
+          email: string | null;
+          status: string; // active | disabled
+          role: string; // member | admin
+          plan: string; // free | paid
+          is_demo: boolean;
+          notes: string | null;
+          provider: string | null; // google | email
           created_at: string;
         };
         Insert: {
@@ -40,45 +56,60 @@ export interface Database {
           bio?: string | null;
           avatar_url?: string | null;
           cover_url?: string | null;
+          banner_url?: string | null;
           instagram?: string | null;
           website?: string | null;
           followers_count?: number;
           following_count?: number;
           is_admin?: boolean;
-          role?: string | null;
+          email?: string | null;
+          status?: string;
+          role?: string;
+          plan?: string;
+          is_demo?: boolean;
+          notes?: string | null;
+          provider?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
         Relationships: [];
       };
       recipe_types: {
-        Row: { id: number; name: string; slug: string; icon: string; status: string; created_at: string };
-        Insert: { id?: number; name: string; slug: string; icon?: string; status?: string; created_at?: string };
+        Row: { id: number; name: string; slug: string; icon: string; status: string; tooltip: string | null; created_at: string };
+        Insert: { id?: number; name: string; slug: string; icon?: string; status?: string; tooltip?: string | null; created_at?: string };
         Update: Partial<Database['public']['Tables']['recipe_types']['Insert']>;
         Relationships: [];
       };
       tags: {
-        Row: { id: number; name: string; slug: string; status: string; created_at: string };
-        Insert: { id?: number; name: string; slug: string; status?: string; created_at?: string };
+        Row: { id: number; name: string; slug: string; status: string; tooltip: string | null; created_at: string };
+        Insert: { id?: number; name: string; slug: string; status?: string; tooltip?: string | null; created_at?: string };
         Update: Partial<Database['public']['Tables']['tags']['Insert']>;
         Relationships: [];
       };
       mold_types: {
-        Row: { id: number; name: string; slug: string; status: string; created_at: string };
-        Insert: { id?: number; name: string; slug: string; status?: string; created_at?: string };
+        // forme : ajoutée via l'admin (cylindre | rectangulaire | demi-cylindre | oblong).
+        Row: { id: number; name: string; slug: string; status: string; forme: string | null; tooltip: string | null; created_at: string };
+        Insert: { id?: number; name: string; slug: string; status?: string; forme?: string | null; tooltip?: string | null; created_at?: string };
         Update: Partial<Database['public']['Tables']['mold_types']['Insert']>;
         Relationships: [];
       };
       difficulties: {
-        Row: { id: number; name: string; level: number; status: string };
-        Insert: { id?: number; name: string; level: number; status?: string };
+        Row: { id: number; name: string; level: number; status: string; tooltip: string | null };
+        Insert: { id?: number; name: string; level: number; status?: string; tooltip?: string | null };
         Update: Partial<Database['public']['Tables']['difficulties']['Insert']>;
         Relationships: [];
       };
       units: {
-        Row: { id: number; name: string; abbreviation: string | null; status: string };
-        Insert: { id?: number; name: string; abbreviation?: string | null; status?: string };
+        Row: { id: number; name: string; abbreviation: string | null; status: string; tooltip: string | null };
+        Insert: { id?: number; name: string; abbreviation?: string | null; status?: string; tooltip?: string | null };
         Update: Partial<Database['public']['Tables']['units']['Insert']>;
+        Relationships: [];
+      };
+      // Moules concrets (setup-molds.sql). id bigint identity.
+      molds: {
+        Row: { id: number; name: string; type_id: number | null; status: string; tooltip: string | null; created_at: string };
+        Insert: { id?: number; name: string; type_id?: number | null; status?: string; tooltip?: string | null; created_at?: string };
+        Update: Partial<Database['public']['Tables']['molds']['Insert']>;
         Relationships: [];
       };
       recipes: {
@@ -185,6 +216,19 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['step_photos']['Insert']>;
         Relationships: [];
       };
+      // Catalogues de référence pour l'admin (INFÉRÉ — pas de migration dans le repo).
+      ingredient_refs: {
+        Row: { id: number; name: string; url: string | null; tooltip: string | null; status: string | null; created_at: string };
+        Insert: { id?: number; name: string; url?: string | null; tooltip?: string | null; status?: string | null; created_at?: string };
+        Update: Partial<Database['public']['Tables']['ingredient_refs']['Insert']>;
+        Relationships: [];
+      };
+      utensils: {
+        Row: { id: number; name: string; comment: string | null; url: string | null; tooltip: string | null; status: string | null; created_at: string };
+        Insert: { id?: number; name: string; comment?: string | null; url?: string | null; tooltip?: string | null; status?: string | null; created_at?: string };
+        Update: Partial<Database['public']['Tables']['utensils']['Insert']>;
+        Relationships: [];
+      };
       favorites: {
         Row: { user_id: string; recipe_id: string; created_at: string };
         Insert: { user_id: string; recipe_id: string; created_at?: string };
@@ -221,6 +265,19 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['shopping_items']['Insert']>;
         Relationships: [];
       };
+      // Listes de courses nommées (INFÉRÉ — pas de migration dans le repo).
+      shopping_lists: {
+        Row: { id: number; user_id: string; name: string; created_at: string };
+        Insert: { id?: number; user_id: string; name: string; created_at?: string };
+        Update: Partial<Database['public']['Tables']['shopping_lists']['Insert']>;
+        Relationships: [];
+      };
+      shopping_list_items: {
+        Row: { id: number; list_id: number; name: string; quantity: string | null; unit: string | null; checked: boolean; created_at: string };
+        Insert: { id?: number; list_id: number; name: string; quantity?: string | null; unit?: string | null; checked?: boolean; created_at?: string };
+        Update: Partial<Database['public']['Tables']['shopping_list_items']['Insert']>;
+        Relationships: [];
+      };
       comments: {
         Row: {
           id: number;
@@ -249,7 +306,69 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['follows']['Insert']>;
         Relationships: [];
       };
-      // Brouillons d'import IA (utilisée par /api/import-url ; hors schema.sql).
+      // Allowlist d'inscription (setup-membres.sql). id bigint identity.
+      allowlist: {
+        Row: {
+          id: number;
+          email: string;
+          status: string;
+          role: string;
+          plan: string;
+          is_demo: boolean;
+          notes: string | null;
+          invited_at: string;
+        };
+        Insert: {
+          id?: number;
+          email: string;
+          status?: string;
+          role?: string;
+          plan?: string;
+          is_demo?: boolean;
+          notes?: string | null;
+          invited_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['allowlist']['Insert']>;
+        Relationships: [];
+      };
+      // Exécutions d'une recette planifiée (INFÉRÉ — pas de migration dans le repo).
+      // snapshot fige jalons > étapes > ingrédients ajustés au démarrage.
+      executions: {
+        Row: {
+          id: number;
+          planning_id: number;
+          user_id: string;
+          status: string; // en_cours | terminee | …
+          date_debut: string | null;
+          date_fin: string | null;
+          degustation_at: string | null;
+          commentaire_global: string | null;
+          snapshot: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          planning_id: number;
+          user_id: string;
+          status?: string;
+          date_debut?: string | null;
+          date_fin?: string | null;
+          degustation_at?: string | null;
+          commentaire_global?: string | null;
+          snapshot?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['executions']['Insert']>;
+        Relationships: [];
+      };
+      // Réglages clé/valeur du site, ex. bannières par appareil (INFÉRÉ).
+      site_settings: {
+        Row: { key: string; value: Json };
+        Insert: { key: string; value: Json };
+        Update: Partial<Database['public']['Tables']['site_settings']['Insert']>;
+        Relationships: [];
+      };
+      // Brouillons d'import IA (utilisée par /api/import-url ; INFÉRÉ).
       imports: {
         Row: {
           id: string;
