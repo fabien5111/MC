@@ -6,7 +6,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Routes nécessitant une session. Le gating fin (payant/gratuit, admin) se fait
 // ensuite dans chaque page/route ; ici on ne bloque que l'accès non authentifié.
-const PROTECTED_PREFIXES = ['/profil', '/creer', '/admin', '/execution', '/courses', '/importer'];
+const PROTECTED_PREFIXES = ['/profil', '/creer', '/admin', '/execution', '/courses', '/importer', '/relecture'];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
