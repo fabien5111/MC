@@ -1,18 +1,17 @@
 'use client';
 
-// Éditeur de recette (porté de creer.html) : création et édition.
-// Périmètre : infos générales, rendement (unités / moule / dimensions),
-// difficulté, tags, ustensiles, étapes (temps, jour, description, astuces,
-// ingrédients, mode d'adaptation), photo principale. Enregistre en brouillon
-// ou soumet à publication, en écrivant recipes + recipe_tags + recipe_utensils
-// + ingredient_groups + ingredients + recipe_steps.
+// Éditeur de recette (porté de creer.html, mise en page éditoriale fidèle) :
+// création et édition. Champs soulignés (.editorial-input), radios/toggle
+// custom, sections « Planning de préparation » et « Récapitulatif des
+// ingrédients » recalculées en direct depuis les étapes saisies — comme dans
+// la version vanilla.
 //
-// Différé vs vanilla : réorganisation par glisser-déposer, éditeur enrichi
-// (gras/italique), autocomplétion des listes de référence (remplacée par une
-// datalist), photos par étape, découpage en sous-étapes (la description libre
-// les remplace ; à la relecture d'un import, les sous-étapes existantes sont
-// regroupées dans la description).
+// Différé vs vanilla : réorganisation par glisser-déposer des étapes/ustensiles
+// (l'icône est affichée mais inerte), éditeur de texte enrichi (gras/italique),
+// autocomplétion avec ajout à la volée sur les listes de référence (remplacée
+// par une datalist), découpage explicite en sous-étapes.
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -35,6 +34,8 @@ type StepState = {
   tips: string;
   scaling: string;
   ings: IngLine[];
+  photos: (string | null)[];
+  collapsed: boolean;
 };
 
 const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
@@ -65,9 +66,10 @@ const emptyStep = (): StepState => ({
   tips: '',
   scaling: 'simple',
   ings: [emptyIng()],
+  photos: [null, null, null, null],
+  collapsed: false,
 });
 
-// Init des étapes depuis une recette existante (édition).
 function stepsFromRecipe(r: RecipeFull): StepState[] {
   const groupsByOrder: Record<number, RecipeFull['ingredient_groups'][number]> = {};
   (r.ingredient_groups || []).forEach((g) => (groupsByOrder[g.order_index || 0] = g));
@@ -77,6 +79,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
     const grp = groupsByOrder[s.order_index || 0];
     const desc = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.join('\n') : s.description || '';
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((p) => p.url);
     return {
       key: key(),
       title: s.title || '',
@@ -91,8 +94,33 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       ings: ings.length
         ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '' }))
         : [emptyIng()],
+      photos: [0, 1, 2, 3].map((i) => photos[i] || null),
+      collapsed: false,
     };
   });
+}
+
+// Fusion des lignes d'ingrédients identiques (nom + unité), quantités numériques additionnées.
+function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string }[] {
+  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
+  steps.forEach((st) =>
+    st.ings.forEach((i) => {
+      const name = i.name.trim();
+      if (!name) return;
+      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase();
+      const ex = merged.find((m) => m.key === mkey);
+      if (!ex) {
+        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit });
+        return;
+      }
+      const a = parseFloat(String(ex.qty).replace(',', '.'));
+      const b = parseFloat(String(i.qty).replace(',', '.'));
+      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
+      else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+    }),
+  );
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
 }
 
 export function CreerForm({
@@ -121,13 +149,14 @@ export function CreerForm({
   const [level, setLevel] = useState<number>(
     editRecipe?.difficulties?.level ?? difficulties.find((d) => d.id === (editRecipe as { difficulty_id?: number } | null)?.difficulty_id)?.level ?? 0,
   );
-  const [selectedTags, setSelectedTags] = useState<Set<number>>(
-    () => new Set((editRecipe?.recipe_tags || []).map((t) => t.tags?.id).filter((x): x is number => x != null)),
+  const [selectedTags, setSelectedTags] = useState<Map<number, string>>(
+    () => new Map((editRecipe?.recipe_tags || []).map((t) => [t.tags?.id, t.tags?.name] as [number, string]).filter(([id]) => id != null)),
   );
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const [measure, setMeasure] = useState<MeasureType>((editRecipe?.measure_type as MeasureType) || 'units');
   const [qtyAmount, setQtyAmount] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_qty || '' : '');
-  const [qtyUnit, setQtyUnit] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_unit || '' : '');
+  const [qtyUnit, setQtyUnit] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_unit || 'unite' : 'unite');
   const [moldTypeId, setMoldTypeId] = useState(editRecipe?.mold_type_id ? String(editRecipe.mold_type_id) : '');
   const [moldCount, setMoldCount] = useState(editRecipe?.measure_type === 'mold' ? editRecipe?.yield_qty || '' : '');
   const [dims, setDims] = useState<Record<string, string>>(() => {
@@ -142,6 +171,7 @@ export function CreerForm({
   const [wait, setWait] = useState(editRecipe?.wait_time != null ? String(editRecipe.wait_time) : '');
   const [cook, setCook] = useState(editRecipe?.cook_time != null ? String(editRecipe.cook_time) : '');
   const [total, setTotal] = useState(editRecipe?.total_time != null ? String(editRecipe.total_time) : '');
+  const [timeTouched, setTimeTouched] = useState({ prep: !!editRecipe, wait: !!editRecipe, cook: !!editRecipe, total: !!editRecipe });
 
   const [utensils, setUtensils] = useState<{ key: string; name: string; comment: string }[]>(() => {
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -152,16 +182,60 @@ export function CreerForm({
   const [busy, setBusy] = useState(false);
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
-  const inp = 'border border-outline-variant rounded px-3 py-2 bg-white text-[15px] focus:outline-none focus:border-primary';
+  const remainingTags = useMemo(() => tags.filter((t) => !selectedTags.has(t.id)), [tags, selectedTags]);
+
+  // ── Temps globaux : somme automatique tant qu'ils ne sont pas modifiés à la main ──
+  function recalcGlobalTimes(nextSteps: StepState[], touched = timeTouched) {
+    const sum = (k: 'prep' | 'wait' | 'cook') => nextSteps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
+    if (!touched.prep) setPrep(String(sum('prep') || ''));
+    if (!touched.wait) setWait(String(sum('wait') || ''));
+    if (!touched.cook) setCook(String(sum('cook') || ''));
+    if (!touched.total) {
+      const t = (touched.prep ? parseInt(prep, 10) || 0 : sum('prep')) + (touched.wait ? parseInt(wait, 10) || 0 : sum('wait')) + (touched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
+      setTotal(String(t > 0 ? t : ''));
+    }
+  }
 
   // ── Updaters étapes ──
-  const patchStep = (i: number, p: Partial<StepState>) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, ...p } : st)));
+  function patchStep(i: number, p: Partial<StepState>) {
+    setSteps((s) => {
+      const next = s.map((st, k) => (k === i ? { ...st, ...p } : st));
+      if ('prep' in p || 'wait' in p || 'cook' in p) recalcGlobalTimes(next);
+      return next;
+    });
+  }
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
   const addIng = (si: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: [...st.ings, emptyIng()] } : st)));
   const delIng = (si: number, ii: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
+  const patchPhoto = (si: number, pi: number, url: string | null) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? url : p)) } : st)));
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
+  const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
   const delStep = (i: number) => setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
+  const toggleCollapse = (i: number) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, collapsed: !st.collapsed } : st)));
+  const collapseAll = (v: boolean) => setSteps((s) => s.map((st) => ({ ...st, collapsed: v })));
+
+  // ── Aperçus dérivés (identiques à renderPlanning / renderIngredientsRecap) ──
+  const allSameDay = steps.every((s) => !s.dayOffset || parseInt(s.dayOffset, 10) === 0);
+  const planningDays = useMemo(() => {
+    if (allSameDay) return [];
+    const items = steps
+      .map((s, i) => ({ title: s.title.trim() || `Étape ${i + 1}`, offset: Math.max(0, parseInt(s.dayOffset, 10) || 0), order: i, isLast: false }))
+      .sort((a, b) => b.offset - a.offset || a.order - b.order);
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    const days: { offset: number; items: typeof items }[] = [];
+    items.forEach((it) => {
+      let d = days.find((x) => x.offset === it.offset);
+      if (!d) {
+        d = { offset: it.offset, items: [] };
+        days.push(d);
+      }
+      d.items.push(it);
+    });
+    return days;
+  }, [steps, allSameDay]);
+  const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
 
   async function submit(status: 'draft' | 'pending') {
     if (!title.trim()) {
@@ -251,7 +325,7 @@ export function CreerForm({
       }
 
       if (selectedTags.size > 0) {
-        await supabase.from('recipe_tags').insert([...selectedTags].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
+        await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
       }
 
       const utRows = utensils
@@ -271,23 +345,35 @@ export function CreerForm({
             order_index: i,
           }))
           .filter((l) => l.name);
-        const hasContent = st.title.trim() || desc || lines.length;
+        const photoUrls = st.photos.filter((p): p is string => !!p);
+        const hasContent = st.title.trim() || desc || lines.length || photoUrls.length;
         if (!hasContent) continue;
 
-        await supabase.from('recipe_steps').insert({
-          recipe_id: recipeId,
-          step_number: gi + 1,
-          title: st.title.trim() || `Étape ${gi + 1}`,
-          description: desc || null,
-          prep_time: gmin(st.prep),
-          cook_time: gmin(st.cook),
-          cook_temp: gmin(st.temp),
-          wait_time: gmin(st.wait),
-          day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
-          tips: st.tips.trim() || null,
-          sous_etapes: null,
-          order_index: gi,
-        });
+        const { data: stepRow, error: stepErr } = await supabase
+          .from('recipe_steps')
+          .insert({
+            recipe_id: recipeId,
+            step_number: gi + 1,
+            title: st.title.trim() || `Étape ${gi + 1}`,
+            description: desc || null,
+            prep_time: gmin(st.prep),
+            cook_time: gmin(st.cook),
+            cook_temp: gmin(st.temp),
+            wait_time: gmin(st.wait),
+            day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
+            tips: st.tips.trim() || null,
+            sous_etapes: null,
+            order_index: gi,
+          })
+          .select('id')
+          .single();
+        if (stepErr) console.error('Étape non enregistrée :', stepErr.message);
+
+        if (stepRow && photoUrls.length) {
+          await supabase
+            .from('step_photos')
+            .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+        }
 
         if (lines.length) {
           const { data: grp, error: grpErr } = await supabase
@@ -313,280 +399,648 @@ export function CreerForm({
   const scalingOptions =
     measure === 'mold'
       ? [
-          ['simple', 'Selon la taille du moule (volume)'],
+          ['simple', 'Ajustement selon la taille du moule (volume)'],
           ['foncage', 'Recouvre une surface (fonçage, glaçage…)'],
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [
-          ['simple', 'Ajustement selon la quantité produite'],
-          ['aucun', "Pas d'ajustement pour cette étape"],
+          ['simple', 'Ajustement des quantités selon la quantité à produire'],
+          ['aucun', "Pas d'ajustement des quantités pour cette étape"],
         ];
 
+  const radio = (checked: boolean) => (
+    <div className="relative flex items-center justify-center">
+      <div className={`w-5 h-5 border-2 rounded-full transition-colors ${checked ? 'border-primary' : 'border-outline'}`} />
+      <div className={`absolute w-2.5 h-2.5 bg-primary rounded-full transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`} />
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
-          {editingId ? 'Modifier la recette' : 'Créer une recette'}
-        </h1>
-        <label className="flex items-center gap-2 text-label-md font-label-md text-on-surface-variant">
-          <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" />
-          {isPublic ? 'Public' : 'Privé'}
-        </label>
+    <>
+      <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-display-lg text-headline-lg-mobile md:text-display-lg text-primary mb-2">
+            {editingId ? 'Modifier la recette' : 'Créer une nouvelle recette'}
+          </h1>
+          <p className="font-body-lg text-body-lg text-on-surface-variant">L&apos;excellence de la pâtisserie, rédigée par vos soins.</p>
+        </div>
+        <Link href="/profil" className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md">
+          <span className="material-symbols-outlined">close</span> Annuler
+        </Link>
       </div>
 
-      {/* Infos générales */}
-      <section className="flex flex-col gap-5">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre — ex : Saint-Honoré traditionnel" className={`${inp} font-headline-md text-[22px]`} />
-        <label className="flex flex-col gap-1">
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inp} />
-        </label>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col gap-2">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Photo principale</span>
-            <div className="aspect-[16/9] w-full max-w-md border border-outline-variant overflow-hidden">
-              <ImageSlot src={hero} onChange={setHero} shape="rect" maxWidth={1200} placeholder="Photo principale (16:9)" className="w-full h-full" />
-            </div>
+      <div className="space-y-16">
+        {/* Infos de base & média */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          <div className="lg:col-span-12 flex flex-col">
+            <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="editorial-input font-headline-lg text-headline-lg text-primary w-full"
+              placeholder="Le Saint-Honoré Traditionnel"
+              type="text"
+            />
           </div>
-          <div className="flex flex-col gap-2">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
-            <div className="flex items-center gap-2 h-8">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <button key={i} type="button" onClick={() => setLevel(i === level ? i - 1 : i)} className={`maryse-pill ${i <= level ? 'bg-primary' : 'bg-outline-variant'}`} aria-label={`Niveau ${i}`} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Rendement */}
-      <section className="flex flex-col gap-4 border-t border-outline-variant pt-6">
-        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Quantité produite</span>
-        <div className="flex flex-wrap gap-4">
-          {(['units', 'mold', 'dimensions'] as const).map((m) => (
-            <label key={m} className="flex items-center gap-2 text-sm">
-              <input type="radio" name="measure" checked={measure === m} onChange={() => setMeasure(m)} />
-              {m === 'units' ? 'Unités / poids' : m === 'mold' ? 'Moule' : 'Dimensions libres'}
-            </label>
-          ))}
-        </div>
-        {measure === 'units' && (
-          <div className="flex flex-wrap items-end gap-3">
-            <input value={qtyAmount} onChange={(e) => setQtyAmount(e.target.value)} placeholder="ex : 8" className={inp} style={{ width: '7rem' }} />
-            <select value={qtyUnit} onChange={(e) => setQtyUnit(e.target.value)} className={inp}>
-              <option value="">— unité —</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.name}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        {measure === 'mold' && (
-          <div className="flex flex-wrap items-end gap-4">
-            <select value={moldTypeId} onChange={(e) => setMoldTypeId(e.target.value)} className={inp}>
-              <option value="">Choisir le type de moule</option>
-              {moldTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <label className="flex flex-col text-sm">
-              <span className="font-label-md text-[10px] uppercase text-on-surface-variant mb-1">Nombre</span>
-              <input value={moldCount} onChange={(e) => setMoldCount(e.target.value)} type="number" min={1} placeholder="ex : 6" className={inp} style={{ width: '6rem' }} />
-            </label>
-            {(FORME_DIMS[moldForme || ''] || []).map((d) => (
-              <label key={d.key} className="flex flex-col text-sm">
-                <span className="font-label-md text-[10px] uppercase text-on-surface-variant mb-1">{d.label}</span>
-                <div className="flex items-baseline gap-1">
-                  <input value={dims[d.key] || ''} onChange={(e) => setDims((p) => ({ ...p, [d.key]: e.target.value }))} type="number" min={0} step="any" className={inp} style={{ width: '5rem' }} />
-                  <span className="text-sm text-on-surface-variant">cm</span>
-                </div>
+          <div className="lg:col-span-7 space-y-8">
+            <div className="flex items-center justify-between py-4 border-b border-outline-variant">
+              <div>
+                <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
+                <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only peer" />
+                <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container" />
+                <span className="ml-3 font-label-md text-label-md text-primary">{isPublic ? 'Public' : 'Privé'}</span>
               </label>
-            ))}
+            </div>
+            <div className="space-y-4">
+              <label className="font-label-md text-label-md text-outline uppercase block">Catégories et Tags</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {[...selectedTags].map(([id, name]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                    title="Retirer ce tag"
+                    className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                  >
+                    {name}
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                ))}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setTagPickerOpen((v) => !v)}
+                    className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
+                  >
+                    + Ajouter un tag
+                  </button>
+                  {tagPickerOpen && (
+                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
+                      {remainingTags.length ? (
+                        remainingTags.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
+                              setTagPickerOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
+                          >
+                            {t.name}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        {measure === 'dimensions' && (
-          <input value={dimsDesc} onChange={(e) => setDimsDesc(e.target.value)} placeholder="ex : cadre 30 × 20 cm" className={inp} style={{ maxWidth: '24rem' }} />
-        )}
-      </section>
-
-      {/* Temps globaux */}
-      <section className="border-t border-outline-variant pt-6">
-        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Temps (minutes)</span>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-          {(
-            [
-              ['Préparation', prep, setPrep],
-              ['Attente', wait, setWait],
-              ['Cuisson', cook, setCook],
-              ['Total', total, setTotal],
-            ] as const
-          ).map(([label, val, set]) => (
-            <label key={label} className="flex flex-col gap-1 text-sm">
-              <span className="font-label-md text-[10px] uppercase text-on-surface-variant">{label}</span>
-              <input value={val} onChange={(e) => set(e.target.value)} type="number" min={0} className={inp} />
-            </label>
-          ))}
-        </div>
-      </section>
-
-      {/* Tags */}
-      {tags.length > 0 && (
-        <section className="border-t border-outline-variant pt-6">
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Tags</span>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {tags.map((t) => {
-              const on = selectedTags.has(t.id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() =>
-                    setSelectedTags((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(t.id)) n.delete(t.id);
-                      else n.add(t.id);
-                      return n;
-                    })
-                  }
-                  className={`px-3 py-1 rounded-full text-[12px] font-label-md transition-colors ${
-                    on ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant hover:text-primary'
-                  }`}
-                >
-                  {t.name}
-                </button>
-              );
-            })}
+          <div className="lg:col-span-12">
+            <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Description rapide</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+              placeholder="Décrivez votre recette en quelques mots"
+            />
+          </div>
+          <div className="lg:col-span-12">
+            <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
+              <ImageSlot
+                src={hero}
+                onChange={setHero}
+                shape="rect"
+                maxWidth={1200}
+                placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
+                className="w-full h-full"
+              />
+            </div>
           </div>
         </section>
-      )}
 
-      {/* Ustensiles */}
-      <section className="border-t border-outline-variant pt-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Ustensiles</span>
-          <button type="button" onClick={() => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }])} className="text-primary font-label-md text-[12px] hover:underline flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px]">add</span> Ajouter
-          </button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {utensils.map((u, i) => (
-            <div key={u.key} className="flex flex-wrap gap-2 items-center">
-              <input value={u.name} onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} placeholder="ex : Poche à douille" className={inp} style={{ width: '14rem' }} />
-              <input value={u.comment} onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))} placeholder="commentaire (optionnel)" className={`${inp} flex-1`} />
-              <button type="button" onClick={() => setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p))} className="text-error hover:opacity-70">
-                <span className="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Étapes */}
-      <section className="border-t border-outline-variant pt-6 flex flex-col gap-8">
-        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Étapes</span>
-        {steps.map((st, si) => (
-          <div key={st.key} className="border border-outline-variant rounded-xl overflow-hidden">
-            <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
-              <span className="font-headline-md text-[18px] text-primary">{si + 1}.</span>
-              <input value={st.title} onChange={(e) => patchStep(si, { title: e.target.value })} placeholder="Nom de l'étape" className={`${inp} font-headline-md text-[18px] flex-1`} />
-              <button type="button" onClick={() => delStep(si)} className="text-error hover:opacity-70" title="Supprimer l'étape">
-                <span className="material-symbols-outlined text-[20px]">delete</span>
-              </button>
+        {/* Métadonnées : quantité produite */}
+        <section className="bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
+          <div className="flex flex-col border-b border-outline-variant pb-4">
+            <label className="font-label-md text-label-md text-outline uppercase mb-4">Taille / Nombre de portions</label>
+            <div className="flex flex-wrap gap-6">
+              {(
+                [
+                  ['units', "Par nombre d'unités / poids"],
+                  ['mold', 'Par type de moule / cercle'],
+                  ['dimensions', 'Description libre'],
+                ] as const
+              ).map(([v, label]) => (
+                <label key={v} className="flex items-center gap-3 cursor-pointer group">
+                  <input type="radio" checked={measure === v} onChange={() => setMeasure(v)} className="sr-only" />
+                  {radio(measure === v)}
+                  <span className="font-body-md text-on-surface">{label}</span>
+                </label>
+              ))}
             </div>
 
-            <div className="p-6 flex flex-col gap-5">
-              <div className="flex flex-wrap gap-3">
-                {(
-                  [
-                    ['Réalisation (min)', st.prep, (v: string) => patchStep(si, { prep: v })],
-                    ['Attente (min)', st.wait, (v: string) => patchStep(si, { wait: v })],
-                    ['Cuisson (min)', st.cook, (v: string) => patchStep(si, { cook: v })],
-                    ['T°C', st.temp, (v: string) => patchStep(si, { temp: v })],
-                    ['J −', st.dayOffset, (v: string) => patchStep(si, { dayOffset: v })],
-                  ] as const
-                ).map(([label, val, set]) => (
-                  <label key={label} className="flex flex-col text-center text-sm">
-                    <span className="font-label-md text-[9px] uppercase text-on-surface-variant mb-1">{label}</span>
-                    <input value={val} onChange={(e) => set(e.target.value)} type="number" min={0} className={`${inp} text-center`} style={{ width: '5rem' }} />
-                  </label>
-                ))}
+            {measure === 'units' && (
+              <div className="mt-4 flex flex-wrap gap-4 items-end">
+                <input
+                  value={qtyAmount}
+                  onChange={(e) => setQtyAmount(e.target.value)}
+                  className="editorial-input font-body-md text-on-surface"
+                  style={{ width: '6rem' }}
+                  placeholder="ex : 6"
+                  type="number"
+                  min={0}
+                />
+                <div className="relative flex items-end" style={{ minWidth: '8rem' }}>
+                  <select
+                    value={qtyUnit}
+                    onChange={(e) => setQtyUnit(e.target.value)}
+                    className="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6"
+                  >
+                    <option value="unite">Unité(s)</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="l">l</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style={{ fontSize: '16px' }}>▾</span>
+                </div>
               </div>
+            )}
 
-              <label className="flex flex-col gap-1">
-                <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Description</span>
-                <textarea value={st.description} onChange={(e) => patchStep(si, { description: e.target.value })} rows={4} className={inp} placeholder="Décrivez cette étape (une ligne par sous-étape si besoin)…" />
-              </label>
-
-              {/* Ingrédients de l'étape */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Ingrédients</span>
-                  <select value={st.scaling} onChange={(e) => patchStep(si, { scaling: e.target.value })} className="border border-outline-variant rounded px-2 py-1 text-[12px] bg-white">
-                    {scalingOptions.map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
+            {measure === 'mold' && (
+              <div className="mt-4 space-y-4">
+                <div className="relative flex items-end max-w-md">
+                  <select
+                    value={moldTypeId}
+                    onChange={(e) => {
+                      setMoldTypeId(e.target.value);
+                      setDims({});
+                    }}
+                    className="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6"
+                  >
+                    <option value="" disabled>
+                      Choisir le type de moule
+                    </option>
+                    {moldTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
                       </option>
                     ))}
                   </select>
+                  <span className="pointer-events-none absolute right-0 inset-y-0 flex items-center text-on-surface-variant" style={{ fontSize: '16px' }}>▾</span>
                 </div>
-                <div className="flex flex-col gap-2">
-                  {st.ings.map((g, ii) => (
-                    <div key={g.key} className="flex flex-wrap gap-2 items-center">
-                      <input list="dl-ingredients" value={g.name} onChange={(e) => patchIng(si, ii, { name: e.target.value })} placeholder="ingrédient" className={inp} style={{ width: '12rem' }} autoComplete="off" />
-                      <input value={g.qty} onChange={(e) => patchIng(si, ii, { qty: e.target.value })} placeholder="qté" type="number" min={0} step="any" className={`${inp} text-center`} style={{ width: '5rem' }} />
-                      <select value={g.unit} onChange={(e) => patchIng(si, ii, { unit: e.target.value })} className={inp} style={{ width: '8rem' }}>
-                        <option value="">— unité —</option>
-                        {units.map((u) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input value={g.comment} onChange={(e) => patchIng(si, ii, { comment: e.target.value })} placeholder="note" className={`${inp} flex-1`} style={{ minWidth: '8rem' }} />
-                      <button type="button" onClick={() => delIng(si, ii)} className="text-error hover:opacity-70">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
+                <div className="flex flex-wrap gap-6 items-end">
+                  <div className="flex flex-col">
+                    <label className="font-label-md text-label-md text-outline mb-1">Nombre</label>
+                    <input
+                      value={moldCount}
+                      onChange={(e) => setMoldCount(e.target.value)}
+                      className="editorial-input text-on-surface"
+                      style={{ width: '5rem' }}
+                      placeholder="ex : 6"
+                      type="number"
+                      min={1}
+                    />
+                  </div>
+                  {(FORME_DIMS[moldForme || ''] || []).map((d) => (
+                    <div key={d.key} className="flex flex-col">
+                      <label className="font-label-md text-label-md text-outline mb-1">{d.label}</label>
+                      <div className="flex items-baseline gap-2">
+                        <input
+                          value={dims[d.key] || ''}
+                          onChange={(e) => setDims((p) => ({ ...p, [d.key]: e.target.value }))}
+                          className="editorial-input text-on-surface"
+                          style={{ width: '5rem' }}
+                          placeholder="0"
+                          type="number"
+                          min={0}
+                          step="any"
+                        />
+                        <span className="text-sm text-on-surface-variant">cm</span>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={() => addIng(si)} className="mt-2 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
-                  <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
+                <p className="text-xs text-on-surface-variant italic">Ex. : 6 tartes de 7 cm de diamètre et 2 cm de haut.</p>
+              </div>
+            )}
+
+            {measure === 'dimensions' && (
+              <div className="mt-4">
+                <input
+                  value={dimsDesc}
+                  onChange={(e) => setDimsDesc(e.target.value)}
+                  className="editorial-input w-full font-body-md text-on-surface"
+                  placeholder="ex : 20cm × 5cm, Ø 22cm…"
+                  type="text"
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Ustensiles */}
+        <section className="space-y-8">
+          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+          <ul className="space-y-4">
+            {utensils.map((u, i) => (
+              <li key={u.key} className="flex items-start gap-4 group">
+                <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
+                <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                  <input
+                    value={u.name}
+                    onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
+                    className="editorial-input text-on-surface w-full"
+                    placeholder="Nom de l'ustensile"
+                    autoComplete="off"
+                  />
+                  <input
+                    value={u.comment}
+                    onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                    className="editorial-input text-on-surface w-full"
+                    placeholder="Commentaire (optionnel)"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p))}
+                  title="Supprimer"
+                  className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 mt-1"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
                 </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }])}
+            className="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline"
+          >
+            <span className="material-symbols-outlined">add</span> Ajouter un ustensile
+          </button>
+        </section>
+
+        {/* Étapes */}
+        <section className="space-y-12">
+          <div className="flex justify-end gap-6">
+            <button type="button" onClick={() => collapseAll(true)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline">
+              <span className="material-symbols-outlined">unfold_less</span> Tout replier
+            </button>
+            <button type="button" onClick={() => collapseAll(false)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline">
+              <span className="material-symbols-outlined">unfold_more</span> Tout déplier
+            </button>
+          </div>
+
+          {steps.map((st, si) => (
+            <div key={st.key}>
+              <div className="flex items-center gap-4 border-b border-primary pb-4">
+                <span className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1" title="Glisser pour déplacer l'étape">
+                  drag_indicator
+                </span>
+                <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
+                <input
+                  value={st.title}
+                  onChange={(e) => patchStep(si, { title: e.target.value })}
+                  className="flex-grow editorial-input font-headline-md text-headline-md text-primary"
+                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
+                  type="text"
+                />
+                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0">
+                  <span className="material-symbols-outlined">add_row_above</span>
+                </button>
+                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0">
+                  <span className="material-symbols-outlined">{st.collapsed ? 'expand_more' : 'expand_less'}</span>
+                </button>
+                {steps.length > 1 && (
+                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0">
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                )}
               </div>
 
-              <label className="flex flex-col gap-1">
-                <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Conseils &amp; astuces de l&apos;étape</span>
-                <textarea value={st.tips} onChange={(e) => patchStep(si, { tips: e.target.value })} rows={2} className={inp} />
-              </label>
+              {!st.collapsed && (
+                <div className="space-y-8 mt-8">
+                  <div className="flex flex-wrap gap-8">
+                    {(
+                      [
+                        ['TEMPS DE PRÉP', st.prep, (v: string) => patchStep(si, { prep: v }), 'min'],
+                        ["TEMPS D'ATTENTE", st.wait, (v: string) => patchStep(si, { wait: v }), 'min'],
+                        ['TEMPS DE CUISSON', st.cook, (v: string) => patchStep(si, { cook: v }), 'min'],
+                        ['T°C DE CUISSON', st.temp, (v: string) => patchStep(si, { temp: v }), '°C'],
+                      ] as const
+                    ).map(([label, val, set, unit]) => (
+                      <div key={label} className="flex flex-col items-center text-center w-48">
+                        <label className="font-label-md text-label-md text-outline">{label}</label>
+                        <div className="flex items-baseline justify-center gap-2">
+                          <input
+                            value={val}
+                            onChange={(e) => set(e.target.value)}
+                            className="editorial-input text-on-surface text-center"
+                            style={{ width: '40%' }}
+                            type="number"
+                            min={0}
+                          />
+                          <span className="text-sm text-on-surface-variant">{unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
+                    <input
+                      value={st.dayOffset}
+                      onChange={(e) => patchStep(si, { dayOffset: e.target.value })}
+                      className="editorial-input text-on-surface w-20"
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+                    <div className="space-y-4">
+                      {st.ings.map((g, ii) => (
+                        <div key={g.key} className="flex items-center gap-4">
+                          <input
+                            value={g.qty}
+                            onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
+                            className="w-20 editorial-input text-on-surface"
+                            type="text"
+                            placeholder="Qté"
+                          />
+                          <select
+                            value={g.unit}
+                            onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
+                            className="editorial-input text-on-surface bg-transparent cursor-pointer"
+                            style={{ width: '5.6rem' }}
+                          >
+                            <option value="">— unité —</option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="relative flex-1 min-w-0">
+                            <input
+                              list="dl-ingredients"
+                              value={g.name}
+                              onChange={(e) => patchIng(si, ii, { name: e.target.value })}
+                              className="editorial-input text-on-surface w-full"
+                              type="text"
+                              placeholder="Ingrédient"
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <input
+                              value={g.comment}
+                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
+                              className="editorial-input text-on-surface w-full"
+                              type="text"
+                              placeholder="Commentaire (optionnel)"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            title="Supprimer"
+                            onClick={() => delIng(si, ii)}
+                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={() => addIng(si)} className="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline w-fit">
+                      <span className="material-symbols-outlined">add</span> Ajouter un ingrédient
+                    </button>
+                    <div className="mt-4 border-t border-b border-outline-variant/60 py-4 flex items-center gap-3">
+                      <label className="font-label-md text-label-md text-outline shrink-0">ADAPTATION</label>
+                      <select
+                        value={st.scaling}
+                        onChange={(e) => patchStep(si, { scaling: e.target.value })}
+                        className="editorial-input text-on-surface bg-transparent cursor-pointer shrink-0"
+                        style={{ width: 'auto' }}
+                      >
+                        {scalingOptions.map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label>
+                    <textarea
+                      value={st.description}
+                      onChange={(e) => patchStep(si, { description: e.target.value })}
+                      className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                      placeholder="Décrivez les gestes techniques avec précision..."
+                      rows={8}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {st.photos.map((p, pi) => (
+                      <div key={pi} className="aspect-square border border-dashed border-outline-variant overflow-hidden">
+                        <ImageSlot
+                          src={p}
+                          onChange={(url) => patchPhoto(si, pi, url)}
+                          shape="rect"
+                          maxWidth={800}
+                          placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
+                          className="w-full h-full"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <details open className="group border-b border-outline-variant">
+                    <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
+                      Conseils &amp; Astuces de l&apos;étape
+                      <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                    </summary>
+                    <div className="pb-6 px-4">
+                      <textarea
+                        value={st.tips}
+                        onChange={(e) => patchStep(si, { tips: e.target.value })}
+                        className="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant"
+                        placeholder="Une astuce particulière pour cette étape ?"
+                      />
+                    </div>
+                  </details>
+                </div>
+              )}
             </div>
+          ))}
+
+          <div className="flex justify-center py-8">
+            <button
+              type="button"
+              onClick={addStep}
+              className="flex items-center gap-3 px-8 py-3 border border-primary text-primary hover:bg-primary-container hover:text-white transition-all font-label-md text-label-md uppercase tracking-widest"
+            >
+              <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
+            </button>
           </div>
-        ))}
-        <button type="button" onClick={addStep} className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline w-fit">
-          <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
-        </button>
-      </section>
+        </section>
 
-      {/* Conseils de la recette */}
-      <section className="border-t border-outline-variant pt-6">
-        <label className="flex flex-col gap-1">
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Conseils et astuces de la recette</span>
-          <textarea value={tips} onChange={(e) => setTips(e.target.value)} rows={3} className={inp} />
-        </label>
-      </section>
+        {/* Conseils de la recette */}
+        <section className="space-y-8">
+          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+          <textarea
+            value={tips}
+            onChange={(e) => setTips(e.target.value)}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
+            rows={4}
+          />
+        </section>
 
-      {/* Actions */}
-      <div className="sticky bottom-0 bg-surface/95 backdrop-blur border-t border-outline-variant py-4 flex flex-wrap gap-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-        <button type="button" onClick={() => submit('pending')} disabled={busy} className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-60">
-          {isPublic ? 'Publier' : 'Enregistrer'}
-        </button>
-        <button type="button" onClick={() => submit('draft')} disabled={busy} className="border border-primary text-primary px-6 py-3 rounded-full font-label-md text-label-md hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-60">
-          Enregistrer comme brouillon
-        </button>
+        {/* Planning de préparation (aperçu) */}
+        <section className="space-y-8">
+          <div className="flex justify-between items-end border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
+            <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
+          </div>
+          <div className="bg-surface-container-high p-gutter rounded">
+            {allSameDay ? (
+              <div className="w-full flex items-center justify-center gap-3 py-6">
+                <span className="material-symbols-outlined text-secondary">celebration</span>
+                <span className="font-body-lg text-body-lg italic text-primary">Peut être dégusté le jour de la préparation</span>
+              </div>
+            ) : (
+              <div className="relative flex flex-col md:flex-row gap-8">
+                <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+                {planningDays.map((day, i) => (
+                  <div key={i} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                    <span className="font-label-md text-[12px] text-secondary">{day.offset > 0 ? `J − ${day.offset}` : 'JOUR J'}</span>
+                    {day.items.map((it, k) => (
+                      <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
+                        {it.title}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Difficulté & temps globaux */}
+        <section className="space-y-8">
+          <div className="flex justify-between items-end border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
+            <span className="text-sm text-on-surface-variant italic">Temps pré-remplis depuis les étapes, modifiables</span>
+          </div>
+          <div className="flex flex-wrap justify-evenly items-start gap-x-10 gap-y-12">
+            <div className="flex flex-col items-center text-center border-b border-outline-variant pb-4">
+              <label className="font-label-md text-label-md text-outline uppercase">Difficulté</label>
+              <div className="flex justify-center gap-2 mt-4">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLevel(i + 1)}
+                    className={`maryse-pill ${i <= level - 1 ? 'bg-primary' : 'bg-outline-variant'}`}
+                    aria-label={`Niveau ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+            {(
+              [
+                ['TEMPS DE PRÉP', prep, (v: string) => setPrep(v), 'prep' as const],
+                ['ATTENTE', wait, (v: string) => setWait(v), 'wait' as const],
+                ['CUISSON', cook, (v: string) => setCook(v), 'cook' as const],
+                ['DURÉE TOTALE', total, (v: string) => setTotal(v), 'total' as const],
+              ] as const
+            ).map(([label, val, set, k]) => (
+              <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
+                <label className="font-label-md text-label-md text-outline">{label}</label>
+                <div className="flex items-baseline gap-2">
+                  <input
+                    value={val}
+                    onChange={(e) => {
+                      set(e.target.value);
+                      setTimeTouched((t) => ({ ...t, [k]: e.target.value.trim() !== '' }));
+                    }}
+                    className="editorial-input font-headline-md text-headline-md text-primary"
+                    style={{ width: '5.5rem' }}
+                    type="number"
+                    min={0}
+                  />
+                  <span className="text-sm text-on-surface-variant">min</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Récapitulatif des ingrédients (aperçu) */}
+        <section className="space-y-8">
+          <div className="flex justify-between items-end border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+            <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
+          </div>
+          <div className="max-w-2xl">
+            {ingredientsRecap.length === 0 ? (
+              <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                {ingredientsRecap.map((m, k) => (
+                  <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                    <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                    <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">{[m.qty, m.unit].filter(Boolean).join(' ')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="pt-10 border-t-2 border-primary">
+          <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
+        </section>
+      </div>
+
+      <div
+        className="fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="max-w-[1200px] mx-auto flex justify-center gap-3 px-margin-mobile md:px-margin-desktop">
+          <button
+            type="button"
+            onClick={() => submit('pending')}
+            disabled={busy}
+            className="flex-1 max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
+          >
+            {isPublic ? 'Publier la recette' : 'Enregistrer'}
+            <span className="material-symbols-outlined text-[18px]">send</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => submit('draft')}
+            disabled={busy}
+            className="flex-1 max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+          >
+            Enregistrer en brouillon
+          </button>
+        </div>
       </div>
 
       <datalist id="dl-ingredients">
@@ -594,6 +1048,6 @@ export function CreerForm({
           <option key={n} value={n} />
         ))}
       </datalist>
-    </div>
+    </>
   );
 }

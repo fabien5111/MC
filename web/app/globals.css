@@ -31,3 +31,16 @@
   text-underline-offset: 2px;
   cursor: help;
 }
+/* Champ éditorial (creer.html) : pas de cadre, simple soulignement */
+.editorial-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #d9b8bc;
+  padding: 8px 0;
+  outline: none;
+  transition: border-color 0.3s ease;
+  width: 100%;
+}
+.editorial-input:focus {
+  border-bottom: 1px solid #300a12;
+}
