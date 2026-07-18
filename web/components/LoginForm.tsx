@@ -32,7 +32,10 @@ export function LoginForm({ next }: { next: string }) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName } },
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          },
         });
         if (error) throw error;
         setNotice('Compte créé. Vérifiez vos e-mails pour confirmer, puis connectez-vous.');
@@ -48,7 +51,7 @@ export function LoginForm({ next }: { next: string }) {
   async function oauth(provider: 'google' | 'facebook') {
     setError(null);
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}${next}`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
     if (error) setError(error.message);
   }
