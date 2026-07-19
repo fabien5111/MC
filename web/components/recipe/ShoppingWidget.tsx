@@ -105,7 +105,7 @@ export function ShoppingWidget({
                     type="checkbox"
                     checked={picked[i]}
                     onChange={() => toggle(i)}
-                    className="w-4 h-4 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0"
+                    className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
                   <span className="font-body-md text-body-md flex-1">{m.name}</span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap">

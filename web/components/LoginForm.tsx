@@ -162,7 +162,7 @@ export function LoginForm({ next }: { next: string }) {
               type="checkbox"
               checked={terms}
               onChange={(e) => setTerms(e.target.checked)}
-              className="mt-1 w-4 h-4 border-outline rounded-none text-primary-container focus:ring-primary-container transition-all cursor-pointer"
+              className="mt-1 w-4 h-4 border-outline rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer"
             />
             <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
               J&apos;accepte les{' '}
