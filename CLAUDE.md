@@ -74,7 +74,7 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 
 - Supabase Auth par **cookies** (`@supabase/ssr`), vérifiable côté serveur.
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
-  **OAuth Google** (callback : `/auth/callback`).
+  **OAuth Google (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/creer`,
   `/admin`, `/execution`, `/courses`, `/importer`, `/relecture` → redirection
   vers `/connexion?next=…` si non connecté. Tolérant aux pannes : une erreur
@@ -149,6 +149,60 @@ npm run gen:types   # régénère lib/database.types.ts depuis la base live
 
 ---
 
-## Fonctionnalités
+## Fonctionnalités déjà en place (Plan gratuit) - Liste non exhaustive
+Carnet de recette privé et public
+Ajustement de la recette par quantité à produire ou par type de moule
+Ajustement de la recette en fonction de la quantité d'un ingrédient disponible
+Planification de l'execution des recettes
+Gestion de la liste des courses
 
-<!-- À compléter -->
+
+
+## Fonctionnalités déjà en place (Plan payant) - Liste non exhaustive
+Ajustement de la recette par IA (texte libre)
+Import de recette depuis une URL, un pdf ou un copier/coller
+
+
+
+## Fonctionnalités à venir (Plan gratuit) - Liste non exhaustive
+
+Communauté de patissier, personnes suivies, like sur les profils et sur les recettes
+
+Éclatement d'un ingrédient spécifique en sous-étapes de préparation détaillées.
+
+Déclenchement automatique du chronomètre du téléphone selon le timing des étapes.
+
+Identification et gestion des allergènes.
+
+Boîte à idées communautaire pour le développement du site.
+
+Versioning de recettes (système de fork) pour créer et visualiser l'évolution d'une recette.
+
+Création et consultation de fiches techniques et fiches d'erreurs.
+
+Intégration de lecteurs vidéo YouTube directement dans les étapes de recette.
+
+Système d'envoi de message automatique lors d'un refus de publication.
+
+Messagerie interne entre utilisateurs.
+
+
+
+
+## Fonctionnalités à venir (Plan payant) - Liste non exhaustive
+
+Importation automatisée de recettes depuis des sites internet tiers grâce à l'IA
+
+Scan et numérisation de recettes physiques grâce à l'IA
+
+Génération de fiches techniques professionnelles (poids final, portions, coût matière, prix de revient, DLC conseillée).
+
+Calcul et gestion des coûts matières.
+
+Partage sécurisé de carnets de recettes privés.
+
+Assistant IA contextuel (calculs de portions, conversions de moules, substitution d'ingrédients).
+
+Suivi et gestion des stocks d'ingrédients.
+
+Compagnon vocal déporté pour pilotage des recettes et minuteurs sans contact manuel.
