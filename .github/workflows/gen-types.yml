@@ -10,7 +10,7 @@ on:
       branch:
         description: Branche où écrire lib/database.types.ts
         required: true
-        default: claude/project-technologies-fh35tl
+        default: main
 
 permissions:
   contents: write
