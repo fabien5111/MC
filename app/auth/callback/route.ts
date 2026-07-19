@@ -1,5 +1,5 @@
 // Callback OAuth / confirmation e-mail (flux PKCE de @supabase/ssr).
-// Google/Facebook (et les liens de confirmation e-mail) redirigent ici avec un
+// Google (et les liens de confirmation e-mail) redirige ici avec un
 // paramètre ?code= ; on l'échange contre une session, ce qui pose le cookie
 // httpOnly nécessaire à l'auth côté serveur (Server Components, middleware).
 import { NextResponse } from 'next/server';
