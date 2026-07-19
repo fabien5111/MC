@@ -1,25 +1,50 @@
-# CODING AGENTS: READ THIS FIRST
+# Maryse Club
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Site de partage de recettes de pâtisserie. **Next.js App Router + TypeScript +
+Tailwind CSS**, avec Supabase (auth, base de données).
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+## Stack
 
-## What you should do — IMPORTANT
+- **Next.js 15** (App Router, Route Handlers)
+- **TypeScript** (strict)
+- **Tailwind CSS 3** — design system dans `tailwind.config.ts`
+- **Supabase** via `@supabase/ssr` — auth par cookies, vérifiable côté serveur
+  (`lib/supabase/{client,server,middleware}.ts`)
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## Démarrer
 
-**Read `project/index.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+```bash
+npm install
+cp .env.local.example .env.local   # puis renseigner ANTHROPIC_API_KEY
+npm run dev                        # http://localhost:3000
+```
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## Routes API
 
-## About the design files
+- `POST /api/import-url` — import de recette (URL ou texte collé) → brouillon
+- `POST /api/scale-recipe` — coefficient d'ajustement des quantités (IA)
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+Auth/RLS via la session (cookies).
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+## Types de la base
 
-## Bundle contents
+`lib/database.types.ts` est la source de vérité pour les types Supabase. Pour
+le régénérer depuis la base live :
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Maryse Club maquettes` project files (HTML prototypes, assets, components)
+```bash
+export SUPABASE_ACCESS_TOKEN=<ton_token>   # https://supabase.com/dashboard/account/tokens
+npm run gen:types                          # écrase lib/database.types.ts
+npm run typecheck                          # repérer les écarts éventuels
+```
+
+Un workflow GitHub Actions (`.github/workflows/gen-types.yml`, lancement
+manuel) fait la même chose et committe le résultat sur la branche choisie.
+
+## Variables d'environnement
+
+Voir `.env.local.example`. `ANTHROPIC_API_KEY` reste **côté serveur
+uniquement** (jamais de préfixe `NEXT_PUBLIC_`).
+
+## Déploiement
+
+Voir `DEPLOY.md`.
