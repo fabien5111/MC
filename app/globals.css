@@ -39,16 +39,15 @@
    « Ingrédient » et « Commentaire ». */
 @layer components {
   .editorial-input {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid #d9b8bc;
-    padding: 8px 0;
+    background: #fff0f0; /* surface-container-low — même fond rosé que les zones de description */
+    border: 1px solid #d6c2c3; /* outline-variant */
+    padding: 8px 12px;
     outline: none;
     transition: border-color 0.3s ease;
     width: 100%;
   }
   .editorial-input:focus {
-    border-bottom: 1px solid #300a12;
+    border-color: #300a12; /* primary */
   }
 }
 /* Halo décoratif (connexion.html) */
