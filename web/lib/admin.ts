@@ -93,6 +93,9 @@ export type Member = {
   is_demo: boolean;
   notes: string | null;
   invited_at: string | null;
+  registeredAt: string | null;
+  provider: string | null;
+  avatarUrl: string | null;
   source: 'profile' | 'allowlist';
   profileId: string | null;
   allowlistId: number | null;
@@ -105,7 +108,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
   const [{ data: profiles }, { data: allowlist }, { data: recipes }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, email, full_name, provider, status, role, plan, is_demo, notes, created_at')
+      .select('id, email, full_name, avatar_url, provider, status, role, plan, is_demo, notes, created_at')
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
     supabase.from('recipes').select('author_id'),
@@ -134,6 +137,9 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       is_demo: al?.is_demo ?? p.is_demo ?? false,
       notes: al?.notes || p.notes || null,
       invited_at: al?.invited_at || p.created_at,
+      registeredAt: p.created_at,
+      provider: p.provider || null,
+      avatarUrl: p.avatar_url || null,
       source: 'profile',
       profileId: p.id,
       allowlistId: al?.id ?? null,
@@ -153,6 +159,9 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       is_demo: a.is_demo,
       notes: a.notes,
       invited_at: a.invited_at,
+      registeredAt: null,
+      provider: null,
+      avatarUrl: null,
       source: 'allowlist',
       profileId: null,
       allowlistId: a.id,

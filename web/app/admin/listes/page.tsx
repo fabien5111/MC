@@ -1,17 +1,22 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getListEntries } from '@/lib/admin';
+import { getListEntries, getMolds, getMoldTypes } from '@/lib/admin';
 import { SECTIONS } from '@/lib/admin-lists-config';
 import { ListsManager } from '@/components/admin/ListsManager';
 
 export const metadata: Metadata = { title: 'Listes | Admin — Maryse Club' };
 
 const ORDER: Record<string, string> = { recipe_types: 'id', difficulties: 'level' };
+const REGULAR_SECTIONS = SECTIONS.filter((s) => s.table !== 'molds');
 
 export default async function AdminListesPage() {
-  const entries = await Promise.all(SECTIONS.map((s) => getListEntries(s.table, ORDER[s.table] || 'name')));
-  const data: Record<string, Awaited<ReturnType<typeof getListEntries>>> = {};
-  SECTIONS.forEach((s, i) => (data[s.table] = entries[i]));
+  const [entries, molds, moldTypes] = await Promise.all([
+    Promise.all(REGULAR_SECTIONS.map((s) => getListEntries(s.table, ORDER[s.table] || 'name'))),
+    getMolds(),
+    getMoldTypes(),
+  ]);
+  const data: Record<string, Record<string, unknown>[]> = { molds: molds as unknown as Record<string, unknown>[] };
+  REGULAR_SECTIONS.forEach((s, i) => (data[s.table] = entries[i]));
 
   return (
     <>
@@ -21,7 +26,7 @@ export default async function AdminListesPage() {
           <span className="material-symbols-outlined text-sm">arrow_back</span> Tableau de bord
         </Link>
       </header>
-      <ListsManager data={data} />
+      <ListsManager data={data} moldTypes={moldTypes} />
     </>
   );
 }

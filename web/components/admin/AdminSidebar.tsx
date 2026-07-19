@@ -9,6 +9,7 @@ import { SignOutButton } from '@/components/SignOutButton';
 const NAV = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
   { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book' },
+  { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
   { href: '/admin/moules', label: 'Moules', icon: 'cake' },
@@ -35,7 +36,7 @@ export function AdminSidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded transition-colors ${
                 active
-                  ? 'bg-primary-container text-on-primary-container font-semibold'
+                  ? 'bg-primary-container/20 text-primary font-semibold'
                   : 'text-on-surface-variant hover:bg-surface-container-high hover:text-primary'
               }`}
             >
@@ -44,6 +45,16 @@ export function AdminSidebar() {
             </Link>
           );
         })}
+        <span
+          className="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant/40 cursor-not-allowed select-none"
+          title="Disponible en v2"
+        >
+          <span className="material-symbols-outlined text-xl">campaign</span>
+          <span className="text-sm font-medium">Publicités</span>
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-wider bg-outline-variant/50 text-on-surface-variant px-1.5 py-0.5 rounded">
+            v2
+          </span>
+        </span>
       </nav>
       <div className="p-4 border-t border-outline-variant flex flex-col gap-3">
         <Link
