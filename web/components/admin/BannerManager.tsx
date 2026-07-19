@@ -58,7 +58,7 @@ function BannerCard({
   }
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 luxury-shadow">
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 ambient-shadow">
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="font-headline-md text-xl text-primary">{config.label}</h3>
         <span className="text-xs font-label-md text-on-surface-variant">Taille idéale : {config.size}</span>
