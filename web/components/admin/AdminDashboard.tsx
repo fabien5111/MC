@@ -27,19 +27,21 @@ export function AdminDashboard({
   const sb = () => createClient();
 
   const cards = [
-    { icon: 'menu_book', label: 'Total Recettes', value: stats.totalRecipes.toLocaleString('fr-FR') },
-    { icon: 'pending_actions', label: 'En Attente', value: String(stats.pendingRecipes) },
-    { icon: 'chat_bubble', label: 'Commentaires en attente', value: String(stats.pendingComments) },
+    { icon: 'menu_book', label: 'Total Recettes', value: stats.totalRecipes.toLocaleString('fr-FR'), badge: '+12%', badgeCls: 'text-on-tertiary-container' },
+    { icon: 'pending_actions', label: 'En Attente', value: String(stats.pendingRecipes), badge: 'Priorité', badgeCls: 'text-error' },
+    { icon: 'chat_bubble', label: 'Nouveaux Commentaires', value: String(stats.pendingComments), badge: "Aujourd'hui", badgeCls: 'text-on-tertiary-container' },
+    { icon: 'group', label: 'Utilisateurs Actifs', value: '8,5k', badge: 'Actifs', badgeCls: 'text-on-tertiary-container' },
   ];
 
   return (
     <main className="flex-1 overflow-y-auto p-gutter lg:px-margin-desktop lg:py-12 bg-surface">
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-12">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-12">
         {cards.map((c) => (
           <div key={c.label} className="bg-surface-container-low border border-tertiary/10 p-8 rounded-xl">
-            <span className="material-symbols-outlined text-primary-container p-2 bg-primary-fixed rounded-lg mb-4 inline-block">
-              {c.icon}
-            </span>
+            <div className="flex justify-between items-start mb-4">
+              <span className="material-symbols-outlined text-primary-container p-2 bg-primary-fixed rounded-lg">{c.icon}</span>
+              <span className={`text-xs font-label-md tracking-wider ${c.badgeCls}`}>{c.badge}</span>
+            </div>
             <h3 className="font-label-md text-on-surface-variant uppercase tracking-widest text-xs mb-1">{c.label}</h3>
             <p className="font-headline-lg text-primary">{c.value}</p>
           </div>
@@ -47,7 +49,12 @@ export function AdminDashboard({
       </section>
 
       <section className="mb-12">
-        <h2 className="font-headline-md text-primary mb-6">Recettes en attente de validation</h2>
+        <div className="flex items-baseline justify-between mb-6">
+          <h2 className="font-headline-md text-primary">Recettes en attente de validation</h2>
+          <Link href="/admin/recettes" className="text-primary font-label-md hover:underline decoration-1 flex items-center gap-1">
+            Voir tout <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </Link>
+        </div>
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
@@ -117,7 +124,17 @@ export function AdminDashboard({
       </section>
 
       <section id="comments">
-        <h2 className="font-headline-md text-primary mb-6">Commentaires en attente</h2>
+        <div className="flex items-baseline justify-between mb-6">
+          <h2 className="font-headline-md text-primary">Commentaires en attente</h2>
+          <div className="flex gap-2">
+            <button className="bg-surface-container border border-outline-variant px-4 py-1.5 rounded-full text-xs font-label-md text-on-surface-variant hover:bg-outline-variant transition-colors">
+              Filtrer par date
+            </button>
+            <button className="bg-surface-container border border-outline-variant px-4 py-1.5 rounded-full text-xs font-label-md text-on-surface-variant hover:bg-outline-variant transition-colors">
+              Actions groupées
+            </button>
+          </div>
+        </div>
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
@@ -185,6 +202,16 @@ export function AdminDashboard({
           </table>
         </div>
       </section>
+
+      <Link
+        href="/admin/listes"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-primary-container text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all z-40 group"
+      >
+        <span className="material-symbols-outlined">add</span>
+        <span className="absolute right-16 bg-primary-container text-white px-4 py-2 rounded-lg text-sm font-label-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Créer une entrée
+        </span>
+      </Link>
     </main>
   );
 }
