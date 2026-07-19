@@ -123,7 +123,7 @@ export type RecipeFull = {
   mold_types: { name: string; forme: string | null } | null;
   recipe_tags: { tags: { id: number; name: string; slug: string } | null }[];
   recipe_utensils: { id: number; name: string; comment: string | null; url: string | null; order_index: number | null; utensils: { url: string | null } | null }[];
-  ingredient_groups: { id: number; name: string | null; order_index: number | null; ingredients: IngredientView[] }[];
+  ingredient_groups: { id: number; name: string | null; order_index: number | null; scaling_mode: string | null; ingredients: IngredientView[] }[];
   recipe_steps: RecipeStepView[];
 };
 
