@@ -561,7 +561,7 @@ export function CreerForm({
                   <select
                     value={qtyUnit}
                     onChange={(e) => setQtyUnit(e.target.value)}
-                    className="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6"
+                    className="editorial-input font-body-md text-on-surface cursor-pointer appearance-none pr-6"
                   >
                     <option value="unite">Unité(s)</option>
                     <option value="kg">kg</option>
@@ -582,7 +582,7 @@ export function CreerForm({
                       setMoldTypeId(e.target.value);
                       setDims({});
                     }}
-                    className="editorial-input font-body-md text-on-surface bg-transparent cursor-pointer appearance-none pr-6"
+                    className="editorial-input font-body-md text-on-surface cursor-pointer appearance-none pr-6"
                   >
                     <option value="" disabled>
                       Choisir le type de moule
@@ -781,7 +781,7 @@ export function CreerForm({
                           <select
                             value={g.unit}
                             onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
-                            className="editorial-input text-on-surface bg-transparent cursor-pointer"
+                            className="editorial-input text-on-surface cursor-pointer"
                             style={{ width: '5.6rem' }}
                           >
                             <option value="">— unité —</option>

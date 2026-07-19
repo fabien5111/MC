@@ -31,18 +31,24 @@
   text-underline-offset: 2px;
   cursor: help;
 }
-/* Champ éditorial (creer.html) : pas de cadre, simple soulignement */
-.editorial-input {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #d9b8bc;
-  padding: 8px 0;
-  outline: none;
-  transition: border-color 0.3s ease;
-  width: 100%;
-}
-.editorial-input:focus {
-  border-bottom: 1px solid #300a12;
+/* Champ éditorial (creer.html) : pas de cadre, simple soulignement.
+   Placé dans la couche `components` pour que les utilitaires Tailwind de
+   largeur (w-20, w-full…) puissent surcharger `width` : sinon, non layeré et
+   déclaré après `@tailwind utilities`, il forçait width:100% sur le champ Qté,
+   qui écrasait alors toute la rangée flex et faisait disparaître les champs
+   « Ingrédient » et « Commentaire ». */
+@layer components {
+  .editorial-input {
+    background: #fff0f0; /* surface-container-low — même fond rosé que les zones de description */
+    border: 1px solid #d6c2c3; /* outline-variant */
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.3s ease;
+    width: 100%;
+  }
+  .editorial-input:focus {
+    border-color: #300a12; /* primary */
+  }
 }
 /* Halo décoratif (connexion.html) */
 @keyframes subtle-glow {

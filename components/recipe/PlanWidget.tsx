@@ -47,12 +47,16 @@ export function PlanWidget({
   ingredients,
   steps,
   existingPlan,
+  isAdmin = false,
 }: {
   recipe: PlanRecipe;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
   steps: { id: number; title: string | null }[];
   existingPlan?: ExistingPlan | null;
+  // Réservé aux administrateurs pour le moment : ajustement des quantités par IA
+  // (texte libre) proposé comme troisième mode d'ajustement dans le mode « unités ».
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const { open, editMode, close } = usePlanCtx();
@@ -69,6 +73,13 @@ export function PlanWidget({
   // édition de l'entrée de planning existante).
   useEffect(() => {
     if (!open) return;
+    // Repart d'un mode d'ajustement propre (et efface l'état IA) à chaque
+    // ouverture — la reconstitution fine du mode IA n'est pas gérée en édition.
+    setUMode('qty');
+    setMMode('mold');
+    setAiPrompt('');
+    setAiCoef('');
+    setAiMsg(null);
     if (editMode && existingPlan) {
       setDate(existingPlan.plannedDate);
       setDone(new Set(existingPlan.overrides.etapes_faites.map(Number)));
@@ -86,12 +97,13 @@ export function PlanWidget({
 
   // Mode « unités »
   const numeric = ingredients.filter((m) => (num(m.qty) || 0) > 0);
-  const [uMode, setUMode] = useState<'qty' | 'ing'>('qty');
+  const [uMode, setUMode] = useState<'qty' | 'ing' | 'ia'>('qty');
   const [qty, setQty] = useState(recipe.yieldQty || '');
   const [ingIdx, setIngIdx] = useState(0);
   const [ingQty, setIngQty] = useState('');
 
-  // Mode « moule »
+  // Mode « moule » (avec, pour les administrateurs, un sous-mode IA en texte libre)
+  const [mMode, setMMode] = useState<'mold' | 'ia'>('mold');
   const [moldCount, setMoldCount] = useState(String(parseInt(recipe.yieldQty || '', 10) > 0 ? parseInt(recipe.yieldQty!, 10) : 1));
   const [targetType, setTargetType] = useState(''); // '' = moule de la recette
   const [dims, setDims] = useState<Record<string, string>>({});
@@ -160,6 +172,14 @@ export function PlanWidget({
         }
         factor = want / base;
         label = `Base ${m.name} : ${want} ${m.unit || ''}`.trim();
+      } else if (uMode === 'ia') {
+        const c = num(aiCoef);
+        if (!(c && c > 0)) {
+          alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+          return null;
+        }
+        factor = c;
+        label = aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
       } else {
         const want = num(qty);
         if (!want || want <= 0) {
@@ -169,6 +189,14 @@ export function PlanWidget({
         factor = want / num(recipe.yieldQty)!;
         label = `Quantité : ${want} ${unitLbl}`.trim();
       }
+    } else if (recipe.measureType === 'mold' && mMode === 'ia') {
+      const c = num(aiCoef);
+      if (!(c && c > 0)) {
+        alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+        return null;
+      }
+      factor = c;
+      label = aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
     } else if (recipe.measureType === 'mold') {
       const tgtDims: Record<string, number> = {};
       for (const k of MOLD_FORME_DIMS[targetForme || ''] || []) {
@@ -284,6 +312,40 @@ export function PlanWidget({
   const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary';
   const LBL = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
 
+  // Bloc d'ajustement par IA (texte libre → coefficient), partagé entre le mode
+  // « dimensions » et le troisième mode « unités » réservé aux administrateurs.
+  const aiBlock = (
+    <div className="flex flex-col gap-3" style={{ maxWidth: '40rem' }}>
+      <label className={LBL}>Décrivez l&apos;ajustement souhaité</label>
+      <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={3} className={INPUT} placeholder="ex : pour 12 personnes au lieu de 8, ou moule de 24 cm" />
+      <div>
+        <button
+          type="button"
+          onClick={askAi}
+          disabled={aiBusy}
+          className="flex items-center gap-2 bg-secondary text-on-secondary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
+        >
+          <span className={`material-symbols-outlined text-[18px]${aiBusy ? ' animate-spin' : ''}`}>{aiBusy ? 'progress_activity' : 'auto_awesome'}</span>
+          Calculer le coefficient avec l&apos;IA
+        </button>
+      </div>
+      {aiMsg != null && (
+        <div className="border border-secondary rounded-xl bg-white p-4 flex flex-col gap-3">
+          <p className="font-body-md text-on-surface">{aiMsg}</p>
+          {aiCoef && (
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-2">
+                <label className={LBL}>Coefficient proposé</label>
+                <input type="number" min={0} step="any" value={aiCoef} onChange={(e) => setAiCoef(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
+              </div>
+              <span className="text-xs text-on-surface-variant pb-2">Vous pouvez l&apos;ajuster avant de valider.</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
@@ -310,8 +372,19 @@ export function PlanWidget({
                   <input type="radio" name="umode" checked={uMode === 'ing'} onChange={() => setUMode('ing')} /> Ajuster par quantité d&apos;un ingrédient
                 </label>
               )}
+              {isAdmin && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} />
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                    Ajuster les quantités par IA
+                  </span>
+                </label>
+              )}
             </div>
-            {uMode === 'qty' ? (
+            {uMode === 'ia' ? (
+              aiBlock
+            ) : uMode === 'qty' ? (
               <div className="flex items-end gap-3">
                 <div className="flex flex-col gap-2">
                   <label className={LBL}>Quantité à produire</label>
@@ -351,79 +424,69 @@ export function PlanWidget({
         )}
 
         {recipe.measureType === 'mold' && (
-          <div className="flex flex-col gap-3" style={{ maxWidth: '32rem' }}>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-1">
-                <label className={LBL}>Nombre</label>
-                <input type="number" min={1} value={moldCount} onChange={(e) => setMoldCount(e.target.value)} className={INPUT} style={{ width: '6rem' }} />
+          <div className="flex flex-col gap-4">
+            {isAdmin && (
+              <div className="flex flex-wrap gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} />
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                    Ajuster les quantités par IA
+                  </span>
+                </label>
               </div>
-              <select
-                value={targetType}
-                onChange={(e) => {
-                  setTargetType(e.target.value);
-                  setDims({});
-                }}
-                className={`${INPUT} flex-1`}
-                style={{ minWidth: '220px' }}
-              >
-                <option value="">{recipe.moldSummary ? `Moule de la recette — ${recipe.moldSummary}` : 'Moule de la recette'}</option>
-                {moldTypes.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.forme ? ` (${t.forme})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-wrap gap-4 items-end">
-              {(MOLD_FORME_DIMS[targetForme || ''] || []).map((k) => (
-                <div key={k} className="flex flex-col">
-                  <label className={LBL}>{DIM_LABELS[k] || k}</label>
-                  <div className="flex items-baseline gap-2">
-                    <input type="number" min={0} step="any" value={dims[k] || ''} onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))} className={INPUT} style={{ width: '6.5rem' }} />
-                    <span className="text-sm text-on-surface-variant">cm</span>
+            )}
+            {mMode === 'ia' ? (
+              aiBlock
+            ) : (
+              <div className="flex flex-col gap-3" style={{ maxWidth: '32rem' }}>
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className={LBL}>Nombre</label>
+                    <input type="number" min={1} value={moldCount} onChange={(e) => setMoldCount(e.target.value)} className={INPUT} style={{ width: '6rem' }} />
                   </div>
+                  <select
+                    value={targetType}
+                    onChange={(e) => {
+                      setTargetType(e.target.value);
+                      setDims({});
+                    }}
+                    className={`${INPUT} flex-1`}
+                    style={{ minWidth: '220px' }}
+                  >
+                    <option value="">{recipe.moldSummary ? `Moule de la recette — ${recipe.moldSummary}` : 'Moule de la recette'}</option>
+                    {moldTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                        {t.forme ? ` (${t.forme})` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-on-surface-variant">
-              Indiquez le nombre et les dimensions visés : les quantités seront recalculées (pâte et glaçage selon la
-              surface, appareil selon le volume).
-            </p>
-          </div>
-        )}
-
-        {recipe.measureType === 'dimensions' && (
-          <div className="flex flex-col gap-3" style={{ maxWidth: '40rem' }}>
-            <label className={LBL}>Décrivez l&apos;ajustement souhaité</label>
-            <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={3} className={INPUT} placeholder="ex : pour 12 personnes au lieu de 8, ou moule de 24 cm" />
-            <div>
-              <button
-                type="button"
-                onClick={askAi}
-                disabled={aiBusy}
-                className="flex items-center gap-2 bg-secondary text-on-secondary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
-              >
-                <span className={`material-symbols-outlined text-[18px]${aiBusy ? ' animate-spin' : ''}`}>{aiBusy ? 'progress_activity' : 'auto_awesome'}</span>
-                Calculer le coefficient avec l&apos;IA
-              </button>
-            </div>
-            {aiMsg != null && (
-              <div className="border border-secondary rounded-xl bg-white p-4 flex flex-col gap-3">
-                <p className="font-body-md text-on-surface">{aiMsg}</p>
-                {aiCoef && (
-                  <div className="flex items-end gap-3">
-                    <div className="flex flex-col gap-2">
-                      <label className={LBL}>Coefficient proposé</label>
-                      <input type="number" min={0} step="any" value={aiCoef} onChange={(e) => setAiCoef(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
+                <div className="flex flex-wrap gap-4 items-end">
+                  {(MOLD_FORME_DIMS[targetForme || ''] || []).map((k) => (
+                    <div key={k} className="flex flex-col">
+                      <label className={LBL}>{DIM_LABELS[k] || k}</label>
+                      <div className="flex items-baseline gap-2">
+                        <input type="number" min={0} step="any" value={dims[k] || ''} onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))} className={INPUT} style={{ width: '6.5rem' }} />
+                        <span className="text-sm text-on-surface-variant">cm</span>
+                      </div>
                     </div>
-                    <span className="text-xs text-on-surface-variant pb-2">Vous pouvez l&apos;ajuster avant de valider.</span>
-                  </div>
-                )}
+                  ))}
+                </div>
+                <p className="text-xs text-on-surface-variant">
+                  Indiquez le nombre et les dimensions visés : les quantités seront recalculées (pâte et glaçage selon la
+                  surface, appareil selon le volume).
+                </p>
               </div>
             )}
           </div>
         )}
+
+        {recipe.measureType === 'dimensions' && aiBlock}
 
         {/* Étapes déjà réalisées */}
         {steps.length > 0 && (
