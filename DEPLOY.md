@@ -25,14 +25,14 @@ Dans le **dashboard Supabase → Authentication → URL Configuration** :
 
 1. **Site URL** : le domaine de production.
 2. **Redirect URLs** : `https://<domaine>/**` (couvre `/auth/callback` et les
-   liens de confirmation d'e-mail). Côté Google/Facebook (consoles OAuth),
+   liens de confirmation d'e-mail). Côté Google (console OAuth),
    l'URL de callback reste celle de Supabase
    (`…supabase.co/auth/v1/callback`) — rien à changer là.
 
 ## Vérifier après déploiement
 
 - [ ] `/` s'affiche (accueil, recettes)
-- [ ] `/connexion` : connexion e-mail **et** Google/Facebook
+- [ ] `/connexion` : connexion e-mail **et** Google
 - [ ] `/profil` accessible une fois connecté (sinon → redirigé vers `/connexion`)
 - [ ] `/creer` : créer une recette → apparaît dans le carnet et sur `/recette/[id]`
 - [ ] `/importer` : import d'une URL → brouillon → `/relecture/[id]` → création

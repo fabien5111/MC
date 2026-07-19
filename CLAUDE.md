@@ -74,7 +74,7 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 
 - Supabase Auth par **cookies** (`@supabase/ssr`), vérifiable côté serveur.
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
-  **OAuth Google / Facebook** (callback : `/auth/callback`).
+  **OAuth Google** (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/creer`,
   `/admin`, `/execution`, `/courses`, `/importer`, `/relecture` → redirection
   vers `/connexion?next=…` si non connecté. Tolérant aux pannes : une erreur
