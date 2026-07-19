@@ -6,8 +6,10 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
+import { getExecutions } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl } from '@/lib/recipe-view';
+import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum } from '@/lib/recipe-plan';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -19,6 +21,8 @@ import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
 import { PlanToggleButton } from '@/components/recipe/PlanToggleButton';
+import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
+import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { ShareButton } from '@/components/recipe/ShareButton';
 
 type Params = {
@@ -59,6 +63,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   const planEntry = plan && Number.isFinite(Number(plan)) ? await getPlanningEntry(Number(plan)) : null;
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
+  const overrides = planContext ? normalizeOverrides(planContext.overrides) : null;
+  const planMerged = planContext && overrides ? effectiveMergedRows(recipe, planContext, overrides) : null;
+  const execHistory = planContext ? await getExecutions(planContext.id) : [];
   const isOwner = !!user && recipe.author_id === user.id;
   const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
   const unitTips: Record<string, string> = {};
@@ -98,6 +105,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const merged = mergeIngredients(recipe);
   const days = planningDays(steps);
+  // Avec un contexte de planification, « JOUR J − n » devient la vraie date.
+  const dLabel = (offset: number | null | undefined) =>
+    planContext && planContext.planned_date ? planDayLabel(offset, planContext.planned_date) : dayLabel(offset);
 
   let statusBadge: { label: string; cls: string } | null = null;
   if (recipe.status === 'pending') statusBadge = { label: 'En attente de validation', cls: 'bg-secondary text-white' };
@@ -204,24 +214,53 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Contexte planifié (bannière) */}
+          {/* Contexte planifié (bannière + démarrage d'exécution) */}
           {planContext && planContext.planned_date && (
-            <div className="mb-8 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">event_available</span>
-              <span className="font-body-md text-on-surface">
-                Recette planifiée pour le{' '}
-                {new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+            <PlanNoticeBanner
+              recipe={recipe}
+              plan={planContext}
+              text={
+                `Recette planifiée pour le ` +
+                new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
-                })}
-                {planContext.factor && planContext.factor !== 1
+                }) +
+                (planContext.factor && planContext.factor !== 1
                   ? ` — quantités ajustées × ${String(planContext.factor).replace('.', ',')}`
                   : planContext.adjust_label
                     ? ` — ${planContext.adjust_label}`
-                    : ''}
-              </span>
+                    : '')
+              }
+            />
+          )}
+
+          {/* Sessions de préparation (historique) */}
+          {execHistory.length > 0 && (
+            <div className="mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
+              <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
+              <ul className="flex flex-col">
+                {execHistory.map((x) => {
+                  const statusLbl: Record<string, { label: string; cls: string }> = {
+                    en_cours: { label: 'En cours', cls: 'bg-secondary' },
+                    terminee: { label: 'Terminée', cls: 'bg-green-700' },
+                    abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
+                  };
+                  const st = statusLbl[x.status] || { label: x.status, cls: 'bg-secondary' };
+                  return (
+                    <li key={x.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
+                      <span className={`font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${st.cls}`}>{st.label}</span>
+                      <span className="font-body-md text-sm flex-1 min-w-[180px]">
+                        {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link href={`/execution/${x.id}${x.status !== 'en_cours' ? '?lecture=1' : ''}`} className="font-label-md text-label-md text-primary hover:underline">
+                        {x.status === 'en_cours' ? 'Reprendre' : 'Voir'}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
 
@@ -245,6 +284,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             moldTypes={moldTypes}
             ingredients={merged}
             steps={steps.map((s) => ({ id: s.id, title: s.title }))}
+            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
           />
 
           {/* Planning de préparation */}
@@ -258,7 +298,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">
                       {i + 1}
                     </div>
-                    <span className="font-label-md text-[12px] text-secondary">{dayLabel(d.offset)}</span>
+                    <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
                     {d.items.map((t, k) => (
                       <p key={k} className="font-body-md text-body-md font-semibold">
                         {t}
@@ -351,72 +391,116 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {groups.length > 0 && (
             <div className="mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
-              <div className="space-y-10">
-                {groups.map((g) => (
-                  <div key={g.id}>
-                    <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">
-                      {g.name || ''}
-                    </h4>
-                    <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                      {[...(g.ingredients || [])]
-                        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-                        .map((it) => {
-                          const url = it.ingredient_refs?.url || it.url;
-                          return (
-                            <li
-                              key={it.id}
-                              className="border-b border-outline-variant/30 py-2"
-                              style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                            >
-                              <span className="font-body-md text-body-md">
-                                {url ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                                    {it.name}
-                                  </a>
-                                ) : (
-                                  it.name
-                                )}
-                                {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                              </span>
-                              <span className="font-label-md text-label-md text-primary text-center">
-                                <Qty quantity={it.quantity} unit={it.unit} />
-                              </span>
-                            </li>
-                          );
-                        })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+              {planContext && overrides ? (
+                <PlanIngredientsEditor groups={groups} steps={steps} plan={planContext} units={units} unitTips={unitTips} />
+              ) : (
+                <div className="space-y-10">
+                  {groups.map((g) => (
+                    <div key={g.id}>
+                      <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">
+                        {g.name || ''}
+                      </h4>
+                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                        {[...(g.ingredients || [])]
+                          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                          .map((it) => {
+                            const url = it.ingredient_refs?.url || it.url;
+                            return (
+                              <li
+                                key={it.id}
+                                className="border-b border-outline-variant/30 py-2"
+                                style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                              >
+                                <span className="font-body-md text-body-md">
+                                  {url ? (
+                                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                                      {it.name}
+                                    </a>
+                                  ) : (
+                                    it.name
+                                  )}
+                                  {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                </span>
+                                <span className="font-label-md text-label-md text-primary text-center">
+                                  <Qty quantity={it.quantity} unit={it.unit} />
+                                </span>
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {merged.length > 0 && (
+              {planMerged && planMerged.length > 0 ? (
                 <details className="group border border-outline-variant mt-12">
                   <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
                     <span className="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span>
                     <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                   </summary>
                   <div className="p-4 bg-white">
-                    <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                      {merged.map((m, k) => (
-                        <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                          <span className="font-body-md text-body-md">{m.name}</span>
-                          <span className="font-label-md text-label-md text-primary">
-                            <Qty quantity={m.qty} unit={m.unit} />
-                          </span>
-                        </li>
-                      ))}
+                    <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', columnGap: 40 }}>
+                      <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                        <span />
+                        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
+                        <span className="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
+                        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d&apos;origine</span>
+                      </li>
+                      {planMerged.map((r, k) => {
+                        const coef = r.orig && r.adj != null ? r.adj / r.orig : null;
+                        const tone = r.added && r.orig == null && !r.origTxt.length ? 'text-green-700' : r.added || r.modified ? 'text-orange-600' : '';
+                        return (
+                          <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                            <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>{r.name}</span>
+                            <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
+                            <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
+                              <Qty quantity={r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ')} unit={r.unit} />
+                            </span>
+                            <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                              {r.orig != null ? <Qty quantity={[fmtNum(r.orig), ...r.origTxt].join(' + ')} unit={r.unit} /> : r.origTxt.length ? <Qty quantity={r.origTxt.join(' + ')} unit={r.unit} /> : '—'}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 </details>
+              ) : (
+                merged.length > 0 && (
+                  <details className="group border border-outline-variant mt-12">
+                    <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                      <span className="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span>
+                      <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                    </summary>
+                    <div className="p-4 bg-white">
+                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                        {merged.map((m, k) => (
+                          <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                            <span className="font-body-md text-body-md">{m.name}</span>
+                            <span className="font-label-md text-label-md text-primary">
+                              <Qty quantity={m.qty} unit={m.unit} />
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </details>
+                )
               )}
 
-              {merged.length > 0 && (
+              {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
                 <>
-                  <ShoppingWidget recipeTitle={recipe.title} ingredients={merged} lists={shoppingLists} isLoggedIn={!!user} />
+                  <ShoppingWidget
+                    recipeTitle={recipe.title}
+                    ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
+                    lists={shoppingLists}
+                    isLoggedIn={!!user}
+                  />
                   <ScaleWidget
                     recipeTitle={recipe.title}
                     rendement={yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null}
-                    ingredients={merged}
+                    ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
                   />
                 </>
               )}
@@ -445,8 +529,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
+                const alreadyDone = !!(planContext && overrides && isStepDone(overrides, s.id));
                 const badges: string[] = [
-                  dayLabel(s.day_offset),
+                  dLabel(Math.max(0, s.day_offset || 0)),
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
                   s.wait_time ? `ATTENTE ${formatTime(s.wait_time).toUpperCase()}` : '',
                   s.cook_time
@@ -462,6 +547,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
                       </h4>
                       <div className="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                        {alreadyDone && <span className="bg-green-700 text-white px-3 py-1">DÉJÀ RÉALISÉE ✓</span>}
                         {badges.map((b, k) => (
                           <span key={k} className="bg-surface-variant px-3 py-1">
                             {b}

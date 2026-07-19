@@ -76,6 +76,7 @@ export type PlanningEntry = {
   planned_date: string | null;
   factor: number | null;
   adjust_label: string | null;
+  overrides: Database['public']['Tables']['planning']['Row']['overrides'];
 };
 
 // Une entrée de planning (contexte planifié d'une recette). null si absente/RLS.
@@ -83,7 +84,7 @@ export async function getPlanningEntry(id: number): Promise<PlanningEntry | null
   const supabase = await createClient();
   const { data } = await supabase
     .from('planning')
-    .select('id, recipe_id, planned_date, factor, adjust_label')
+    .select('id, recipe_id, planned_date, factor, adjust_label, overrides')
     .eq('id', id)
     .maybeSingle();
   return (data as PlanningEntry | null) ?? null;

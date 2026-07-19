@@ -6,15 +6,18 @@
 // entrée `planning` (facteur + libellé + overrides). Apparaît ensuite dans
 // l'onglet Planning du profil.
 //
-// Différé vs vanilla : l'affichage « mode planifié » de la recette (quantités
-// re-scalées ligne à ligne, dates réelles par jour) et l'édition fine des
-// overrides d'ingrédients + le démarrage d'exécution.
-import { useMemo, useState } from 'react';
+// En mode édition (crayon du bandeau « Recette planifiée »), modifie l'entrée
+// de planning existante à la place d'en créer une nouvelle (porté de
+// mcEditPlan / plan-validate en mode édition). Le pré-remplissage se limite à
+// la date et, pour le mode « unités », à la quantité ; les modes moule/IA
+// repartent d'un formulaire vierge (édition fine du libellé non reconstituée).
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { UNITS_LBL, moldMetrics, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { Json } from '@/lib/database.types';
+import type { PlanOverrides } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -36,19 +39,23 @@ export type PlanRecipe = {
   rendement: string | null;
 };
 
+export type ExistingPlan = { id: number; plannedDate: string; factor: number | null; overrides: PlanOverrides };
+
 export function PlanWidget({
   recipe,
   moldTypes,
   ingredients,
   steps,
+  existingPlan,
 }: {
   recipe: PlanRecipe;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
   steps: { id: number; title: string | null }[];
+  existingPlan?: ExistingPlan | null;
 }) {
   const router = useRouter();
-  const { open, close } = usePlanCtx();
+  const { open, editMode, close } = usePlanCtx();
   const today = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -57,6 +64,25 @@ export function PlanWidget({
   const [date, setDate] = useState(today);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Set<number>>(new Set());
+
+  // Ré-initialise le formulaire à chaque ouverture, selon le mode (création vs
+  // édition de l'entrée de planning existante).
+  useEffect(() => {
+    if (!open) return;
+    if (editMode && existingPlan) {
+      setDate(existingPlan.plannedDate);
+      setDone(new Set(existingPlan.overrides.etapes_faites.map(Number)));
+      if (recipe.measureType === 'units') {
+        const y = num(recipe.yieldQty);
+        if (y) setQty(String(Math.round(y * (existingPlan.factor || 1) * 100) / 100));
+      }
+    } else if (!editMode) {
+      setDate(today);
+      setDone(new Set());
+      setQty(recipe.yieldQty || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editMode]);
 
   // Mode « unités »
   const numeric = ingredients.filter((m) => (num(m.qty) || 0) > 0);
@@ -109,7 +135,14 @@ export function PlanWidget({
     }
   }
 
-  function compute(): { factor: number; label: string | null; overrides: Record<string, unknown> | null } | null {
+  function compute(): {
+    factor: number;
+    label: string | null;
+    overrides: Record<string, unknown> | null;
+    etapesFaites: string[];
+    moldCoefs: { surface: number; volume: number } | null;
+    moldTarget: Record<string, unknown> | null;
+  } | null {
     let factor = 1;
     let label: string | null = null;
     let moldCoefs: { surface: number; volume: number } | null = null;
@@ -176,7 +209,7 @@ export function PlanWidget({
       etapesFaites.length || moldCoefs || moldTarget
         ? { mods: {}, added: [], etapes_faites: etapesFaites, ...(moldCoefs ? { mold_coefs: moldCoefs } : {}), ...(moldTarget ? { mold_target: moldTarget } : {}) }
         : null;
-    return { factor, label, overrides };
+    return { factor, label, overrides, etapesFaites, moldCoefs, moldTarget };
   }
 
   async function validate() {
@@ -190,14 +223,37 @@ export function PlanWidget({
     }
     const res = compute();
     if (!res) return;
+    const editing = editMode && existingPlan;
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const lines = [`Planifier « ${recipe.title} » le ${dateTxt} ?`];
+    const lines = [editing ? `Modifier la planification de « ${recipe.title} » pour le ${dateTxt} ?` : `Planifier « ${recipe.title} » le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
     if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
     if (!confirm(lines.join('\n'))) return;
 
     setBusy(true);
     const supabase = createClient();
+
+    if (editing) {
+      const overrides = {
+        ...existingPlan.overrides,
+        etapes_faites: res.etapesFaites,
+        ...(res.moldCoefs ? { mold_coefs: res.moldCoefs } : {}),
+        ...(res.moldTarget ? { mold_target: res.moldTarget } : {}),
+      };
+      const { error } = await supabase
+        .from('planning')
+        .update({ planned_date: date, factor: res.factor, adjust_label: res.label, overrides: overrides as unknown as Json })
+        .eq('id', existingPlan.id);
+      if (error) {
+        alert('Erreur : ' + error.message);
+        setBusy(false);
+        return;
+      }
+      close();
+      router.refresh();
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -231,7 +287,8 @@ export function PlanWidget({
   return (
     <div className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
-        <span className="material-symbols-outlined">calendar_month</span>Planifier cette recette
+        <span className="material-symbols-outlined">calendar_month</span>
+        {editMode && existingPlan ? 'Modifier la planification' : 'Planifier cette recette'}
       </h3>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2" style={{ maxWidth: '16rem' }}>
