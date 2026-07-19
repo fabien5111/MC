@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getRecipeFull } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions } from '@/lib/executions';
@@ -16,7 +16,6 @@ import { MobileNav } from '@/components/MobileNav';
 import { SuggestionCard } from '@/components/recipe/SuggestionCard';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
-import { ScaleWidget } from '@/components/recipe/ScaleWidget';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
@@ -67,6 +66,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const planMerged = planContext && overrides ? effectiveMergedRows(recipe, planContext, overrides) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
   const isOwner = !!user && recipe.author_id === user.id;
+  // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
+  const userIsAdmin = user ? await isAdmin(user.id) : false;
   const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
@@ -285,6 +286,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             ingredients={merged}
             steps={steps.map((s) => ({ id: s.id, title: s.title }))}
             existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
+            isAdmin={userIsAdmin}
           />
 
           {/* Planning de préparation */}
@@ -490,19 +492,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
 
               {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
-                <>
-                  <ShoppingWidget
-                    recipeTitle={recipe.title}
-                    ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
-                    lists={shoppingLists}
-                    isLoggedIn={!!user}
-                  />
-                  <ScaleWidget
-                    recipeTitle={recipe.title}
-                    rendement={yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null}
-                    ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
-                  />
-                </>
+                <ShoppingWidget
+                  recipeTitle={recipe.title}
+                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
+                  lists={shoppingLists}
+                  isLoggedIn={!!user}
+                />
               )}
             </div>
           )}
