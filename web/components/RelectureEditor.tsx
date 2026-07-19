@@ -5,7 +5,7 @@
 // temps et récap global live), enregistrement des corrections, puis conversion
 // en recette (recipes + steps + groups + ingredients + utensils). Mutations via
 // le client Supabase navigateur.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
@@ -95,6 +95,15 @@ export function RelectureEditor({
   const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map(initSp));
   const [saveStatus, setSaveStatus] = useState('');
+  const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [justAddedSpKey, setJustAddedSpKey] = useState<string | null>(null);
+
+  // Focus le nom de la sous-préparation ajoutée (porté de relecture.html).
+  useEffect(() => {
+    if (!justAddedSpKey) return;
+    spNomRefs.current[justAddedSpKey]?.focus();
+    setJustAddedSpKey(null);
+  }, [justAddedSpKey]);
   const [busy, setBusy] = useState(false);
 
   const alertes = Array.isArray(importRow.alertes) ? (importRow.alertes as string[]) : [];
@@ -136,11 +145,14 @@ export function RelectureEditor({
     );
   const delEtape = (si: number, ei: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, etapes: sp.etapes.filter((_, j) => j !== ei) } : sp)));
-  const addSp = () =>
+  const addSp = () => {
+    const key = nextKey();
     setSps((prev) => [
       ...prev,
-      { key: nextKey(), nom: '', prep: '', attente: '', cuisson: '', temp: '', jour: '0', ings: [], etapes: [{ key: nextKey(), imported: null, texte: '' }], materiel: [] },
+      { key, nom: '', prep: '', attente: '', cuisson: '', temp: '', jour: '0', ings: [], etapes: [{ key: nextKey(), imported: null, texte: '' }], materiel: [] },
     ]);
+    setJustAddedSpKey(key);
+  };
   const delSp = (si: number) => {
     if (!confirm('Supprimer cette sous-préparation ?')) return;
     setSps((prev) => prev.filter((_, k) => k !== si));
@@ -322,7 +334,7 @@ export function RelectureEditor({
     router.push('/importer');
   }
 
-  const champ = 'border border-outline-variant rounded px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
+  const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
 
   return (
     <>
@@ -342,9 +354,12 @@ export function RelectureEditor({
           <a href={importRow.source_url} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
             {importRow.source_url}
           </a>
+          {recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
         </p>
       ) : importRow.source_type === 'texte' ? (
-        <p className="text-sm text-on-surface-variant mb-6">Source : texte collé</p>
+        <p className="text-sm text-on-surface-variant mb-6">
+          Source : texte collé{recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
+        </p>
       ) : null}
 
       {alertes.length > 0 && (
@@ -390,6 +405,9 @@ export function RelectureEditor({
             <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
               <span className="font-headline-md text-[18px] text-primary">{si + 1}.</span>
               <input
+                ref={(el) => {
+                  spNomRefs.current[sp.key] = el;
+                }}
                 value={sp.nom}
                 onChange={(e) => patchSp(si, { nom: e.target.value })}
                 className={`${champ} font-headline-md text-[18px] flex-1`}

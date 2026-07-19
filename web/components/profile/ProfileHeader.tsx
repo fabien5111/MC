@@ -79,6 +79,7 @@ export function ProfileHeader({
           maxWidth={1400}
           placeholder="Bannière du profil"
           className="w-full h-full"
+          editTitle="Changer la bannière (taille idéale : 1400 × 400 px)"
         />
       </div>
 
@@ -93,6 +94,8 @@ export function ProfileHeader({
               maxWidth={400}
               placeholder="Photo"
               className="w-full h-full"
+              editTitle="Changer la photo de profil"
+              editButtonClassName="bottom-1 right-1 w-9 h-9"
             />
           </div>
         </div>
@@ -114,6 +117,7 @@ export function ProfileHeader({
             >
               <span className="material-symbols-outlined text-[18px]">edit</span> Modifier le profil
             </button>
+            <ShareProfileButton />
           </div>
           <h1 className="font-headline-lg text-headline-lg text-primary text-center md:text-left">
             {name}
@@ -197,6 +201,35 @@ export function ProfileHeader({
         />
       )}
     </section>
+  );
+}
+
+function ShareProfileButton() {
+  async function share() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+      } catch {
+        // annulation par l'utilisateur : rien à faire
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Lien copié dans le presse-papiers.');
+    } catch {
+      // presse-papiers indisponible : rien à faire
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={share}
+      className="p-3 border border-outline-variant rounded-lg text-primary hover:bg-surface-container transition-all active:scale-95"
+    >
+      <span className="material-symbols-outlined">share</span>
+    </button>
   );
 }
 

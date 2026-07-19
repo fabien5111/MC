@@ -47,6 +47,9 @@ export async function Header({ current = '/' }: { current?: string }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <button className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1" aria-label="Rechercher">
+            search
+          </button>
           {user ? (
             <>
               <Link

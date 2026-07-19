@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getShoppingList } from '@/lib/shopping';
+import { getUnits } from '@/lib/profile';
 import { Header } from '@/components/Header';
 import { ShoppingItems } from '@/components/ShoppingItems';
 
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CoursesPage({ params }: Params) {
   await requireUser();
   const { id } = await params;
-  const list = Number.isFinite(Number(id)) ? await getShoppingList(Number(id)) : null;
+  const [list, units] = await Promise.all([Number.isFinite(Number(id)) ? getShoppingList(Number(id)) : null, getUnits()]);
 
   return (
     <>
@@ -35,15 +36,7 @@ export default async function CoursesPage({ params }: Params) {
             Liste introuvable
           </h1>
         ) : (
-          <>
-            <div className="flex items-baseline justify-between flex-wrap gap-4 mb-8 border-b border-outline-variant pb-4">
-              <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary flex items-center gap-3">
-                <span className="material-symbols-outlined text-[32px]">shopping_bag</span>
-                <span>{list.name}</span>
-              </h1>
-            </div>
-            <ShoppingItems initialItems={list.shopping_list_items} />
-          </>
+          <ShoppingItems listId={list.id} listName={list.name} initialItems={list.shopping_list_items} units={units} />
         )}
       </main>
     </>

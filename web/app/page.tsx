@@ -161,6 +161,9 @@ export default async function HomePage() {
               <h2 className="font-headline-lg text-headline-lg text-primary">Explorer par Catégorie</h2>
               <div className="h-1 w-12 bg-secondary mt-1" />
             </div>
+            <Link href="/" className="font-label-md text-label-md text-secondary hover:text-primary transition-colors">
+              Voir tout
+            </Link>
           </div>
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
             {CATEGORIES.map((c) => (
@@ -176,6 +179,22 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* Publicité (entre Catégories et Dernières Créations) */}
+        <section className="mb-20">
+          <div className="ad-banner-placeholder w-full min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 rounded-xl overflow-hidden px-8 py-6">
+            <div className="flex flex-col gap-1 text-center md:text-left">
+              <span className="font-label-md text-on-tertiary-container uppercase tracking-[0.2em] text-[10px] opacity-60">
+                Publicité
+              </span>
+              <h3 className="font-headline-md text-headline-md text-primary">Coffrets &amp; ustensiles signés Maryse</h3>
+              <p className="text-secondary italic">Le matériel des chefs, livré chez vous pour réussir vos entremets.</p>
+            </div>
+            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
+              Découvrir
+            </button>
+          </div>
+        </section>
+
         {/* Dernières créations */}
         <section className="mb-16">
           <div className="flex justify-between items-end mb-10">
@@ -183,13 +202,28 @@ export default async function HomePage() {
               <h2 className="font-headline-lg text-headline-lg text-primary">Dernières Créations</h2>
               <div className="h-1 w-12 bg-secondary mt-1" />
             </div>
+            <div className="flex gap-4">
+              <button className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-variant transition-colors text-primary shadow-sm" aria-label="Précédent">
+                <span className="material-symbols-outlined">chevron_left</span>
+              </button>
+              <button className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-variant transition-colors text-primary shadow-sm" aria-label="Suivant">
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
           </div>
           {recipes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recipes.map((r) => (
-                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {recipes.map((r) => (
+                  <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
+                ))}
+              </div>
+              <div className="mt-16 text-center">
+                <button className="border-2 border-primary text-primary px-20 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-md hover:shadow-xl">
+                  Charger plus de délices
+                </button>
+              </div>
+            </>
           ) : (
             <p className="text-on-surface-variant italic">
               Aucune recette publiée pour le moment.
