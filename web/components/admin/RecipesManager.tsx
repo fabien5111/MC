@@ -56,6 +56,7 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
             {isPending && (
               <button
                 onClick={() => setStatus(r.id, 'published')}
+                title="Valider"
                 className="flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-on-primary text-xs font-label-md hover:opacity-90 transition-opacity"
               >
                 <span className="material-symbols-outlined text-[16px]">check_circle</span> Valider
@@ -63,6 +64,7 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
             )}
             <Link
               href={`/creer?id=${r.id}`}
+              title="Modifier"
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">edit_note</span> Modifier
@@ -75,6 +77,7 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
                     : 'Retirer cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.',
                 ) && setStatus(r.id, 'rejected')
               }
+              title={isPending ? 'Refuser (renvoyer en brouillon)' : 'Retirer (repasser en brouillon)'}
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">block</span> Refuser
