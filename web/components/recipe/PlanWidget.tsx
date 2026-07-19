@@ -445,7 +445,7 @@ export function PlanWidget({
                       return n;
                     })
                   }
-                  className="w-5 h-5 rounded border-outline text-primary focus:ring-primary cursor-pointer"
+                  className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
                 />
                 <span className="font-body-md">{s.title || 'Étape'}</span>
               </label>

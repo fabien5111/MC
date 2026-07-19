@@ -238,7 +238,7 @@ function MiseEnPlace({
           type="checkbox"
           checked={!!it.fait}
           onChange={(e) => onToggle(kind, i, e.target.checked)}
-          className="w-6 h-6 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0"
+          className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
         />
         <span className={`font-body-md flex-1${it.fait ? ' line-through opacity-50' : ''}`}>{it.nom}</span>
         {it.quantite != null && it.quantite !== '' && (
@@ -443,7 +443,7 @@ function StepCard({
           checked={e.faite}
           disabled={readOnly}
           onChange={(ev) => onToggleStep(ji, ei, ev.target.checked)}
-          className="w-8 h-8 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+          className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
         />
         <span className="flex-1 min-w-0">
           <span className={`font-headline-md text-[20px] text-primary block${e.faite ? ' line-through' : ''}`}>{e.titre}</span>
@@ -463,7 +463,7 @@ function StepCard({
                   checked={ing.fait}
                   disabled={readOnly}
                   onChange={(ev) => onToggleIng(ji, ei, ii, ev.target.checked)}
-                  className="w-6 h-6 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0"
+                  className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                 />
                 <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.nom}</span>
                 <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>prévu {prevTxt}</span>
@@ -495,7 +495,7 @@ function StepCard({
                 checked={!!p.fait}
                 disabled={readOnly}
                 onChange={(ev) => onToggleSub(ji, ei, si, ev.target.checked)}
-                className="w-6 h-6 rounded border-outline text-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
               />
               <span className={`font-body-md text-body-md leading-relaxed${p.fait ? ' line-through opacity-50' : ''}`}>{p.texte}</span>
             </li>
