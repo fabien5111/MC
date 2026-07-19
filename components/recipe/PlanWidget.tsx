@@ -76,6 +76,7 @@ export function PlanWidget({
     // Repart d'un mode d'ajustement propre (et efface l'état IA) à chaque
     // ouverture — la reconstitution fine du mode IA n'est pas gérée en édition.
     setUMode('qty');
+    setMMode('mold');
     setAiPrompt('');
     setAiCoef('');
     setAiMsg(null);
@@ -101,7 +102,8 @@ export function PlanWidget({
   const [ingIdx, setIngIdx] = useState(0);
   const [ingQty, setIngQty] = useState('');
 
-  // Mode « moule »
+  // Mode « moule » (avec, pour les administrateurs, un sous-mode IA en texte libre)
+  const [mMode, setMMode] = useState<'mold' | 'ia'>('mold');
   const [moldCount, setMoldCount] = useState(String(parseInt(recipe.yieldQty || '', 10) > 0 ? parseInt(recipe.yieldQty!, 10) : 1));
   const [targetType, setTargetType] = useState(''); // '' = moule de la recette
   const [dims, setDims] = useState<Record<string, string>>({});
@@ -187,6 +189,14 @@ export function PlanWidget({
         factor = want / num(recipe.yieldQty)!;
         label = `Quantité : ${want} ${unitLbl}`.trim();
       }
+    } else if (recipe.measureType === 'mold' && mMode === 'ia') {
+      const c = num(aiCoef);
+      if (!(c && c > 0)) {
+        alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+        return null;
+      }
+      factor = c;
+      label = aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
     } else if (recipe.measureType === 'mold') {
       const tgtDims: Record<string, number> = {};
       for (const k of MOLD_FORME_DIMS[targetForme || ''] || []) {
@@ -414,45 +424,65 @@ export function PlanWidget({
         )}
 
         {recipe.measureType === 'mold' && (
-          <div className="flex flex-col gap-3" style={{ maxWidth: '32rem' }}>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-1">
-                <label className={LBL}>Nombre</label>
-                <input type="number" min={1} value={moldCount} onChange={(e) => setMoldCount(e.target.value)} className={INPUT} style={{ width: '6rem' }} />
+          <div className="flex flex-col gap-4">
+            {isAdmin && (
+              <div className="flex flex-wrap gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} />
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                    Ajuster les quantités par IA
+                  </span>
+                </label>
               </div>
-              <select
-                value={targetType}
-                onChange={(e) => {
-                  setTargetType(e.target.value);
-                  setDims({});
-                }}
-                className={`${INPUT} flex-1`}
-                style={{ minWidth: '220px' }}
-              >
-                <option value="">{recipe.moldSummary ? `Moule de la recette — ${recipe.moldSummary}` : 'Moule de la recette'}</option>
-                {moldTypes.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.forme ? ` (${t.forme})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-wrap gap-4 items-end">
-              {(MOLD_FORME_DIMS[targetForme || ''] || []).map((k) => (
-                <div key={k} className="flex flex-col">
-                  <label className={LBL}>{DIM_LABELS[k] || k}</label>
-                  <div className="flex items-baseline gap-2">
-                    <input type="number" min={0} step="any" value={dims[k] || ''} onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))} className={INPUT} style={{ width: '6.5rem' }} />
-                    <span className="text-sm text-on-surface-variant">cm</span>
+            )}
+            {mMode === 'ia' ? (
+              aiBlock
+            ) : (
+              <div className="flex flex-col gap-3" style={{ maxWidth: '32rem' }}>
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className={LBL}>Nombre</label>
+                    <input type="number" min={1} value={moldCount} onChange={(e) => setMoldCount(e.target.value)} className={INPUT} style={{ width: '6rem' }} />
                   </div>
+                  <select
+                    value={targetType}
+                    onChange={(e) => {
+                      setTargetType(e.target.value);
+                      setDims({});
+                    }}
+                    className={`${INPUT} flex-1`}
+                    style={{ minWidth: '220px' }}
+                  >
+                    <option value="">{recipe.moldSummary ? `Moule de la recette — ${recipe.moldSummary}` : 'Moule de la recette'}</option>
+                    {moldTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                        {t.forme ? ` (${t.forme})` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-on-surface-variant">
-              Indiquez le nombre et les dimensions visés : les quantités seront recalculées (pâte et glaçage selon la
-              surface, appareil selon le volume).
-            </p>
+                <div className="flex flex-wrap gap-4 items-end">
+                  {(MOLD_FORME_DIMS[targetForme || ''] || []).map((k) => (
+                    <div key={k} className="flex flex-col">
+                      <label className={LBL}>{DIM_LABELS[k] || k}</label>
+                      <div className="flex items-baseline gap-2">
+                        <input type="number" min={0} step="any" value={dims[k] || ''} onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))} className={INPUT} style={{ width: '6.5rem' }} />
+                        <span className="text-sm text-on-surface-variant">cm</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-on-surface-variant">
+                  Indiquez le nombre et les dimensions visés : les quantités seront recalculées (pâte et glaçage selon la
+                  surface, appareil selon le volume).
+                </p>
+              </div>
+            )}
           </div>
         )}
 
