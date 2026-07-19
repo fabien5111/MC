@@ -9,6 +9,7 @@
 // est donc omis ici. À réintroduire une fois la colonne ajoutée en base.
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { Mold, MoldType } from '@/lib/admin';
 
@@ -49,7 +50,9 @@ export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: M
         <div>
           <h2 className="text-xl font-headline-md font-semibold text-on-surface">Gestion des Moules</h2>
           <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
-            <span>Admin</span>
+            <Link href="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <span className="material-symbols-outlined text-[10px]">chevron_right</span>
+            <Link href="/admin/listes" className="hover:text-primary transition-colors">Listes</Link>
             <span className="material-symbols-outlined text-[10px]">chevron_right</span>
             <span>Moules</span>
           </div>
@@ -213,8 +216,8 @@ function MoldForm({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <aside className="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col">
+      <div className="fixed inset-0 bg-black/30 z-40 animate-fade-in" onClick={onClose} />
+      <aside className="fixed top-0 right-0 h-full w-full max-w-md bg-surface-bright border-l border-outline-variant z-50 flex flex-col animate-slide-in-right">
         <div className="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
           <h3 className="font-headline-md text-xl font-semibold">
             {mold ? 'Modifier le moule' : 'Ajouter un moule'}
