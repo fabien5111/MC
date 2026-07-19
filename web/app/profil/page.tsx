@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireUser, getProfile, isAdmin } from '@/lib/auth';
 import { getUserRecipes } from '@/lib/recipes';
 import { getFavorites, getPlanning, getShoppingLists } from '@/lib/profile';
+import { getFavoriteIds } from '@/lib/favorites';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -25,12 +26,13 @@ export default async function ProfilPage() {
     profile = await getProfile(user.id);
   }
 
-  const [recipes, favorites, planning, shoppingLists, admin] = await Promise.all([
+  const [recipes, favorites, planning, shoppingLists, admin, favIds] = await Promise.all([
     getUserRecipes(user.id),
     getFavorites(user.id),
     getPlanning(user.id),
     getShoppingLists(user.id),
     isAdmin(user.id),
+    getFavoriteIds(),
   ]);
 
   return (
@@ -49,6 +51,7 @@ export default async function ProfilPage() {
           favorites={favorites}
           planning={planning}
           shoppingLists={shoppingLists}
+          favIds={[...favIds]}
         />
       </main>
       <Footer />

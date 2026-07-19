@@ -24,7 +24,7 @@ export default async function RelecturePage({ params }: Params) {
   return (
     <>
       <Header current="/profil" />
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-32">
+      <main className="relecture-page max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-32">
         <Link
           href="/importer"
           className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-6 w-fit"

@@ -44,3 +44,28 @@
 .editorial-input:focus {
   border-bottom: 1px solid #300a12;
 }
+/* Halo décoratif (connexion.html) */
+@keyframes subtle-glow {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+.glow-sphere {
+  animation: subtle-glow 10s ease-in-out infinite;
+}
+/* Placeholders roses en italique (relecture.html) */
+.relecture-page input::placeholder,
+.relecture-page textarea::placeholder {
+  color: #e2d5d6 !important;
+  opacity: 1;
+  font-style: italic;
+}

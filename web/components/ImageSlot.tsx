@@ -30,6 +30,9 @@ export type ImageSlotProps = {
   maxWidth?: number;
   className?: string;
   style?: React.CSSProperties;
+  /** Pastille crayon superposée (porté de profil.html : bannière/avatar). */
+  editTitle?: string;
+  editButtonClassName?: string;
 };
 
 export function ImageSlot({
@@ -42,6 +45,8 @@ export function ImageSlot({
   maxWidth = 1400,
   className = '',
   style,
+  editTitle,
+  editButtonClassName = 'bottom-3 right-3 w-9 h-9',
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -125,6 +130,20 @@ export function ImageSlot({
         <div className="absolute bottom-0 inset-x-0 bg-error text-on-error text-[11px] px-2 py-1">
           {error}
         </div>
+      )}
+
+      {!readOnly && editTitle && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            inputRef.current?.click();
+          }}
+          title={editTitle}
+          className={`absolute ${editButtonClassName} rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20`}
+        >
+          <span className="material-symbols-outlined text-[18px]">edit</span>
+        </button>
       )}
 
       {!readOnly && (
