@@ -320,11 +320,8 @@ export function CreerForm({
       };
 
       let recipeId: string;
-      // `source` / `source_url` / `video_url` / `serving_advice` : colonnes
-      // récentes, cast le temps que les types Supabase soient régénérés
-      // (npm run gen:types).
       if (editingId) {
-        const { error } = await supabase.from('recipes').update(payload as never).eq('id', editingId);
+        const { error } = await supabase.from('recipes').update(payload).eq('id', editingId);
         if (error) throw error;
         recipeId = editingId;
         await supabase.from('recipe_tags').delete().eq('recipe_id', editingId);
@@ -332,7 +329,7 @@ export function CreerForm({
         await supabase.from('ingredient_groups').delete().eq('recipe_id', editingId);
         await supabase.from('recipe_steps').delete().eq('recipe_id', editingId);
       } else {
-        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id } as never).select('id').single();
+        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id }).select('id').single();
         if (error || !data) throw error || new Error('Création refusée');
         recipeId = data.id;
       }
