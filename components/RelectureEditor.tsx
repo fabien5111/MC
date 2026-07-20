@@ -306,8 +306,9 @@ export function RelectureEditor({
             .insert({ recipe_id: recipe.id, name: sp.nom || `Étape ${i + 1}`, order_index: i })
             .select()
             .single();
-          if (grpErr) console.error('Groupe non enregistré :', grpErr.message);
-          else await supabase.from('ingredients').insert(lines.map((l: any) => ({ ...l, group_id: grp.id })));
+          if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
+          const { error: ingErr } = await supabase.from('ingredients').insert(lines.map((l: any) => ({ ...l, group_id: grp.id })));
+          if (ingErr) throw ingErr;
         }
       }
 
@@ -315,7 +316,8 @@ export function RelectureEditor({
         new Set(sousPreps.flatMap((sp: any) => sp.materiel || []).map((m: any) => String(m).trim()).filter(Boolean)),
       ) as string[];
       if (mats.length) {
-        await supabase.from('recipe_utensils').insert(mats.map((m, i) => ({ recipe_id: recipe.id, name: m, order_index: i })));
+        const { error } = await supabase.from('recipe_utensils').insert(mats.map((m, i) => ({ recipe_id: recipe.id, name: m, order_index: i })));
+        if (error) throw error;
       }
 
       await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipe.id }).eq('id', importRow.id);

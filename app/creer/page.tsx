@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getRecipeFull } from '@/lib/recipes';
-import { getIngredientRefNames } from '@/lib/imports';
+import { getIngredientRefNames, getIngredientRefAllergens } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
@@ -16,12 +16,13 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   const user = await requireUser('/creer');
   const { id } = await searchParams;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, editRecipe] = await Promise.all([
+  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, editRecipe] = await Promise.all([
     getTags(),
     getUnits(),
     getMoldTypes(),
     getDifficulties(),
     getIngredientRefNames(),
+    getIngredientRefAllergens(),
     id ? getRecipeFull(id) : Promise.resolve(null),
   ]);
 
@@ -38,6 +39,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           moldTypes={moldTypes}
           difficulties={difficulties}
           ingredientRefs={ingredientRefs}
+          refAllergens={refAllergens}
           editRecipe={owned}
         />
       </main>

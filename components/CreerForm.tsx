@@ -21,7 +21,7 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
-type IngLine = { key: string; name: string; qty: string; unit: string; comment: string };
+type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string };
 type StepState = {
   key: string;
   title: string;
@@ -53,7 +53,7 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
 
 let uid = 0;
 const key = () => `k${uid++}`;
-const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '' });
+const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: '' });
 const emptyStep = (): StepState => ({
   key: key(),
   title: '',
@@ -92,7 +92,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       tips: s.tips || '',
       scaling: 'simple',
       ings: ings.length
-        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '' }))
+        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: i.allergen || '' }))
         : [emptyIng()],
       photos: [0, 1, 2, 3].map((i) => photos[i] || null),
       collapsed: false,
@@ -129,6 +129,7 @@ export function CreerForm({
   moldTypes,
   difficulties,
   ingredientRefs,
+  refAllergens,
   editRecipe,
 }: {
   tags: Tag[];
@@ -136,6 +137,7 @@ export function CreerForm({
   moldTypes: MoldType[];
   difficulties: Difficulty[];
   ingredientRefs: string[];
+  refAllergens: Record<string, string>;
   editRecipe: RecipeFull | null;
 }) {
   const router = useRouter();
@@ -324,14 +326,21 @@ export function CreerForm({
         recipeId = data.id;
       }
 
+      // En modification, les liaisons ci-dessus ont été supprimées avant
+      // réinsertion : toute erreur d'insertion est remontée pour éviter une
+      // perte silencieuse (tags/ustensiles/étapes/photos/ingrédients vidés).
       if (selectedTags.size > 0) {
-        await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
+        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
+        if (error) throw error;
       }
 
       const utRows = utensils
         .map((u, i) => ({ recipe_id: recipeId, name: u.name.trim(), comment: u.comment.trim() || null, order_index: i }))
         .filter((u) => u.name);
-      if (utRows.length) await supabase.from('recipe_utensils').insert(utRows);
+      if (utRows.length) {
+        const { error } = await supabase.from('recipe_utensils').insert(utRows);
+        if (error) throw error;
+      }
 
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
@@ -342,6 +351,7 @@ export function CreerForm({
             quantity: l.qty.trim() || null,
             unit: l.unit || null,
             comment: l.comment.trim() || null,
+            allergen: l.allergen.trim() || null,
             order_index: i,
           }))
           .filter((l) => l.name);
@@ -367,12 +377,13 @@ export function CreerForm({
           })
           .select('id')
           .single();
-        if (stepErr) console.error('Étape non enregistrée :', stepErr.message);
+        if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
 
-        if (stepRow && photoUrls.length) {
-          await supabase
+        if (photoUrls.length) {
+          const { error } = await supabase
             .from('step_photos')
             .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+          if (error) throw error;
         }
 
         if (lines.length) {
@@ -381,11 +392,9 @@ export function CreerForm({
             .insert({ recipe_id: recipeId, name: st.title.trim() || `Étape ${gi + 1}`, order_index: gi, scaling_mode: st.scaling })
             .select('id')
             .single();
-          if (grpErr || !grp) {
-            console.error('Groupe non enregistré :', grpErr?.message);
-            continue;
-          }
-          await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })));
+          if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
+          const { error: ingErr } = await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })));
+          if (ingErr) throw ingErr;
         }
       }
 
@@ -767,10 +776,58 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES » sur une même
+                        ligne, alignés sur leur colonne. Les éléments miroirs
+                        (select d'unité + bouton) sont invisibles mais occupent
+                        leur largeur pour aligner précisément malgré la largeur
+                        auto de l'unité. */}
+                    <div className="flex items-center gap-4 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
+                      </div>
+                      <div className="w-20 shrink-0" />
+                      <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                        <option value="">— unité —</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                      </div>
+                      <div className="flex-1 min-w-0" />
+                      <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
                     <div className="space-y-4">
                       {st.ings.map((g, ii) => (
                         <div key={g.key} className="flex items-center gap-4">
+                          <div className="relative flex-1 min-w-0">
+                            <input
+                              list="dl-ingredients"
+                              value={g.name}
+                              onChange={(e) => {
+                                const name = e.target.value;
+                                // Ingrédient choisi dans le référentiel → allergène pré-rempli
+                                // (chaîne vide si le référentiel n'en a pas). Sinon, on ne touche
+                                // pas au champ : il reste en saisie libre.
+                                const refKey = name.trim().toLowerCase();
+                                if (Object.prototype.hasOwnProperty.call(refAllergens, refKey)) {
+                                  patchIng(si, ii, { name, allergen: refAllergens[refKey] });
+                                } else {
+                                  patchIng(si, ii, { name });
+                                }
+                              }}
+                              className="editorial-input text-on-surface w-full"
+                              type="text"
+                              placeholder="Ingrédient"
+                              autoComplete="off"
+                              data-name-step={si}
+                            />
+                          </div>
                           <input
                             value={g.qty}
                             onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
@@ -795,21 +852,32 @@ export function CreerForm({
                               </option>
                             ))}
                           </select>
-                          <div className="relative flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
                             <input
-                              list="dl-ingredients"
-                              value={g.name}
-                              onChange={(e) => patchIng(si, ii, { name: e.target.value })}
-                              className="editorial-input text-on-surface w-full"
+                              value={g.allergen}
+                              onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
+                              className="editorial-input text-on-surface w-full italic"
                               type="text"
-                              placeholder="Ingrédient"
-                              autoComplete="off"
+                              placeholder="Allergène (optionnel)"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
                             <input
                               value={g.comment}
                               onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
+                              onKeyDown={(e) => {
+                                // Tab (sans Maj) depuis le dernier champ de la dernière
+                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
+                                // placer le curseur (sur le libellé, désormais premier).
+                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
+                                  e.preventDefault();
+                                  addIng(si);
+                                  setTimeout(() => {
+                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
+                                    names[names.length - 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
                               className="editorial-input text-on-surface w-full"
                               type="text"
                               placeholder="Commentaire (optionnel)"

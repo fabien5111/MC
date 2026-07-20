@@ -219,6 +219,20 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                       ) : (
                         section.fields.map((f) => {
                           const val = e[f.key];
+                          if (f.refTable) {
+                            const linked = (data[f.refTable] || []).find((x) => String(x.id) === String(val));
+                            return (
+                              <td key={f.key} className="px-6 py-4 text-sm">
+                                {linked ? (
+                                  <span className="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">
+                                    {String(linked.name)}
+                                  </span>
+                                ) : (
+                                  <span className="text-on-surface-variant text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          }
                           if (f.key === 'url' && val) {
                             return (
                               <td key={f.key} className="px-6 py-4 text-sm">
@@ -274,6 +288,7 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
           table={activeKey!}
           section={section}
           moldTypes={moldTypes}
+          refData={data}
           entry={editing}
           onClose={() => setEditing(undefined)}
           onSaved={() => {
@@ -293,6 +308,7 @@ function EntryForm({
   table,
   section,
   moldTypes,
+  refData,
   entry,
   onClose,
   onSaved,
@@ -300,6 +316,7 @@ function EntryForm({
   table: string;
   section: Section;
   moldTypes: MoldType[];
+  refData: Record<string, Entry[]>;
   entry: Entry | null;
   onClose: () => void;
   onSaved: () => void;
@@ -340,7 +357,7 @@ function EntryForm({
       payload = {};
       for (const f of section.fields) {
         const raw = values[f.key].trim();
-        payload[f.key] = raw === '' ? null : f.type === 'number' ? Number(raw) : raw;
+        payload[f.key] = raw === '' ? null : f.type === 'number' || f.refTable ? Number(raw) : raw;
       }
       // Tables à colonne slug NOT NULL non exposée dans le formulaire.
       if (SLUG_TABLES.includes(table) && !payload.slug && typeof payload.name === 'string') {
@@ -413,7 +430,16 @@ function EntryForm({
                   {f.label}
                   {f.required ? ' *' : ''}
                 </span>
-                {f.type === 'select' ? (
+                {f.type === 'select' && f.refTable ? (
+                  <select value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={FIELD}>
+                    <option value="">— Aucun —</option>
+                    {(refData[f.refTable] || []).map((o) => (
+                      <option key={String(o.id)} value={String(o.id)}>
+                        {String(o.name)}
+                      </option>
+                    ))}
+                  </select>
+                ) : f.type === 'select' ? (
                   <select value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={FIELD}>
                     <option value="">— choisir —</option>
                     {(f.options || []).map((o) => (

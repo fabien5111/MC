@@ -38,6 +38,21 @@ export async function getIngredientRefNames(): Promise<string[]> {
   return (data ?? []).map((r) => r.name).filter(Boolean);
 }
 
+// Mapping nom d'ingrédient de référence (normalisé) → libellé de son allergène.
+// Sert à pré-remplir l'allergène dans l'éditeur quand l'ingrédient est choisi
+// dans la liste de référence. Toutes les entrées sont incluses (chaîne vide si
+// pas d'allergène) pour que le choix d'un ingrédient synchronise toujours le
+// champ.
+export async function getIngredientRefAllergens(): Promise<Record<string, string>> {
+  const supabase = await createClient();
+  const { data } = await supabase.from('ingredient_refs').select('name, allergens(name)');
+  const map: Record<string, string> = {};
+  (data as unknown as { name: string | null; allergens: { name: string | null } | null }[] | null)?.forEach((r) => {
+    if (r.name) map[r.name.trim().toLowerCase()] = r.allergens?.name || '';
+  });
+  return map;
+}
+
 export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
