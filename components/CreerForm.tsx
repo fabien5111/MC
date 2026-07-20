@@ -776,14 +776,14 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
-                    {/* En-tête de colonnes : n'étiquette que l'allergène. Les
-                        éléments miroirs (select d'unité + bouton) sont rendus
-                        invisibles mais occupent leur largeur, pour aligner
-                        précisément la colonne malgré la largeur auto de l'unité. */}
-                    <div className="flex items-center gap-4 mb-2" aria-hidden>
+                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES » sur une même
+                        ligne, alignés sur leur colonne. Les éléments miroirs
+                        (select d'unité + bouton) sont invisibles mais occupent
+                        leur largeur pour aligner précisément malgré la largeur
+                        auto de l'unité. */}
+                    <div className="flex items-center gap-4 mb-2">
                       <div className="w-20 shrink-0" />
-                      <select className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                      <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
                         <option value="">— unité —</option>
                         {units.map((u) => (
                           <option key={u.id} value={u.name}>
@@ -791,12 +791,14 @@ export function CreerForm({
                           </option>
                         ))}
                       </select>
-                      <div className="flex-1 min-w-0" />
                       <div className="flex-1 min-w-0">
-                        <span className="font-label-md text-[11px] uppercase tracking-wider text-outline">Allergènes</span>
+                        <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
                       </div>
                       <div className="flex-1 min-w-0" />
-                      <button type="button" tabIndex={-1} className="p-1 invisible shrink-0">
+                      <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
                         <span className="material-symbols-outlined text-[18px]">delete</span>
                       </button>
                     </div>
@@ -809,6 +811,7 @@ export function CreerForm({
                             className="w-20 editorial-input text-on-surface"
                             type="text"
                             placeholder="Qté"
+                            data-qty-step={si}
                           />
                           <select
                             value={g.unit}
@@ -853,7 +856,7 @@ export function CreerForm({
                             <input
                               value={g.allergen}
                               onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
-                              className="editorial-input text-on-surface w-full"
+                              className="editorial-input text-on-surface w-full italic"
                               type="text"
                               placeholder="Allergène (optionnel)"
                             />
@@ -862,6 +865,19 @@ export function CreerForm({
                             <input
                               value={g.comment}
                               onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
+                              onKeyDown={(e) => {
+                                // Tab (sans Maj) depuis le dernier champ de la dernière
+                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
+                                // placer le curseur, comme « Ajouter un ingrédient ».
+                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
+                                  e.preventDefault();
+                                  addIng(si);
+                                  setTimeout(() => {
+                                    const qtys = document.querySelectorAll<HTMLInputElement>(`[data-qty-step="${si}"]`);
+                                    qtys[qtys.length - 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
                               className="editorial-input text-on-surface w-full"
                               type="text"
                               placeholder="Commentaire (optionnel)"
