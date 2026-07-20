@@ -375,6 +375,7 @@ export type Database = {
       }
       ingredients: {
         Row: {
+          allergen: string | null
           comment: string | null
           group_id: number | null
           id: number
@@ -386,6 +387,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          allergen?: string | null
           comment?: string | null
           group_id?: number | null
           id?: number
@@ -397,6 +399,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          allergen?: string | null
           comment?: string | null
           group_id?: number | null
           id?: number
