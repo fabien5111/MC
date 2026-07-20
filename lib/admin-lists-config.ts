@@ -74,6 +74,14 @@ export const SECTIONS: Section[] = [
     fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP],
   },
   {
+    table: 'allergens',
+    label: 'Allergènes',
+    type: 'Nutrition',
+    badge: 'bg-secondary-container text-on-secondary-container',
+    desc: 'Allergènes de référence pour les recettes',
+    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP],
+  },
+  {
     table: 'utensils',
     label: 'Ustensiles',
     type: 'Matériel',
