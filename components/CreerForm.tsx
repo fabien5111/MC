@@ -782,6 +782,9 @@ export function CreerForm({
                         leur largeur pour aligner précisément malgré la largeur
                         auto de l'unité. */}
                     <div className="flex items-center gap-4 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
+                      </div>
                       <div className="w-20 shrink-0" />
                       <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
                         <option value="">— unité —</option>
@@ -791,9 +794,6 @@ export function CreerForm({
                           </option>
                         ))}
                       </select>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
-                      </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
                       </div>
@@ -805,31 +805,6 @@ export function CreerForm({
                     <div className="space-y-4">
                       {st.ings.map((g, ii) => (
                         <div key={g.key} className="flex items-center gap-4">
-                          <input
-                            value={g.qty}
-                            onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
-                            className="w-20 editorial-input text-on-surface"
-                            type="text"
-                            placeholder="Qté"
-                            data-qty-step={si}
-                          />
-                          <select
-                            value={g.unit}
-                            onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
-                            className="editorial-input text-on-surface cursor-pointer"
-                            // Largeur automatique : le select s'ajuste à son option la plus
-                            // large (ex. « pincée(s) »). `auto` prime sur le width:100% de
-                            // .editorial-input ; toutes les lignes partagent les mêmes
-                            // options → colonne alignée.
-                            style={{ width: 'auto' }}
-                          >
-                            <option value="">— unité —</option>
-                            {units.map((u) => (
-                              <option key={u.id} value={u.name}>
-                                {u.name}
-                              </option>
-                            ))}
-                          </select>
                           <div className="relative flex-1 min-w-0">
                             <input
                               list="dl-ingredients"
@@ -850,8 +825,33 @@ export function CreerForm({
                               type="text"
                               placeholder="Ingrédient"
                               autoComplete="off"
+                              data-name-step={si}
                             />
                           </div>
+                          <input
+                            value={g.qty}
+                            onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
+                            className="w-20 editorial-input text-on-surface"
+                            type="text"
+                            placeholder="Qté"
+                          />
+                          <select
+                            value={g.unit}
+                            onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
+                            className="editorial-input text-on-surface cursor-pointer"
+                            // Largeur automatique : le select s'ajuste à son option la plus
+                            // large (ex. « pincée(s) »). `auto` prime sur le width:100% de
+                            // .editorial-input ; toutes les lignes partagent les mêmes
+                            // options → colonne alignée.
+                            style={{ width: 'auto' }}
+                          >
+                            <option value="">— unité —</option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
                           <div className="flex-1 min-w-0">
                             <input
                               value={g.allergen}
@@ -868,13 +868,13 @@ export function CreerForm({
                               onKeyDown={(e) => {
                                 // Tab (sans Maj) depuis le dernier champ de la dernière
                                 // ligne → ouvrir une nouvelle ligne d'ingrédient et y
-                                // placer le curseur, comme « Ajouter un ingrédient ».
+                                // placer le curseur (sur le libellé, désormais premier).
                                 if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
                                   e.preventDefault();
                                   addIng(si);
                                   setTimeout(() => {
-                                    const qtys = document.querySelectorAll<HTMLInputElement>(`[data-qty-step="${si}"]`);
-                                    qtys[qtys.length - 1]?.focus();
+                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
+                                    names[names.length - 1]?.focus();
                                   }, 0);
                                 }
                               }}
