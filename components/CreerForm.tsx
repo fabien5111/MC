@@ -388,9 +388,11 @@ export function CreerForm({
             console.error('Groupe non enregistré :', grpErr?.message);
             continue;
           }
-          // `allergen` : colonne récente, cast le temps que les types Supabase
-          // soient régénérés (npm run gen:types).
-          await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })) as never);
+          // Erreur remontée explicitement : la modification supprime les groupes
+          // existants avant de réinsérer ; un échec d'insertion silencieux
+          // viderait la liste d'ingrédients de la recette.
+          const { error: ingErr } = await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })));
+          if (ingErr) throw ingErr;
         }
       }
 
