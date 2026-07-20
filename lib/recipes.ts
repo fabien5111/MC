@@ -92,6 +92,7 @@ export type IngredientView = {
   unit: string | null;
   comment: string | null;
   url: string | null;
+  allergen: string | null;
   order_index: number | null;
   ingredient_refs: { url: string | null } | null;
 };

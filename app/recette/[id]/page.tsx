@@ -425,6 +425,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 </span>
                                 <span className="font-label-md text-label-md text-primary text-center">
                                   <Qty quantity={it.quantity} unit={it.unit} />
+                                  {it.allergen && (
+                                    <span className="text-on-surface-variant font-normal italic"> ({it.allergen})</span>
+                                  )}
                                 </span>
                               </li>
                             );

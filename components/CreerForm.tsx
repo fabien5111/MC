@@ -21,7 +21,7 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
-type IngLine = { key: string; name: string; qty: string; unit: string; comment: string };
+type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string };
 type StepState = {
   key: string;
   title: string;
@@ -53,7 +53,7 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
 
 let uid = 0;
 const key = () => `k${uid++}`;
-const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '' });
+const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: '' });
 const emptyStep = (): StepState => ({
   key: key(),
   title: '',
@@ -92,7 +92,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       tips: s.tips || '',
       scaling: 'simple',
       ings: ings.length
-        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '' }))
+        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: i.allergen || '' }))
         : [emptyIng()],
       photos: [0, 1, 2, 3].map((i) => photos[i] || null),
       collapsed: false,
@@ -129,6 +129,7 @@ export function CreerForm({
   moldTypes,
   difficulties,
   ingredientRefs,
+  refAllergens,
   editRecipe,
 }: {
   tags: Tag[];
@@ -136,6 +137,7 @@ export function CreerForm({
   moldTypes: MoldType[];
   difficulties: Difficulty[];
   ingredientRefs: string[];
+  refAllergens: Record<string, string>;
   editRecipe: RecipeFull | null;
 }) {
   const router = useRouter();
@@ -342,6 +344,7 @@ export function CreerForm({
             quantity: l.qty.trim() || null,
             unit: l.unit || null,
             comment: l.comment.trim() || null,
+            allergen: l.allergen.trim() || null,
             order_index: i,
           }))
           .filter((l) => l.name);
@@ -385,7 +388,9 @@ export function CreerForm({
             console.error('Groupe non enregistré :', grpErr?.message);
             continue;
           }
-          await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })));
+          // `allergen` : colonne récente, cast le temps que les types Supabase
+          // soient régénérés (npm run gen:types).
+          await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })) as never);
         }
       }
 
@@ -799,11 +804,31 @@ export function CreerForm({
                             <input
                               list="dl-ingredients"
                               value={g.name}
-                              onChange={(e) => patchIng(si, ii, { name: e.target.value })}
+                              onChange={(e) => {
+                                const name = e.target.value;
+                                // Ingrédient choisi dans le référentiel → allergène pré-rempli
+                                // (chaîne vide si le référentiel n'en a pas). Sinon, on ne touche
+                                // pas au champ : il reste en saisie libre.
+                                const refKey = name.trim().toLowerCase();
+                                if (Object.prototype.hasOwnProperty.call(refAllergens, refKey)) {
+                                  patchIng(si, ii, { name, allergen: refAllergens[refKey] });
+                                } else {
+                                  patchIng(si, ii, { name });
+                                }
+                              }}
                               className="editorial-input text-on-surface w-full"
                               type="text"
                               placeholder="Ingrédient"
                               autoComplete="off"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <input
+                              value={g.allergen}
+                              onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
+                              className="editorial-input text-on-surface w-full"
+                              type="text"
+                              placeholder="Allergène (optionnel)"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
