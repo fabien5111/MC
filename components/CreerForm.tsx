@@ -529,7 +529,7 @@ export function CreerForm({
               placeholder="Décrivez votre recette en quelques mots"
             />
           </div>
-          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="lg:col-span-12 grid grid-cols-1 gap-6">
             <div>
               <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Source</label>
               <input
