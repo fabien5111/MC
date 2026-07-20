@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      allergens: {
+        Row: {
+          created_at: string | null
+          id: number
+          name: string
+          status: string | null
+          tooltip: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          name: string
+          status?: string | null
+          tooltip?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          name?: string
+          status?: string | null
+          tooltip?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
       allowlist: {
         Row: {
           email: string
@@ -310,6 +337,7 @@ export type Database = {
       }
       ingredient_refs: {
         Row: {
+          allergen_id: number | null
           created_at: string | null
           id: number
           name: string
@@ -318,6 +346,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          allergen_id?: number | null
           created_at?: string | null
           id?: number
           name: string
@@ -326,6 +355,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          allergen_id?: number | null
           created_at?: string | null
           id?: number
           name?: string
@@ -333,7 +363,15 @@ export type Database = {
           tooltip?: string | null
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_refs_allergen_id_fkey"
+            columns: ["allergen_id"]
+            isOneToOne: false
+            referencedRelation: "allergens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ingredients: {
         Row: {
