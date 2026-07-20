@@ -782,7 +782,11 @@ export function CreerForm({
                             value={g.unit}
                             onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
                             className="editorial-input text-on-surface cursor-pointer"
-                            style={{ width: '5.6rem' }}
+                            // Largeur automatique : le select s'ajuste à son option la plus
+                            // large (ex. « pincée(s) »). `auto` prime sur le width:100% de
+                            // .editorial-input ; toutes les lignes partagent les mêmes
+                            // options → colonne alignée.
+                            style={{ width: 'auto' }}
                           >
                             <option value="">— unité —</option>
                             {units.map((u) => (
