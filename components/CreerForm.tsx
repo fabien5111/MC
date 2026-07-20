@@ -326,14 +326,21 @@ export function CreerForm({
         recipeId = data.id;
       }
 
+      // En modification, les liaisons ci-dessus ont été supprimées avant
+      // réinsertion : toute erreur d'insertion est remontée pour éviter une
+      // perte silencieuse (tags/ustensiles/étapes/photos/ingrédients vidés).
       if (selectedTags.size > 0) {
-        await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
+        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
+        if (error) throw error;
       }
 
       const utRows = utensils
         .map((u, i) => ({ recipe_id: recipeId, name: u.name.trim(), comment: u.comment.trim() || null, order_index: i }))
         .filter((u) => u.name);
-      if (utRows.length) await supabase.from('recipe_utensils').insert(utRows);
+      if (utRows.length) {
+        const { error } = await supabase.from('recipe_utensils').insert(utRows);
+        if (error) throw error;
+      }
 
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
@@ -370,12 +377,13 @@ export function CreerForm({
           })
           .select('id')
           .single();
-        if (stepErr) console.error('Étape non enregistrée :', stepErr.message);
+        if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
 
-        if (stepRow && photoUrls.length) {
-          await supabase
+        if (photoUrls.length) {
+          const { error } = await supabase
             .from('step_photos')
             .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+          if (error) throw error;
         }
 
         if (lines.length) {
@@ -384,13 +392,7 @@ export function CreerForm({
             .insert({ recipe_id: recipeId, name: st.title.trim() || `Étape ${gi + 1}`, order_index: gi, scaling_mode: st.scaling })
             .select('id')
             .single();
-          if (grpErr || !grp) {
-            console.error('Groupe non enregistré :', grpErr?.message);
-            continue;
-          }
-          // Erreur remontée explicitement : la modification supprime les groupes
-          // existants avant de réinsérer ; un échec d'insertion silencieux
-          // viderait la liste d'ingrédients de la recette.
+          if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
           const { error: ingErr } = await supabase.from('ingredients').insert(lines.map((l) => ({ ...l, group_id: grp.id })));
           if (ingErr) throw ingErr;
         }
