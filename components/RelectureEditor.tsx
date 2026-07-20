@@ -92,6 +92,12 @@ export function RelectureEditor({
   const [titre, setTitre] = useState(recette.titre || '');
   const [description, setDescription] = useState(recette.description || '');
   const [notes, setNotes] = useState(recette.notes || '');
+  const [source, setSource] = useState(recette.source?.auteur_origine || '');
+  const [sourceUrl, setSourceUrl] = useState(
+    recette.source?.url_origine || importRow.source_url || recette.source?.url || '',
+  );
+  const [videoUrl, setVideoUrl] = useState(recette.source?.video_url || '');
+  const [servingAdvice, setServingAdvice] = useState(recette.conseils_degustation || '');
   const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map(initSp));
   const [saveStatus, setSaveStatus] = useState('');
@@ -171,6 +177,13 @@ export function RelectureEditor({
     p.titre = titre.trim();
     p.description = description.trim() || null;
     p.notes = notes.trim() || null;
+    p.conseils_degustation = servingAdvice.trim() || null;
+    p.source = {
+      ...(p.source || {}),
+      auteur_origine: source.trim() || null,
+      url_origine: sourceUrl.trim() || null,
+      video_url: videoUrl.trim() || null,
+    };
     p.rendement = p.rendement || {};
     p.rendement.libelle_corrige = rendement.trim() || null;
     p.sous_preparations = sps.map((sp, i) => ({
@@ -262,6 +275,10 @@ export function RelectureEditor({
           is_public: false,
           status: 'draft',
           tips: p.notes || null,
+          source: p.source?.auteur_origine || null,
+          source_url: p.source?.url_origine || null,
+          video_url: p.source?.video_url || null,
+          serving_advice: p.conseils_degustation || null,
           prep_time: t.preparation_min ?? null,
           cook_time: t.cuisson_min ?? null,
           wait_time: attente || null,
@@ -392,6 +409,18 @@ export function RelectureEditor({
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
             <input value={rendement} onChange={(e) => setRendement(e.target.value)} className={champ} placeholder="8 parts, 20 pièces, cercle 20 cm…" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Source</span>
+            <input value={source} onChange={(e) => setSource(e.target.value)} className={champ} placeholder="ex : Cyril Lignac" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">URL de la recette d&apos;origine</span>
+            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} type="url" className={champ} placeholder="https://…" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">URL de la vidéo</span>
+            <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} type="url" className={champ} placeholder="https://… (optionnel)" />
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
@@ -548,6 +577,18 @@ export function RelectureEditor({
           <span className="material-symbols-outlined">add_circle</span> Ajouter une sous-préparation
         </button>
       </div>
+
+      {/* Conseils de dégustation et de conservation (fin de recette) */}
+      <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils de dégustation et de conservation</h2>
+        <textarea
+          value={servingAdvice}
+          onChange={(e) => setServingAdvice(e.target.value)}
+          rows={4}
+          className={champ}
+          placeholder="Température de dégustation, durée et mode de conservation…"
+        />
+      </section>
 
       {/* Récap global */}
       <section className="mt-12 bg-primary text-white rounded-xl p-6 md:p-8">

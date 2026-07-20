@@ -131,12 +131,21 @@ export async function POST(req: Request) {
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
   pivot.visibilite = 'privee';
+  // Champs de provenance : on conserve ce que l'IA a extrait (auteur, URL
+  // d'origine, vidéo), avec repli sur les données schema.org / l'URL importée.
+  const iaSource = pivot.source && typeof pivot.source === 'object' ? pivot.source : {};
+  const ldVideo = ((v: any) => {
+    const o = Array.isArray(v) ? v[0] : v;
+    return (o && typeof o === 'object' ? o.contentUrl || o.embedUrl || o.url : o) || null;
+  })(ld?.video);
   pivot.source = {
     type: texte ? 'texte' : 'url',
-    url: url || null,
+    url: url || iaSource.url_origine || iaSource.url || null,
+    url_origine: url || iaSource.url_origine || null,
+    video_url: iaSource.video_url || ldVideo || null,
     fichier_original: null,
     auteur_origine:
-      (pivot.source && pivot.source.auteur_origine) ||
+      iaSource.auteur_origine ||
       (ld && ((ld.author as any)?.name || ld.author)) ||
       null,
     importee_le: new Date().toISOString(),
@@ -144,6 +153,11 @@ export async function POST(req: Request) {
   if (typeof pivot.source.auteur_origine === 'object') {
     pivot.source.auteur_origine = pivot.source.auteur_origine?.name || null;
   }
+  // Conseils de dégustation/conservation (texte libre), extraits par l'IA.
+  pivot.conseils_degustation =
+    typeof pivot.conseils_degustation === 'string' && pivot.conseils_degustation.trim()
+      ? pivot.conseils_degustation.trim()
+      : null;
 
   // 4. Volume du moule.
   if (pivot.rendement && pivot.rendement.moule) {
