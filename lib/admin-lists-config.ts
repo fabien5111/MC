@@ -6,7 +6,10 @@
 // module 'use client' — Next.js la remplace par une référence opaque côté
 // serveur, et .map()/.forEach() dessus lève une exception serveur silencieuse
 // (« Application error: a server-side exception has occurred »).
-export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; required?: boolean };
+// `refTable` : select dynamique dont les options proviennent d'une autre liste
+// déjà chargée (id + name), ex. l'allergène d'un ingrédient. La valeur stockée
+// est l'id numérique de l'entrée liée (ou null).
+export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; refTable?: string; required?: boolean };
 export type Section = { table: string; label: string; type: string; badge: string; desc: string; fields: Field[] };
 
 const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
@@ -71,7 +74,12 @@ export const SECTIONS: Section[] = [
     type: 'Garde-manger',
     badge: 'bg-tertiary-fixed text-on-tertiary-fixed',
     desc: 'Ingrédients de référence pour les recettes',
-    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP],
+    fields: [
+      { key: 'name', label: 'Libellé', required: true },
+      { key: 'allergen_id', label: 'Allergène', type: 'select', refTable: 'allergens' },
+      { key: 'url', label: 'URL' },
+      TOOLTIP,
+    ],
   },
   {
     table: 'allergens',
