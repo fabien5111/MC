@@ -215,6 +215,28 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Source & liens d'origine */}
+          {(recipe.source || recipe.source_url || recipe.video_url) && (
+            <div className="mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
+              {recipe.source && (
+                <span className="inline-flex items-center gap-2 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
+                  Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
+                </span>
+              )}
+              {recipe.source_url && (
+                <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                  <span className="material-symbols-outlined text-[18px]">link</span>Recette d&apos;origine
+                </a>
+              )}
+              {recipe.video_url && (
+                <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                  <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
+                </a>
+              )}
+            </div>
+          )}
+
           {/* Contexte planifié (bannière + démarrage d'exécution) */}
           {planContext && planContext.planned_date && (
             <PlanNoticeBanner
@@ -631,6 +653,19 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {recipe.profiles?.full_name && (
                 <p className="mt-6 font-label-md text-label-md">— {recipe.profiles.full_name}</p>
               )}
+            </div>
+          )}
+
+          {/* Conseils de dégustation et de conservation */}
+          {recipe.serving_advice && (
+            <div className="mt-12 bg-surface-container-low border border-outline-variant p-10 relative overflow-hidden">
+              <div className="absolute -right-10 -top-10 opacity-10">
+                <span className="material-symbols-outlined text-[120px] text-primary">restaurant</span>
+              </div>
+              <h3 className="font-headline-md text-headline-md text-primary mb-4 flex items-center gap-3">
+                <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
+              </h3>
+              <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{recipe.serving_advice}</p>
             </div>
           )}
         </div>

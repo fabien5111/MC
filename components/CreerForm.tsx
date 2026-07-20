@@ -146,6 +146,10 @@ export function CreerForm({
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
   const [tips, setTips] = useState(editRecipe?.tips || '');
+  const [source, setSource] = useState(editRecipe?.source || '');
+  const [sourceUrl, setSourceUrl] = useState(editRecipe?.source_url || '');
+  const [videoUrl, setVideoUrl] = useState(editRecipe?.video_url || '');
+  const [servingAdvice, setServingAdvice] = useState(editRecipe?.serving_advice || '');
   const [isPublic, setIsPublic] = useState(editRecipe?.is_public !== false);
   const [hero, setHero] = useState<string | null>(editRecipe?.hero_image_url ?? null);
   const [level, setLevel] = useState<number>(
@@ -304,6 +308,10 @@ export function CreerForm({
         mold_type_id: moldTypeIdNum,
         mold_dims: moldDims,
         tips: tips.trim() || null,
+        source: source.trim() || null,
+        source_url: sourceUrl.trim() || null,
+        video_url: videoUrl.trim() || null,
+        serving_advice: servingAdvice.trim() || null,
         prep_time: gmin(prep),
         wait_time: gmin(wait),
         cook_time: gmin(cook),
@@ -312,8 +320,11 @@ export function CreerForm({
       };
 
       let recipeId: string;
+      // `source` / `source_url` / `video_url` / `serving_advice` : colonnes
+      // récentes, cast le temps que les types Supabase soient régénérés
+      // (npm run gen:types).
       if (editingId) {
-        const { error } = await supabase.from('recipes').update(payload).eq('id', editingId);
+        const { error } = await supabase.from('recipes').update(payload as never).eq('id', editingId);
         if (error) throw error;
         recipeId = editingId;
         await supabase.from('recipe_tags').delete().eq('recipe_id', editingId);
@@ -321,7 +332,7 @@ export function CreerForm({
         await supabase.from('ingredient_groups').delete().eq('recipe_id', editingId);
         await supabase.from('recipe_steps').delete().eq('recipe_id', editingId);
       } else {
-        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id }).select('id').single();
+        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id } as never).select('id').single();
         if (error || !data) throw error || new Error('Création refusée');
         recipeId = data.id;
       }
@@ -520,6 +531,38 @@ export function CreerForm({
               className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
               placeholder="Décrivez votre recette en quelques mots"
             />
+          </div>
+          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Source</label>
+              <input
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                type="text"
+                className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                placeholder="ex : Cyril Lignac"
+              />
+            </div>
+            <div>
+              <label className="font-label-md text-label-md text-outline uppercase mb-2 block">URL de la recette d&apos;origine</label>
+              <input
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                type="url"
+                className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                placeholder="https://…"
+              />
+            </div>
+            <div>
+              <label className="font-label-md text-label-md text-outline uppercase mb-2 block">URL de la vidéo</label>
+              <input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                type="url"
+                className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                placeholder="https://… (optionnel)"
+              />
+            </div>
           </div>
           <div className="lg:col-span-12">
             <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
@@ -978,6 +1021,18 @@ export function CreerForm({
             onChange={(e) => setTips(e.target.value)}
             className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
+            rows={4}
+          />
+        </section>
+
+        {/* Conseils de dégustation et de conservation */}
+        <section className="space-y-8">
+          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
+          <textarea
+            value={servingAdvice}
+            onChange={(e) => setServingAdvice(e.target.value)}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
         </section>

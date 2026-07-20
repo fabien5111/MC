@@ -117,6 +117,10 @@ export type RecipeFull = {
   wait_time: number | null;
   total_time: number | null;
   tips: string | null;
+  source: string | null;
+  source_url: string | null;
+  video_url: string | null;
+  serving_advice: string | null;
   hero_image_url: string | null;
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
