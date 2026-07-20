@@ -809,13 +809,17 @@ export type Database = {
           prep_time: number | null
           rating_avg: number | null
           rating_count: number | null
+          serving_advice: string | null
           servings: number | null
+          source: string | null
+          source_url: string | null
           status: string | null
           tips: string | null
           title: string
           total_time: number | null
           type_id: number | null
           updated_at: string | null
+          video_url: string | null
           view_count: number | null
           wait_time: number | null
           yield_desc: string | null
@@ -839,13 +843,17 @@ export type Database = {
           prep_time?: number | null
           rating_avg?: number | null
           rating_count?: number | null
+          serving_advice?: string | null
           servings?: number | null
+          source?: string | null
+          source_url?: string | null
           status?: string | null
           tips?: string | null
           title: string
           total_time?: number | null
           type_id?: number | null
           updated_at?: string | null
+          video_url?: string | null
           view_count?: number | null
           wait_time?: number | null
           yield_desc?: string | null
@@ -869,13 +877,17 @@ export type Database = {
           prep_time?: number | null
           rating_avg?: number | null
           rating_count?: number | null
+          serving_advice?: string | null
           servings?: number | null
+          source?: string | null
+          source_url?: string | null
           status?: string | null
           tips?: string | null
           title?: string
           total_time?: number | null
           type_id?: number | null
           updated_at?: string | null
+          video_url?: string | null
           view_count?: number | null
           wait_time?: number | null
           yield_desc?: string | null
