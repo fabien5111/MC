@@ -777,6 +777,29 @@ export function CreerForm({
 
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">INGRÉDIENTS</label>
+                    {/* En-tête de colonnes : n'étiquette que l'allergène. Les
+                        éléments miroirs (select d'unité + bouton) sont rendus
+                        invisibles mais occupent leur largeur, pour aligner
+                        précisément la colonne malgré la largeur auto de l'unité. */}
+                    <div className="flex items-center gap-4 mb-2" aria-hidden>
+                      <div className="w-20 shrink-0" />
+                      <select className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                        <option value="">— unité —</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex-1 min-w-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-label-md text-[11px] uppercase tracking-wider text-outline">Allergènes</span>
+                      </div>
+                      <div className="flex-1 min-w-0" />
+                      <button type="button" tabIndex={-1} className="p-1 invisible shrink-0">
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
                     <div className="space-y-4">
                       {st.ings.map((g, ii) => (
                         <div key={g.key} className="flex items-center gap-4">
