@@ -41,6 +41,12 @@ const SCHEMA_EXEMPLE = {
     },
   ],
   notes: null,
+  conseils_degustation: 'À déguster à température ambiante. Se conserve 3 jours au réfrigérateur dans une boîte hermétique.',
+  source: {
+    auteur_origine: 'Cyril Lignac',
+    url_origine: 'https://exemple.fr/recette',
+    video_url: 'https://www.youtube.com/watch?v=xxxx',
+  },
   photos: [],
 };
 
@@ -65,6 +71,15 @@ Règles :
   sablé et les dacquoises ; J−1 : la mousse et le montage ; Jour J : le
   glaçage »), reporte le bon J−n sur CHAQUE sous-préparation concernée
   (J−2 → day_offset 2, J−1 → 1, Jour J → 0). Sans indication, mets 0.
+- source.auteur_origine = nom du chef ou de l'auteur de la recette
+  (ex. « Cyril Lignac »), sinon null.
+- source.url_origine = URL de la page/recette d'origine si elle apparaît
+  dans le contenu, sinon null.
+- source.video_url = URL d'une vidéo de la recette (YouTube, etc.) si elle
+  apparaît dans le contenu, sinon null.
+- conseils_degustation = conseils de dégustation ET de conservation
+  (température de service, durée et mode de conservation), en texte libre,
+  sinon null. Ne les mélange pas avec les notes/astuces générales.
 
 Schéma (exemple) : ${JSON.stringify(SCHEMA_EXEMPLE)}`;
 
