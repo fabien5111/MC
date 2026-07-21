@@ -61,6 +61,13 @@ export async function getAllergenNames(): Promise<string[]> {
   return (data ?? []).map((r) => r.name).filter(Boolean);
 }
 
+// Libellés d'ustensiles de référence (autocomplétion de l'éditeur).
+export async function getUtensilRefNames(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from('utensils').select('name').order('name');
+  return (data ?? []).map((r) => r.name).filter(Boolean);
+}
+
 export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

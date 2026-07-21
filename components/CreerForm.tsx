@@ -8,9 +8,10 @@
 //
 // Différé vs vanilla : réorganisation par glisser-déposer des ustensiles
 // (l'icône est affichée mais inerte ; celle des étapes est désormais active),
-// éditeur de texte enrichi (gras/italique),
-// autocomplétion avec ajout à la volée sur les listes de référence (remplacée
-// par une datalist), découpage explicite en sous-étapes.
+// éditeur de texte enrichi (gras/italique), découpage explicite en
+// sous-étapes. Autocomplétion des ingrédients/ustensiles/allergènes via
+// datalist ; ajout à la volée d'un libellé inconnu au référentiel réservé aux
+// administrateurs (bouton « Ajouter au référentiel »).
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -132,6 +133,8 @@ export function CreerForm({
   ingredientRefs,
   refAllergens,
   allergenRefs,
+  utensilRefs,
+  isAdmin,
   editRecipe,
 }: {
   tags: Tag[];
@@ -141,6 +144,8 @@ export function CreerForm({
   ingredientRefs: string[];
   refAllergens: Record<string, string>;
   allergenRefs: string[];
+  utensilRefs: string[];
+  isAdmin: boolean;
   editRecipe: RecipeFull | null;
 }) {
   const router = useRouter();
@@ -191,6 +196,32 @@ export function CreerForm({
   const [busy, setBusy] = useState(false);
   // Index de l'étape en cours de glisser-déposer (null si aucun déplacement).
   const [dragStep, setDragStep] = useState<number | null>(null);
+  // Ingrédients / ustensiles ajoutés au référentiel pendant la saisie (admin) :
+  // complètent les listes serveur pour l'autocomplétion et masquent aussitôt le
+  // bouton d'ajout, sans recharger la page.
+  const [extraIngredientRefs, setExtraIngredientRefs] = useState<string[]>([]);
+  const [extraUtensilRefs, setExtraUtensilRefs] = useState<string[]>([]);
+  const [refBusy, setRefBusy] = useState<string | null>(null);
+
+  const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
+  const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
+  const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
+  const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
+
+  // Ajout à la volée d'un libellé dans une table de référence (réservé aux
+  // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
+  // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
+  async function addRef(table: 'ingredient_refs' | 'utensils', name: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    const tag = `${table}:${clean.toLowerCase()}`;
+    setRefBusy(tag);
+    const { error } = await createClient().from(table).insert({ name: clean });
+    setRefBusy(null);
+    if (error) return void alert('Erreur : ' + error.message);
+    if (table === 'ingredient_refs') setExtraIngredientRefs((p) => [...p, clean]);
+    else setExtraUtensilRefs((p) => [...p, clean]);
+  }
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
   const remainingTags = useMemo(() => tags.filter((t) => !selectedTags.has(t.id)), [tags, selectedTags]);
@@ -721,20 +752,35 @@ export function CreerForm({
             {utensils.map((u, i) => (
               <li key={u.key} className="flex items-start gap-4 group">
                 <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
-                <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-                  <input
-                    value={u.name}
-                    onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
-                    className="editorial-input text-on-surface w-full"
-                    placeholder="Nom de l'ustensile"
-                    autoComplete="off"
-                  />
-                  <input
-                    value={u.comment}
-                    onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
-                    className="editorial-input text-on-surface w-full"
-                    placeholder="Commentaire (optionnel)"
-                  />
+                <div className="flex-grow">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                    <input
+                      list="dl-utensils"
+                      value={u.name}
+                      onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
+                      className="editorial-input text-on-surface w-full"
+                      placeholder="Nom de l'ustensile"
+                      autoComplete="off"
+                    />
+                    <input
+                      value={u.comment}
+                      onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      className="editorial-input text-on-surface w-full"
+                      placeholder="Commentaire (optionnel)"
+                    />
+                  </div>
+                  {isAdmin && u.name.trim() && !knownUtensils.has(u.name.trim().toLowerCase()) && (
+                    <button
+                      type="button"
+                      onClick={() => addRef('utensils', u.name)}
+                      disabled={refBusy === `utensils:${u.name.trim().toLowerCase()}`}
+                      className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                      title="Ajouter cet ustensile à la base de référence"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                      Ajouter «&nbsp;{u.name.trim()}&nbsp;» au référentiel
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -887,7 +933,8 @@ export function CreerForm({
                     </div>
                     <div className="space-y-4">
                       {st.ings.map((g, ii) => (
-                        <div key={g.key} className="flex items-center gap-4">
+                        <div key={g.key}>
+                        <div className="flex items-center gap-4">
                           <div className="relative flex-1 min-w-0">
                             <input
                               list="dl-ingredients"
@@ -975,6 +1022,19 @@ export function CreerForm({
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
+                        </div>
+                        {isAdmin && g.name.trim() && !knownIngredients.has(g.name.trim().toLowerCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => addRef('ingredient_refs', g.name)}
+                            disabled={refBusy === `ingredient_refs:${g.name.trim().toLowerCase()}`}
+                            className="mt-1 ml-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                            title="Ajouter cet ingrédient à la base de référence"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                            Ajouter «&nbsp;{g.name.trim()}&nbsp;» au référentiel
+                          </button>
+                        )}
                         </div>
                       ))}
                     </div>
@@ -1212,7 +1272,13 @@ export function CreerForm({
       </div>
 
       <datalist id="dl-ingredients">
-        {ingredientRefs.map((n) => (
+        {allIngredientRefs.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+
+      <datalist id="dl-utensils">
+        {allUtensilRefs.map((n) => (
           <option key={n} value={n} />
         ))}
       </datalist>

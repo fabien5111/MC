@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { requireUser } from '@/lib/auth';
+import { requireUser, isAdmin } from '@/lib/auth';
 import { getRecipeFull } from '@/lib/recipes';
-import { getIngredientRefNames, getIngredientRefAllergens, getAllergenNames } from '@/lib/imports';
+import { getIngredientRefNames, getIngredientRefAllergens, getAllergenNames, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
@@ -16,16 +16,19 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   const user = await requireUser('/creer');
   const { id } = await searchParams;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergenRefs, editRecipe] = await Promise.all([
-    getTags(),
-    getUnits(),
-    getMoldTypes(),
-    getDifficulties(),
-    getIngredientRefNames(),
-    getIngredientRefAllergens(),
-    getAllergenNames(),
-    id ? getRecipeFull(id) : Promise.resolve(null),
-  ]);
+  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergenRefs, utensilRefs, admin, editRecipe] =
+    await Promise.all([
+      getTags(),
+      getUnits(),
+      getMoldTypes(),
+      getDifficulties(),
+      getIngredientRefNames(),
+      getIngredientRefAllergens(),
+      getAllergenNames(),
+      getUtensilRefNames(),
+      isAdmin(user.id),
+      id ? getRecipeFull(id) : Promise.resolve(null),
+    ]);
 
   // Édition réservée à l'auteur ; sinon on repart d'un formulaire vierge.
   const owned = editRecipe && editRecipe.author_id === user.id ? editRecipe : null;
@@ -42,6 +45,8 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           ingredientRefs={ingredientRefs}
           refAllergens={refAllergens}
           allergenRefs={allergenRefs}
+          utensilRefs={utensilRefs}
+          isAdmin={admin}
           editRecipe={owned}
         />
       </main>
