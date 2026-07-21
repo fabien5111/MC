@@ -131,6 +131,7 @@ export function CreerForm({
   difficulties,
   ingredientRefs,
   refAllergens,
+  allergenRefs,
   editRecipe,
 }: {
   tags: Tag[];
@@ -139,6 +140,7 @@ export function CreerForm({
   difficulties: Difficulty[];
   ingredientRefs: string[];
   refAllergens: Record<string, string>;
+  allergenRefs: string[];
   editRecipe: RecipeFull | null;
 }) {
   const router = useRouter();
@@ -221,7 +223,13 @@ export function CreerForm({
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? url : p)) } : st)));
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
-  const delStep = (i: number) => setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
+  const delStep = (i: number) => {
+    if (steps.length <= 1) return;
+    const label = steps[i]?.title.trim();
+    const msg = label ? `Supprimer l'étape « ${label} » ?` : 'Supprimer cette étape ?';
+    if (!confirm(msg)) return;
+    setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
+  };
   // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
   const moveStep = (from: number, to: number) =>
     setSteps((s) => {
@@ -929,6 +937,7 @@ export function CreerForm({
                           </select>
                           <div className="flex-1 min-w-0">
                             <input
+                              list="dl-allergens"
                               value={g.allergen}
                               onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
                               className="editorial-input text-on-surface w-full italic"
@@ -1204,6 +1213,12 @@ export function CreerForm({
 
       <datalist id="dl-ingredients">
         {ingredientRefs.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+
+      <datalist id="dl-allergens">
+        {allergenRefs.map((n) => (
           <option key={n} value={n} />
         ))}
       </datalist>
