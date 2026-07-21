@@ -736,6 +736,7 @@ export function CreerForm({
               <ImageSlot
                 src={hero}
                 onChange={setHero}
+                onClear={() => setHero(null)}
                 shape="rect"
                 maxWidth={1200}
                 placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
@@ -1295,6 +1296,7 @@ export function CreerForm({
                         <ImageSlot
                           src={p}
                           onChange={(url) => patchPhoto(si, pi, url)}
+                          onClear={() => patchPhoto(si, pi, null)}
                           shape="rect"
                           maxWidth={800}
                           placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
