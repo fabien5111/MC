@@ -8,10 +8,11 @@
 //
 // Différé vs vanilla : réorganisation par glisser-déposer des ustensiles
 // (l'icône est affichée mais inerte ; celle des étapes est désormais active),
-// éditeur de texte enrichi (gras/italique), découpage explicite en
-// sous-étapes. Autocomplétion des ingrédients/ustensiles/allergènes via
-// datalist ; ajout à la volée d'un libellé inconnu au référentiel réservé aux
-// administrateurs (bouton « Ajouter au référentiel »).
+// éditeur de texte enrichi (gras/italique). Le découpage en sous-étapes se fait
+// via les lignes de description débutant par « - » (cf. splitSousEtapes).
+// Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
+// la volée d'un libellé inconnu au référentiel réservé aux administrateurs
+// (bouton « Ajouter au référentiel »).
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -53,6 +54,18 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
   return parts.length ? parts.join(' × ') + ' cm' : null;
 }
 
+// Découpage de la description en sous-étapes : chaque ligne débutant par un
+// tiret « - » ou une puce « • » devient une sous-étape distincte (même logique
+// que la fiche recette et l'exécution guidée). Renvoie la liste des sous-étapes
+// lorsqu'il y en a au moins deux, sinon `null` (description libre conservée).
+function splitSousEtapes(description: string): string[] | null {
+  const parts = description
+    .split(/(?:^|(?<=\s))[-•]\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length > 1 ? parts : null;
+}
+
 let uid = 0;
 const key = () => `k${uid++}`;
 const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: '' });
@@ -79,7 +92,12 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   if (!steps.length) return [emptyStep()];
   return steps.map((s) => {
     const grp = groupsByOrder[s.order_index || 0];
-    const desc = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.join('\n') : s.description || '';
+    // Réédition : on réaffiche le marqueur « - » de chaque sous-étape pour que
+    // le découpage reste modifiable et se conserve à l'enregistrement.
+    const desc =
+      Array.isArray(s.sous_etapes) && s.sous_etapes.length
+        ? s.sous_etapes.map((t) => `- ${t}`).join('\n')
+        : s.description || '';
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((p) => p.url);
     return {
@@ -330,7 +348,7 @@ export function CreerForm({
   }, [steps, allSameDay]);
   const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
 
-  async function submit(status: 'draft' | 'pending') {
+  async function submit(status: 'draft' | 'pending', stay = false) {
     if (!title.trim()) {
       alert('Donnez un titre à votre recette.');
       return;
@@ -467,7 +485,7 @@ export function CreerForm({
             wait_time: gmin(st.wait),
             day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
             tips: st.tips.trim() || null,
-            sous_etapes: null,
+            sous_etapes: desc ? splitSousEtapes(desc) : null,
             order_index: gi,
           })
           .select('id')
@@ -493,7 +511,23 @@ export function CreerForm({
         }
       }
 
-      router.push(status === 'draft' ? '/profil' : `/recette/${recipeId}`);
+      if (status !== 'draft') {
+        // Publication / enregistrement définitif : on ouvre la fiche recette.
+        router.push(`/recette/${recipeId}`);
+      } else if (stay) {
+        // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
+        // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
+        // les enregistrements suivants mettent à jour au lieu de dupliquer.
+        if (editingId) {
+          setBusy(false);
+          router.refresh();
+        } else {
+          router.replace(`/creer?id=${recipeId}`);
+        }
+      } else {
+        // « Enregistrer en brouillon et quitter » : retour au profil.
+        router.push('/profil');
+      }
     } catch (e) {
       alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
       setBusy(false);
@@ -508,8 +542,8 @@ export function CreerForm({
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [
-          ['simple', 'Ajustement des quantités selon la quantité à produire'],
-          ['aucun', "Pas d'ajustement des quantités pour cette étape"],
+          ['simple', 'Proportionnel à la quantité à produire'],
+          ['aucun', "Pas d'ajustement"],
         ];
 
   const radio = (checked: boolean) => (
@@ -901,6 +935,22 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
+                    <label className="font-label-md text-label-md text-outline shrink-0">Ajustement des quantités de cette étape</label>
+                    <select
+                      value={st.scaling}
+                      onChange={(e) => patchStep(si, { scaling: e.target.value })}
+                      className="editorial-input text-on-surface bg-transparent cursor-pointer shrink-0"
+                      style={{ width: 'auto' }}
+                    >
+                      {scalingOptions.map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="flex flex-wrap gap-8">
                     {(
                       [
@@ -1081,21 +1131,6 @@ export function CreerForm({
                     <button type="button" onClick={() => addIng(si)} className="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline w-fit">
                       <span className="material-symbols-outlined">add</span> Ajouter un ingrédient
                     </button>
-                    <div className="mt-4 border-t border-b border-outline-variant/60 py-4 flex items-center gap-3">
-                      <label className="font-label-md text-label-md text-outline shrink-0">ADAPTATION</label>
-                      <select
-                        value={st.scaling}
-                        onChange={(e) => patchStep(si, { scaling: e.target.value })}
-                        className="editorial-input text-on-surface bg-transparent cursor-pointer shrink-0"
-                        style={{ width: 'auto' }}
-                      >
-                        {scalingOptions.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
 
                   <div className="flex flex-col">
@@ -1107,6 +1142,9 @@ export function CreerForm({
                       placeholder="Décrivez les gestes techniques avec précision..."
                       rows={8}
                     />
+                    <p className="mt-2 text-sm text-on-surface-variant italic">
+                      Astuce : commencez une ligne par «&nbsp;-&nbsp;» pour la découper en sous-étapes cochables.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1129,12 +1167,13 @@ export function CreerForm({
                       Conseils &amp; Astuces de l&apos;étape
                       <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                     </summary>
-                    <div className="pb-6 px-4">
+                    <div className="pb-6">
                       <textarea
                         value={st.tips}
                         onChange={(e) => patchStep(si, { tips: e.target.value })}
-                        className="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant"
+                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors"
                         placeholder="Une astuce particulière pour cette étape ?"
+                        rows={4}
                       />
                     </div>
                   </details>
@@ -1290,23 +1329,31 @@ export function CreerForm({
         className="fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
-        <div className="max-w-[1200px] mx-auto flex justify-center gap-3 px-margin-mobile md:px-margin-desktop">
+        <div className="max-w-[1200px] mx-auto flex flex-wrap justify-center gap-3 px-margin-mobile md:px-margin-desktop">
           <button
             type="button"
             onClick={() => submit('pending')}
             disabled={busy}
-            className="flex-1 max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
           >
             {isPublic ? 'Publier la recette' : 'Enregistrer'}
             <span className="material-symbols-outlined text-[18px]">send</span>
           </button>
           <button
             type="button"
-            onClick={() => submit('draft')}
+            onClick={() => submit('draft', true)}
             disabled={busy}
-            className="flex-1 max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
           >
             Enregistrer en brouillon
+          </button>
+          <button
+            type="button"
+            onClick={() => submit('draft', false)}
+            disabled={busy}
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+          >
+            Enregistrer en brouillon et quitter
           </button>
         </div>
       </div>
