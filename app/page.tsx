@@ -8,12 +8,16 @@ import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getSiteSettings } from '@/lib/site';
+import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
 
 const BANNER_FALLBACK =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
 
-const CATEGORIES = [
+// Catégories affichées si aucune n'est encore définie dans le référentiel des
+// tags (colonne `category_icon`). Sert de repli tant que l'admin n'a pas promu
+// de tags en catégories, pour ne jamais laisser la section vide.
+const FALLBACK_CATEGORIES = [
   { icon: 'cake', label: 'Gâteaux' },
   { icon: 'icecream', label: 'Entremets' },
   { icon: 'bakery_dining', label: 'Tartes' },
@@ -29,12 +33,16 @@ const CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, favIds, banners] = await Promise.all([
+  const [recipes, favIds, banners, homeCategories] = await Promise.all([
     getRecipes({ limit: 6 }),
     getFavoriteIds(),
     getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
+    getHomeCategories(),
   ]);
   const featured = recipes[0] ?? null;
+  const categories = homeCategories.length
+    ? homeCategories.map((c) => ({ icon: c.category_icon, label: c.name }))
+    : FALLBACK_CATEGORIES;
 
   return (
     <>
@@ -166,7 +174,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <div key={c.label} className="group cursor-pointer flex flex-col items-center">
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg">
                   <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>

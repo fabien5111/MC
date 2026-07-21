@@ -1084,6 +1084,7 @@ export type Database = {
       }
       tags: {
         Row: {
+          category_icon: string | null
           created_at: string | null
           id: number
           name: string
@@ -1092,6 +1093,7 @@ export type Database = {
           tooltip: string | null
         }
         Insert: {
+          category_icon?: string | null
           created_at?: string | null
           id?: number
           name: string
@@ -1100,6 +1102,7 @@ export type Database = {
           tooltip?: string | null
         }
         Update: {
+          category_icon?: string | null
           created_at?: string | null
           id?: number
           name?: string
