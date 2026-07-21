@@ -1031,7 +1031,7 @@ export function CreerForm({
                             value={val}
                             onChange={(e) => set(e.target.value)}
                             className="editorial-input text-on-surface text-center shrink-0"
-                            style={{ width: '4rem' }}
+                            style={{ width: '5rem' }}
                             type="number"
                             min={0}
                           />
