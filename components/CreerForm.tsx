@@ -6,8 +6,9 @@
 // ingrédients » recalculées en direct depuis les étapes saisies — comme dans
 // la version vanilla.
 //
-// Différé vs vanilla : réorganisation par glisser-déposer des étapes/ustensiles
-// (l'icône est affichée mais inerte), éditeur de texte enrichi (gras/italique),
+// Différé vs vanilla : réorganisation par glisser-déposer des ustensiles
+// (l'icône est affichée mais inerte ; celle des étapes est désormais active),
+// éditeur de texte enrichi (gras/italique),
 // autocomplétion avec ajout à la volée sur les listes de référence (remplacée
 // par une datalist), découpage explicite en sous-étapes.
 import { useMemo, useState } from 'react';
@@ -186,6 +187,8 @@ export function CreerForm({
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
+  // Index de l'étape en cours de glisser-déposer (null si aucun déplacement).
+  const [dragStep, setDragStep] = useState<number | null>(null);
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
   const remainingTags = useMemo(() => tags.filter((t) => !selectedTags.has(t.id)), [tags, selectedTags]);
@@ -219,6 +222,15 @@ export function CreerForm({
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
   const delStep = (i: number) => setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
+  // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
+  const moveStep = (from: number, to: number) =>
+    setSteps((s) => {
+      if (from === to || from < 0 || to < 0 || from >= s.length || to >= s.length) return s;
+      const next = [...s];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   const toggleCollapse = (i: number) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, collapsed: !st.collapsed } : st)));
   const collapseAll = (v: boolean) => setSteps((s) => s.map((st) => ({ ...st, collapsed: v })));
 
@@ -748,9 +760,32 @@ export function CreerForm({
           </div>
 
           {steps.map((st, si) => (
-            <div key={st.key}>
+            <div
+              key={st.key}
+              onDragOver={(e) => {
+                if (dragStep === null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                if (dragStep === null) return;
+                e.preventDefault();
+                moveStep(dragStep, si);
+                setDragStep(null);
+              }}
+              className={dragStep === si ? 'opacity-50' : undefined}
+            >
               <div className="flex items-center gap-4 border-b border-primary pb-4">
-                <span className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1" title="Glisser pour déplacer l'étape">
+                <span
+                  className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
+                  title="Glisser pour déplacer l'étape"
+                  draggable
+                  onDragStart={(e) => {
+                    setDragStep(si);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragEnd={() => setDragStep(null)}
+                >
                   drag_indicator
                 </span>
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
