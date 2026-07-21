@@ -34,6 +34,9 @@ type StepState = {
   temp: string;
   wait: string;
   description: string;
+  // Sous-étapes : `null` → mode texte libre (description). Un tableau (même
+  // vide) → mode liste : la description est éclatée en sous-étapes éditables.
+  subSteps: string[] | null;
   tips: string;
   scaling: string;
   ings: IngLine[];
@@ -54,16 +57,16 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
   return parts.length ? parts.join(' × ') + ' cm' : null;
 }
 
-// Découpage de la description en sous-étapes : chaque ligne débutant par un
-// tiret « - » ou une puce « • » devient une sous-étape distincte (même logique
-// que la fiche recette et l'exécution guidée). Renvoie la liste des sous-étapes
-// lorsqu'il y en a au moins deux, sinon `null` (description libre conservée).
-function splitSousEtapes(description: string): string[] | null {
+// Éclatement d'un texte de description en sous-étapes : on découpe sur les
+// sauts de ligne puis sur les puces/tirets en tête (« - », « • », « – », « * »),
+// comme la version d'origine. Un texte vide donne une première sous-étape vide.
+function splitSousEtapes(description: string): string[] {
   const parts = description
-    .split(/(?:^|(?<=\s))[-•]\s+/)
+    .split(/\n+/)
+    .flatMap((l) => l.split(/(?:^|(?<=\s))[-•–*]\s+/))
     .map((s) => s.trim())
     .filter(Boolean);
-  return parts.length > 1 ? parts : null;
+  return parts.length ? parts : [''];
 }
 
 let uid = 0;
@@ -78,6 +81,7 @@ const emptyStep = (): StepState => ({
   temp: '',
   wait: '',
   description: '',
+  subSteps: null,
   tips: '',
   scaling: 'simple',
   ings: [emptyIng()],
@@ -92,12 +96,10 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   if (!steps.length) return [emptyStep()];
   return steps.map((s) => {
     const grp = groupsByOrder[s.order_index || 0];
-    // Réédition : on réaffiche le marqueur « - » de chaque sous-étape pour que
-    // le découpage reste modifiable et se conserve à l'enregistrement.
-    const desc =
-      Array.isArray(s.sous_etapes) && s.sous_etapes.length
-        ? s.sous_etapes.map((t) => `- ${t}`).join('\n')
-        : s.description || '';
+    // Réédition : sous-étapes enregistrées → on rouvre le mode liste éditable ;
+    // sinon on repart de la description en texte libre.
+    const subSteps = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.map((t) => String(t)) : null;
+    const desc = s.description || '';
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((p) => p.url);
     return {
@@ -109,6 +111,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
       wait: s.wait_time != null ? String(s.wait_time) : '',
       description: desc,
+      subSteps,
       tips: s.tips || '',
       scaling: 'simple',
       ings: ings.length
@@ -327,6 +330,50 @@ export function CreerForm({
   const toggleCollapse = (i: number) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, collapsed: !st.collapsed } : st)));
   const collapseAll = (v: boolean) => setSteps((s) => s.map((st) => ({ ...st, collapsed: v })));
 
+  // ── Sous-étapes : bascule texte libre ⇄ liste éditable ──
+  const [dragSub, setDragSub] = useState<{ si: number; idx: number } | null>(null);
+  // « Éclater en sous-étapes » : découpe la description en lignes éditables et
+  // passe la description en mode liste (le texte libre est vidé).
+  const splitToSubsteps = (si: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: splitSousEtapes(st.description), description: '' } : st)));
+  // « Revenir au texte libre » : refusionne les sous-étapes en description
+  // (une par ligne, précédée d'un tiret) et quitte le mode liste.
+  const mergeSubsteps = (si: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const texts = (st.subSteps || []).map((t) => t.trim()).filter(Boolean);
+        return { ...st, description: texts.map((t) => `- ${t}`).join('\n'), subSteps: null };
+      }),
+    );
+  const patchSubstep = (si: number, idx: number, value: string) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: (st.subSteps || []).map((t, j) => (j === idx ? value : t)) } : st)));
+  // Ajoute une sous-étape (à la fin, ou juste après `idx` via la touche Entrée).
+  const addSubstep = (si: number, idx?: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const list = [...(st.subSteps || [])];
+        const at = idx == null ? list.length : idx + 1;
+        list.splice(at, 0, '');
+        return { ...st, subSteps: list };
+      }),
+    );
+  const delSubstep = (si: number, idx: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: (st.subSteps || []).filter((_, j) => j !== idx) } : st)));
+  // Réordonne une sous-étape de `from` vers `to` au sein de la même étape.
+  const moveSubstep = (si: number, from: number, to: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si || !st.subSteps) return st;
+        if (from === to || from < 0 || to < 0 || from >= st.subSteps.length || to >= st.subSteps.length) return st;
+        const list = [...st.subSteps];
+        const [moved] = list.splice(from, 1);
+        list.splice(to, 0, moved);
+        return { ...st, subSteps: list };
+      }),
+    );
+
   // ── Aperçus dérivés (identiques à renderPlanning / renderIngredientsRecap) ──
   const allSameDay = steps.every((s) => !s.dayOffset || parseInt(s.dayOffset, 10) === 0);
   const planningDays = useMemo(() => {
@@ -458,6 +505,8 @@ export function CreerForm({
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
         const desc = st.description.trim();
+        // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
+        const subs = st.subSteps ? st.subSteps.map((t) => t.trim()).filter(Boolean) : [];
         const lines = st.ings
           .map((l, i) => ({
             name: l.name.trim(),
@@ -469,7 +518,7 @@ export function CreerForm({
           }))
           .filter((l) => l.name);
         const photoUrls = st.photos.filter((p): p is string => !!p);
-        const hasContent = st.title.trim() || desc || lines.length || photoUrls.length;
+        const hasContent = st.title.trim() || desc || subs.length || lines.length || photoUrls.length;
         if (!hasContent) continue;
 
         const { data: stepRow, error: stepErr } = await supabase
@@ -485,7 +534,7 @@ export function CreerForm({
             wait_time: gmin(st.wait),
             day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
             tips: st.tips.trim() || null,
-            sous_etapes: desc ? splitSousEtapes(desc) : null,
+            sous_etapes: subs.length ? subs : null,
             order_index: gi,
           })
           .select('id')
@@ -936,7 +985,7 @@ export function CreerForm({
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
-                    <label className="font-label-md text-label-md text-outline shrink-0">Ajustement des quantités de cette étape</label>
+                    <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
                     <select
                       value={st.scaling}
                       onChange={(e) => patchStep(si, { scaling: e.target.value })}
@@ -1135,16 +1184,106 @@ export function CreerForm({
 
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label>
-                    <textarea
-                      value={st.description}
-                      onChange={(e) => patchStep(si, { description: e.target.value })}
-                      className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
-                      placeholder="Décrivez les gestes techniques avec précision..."
-                      rows={8}
-                    />
-                    <p className="mt-2 text-sm text-on-surface-variant italic">
-                      Astuce : commencez une ligne par «&nbsp;-&nbsp;» pour la découper en sous-étapes cochables.
-                    </p>
+                    {st.subSteps === null ? (
+                      // Mode texte libre : description + bouton d'éclatement.
+                      <>
+                        <textarea
+                          value={st.description}
+                          onChange={(e) => patchStep(si, { description: e.target.value })}
+                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                          placeholder="Décrivez les gestes techniques avec précision..."
+                          rows={8}
+                        />
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => splitToSubsteps(si)}
+                            className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // Mode liste : sous-étapes éditables, réordonnables, avec
+                      // ajout à la volée et retour possible au texte libre.
+                      <div className="space-y-3">
+                        {st.subSteps.map((t, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
+                            onDragOver={(e) => {
+                              if (!dragSub || dragSub.si !== si) return;
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDrop={(e) => {
+                              if (!dragSub || dragSub.si !== si) return;
+                              e.preventDefault();
+                              moveSubstep(si, dragSub.idx, idx);
+                              setDragSub(null);
+                            }}
+                          >
+                            <span
+                              className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                              title="Glisser pour déplacer"
+                              draggable
+                              onDragStart={(e) => {
+                                setDragSub({ si, idx });
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragEnd={() => setDragSub(null)}
+                            >
+                              drag_indicator
+                            </span>
+                            <textarea
+                              value={t}
+                              onChange={(e) => patchSubstep(si, idx, e.target.value)}
+                              onKeyDown={(e) => {
+                                // Entrée → nouvelle sous-étape juste après, focus dessus.
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  addSubstep(si, idx);
+                                  setTimeout(() => {
+                                    const areas = document.querySelectorAll<HTMLTextAreaElement>(`[data-substep-step="${si}"]`);
+                                    areas[idx + 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
+                              data-substep-step={si}
+                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                              placeholder="Sous-étape…"
+                              rows={2}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              title="Supprimer"
+                              onClick={() => delSubstep(si, idx)}
+                              className="p-1 text-error hover:opacity-70 shrink-0 mt-1"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap items-center gap-6">
+                          <button
+                            type="button"
+                            onClick={() => addSubstep(si)}
+                            className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">add</span> Ajouter une sous-étape
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => mergeSubsteps(si)}
+                            className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">notes</span> Revenir au texte libre
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
