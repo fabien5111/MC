@@ -297,11 +297,12 @@ export function CreerForm({
 
   // ── Updaters étapes ──
   function patchStep(i: number, p: Partial<StepState>) {
-    setSteps((s) => {
-      const next = s.map((st, k) => (k === i ? { ...st, ...p } : st));
-      if ('prep' in p || 'wait' in p || 'cook' in p) recalcGlobalTimes(next);
-      return next;
-    });
+    const next = steps.map((st, k) => (k === i ? { ...st, ...p } : st));
+    setSteps(next);
+    // La somme des temps est recalculée hors de l'updater setSteps : appeler
+    // setPrep/setWait/setCook depuis l'updater d'un autre state est ignoré
+    // par React et laissait les temps globaux figés.
+    if ('prep' in p || 'wait' in p || 'cook' in p) recalcGlobalTimes(next);
   }
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
@@ -316,7 +317,9 @@ export function CreerForm({
     const label = steps[i]?.title.trim();
     const msg = label ? `Supprimer l'étape « ${label} » ?` : 'Supprimer cette étape ?';
     if (!confirm(msg)) return;
-    setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
+    const next = steps.filter((_, k) => k !== i);
+    setSteps(next);
+    recalcGlobalTimes(next); // la somme des temps suit la suppression
   };
   // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
   const moveStep = (from: number, to: number) =>
