@@ -1011,16 +1011,19 @@ export function CreerForm({
                     ).map(([label, val, set, unit]) => (
                       <div key={label} className="flex flex-col w-48">
                         <label className="font-label-md text-label-md text-outline text-left">{label}</label>
-                        <div className="flex items-baseline justify-center gap-2">
+                        {/* Champ centré dans la colonne : deux espaceurs égaux
+                            l'encadrent, l'unité vit dans celui de droite. */}
+                        <div className="flex items-baseline gap-2">
+                          <span className="flex-1" />
                           <input
                             value={val}
                             onChange={(e) => set(e.target.value)}
-                            className="editorial-input text-on-surface text-center"
+                            className="editorial-input text-on-surface text-center shrink-0"
                             style={{ width: '4rem' }}
                             type="number"
                             min={0}
                           />
-                          <span className="text-sm text-on-surface-variant">{unit}</span>
+                          <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
                         </div>
                       </div>
                     ))}
