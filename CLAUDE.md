@@ -16,6 +16,10 @@ données, authentification).
   le régénérer (`npm run gen:types` ou workflow GitHub Actions).
 - **Images** : stockées en data-URL en base (pas de bucket) — compression
   côté client via `lib/images.ts` / composant `ImageSlot`.
+- **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
+  migration ou requête SQL doit être affichée directement dans la
+  conversation (bloc de code SQL), pour être copiée-collée dans l'éditeur
+  SQL de Supabase.
 
 ---
 
