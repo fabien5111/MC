@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 /* Styles globaux repris du site vanilla (index.html > <style>) */
+
+/* Défilement tactile sur les images (mobile / tablette).
+   Par défaut, un appui-glissé démarré sur une <img> déclenche le « glisser »
+   natif de l'image (drag-and-drop du visuel) : le navigateur capture alors le
+   geste et le défilement de la page ne se fait plus tant que le doigt part
+   d'une image. On neutralise ce comportement pour laisser le scroll passer. */
+img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
   transition: all 0.3s ease;
