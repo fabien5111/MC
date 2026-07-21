@@ -34,7 +34,14 @@ export const SECTIONS: Section[] = [
     type: 'Étiquettes',
     badge: 'bg-tertiary-fixed text-on-tertiary-fixed',
     desc: 'Mots-clés pour le filtrage des recettes',
-    fields: [{ key: 'name', label: 'Nom', required: true }, { key: 'slug', label: 'Slug' }, TOOLTIP],
+    fields: [
+      { key: 'name', label: 'Nom', required: true },
+      { key: 'slug', label: 'Slug' },
+      // Renseigner une icône Material Symbols (ex. « cake ») promeut le tag en
+      // catégorie affichée sur l'accueil ; laisser vide pour un tag ordinaire.
+      { key: 'category_icon', label: 'Icône catégorie (accueil)' },
+      TOOLTIP,
+    ],
   },
   {
     table: 'mold_types',

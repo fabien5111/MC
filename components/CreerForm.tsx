@@ -55,6 +55,17 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
 
 let uid = 0;
 const key = () => `k${uid++}`;
+
+// Slug généré depuis un libellé (même règle que le back-office des listes) :
+// la colonne `tags.slug` est NOT NULL et n'est pas saisie dans l'éditeur.
+const slugify = (name: string): string =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
 const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: '' });
 const emptyStep = (): StepState => ({
   key: key(),
@@ -167,6 +178,10 @@ export function CreerForm({
     () => new Map((editRecipe?.recipe_tags || []).map((t) => [t.tags?.id, t.tags?.name] as [number, string]).filter(([id]) => id != null)),
   );
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  // Tags créés à la volée par un admin depuis l'éditeur : complètent la liste
+  // serveur pour l'autocomplétion et la sélection, sans recharger la page.
+  const [extraTags, setExtraTags] = useState<Tag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
 
   const [measure, setMeasure] = useState<MeasureType>((editRecipe?.measure_type as MeasureType) || 'units');
   const [qtyAmount, setQtyAmount] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_qty || '' : '');
@@ -259,8 +274,37 @@ export function CreerForm({
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergen }));
   }
 
+  // Création d'un tag inexistant dans le référentiel depuis l'éditeur (admin
+  // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
+  // sélectionné pour la recette en cours. Un doublon (même nom) réutilise le
+  // tag existant plutôt que d'échouer sur l'unicité du slug.
+  async function addTag(name: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
+    if (existing) {
+      setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
+      setNewTagName('');
+      setTagPickerOpen(false);
+      return;
+    }
+    setRefBusy(`tags:${clean.toLowerCase()}`);
+    const { data, error } = await createClient()
+      .from('tags')
+      .insert({ name: clean, slug: slugify(clean) })
+      .select('id, name, slug')
+      .single();
+    setRefBusy(null);
+    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    setExtraTags((p) => [...p, data]);
+    setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
+    setNewTagName('');
+    setTagPickerOpen(false);
+  }
+
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
-  const remainingTags = useMemo(() => tags.filter((t) => !selectedTags.has(t.id)), [tags, selectedTags]);
+  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Temps globaux : somme automatique tant qu'ils ne sont pas modifiés à la main ──
   function recalcGlobalTimes(nextSteps: StepState[], touched = timeTouched) {
@@ -604,6 +648,33 @@ export function CreerForm({
                   )}
                 </div>
               </div>
+              {/* Création d'un tag hors référentiel — réservée aux admins. */}
+              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag(newTagName);
+                      }
+                    }}
+                    placeholder="Nouveau tag (hors référentiel)"
+                    className="editorial-input flex-1 min-w-[200px] text-body-md"
+                  />
+                  <button
+                    type="button"
+                    disabled={!newTagName.trim() || refBusy === `tags:${newTagName.trim().toLowerCase()}`}
+                    onClick={() => addTag(newTagName)}
+                    title="Créer ce tag dans le référentiel et l'ajouter à la recette"
+                    className="px-4 py-1.5 rounded-full border border-primary text-primary font-label-md text-label-md hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    Créer le tag
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div className="lg:col-span-12">
