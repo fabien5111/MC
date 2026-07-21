@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { getRecipeFull } from '@/lib/recipes';
-import { getIngredientRefNames, getIngredientRefAllergens, getAllergenNames, getUtensilRefNames } from '@/lib/imports';
+import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
@@ -16,7 +16,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   const user = await requireUser('/creer');
   const { id } = await searchParams;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergenRefs, utensilRefs, admin, editRecipe] =
+  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe] =
     await Promise.all([
       getTags(),
       getUnits(),
@@ -24,7 +24,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       getDifficulties(),
       getIngredientRefNames(),
       getIngredientRefAllergens(),
-      getAllergenNames(),
+      getAllergenRefs(),
       getUtensilRefNames(),
       isAdmin(user.id),
       id ? getRecipeFull(id) : Promise.resolve(null),
@@ -44,7 +44,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           difficulties={difficulties}
           ingredientRefs={ingredientRefs}
           refAllergens={refAllergens}
-          allergenRefs={allergenRefs}
+          allergens={allergens}
           utensilRefs={utensilRefs}
           isAdmin={admin}
           editRecipe={owned}

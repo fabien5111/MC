@@ -53,12 +53,13 @@ export async function getIngredientRefAllergens(): Promise<Record<string, string
   return map;
 }
 
-// Libellés d'allergènes de référence (autocomplétion du champ « Allergène »
-// de l'éditeur, lié à la table `allergens`).
-export async function getAllergenNames(): Promise<string[]> {
+// Allergènes de référence (id + libellé) : autocomplétion du champ « Allergène »
+// de l'éditeur et liaison de l'allergène lors de l'ajout d'un ingrédient au
+// référentiel (table `allergens`).
+export async function getAllergenRefs(): Promise<{ id: number; name: string }[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from('allergens').select('name').order('name');
-  return (data ?? []).map((r) => r.name).filter(Boolean);
+  const { data } = await supabase.from('allergens').select('id, name').order('name');
+  return (data ?? []).filter((a) => a.name).map((a) => ({ id: a.id, name: a.name }));
 }
 
 // Libellés d'ustensiles de référence (autocomplétion de l'éditeur).

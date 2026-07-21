@@ -132,7 +132,7 @@ export function CreerForm({
   difficulties,
   ingredientRefs,
   refAllergens,
-  allergenRefs,
+  allergens,
   utensilRefs,
   isAdmin,
   editRecipe,
@@ -143,7 +143,7 @@ export function CreerForm({
   difficulties: Difficulty[];
   ingredientRefs: string[];
   refAllergens: Record<string, string>;
-  allergenRefs: string[];
+  allergens: { id: number; name: string }[];
   utensilRefs: string[];
   isAdmin: boolean;
   editRecipe: RecipeFull | null;
@@ -196,31 +196,67 @@ export function CreerForm({
   const [busy, setBusy] = useState(false);
   // Index de l'étape en cours de glisser-déposer (null si aucun déplacement).
   const [dragStep, setDragStep] = useState<number | null>(null);
-  // Ingrédients / ustensiles ajoutés au référentiel pendant la saisie (admin) :
-  // complètent les listes serveur pour l'autocomplétion et masquent aussitôt le
-  // bouton d'ajout, sans recharger la page.
+  // Ingrédients / ustensiles / allergènes ajoutés au référentiel pendant la
+  // saisie (admin) : complètent les listes serveur pour l'autocomplétion et
+  // masquent aussitôt le bouton d'ajout, sans recharger la page.
   const [extraIngredientRefs, setExtraIngredientRefs] = useState<string[]>([]);
   const [extraUtensilRefs, setExtraUtensilRefs] = useState<string[]>([]);
+  const [extraAllergens, setExtraAllergens] = useState<{ id: number; name: string }[]>([]);
+  // Allergène associé à un ingrédient ajouté à la volée : complète refAllergens
+  // pour que la prochaine saisie du même ingrédient le pré-remplisse.
+  const [extraRefAllergens, setExtraRefAllergens] = useState<Record<string, string>>({});
   const [refBusy, setRefBusy] = useState<string | null>(null);
 
   const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
   const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
+  const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
+  const allergenIdByName = useMemo(() => new Map(allAllergens.map((a) => [a.name.trim().toLowerCase(), a.id])), [allAllergens]);
+  const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
-  async function addRef(table: 'ingredient_refs' | 'utensils', name: string) {
+  async function addUtensilRef(name: string) {
     const clean = name.trim();
     if (!clean) return;
-    const tag = `${table}:${clean.toLowerCase()}`;
-    setRefBusy(tag);
-    const { error } = await createClient().from(table).insert({ name: clean });
+    setRefBusy(`utensils:${clean.toLowerCase()}`);
+    const { error } = await createClient().from('utensils').insert({ name: clean });
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
-    if (table === 'ingredient_refs') setExtraIngredientRefs((p) => [...p, clean]);
-    else setExtraUtensilRefs((p) => [...p, clean]);
+    setExtraUtensilRefs((p) => [...p, clean]);
+  }
+
+  // Ajout d'un ingrédient au référentiel avec son allergène : si l'allergène
+  // saisi n'existe pas encore dans la table `allergens`, on le crée d'abord,
+  // puis on lie son id à l'ingrédient (`ingredient_refs.allergen_id`).
+  async function addIngredientRef(name: string, allergenName: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    setRefBusy(`ingredient_refs:${clean.toLowerCase()}`);
+    const supabase = createClient();
+    const allergen = allergenName.trim();
+    let allergenId: number | null = null;
+    if (allergen) {
+      const existing = allergenIdByName.get(allergen.toLowerCase());
+      if (existing != null) {
+        allergenId = existing;
+      } else {
+        const { data, error } = await supabase.from('allergens').insert({ name: allergen }).select('id, name').single();
+        if (error || !data) {
+          setRefBusy(null);
+          return void alert('Erreur (allergène) : ' + (error?.message ?? 'insertion impossible'));
+        }
+        allergenId = data.id;
+        setExtraAllergens((p) => [...p, { id: data.id, name: data.name }]);
+      }
+    }
+    const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen_id: allergenId });
+    setRefBusy(null);
+    if (error) return void alert('Erreur : ' + error.message);
+    setExtraIngredientRefs((p) => [...p, clean]);
+    setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergen }));
   }
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
@@ -772,7 +808,7 @@ export function CreerForm({
                   {isAdmin && u.name.trim() && !knownUtensils.has(u.name.trim().toLowerCase()) && (
                     <button
                       type="button"
-                      onClick={() => addRef('utensils', u.name)}
+                      onClick={() => addUtensilRef(u.name)}
                       disabled={refBusy === `utensils:${u.name.trim().toLowerCase()}`}
                       className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
                       title="Ajouter cet ustensile à la base de référence"
@@ -945,8 +981,8 @@ export function CreerForm({
                                 // (chaîne vide si le référentiel n'en a pas). Sinon, on ne touche
                                 // pas au champ : il reste en saisie libre.
                                 const refKey = name.trim().toLowerCase();
-                                if (Object.prototype.hasOwnProperty.call(refAllergens, refKey)) {
-                                  patchIng(si, ii, { name, allergen: refAllergens[refKey] });
+                                if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
+                                  patchIng(si, ii, { name, allergen: refAllergenMap[refKey] });
                                 } else {
                                   patchIng(si, ii, { name });
                                 }
@@ -1026,10 +1062,14 @@ export function CreerForm({
                         {isAdmin && g.name.trim() && !knownIngredients.has(g.name.trim().toLowerCase()) && (
                           <button
                             type="button"
-                            onClick={() => addRef('ingredient_refs', g.name)}
+                            onClick={() => addIngredientRef(g.name, g.allergen)}
                             disabled={refBusy === `ingredient_refs:${g.name.trim().toLowerCase()}`}
                             className="mt-1 ml-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
-                            title="Ajouter cet ingrédient à la base de référence"
+                            title={
+                              g.allergen.trim()
+                                ? `Ajouter cet ingrédient (allergène : ${g.allergen.trim()}) à la base de référence`
+                                : 'Ajouter cet ingrédient à la base de référence'
+                            }
                           >
                             <span className="material-symbols-outlined text-[14px]">add_circle</span>
                             Ajouter «&nbsp;{g.name.trim()}&nbsp;» au référentiel
@@ -1284,8 +1324,8 @@ export function CreerForm({
       </datalist>
 
       <datalist id="dl-allergens">
-        {allergenRefs.map((n) => (
-          <option key={n} value={n} />
+        {allAllergens.map((a) => (
+          <option key={a.id} value={a.name} />
         ))}
       </datalist>
     </>
