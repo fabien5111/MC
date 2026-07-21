@@ -13,7 +13,7 @@
 // Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -206,7 +206,15 @@ export function CreerForm({
   const [wait, setWait] = useState(editRecipe?.wait_time != null ? String(editRecipe.wait_time) : '');
   const [cook, setCook] = useState(editRecipe?.cook_time != null ? String(editRecipe.cook_time) : '');
   const [total, setTotal] = useState(editRecipe?.total_time != null ? String(editRecipe.total_time) : '');
-  const [timeTouched, setTimeTouched] = useState({ prep: !!editRecipe, wait: !!editRecipe, cook: !!editRecipe, total: !!editRecipe });
+  // Un temps global n'est « verrouillé » (non recalculé auto.) que s'il a une
+  // valeur propre : à la création tout est auto, en édition seuls les champs
+  // réellement enregistrés restent tels quels.
+  const [timeTouched, setTimeTouched] = useState({
+    prep: editRecipe?.prep_time != null,
+    wait: editRecipe?.wait_time != null,
+    cook: editRecipe?.cook_time != null,
+    total: editRecipe?.total_time != null,
+  });
 
   const [utensils, setUtensils] = useState<{ key: string; name: string; comment: string }[]>(() => {
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -283,26 +291,28 @@ export function CreerForm({
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
   const remainingTags = useMemo(() => tags.filter((t) => !selectedTags.has(t.id)), [tags, selectedTags]);
 
-  // ── Temps globaux : somme automatique tant qu'ils ne sont pas modifiés à la main ──
-  function recalcGlobalTimes(nextSteps: StepState[], touched = timeTouched) {
-    const sum = (k: 'prep' | 'wait' | 'cook') => nextSteps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
-    if (!touched.prep) setPrep(String(sum('prep') || ''));
-    if (!touched.wait) setWait(String(sum('wait') || ''));
-    if (!touched.cook) setCook(String(sum('cook') || ''));
-    if (!touched.total) {
-      const t = (touched.prep ? parseInt(prep, 10) || 0 : sum('prep')) + (touched.wait ? parseInt(wait, 10) || 0 : sum('wait')) + (touched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
+  // ── Temps globaux : somme automatique des étapes tant qu'ils ne sont pas
+  // modifiés à la main. Recalcul dans un effet (après rendu) : fiable, contrairement
+  // à un setState déclenché depuis l'updater d'un autre state, que React ignore. ──
+  useEffect(() => {
+    const sum = (k: 'prep' | 'wait' | 'cook') => steps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
+    if (!timeTouched.prep) setPrep(String(sum('prep') || ''));
+    if (!timeTouched.wait) setWait(String(sum('wait') || ''));
+    if (!timeTouched.cook) setCook(String(sum('cook') || ''));
+    if (!timeTouched.total) {
+      const t =
+        (timeTouched.prep ? parseInt(prep, 10) || 0 : sum('prep')) +
+        (timeTouched.wait ? parseInt(wait, 10) || 0 : sum('wait')) +
+        (timeTouched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
       setTotal(String(t > 0 ? t : ''));
     }
-  }
+    // prep/wait/cook n'interviennent que quand le champ est verrouillé (calcul du
+    // total) ; setState ignore une valeur identique → pas de boucle de rendu.
+  }, [steps, timeTouched, prep, wait, cook]);
 
   // ── Updaters étapes ──
   function patchStep(i: number, p: Partial<StepState>) {
-    const next = steps.map((st, k) => (k === i ? { ...st, ...p } : st));
-    setSteps(next);
-    // La somme des temps est recalculée hors de l'updater setSteps : appeler
-    // setPrep/setWait/setCook depuis l'updater d'un autre state est ignoré
-    // par React et laissait les temps globaux figés.
-    if ('prep' in p || 'wait' in p || 'cook' in p) recalcGlobalTimes(next);
+    setSteps((s) => s.map((st, k) => (k === i ? { ...st, ...p } : st)));
   }
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
@@ -317,9 +327,7 @@ export function CreerForm({
     const label = steps[i]?.title.trim();
     const msg = label ? `Supprimer l'étape « ${label} » ?` : 'Supprimer cette étape ?';
     if (!confirm(msg)) return;
-    const next = steps.filter((_, k) => k !== i);
-    setSteps(next);
-    recalcGlobalTimes(next); // la somme des temps suit la suppression
+    setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
   };
   // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
   const moveStep = (from: number, to: number) =>
