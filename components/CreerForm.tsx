@@ -1009,14 +1009,14 @@ export function CreerForm({
                         ['T°C DE CUISSON', st.temp, (v: string) => patchStep(si, { temp: v }), '°C'],
                       ] as const
                     ).map(([label, val, set, unit]) => (
-                      <div key={label} className="flex flex-col items-center text-center w-48">
+                      <div key={label} className="flex flex-col items-start text-left w-48">
                         <label className="font-label-md text-label-md text-outline">{label}</label>
-                        <div className="flex items-baseline justify-center gap-2">
+                        <div className="flex items-baseline justify-start gap-2">
                           <input
                             value={val}
                             onChange={(e) => set(e.target.value)}
-                            className="editorial-input text-on-surface text-center"
-                            style={{ width: '40%' }}
+                            className="editorial-input text-on-surface"
+                            style={{ width: '4rem' }}
                             type="number"
                             min={0}
                           />
