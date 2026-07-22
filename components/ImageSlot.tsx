@@ -22,6 +22,8 @@ export type ImageSlotProps = {
   src?: string | null;
   /** Appelée avec la data-URL compressée après un dépôt/choix. Sans onChange, le slot est en lecture seule. */
   onChange?: (dataUrl: string) => void;
+  /** Si fournie, affiche un bouton de suppression sur l'image ; appelée au clic. */
+  onClear?: () => void;
   shape?: Shape;
   fit?: 'cover' | 'contain' | 'fill';
   placeholder?: string;
@@ -38,6 +40,7 @@ export type ImageSlotProps = {
 export function ImageSlot({
   src,
   onChange,
+  onClear,
   shape = 'rounded',
   fit = 'cover',
   placeholder = 'Déposez une image',
@@ -143,6 +146,20 @@ export function ImageSlot({
           className={`absolute ${editButtonClassName} rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20`}
         >
           <span className="material-symbols-outlined text-[18px]">edit</span>
+        </button>
+      )}
+
+      {!readOnly && onClear && src && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+          }}
+          title="Supprimer la photo"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-surface/90 text-error flex items-center justify-center shadow-md hover:bg-error hover:text-on-error transition-colors z-20"
+        >
+          <span className="material-symbols-outlined text-[18px]">delete</span>
         </button>
       )}
 

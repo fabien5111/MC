@@ -8,11 +8,12 @@
 //
 // Différé vs vanilla : réorganisation par glisser-déposer des ustensiles
 // (l'icône est affichée mais inerte ; celle des étapes est désormais active),
-// éditeur de texte enrichi (gras/italique), découpage explicite en
-// sous-étapes. Autocomplétion des ingrédients/ustensiles/allergènes via
-// datalist ; ajout à la volée d'un libellé inconnu au référentiel réservé aux
-// administrateurs (bouton « Ajouter au référentiel »).
-import { useMemo, useState } from 'react';
+// éditeur de texte enrichi (gras/italique). Le découpage en sous-étapes se fait
+// via les lignes de description débutant par « - » (cf. splitSousEtapes).
+// Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
+// la volée d'un libellé inconnu au référentiel réservé aux administrateurs
+// (bouton « Ajouter au référentiel »).
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -33,6 +34,9 @@ type StepState = {
   temp: string;
   wait: string;
   description: string;
+  // Sous-étapes : `null` → mode texte libre (description). Un tableau (même
+  // vide) → mode liste : la description est éclatée en sous-étapes éditables.
+  subSteps: string[] | null;
   tips: string;
   scaling: string;
   ings: IngLine[];
@@ -51,6 +55,18 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
   const keys = (FORME_DIMS[forme || ''] || []).map((d) => d.key);
   const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
   return parts.length ? parts.join(' × ') + ' cm' : null;
+}
+
+// Éclatement d'un texte de description en sous-étapes : on découpe sur les
+// sauts de ligne puis sur les puces/tirets en tête (« - », « • », « – », « * »),
+// comme la version d'origine. Un texte vide donne une première sous-étape vide.
+function splitSousEtapes(description: string): string[] {
+  const parts = description
+    .split(/\n+/)
+    .flatMap((l) => l.split(/(?:^|(?<=\s))[-•–*]\s+/))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length ? parts : [''];
 }
 
 let uid = 0;
@@ -76,6 +92,7 @@ const emptyStep = (): StepState => ({
   temp: '',
   wait: '',
   description: '',
+  subSteps: null,
   tips: '',
   scaling: 'simple',
   ings: [emptyIng()],
@@ -90,7 +107,10 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   if (!steps.length) return [emptyStep()];
   return steps.map((s) => {
     const grp = groupsByOrder[s.order_index || 0];
-    const desc = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.join('\n') : s.description || '';
+    // Réédition : sous-étapes enregistrées → on rouvre le mode liste éditable ;
+    // sinon on repart de la description en texte libre.
+    const subSteps = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.map((t) => String(t)) : null;
+    const desc = s.description || '';
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((p) => p.url);
     return {
@@ -102,6 +122,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
       wait: s.wait_time != null ? String(s.wait_time) : '',
       description: desc,
+      subSteps,
       tips: s.tips || '',
       scaling: 'simple',
       ings: ings.length
@@ -200,7 +221,15 @@ export function CreerForm({
   const [wait, setWait] = useState(editRecipe?.wait_time != null ? String(editRecipe.wait_time) : '');
   const [cook, setCook] = useState(editRecipe?.cook_time != null ? String(editRecipe.cook_time) : '');
   const [total, setTotal] = useState(editRecipe?.total_time != null ? String(editRecipe.total_time) : '');
-  const [timeTouched, setTimeTouched] = useState({ prep: !!editRecipe, wait: !!editRecipe, cook: !!editRecipe, total: !!editRecipe });
+  // Un temps global n'est « verrouillé » (non recalculé auto.) que s'il a une
+  // valeur propre : à la création tout est auto, en édition seuls les champs
+  // réellement enregistrés restent tels quels.
+  const [timeTouched, setTimeTouched] = useState({
+    prep: editRecipe?.prep_time != null,
+    wait: editRecipe?.wait_time != null,
+    cook: editRecipe?.cook_time != null,
+    total: editRecipe?.total_time != null,
+  });
 
   const [utensils, setUtensils] = useState<{ key: string; name: string; comment: string }[]>(() => {
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -306,25 +335,28 @@ export function CreerForm({
   const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
-  // ── Temps globaux : somme automatique tant qu'ils ne sont pas modifiés à la main ──
-  function recalcGlobalTimes(nextSteps: StepState[], touched = timeTouched) {
-    const sum = (k: 'prep' | 'wait' | 'cook') => nextSteps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
-    if (!touched.prep) setPrep(String(sum('prep') || ''));
-    if (!touched.wait) setWait(String(sum('wait') || ''));
-    if (!touched.cook) setCook(String(sum('cook') || ''));
-    if (!touched.total) {
-      const t = (touched.prep ? parseInt(prep, 10) || 0 : sum('prep')) + (touched.wait ? parseInt(wait, 10) || 0 : sum('wait')) + (touched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
+  // ── Temps globaux : somme automatique des étapes tant qu'ils ne sont pas
+  // modifiés à la main. Recalcul dans un effet (après rendu) : fiable, contrairement
+  // à un setState déclenché depuis l'updater d'un autre state, que React ignore. ──
+  useEffect(() => {
+    const sum = (k: 'prep' | 'wait' | 'cook') => steps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
+    if (!timeTouched.prep) setPrep(String(sum('prep') || ''));
+    if (!timeTouched.wait) setWait(String(sum('wait') || ''));
+    if (!timeTouched.cook) setCook(String(sum('cook') || ''));
+    if (!timeTouched.total) {
+      const t =
+        (timeTouched.prep ? parseInt(prep, 10) || 0 : sum('prep')) +
+        (timeTouched.wait ? parseInt(wait, 10) || 0 : sum('wait')) +
+        (timeTouched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
       setTotal(String(t > 0 ? t : ''));
     }
-  }
+    // prep/wait/cook n'interviennent que quand le champ est verrouillé (calcul du
+    // total) ; setState ignore une valeur identique → pas de boucle de rendu.
+  }, [steps, timeTouched, prep, wait, cook]);
 
   // ── Updaters étapes ──
   function patchStep(i: number, p: Partial<StepState>) {
-    setSteps((s) => {
-      const next = s.map((st, k) => (k === i ? { ...st, ...p } : st));
-      if ('prep' in p || 'wait' in p || 'cook' in p) recalcGlobalTimes(next);
-      return next;
-    });
+    setSteps((s) => s.map((st, k) => (k === i ? { ...st, ...p } : st)));
   }
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
@@ -353,6 +385,50 @@ export function CreerForm({
   const toggleCollapse = (i: number) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, collapsed: !st.collapsed } : st)));
   const collapseAll = (v: boolean) => setSteps((s) => s.map((st) => ({ ...st, collapsed: v })));
 
+  // ── Sous-étapes : bascule texte libre ⇄ liste éditable ──
+  const [dragSub, setDragSub] = useState<{ si: number; idx: number } | null>(null);
+  // « Éclater en sous-étapes » : découpe la description en lignes éditables et
+  // passe la description en mode liste (le texte libre est vidé).
+  const splitToSubsteps = (si: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: splitSousEtapes(st.description), description: '' } : st)));
+  // « Revenir au texte libre » : refusionne les sous-étapes en description
+  // (une par ligne, précédée d'un tiret) et quitte le mode liste.
+  const mergeSubsteps = (si: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const texts = (st.subSteps || []).map((t) => t.trim()).filter(Boolean);
+        return { ...st, description: texts.map((t) => `- ${t}`).join('\n'), subSteps: null };
+      }),
+    );
+  const patchSubstep = (si: number, idx: number, value: string) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: (st.subSteps || []).map((t, j) => (j === idx ? value : t)) } : st)));
+  // Ajoute une sous-étape (à la fin, ou juste après `idx` via la touche Entrée).
+  const addSubstep = (si: number, idx?: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const list = [...(st.subSteps || [])];
+        const at = idx == null ? list.length : idx + 1;
+        list.splice(at, 0, '');
+        return { ...st, subSteps: list };
+      }),
+    );
+  const delSubstep = (si: number, idx: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, subSteps: (st.subSteps || []).filter((_, j) => j !== idx) } : st)));
+  // Réordonne une sous-étape de `from` vers `to` au sein de la même étape.
+  const moveSubstep = (si: number, from: number, to: number) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si || !st.subSteps) return st;
+        if (from === to || from < 0 || to < 0 || from >= st.subSteps.length || to >= st.subSteps.length) return st;
+        const list = [...st.subSteps];
+        const [moved] = list.splice(from, 1);
+        list.splice(to, 0, moved);
+        return { ...st, subSteps: list };
+      }),
+    );
+
   // ── Aperçus dérivés (identiques à renderPlanning / renderIngredientsRecap) ──
   const allSameDay = steps.every((s) => !s.dayOffset || parseInt(s.dayOffset, 10) === 0);
   const planningDays = useMemo(() => {
@@ -374,7 +450,7 @@ export function CreerForm({
   }, [steps, allSameDay]);
   const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
 
-  async function submit(status: 'draft' | 'pending') {
+  async function submit(status: 'draft' | 'pending', stay = false) {
     if (!title.trim()) {
       alert('Donnez un titre à votre recette.');
       return;
@@ -484,6 +560,8 @@ export function CreerForm({
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
         const desc = st.description.trim();
+        // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
+        const subs = st.subSteps ? st.subSteps.map((t) => t.trim()).filter(Boolean) : [];
         const lines = st.ings
           .map((l, i) => ({
             name: l.name.trim(),
@@ -495,7 +573,7 @@ export function CreerForm({
           }))
           .filter((l) => l.name);
         const photoUrls = st.photos.filter((p): p is string => !!p);
-        const hasContent = st.title.trim() || desc || lines.length || photoUrls.length;
+        const hasContent = st.title.trim() || desc || subs.length || lines.length || photoUrls.length;
         if (!hasContent) continue;
 
         const { data: stepRow, error: stepErr } = await supabase
@@ -511,7 +589,7 @@ export function CreerForm({
             wait_time: gmin(st.wait),
             day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
             tips: st.tips.trim() || null,
-            sous_etapes: null,
+            sous_etapes: subs.length ? subs : null,
             order_index: gi,
           })
           .select('id')
@@ -537,7 +615,23 @@ export function CreerForm({
         }
       }
 
-      router.push(status === 'draft' ? '/profil' : `/recette/${recipeId}`);
+      if (status !== 'draft') {
+        // Publication / enregistrement définitif : on ouvre la fiche recette.
+        router.push(`/recette/${recipeId}`);
+      } else if (stay) {
+        // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
+        // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
+        // les enregistrements suivants mettent à jour au lieu de dupliquer.
+        if (editingId) {
+          setBusy(false);
+          router.refresh();
+        } else {
+          router.replace(`/creer?id=${recipeId}`);
+        }
+      } else {
+        // « Enregistrer en brouillon et quitter » : retour au profil.
+        router.push('/profil');
+      }
     } catch (e) {
       alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
       setBusy(false);
@@ -552,8 +646,8 @@ export function CreerForm({
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [
-          ['simple', 'Ajustement des quantités selon la quantité à produire'],
-          ['aucun', "Pas d'ajustement des quantités pour cette étape"],
+          ['simple', 'Proportionnel à la quantité à produire'],
+          ['aucun', "Pas d'ajustement"],
         ];
 
   const radio = (checked: boolean) => (
@@ -724,6 +818,7 @@ export function CreerForm({
               <ImageSlot
                 src={hero}
                 onChange={setHero}
+                onClear={() => setHero(null)}
                 shape="rect"
                 maxWidth={1200}
                 placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
@@ -972,6 +1067,22 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
+                    <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
+                    <select
+                      value={st.scaling}
+                      onChange={(e) => patchStep(si, { scaling: e.target.value })}
+                      className="editorial-input text-on-surface cursor-pointer shrink-0"
+                      style={{ width: 'auto' }}
+                    >
+                      {scalingOptions.map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="flex flex-wrap gap-8">
                     {(
                       [
@@ -981,18 +1092,21 @@ export function CreerForm({
                         ['T°C DE CUISSON', st.temp, (v: string) => patchStep(si, { temp: v }), '°C'],
                       ] as const
                     ).map(([label, val, set, unit]) => (
-                      <div key={label} className="flex flex-col items-center text-center w-48">
-                        <label className="font-label-md text-label-md text-outline">{label}</label>
-                        <div className="flex items-baseline justify-center gap-2">
+                      <div key={label} className="flex flex-col w-48">
+                        <label className="font-label-md text-label-md text-outline text-left">{label}</label>
+                        {/* Champ centré dans la colonne : deux espaceurs égaux
+                            l'encadrent, l'unité vit dans celui de droite. */}
+                        <div className="flex items-baseline gap-2">
+                          <span className="flex-1" />
                           <input
                             value={val}
                             onChange={(e) => set(e.target.value)}
-                            className="editorial-input text-on-surface text-center"
-                            style={{ width: '40%' }}
+                            className="editorial-input text-on-surface text-center shrink-0"
+                            style={{ width: '5rem' }}
                             type="number"
                             min={0}
                           />
-                          <span className="text-sm text-on-surface-variant">{unit}</span>
+                          <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
                         </div>
                       </div>
                     ))}
@@ -1152,32 +1266,110 @@ export function CreerForm({
                     <button type="button" onClick={() => addIng(si)} className="mt-3 flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline w-fit">
                       <span className="material-symbols-outlined">add</span> Ajouter un ingrédient
                     </button>
-                    <div className="mt-4 border-t border-b border-outline-variant/60 py-4 flex items-center gap-3">
-                      <label className="font-label-md text-label-md text-outline shrink-0">ADAPTATION</label>
-                      <select
-                        value={st.scaling}
-                        onChange={(e) => patchStep(si, { scaling: e.target.value })}
-                        className="editorial-input text-on-surface bg-transparent cursor-pointer shrink-0"
-                        style={{ width: 'auto' }}
-                      >
-                        {scalingOptions.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
 
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label>
-                    <textarea
-                      value={st.description}
-                      onChange={(e) => patchStep(si, { description: e.target.value })}
-                      className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
-                      placeholder="Décrivez les gestes techniques avec précision..."
-                      rows={8}
-                    />
+                    {st.subSteps === null ? (
+                      // Mode texte libre : description + bouton d'éclatement.
+                      <>
+                        <textarea
+                          value={st.description}
+                          onChange={(e) => patchStep(si, { description: e.target.value })}
+                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                          placeholder="Décrivez les gestes techniques avec précision..."
+                          rows={8}
+                        />
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => splitToSubsteps(si)}
+                            className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // Mode liste : sous-étapes éditables, réordonnables, avec
+                      // ajout à la volée et retour possible au texte libre.
+                      <div className="space-y-3">
+                        {st.subSteps.map((t, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
+                            onDragOver={(e) => {
+                              if (!dragSub || dragSub.si !== si) return;
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDrop={(e) => {
+                              if (!dragSub || dragSub.si !== si) return;
+                              e.preventDefault();
+                              moveSubstep(si, dragSub.idx, idx);
+                              setDragSub(null);
+                            }}
+                          >
+                            <span
+                              className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                              title="Glisser pour déplacer"
+                              draggable
+                              onDragStart={(e) => {
+                                setDragSub({ si, idx });
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragEnd={() => setDragSub(null)}
+                            >
+                              drag_indicator
+                            </span>
+                            <textarea
+                              value={t}
+                              onChange={(e) => patchSubstep(si, idx, e.target.value)}
+                              onKeyDown={(e) => {
+                                // Entrée → nouvelle sous-étape juste après, focus dessus.
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  addSubstep(si, idx);
+                                  setTimeout(() => {
+                                    const areas = document.querySelectorAll<HTMLTextAreaElement>(`[data-substep-step="${si}"]`);
+                                    areas[idx + 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
+                              data-substep-step={si}
+                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                              placeholder="Sous-étape…"
+                              rows={2}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              title="Supprimer"
+                              onClick={() => delSubstep(si, idx)}
+                              className="p-1 text-error hover:opacity-70 shrink-0 mt-1"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap items-center gap-6">
+                          <button
+                            type="button"
+                            onClick={() => addSubstep(si)}
+                            className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">add</span> Ajouter une sous-étape
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => mergeSubsteps(si)}
+                            className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline"
+                          >
+                            <span className="material-symbols-outlined">notes</span> Revenir au texte libre
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1186,6 +1378,7 @@ export function CreerForm({
                         <ImageSlot
                           src={p}
                           onChange={(url) => patchPhoto(si, pi, url)}
+                          onClear={() => patchPhoto(si, pi, null)}
                           shape="rect"
                           maxWidth={800}
                           placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
@@ -1200,12 +1393,13 @@ export function CreerForm({
                       Conseils &amp; Astuces de l&apos;étape
                       <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                     </summary>
-                    <div className="pb-6 px-4">
+                    <div className="pb-6">
                       <textarea
                         value={st.tips}
                         onChange={(e) => patchStep(si, { tips: e.target.value })}
-                        className="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant"
+                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors"
                         placeholder="Une astuce particulière pour cette étape ?"
+                        rows={4}
                       />
                     </div>
                   </details>
@@ -1361,23 +1555,31 @@ export function CreerForm({
         className="fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
-        <div className="max-w-[1200px] mx-auto flex justify-center gap-3 px-margin-mobile md:px-margin-desktop">
+        <div className="max-w-[1200px] mx-auto flex flex-wrap justify-center gap-3 px-margin-mobile md:px-margin-desktop">
           <button
             type="button"
             onClick={() => submit('pending')}
             disabled={busy}
-            className="flex-1 max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
           >
             {isPublic ? 'Publier la recette' : 'Enregistrer'}
             <span className="material-symbols-outlined text-[18px]">send</span>
           </button>
           <button
             type="button"
-            onClick={() => submit('draft')}
+            onClick={() => submit('draft', true)}
             disabled={busy}
-            className="flex-1 max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
           >
             Enregistrer en brouillon
+          </button>
+          <button
+            type="button"
+            onClick={() => submit('draft', false)}
+            disabled={busy}
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+          >
+            Enregistrer en brouillon et quitter
           </button>
         </div>
       </div>
