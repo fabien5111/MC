@@ -440,6 +440,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 className="border-b border-outline-variant/30 py-2"
                                 style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
                               >
+                                <span className="font-label-md text-label-md text-primary">
+                                  <Qty quantity={it.quantity} unit={it.unit} />
+                                </span>
                                 <span className="font-body-md text-body-md">
                                   {url ? (
                                     <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
@@ -449,9 +452,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                     it.name
                                   )}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                </span>
-                                <span className="font-label-md text-label-md text-primary">
-                                  <Qty quantity={it.quantity} unit={it.unit} />
                                   {it.allergen && (
                                     <span className="text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
                                   )}
@@ -593,12 +593,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                           <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
                             {ings.map((it) => (
                               <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                <span className="font-label-md text-label-md text-primary">
+                                  <Qty quantity={it.quantity} unit={it.unit} />
+                                </span>
                                 <span className="font-body-md text-body-md">
                                   {it.name}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                </span>
-                                <span className="font-label-md text-label-md text-primary">
-                                  <Qty quantity={it.quantity} unit={it.unit} />
                                 </span>
                               </li>
                             ))}
