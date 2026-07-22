@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { requireUser } from '@/lib/auth';
-import { getImport, getIngredientRefNames } from '@/lib/imports';
+import { requireUser, isAdmin } from '@/lib/auth';
+import {
+  getImport,
+  getIngredientRefNames,
+  getIngredientRefAllergens,
+  getAllergenRefs,
+  getUtensilRefNames,
+} from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { Header } from '@/components/Header';
 import { RelectureEditor } from '@/components/RelectureEditor';
@@ -11,14 +17,18 @@ export const metadata: Metadata = { title: "Relecture d'un import | Maryse Club"
 type Params = { params: Promise<{ id: string }> };
 
 export default async function RelecturePage({ params }: Params) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
   const numId = Number(id);
 
-  const [importRow, units, refs] = await Promise.all([
+  const [importRow, units, refs, refAllergens, allergens, utensilRefs, admin] = await Promise.all([
     Number.isFinite(numId) ? getImport(numId) : Promise.resolve(null),
     getUnits(),
     getIngredientRefNames(),
+    getIngredientRefAllergens(),
+    getAllergenRefs(),
+    getUtensilRefNames(),
+    isAdmin(user.id),
   ]);
 
   return (
@@ -41,6 +51,10 @@ export default async function RelecturePage({ params }: Params) {
             importRow={importRow}
             units={units.map((u) => u.name)}
             ingredientRefs={refs}
+            refAllergens={refAllergens}
+            allergens={allergens}
+            utensilRefs={utensilRefs}
+            isAdmin={admin}
           />
         )}
       </main>
