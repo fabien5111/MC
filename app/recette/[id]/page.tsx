@@ -372,6 +372,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <span className="text-sm text-on-surface-variant">—</span>
                   )}
                 </div>
+                {recipe.difficulties?.name && (
+                  <span className="font-label-md text-label-md text-on-surface">
+                    {recipe.difficulties.name}
+                  </span>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
