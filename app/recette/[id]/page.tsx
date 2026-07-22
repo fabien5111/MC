@@ -453,7 +453,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   )}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                   {it.allergen && (
-                                    <span className="text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
+                                    <span className="text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
                                   )}
                                 </span>
                               </li>
