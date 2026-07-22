@@ -251,13 +251,29 @@ export function RelectureEditor({
     );
   const delEtape = (si: number, ei: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, etapes: sp.etapes.filter((_, j) => j !== ei) } : sp)));
+  const emptySp = (): SpState => ({
+    key: nextKey(),
+    nom: '',
+    prep: '',
+    attente: '',
+    cuisson: '',
+    temp: '',
+    jour: '0',
+    ings: [],
+    etapes: [{ key: nextKey(), imported: null, texte: '' }],
+    materiel: [],
+    collapsed: false,
+  });
   const addSp = () => {
-    const key = nextKey();
-    setSps((prev) => [
-      ...prev,
-      { key, nom: '', prep: '', attente: '', cuisson: '', temp: '', jour: '0', ings: [], etapes: [{ key: nextKey(), imported: null, texte: '' }], materiel: [], collapsed: false },
-    ]);
-    setJustAddedSpKey(key);
+    const sp = emptySp();
+    setSps((prev) => [...prev, sp]);
+    setJustAddedSpKey(sp.key);
+  };
+  // Insère une étape vierge juste avant l'étape d'index `si` (porté de creer.html).
+  const insertSpBefore = (si: number) => {
+    const sp = emptySp();
+    setSps((prev) => [...prev.slice(0, si), sp, ...prev.slice(si)]);
+    setJustAddedSpKey(sp.key);
   };
   const delSp = (si: number) => {
     if (!confirm('Supprimer cette sous-préparation ?')) return;
@@ -600,6 +616,14 @@ export function RelectureEditor({
               />
               <button
                 type="button"
+                onClick={() => insertSpBefore(si)}
+                title="Insérer une étape avant celle-ci"
+                className="text-secondary hover:opacity-70"
+              >
+                <span className="material-symbols-outlined text-[20px]">add_row_above</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => toggleSpCollapse(si)}
                 title="Replier / déplier la sous-préparation"
                 className="text-on-surface-variant hover:opacity-70"
@@ -820,7 +844,7 @@ export function RelectureEditor({
                 ))}
               </div>
               <button type="button" onClick={() => addEtape(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
-                <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une étape
+                <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une sous-étape
               </button>
             </div>
             </>
@@ -831,7 +855,7 @@ export function RelectureEditor({
 
       <div className="flex justify-start mt-6">
         <button type="button" onClick={addSp} className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline">
-          <span className="material-symbols-outlined">add_circle</span> Ajouter une sous-préparation
+          <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
         </button>
       </div>
 
