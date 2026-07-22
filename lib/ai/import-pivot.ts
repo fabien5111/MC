@@ -91,22 +91,39 @@ export function capitalize(s: string | null | undefined): string {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
+// Remplace le digramme « oe » par la ligature « œ » dans le mot « œuf(s) »
+// (« oeuf » → « œuf », « d'Oeuf » → « d'Œuf »), en respectant la casse.
+export function ligatureOeuf(s: string | null | undefined): string {
+  const t = (s ?? '').toString();
+  return t.replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
+}
+
 // Nettoyage du pivot avant enregistrement :
+//  - ligature « œuf » (« oeuf » → « œuf ») sur tous les textes ;
 //  - majuscule initiale sur le nom des ingrédients et des ustensiles
-//    (« jaune d'oeuf » → « Jaune d'oeuf ») ;
+//    (« jaune d'oeuf » → « Jaune d'œuf ») ;
 //  - suppression de la note d'un ingrédient quand elle ne fait que répéter
 //    son nom (cas fréquent où l'IA recopie le libellé dans `note`).
 export function cleanPivotRecette(p: Pivot): void {
   if (!p || typeof p !== 'object') return;
+  // Ligature « œuf » sur les textes généraux de la recette.
+  for (const k of ['titre', 'description', 'notes', 'conseils_degustation']) {
+    if (typeof p[k] === 'string') p[k] = ligatureOeuf(p[k]);
+  }
   (p.sous_preparations || []).forEach((sp: Pivot) => {
+    if (typeof sp.nom === 'string') sp.nom = ligatureOeuf(sp.nom);
     (sp.ingredients || []).forEach((ing: Pivot) => {
-      if (typeof ing.nom === 'string') ing.nom = capitalize(ing.nom.trim());
-      const note = typeof ing.note === 'string' ? ing.note.trim() : '';
+      if (typeof ing.nom === 'string') ing.nom = capitalize(ligatureOeuf(ing.nom).trim());
+      if (typeof ing.texte_original === 'string') ing.texte_original = ligatureOeuf(ing.texte_original);
+      const noteRaw = typeof ing.note === 'string' ? ligatureOeuf(ing.note).trim() : '';
       const nom = typeof ing.nom === 'string' ? ing.nom.trim() : '';
-      if (note && note.toLowerCase() === nom.toLowerCase()) ing.note = null;
+      ing.note = noteRaw && noteRaw.toLowerCase() !== nom.toLowerCase() ? noteRaw : null;
+    });
+    (sp.etapes || []).forEach((e: Pivot) => {
+      if (typeof e.texte === 'string') e.texte = ligatureOeuf(e.texte);
     });
     if (Array.isArray(sp.materiel)) {
-      sp.materiel = sp.materiel.map((m: unknown) => capitalize(String(m ?? '').trim())).filter(Boolean);
+      sp.materiel = sp.materiel.map((m: unknown) => capitalize(ligatureOeuf(String(m ?? '')).trim())).filter(Boolean);
     }
   });
 }

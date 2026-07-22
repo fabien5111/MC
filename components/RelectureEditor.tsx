@@ -35,6 +35,9 @@ const nextKey = () => `k${uid++}`;
 // Majuscule initiale d'un libellé (le reste inchangé).
 const capitalize = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+// Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
+const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
+
 function rendementTxt(r: any): string {
   if (!r) return '';
   if (r.type === 'moule' && r.moule)
@@ -63,23 +66,25 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
   const t = sp.temps || {};
   return {
     key: nextKey(),
-    nom: sp.nom || '',
+    nom: ligatureOeuf(sp.nom || ''),
     prep: t.preparation_min ?? '',
     attente: t.attente_min ?? '',
     cuisson: t.cuisson_min ?? (lignesCuisson || ''),
     temp: sp.temperature_c ?? (tMax || ''),
     jour: String(sp.day_offset ?? 0),
     ings: (sp.ingredients || []).map((g: any) => {
-      // Majuscule initiale sur le nom importé (« jaune d'oeuf » → « Jaune d'oeuf »).
-      const nom = capitalize(String(g.nom || '').trim());
+      // Ligature « œuf » puis majuscule initiale sur le nom importé
+      // (« jaune d'oeuf » → « Jaune d'œuf »).
+      const nom = capitalize(ligatureOeuf(String(g.nom || '')).trim());
       // Note vidée lorsqu'elle ne fait que répéter le nom de l'ingrédient
       // (cas où l'IA recopie le libellé dans la note).
-      const noteRaw = String(g.note || '').trim();
+      const noteRaw = ligatureOeuf(String(g.note || '')).trim();
       const note = noteRaw && noteRaw.toLowerCase() === nom.toLowerCase() ? '' : noteRaw;
       const refKey = nom.toLowerCase();
+      const imported = g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' ') || null;
       return {
         key: nextKey(),
-        imported: g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' ') || null,
+        imported: imported ? ligatureOeuf(imported) : null,
         nom,
         qte: g.quantite ?? '',
         unite: g.unite || '',
@@ -88,9 +93,12 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
         allergen: Object.prototype.hasOwnProperty.call(refAllergens, refKey) ? refAllergens[refKey] : '',
       };
     }),
-    etapes: (sp.etapes || []).map((e: any) => ({ key: nextKey(), imported: e.texte || null, texte: e.texte || '' })),
+    etapes: (sp.etapes || []).map((e: any) => {
+      const texte = ligatureOeuf(e.texte || '');
+      return { key: nextKey(), imported: texte || null, texte };
+    }),
     materiel: (sp.materiel || [])
-      .map((m: any) => capitalize(String(m || '').trim()))
+      .map((m: any) => capitalize(ligatureOeuf(String(m || '')).trim()))
       .filter(Boolean)
       .map((nom: string) => ({ key: nextKey(), nom })),
     collapsed: false,
@@ -117,15 +125,15 @@ export function RelectureEditor({
   const router = useRouter();
   const recette = (importRow.recette ?? {}) as any;
 
-  const [titre, setTitre] = useState(recette.titre || '');
-  const [description, setDescription] = useState(recette.description || '');
-  const [notes, setNotes] = useState(recette.notes || '');
+  const [titre, setTitre] = useState(ligatureOeuf(recette.titre || ''));
+  const [description, setDescription] = useState(ligatureOeuf(recette.description || ''));
+  const [notes, setNotes] = useState(ligatureOeuf(recette.notes || ''));
   const [source, setSource] = useState(recette.source?.auteur_origine || '');
   const [sourceUrl, setSourceUrl] = useState(
     recette.source?.url_origine || importRow.source_url || recette.source?.url || '',
   );
   const [videoUrl, setVideoUrl] = useState(recette.source?.video_url || '');
-  const [servingAdvice, setServingAdvice] = useState(recette.conseils_degustation || '');
+  const [servingAdvice, setServingAdvice] = useState(ligatureOeuf(recette.conseils_degustation || ''));
   const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
   const [saveStatus, setSaveStatus] = useState('');
