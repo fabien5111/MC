@@ -85,6 +85,28 @@ Schéma (exemple) : ${JSON.stringify(SCHEMA_EXEMPLE)}`;
 
 const UNITES = new Set(['g', 'ml', 'piece']);
 
+// Met une majuscule à la première lettre d'un libellé (le reste inchangé).
+export function capitalize(s: string | null | undefined): string {
+  const t = (s ?? '').toString();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+}
+
+// Nettoyage des ingrédients du pivot avant enregistrement :
+//  - majuscule initiale sur le nom (« jaune d'oeuf » → « Jaune d'oeuf ») ;
+//  - suppression de la note quand elle ne fait que répéter le nom de
+//    l'ingrédient (cas fréquent où l'IA recopie le libellé dans `note`).
+export function cleanPivotIngredients(p: Pivot): void {
+  if (!p || typeof p !== 'object') return;
+  (p.sous_preparations || []).forEach((sp: Pivot) => {
+    (sp.ingredients || []).forEach((ing: Pivot) => {
+      if (typeof ing.nom === 'string') ing.nom = capitalize(ing.nom.trim());
+      const note = typeof ing.note === 'string' ? ing.note.trim() : '';
+      const nom = typeof ing.nom === 'string' ? ing.nom.trim() : '';
+      if (note && note.toLowerCase() === nom.toLowerCase()) ing.note = null;
+    });
+  });
+}
+
 // ── Extraction depuis la page ────────────────────────────────
 type LdRecipe = Record<string, unknown> & {
   recipeIngredient?: unknown;

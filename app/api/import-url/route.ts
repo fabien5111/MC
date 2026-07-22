@@ -7,6 +7,7 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import {
   PROMPT,
   buildContenu,
+  cleanPivotIngredients,
   computeVolume,
   extractLdRecipe,
   normalizeWithRetry,
@@ -127,6 +128,9 @@ export async function POST(req: Request) {
     const d = parseInt(sp.day_offset, 10);
     sp.day_offset = isNaN(d) || d < 0 ? 0 : d;
   });
+
+  // Ingrédients : majuscule initiale + suppression des notes qui répètent le nom.
+  cleanPivotIngredients(pivot);
 
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
