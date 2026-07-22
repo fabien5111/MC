@@ -218,17 +218,22 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {/* Source & liens d'origine */}
           {(recipe.source || recipe.source_url || recipe.video_url) && (
             <div className="mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
-              {recipe.source && (
-                <span className="inline-flex items-center gap-2 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
-                  Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
-                </span>
-              )}
-              {recipe.source_url && (
-                <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
-                  <span className="material-symbols-outlined text-[18px]">link</span>Recette d&apos;origine
-                </a>
-              )}
+              {(recipe.source || recipe.source_url) &&
+                (recipe.source_url ? (
+                  <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                    <span className="material-symbols-outlined text-[18px]">menu_book</span>
+                    {recipe.source ? (
+                      <>Source :&nbsp;<span className="font-semibold">{recipe.source}</span></>
+                    ) : (
+                      <>Recette d&apos;origine</>
+                    )}
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-2 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
+                    Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
+                  </span>
+                ))}
               {recipe.video_url && (
                 <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
                   <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
@@ -445,7 +450,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   )}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                 </span>
-                                <span className="font-label-md text-label-md text-primary text-center">
+                                <span className="font-label-md text-label-md text-primary">
                                   <Qty quantity={it.quantity} unit={it.unit} />
                                   {it.allergen && (
                                     <span className="text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
@@ -592,7 +597,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   {it.name}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                 </span>
-                                <span className="font-label-md text-label-md text-primary text-center">
+                                <span className="font-label-md text-label-md text-primary">
                                   <Qty quantity={it.quantity} unit={it.unit} />
                                 </span>
                               </li>
