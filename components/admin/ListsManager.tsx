@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { SECTIONS, SLUG_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
+import { ImageSlot } from '@/components/ImageSlot';
 
 type Entry = Record<string, unknown>;
 
@@ -233,6 +234,22 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                               </td>
                             );
                           }
+                          if (f.type === 'image') {
+                            return (
+                              <td key={f.key} className="px-6 py-4 text-sm">
+                                {val ? (
+                                  // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                                  <img
+                                    src={String(val)}
+                                    alt=""
+                                    className="w-9 h-9 rounded object-contain bg-surface-container"
+                                  />
+                                ) : (
+                                  <span className="text-on-surface-variant text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          }
                           if (f.key === 'url' && val) {
                             return (
                               <td key={f.key} className="px-6 py-4 text-sm">
@@ -424,7 +441,31 @@ function EntryForm({
               </div>
             </>
           ) : (
-            section.fields.map((f, i) => (
+            section.fields.map((f, i) => {
+              // Champ image (ex. picto d'allergène) : hors d'un <label>, car
+              // l'ImageSlot embarque son propre input fichier — l'enrober dans
+              // un label déclencherait une double ouverture du sélecteur.
+              if (f.type === 'image') {
+                return (
+                  <div key={f.key} className="flex flex-col gap-2">
+                    <span className={LABEL}>
+                      {f.label}
+                      {f.required ? ' *' : ''}
+                    </span>
+                    <ImageSlot
+                      src={values[f.key] || null}
+                      onChange={(dataUrl) => setValues((v) => ({ ...v, [f.key]: dataUrl }))}
+                      onClear={() => setValues((v) => ({ ...v, [f.key]: '' }))}
+                      shape="rounded"
+                      fit="contain"
+                      maxWidth={256}
+                      placeholder="Déposez un picto"
+                      className="w-28 h-28"
+                    />
+                  </div>
+                );
+              }
+              return (
               <label key={f.key} className="flex flex-col gap-2">
                 <span className={LABEL}>
                   {f.label}
@@ -458,7 +499,8 @@ function EntryForm({
                   />
                 )}
               </label>
-            ))
+              );
+            })
           )}
         </div>
         <div className="px-8 py-6 border-t border-outline-variant flex gap-3">

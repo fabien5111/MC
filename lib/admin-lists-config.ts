@@ -9,7 +9,9 @@
 // `refTable` : select dynamique dont les options proviennent d'une autre liste
 // déjà chargée (id + name), ex. l'allergène d'un ingrédient. La valeur stockée
 // est l'id numérique de l'entrée liée (ou null).
-export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; refTable?: string; required?: boolean };
+// `image` : dépôt d'un visuel (ex. picto d'allergène) compressé en data-URL
+// côté client (comme avatar_url / hero_image_url), stocké tel quel en base.
+export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select' | 'image'; options?: string[]; refTable?: string; required?: boolean };
 export type Section = { table: string; label: string; type: string; badge: string; desc: string; fields: Field[] };
 
 const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
@@ -94,7 +96,7 @@ export const SECTIONS: Section[] = [
     type: 'Nutrition',
     badge: 'bg-secondary-container text-on-secondary-container',
     desc: 'Allergènes de référence pour les recettes',
-    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP],
+    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'picto', label: 'Picto', type: 'image' }, { key: 'url', label: 'URL' }, TOOLTIP],
   },
   {
     table: 'utensils',
