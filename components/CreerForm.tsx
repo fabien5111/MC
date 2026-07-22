@@ -500,7 +500,9 @@ export function CreerForm({
       }
 
       let finalStatus: string = status;
-      if (status === 'pending' && !isPublic) finalStatus = 'published';
+      // Soumission (« pending ») → file de validation, sauf : recette privée,
+      // ou auteur administrateur → publication immédiate sans validation.
+      if (status === 'pending' && (!isPublic || isAdmin)) finalStatus = 'published';
 
       const payload = {
         title: title.trim(),
