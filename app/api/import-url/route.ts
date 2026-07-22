@@ -7,7 +7,7 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import {
   PROMPT,
   buildContenu,
-  cleanPivotIngredients,
+  cleanPivotRecette,
   computeVolume,
   extractLdRecipe,
   normalizeWithRetry,
@@ -129,8 +129,8 @@ export async function POST(req: Request) {
     sp.day_offset = isNaN(d) || d < 0 ? 0 : d;
   });
 
-  // Ingrédients : majuscule initiale + suppression des notes qui répètent le nom.
-  cleanPivotIngredients(pivot);
+  // Ingrédients/ustensiles : majuscule initiale + suppression des notes qui répètent le nom.
+  cleanPivotRecette(pivot);
 
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';

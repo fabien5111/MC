@@ -91,11 +91,12 @@ export function capitalize(s: string | null | undefined): string {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
-// Nettoyage des ingrédients du pivot avant enregistrement :
-//  - majuscule initiale sur le nom (« jaune d'oeuf » → « Jaune d'oeuf ») ;
-//  - suppression de la note quand elle ne fait que répéter le nom de
-//    l'ingrédient (cas fréquent où l'IA recopie le libellé dans `note`).
-export function cleanPivotIngredients(p: Pivot): void {
+// Nettoyage du pivot avant enregistrement :
+//  - majuscule initiale sur le nom des ingrédients et des ustensiles
+//    (« jaune d'oeuf » → « Jaune d'oeuf ») ;
+//  - suppression de la note d'un ingrédient quand elle ne fait que répéter
+//    son nom (cas fréquent où l'IA recopie le libellé dans `note`).
+export function cleanPivotRecette(p: Pivot): void {
   if (!p || typeof p !== 'object') return;
   (p.sous_preparations || []).forEach((sp: Pivot) => {
     (sp.ingredients || []).forEach((ing: Pivot) => {
@@ -104,6 +105,9 @@ export function cleanPivotIngredients(p: Pivot): void {
       const nom = typeof ing.nom === 'string' ? ing.nom.trim() : '';
       if (note && note.toLowerCase() === nom.toLowerCase()) ing.note = null;
     });
+    if (Array.isArray(sp.materiel)) {
+      sp.materiel = sp.materiel.map((m: unknown) => capitalize(String(m ?? '').trim())).filter(Boolean);
+    }
   });
 }
 

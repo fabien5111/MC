@@ -89,7 +89,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     }),
     etapes: (sp.etapes || []).map((e: any) => ({ key: nextKey(), imported: e.texte || null, texte: e.texte || '' })),
     materiel: (sp.materiel || [])
-      .map((m: any) => String(m || '').trim())
+      .map((m: any) => capitalize(String(m || '').trim()))
       .filter(Boolean)
       .map((nom: string) => ({ key: nextKey(), nom })),
   };
@@ -654,6 +654,9 @@ export function RelectureEditor({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
+                        {g.note !== '' && (
+                          <input value={g.note} onChange={(e) => patchIng(si, ii, { note: e.target.value })} className={`${champ} text-sm mt-1`} placeholder="note (pommade, à froid…)" />
+                        )}
                         <div className="grid gap-2 mt-1" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
                           <input
                             list="dl-allergens"
@@ -665,9 +668,6 @@ export function RelectureEditor({
                           />
                           <span className="col-span-3" />
                         </div>
-                        {g.note !== '' && (
-                          <input value={g.note} onChange={(e) => patchIng(si, ii, { note: e.target.value })} className={`${champ} text-sm mt-1`} placeholder="note (pommade, à froid…)" />
-                        )}
                         {isAdmin && g.nom.trim() && !known && (
                           <button
                             type="button"
