@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -1491,9 +1492,11 @@ export function CreerForm({
                     key={i}
                     type="button"
                     onClick={() => setLevel(i + 1)}
-                    className={`maryse-pill ${i <= level - 1 ? 'bg-primary' : 'bg-outline-variant'}`}
+                    className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
                     aria-label={`Niveau ${i + 1}`}
-                  />
+                  >
+                    <MaryseIcon size={24} />
+                  </button>
                 ))}
               </div>
             </div>

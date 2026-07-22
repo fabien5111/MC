@@ -3,11 +3,13 @@
 // RecipeCard (utilisée pour les grilles), pas de cadre ni de padding.
 import Link from 'next/link';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;
   const level = (r.difficulties?.name || r.recipe_types?.name || 'Recette').toUpperCase();
+  const diffLevel = r.difficulties?.level || 0;
   return (
     <div className="relative group">
       <Link href={`/recette/${r.id}`} className="cursor-pointer block">
@@ -21,7 +23,20 @@ export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFa
             </div>
           )}
         </div>
-        <span className="font-label-md text-[12px] text-secondary">{level}</span>
+        <span className="flex items-center gap-2">
+          {diffLevel > 0 && (
+            <span className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <MaryseIcon
+                  key={i}
+                  size={14}
+                  className={i <= diffLevel ? 'text-primary' : 'text-outline-variant'}
+                />
+              ))}
+            </span>
+          )}
+          <span className="font-label-md text-[12px] text-secondary">{level}</span>
+        </span>
         <h4 className="font-headline-md text-headline-md text-primary mt-1 group-hover:text-secondary transition-colors">
           {r.title}
         </h4>

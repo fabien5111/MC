@@ -13,6 +13,7 @@ import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import { SuggestionCard } from '@/components/recipe/SuggestionCard';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
@@ -365,12 +366,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <div className="flex items-center justify-center gap-2 h-8">
                   {level ? (
                     [1, 2, 3, 4, 5].map((i) => (
-                      <span key={i} className={`maryse-pill ${i <= level ? 'bg-primary' : 'bg-outline-variant'}`} />
+                      <MaryseIcon key={i} className={i <= level ? 'text-primary' : 'text-outline-variant'} />
                     ))
                   ) : (
                     <span className="text-sm text-on-surface-variant">—</span>
                   )}
                 </div>
+                {recipe.difficulties?.name && (
+                  <span className="font-label-md text-label-md text-on-surface">
+                    {recipe.difficulties.name}
+                  </span>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
