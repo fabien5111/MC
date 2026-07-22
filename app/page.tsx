@@ -5,6 +5,7 @@ import { MobileNav } from '@/components/MobileNav';
 import { HomeBanner } from '@/components/HomeBanner';
 import { RecipeCard } from '@/components/RecipeCard';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getSiteSettings } from '@/lib/site';
@@ -124,7 +125,19 @@ export default async function HomePage() {
                     </div>
                     {featured.difficulties?.name && (
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-primary">restaurant_menu</span>
+                        <span className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <MaryseIcon
+                              key={i}
+                              size={18}
+                              className={
+                                i <= (featured.difficulties?.level || 0)
+                                  ? 'text-primary'
+                                  : 'text-outline-variant'
+                              }
+                            />
+                          ))}
+                        </span>
                         <span className="font-label-md text-label-md text-on-surface">
                           {featured.difficulties.name}
                         </span>
