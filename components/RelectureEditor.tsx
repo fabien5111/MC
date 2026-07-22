@@ -26,6 +26,7 @@ type SpState = {
   ings: IngRow[];
   etapes: EtapeRow[];
   materiel: MatRow[];
+  collapsed: boolean;
 };
 
 let uid = 0;
@@ -92,6 +93,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       .map((m: any) => capitalize(String(m || '').trim()))
       .filter(Boolean)
       .map((nom: string) => ({ key: nextKey(), nom })),
+    collapsed: false,
   };
 }
 
@@ -137,6 +139,8 @@ export function RelectureEditor({
     setJustAddedSpKey(null);
   }, [justAddedSpKey]);
   const [busy, setBusy] = useState(false);
+  // Index de la sous-préparation en cours de glisser-déposer (null si aucun).
+  const [dragSp, setDragSp] = useState<number | null>(null);
 
   const alertes = Array.isArray(importRow.alertes) ? (importRow.alertes as string[]) : [];
   const STATUT_LBL: Record<string, [string, string]> = {
@@ -251,7 +255,7 @@ export function RelectureEditor({
     const key = nextKey();
     setSps((prev) => [
       ...prev,
-      { key, nom: '', prep: '', attente: '', cuisson: '', temp: '', jour: '0', ings: [], etapes: [{ key: nextKey(), imported: null, texte: '' }], materiel: [] },
+      { key, nom: '', prep: '', attente: '', cuisson: '', temp: '', jour: '0', ings: [], etapes: [{ key: nextKey(), imported: null, texte: '' }], materiel: [], collapsed: false },
     ]);
     setJustAddedSpKey(key);
   };
@@ -259,6 +263,19 @@ export function RelectureEditor({
     if (!confirm('Supprimer cette sous-préparation ?')) return;
     setSps((prev) => prev.filter((_, k) => k !== si));
   };
+  // Repli / dépli d'une sous-préparation (comme l'éditeur de recette).
+  const toggleSpCollapse = (si: number) =>
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, collapsed: !sp.collapsed } : sp)));
+  const collapseAllSp = (v: boolean) => setSps((prev) => prev.map((sp) => ({ ...sp, collapsed: v })));
+  // Réordonne une sous-préparation de l'index `from` vers `to` (glisser-déposer).
+  const moveSp = (from: number, to: number) =>
+    setSps((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
 
   // ── Récap global (live) ──
   const spTotals = sps.map((sp) => (numOrNull(sp.prep) || 0) + (numOrNull(sp.attente) || 0) + (numOrNull(sp.cuisson) || 0));
@@ -533,10 +550,44 @@ export function RelectureEditor({
       </section>
 
       {/* Sous-préparations */}
+      <div className="flex justify-end gap-6 mb-4">
+        <button type="button" onClick={() => collapseAllSp(true)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] hover:underline">
+          <span className="material-symbols-outlined text-[18px]">unfold_less</span> Tout replier
+        </button>
+        <button type="button" onClick={() => collapseAllSp(false)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] hover:underline">
+          <span className="material-symbols-outlined text-[18px]">unfold_more</span> Tout déplier
+        </button>
+      </div>
       <div className="flex flex-col gap-8">
         {sps.map((sp, si) => (
-          <section key={sp.key} className="border border-outline-variant rounded-xl overflow-hidden">
+          <section
+            key={sp.key}
+            onDragOver={(e) => {
+              if (dragSp === null) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(e) => {
+              if (dragSp === null) return;
+              e.preventDefault();
+              moveSp(dragSp, si);
+              setDragSp(null);
+            }}
+            className={`border border-outline-variant rounded-xl overflow-hidden ${dragSp === si ? 'opacity-50' : ''}`}
+          >
             <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
+              <span
+                className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
+                title="Glisser pour déplacer la sous-préparation"
+                draggable
+                onDragStart={(e) => {
+                  setDragSp(si);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragEnd={() => setDragSp(null)}
+              >
+                drag_indicator
+              </span>
               <span className="font-headline-md text-[18px] text-primary">{si + 1}.</span>
               <input
                 ref={(el) => {
@@ -547,11 +598,21 @@ export function RelectureEditor({
                 className={`${champ} font-headline-md text-[18px] flex-1`}
                 placeholder="Nom de l'étape"
               />
+              <button
+                type="button"
+                onClick={() => toggleSpCollapse(si)}
+                title="Replier / déplier la sous-préparation"
+                className="text-on-surface-variant hover:opacity-70"
+              >
+                <span className="material-symbols-outlined text-[20px]">{sp.collapsed ? 'expand_more' : 'expand_less'}</span>
+              </button>
               <button type="button" onClick={() => delSp(si)} title="Supprimer l'étape" className="text-error hover:opacity-70">
                 <span className="material-symbols-outlined text-[20px]">delete</span>
               </button>
             </div>
 
+            {!sp.collapsed && (
+            <>
             <div className="px-6 py-4 bg-surface-container-low/40 border-b border-outline-variant/50 flex flex-wrap items-end gap-x-6 gap-y-3">
               {(
                 [
@@ -762,6 +823,8 @@ export function RelectureEditor({
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une étape
               </button>
             </div>
+            </>
+            )}
           </section>
         ))}
       </div>
