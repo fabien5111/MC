@@ -459,6 +459,7 @@ function EntryForm({
                       shape="rounded"
                       fit="contain"
                       maxWidth={256}
+                      mime="image/webp"
                       placeholder="Déposez un picto"
                       className="w-28 h-28"
                     />
