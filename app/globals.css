@@ -32,11 +32,6 @@ img {
 .ambient-shadow {
   box-shadow: 0 0 32px rgba(74, 30, 38, 0.05);
 }
-.maryse-pill {
-  width: 26px;
-  height: 13px;
-  border-radius: 9999px;
-}
 /* Unité avec infobulle : soulignée en pointillés, curseur d'aide */
 .unit-tip {
   text-decoration: underline dotted;
