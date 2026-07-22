@@ -94,8 +94,10 @@ export type IngredientView = {
   url: string | null;
   allergen: string | null;
   order_index: number | null;
-  ingredient_refs: { url: string | null } | null;
+  ingredient_refs: { url: string | null; allergens: AllergenRef | null } | null;
 };
+// Allergène de référence rattaché à un ingrédient (picto + infobulle).
+export type AllergenRef = { id: number; name: string; picto: string | null; tooltip: string | null };
 export type RecipeFull = {
   id: string;
   title: string;
@@ -140,7 +142,7 @@ const FULL_SELECT = `
   mold_types(name, forme),
   recipe_tags(tags(id, name, slug)),
   recipe_utensils(*, utensils(url)),
-  ingredient_groups(*, ingredients(*, ingredient_refs(url))),
+  ingredient_groups(*, ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip)))),
   recipe_steps(*, step_photos(*))
 `;
 

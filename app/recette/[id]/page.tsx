@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getRecipeFull } from '@/lib/recipes';
+import { getRecipeFull, type AllergenRef } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
@@ -101,6 +101,18 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const level = recipe.difficulties?.level || 0;
   const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
   const groups = [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Allergènes présents dans la recette : dérivés des ingrédients de référence
+  // rattachés (ingredient_refs.allergen_id → allergens), dédoublonnés par id.
+  const allergens: AllergenRef[] = (() => {
+    const map = new Map<number, AllergenRef>();
+    for (const g of groups) {
+      for (const it of g.ingredients || []) {
+        const a = it.ingredient_refs?.allergens;
+        if (a && !map.has(a.id)) map.set(a.id, a);
+      }
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  })();
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
   const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -396,6 +408,35 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 </div>
               ))}
             </div>
+            {allergens.length > 0 && (
+              <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                  Allergènes :
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {allergens.map((a) =>
+                    a.picto ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                      <img
+                        key={a.id}
+                        src={a.picto}
+                        alt={a.name}
+                        title={a.name}
+                        className="w-8 h-8 object-contain"
+                      />
+                    ) : (
+                      <span
+                        key={a.id}
+                        title={a.name}
+                        className="px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface font-label-md text-[12px]"
+                      >
+                        {a.name}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Ustensiles */}
