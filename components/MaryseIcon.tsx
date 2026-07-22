@@ -28,7 +28,7 @@ export function MaryseIcon({
           fill="currentColor"
           fillRule="evenodd"
           clipRule="evenodd"
-          d="M39 6 H61 A15 15 0 0 1 76 21 V43 A15 15 0 0 1 61 58 H54 V93.5 A4 4 0 0 1 46 93.5 V58 H39 A15 15 0 0 1 24 43 V21 A15 15 0 0 1 39 6 Z M40 50 V26 A10 10 0 0 1 60 26 V50 H55 V27 A5 5 0 0 1 45 27 V50 H40 Z"
+          d="M44 5 H56 A12 12 0 0 1 68 17 V33 A12 12 0 0 1 56 45 H54 V93 A4 4 0 0 1 46 93 V45 H44 A12 12 0 0 1 32 33 V17 A12 12 0 0 1 44 5 Z M42 40 V23 A8 8 0 0 1 58 23 V40 H54 V25 A4 4 0 0 1 46 25 V40 H42 Z"
         />
       </g>
     </svg>
