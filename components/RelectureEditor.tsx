@@ -178,6 +178,8 @@ export function RelectureEditor({
   const [extraAllergens] = useState<{ id: number; name: string }[]>([]);
   const [extraRefAllergens, setExtraRefAllergens] = useState<Record<string, string>>({});
   const [refBusy, setRefBusy] = useState<string | null>(null);
+  // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
+  const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
 
   const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
   const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
@@ -764,7 +766,8 @@ export function RelectureEditor({
                               </button>
                             </span>
                           ))}
-                          {g.allergen.length < MAX_ALLERGENS && (
+                          {g.allergen.length === 0 ? (
+                            // Aucun allergène : menu déroulant pour le premier choix.
                             <select
                               value=""
                               onChange={(e) => {
@@ -775,15 +778,25 @@ export function RelectureEditor({
                               style={{ width: 'auto' }}
                               title="Ajouter un allergène (table de référence)"
                             >
-                              <option value="">{g.allergen.length ? '+ allergène' : 'Allergène (optionnel)'}</option>
-                              {allAllergens
-                                .filter((a) => !g.allergen.includes(a.name))
-                                .map((a) => (
-                                  <option key={a.id} value={a.name}>
-                                    {a.name}
-                                  </option>
-                                ))}
+                              <option value="">Allergène (optionnel)</option>
+                              {allAllergens.map((a) => (
+                                <option key={a.id} value={a.name}>
+                                  {a.name}
+                                </option>
+                              ))}
                             </select>
+                          ) : (
+                            g.allergen.length < MAX_ALLERGENS && (
+                              // Déjà au moins un allergène : bouton + ouvrant la popup.
+                              <button
+                                type="button"
+                                title="Ajouter un allergène"
+                                onClick={() => setAllergenPopup({ si, ii })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-outline-variant text-primary hover:bg-primary-container transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">add</span>
+                              </button>
+                            )
                           )}
                         </div>
                         {isAdmin && g.nom.trim() && !known && (
@@ -976,6 +989,71 @@ export function RelectureEditor({
           </button>
         </div>
       </div>
+
+      {/* Popup de choix des allergènes d'un ingrédient (max 3). Bascule chaque
+          allergène de la table de référence ; les modifications sont live. */}
+      {allergenPopup &&
+        (() => {
+          const { si, ii } = allergenPopup;
+          const ing = sps[si]?.ings[ii];
+          if (!ing) return null;
+          const selected = ing.allergen;
+          const toggle = (name: string) => {
+            if (selected.includes(name)) patchIng(si, ii, { allergen: selected.filter((x) => x !== name) });
+            else if (selected.length < MAX_ALLERGENS) patchIng(si, ii, { allergen: [...selected, name] });
+          };
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/30" onClick={() => setAllergenPopup(null)} />
+              <div className="relative w-full max-w-sm bg-surface-bright border border-outline-variant rounded-xl shadow-xl p-6">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-headline-md text-lg font-semibold text-primary">Allergènes</h3>
+                  <button type="button" onClick={() => setAllergenPopup(null)} className="text-on-surface-variant hover:text-primary">
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <p className="text-xs text-on-surface-variant mb-4">
+                  {ing.nom.trim() || 'Ingrédient'} — {selected.length}/{MAX_ALLERGENS} sélectionné(s)
+                </p>
+                {allAllergens.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant italic">Aucun allergène dans la table de référence.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
+                    {allAllergens.map((a) => {
+                      const on = selected.includes(a.name);
+                      const disabled = !on && selected.length >= MAX_ALLERGENS;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => toggle(a.name)}
+                          disabled={disabled}
+                          className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] border transition-colors ${
+                            on
+                              ? 'bg-primary text-on-primary border-primary'
+                              : disabled
+                                ? 'border-outline-variant text-on-surface-variant/40 cursor-not-allowed'
+                                : 'border-outline-variant text-on-surface hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {on && <span className="material-symbols-outlined text-[16px]">check</span>}
+                          {a.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAllergenPopup(null)}
+                  className="mt-6 w-full bg-primary text-on-primary py-2.5 rounded-lg text-sm font-semibold hover:opacity-90"
+                >
+                  Terminé
+                </button>
+              </div>
+            </div>
+          );
+        })()}
     </>
   );
 }
