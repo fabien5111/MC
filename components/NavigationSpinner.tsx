@@ -79,7 +79,7 @@ export function NavigationSpinner() {
   return (
     <div
       aria-hidden={!visible}
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background/70 backdrop-blur-sm transition-opacity duration-200 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background/40 backdrop-blur-[2px] transition-opacity duration-200 ${
         visible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
