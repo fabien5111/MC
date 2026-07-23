@@ -93,7 +93,8 @@ export async function POST(req: Request) {
   let pivot: Record<string, any>;
   try {
     pivot = await normalizeWithRetry(apiKey, contenu);
-  } catch {
+  } catch (e) {
+    console.error('[import-url] normalisation IA échouée :', e);
     return NextResponse.json(
       { erreur: "L'import a échoué, réessayez ou saisissez la recette manuellement." },
       { status: 502 },
@@ -115,7 +116,8 @@ export async function POST(req: Request) {
         erreurs = v2.erreurs;
         alertes = v2.alertes;
       }
-    } catch {
+    } catch (e) {
+      console.error('[import-url] relance IA (extraction incomplète) échouée :', e);
       /* on conserve les erreurs de la première extraction */
     }
   }
