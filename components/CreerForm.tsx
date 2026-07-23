@@ -25,7 +25,12 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
-type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string };
+// `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
+// référence (plus de saisie libre). Persistés en une chaîne « a, b, c » dans
+// la colonne texte `ingredients.allergen` (compatible avec l'affichage recette
+// qui redécoupe sur les virgules).
+const MAX_ALLERGENS = 3;
+type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string[] };
 type StepState = {
   key: string;
   title: string;
@@ -83,7 +88,15 @@ const slugify = (name: string): string =>
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
 
-const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: '' });
+const emptyIng = (): IngLine => ({ key: key(), name: '', qty: '', unit: '', comment: '', allergen: [] });
+
+// Découpe la valeur stockée (« a, b ») en liste d'allergènes (max 3).
+const parseAllergens = (raw: string | null | undefined): string[] =>
+  (raw || '')
+    .split(/[,;/]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, MAX_ALLERGENS);
 const emptyStep = (): StepState => ({
   key: key(),
   title: '',
@@ -127,7 +140,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       tips: s.tips || '',
       scaling: 'simple',
       ings: ings.length
-        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: i.allergen || '' }))
+        ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: parseAllergens(i.allergen) }))
         : [emptyIng()],
       photos: [0, 1, 2, 3].map((i) => photos[i] || null),
       collapsed: false,
@@ -571,7 +584,7 @@ export function CreerForm({
             quantity: l.qty.trim() || null,
             unit: l.unit || null,
             comment: l.comment.trim() || null,
-            allergen: l.allergen.trim() || null,
+            allergen: l.allergen.length ? l.allergen.join(', ') : null,
             order_index: i,
           }))
           .filter((l) => l.name);
@@ -1170,7 +1183,7 @@ export function CreerForm({
                                 // pas au champ : il reste en saisie libre.
                                 const refKey = name.trim().toLowerCase();
                                 if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
-                                  patchIng(si, ii, { name, allergen: refAllergenMap[refKey] });
+                                  patchIng(si, ii, { name, allergen: parseAllergens(refAllergenMap[refKey]) });
                                 } else {
                                   patchIng(si, ii, { name });
                                 }
@@ -1207,14 +1220,47 @@ export function CreerForm({
                             ))}
                           </select>
                           <div className="flex-1 min-w-0">
-                            <input
-                              list="dl-allergens"
-                              value={g.allergen}
-                              onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
-                              className="editorial-input text-on-surface w-full italic"
-                              type="text"
-                              placeholder="Allergène (optionnel)"
-                            />
+                            <div className="flex flex-wrap items-center gap-1">
+                              {g.allergen.map((a) => (
+                                <span
+                                  key={a}
+                                  className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[12px]"
+                                >
+                                  {a}
+                                  <button
+                                    type="button"
+                                    title="Retirer"
+                                    onClick={() => patchIng(si, ii, { allergen: g.allergen.filter((x) => x !== a) })}
+                                    className="hover:text-error transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+                                  </button>
+                                </span>
+                              ))}
+                              {g.allergen.length < MAX_ALLERGENS && (
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (v && !g.allergen.includes(v)) patchIng(si, ii, { allergen: [...g.allergen, v] });
+                                  }}
+                                  className="editorial-input text-on-surface cursor-pointer italic"
+                                  style={{ width: 'auto' }}
+                                  title="Ajouter un allergène (table de référence)"
+                                >
+                                  <option value="">
+                                    {g.allergen.length ? '+ allergène' : 'Allergène (optionnel)'}
+                                  </option>
+                                  {allAllergens
+                                    .filter((a) => !g.allergen.includes(a.name))
+                                    .map((a) => (
+                                      <option key={a.id} value={a.name}>
+                                        {a.name}
+                                      </option>
+                                    ))}
+                                </select>
+                              )}
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <input
@@ -1250,12 +1296,12 @@ export function CreerForm({
                         {isAdmin && g.name.trim() && !knownIngredients.has(g.name.trim().toLowerCase()) && (
                           <button
                             type="button"
-                            onClick={() => addIngredientRef(g.name, g.allergen)}
+                            onClick={() => addIngredientRef(g.name, g.allergen[0] || '')}
                             disabled={refBusy === `ingredient_refs:${g.name.trim().toLowerCase()}`}
                             className="mt-1 ml-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
                             title={
-                              g.allergen.trim()
-                                ? `Ajouter cet ingrédient (allergène : ${g.allergen.trim()}) à la base de référence`
+                              g.allergen[0]
+                                ? `Ajouter cet ingrédient (allergène : ${g.allergen[0]}) à la base de référence`
                                 : 'Ajouter cet ingrédient à la base de référence'
                             }
                           >
@@ -1601,11 +1647,6 @@ export function CreerForm({
         ))}
       </datalist>
 
-      <datalist id="dl-allergens">
-        {allAllergens.map((a) => (
-          <option key={a.id} value={a.name} />
-        ))}
-      </datalist>
     </>
   );
 }
