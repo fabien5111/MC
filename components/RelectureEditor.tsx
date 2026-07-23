@@ -175,7 +175,7 @@ export function RelectureEditor({
   // masquent aussitôt le bouton d'ajout, sans recharger la page.
   const [extraIngredientRefs, setExtraIngredientRefs] = useState<string[]>([]);
   const [extraUtensilRefs, setExtraUtensilRefs] = useState<string[]>([]);
-  const [extraAllergens, setExtraAllergens] = useState<{ id: number; name: string }[]>([]);
+  const [extraAllergens] = useState<{ id: number; name: string }[]>([]);
   const [extraRefAllergens, setExtraRefAllergens] = useState<Record<string, string>>({});
   const [refBusy, setRefBusy] = useState<string | null>(null);
 
@@ -184,7 +184,6 @@ export function RelectureEditor({
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
-  const allergenIdByName = useMemo(() => new Map(allAllergens.map((a) => [a.name.trim().toLowerCase(), a.id])), [allAllergens]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
   // Ajout à la volée d'un ustensile dans la table de référence (réservé aux
@@ -200,35 +199,23 @@ export function RelectureEditor({
     setExtraUtensilRefs((p) => [...p, clean]);
   }
 
-  // Ajout d'un ingrédient au référentiel avec son allergène : si l'allergène
-  // saisi n'existe pas encore dans la table `allergens`, on le crée d'abord,
-  // puis on lie son id à l'ingrédient (`ingredient_refs.allergen_id`).
-  async function addIngredientRef(name: string, allergenName: string) {
+  // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
+  // table de référence, donc existants) : stockés en une chaîne « a, b, c »
+  // dans la colonne texte `ingredient_refs.allergen`, jusqu'à 3.
+  async function addIngredientRef(name: string, allergenNames: string[]) {
     const clean = name.trim();
     if (!clean) return;
     setRefBusy(`ingredient_refs:${clean.toLowerCase()}`);
     const supabase = createClient();
-    const allergen = allergenName.trim();
-    let allergenId: number | null = null;
-    if (allergen) {
-      const existing = allergenIdByName.get(allergen.toLowerCase());
-      if (existing != null) {
-        allergenId = existing;
-      } else {
-        const { data, error } = await supabase.from('allergens').insert({ name: allergen }).select('id, name').single();
-        if (error || !data) {
-          setRefBusy(null);
-          return void alert('Erreur (allergène) : ' + (error?.message ?? 'insertion impossible'));
-        }
-        allergenId = data.id;
-        setExtraAllergens((p) => [...p, { id: data.id, name: data.name }]);
-      }
-    }
-    const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen_id: allergenId });
+    const list = allergenNames.map((a) => a.trim()).filter(Boolean).slice(0, MAX_ALLERGENS);
+    const allergenCsv = list.length ? list.join(', ') : null;
+    // Colonne `allergen` hors typage généré → insertion via client non typé.
+    const q = supabase.from('ingredient_refs' as never) as ReturnType<typeof supabase.from>;
+    const { error } = await q.insert({ name: clean, allergen: allergenCsv } as never);
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
-    setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergen }));
+    setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
   }
 
   // ── Mutations d'état ──
@@ -802,7 +789,7 @@ export function RelectureEditor({
                         {isAdmin && g.nom.trim() && !known && (
                           <button
                             type="button"
-                            onClick={() => addIngredientRef(g.nom, g.allergen[0] || '')}
+                            onClick={() => addIngredientRef(g.nom, g.allergen)}
                             disabled={refBusy === `ingredient_refs:${g.nom.trim().toLowerCase()}`}
                             className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
                             title={

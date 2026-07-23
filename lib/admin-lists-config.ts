@@ -11,7 +11,18 @@
 // est l'id numérique de l'entrée liée (ou null).
 // `image` : dépôt d'un visuel (ex. picto d'allergène) compressé en data-URL
 // côté client (comme avatar_url / hero_image_url), stocké tel quel en base.
-export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select' | 'image'; options?: string[]; refTable?: string; required?: boolean };
+// `multiref` : sélection de plusieurs entrées (max `max`) d'une autre liste
+// (`refTable`), stockée en une chaîne « a, b, c » de leurs libellés dans une
+// colonne texte — même convention que les allergènes des recettes.
+export type Field = {
+  key: string;
+  label: string;
+  type?: 'text' | 'number' | 'select' | 'image' | 'multiref';
+  options?: string[];
+  refTable?: string;
+  required?: boolean;
+  max?: number;
+};
 export type Section = { table: string; label: string; type: string; badge: string; desc: string; fields: Field[] };
 
 const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
@@ -87,7 +98,7 @@ export const SECTIONS: Section[] = [
     desc: 'Ingrédients de référence pour les recettes',
     fields: [
       { key: 'name', label: 'Libellé', required: true },
-      { key: 'allergen_id', label: 'Allergène', type: 'select', refTable: 'allergens' },
+      { key: 'allergen', label: 'Allergènes', type: 'multiref', refTable: 'allergens', max: 3 },
       { key: 'url', label: 'URL' },
       TOOLTIP,
     ],
