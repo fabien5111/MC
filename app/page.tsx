@@ -6,7 +6,8 @@ import { HomeBanner } from '@/components/HomeBanner';
 import { RecipeCard } from '@/components/RecipeCard';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
-import { getRecipes } from '@/lib/recipes';
+import { getRecipes, cardAllergenNames } from '@/lib/recipes';
+import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
@@ -144,6 +145,7 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
+                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
                   <Link
                     href={`/recette/${featured.id}`}
                     className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start"

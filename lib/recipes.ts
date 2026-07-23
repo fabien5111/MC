@@ -5,6 +5,7 @@
 // absentes de schema.sql (utensils, ingredient_refs, executions…) : la base
 // live a divergé. On régénérera les types avec `npm run gen:types` au moment
 // de porter recette.html ; d'ici là ces retours restent volontairement souples.
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 
@@ -12,7 +13,8 @@ type Recipe = Database['public']['Tables']['recipes']['Row'];
 
 const CARD_SELECT =
   'id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, ' +
-  'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level)';
+  'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
+  'ingredient_groups(ingredients(allergen))';
 
 export type RecipeCard = Pick<
   Recipe,
@@ -29,7 +31,27 @@ export type RecipeCard = Pick<
   profiles: { full_name: string | null; avatar_url: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
+  ingredient_groups: { ingredients: { allergen: string | null }[] }[];
 };
+
+// Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
+// dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
+// fait à l'affichage (composant AllergenPictos).
+export function cardAllergenNames(recipe: Pick<RecipeCard, 'ingredient_groups'>): string[] {
+  const seen = new Map<string, string>();
+  for (const g of recipe.ingredient_groups || []) {
+    for (const it of g.ingredients || []) {
+      if (!it.allergen) continue;
+      for (const part of it.allergen.split(/[,;/]/)) {
+        const name = part.trim();
+        if (!name) continue;
+        const k = name.toLowerCase();
+        if (!seen.has(k)) seen.set(k, name);
+      }
+    }
+  }
+  return [...seen.values()];
+}
 
 export async function getRecipes(opts: {
   limit?: number;
@@ -156,7 +178,9 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
 // visuel d'un allergène saisi en texte libre dans une recette (rapprochement
 // par nom). Colonne `picto` hors typage généré → client non typé, cast local.
-export async function getAllergensWithPicto(): Promise<AllergenRef[]> {
+// Mémoïsé par requête (React cache) : plusieurs cartes sur une même page ne
+// déclenchent qu'une seule lecture.
+export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
   const supabase = await createClient();
   const q = supabase.from('allergens' as never) as ReturnType<typeof supabase.from>;
   const { data, error } = await q.select('id, name, picto, tooltip').order('name');
@@ -165,4 +189,4 @@ export async function getAllergensWithPicto(): Promise<AllergenRef[]> {
     return [];
   }
   return ((data as unknown as AllergenRef[]) ?? []).filter((a) => a.name);
-}
+});

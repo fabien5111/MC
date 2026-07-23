@@ -5,7 +5,8 @@
 import Link from 'next/link';
 import { formatTime } from '@/lib/format';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
-import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
+import { AllergenPictos } from '@/components/recipe/AllergenPictos';
+import { cardAllergenNames, type RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;
@@ -39,6 +40,7 @@ export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: b
             {r.title}
           </h3>
           <p className="text-sm text-on-surface-variant line-clamp-2 mb-4">{r.description || ''}</p>
+          <AllergenPictos names={cardAllergenNames(r)} className="mb-4" iconClassName="w-6 h-6" />
           <div className="flex items-center justify-between">
             <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
             <span className="text-xs text-secondary">
