@@ -9,7 +9,20 @@
 // `refTable` : select dynamique dont les options proviennent d'une autre liste
 // déjà chargée (id + name), ex. l'allergène d'un ingrédient. La valeur stockée
 // est l'id numérique de l'entrée liée (ou null).
-export type Field = { key: string; label: string; type?: 'text' | 'number' | 'select'; options?: string[]; refTable?: string; required?: boolean };
+// `image` : dépôt d'un visuel (ex. picto d'allergène) compressé en data-URL
+// côté client (comme avatar_url / hero_image_url), stocké tel quel en base.
+// `multiref` : sélection de plusieurs entrées (max `max`) d'une autre liste
+// (`refTable`), stockée en une chaîne « a, b, c » de leurs libellés dans une
+// colonne texte — même convention que les allergènes des recettes.
+export type Field = {
+  key: string;
+  label: string;
+  type?: 'text' | 'number' | 'select' | 'image' | 'multiref';
+  options?: string[];
+  refTable?: string;
+  required?: boolean;
+  max?: number;
+};
 export type Section = { table: string; label: string; type: string; badge: string; desc: string; fields: Field[] };
 
 const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
@@ -37,9 +50,11 @@ export const SECTIONS: Section[] = [
     fields: [
       { key: 'name', label: 'Nom', required: true },
       { key: 'slug', label: 'Slug' },
-      // Renseigner une icône Material Symbols (ex. « cake ») promeut le tag en
-      // catégorie affichée sur l'accueil ; laisser vide pour un tag ordinaire.
+      // Renseigner une icône Material Symbols (ex. « cake ») OU un picto promeut
+      // le tag en catégorie affichée sur l'accueil ; laisser vide pour un tag
+      // ordinaire. Si un picto est fourni, il prime sur l'icône à l'affichage.
       { key: 'category_icon', label: 'Icône catégorie (accueil)' },
+      { key: 'category_picto', label: 'Picto catégorie (accueil)', type: 'image' },
       TOOLTIP,
     ],
   },
@@ -83,7 +98,7 @@ export const SECTIONS: Section[] = [
     desc: 'Ingrédients de référence pour les recettes',
     fields: [
       { key: 'name', label: 'Libellé', required: true },
-      { key: 'allergen_id', label: 'Allergène', type: 'select', refTable: 'allergens' },
+      { key: 'allergen', label: 'Allergènes', type: 'multiref', refTable: 'allergens', max: 3 },
       { key: 'url', label: 'URL' },
       TOOLTIP,
     ],
@@ -94,7 +109,7 @@ export const SECTIONS: Section[] = [
     type: 'Nutrition',
     badge: 'bg-secondary-container text-on-secondary-container',
     desc: 'Allergènes de référence pour les recettes',
-    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'url', label: 'URL' }, TOOLTIP],
+    fields: [{ key: 'name', label: 'Libellé', required: true }, { key: 'picto', label: 'Picto', type: 'image' }, { key: 'url', label: 'URL' }, TOOLTIP],
   },
   {
     table: 'utensils',

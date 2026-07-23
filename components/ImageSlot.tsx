@@ -30,6 +30,8 @@ export type ImageSlotProps = {
   alt?: string;
   /** Largeur max de compression (px). Avatar : 400 ; bannière/hero : 1400. */
   maxWidth?: number;
+  /** Format d'encodage. `image/webp` préserve la transparence (pictos PNG sans fond) ; défaut `image/jpeg`. */
+  mime?: 'image/jpeg' | 'image/webp';
   className?: string;
   style?: React.CSSProperties;
   /** Pastille crayon superposée (porté de profil.html : bannière/avatar). */
@@ -46,6 +48,7 @@ export function ImageSlot({
   placeholder = 'Déposez une image',
   alt = '',
   maxWidth = 1400,
+  mime = 'image/jpeg',
   className = '',
   style,
   editTitle,
@@ -67,7 +70,7 @@ export function ImageSlot({
       }
       setBusy(true);
       try {
-        const dataUrl = await resizeImageToDataUrl(file, maxWidth);
+        const dataUrl = await resizeImageToDataUrl(file, maxWidth, mime);
         onChange?.(dataUrl);
       } catch (e) {
         setError((e as Error).message);
@@ -75,7 +78,7 @@ export function ImageSlot({
         setBusy(false);
       }
     },
-    [maxWidth, onChange],
+    [maxWidth, mime, onChange],
   );
 
   const radius = SHAPE_RADIUS[shape];

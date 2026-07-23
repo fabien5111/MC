@@ -45,10 +45,12 @@ export async function getIngredientRefNames(): Promise<string[]> {
 // champ.
 export async function getIngredientRefAllergens(): Promise<Record<string, string>> {
   const supabase = await createClient();
-  const { data } = await supabase.from('ingredient_refs').select('name, allergens(name)');
+  // Colonne texte `allergen` (« a, b, c ») hors typage généré → client non typé.
+  const q = supabase.from('ingredient_refs' as never) as ReturnType<typeof supabase.from>;
+  const { data } = await q.select('name, allergen');
   const map: Record<string, string> = {};
-  (data as unknown as { name: string | null; allergens: { name: string | null } | null }[] | null)?.forEach((r) => {
-    if (r.name) map[r.name.trim().toLowerCase()] = r.allergens?.name || '';
+  (data as unknown as { name: string | null; allergen: string | null }[] | null)?.forEach((r) => {
+    if (r.name) map[r.name.trim().toLowerCase()] = r.allergen || '';
   });
   return map;
 }

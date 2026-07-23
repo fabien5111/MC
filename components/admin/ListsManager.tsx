@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { SECTIONS, SLUG_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
+import { ImageSlot } from '@/components/ImageSlot';
 
 type Entry = Record<string, unknown>;
 
@@ -219,6 +220,24 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                       ) : (
                         section.fields.map((f) => {
                           const val = e[f.key];
+                          if (f.type === 'multiref') {
+                            const names = String(val ?? '').split(/[,;/]/).map((s) => s.trim()).filter(Boolean);
+                            return (
+                              <td key={f.key} className="px-6 py-4 text-sm">
+                                {names.length ? (
+                                  <span className="flex flex-wrap gap-1">
+                                    {names.map((n) => (
+                                      <span key={n} className="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">
+                                        {n}
+                                      </span>
+                                    ))}
+                                  </span>
+                                ) : (
+                                  <span className="text-on-surface-variant text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          }
                           if (f.refTable) {
                             const linked = (data[f.refTable] || []).find((x) => String(x.id) === String(val));
                             return (
@@ -227,6 +246,22 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                                   <span className="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">
                                     {String(linked.name)}
                                   </span>
+                                ) : (
+                                  <span className="text-on-surface-variant text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          }
+                          if (f.type === 'image') {
+                            return (
+                              <td key={f.key} className="px-6 py-4 text-sm">
+                                {val ? (
+                                  // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                                  <img
+                                    src={String(val)}
+                                    alt=""
+                                    className="w-9 h-9 rounded object-contain bg-surface-container"
+                                  />
                                 ) : (
                                   <span className="text-on-surface-variant text-xs">—</span>
                                 )}
@@ -356,8 +391,11 @@ function EntryForm({
     } else {
       payload = {};
       for (const f of section.fields) {
-        const raw = values[f.key].trim();
-        payload[f.key] = raw === '' ? null : f.type === 'number' || f.refTable ? Number(raw) : raw;
+        const raw = (values[f.key] ?? '').trim();
+        // multiref stocke une chaîne de libellés « a, b, c » ; select (refTable
+        // simple) stocke l'id numérique ; number un nombre ; sinon du texte.
+        const asNumber = f.type === 'number' || (f.refTable && f.type !== 'multiref');
+        payload[f.key] = raw === '' ? null : asNumber ? Number(raw) : raw;
       }
       // Tables à colonne slug NOT NULL non exposée dans le formulaire.
       if (SLUG_TABLES.includes(table) && !payload.slug && typeof payload.name === 'string') {
@@ -424,7 +462,77 @@ function EntryForm({
               </div>
             </>
           ) : (
-            section.fields.map((f, i) => (
+            section.fields.map((f, i) => {
+              // Champ image (ex. picto d'allergène) : hors d'un <label>, car
+              // l'ImageSlot embarque son propre input fichier — l'enrober dans
+              // un label déclencherait une double ouverture du sélecteur.
+              // Champ multi-référence (ex. allergènes d'un ingrédient) : puces +
+              // menu déroulant limité aux valeurs de la liste liée, jusqu'à `max`.
+              if (f.type === 'multiref') {
+                const max = f.max ?? 3;
+                const selected = (values[f.key] || '').split(/[,;/]/).map((s) => s.trim()).filter(Boolean);
+                const options = (refData[f.refTable || ''] || []).map((o) => String(o.name));
+                const setSel = (arr: string[]) => setValues((v) => ({ ...v, [f.key]: arr.join(', ') }));
+                return (
+                  <div key={f.key} className="flex flex-col gap-2">
+                    <span className={LABEL}>{f.label}</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {selected.map((a) => (
+                        <span
+                          key={a}
+                          className="inline-flex items-center gap-0.5 bg-secondary-container text-on-secondary-container rounded-full pl-2.5 pr-1 py-0.5 text-[13px]"
+                        >
+                          {a}
+                          <button type="button" title="Retirer" onClick={() => setSel(selected.filter((x) => x !== a))} className="hover:text-error transition-colors">
+                            <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+                          </button>
+                        </span>
+                      ))}
+                      {selected.length < max && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v && !selected.includes(v)) setSel([...selected, v]);
+                          }}
+                          className={FIELD}
+                          style={{ width: 'auto' }}
+                        >
+                          <option value="">{selected.length ? '+ ajouter' : '— choisir —'}</option>
+                          {options.filter((o) => !selected.includes(o)).map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    {selected.length >= max && <span className="text-[11px] text-on-surface-variant">Maximum {max} atteint.</span>}
+                  </div>
+                );
+              }
+              if (f.type === 'image') {
+                return (
+                  <div key={f.key} className="flex flex-col gap-2">
+                    <span className={LABEL}>
+                      {f.label}
+                      {f.required ? ' *' : ''}
+                    </span>
+                    <ImageSlot
+                      src={values[f.key] || null}
+                      onChange={(dataUrl) => setValues((v) => ({ ...v, [f.key]: dataUrl }))}
+                      onClear={() => setValues((v) => ({ ...v, [f.key]: '' }))}
+                      shape="rounded"
+                      fit="contain"
+                      maxWidth={256}
+                      mime="image/webp"
+                      placeholder="Déposez un picto"
+                      className="w-28 h-28"
+                    />
+                  </div>
+                );
+              }
+              return (
               <label key={f.key} className="flex flex-col gap-2">
                 <span className={LABEL}>
                   {f.label}
@@ -458,7 +566,8 @@ function EntryForm({
                   />
                 )}
               </label>
-            ))
+              );
+            })
           )}
         </div>
         <div className="px-8 py-6 border-t border-outline-variant flex gap-3">

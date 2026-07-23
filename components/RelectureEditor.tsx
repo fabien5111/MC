@@ -12,7 +12,17 @@ import type { ImportFull } from '@/lib/imports';
 
 const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
 
-type IngRow = { key: string; imported: string | null; nom: string; qte: string; unite: string; note: string; allergen: string };
+// Jusqu'à 3 allergènes par ingrédient, choisis uniquement dans la table de
+// référence (plus de saisie libre). Persistés en une chaîne « a, b, c ».
+const MAX_ALLERGENS = 3;
+const parseAllergens = (raw: string | null | undefined): string[] =>
+  (raw || '')
+    .split(/[,;/]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, MAX_ALLERGENS);
+
+type IngRow = { key: string; imported: string | null; nom: string; qte: string; unite: string; note: string; allergen: string[] };
 type EtapeRow = { key: string; imported: string | null; texte: string };
 type MatRow = { key: string; nom: string };
 type SpState = {
@@ -90,7 +100,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
         unite: g.unite || '',
         note,
         // Allergène pré-rempli depuis le référentiel si l'ingrédient y figure.
-        allergen: Object.prototype.hasOwnProperty.call(refAllergens, refKey) ? refAllergens[refKey] : '',
+        allergen: Object.prototype.hasOwnProperty.call(refAllergens, refKey) ? parseAllergens(refAllergens[refKey]) : [],
       };
     }),
     etapes: (sp.etapes || []).map((e: any) => {
@@ -165,16 +175,17 @@ export function RelectureEditor({
   // masquent aussitôt le bouton d'ajout, sans recharger la page.
   const [extraIngredientRefs, setExtraIngredientRefs] = useState<string[]>([]);
   const [extraUtensilRefs, setExtraUtensilRefs] = useState<string[]>([]);
-  const [extraAllergens, setExtraAllergens] = useState<{ id: number; name: string }[]>([]);
+  const [extraAllergens] = useState<{ id: number; name: string }[]>([]);
   const [extraRefAllergens, setExtraRefAllergens] = useState<Record<string, string>>({});
   const [refBusy, setRefBusy] = useState<string | null>(null);
+  // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
+  const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
 
   const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
   const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
-  const allergenIdByName = useMemo(() => new Map(allAllergens.map((a) => [a.name.trim().toLowerCase(), a.id])), [allAllergens]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
   // Ajout à la volée d'un ustensile dans la table de référence (réservé aux
@@ -190,35 +201,23 @@ export function RelectureEditor({
     setExtraUtensilRefs((p) => [...p, clean]);
   }
 
-  // Ajout d'un ingrédient au référentiel avec son allergène : si l'allergène
-  // saisi n'existe pas encore dans la table `allergens`, on le crée d'abord,
-  // puis on lie son id à l'ingrédient (`ingredient_refs.allergen_id`).
-  async function addIngredientRef(name: string, allergenName: string) {
+  // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
+  // table de référence, donc existants) : stockés en une chaîne « a, b, c »
+  // dans la colonne texte `ingredient_refs.allergen`, jusqu'à 3.
+  async function addIngredientRef(name: string, allergenNames: string[]) {
     const clean = name.trim();
     if (!clean) return;
     setRefBusy(`ingredient_refs:${clean.toLowerCase()}`);
     const supabase = createClient();
-    const allergen = allergenName.trim();
-    let allergenId: number | null = null;
-    if (allergen) {
-      const existing = allergenIdByName.get(allergen.toLowerCase());
-      if (existing != null) {
-        allergenId = existing;
-      } else {
-        const { data, error } = await supabase.from('allergens').insert({ name: allergen }).select('id, name').single();
-        if (error || !data) {
-          setRefBusy(null);
-          return void alert('Erreur (allergène) : ' + (error?.message ?? 'insertion impossible'));
-        }
-        allergenId = data.id;
-        setExtraAllergens((p) => [...p, { id: data.id, name: data.name }]);
-      }
-    }
-    const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen_id: allergenId });
+    const list = allergenNames.map((a) => a.trim()).filter(Boolean).slice(0, MAX_ALLERGENS);
+    const allergenCsv = list.length ? list.join(', ') : null;
+    // Colonne `allergen` hors typage généré → insertion via client non typé.
+    const q = supabase.from('ingredient_refs' as never) as ReturnType<typeof supabase.from>;
+    const { error } = await q.insert({ name: clean, allergen: allergenCsv } as never);
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
-    setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergen }));
+    setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
   }
 
   // ── Mutations d'état ──
@@ -239,7 +238,7 @@ export function RelectureEditor({
   const addIng = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) =>
-        k === si ? { ...sp, ings: [...sp.ings, { key: nextKey(), imported: null, nom: '', qte: '', unite: '', note: '', allergen: '' }] } : sp,
+        k === si ? { ...sp, ings: [...sp.ings, { key: nextKey(), imported: null, nom: '', qte: '', unite: '', note: '', allergen: [] }] } : sp,
       ),
     );
   const delIng = (si: number, ii: number) =>
@@ -339,7 +338,7 @@ export function RelectureEditor({
           quantite: numOrNull(g.qte),
           unite: g.unite || null,
           note: g.note.trim() || null,
-          allergene: g.allergen.trim() || null,
+          allergene: g.allergen.length ? g.allergen.join(', ') : null,
         }))
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
@@ -725,7 +724,7 @@ export function RelectureEditor({
                               const nom = e.target.value;
                               const refKey = nom.trim().toLowerCase();
                               if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
-                                patchIng(si, ii, { nom, allergen: refAllergenMap[refKey] });
+                                patchIng(si, ii, { nom, allergen: parseAllergens(refAllergenMap[refKey]) });
                               } else {
                                 patchIng(si, ii, { nom });
                               }
@@ -750,16 +749,55 @@ export function RelectureEditor({
                         {g.note !== '' && (
                           <input value={g.note} onChange={(e) => patchIng(si, ii, { note: e.target.value })} className={`${champ} text-sm mt-1`} placeholder="note (pommade, à froid…)" />
                         )}
-                        <div className="grid gap-2 mt-1" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
-                          <input
-                            list="dl-allergens"
-                            value={g.allergen}
-                            onChange={(e) => patchIng(si, ii, { allergen: e.target.value })}
-                            className={`${champ} text-sm italic`}
-                            placeholder="Allergène (optionnel)"
-                            autoComplete="off"
-                          />
-                          <span className="col-span-3" />
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          {g.allergen.map((a) => (
+                            <span
+                              key={a}
+                              className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[13px]"
+                            >
+                              {a}
+                              <button
+                                type="button"
+                                title="Retirer"
+                                onClick={() => patchIng(si, ii, { allergen: g.allergen.filter((x) => x !== a) })}
+                                className="hover:text-error transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+                              </button>
+                            </span>
+                          ))}
+                          {g.allergen.length === 0 ? (
+                            // Aucun allergène : menu déroulant pour le premier choix.
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v && !g.allergen.includes(v)) patchIng(si, ii, { allergen: [...g.allergen, v] });
+                              }}
+                              className={`${champ} text-sm italic cursor-pointer`}
+                              style={{ width: 'auto' }}
+                              title="Ajouter un allergène (table de référence)"
+                            >
+                              <option value="">Allergène (optionnel)</option>
+                              {allAllergens.map((a) => (
+                                <option key={a.id} value={a.name}>
+                                  {a.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            g.allergen.length < MAX_ALLERGENS && (
+                              // Déjà au moins un allergène : bouton + ouvrant la popup.
+                              <button
+                                type="button"
+                                title="Ajouter un allergène"
+                                onClick={() => setAllergenPopup({ si, ii })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-outline-variant text-primary hover:bg-primary-container transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">add</span>
+                              </button>
+                            )
+                          )}
                         </div>
                         {isAdmin && g.nom.trim() && !known && (
                           <button
@@ -768,8 +806,8 @@ export function RelectureEditor({
                             disabled={refBusy === `ingredient_refs:${g.nom.trim().toLowerCase()}`}
                             className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
                             title={
-                              g.allergen.trim()
-                                ? `Ajouter cet ingrédient (allergène : ${g.allergen.trim()}) à la base de référence`
+                              g.allergen[0]
+                                ? `Ajouter cet ingrédient (allergène : ${g.allergen[0]}) à la base de référence`
                                 : 'Ajouter cet ingrédient à la base de référence'
                             }
                           >
@@ -913,11 +951,6 @@ export function RelectureEditor({
           <option key={n} value={n} />
         ))}
       </datalist>
-      <datalist id="dl-allergens">
-        {allAllergens.map((a) => (
-          <option key={a.id} value={a.name} />
-        ))}
-      </datalist>
 
       {/* Barre d'actions fixe */}
       <div
@@ -956,6 +989,71 @@ export function RelectureEditor({
           </button>
         </div>
       </div>
+
+      {/* Popup de choix des allergènes d'un ingrédient (max 3). Bascule chaque
+          allergène de la table de référence ; les modifications sont live. */}
+      {allergenPopup &&
+        (() => {
+          const { si, ii } = allergenPopup;
+          const ing = sps[si]?.ings[ii];
+          if (!ing) return null;
+          const selected = ing.allergen;
+          const toggle = (name: string) => {
+            if (selected.includes(name)) patchIng(si, ii, { allergen: selected.filter((x) => x !== name) });
+            else if (selected.length < MAX_ALLERGENS) patchIng(si, ii, { allergen: [...selected, name] });
+          };
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/30" onClick={() => setAllergenPopup(null)} />
+              <div className="relative w-full max-w-sm bg-surface-bright border border-outline-variant rounded-xl shadow-xl p-6">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-headline-md text-lg font-semibold text-primary">Allergènes</h3>
+                  <button type="button" onClick={() => setAllergenPopup(null)} className="text-on-surface-variant hover:text-primary">
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <p className="text-xs text-on-surface-variant mb-4">
+                  {ing.nom.trim() || 'Ingrédient'} — {selected.length}/{MAX_ALLERGENS} sélectionné(s)
+                </p>
+                {allAllergens.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant italic">Aucun allergène dans la table de référence.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
+                    {allAllergens.map((a) => {
+                      const on = selected.includes(a.name);
+                      const disabled = !on && selected.length >= MAX_ALLERGENS;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => toggle(a.name)}
+                          disabled={disabled}
+                          className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] border transition-colors ${
+                            on
+                              ? 'bg-primary text-on-primary border-primary'
+                              : disabled
+                                ? 'border-outline-variant text-on-surface-variant/40 cursor-not-allowed'
+                                : 'border-outline-variant text-on-surface hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {on && <span className="material-symbols-outlined text-[16px]">check</span>}
+                          {a.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAllergenPopup(null)}
+                  className="mt-6 w-full bg-primary text-on-primary py-2.5 rounded-lg text-sm font-semibold hover:opacity-90"
+                >
+                  Terminé
+                </button>
+              </div>
+            </div>
+          );
+        })()}
     </>
   );
 }

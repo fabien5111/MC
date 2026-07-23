@@ -5,7 +5,9 @@
 import Link from 'next/link';
 import { formatTime } from '@/lib/format';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
-import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
+import { MaryseIcon } from '@/components/MaryseIcon';
+import { AllergenPictos } from '@/components/recipe/AllergenPictos';
+import { cardAllergenNames, type RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;
@@ -27,11 +29,26 @@ export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: b
           )}
         </div>
         <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-label-md text-label-md text-secondary uppercase tracking-widest text-xs">
-              {r.recipe_types?.name || ''}
-            </span>
-            <span className="text-xs text-on-surface-variant">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {(r.difficulties?.level || 0) > 0 && (
+                <span className="flex items-center gap-0.5 shrink-0">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <MaryseIcon
+                      key={i}
+                      size={14}
+                      className={i <= (r.difficulties?.level || 0) ? 'text-primary' : 'text-outline-variant'}
+                    />
+                  ))}
+                </span>
+              )}
+              {r.recipe_types?.name && (
+                <span className="font-label-md text-label-md text-secondary uppercase tracking-widest text-xs truncate">
+                  {r.recipe_types.name}
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
               {formatTime(r.total_time || r.prep_time)}
             </span>
           </div>
@@ -39,6 +56,7 @@ export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: b
             {r.title}
           </h3>
           <p className="text-sm text-on-surface-variant line-clamp-2 mb-4">{r.description || ''}</p>
+          <AllergenPictos names={cardAllergenNames(r)} className="mb-4" iconClassName="w-6 h-6" />
           <div className="flex items-center justify-between">
             <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
             <span className="text-xs text-secondary">

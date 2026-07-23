@@ -4,7 +4,8 @@
 import Link from 'next/link';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
-import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
+import { AllergenPictos } from '@/components/recipe/AllergenPictos';
+import { cardAllergenNames, type RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;
@@ -37,6 +38,7 @@ export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFa
           )}
           <span className="font-label-md text-[12px] text-secondary">{level}</span>
         </span>
+        <AllergenPictos names={cardAllergenNames(r)} className="mt-1.5" iconClassName="w-5 h-5" />
         <h4 className="font-headline-md text-headline-md text-primary mt-1 group-hover:text-secondary transition-colors">
           {r.title}
         </h4>
