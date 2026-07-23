@@ -14,6 +14,12 @@ import { Spinner } from '@/components/Spinner';
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
 // instantanée ; un filet de sécurité masque l'overlay au bout de 12 s.
+//
+// Le départ est détecté à la fois sur `click` (souris, clavier) et sur
+// `pointerdown` pour les pointeurs tactiles : sur certains navigateurs
+// mobiles, l'écart entre le tapotement et l'événement `click` synthétique
+// peut dépasser le délai d'affichage, ce qui masque l'overlay avant même
+// qu'il ait eu la chance d'apparaître. `pointerdown` réagit dès l'appui.
 export function NavigationSpinner() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -39,28 +45,39 @@ export function NavigationSpinner() {
       safetyTimer.current = setTimeout(() => setVisible(false), 12000);
     };
 
-    const onClick = (e: MouseEvent) => {
-      // On ignore les clics « augmentés » (nouvel onglet, sélection…).
-      if (e.defaultPrevented || e.button !== 0) return;
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-      const anchor = (e.target as HTMLElement | null)?.closest?.('a');
-      if (!anchor) return;
-      if (!anchor.getAttribute('href')) return;
-      if (anchor.target && anchor.target !== '_self') return;
-      if (anchor.hasAttribute('download')) return;
+    const isInternalNavigation = (target: EventTarget | null) => {
+      const anchor = (target as HTMLElement | null)?.closest?.('a');
+      if (!anchor) return false;
+      if (!anchor.getAttribute('href')) return false;
+      if (anchor.target && anchor.target !== '_self') return false;
+      if (anchor.hasAttribute('download')) return false;
 
       const url = new URL(anchor.href, window.location.href);
       // Liens externes ou protocoles spéciaux (mailto:, tel:…) : ignorés.
-      if (url.origin !== window.location.origin) return;
+      if (url.origin !== window.location.origin) return false;
       // Même URL (ancre sur la page courante) : pas de navigation.
       if (
         url.pathname === window.location.pathname &&
         url.search === window.location.search
       ) {
-        return;
+        return false;
       }
-      start();
+      return true;
+    };
+
+    const onClick = (e: MouseEvent) => {
+      // On ignore les clics « augmentés » (nouvel onglet, sélection…).
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (isInternalNavigation(e.target)) start();
+    };
+
+    // Tactile : réagit dès l'appui plutôt que d'attendre le `click` de
+    // synthèse (voir note ci-dessus). Les pointeurs souris sont laissés à
+    // `click`, qui gère déjà correctement les modificateurs.
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return;
+      if (isInternalNavigation(e.target)) start();
     };
 
     // Retour / avant du navigateur.
@@ -68,9 +85,11 @@ export function NavigationSpinner() {
 
     // Capture pour intercepter avant que Next ne gère le clic du <Link>.
     document.addEventListener('click', onClick, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('popstate', onPopState);
     return () => {
       document.removeEventListener('click', onClick, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('popstate', onPopState);
       clearTimers();
     };
