@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
+import { NavigationSpinner } from '@/components/NavigationSpinner';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -30,6 +32,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body-md text-body-md bg-background text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+        {/* Overlay de chargement superposé pendant les navigations internes.
+            `useSearchParams` impose une frontière Suspense côté rendu. */}
+        <Suspense fallback={null}>
+          <NavigationSpinner />
+        </Suspense>
         {children}
       </body>
     </html>
