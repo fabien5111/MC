@@ -152,3 +152,17 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   if (error) console.error('getRecipeFull:', error.message);
   return (data as unknown as RecipeFull | null) ?? null;
 }
+
+// Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
+// visuel d'un allergène saisi en texte libre dans une recette (rapprochement
+// par nom). Colonne `picto` hors typage généré → client non typé, cast local.
+export async function getAllergensWithPicto(): Promise<AllergenRef[]> {
+  const supabase = await createClient();
+  const q = supabase.from('allergens' as never) as ReturnType<typeof supabase.from>;
+  const { data, error } = await q.select('id, name, picto, tooltip').order('name');
+  if (error) {
+    console.error('getAllergensWithPicto:', error.message);
+    return [];
+  }
+  return ((data as unknown as AllergenRef[]) ?? []).filter((a) => a.name);
+}
