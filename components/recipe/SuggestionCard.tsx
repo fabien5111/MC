@@ -38,12 +38,12 @@ export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFa
           )}
           <span className="font-label-md text-[12px] text-secondary">{level}</span>
         </span>
+        <AllergenPictos names={cardAllergenNames(r)} className="mt-1.5" iconClassName="w-5 h-5" />
         <h4 className="font-headline-md text-headline-md text-primary mt-1 group-hover:text-secondary transition-colors">
           {r.title}
         </h4>
         <p className="text-sm text-on-surface-variant line-clamp-2 mt-1">{r.description || ''}</p>
       </Link>
-      <AllergenPictos names={cardAllergenNames(r)} className="mt-2" iconClassName="w-5 h-5" />
       <FavoriteHeart recipeId={r.id} initialFav={isFav} />
       <Link
         href={`/recette/${r.id}?planifier=1`}
