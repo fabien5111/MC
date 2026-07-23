@@ -105,3 +105,86 @@ img {
   opacity: 1;
   font-style: italic;
 }
+
+/* ---- Spinner « Le Fouet » -------------------------------------------------
+   Indicateur de chargement maison (aucune dépendance). Un fouet de pâtisserie
+   vu de face qui pivote autour de son axe vertical : la cage de fils, disposée
+   en méridiens, orbite en volume grâce à `transform-style: preserve-3d` et
+   balaie de droite à gauche puis repasse derrière — le geste du foisonnement.
+   Le manche et sa « cerise » rose restent fixes au premier plan.
+   Taille pilotée par la variable `--s` (voir components/Spinner.tsx). */
+.whisk-scene {
+  position: relative;
+  display: inline-block;
+  width: var(--s, 64px);
+  height: var(--s, 64px);
+  perspective: calc(var(--s, 64px) * 2.8);
+}
+/* La cage : c'est elle qui tourne (rotateY animé). */
+.whisk-cage {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: whisk-turn 1.3s linear infinite;
+}
+/* Chaque fil est un méridien : un arc plan que l'on incline autour de l'axe
+   vertical (`--a`). L'ensemble des angles forme la cage du fouet. */
+.whisk-wire {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(var(--a, 0deg));
+}
+.whisk-wire svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.whisk-wire svg path {
+  fill: none;
+  stroke: #300a12; /* primary */
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+.whisk-wire--alt svg path {
+  stroke: #7e5259; /* secondary — nuance pour animer le volume */
+}
+/* Manche fixe au premier plan. */
+.whisk-handle {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  width: max(2px, calc(var(--s, 64px) * 0.05));
+  height: 34%;
+  border-radius: 999px;
+  background: #300a12; /* primary */
+  transform: translateX(-50%);
+}
+/* Boule au bout du manche (rappel « cerise » rose). */
+.whisk-knob {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  width: calc(var(--s, 64px) * 0.17);
+  height: calc(var(--s, 64px) * 0.17);
+  border-radius: 50%;
+  background: #fab4bd; /* primary-fixed-dim */
+  transform: translate(-50%, -55%);
+}
+@keyframes whisk-turn {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    /* sens négatif : la face avant part vers la gauche */
+    transform: rotateY(-360deg);
+  }
+}
+/* Accessibilité : pas de rotation continue, on fige une vue 3/4. */
+@media (prefers-reduced-motion: reduce) {
+  .whisk-cage {
+    animation: none;
+    transform: rotateY(-28deg);
+  }
+}
