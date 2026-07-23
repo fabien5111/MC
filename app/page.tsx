@@ -41,9 +41,9 @@ export default async function HomePage() {
     getHomeCategories(),
   ]);
   const featured = recipes[0] ?? null;
-  const categories = homeCategories.length
-    ? homeCategories.map((c) => ({ icon: c.category_icon, label: c.name }))
-    : FALLBACK_CATEGORIES;
+  const categories: { icon: string | null; picto: string | null; label: string }[] = homeCategories.length
+    ? homeCategories.map((c) => ({ icon: c.category_icon, picto: c.category_picto, label: c.name }))
+    : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label }));
 
   return (
     <>
@@ -189,8 +189,13 @@ export default async function HomePage() {
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
             {categories.map((c) => (
               <div key={c.label} className="group cursor-pointer flex flex-col items-center">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg">
-                  <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg overflow-hidden">
+                  {c.picto ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                    <img src={c.picto} alt="" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+                  ) : (
+                    <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>
+                  )}
                 </div>
                 <span className="font-label-md text-label-md text-center group-hover:text-primary font-medium">
                   {c.label}

@@ -39,9 +39,11 @@ export const SECTIONS: Section[] = [
     fields: [
       { key: 'name', label: 'Nom', required: true },
       { key: 'slug', label: 'Slug' },
-      // Renseigner une icône Material Symbols (ex. « cake ») promeut le tag en
-      // catégorie affichée sur l'accueil ; laisser vide pour un tag ordinaire.
+      // Renseigner une icône Material Symbols (ex. « cake ») OU un picto promeut
+      // le tag en catégorie affichée sur l'accueil ; laisser vide pour un tag
+      // ordinaire. Si un picto est fourni, il prime sur l'icône à l'affichage.
       { key: 'category_icon', label: 'Icône catégorie (accueil)' },
+      { key: 'category_picto', label: 'Picto catégorie (accueil)', type: 'image' },
       TOOLTIP,
     ],
   },
