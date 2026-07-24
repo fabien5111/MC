@@ -784,9 +784,12 @@ export function RelectureEditor({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
-                        {g.note !== '' && (
-                          <input value={g.note} onChange={(e) => patchIng(si, ii, { note: e.target.value })} className={`${champ} text-sm mt-1`} placeholder="note (pommade, à froid…)" />
-                        )}
+                        <input
+                          value={g.note}
+                          onChange={(e) => patchIng(si, ii, { note: e.target.value })}
+                          className={`${champ} text-sm mt-1`}
+                          placeholder="Commentaire (optionnel — pommade, à froid…)"
+                        />
                         <div className="flex flex-wrap items-center gap-1 mt-1">
                           {g.allergen.map((a) => (
                             <span
