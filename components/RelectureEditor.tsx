@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
-import type { Difficulty } from '@/lib/taxonomy';
+import type { Difficulty, Tag } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
@@ -50,6 +50,15 @@ const nextKey = () => `k${uid++}`;
 
 // Majuscule initiale d'un libellé (le reste inchangé).
 const capitalize = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+// Slug généré depuis un libellé (même règle que CreerForm / back-office des listes).
+const slugify = (name: string): string =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
 
 // Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
 const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
@@ -154,6 +163,7 @@ export function RelectureEditor({
   utensilRefs,
   difficulties,
   moldTypes,
+  tags,
   isAdmin,
 }: {
   importRow: ImportFull;
@@ -164,6 +174,7 @@ export function RelectureEditor({
   utensilRefs: string[];
   difficulties: Difficulty[];
   moldTypes: MoldType[];
+  tags: Tag[];
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -277,6 +288,24 @@ export function RelectureEditor({
 
   const unitOptions = useMemo(() => Array.from(new Set(units.filter(Boolean))), [units]);
 
+  // Tags : les libellés libres extraits par l'IA (recette.tags) sont
+  // rapprochés du référentiel par nom (insensible à la casse) pour
+  // présélectionner les tags correspondants ; les autres sont ignorés (pas
+  // d'ID à leur associer). Sélection ultérieure et création de nouveaux tags
+  // (admin) comme dans l'éditeur de recette.
+  const importedTagNames: string[] = Array.isArray((recette as any).tags) ? (recette as any).tags : [];
+  const [selectedTags, setSelectedTags] = useState<Map<number, string>>(() => {
+    const map = new Map<number, string>();
+    importedTagNames.forEach((name) => {
+      const match = tags.find((t) => t.name.trim().toLowerCase() === String(name).trim().toLowerCase());
+      if (match) map.set(match.id, match.name);
+    });
+    return map;
+  });
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [extraTags, setExtraTags] = useState<Tag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
+
   // Ingrédients / ustensiles / allergènes ajoutés au référentiel pendant la
   // relecture (admin) : complètent les listes serveur pour l'autocomplétion et
   // masquent aussitôt le bouton d'ajout, sans recharger la page.
@@ -326,6 +355,32 @@ export function RelectureEditor({
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
   }
+
+  // Création d'un tag inexistant dans le référentiel depuis la relecture
+  // (admin uniquement — bouton affiché si `isAdmin`). Le tag créé est
+  // aussitôt sélectionné pour la recette en cours. Un doublon (même nom)
+  // réutilise le tag existant plutôt que d'échouer sur l'unicité du slug.
+  async function addTag(name: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
+    if (existing) {
+      setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
+      setNewTagName('');
+      setTagPickerOpen(false);
+      return;
+    }
+    setRefBusy(`tags:${clean.toLowerCase()}`);
+    const { data, error } = await createClient().from('tags').insert({ name: clean, slug: slugify(clean) }).select('id, name, slug').single();
+    setRefBusy(null);
+    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    setExtraTags((p) => [...p, data]);
+    setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
+    setNewTagName('');
+    setTagPickerOpen(false);
+  }
+  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Mutations d'état ──
   const patchSp = (i: number, patch: Partial<SpState>) =>
@@ -418,6 +473,7 @@ export function RelectureEditor({
     p.notes = notes.trim() || null;
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
+    p.tags = [...selectedTags.values()];
     p.source = {
       ...(p.source || {}),
       auteur_origine: source.trim() || null,
@@ -582,6 +638,11 @@ export function RelectureEditor({
         .single();
       if (recErr || !recipe) throw new Error(recErr?.message || 'Création refusée');
 
+      if (selectedTags.size > 0) {
+        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
+        if (error) throw error;
+      }
+
       const sousPreps = p.sous_preparations || [];
       for (let i = 0; i < sousPreps.length; i++) {
         const sp = sousPreps[i];
@@ -696,6 +757,80 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
             <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
           </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Catégories et Tags</span>
+            <div className="flex flex-wrap gap-2 items-center mt-1">
+              {[...selectedTags].map(([id, name]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                  title="Retirer ce tag"
+                  className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                >
+                  {name}
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTagPickerOpen((v) => !v)}
+                  className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
+                >
+                  + Ajouter un tag
+                </button>
+                {tagPickerOpen && (
+                  <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
+                    {remainingTags.length ? (
+                      remainingTags.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
+                            setTagPickerOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
+                        >
+                          {t.name}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Création d'un tag hors référentiel — réservée aux admins. */}
+            {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addTag(newTagName);
+                    }
+                  }}
+                  placeholder="Nouveau tag (hors référentiel)"
+                  className={`${champ} flex-1 min-w-[200px] text-sm`}
+                />
+                <button
+                  type="button"
+                  disabled={!newTagName.trim() || refBusy === `tags:${newTagName.trim().toLowerCase()}`}
+                  onClick={() => addTag(newTagName)}
+                  title="Créer ce tag dans le référentiel et l'ajouter à la recette"
+                  className="px-4 py-1.5 rounded-full border border-primary text-primary font-label-md text-label-md hover:bg-primary hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  Créer le tag
+                </button>
+              </div>
+            )}
+          </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
