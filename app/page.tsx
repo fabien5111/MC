@@ -158,22 +158,28 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Recherche (cosmétique tant que la page de recherche n'est pas portée) */}
+        {/* Recherche — redirige vers la page de résultats /recherche */}
         <section className="mb-16">
           <div className="bg-surface-container-high rounded-xl p-8 md:py-16 flex flex-col items-center text-center">
             <h2 className="font-headline-lg text-headline-lg text-primary mb-6">
               Que souhaitez-vous préparer aujourd&apos;hui ?
             </h2>
-            <div className="w-full max-w-2xl relative">
+            <form action="/recherche" method="get" role="search" className="w-full max-w-2xl relative">
               <input
+                name="q"
                 className="w-full bg-white border-none rounded-full py-5 px-8 text-body-md focus:ring-2 focus:ring-primary luxury-shadow transition-all"
-                placeholder="Rechercher une recette, un ingrédient..."
-                type="text"
+                placeholder="Rechercher une recette, un ingrédient, un auteur..."
+                aria-label="Rechercher une recette, un ingrédient ou un auteur"
+                type="search"
               />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-on-primary p-3 rounded-full hover:bg-opacity-90 transition-colors shadow-lg">
+              <button
+                type="submit"
+                aria-label="Rechercher"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-on-primary p-3 rounded-full hover:bg-opacity-90 transition-colors shadow-lg"
+              >
                 <span className="material-symbols-outlined leading-none">search</span>
               </button>
-            </div>
+            </form>
           </div>
         </section>
 
