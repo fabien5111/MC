@@ -72,6 +72,14 @@ const numOrNull = (v: string): number | null => {
   return isNaN(n) ? null : n;
 };
 
+// Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
+function closestDifficulty(difficulties: Difficulty[], level: number): Difficulty | null {
+  return difficulties.reduce<Difficulty | null>(
+    (best, d) => (!best || Math.abs(d.level - level) < Math.abs(best.level - level) ? d : best),
+    null,
+  );
+}
+
 function initSp(sp: any, refAllergens: Record<string, string>): SpState {
   const lignesCuisson = (sp.etapes || []).reduce((n: number, e: any) => n + (e.duree_min || 0), 0);
   const tMax = (sp.etapes || []).reduce((m: number, e: any) => Math.max(m, e.temperature_c || 0), 0);
@@ -149,6 +157,8 @@ export function RelectureEditor({
   const [videoUrl, setVideoUrl] = useState(recette.source?.video_url || '');
   const [servingAdvice, setServingAdvice] = useState(ligatureOeuf(recette.conseils_degustation || ''));
   const [level, setLevel] = useState<number>(Number(recette.difficulte) || 0);
+  // Libellé de la difficulté (niveau le plus proche dans le référentiel), affiché à côté des pictos.
+  const levelLabel = useMemo(() => (level ? closestDifficulty(difficulties, level)?.name : null), [level, difficulties]);
   const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
   const [saveStatus, setSaveStatus] = useState('');
@@ -414,13 +424,7 @@ export function RelectureEditor({
         measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige };
       }
 
-      // Difficulté → ligne `difficulties` dont le niveau est le plus proche.
-      const diffRow = p.difficulte
-        ? difficulties.reduce<Difficulty | null>(
-            (best, d) => (!best || Math.abs(d.level - p.difficulte) < Math.abs(best.level - p.difficulte) ? d : best),
-            null,
-          )
-        : null;
+      const diffRow = p.difficulte ? closestDifficulty(difficulties, p.difficulte) : null;
 
       const { data: recipe, error: recErr } = await supabase
         .from('recipes')
@@ -570,18 +574,21 @@ export function RelectureEditor({
           </label>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
-            <div className="flex gap-2 mt-1">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setLevel(i + 1)}
-                  className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
-                  aria-label={`Niveau ${i + 1}`}
-                >
-                  <MaryseIcon size={24} />
-                </button>
-              ))}
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex gap-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLevel(i + 1)}
+                    className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
+                    aria-label={`Niveau ${i + 1}`}
+                  >
+                    <MaryseIcon size={24} />
+                  </button>
+                ))}
+              </div>
+              {levelLabel && <span className="font-label-md text-label-md text-on-surface">{levelLabel}</span>}
             </div>
           </div>
           <label className="flex flex-col gap-1">
