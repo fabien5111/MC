@@ -340,6 +340,7 @@ export type Database = {
       }
       ingredient_refs: {
         Row: {
+          allergen: string | null
           allergen_id: number | null
           created_at: string | null
           id: number
@@ -349,6 +350,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          allergen?: string | null
           allergen_id?: number | null
           created_at?: string | null
           id?: number
@@ -358,6 +360,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          allergen?: string | null
           allergen_id?: number | null
           created_at?: string | null
           id?: number
@@ -806,7 +809,6 @@ export type Database = {
           id: string
           is_public: boolean | null
           measure_type: string | null
-          mold_description: string | null
           mold_dims: Json | null
           mold_type_id: number | null
           prep_time: number | null
@@ -826,6 +828,7 @@ export type Database = {
           view_count: number | null
           wait_time: number | null
           yield_desc: string | null
+          yield_notes: string | null
           yield_qty: string | null
           yield_unit: string | null
         }
@@ -840,7 +843,6 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           measure_type?: string | null
-          mold_description?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -860,6 +862,7 @@ export type Database = {
           view_count?: number | null
           wait_time?: number | null
           yield_desc?: string | null
+          yield_notes?: string | null
           yield_qty?: string | null
           yield_unit?: string | null
         }
@@ -874,7 +877,6 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           measure_type?: string | null
-          mold_description?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -894,6 +896,7 @@ export type Database = {
           view_count?: number | null
           wait_time?: number | null
           yield_desc?: string | null
+          yield_notes?: string | null
           yield_qty?: string | null
           yield_unit?: string | null
         }
@@ -1088,6 +1091,7 @@ export type Database = {
       tags: {
         Row: {
           category_icon: string | null
+          category_picto: string | null
           created_at: string | null
           id: number
           name: string
@@ -1097,6 +1101,7 @@ export type Database = {
         }
         Insert: {
           category_icon?: string | null
+          category_picto?: string | null
           created_at?: string | null
           id?: number
           name: string
@@ -1106,6 +1111,7 @@ export type Database = {
         }
         Update: {
           category_icon?: string | null
+          category_picto?: string | null
           created_at?: string | null
           id?: number
           name?: string
