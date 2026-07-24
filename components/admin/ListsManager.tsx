@@ -26,6 +26,18 @@ function slugify(name: string): string {
     .replace(/[^a-z0-9-]/g, '');
 }
 
+// Version courte d'une URL pour l'affichage en tableau : le nom de domaine
+// (sans « www. ») si l'URL est valide, sinon un début tronqué. L'URL complète
+// reste accessible via le lien et l'infobulle (title).
+function shortUrl(raw: string): string {
+  try {
+    const host = new URL(raw).hostname.replace(/^www\./, '');
+    return host || raw;
+  } catch {
+    return raw.length > 30 ? raw.slice(0, 30) + '…' : raw;
+  }
+}
+
 export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]>; moldTypes: MoldType[] }) {
   const router = useRouter();
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -272,8 +284,15 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                             return (
                               <td key={f.key} className="px-6 py-4 text-sm">
                                 {val ? (
-                                  <a href={String(val)} target="_blank" rel="noopener noreferrer" className="text-secondary hover:text-primary underline underline-offset-2 break-all">
-                                    {String(val)}
+                                  <a
+                                    href={String(val)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={String(val)}
+                                    className="inline-flex items-center gap-1 max-w-[200px] text-secondary hover:text-primary underline underline-offset-2"
+                                  >
+                                    <span className="material-symbols-outlined text-sm shrink-0">link</span>
+                                    <span className="truncate">{shortUrl(String(val))}</span>
                                   </a>
                                 ) : (
                                   <span className="text-on-surface-variant text-xs">—</span>
