@@ -41,6 +41,7 @@ type SpState = {
   jour: string;
   ings: IngRow[];
   etapes: EtapeRow[];
+  tips: string;
   collapsed: boolean;
 };
 
@@ -139,6 +140,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const texte = ligatureOeuf(e.texte || '');
       return { key: nextKey(), imported: texte || null, texte };
     }),
+    tips: ligatureOeuf(sp.conseils || ''),
     collapsed: false,
   };
 }
@@ -368,6 +370,7 @@ export function RelectureEditor({
     jour: '0',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
+    tips: '',
     collapsed: false,
   });
   const addSp = () => {
@@ -460,6 +463,7 @@ export function RelectureEditor({
         }))
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
+      conseils: sp.tips.trim() || null,
     }));
     p.materiel = utensils
       .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
@@ -590,7 +594,7 @@ export function RelectureEditor({
           cook_temp: sp.temperature_c || null,
           wait_time: spt.attente_min || null,
           day_offset: sp.day_offset || 0,
-          tips: null,
+          tips: sp.conseils || null,
           sous_etapes: sousEtapes.length ? sousEtapes : null,
           order_index: i,
         });
@@ -833,10 +837,6 @@ export function RelectureEditor({
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">URL de la vidéo</span>
             <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} type="url" className={champ} placeholder="https://… (optionnel)" />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className={champ} placeholder="Conseils de conservation, variantes, astuces…" />
           </label>
         </div>
       </section>
@@ -1172,6 +1172,18 @@ export function RelectureEditor({
               <button type="button" onClick={() => addEtape(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une sous-étape
               </button>
+
+              {/* Conseils & astuces de l'étape */}
+              <div className="mt-6">
+                <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Conseils &amp; astuces de l&apos;étape</p>
+                <textarea
+                  value={sp.tips}
+                  onChange={(e) => patchSp(si, { tips: e.target.value })}
+                  rows={3}
+                  className={champ}
+                  placeholder="Une astuce particulière pour cette étape ?"
+                />
+              </div>
             </div>
             </>
             )}
@@ -1184,6 +1196,18 @@ export function RelectureEditor({
           <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
         </button>
       </div>
+
+      {/* Conseils et astuces de la recette */}
+      <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils et astuces de la recette</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={4}
+          className={champ}
+          placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)…"
+        />
+      </section>
 
       {/* Conseils de dégustation et de conservation (fin de recette) */}
       <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
