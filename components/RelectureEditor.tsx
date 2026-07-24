@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
+import type { Difficulty } from '@/lib/taxonomy';
+import { MaryseIcon } from '@/components/MaryseIcon';
 
 const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
 
@@ -122,6 +124,7 @@ export function RelectureEditor({
   refAllergens,
   allergens,
   utensilRefs,
+  difficulties,
   isAdmin,
 }: {
   importRow: ImportFull;
@@ -130,6 +133,7 @@ export function RelectureEditor({
   refAllergens: Record<string, string>;
   allergens: { id: number; name: string }[];
   utensilRefs: string[];
+  difficulties: Difficulty[];
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -144,6 +148,7 @@ export function RelectureEditor({
   );
   const [videoUrl, setVideoUrl] = useState(recette.source?.video_url || '');
   const [servingAdvice, setServingAdvice] = useState(ligatureOeuf(recette.conseils_degustation || ''));
+  const [level, setLevel] = useState<number>(Number(recette.difficulte) || 0);
   const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
   const [saveStatus, setSaveStatus] = useState('');
@@ -314,6 +319,7 @@ export function RelectureEditor({
     p.description = description.trim() || null;
     p.notes = notes.trim() || null;
     p.conseils_degustation = servingAdvice.trim() || null;
+    p.difficulte = level || null;
     p.source = {
       ...(p.source || {}),
       auteur_origine: source.trim() || null,
@@ -408,6 +414,14 @@ export function RelectureEditor({
         measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige };
       }
 
+      // Difficulté → ligne `difficulties` dont le niveau est le plus proche.
+      const diffRow = p.difficulte
+        ? difficulties.reduce<Difficulty | null>(
+            (best, d) => (!best || Math.abs(d.level - p.difficulte) < Math.abs(best.level - p.difficulte) ? d : best),
+            null,
+          )
+        : null;
+
       const { data: recipe, error: recErr } = await supabase
         .from('recipes')
         .insert({
@@ -421,6 +435,7 @@ export function RelectureEditor({
           source_url: p.source?.url_origine || null,
           video_url: p.source?.video_url || null,
           serving_advice: p.conseils_degustation || null,
+          difficulty_id: diffRow?.id ?? null,
           prep_time: t.preparation_min ?? null,
           cook_time: t.cuisson_min ?? null,
           wait_time: attente || null,
@@ -553,6 +568,22 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
             <input value={rendement} onChange={(e) => setRendement(e.target.value)} className={champ} placeholder="8 parts, 20 pièces, cercle 20 cm…" />
           </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
+            <div className="flex gap-2 mt-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setLevel(i + 1)}
+                  className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
+                  aria-label={`Niveau ${i + 1}`}
+                >
+                  <MaryseIcon size={24} />
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Source</span>
             <input value={source} onChange={(e) => setSource(e.target.value)} className={champ} placeholder="ex : Cyril Lignac" />
