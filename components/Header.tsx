@@ -5,6 +5,7 @@
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/auth';
 import { SignOutButton } from '@/components/SignOutButton';
+import { HeaderSearch } from '@/components/HeaderSearch';
 
 const NAV = [
   { href: '/', label: 'Accueil' },
@@ -47,9 +48,7 @@ export async function Header({ current = '/' }: { current?: string }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1" aria-label="Rechercher">
-            search
-          </button>
+          <HeaderSearch />
           {user ? (
             <>
               <Link
