@@ -79,20 +79,21 @@ export function HeaderSearch({ initialQuery = '' }: { initialQuery?: string }) {
             aria-label="Rechercher"
             className="flex-1 bg-transparent text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
           />
-          {isPending ? (
-            <span className="shrink-0 pr-1">
-              <Spinner size={30} label="Recherche en cours" />
-            </span>
-          ) : (
-            <button
-              type="submit"
-              className="shrink-0 bg-primary text-on-primary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
-            >
-              Rechercher
-            </button>
-          )}
+          <button
+            type="submit"
+            className="shrink-0 bg-primary text-on-primary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
+          >
+            Rechercher
+          </button>
         </form>
       </div>
+
+      {/* Fouet centré au milieu de l'écran pendant le chargement des résultats. */}
+      {isPending && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/40 backdrop-blur-[2px]">
+          <Spinner size={84} label="Recherche en cours" />
+        </div>
+      )}
     </>
   );
 }
