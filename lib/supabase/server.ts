@@ -13,6 +13,13 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Next.js intercepte fetch() pendant le rendu des Server Components et
+      // peut mettre en cache les requêtes de supabase-js : sans ce contournement,
+      // une donnée modifiée peut ne pas réapparaître avant un rechargement complet
+      // (router.refresh() seul ne suffit pas à invalider ce cache).
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
