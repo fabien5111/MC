@@ -9,6 +9,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
+import type { Difficulty, Tag } from '@/lib/taxonomy';
+import type { MoldType } from '@/lib/admin';
+import { MaryseIcon } from '@/components/MaryseIcon';
+import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
+
+type MeasureType = 'units' | 'mold' | 'dimensions';
 
 const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
 
@@ -24,7 +30,7 @@ const parseAllergens = (raw: string | null | undefined): string[] =>
 
 type IngRow = { key: string; imported: string | null; nom: string; qte: string; unite: string; note: string; allergen: string[] };
 type EtapeRow = { key: string; imported: string | null; texte: string };
-type MatRow = { key: string; nom: string };
+type MatRow = { key: string; nom: string; commentaire: string };
 type SpState = {
   key: string;
   nom: string;
@@ -35,7 +41,7 @@ type SpState = {
   jour: string;
   ings: IngRow[];
   etapes: EtapeRow[];
-  materiel: MatRow[];
+  tips: string;
   collapsed: boolean;
 };
 
@@ -44,6 +50,15 @@ const nextKey = () => `k${uid++}`;
 
 // Majuscule initiale d'un libellé (le reste inchangé).
 const capitalize = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+// Slug généré depuis un libellé (même règle que CreerForm / back-office des listes).
+const slugify = (name: string): string =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
 
 // Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
 const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
@@ -55,6 +70,25 @@ function rendementTxt(r: any): string {
   if (r.pieces) return `${r.pieces} pièces`;
   if (r.portions) return `${r.portions} parts`;
   return '';
+}
+
+// Description compacte d'un moule à partir de sa forme et de ses dimensions
+// (mêmes clés que `MOLD_FORME_DIMS`), ex. « Ø 20 × 4.5 cm ».
+function composeMoldDesc(forme: string | null | undefined, dims: Record<string, number>): string | null {
+  const keys = MOLD_FORME_DIMS[forme || ''] || [];
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
+  return parts.length ? parts.join(' × ') + ' cm' : null;
+}
+
+// Normalise une liste d'ustensiles (ancien format « chaîne simple » ou
+// nouveau format { nom, commentaire } ; filtre les entrées sans nom).
+function normMateriel(list: any): { nom: string; commentaire: string }[] {
+  return (Array.isArray(list) ? list : [])
+    .map((m: any) => ({
+      nom: capitalize(ligatureOeuf(String(typeof m === 'string' ? m : m?.nom || '')).trim()),
+      commentaire: ligatureOeuf(String(typeof m === 'string' ? '' : m?.commentaire || '')).trim(),
+    }))
+    .filter((m: { nom: string }) => m.nom);
 }
 
 function fmtDuree(min: number): string {
@@ -69,6 +103,14 @@ const numOrNull = (v: string): number | null => {
   const n = parseFloat(String(v).replace(',', '.'));
   return isNaN(n) ? null : n;
 };
+
+// Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
+function closestDifficulty(difficulties: Difficulty[], level: number): Difficulty | null {
+  return difficulties.reduce<Difficulty | null>(
+    (best, d) => (!best || Math.abs(d.level - level) < Math.abs(best.level - level) ? d : best),
+    null,
+  );
+}
 
 function initSp(sp: any, refAllergens: Record<string, string>): SpState {
   const lignesCuisson = (sp.etapes || []).reduce((n: number, e: any) => n + (e.duree_min || 0), 0);
@@ -107,10 +149,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const texte = ligatureOeuf(e.texte || '');
       return { key: nextKey(), imported: texte || null, texte };
     }),
-    materiel: (sp.materiel || [])
-      .map((m: any) => capitalize(ligatureOeuf(String(m || '')).trim()))
-      .filter(Boolean)
-      .map((nom: string) => ({ key: nextKey(), nom })),
+    tips: ligatureOeuf(sp.conseils || ''),
     collapsed: false,
   };
 }
@@ -122,6 +161,9 @@ export function RelectureEditor({
   refAllergens,
   allergens,
   utensilRefs,
+  difficulties,
+  moldTypes,
+  tags,
   isAdmin,
 }: {
   importRow: ImportFull;
@@ -130,6 +172,9 @@ export function RelectureEditor({
   refAllergens: Record<string, string>;
   allergens: { id: number; name: string }[];
   utensilRefs: string[];
+  difficulties: Difficulty[];
+  moldTypes: MoldType[];
+  tags: Tag[];
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -144,8 +189,81 @@ export function RelectureEditor({
   );
   const [videoUrl, setVideoUrl] = useState(recette.source?.video_url || '');
   const [servingAdvice, setServingAdvice] = useState(ligatureOeuf(recette.conseils_degustation || ''));
-  const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
+  const [level, setLevel] = useState<number>(Number(recette.difficulte) || 0);
+  // Libellé de la difficulté (niveau le plus proche dans le référentiel), affiché à côté des pictos.
+  const levelLabel = useMemo(() => (level ? closestDifficulty(difficulties, level)?.name : null), [level, difficulties]);
+  // Taille / quantité produite : 3 modes comme l'éditeur de recette (unités,
+  // moule, description libre). `recette.rendement` peut porter soit une
+  // correction déjà enregistrée (clé `mode`), soit le pivot brut de l'IA
+  // (`type`/`moule`/`pieces`/`portions`) — le type de moule n'est jamais
+  // déduit automatiquement (vocabulaire IA non aligné avec le référentiel
+  // `mold_types`), mais les dimensions importées pré-remplissent les champs
+  // dès qu'un type est choisi (mêmes clés courtes : diametre/hauteur/…).
+  const r0 = (recette.rendement || {}) as any;
+  const [measure, setMeasure] = useState<MeasureType>(
+    r0.mode === 'units' || r0.mode === 'mold' || r0.mode === 'dimensions'
+      ? r0.mode
+      : r0.type === 'moule' && r0.moule
+        ? 'mold'
+        : r0.pieces || r0.portions
+          ? 'units'
+          : 'dimensions',
+  );
+  const [qtyAmount, setQtyAmount] = useState(String(r0.pieces_corrige ?? r0.pieces ?? r0.portions ?? ''));
+  const [qtyUnit, setQtyUnit] = useState(r0.qty_unit_corrige || 'unite');
+  const [moldTypeId, setMoldTypeId] = useState(r0.moule_corrige?.type_id ? String(r0.moule_corrige.type_id) : '');
+  const [moldCount, setMoldCount] = useState(String(r0.moule_corrige?.count ?? r0.pieces ?? ''));
+  const [dims, setDims] = useState<Record<string, string>>(() => {
+    const d = r0.moule_corrige?.dims;
+    if (d && typeof d === 'object') return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, String(v)]));
+    const m = r0.moule || {};
+    const guess: Record<string, string> = {};
+    if (m.diametre_cm != null) guess.diametre = String(m.diametre_cm);
+    if (m.hauteur_cm != null) guess.hauteur = String(m.hauteur_cm);
+    if (m.longueur_cm != null) guess.longueur = String(m.longueur_cm);
+    if (m.largeur_cm != null) guess.largeur = String(m.largeur_cm);
+    return guess;
+  });
+  const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
+  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || ''));
+  // Rendement tel qu'extrait par l'IA (avant correction), affiché en référence à côté du sélecteur.
+  const importedRendement = rendementTxt(r0);
+  const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
+  // Résumé affiché dans le récap global (live).
+  const rendementLabel = useMemo(() => {
+    if (measure === 'units') return qtyAmount.trim() ? `${qtyAmount.trim()} ${UNITS_LBL[qtyUnit] || qtyUnit}` : '';
+    if (measure === 'dimensions') return dimsDesc.trim();
+    const parsed: Record<string, number> = {};
+    Object.entries(dims).forEach(([k, v]) => {
+      const n = parseFloat(String(v).replace(',', '.'));
+      if (!isNaN(n)) parsed[k] = n;
+    });
+    const dimsTxt = composeMoldDesc(moldForme, parsed);
+    const mtName = moldTypes.find((t) => String(t.id) === moldTypeId)?.name || '';
+    const count = parseInt(moldCount, 10);
+    return [count > 1 ? `${count} ×` : null, mtName, dimsTxt].filter(Boolean).join(' ');
+  }, [measure, qtyAmount, qtyUnit, dims, moldForme, moldTypeId, moldCount, dimsDesc, moldTypes]);
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
+  // Ustensiles de la recette : liste unique (regroupée, dédupliquée), au
+  // niveau de la recette et non plus répétée par sous-préparation — comme
+  // dans l'éditeur de recette. `recette.materiel` porte une correction déjà
+  // enregistrée si elle existe ; sinon on agrège l'ancien format réparti par
+  // sous-préparation (import brut ou anciens imports déjà en base).
+  const [utensils, setUtensils] = useState<MatRow[]>(() => {
+    if (Array.isArray(recette.materiel)) {
+      return normMateriel(recette.materiel).map((m) => ({ key: nextKey(), ...m }));
+    }
+    const seen = new Map<string, { nom: string; commentaire: string }>();
+    (recette.sous_preparations || []).forEach((sp: any) => {
+      normMateriel(sp.materiel).forEach((m) => {
+        const k = m.nom.toLowerCase();
+        const prev = seen.get(k);
+        if (!prev) seen.set(k, m);
+        else if (!prev.commentaire && m.commentaire) seen.set(k, { ...prev, commentaire: m.commentaire });
+      });
+    });
+    return Array.from(seen.values()).map((m) => ({ key: nextKey(), ...m }));
+  });
   const [saveStatus, setSaveStatus] = useState('');
   const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [justAddedSpKey, setJustAddedSpKey] = useState<string | null>(null);
@@ -169,6 +287,24 @@ export function RelectureEditor({
   const [stLbl, stCls] = STATUT_LBL[importRow.statut] || [importRow.statut, 'bg-secondary'];
 
   const unitOptions = useMemo(() => Array.from(new Set(units.filter(Boolean))), [units]);
+
+  // Tags : les libellés libres extraits par l'IA (recette.tags) sont
+  // rapprochés du référentiel par nom (insensible à la casse) pour
+  // présélectionner les tags correspondants ; les autres sont ignorés (pas
+  // d'ID à leur associer). Sélection ultérieure et création de nouveaux tags
+  // (admin) comme dans l'éditeur de recette.
+  const importedTagNames: string[] = Array.isArray((recette as any).tags) ? (recette as any).tags : [];
+  const [selectedTags, setSelectedTags] = useState<Map<number, string>>(() => {
+    const map = new Map<number, string>();
+    importedTagNames.forEach((name) => {
+      const match = tags.find((t) => t.name.trim().toLowerCase() === String(name).trim().toLowerCase());
+      if (match) map.set(match.id, match.name);
+    });
+    return map;
+  });
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [extraTags, setExtraTags] = useState<Tag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
 
   // Ingrédients / ustensiles / allergènes ajoutés au référentiel pendant la
   // relecture (admin) : complètent les listes serveur pour l'autocomplétion et
@@ -220,6 +356,32 @@ export function RelectureEditor({
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
   }
 
+  // Création d'un tag inexistant dans le référentiel depuis la relecture
+  // (admin uniquement — bouton affiché si `isAdmin`). Le tag créé est
+  // aussitôt sélectionné pour la recette en cours. Un doublon (même nom)
+  // réutilise le tag existant plutôt que d'échouer sur l'unicité du slug.
+  async function addTag(name: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
+    if (existing) {
+      setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
+      setNewTagName('');
+      setTagPickerOpen(false);
+      return;
+    }
+    setRefBusy(`tags:${clean.toLowerCase()}`);
+    const { data, error } = await createClient().from('tags').insert({ name: clean, slug: slugify(clean) }).select('id, name, slug').single();
+    setRefBusy(null);
+    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    setExtraTags((p) => [...p, data]);
+    setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
+    setNewTagName('');
+    setTagPickerOpen(false);
+  }
+  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
+
   // ── Mutations d'état ──
   const patchSp = (i: number, patch: Partial<SpState>) =>
     setSps((prev) => prev.map((sp, k) => (k === i ? { ...sp, ...patch } : sp)));
@@ -243,15 +405,11 @@ export function RelectureEditor({
     );
   const delIng = (si: number, ii: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ings: sp.ings.filter((_, j) => j !== ii) } : sp)));
-  // ── Matériel / ustensiles ──
-  const patchMat = (si: number, mi: number, nom: string) =>
-    setSps((prev) =>
-      prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.map((m, j) => (j === mi ? { ...m, nom } : m)) } : sp)),
-    );
-  const addMat = (si: number) =>
-    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, materiel: [...sp.materiel, { key: nextKey(), nom: '' }] } : sp)));
-  const delMat = (si: number, mi: number) =>
-    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.filter((_, j) => j !== mi) } : sp)));
+  // ── Ustensiles (liste unique au niveau de la recette) ──
+  const patchUtensil = (mi: number, patch: Partial<MatRow>) =>
+    setUtensils((prev) => prev.map((m, j) => (j === mi ? { ...m, ...patch } : m)));
+  const addUtensil = () => setUtensils((prev) => [...prev, { key: nextKey(), nom: '', commentaire: '' }]);
+  const delUtensil = (mi: number) => setUtensils((prev) => prev.filter((_, j) => j !== mi));
   const addEtape = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) => (k === si ? { ...sp, etapes: [...sp.etapes, { key: nextKey(), imported: null, texte: '' }] } : sp)),
@@ -268,7 +426,7 @@ export function RelectureEditor({
     jour: '0',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
-    materiel: [],
+    tips: '',
     collapsed: false,
   });
   const addSp = () => {
@@ -314,14 +472,35 @@ export function RelectureEditor({
     p.description = description.trim() || null;
     p.notes = notes.trim() || null;
     p.conseils_degustation = servingAdvice.trim() || null;
+    p.difficulte = level || null;
+    p.tags = [...selectedTags.values()];
     p.source = {
       ...(p.source || {}),
       auteur_origine: source.trim() || null,
       url_origine: sourceUrl.trim() || null,
       video_url: videoUrl.trim() || null,
     };
-    p.rendement = p.rendement || {};
-    p.rendement.libelle_corrige = rendement.trim() || null;
+    const dimsParsed: Record<string, number> = {};
+    Object.entries(dims).forEach(([k, v]) => {
+      const n = parseFloat(String(v).replace(',', '.'));
+      if (!isNaN(n)) dimsParsed[k] = n;
+    });
+    p.rendement = {
+      ...(p.rendement || {}),
+      mode: measure,
+      pieces_corrige: measure === 'units' ? numOrNull(qtyAmount) : null,
+      qty_unit_corrige: measure === 'units' ? qtyUnit : null,
+      moule_corrige:
+        measure === 'mold'
+          ? {
+              type_id: moldTypeId ? Number(moldTypeId) : null,
+              count: moldCount.trim() || null,
+              dims: Object.keys(dimsParsed).length ? dimsParsed : null,
+            }
+          : null,
+      libelle_corrige: measure === 'dimensions' ? dimsDesc.trim() || null : null,
+      notes_quantites: yieldNotes.trim() || null,
+    };
     p.sous_preparations = sps.map((sp, i) => ({
       ordre: i + 1,
       nom: sp.nom.trim() || `Étape ${i + 1}`,
@@ -342,8 +521,11 @@ export function RelectureEditor({
         }))
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
-      materiel: sp.materiel.map((m) => m.nom.trim()).filter(Boolean),
+      conseils: sp.tips.trim() || null,
     }));
+    p.materiel = utensils
+      .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
+      .filter((m) => m.nom);
     const somme = (k: string) => p.sous_preparations.reduce((n: number, sp: any) => n + (sp.temps?.[k] || 0), 0);
     p.temps = {
       preparation_min: somme('preparation_min') || null,
@@ -392,21 +574,44 @@ export function RelectureEditor({
       const attente = (t.repos_min || 0) + (t.congelation_min || 0);
       const total = (t.preparation_min || 0) + (t.cuisson_min || 0) + attente;
 
-      // Rendement → champs recettes
+      // Rendement → champs recettes (mode choisi en relecture, cf. readForm()).
       const r = p.rendement || {};
-      let measure: { measure_type: string; yield_qty: string | null; yield_unit: string | null; yield_desc: string | null } = {
-        measure_type: 'units',
-        yield_qty: null,
-        yield_unit: 'unite',
-        yield_desc: null,
-      };
-      if (r.type === 'moule' && r.moule) {
-        measure = { measure_type: 'mold', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige || r.moule.libelle || rendementTxt(r) || null };
-      } else if (r.pieces || r.portions) {
-        measure = { measure_type: 'units', yield_qty: String(r.pieces || r.portions), yield_unit: 'unite', yield_desc: r.libelle_corrige || null };
-      } else if (r.libelle_corrige) {
-        measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige };
+      let measure: {
+        measure_type: string;
+        yield_qty: string | null;
+        yield_unit: string | null;
+        yield_desc: string | null;
+        mold_type_id: number | null;
+        mold_dims: Record<string, number> | null;
+      } = { measure_type: 'units', yield_qty: null, yield_unit: 'unite', yield_desc: null, mold_type_id: null, mold_dims: null };
+      if (r.mode === 'mold' && r.moule_corrige) {
+        const mtId: number | null = r.moule_corrige.type_id || null;
+        const forme = moldTypes.find((t) => t.id === mtId)?.forme || null;
+        const dimsObj: Record<string, number> = r.moule_corrige.dims || {};
+        const count = parseInt(r.moule_corrige.count, 10);
+        const dimsTxt = composeMoldDesc(forme, dimsObj);
+        measure = {
+          measure_type: 'mold',
+          yield_qty: count > 0 ? String(count) : null,
+          yield_unit: null,
+          yield_desc: dimsTxt ? (count > 1 ? `${count} × ${dimsTxt}` : dimsTxt) : null,
+          mold_type_id: mtId,
+          mold_dims: Object.keys(dimsObj).length ? dimsObj : null,
+        };
+      } else if (r.mode === 'units' && r.pieces_corrige) {
+        measure = {
+          measure_type: 'units',
+          yield_qty: String(r.pieces_corrige),
+          yield_unit: r.qty_unit_corrige || 'unite',
+          yield_desc: null,
+          mold_type_id: null,
+          mold_dims: null,
+        };
+      } else if (r.mode === 'dimensions' && r.libelle_corrige) {
+        measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige, mold_type_id: null, mold_dims: null };
       }
+
+      const diffRow = p.difficulte ? closestDifficulty(difficulties, p.difficulte) : null;
 
       const { data: recipe, error: recErr } = await supabase
         .from('recipes')
@@ -421,6 +626,8 @@ export function RelectureEditor({
           source_url: p.source?.url_origine || null,
           video_url: p.source?.video_url || null,
           serving_advice: p.conseils_degustation || null,
+          yield_notes: r.notes_quantites || null,
+          difficulty_id: diffRow?.id ?? null,
           prep_time: t.preparation_min ?? null,
           cook_time: t.cuisson_min ?? null,
           wait_time: attente || null,
@@ -430,6 +637,11 @@ export function RelectureEditor({
         .select()
         .single();
       if (recErr || !recipe) throw new Error(recErr?.message || 'Création refusée');
+
+      if (selectedTags.size > 0) {
+        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
+        if (error) throw error;
+      }
 
       const sousPreps = p.sous_preparations || [];
       for (let i = 0; i < sousPreps.length; i++) {
@@ -446,7 +658,7 @@ export function RelectureEditor({
           cook_temp: sp.temperature_c || null,
           wait_time: spt.attente_min || null,
           day_offset: sp.day_offset || 0,
-          tips: null,
+          tips: sp.conseils || null,
           sous_etapes: sousEtapes.length ? sousEtapes : null,
           order_index: i,
         });
@@ -472,11 +684,11 @@ export function RelectureEditor({
         }
       }
 
-      const mats = Array.from(
-        new Set(sousPreps.flatMap((sp: any) => sp.materiel || []).map((m: any) => String(m).trim()).filter(Boolean)),
-      ) as string[];
+      const mats = (p.materiel || []).filter((m: any) => m?.nom);
       if (mats.length) {
-        const { error } = await supabase.from('recipe_utensils').insert(mats.map((m, i) => ({ recipe_id: recipe.id, name: m, order_index: i })));
+        const { error } = await supabase
+          .from('recipe_utensils')
+          .insert(mats.map((m: any, i: number) => ({ recipe_id: recipe.id, name: m.nom, comment: m.commentaire || null, order_index: i })));
         if (error) throw error;
       }
 
@@ -545,14 +757,224 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
             <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
           </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Catégories et Tags</span>
+            <div className="flex flex-wrap gap-2 items-center mt-1">
+              {[...selectedTags].map(([id, name]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                  title="Retirer ce tag"
+                  className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                >
+                  {name}
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTagPickerOpen((v) => !v)}
+                  className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
+                >
+                  + Ajouter un tag
+                </button>
+                {tagPickerOpen && (
+                  <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
+                    {remainingTags.length ? (
+                      remainingTags.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
+                            setTagPickerOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
+                        >
+                          {t.name}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Création d'un tag hors référentiel — réservée aux admins. */}
+            {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addTag(newTagName);
+                    }
+                  }}
+                  placeholder="Nouveau tag (hors référentiel)"
+                  className={`${champ} flex-1 min-w-[200px] text-sm`}
+                />
+                <button
+                  type="button"
+                  disabled={!newTagName.trim() || refBusy === `tags:${newTagName.trim().toLowerCase()}`}
+                  onClick={() => addTag(newTagName)}
+                  title="Créer ce tag dans le référentiel et l'ajouter à la recette"
+                  className="px-4 py-1.5 rounded-full border border-primary text-primary font-label-md text-label-md hover:bg-primary hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  Créer le tag
+                </button>
+              </div>
+            )}
+          </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
-            <input value={rendement} onChange={(e) => setRendement(e.target.value)} className={champ} placeholder="8 parts, 20 pièces, cercle 20 cm…" />
-          </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Taille / Nombre de portions</span>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 mt-1">
+              <div className="text-sm text-on-surface-variant lg:pt-1.5">
+                {importedRendement ? '• ' + importedRendement : <span className="italic opacity-60">non précisé à l&apos;import</span>}
+              </div>
+              <div>
+            <div className="flex flex-wrap gap-4">
+              {(
+                [
+                  ['units', "Par nombre d'unités / poids"],
+                  ['mold', 'Par type de moule / cercle'],
+                  ['dimensions', 'Description libre'],
+                ] as const
+              ).map(([v, lbl]) => (
+                <label key={v} className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <div className={`w-4 h-4 border-2 rounded-full transition-colors ${measure === v ? 'border-primary' : 'border-outline-variant'}`} />
+                    <div className={`absolute w-2 h-2 bg-primary rounded-full transition-opacity ${measure === v ? 'opacity-100' : 'opacity-0'}`} />
+                  </div>
+                  <input type="radio" checked={measure === v} onChange={() => setMeasure(v)} className="sr-only" />
+                  <span className="text-sm">{lbl}</span>
+                </label>
+              ))}
+            </div>
+
+            {measure === 'units' && (
+              <div className="flex flex-wrap gap-3 items-end mt-3">
+                <input
+                  type="number"
+                  min={0}
+                  value={qtyAmount}
+                  onChange={(e) => setQtyAmount(e.target.value)}
+                  className={champ}
+                  style={{ width: '6rem' }}
+                  placeholder="ex : 6"
+                />
+                <select value={qtyUnit} onChange={(e) => setQtyUnit(e.target.value)} className={champ} style={{ width: 'auto' }}>
+                  {Object.entries(UNITS_LBL).map(([k, lbl]) => (
+                    <option key={k} value={k}>
+                      {lbl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {measure === 'mold' && (
+              <div className="mt-3 flex flex-col gap-3">
+                <select
+                  value={moldTypeId}
+                  onChange={(e) => setMoldTypeId(e.target.value)}
+                  className={champ}
+                  style={{ maxWidth: '20rem' }}
+                >
+                  <option value="" disabled>
+                    Choisir le type de moule
+                  </option>
+                  {moldTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-on-surface-variant">Nombre</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={moldCount}
+                      onChange={(e) => setMoldCount(e.target.value)}
+                      className={champ}
+                      style={{ width: '5rem' }}
+                      placeholder="ex : 6"
+                    />
+                  </label>
+                  {(MOLD_FORME_DIMS[moldForme || ''] || []).map((k) => (
+                    <label key={k} className="flex flex-col gap-1">
+                      <span className="text-xs text-on-surface-variant">{DIM_LABELS[k]}</span>
+                      <span className="flex items-baseline gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={dims[k] || ''}
+                          onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))}
+                          className={champ}
+                          style={{ width: '5rem' }}
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-on-surface-variant">cm</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {measure === 'dimensions' && (
+              <input
+                value={dimsDesc}
+                onChange={(e) => setDimsDesc(e.target.value)}
+                className={`${champ} mt-3`}
+                placeholder="ex : 20 cm × 5 cm, Ø 22 cm…"
+              />
+            )}
+
+            <label className="flex flex-col gap-1 mt-4">
+              <span className="text-xs text-on-surface-variant">Complément d&apos;informations sur les quantités</span>
+              <textarea
+                value={yieldNotes}
+                onChange={(e) => setYieldNotes(e.target.value)}
+                rows={3}
+                className={`${champ} text-sm`}
+                placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
+              />
+            </label>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex gap-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLevel(i + 1)}
+                    className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
+                    aria-label={`Niveau ${i + 1}`}
+                  >
+                    <MaryseIcon size={24} />
+                  </button>
+                ))}
+              </div>
+              {levelLabel && <span className="font-label-md text-label-md text-on-surface">{levelLabel}</span>}
+            </div>
+          </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Source</span>
             <input value={source} onChange={(e) => setSource(e.target.value)} className={champ} placeholder="ex : Cyril Lignac" />
@@ -565,11 +987,59 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">URL de la vidéo</span>
             <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} type="url" className={champ} placeholder="https://… (optionnel)" />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Notes / conseils</span>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className={champ} placeholder="Conseils de conservation, variantes, astuces…" />
-          </label>
         </div>
+      </section>
+
+      {/* Ustensiles (liste unique de la recette, regroupée depuis les sous-préparations importées) */}
+      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Ustensiles</h2>
+        <div className="flex flex-col mb-2">
+          {utensils.length === 0 ? (
+            <p className="text-sm italic text-on-surface-variant py-1">Aucun ustensile importé</p>
+          ) : (
+            utensils.map((m, mi) => {
+              const known = knownUtensils.has(m.nom.trim().toLowerCase());
+              return (
+                <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="dl-utensils"
+                      value={m.nom}
+                      onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
+                      className={champ}
+                      placeholder="Nom de l'ustensile"
+                      autoComplete="off"
+                    />
+                    <button type="button" title="Supprimer" onClick={() => delUtensil(mi)} tabIndex={-1} className="text-error hover:opacity-70 shrink-0">
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                  <input
+                    value={m.commentaire}
+                    onChange={(e) => patchUtensil(mi, { commentaire: e.target.value })}
+                    className={`${champ} text-sm mt-1`}
+                    placeholder="Commentaire (optionnel — taille, réglage…)"
+                  />
+                  {isAdmin && m.nom.trim() && !known && (
+                    <button
+                      type="button"
+                      onClick={() => addUtensilRef(m.nom)}
+                      disabled={refBusy === `utensils:${m.nom.trim().toLowerCase()}`}
+                      className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                      title="Ajouter cet ustensile à la base de référence"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                      Ajouter «&nbsp;{m.nom.trim()}&nbsp;» au référentiel
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <button type="button" onClick={addUtensil} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
+          <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ustensile
+        </button>
       </section>
 
       {/* Sous-préparations */}
@@ -746,9 +1216,12 @@ export function RelectureEditor({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
-                        {g.note !== '' && (
-                          <input value={g.note} onChange={(e) => patchIng(si, ii, { note: e.target.value })} className={`${champ} text-sm mt-1`} placeholder="note (pommade, à froid…)" />
-                        )}
+                        <input
+                          value={g.note}
+                          onChange={(e) => patchIng(si, ii, { note: e.target.value })}
+                          className={`${champ} text-sm mt-1`}
+                          placeholder="Commentaire (optionnel — pommade, à froid…)"
+                        />
                         <div className="flex flex-wrap items-center gap-1 mt-1">
                           {g.allergen.map((a) => (
                             <span
@@ -825,50 +1298,6 @@ export function RelectureEditor({
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient
               </button>
 
-              {/* Ustensiles / matériel */}
-              <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Ustensiles</p>
-              <div className="flex flex-col mb-2">
-                {sp.materiel.length === 0 ? (
-                  <p className="text-sm italic text-on-surface-variant py-1">Aucun ustensile importé</p>
-                ) : (
-                  sp.materiel.map((m, mi) => {
-                    const known = knownUtensils.has(m.nom.trim().toLowerCase());
-                    return (
-                      <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
-                        <div className="flex items-center gap-2">
-                          <input
-                            list="dl-utensils"
-                            value={m.nom}
-                            onChange={(e) => patchMat(si, mi, e.target.value)}
-                            className={champ}
-                            placeholder="Nom de l'ustensile"
-                            autoComplete="off"
-                          />
-                          <button type="button" title="Supprimer" onClick={() => delMat(si, mi)} tabIndex={-1} className="text-error hover:opacity-70 shrink-0">
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                        {isAdmin && m.nom.trim() && !known && (
-                          <button
-                            type="button"
-                            onClick={() => addUtensilRef(m.nom)}
-                            disabled={refBusy === `utensils:${m.nom.trim().toLowerCase()}`}
-                            className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
-                            title="Ajouter cet ustensile à la base de référence"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">add_circle</span>
-                            Ajouter «&nbsp;{m.nom.trim()}&nbsp;» au référentiel
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <button type="button" onClick={() => addMat(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-6">
-                <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ustensile
-              </button>
-
               {/* Étapes */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Sous-étapes importées</p>
@@ -892,6 +1321,18 @@ export function RelectureEditor({
               <button type="button" onClick={() => addEtape(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une sous-étape
               </button>
+
+              {/* Conseils & astuces de l'étape */}
+              <div className="mt-6">
+                <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Conseils &amp; astuces de l&apos;étape</p>
+                <textarea
+                  value={sp.tips}
+                  onChange={(e) => patchSp(si, { tips: e.target.value })}
+                  rows={3}
+                  className={champ}
+                  placeholder="Une astuce particulière pour cette étape ?"
+                />
+              </div>
             </div>
             </>
             )}
@@ -904,6 +1345,18 @@ export function RelectureEditor({
           <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
         </button>
       </div>
+
+      {/* Conseils et astuces de la recette */}
+      <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils et astuces de la recette</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={4}
+          className={champ}
+          placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)…"
+        />
+      </section>
 
       {/* Conseils de dégustation et de conservation (fin de recette) */}
       <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
@@ -929,7 +1382,7 @@ export function RelectureEditor({
               ['Attente', sumAttente ? fmtDuree(sumAttente) : '—'],
               ['Cuisson', sumCuisson ? fmtDuree(sumCuisson) : '—'],
               ['Temps total', sumTotal ? fmtDuree(sumTotal) : '—'],
-              ['Rendement', rendement.trim() || '—'],
+              ['Rendement', rendementLabel.trim() || '—'],
               ["Nombre d'étapes", String(sps.length)],
             ] as const
           ).map(([lbl, val]) => (

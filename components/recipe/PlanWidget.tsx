@@ -37,6 +37,7 @@ export type PlanRecipe = {
   moldDims: Record<string, number> | null;
   moldSummary: string | null;
   rendement: string | null;
+  yieldNotes: string | null;
 };
 
 export type ExistingPlan = { id: number; plannedDate: string; factor: number | null; overrides: PlanOverrides };
@@ -131,6 +132,7 @@ export function PlanWidget({
           recette: {
             titre: recipe.title,
             rendement: recipe.rendement,
+            yield_notes: recipe.yieldNotes,
             ingredients: ingredients.map((m) => ({ nom: m.name, quantite: m.qty, unite: m.unit })),
           },
           moules_reference: [],

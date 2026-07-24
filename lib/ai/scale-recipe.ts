@@ -31,6 +31,10 @@ Règles :
   rapport des NOMBRES DE PERSONNES : cible / départ.
 
 - « J'ai seulement X d'un ingrédient » : coefficient = X / quantité actuelle de cet ingrédient.
+- Un « Complément d'informations sur les quantités » peut préciser des éléments non
+  déductibles du rendement seul (ex. moule rempli aux 3/4, marge de fonçage
+  particulière, quantité pensée pour X pièces au-delà du rendement affiché) :
+  tiens-en compte dans le calcul quand il est pertinent pour la demande.
 - Le coefficient doit être strictement positif ; arrondis-le à 2 décimales.
 - Si la demande est ambiguë, impossible ou sans rapport avec un redimensionnement,
   renvoie coefficient null et explique brièvement pourquoi.
@@ -41,7 +45,7 @@ Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
 {"calcul": "<surfaces/volumes chiffrés de départ et cible + le rapport, en une ligne>", "coefficient": <nombre ou null>, "explication": "<une phrase claire en français pour l'utilisateur, mentionnant la méthode employée>"}`;
 
 type Ingredient = { nom?: string; name?: string; quantite?: unknown; quantity?: unknown; unite?: string; unit?: string };
-type Recette = { titre?: string; title?: string; rendement?: unknown; ingredients?: Ingredient[] };
+type Recette = { titre?: string; title?: string; rendement?: unknown; yield_notes?: string | null; ingredients?: Ingredient[] };
 type MouleRef = { nom?: string; personnes?: number | null };
 
 export function buildContenu(
@@ -63,6 +67,7 @@ export function buildContenu(
 
 Recette : ${r.titre || r.title || 'Sans titre'}
 Rendement actuel : ${r.rendement || '(non précisé)'}
+Complément d'informations sur les quantités : ${r.yield_notes || '(aucun)'}
 Ingrédients :
 ${liste || '(non fournis)'}
 ${moulesTxt}

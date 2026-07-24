@@ -191,6 +191,7 @@ export type RecipeFull = {
   yield_qty: string | null;
   yield_unit: string | null;
   yield_desc: string | null;
+  yield_notes: string | null;
   mold_type_id: number | null;
   mold_dims: import('@/lib/database.types').Json | null;
   prep_time: number | null;
