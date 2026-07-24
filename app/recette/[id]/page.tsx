@@ -432,6 +432,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   : null,
               moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
               rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              yieldNotes: recipe.yield_notes,
             }}
             moldTypes={moldTypes}
             ingredients={merged}

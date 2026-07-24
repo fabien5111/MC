@@ -214,6 +214,7 @@ export function RelectureEditor({
     return guess;
   });
   const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
+  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || ''));
   // Rendement tel qu'extrait par l'IA (avant correction), affiché en référence à côté du sélecteur.
   const importedRendement = rendementTxt(r0);
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
@@ -442,6 +443,7 @@ export function RelectureEditor({
             }
           : null,
       libelle_corrige: measure === 'dimensions' ? dimsDesc.trim() || null : null,
+      notes_quantites: yieldNotes.trim() || null,
     };
     p.sous_preparations = sps.map((sp, i) => ({
       ordre: i + 1,
@@ -568,6 +570,7 @@ export function RelectureEditor({
           source_url: p.source?.url_origine || null,
           video_url: p.source?.video_url || null,
           serving_advice: p.conseils_degustation || null,
+          yield_notes: r.notes_quantites || null,
           difficulty_id: diffRow?.id ?? null,
           prep_time: t.preparation_min ?? null,
           cook_time: t.cuisson_min ?? null,
@@ -804,6 +807,17 @@ export function RelectureEditor({
                 placeholder="ex : 20 cm × 5 cm, Ø 22 cm…"
               />
             )}
+
+            <label className="flex flex-col gap-1 mt-4">
+              <span className="text-xs text-on-surface-variant">Complément d&apos;informations sur les quantités</span>
+              <textarea
+                value={yieldNotes}
+                onChange={(e) => setYieldNotes(e.target.value)}
+                rows={3}
+                className={`${champ} text-sm`}
+                placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
+              />
+            </label>
               </div>
             </div>
           </div>

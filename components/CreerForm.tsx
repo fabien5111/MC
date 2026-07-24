@@ -219,6 +219,7 @@ export function CreerForm({
   const [newTagName, setNewTagName] = useState('');
 
   const [measure, setMeasure] = useState<MeasureType>((editRecipe?.measure_type as MeasureType) || 'units');
+  const [yieldNotes, setYieldNotes] = useState(editRecipe?.yield_notes || '');
   const [qtyAmount, setQtyAmount] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_qty || '' : '');
   const [qtyUnit, setQtyUnit] = useState(editRecipe?.measure_type === 'units' ? editRecipe?.yield_unit || 'unite' : 'unite');
   const [moldTypeId, setMoldTypeId] = useState(editRecipe?.mold_type_id ? String(editRecipe.mold_type_id) : '');
@@ -519,6 +520,7 @@ export function CreerForm({
         yield_desc: yDesc,
         mold_type_id: moldTypeIdNum,
         mold_dims: moldDims,
+        yield_notes: yieldNotes.trim() || null,
         tips: tips.trim() || null,
         source: source.trim() || null,
         source_url: sourceUrl.trim() || null,
@@ -949,6 +951,19 @@ export function CreerForm({
                 />
               </div>
             )}
+
+            <div className="mt-6">
+              <label className="font-label-md text-label-md text-outline uppercase mb-2 block">
+                Complément d&apos;informations sur les quantités
+              </label>
+              <textarea
+                value={yieldNotes}
+                onChange={(e) => setYieldNotes(e.target.value)}
+                className="editorial-input w-full font-body-md text-on-surface italic"
+                placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
+                rows={3}
+              />
+            </div>
           </div>
         </section>
 
