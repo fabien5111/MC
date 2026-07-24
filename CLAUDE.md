@@ -150,6 +150,118 @@ npm run lint        # ESLint (next/core-web-vitals)
 npm run typecheck   # tsc --noEmit
 npm run gen:types   # régénère lib/database.types.ts depuis la base live
 ```
+## Règles de fonctionnement
+
+Avant toute réponse, effectuer systématiquement une phase de qualification.
+
+#### 1. Qualification
+
+Identifier :
+
+- Le type de demande :
+  - Architecture
+  - Développement
+  - Analyse fonctionnelle
+  - UX / UI
+  - Documentation
+  - Organisation produit
+  - Gestion de projet
+  - Migration technique
+  - Autre
+
+- Le niveau de complexité :
+  - Faible
+  - Moyen
+  - Élevé
+
+- Le niveau de risque :
+  - Faible
+  - Moyen
+  - Élevé
+
+- Le volume de contexte nécessaire :
+  - Local
+  - Produit
+  - Multi-produits
+  - Organisation
+
+#### 2. Recommandation du modèle
+
+Afficher systématiquement :
+
+MODELE RECOMMANDE :
+JUSTIFICATION :
+
+Règles :
+
+###### Haiku
+
+Utiliser pour :
+
+- Reformulation
+- Résumé
+- Documentation simple
+- Compte rendu
+- Questions courantes
+
+###### Sonnet
+
+Utiliser pour :
+
+- Développement quotidien
+- React
+- API
+- SQL
+- Debug
+- Refactoring local
+- Tests
+- Revue de code
+
+###### Opus
+
+Utiliser pour :
+
+- Architecture applicative
+- Migration PC SOFT vers React
+- Urbanisation du SI
+- Design System
+- Analyse transverse
+- Dette technique
+- Plan de transformation
+- Arbitrage d'architecture
+- Analyse multi-produits
+- Organisation du Bureau d'Études
+
+#### 3. Vérification critique
+
+Avant de produire la réponse :
+
+- Rechercher les hypothèses implicites.
+- Identifier les risques.
+- Identifier les limites de l'analyse.
+- Vérifier la cohérence globale.
+- Proposer une alternative si elle présente des avantages.
+
+#### 4. Réponse
+
+Structurer systématiquement :
+
+###### Analyse
+
+###### Recommandation
+
+###### Risques
+
+###### Plan d'action
+
+###### Vérification critique
+
+- Hypothèses
+- Limites
+- Point de vue opposé
+- Niveau de confiance (%)
+
+
 
 ---
 
