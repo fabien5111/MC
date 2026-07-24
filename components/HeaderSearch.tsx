@@ -1,16 +1,27 @@
 'use client';
 // Loupe de recherche du bandeau haut (Client Component). Au clic, une zone de
 // saisie glisse en dessous du menu (panneau pleine largeur). La saisie validée
-// (Entrée ou bouton) redirige vers la page de résultats `/recherche?q=…` ; le
-// fouet (Spinner « Le Fouet ») tourne pendant le chargement des résultats.
+// (Entrée ou bouton) redirige vers la page de résultats `/recherche?q=…`.
+//
+// Pendant le chargement des résultats, le fouet (Spinner « Le Fouet ») tourne
+// au milieu de l'écran. L'overlay est rendu via un portail vers `document.body`
+// car le header porte un `backdrop-filter` (backdrop-blur), qui piégerait
+// sinon les éléments `position: fixed` à l'intérieur de la barre.
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { Spinner } from '@/components/Spinner';
 
 export function HeaderSearch({ initialQuery = '' }: { initialQuery?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(initialQuery);
+  const [mounted, setMounted] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Le portail n'est disponible qu'après le montage côté client.
+  useEffect(() => setMounted(true), []);
 
   // Focus automatique du champ à l'ouverture du panneau.
   useEffect(() => {
@@ -33,9 +44,11 @@ export function HeaderSearch({ initialQuery = '' }: { initialQuery?: string }) {
       inputRef.current?.focus();
       return;
     }
-    // La navigation déclenche `app/recherche/loading.tsx` : le fouet tourne
-    // au milieu de la page pendant le chargement des résultats.
-    router.push(`/recherche?q=${encodeURIComponent(q)}`);
+    // useTransition : `isPending` reste vrai jusqu'à ce que la page de
+    // résultats soit chargée et rendue → le fouet tourne pendant la recherche.
+    startTransition(() => {
+      router.push(`/recherche?q=${encodeURIComponent(q)}`);
+    });
   }
 
   return (
@@ -83,6 +96,18 @@ export function HeaderSearch({ initialQuery = '' }: { initialQuery?: string }) {
           </button>
         </form>
       </div>
+
+      {/* Fouet centré au milieu de l'écran pendant le chargement des résultats.
+          Rendu dans <body> (portail) pour ne pas être piégé par le
+          backdrop-filter du header. */}
+      {mounted &&
+        isPending &&
+        createPortal(
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/50 backdrop-blur-[2px]">
+            <Spinner size={96} label="Recherche en cours…" />
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
