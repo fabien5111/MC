@@ -10,6 +10,7 @@ import {
 } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getDifficulties } from '@/lib/taxonomy';
+import { getMoldTypes } from '@/lib/admin';
 import { Header } from '@/components/Header';
 import { RelectureEditor } from '@/components/RelectureEditor';
 
@@ -22,7 +23,7 @@ export default async function RelecturePage({ params }: Params) {
   const { id } = await params;
   const numId = Number(id);
 
-  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, admin] = await Promise.all([
+  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, admin] = await Promise.all([
     Number.isFinite(numId) ? getImport(numId) : Promise.resolve(null),
     getUnits(),
     getIngredientRefNames(),
@@ -30,6 +31,7 @@ export default async function RelecturePage({ params }: Params) {
     getAllergenRefs(),
     getUtensilRefNames(),
     getDifficulties(),
+    getMoldTypes(),
     isAdmin(user.id),
   ]);
 
@@ -57,6 +59,7 @@ export default async function RelecturePage({ params }: Params) {
             allergens={allergens}
             utensilRefs={utensilRefs}
             difficulties={difficulties}
+            moldTypes={moldTypes}
             isAdmin={admin}
           />
         )}

@@ -10,7 +10,11 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
 import type { Difficulty } from '@/lib/taxonomy';
+import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
+
+type MeasureType = 'units' | 'mold' | 'dimensions';
 
 const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
 
@@ -57,6 +61,14 @@ function rendementTxt(r: any): string {
   if (r.pieces) return `${r.pieces} pièces`;
   if (r.portions) return `${r.portions} parts`;
   return '';
+}
+
+// Description compacte d'un moule à partir de sa forme et de ses dimensions
+// (mêmes clés que `MOLD_FORME_DIMS`), ex. « Ø 20 × 4.5 cm ».
+function composeMoldDesc(forme: string | null | undefined, dims: Record<string, number>): string | null {
+  const keys = MOLD_FORME_DIMS[forme || ''] || [];
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
+  return parts.length ? parts.join(' × ') + ' cm' : null;
 }
 
 function fmtDuree(min: number): string {
@@ -133,6 +145,7 @@ export function RelectureEditor({
   allergens,
   utensilRefs,
   difficulties,
+  moldTypes,
   isAdmin,
 }: {
   importRow: ImportFull;
@@ -142,6 +155,7 @@ export function RelectureEditor({
   allergens: { id: number; name: string }[];
   utensilRefs: string[];
   difficulties: Difficulty[];
+  moldTypes: MoldType[];
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -159,7 +173,54 @@ export function RelectureEditor({
   const [level, setLevel] = useState<number>(Number(recette.difficulte) || 0);
   // Libellé de la difficulté (niveau le plus proche dans le référentiel), affiché à côté des pictos.
   const levelLabel = useMemo(() => (level ? closestDifficulty(difficulties, level)?.name : null), [level, difficulties]);
-  const [rendement, setRendement] = useState(recette.rendement?.libelle_corrige || rendementTxt(recette.rendement));
+  // Taille / quantité produite : 3 modes comme l'éditeur de recette (unités,
+  // moule, description libre). `recette.rendement` peut porter soit une
+  // correction déjà enregistrée (clé `mode`), soit le pivot brut de l'IA
+  // (`type`/`moule`/`pieces`/`portions`) — le type de moule n'est jamais
+  // déduit automatiquement (vocabulaire IA non aligné avec le référentiel
+  // `mold_types`), mais les dimensions importées pré-remplissent les champs
+  // dès qu'un type est choisi (mêmes clés courtes : diametre/hauteur/…).
+  const r0 = (recette.rendement || {}) as any;
+  const [measure, setMeasure] = useState<MeasureType>(
+    r0.mode === 'units' || r0.mode === 'mold' || r0.mode === 'dimensions'
+      ? r0.mode
+      : r0.type === 'moule' && r0.moule
+        ? 'mold'
+        : r0.pieces || r0.portions
+          ? 'units'
+          : 'dimensions',
+  );
+  const [qtyAmount, setQtyAmount] = useState(String(r0.pieces_corrige ?? r0.pieces ?? r0.portions ?? ''));
+  const [qtyUnit, setQtyUnit] = useState(r0.qty_unit_corrige || 'unite');
+  const [moldTypeId, setMoldTypeId] = useState(r0.moule_corrige?.type_id ? String(r0.moule_corrige.type_id) : '');
+  const [moldCount, setMoldCount] = useState(String(r0.moule_corrige?.count ?? r0.pieces ?? ''));
+  const [dims, setDims] = useState<Record<string, string>>(() => {
+    const d = r0.moule_corrige?.dims;
+    if (d && typeof d === 'object') return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, String(v)]));
+    const m = r0.moule || {};
+    const guess: Record<string, string> = {};
+    if (m.diametre_cm != null) guess.diametre = String(m.diametre_cm);
+    if (m.hauteur_cm != null) guess.hauteur = String(m.hauteur_cm);
+    if (m.longueur_cm != null) guess.longueur = String(m.longueur_cm);
+    if (m.largeur_cm != null) guess.largeur = String(m.largeur_cm);
+    return guess;
+  });
+  const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
+  const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
+  // Résumé affiché dans le récap global (live).
+  const rendementLabel = useMemo(() => {
+    if (measure === 'units') return qtyAmount.trim() ? `${qtyAmount.trim()} ${UNITS_LBL[qtyUnit] || qtyUnit}` : '';
+    if (measure === 'dimensions') return dimsDesc.trim();
+    const parsed: Record<string, number> = {};
+    Object.entries(dims).forEach(([k, v]) => {
+      const n = parseFloat(String(v).replace(',', '.'));
+      if (!isNaN(n)) parsed[k] = n;
+    });
+    const dimsTxt = composeMoldDesc(moldForme, parsed);
+    const mtName = moldTypes.find((t) => String(t.id) === moldTypeId)?.name || '';
+    const count = parseInt(moldCount, 10);
+    return [count > 1 ? `${count} ×` : null, mtName, dimsTxt].filter(Boolean).join(' ');
+  }, [measure, qtyAmount, qtyUnit, dims, moldForme, moldTypeId, moldCount, dimsDesc, moldTypes]);
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
   const [saveStatus, setSaveStatus] = useState('');
   const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -336,8 +397,26 @@ export function RelectureEditor({
       url_origine: sourceUrl.trim() || null,
       video_url: videoUrl.trim() || null,
     };
-    p.rendement = p.rendement || {};
-    p.rendement.libelle_corrige = rendement.trim() || null;
+    const dimsParsed: Record<string, number> = {};
+    Object.entries(dims).forEach(([k, v]) => {
+      const n = parseFloat(String(v).replace(',', '.'));
+      if (!isNaN(n)) dimsParsed[k] = n;
+    });
+    p.rendement = {
+      ...(p.rendement || {}),
+      mode: measure,
+      pieces_corrige: measure === 'units' ? numOrNull(qtyAmount) : null,
+      qty_unit_corrige: measure === 'units' ? qtyUnit : null,
+      moule_corrige:
+        measure === 'mold'
+          ? {
+              type_id: moldTypeId ? Number(moldTypeId) : null,
+              count: moldCount.trim() || null,
+              dims: Object.keys(dimsParsed).length ? dimsParsed : null,
+            }
+          : null,
+      libelle_corrige: measure === 'dimensions' ? dimsDesc.trim() || null : null,
+    };
     p.sous_preparations = sps.map((sp, i) => ({
       ordre: i + 1,
       nom: sp.nom.trim() || `Étape ${i + 1}`,
@@ -408,20 +487,41 @@ export function RelectureEditor({
       const attente = (t.repos_min || 0) + (t.congelation_min || 0);
       const total = (t.preparation_min || 0) + (t.cuisson_min || 0) + attente;
 
-      // Rendement → champs recettes
+      // Rendement → champs recettes (mode choisi en relecture, cf. readForm()).
       const r = p.rendement || {};
-      let measure: { measure_type: string; yield_qty: string | null; yield_unit: string | null; yield_desc: string | null } = {
-        measure_type: 'units',
-        yield_qty: null,
-        yield_unit: 'unite',
-        yield_desc: null,
-      };
-      if (r.type === 'moule' && r.moule) {
-        measure = { measure_type: 'mold', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige || r.moule.libelle || rendementTxt(r) || null };
-      } else if (r.pieces || r.portions) {
-        measure = { measure_type: 'units', yield_qty: String(r.pieces || r.portions), yield_unit: 'unite', yield_desc: r.libelle_corrige || null };
-      } else if (r.libelle_corrige) {
-        measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige };
+      let measure: {
+        measure_type: string;
+        yield_qty: string | null;
+        yield_unit: string | null;
+        yield_desc: string | null;
+        mold_type_id: number | null;
+        mold_dims: Record<string, number> | null;
+      } = { measure_type: 'units', yield_qty: null, yield_unit: 'unite', yield_desc: null, mold_type_id: null, mold_dims: null };
+      if (r.mode === 'mold' && r.moule_corrige) {
+        const mtId: number | null = r.moule_corrige.type_id || null;
+        const forme = moldTypes.find((t) => t.id === mtId)?.forme || null;
+        const dimsObj: Record<string, number> = r.moule_corrige.dims || {};
+        const count = parseInt(r.moule_corrige.count, 10);
+        const dimsTxt = composeMoldDesc(forme, dimsObj);
+        measure = {
+          measure_type: 'mold',
+          yield_qty: count > 0 ? String(count) : null,
+          yield_unit: null,
+          yield_desc: dimsTxt ? (count > 1 ? `${count} × ${dimsTxt}` : dimsTxt) : null,
+          mold_type_id: mtId,
+          mold_dims: Object.keys(dimsObj).length ? dimsObj : null,
+        };
+      } else if (r.mode === 'units' && r.pieces_corrige) {
+        measure = {
+          measure_type: 'units',
+          yield_qty: String(r.pieces_corrige),
+          yield_unit: r.qty_unit_corrige || 'unite',
+          yield_desc: null,
+          mold_type_id: null,
+          mold_dims: null,
+        };
+      } else if (r.mode === 'dimensions' && r.libelle_corrige) {
+        measure = { measure_type: 'dimensions', yield_qty: null, yield_unit: null, yield_desc: r.libelle_corrige, mold_type_id: null, mold_dims: null };
       }
 
       const diffRow = p.difficulte ? closestDifficulty(difficulties, p.difficulte) : null;
@@ -568,10 +668,109 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rendement</span>
-            <input value={rendement} onChange={(e) => setRendement(e.target.value)} className={champ} placeholder="8 parts, 20 pièces, cercle 20 cm…" />
-          </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Taille / Nombre de portions</span>
+            <div className="flex flex-wrap gap-4 mt-1">
+              {(
+                [
+                  ['units', "Par nombre d'unités / poids"],
+                  ['mold', 'Par type de moule / cercle'],
+                  ['dimensions', 'Description libre'],
+                ] as const
+              ).map(([v, lbl]) => (
+                <label key={v} className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <div className={`w-4 h-4 border-2 rounded-full transition-colors ${measure === v ? 'border-primary' : 'border-outline-variant'}`} />
+                    <div className={`absolute w-2 h-2 bg-primary rounded-full transition-opacity ${measure === v ? 'opacity-100' : 'opacity-0'}`} />
+                  </div>
+                  <input type="radio" checked={measure === v} onChange={() => setMeasure(v)} className="sr-only" />
+                  <span className="text-sm">{lbl}</span>
+                </label>
+              ))}
+            </div>
+
+            {measure === 'units' && (
+              <div className="flex flex-wrap gap-3 items-end mt-3">
+                <input
+                  type="number"
+                  min={0}
+                  value={qtyAmount}
+                  onChange={(e) => setQtyAmount(e.target.value)}
+                  className={champ}
+                  style={{ width: '6rem' }}
+                  placeholder="ex : 6"
+                />
+                <select value={qtyUnit} onChange={(e) => setQtyUnit(e.target.value)} className={champ} style={{ width: 'auto' }}>
+                  {Object.entries(UNITS_LBL).map(([k, lbl]) => (
+                    <option key={k} value={k}>
+                      {lbl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {measure === 'mold' && (
+              <div className="mt-3 flex flex-col gap-3">
+                <select
+                  value={moldTypeId}
+                  onChange={(e) => setMoldTypeId(e.target.value)}
+                  className={champ}
+                  style={{ maxWidth: '20rem' }}
+                >
+                  <option value="" disabled>
+                    Choisir le type de moule
+                  </option>
+                  {moldTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-on-surface-variant">Nombre</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={moldCount}
+                      onChange={(e) => setMoldCount(e.target.value)}
+                      className={champ}
+                      style={{ width: '5rem' }}
+                      placeholder="ex : 6"
+                    />
+                  </label>
+                  {(MOLD_FORME_DIMS[moldForme || ''] || []).map((k) => (
+                    <label key={k} className="flex flex-col gap-1">
+                      <span className="text-xs text-on-surface-variant">{DIM_LABELS[k]}</span>
+                      <span className="flex items-baseline gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={dims[k] || ''}
+                          onChange={(e) => setDims((p) => ({ ...p, [k]: e.target.value }))}
+                          className={champ}
+                          style={{ width: '5rem' }}
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-on-surface-variant">cm</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {measure === 'dimensions' && (
+              <input
+                value={dimsDesc}
+                onChange={(e) => setDimsDesc(e.target.value)}
+                className={`${champ} mt-3`}
+                placeholder="ex : 20 cm × 5 cm, Ø 22 cm…"
+              />
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
             <div className="flex items-center gap-3 mt-1">
@@ -970,7 +1169,7 @@ export function RelectureEditor({
               ['Attente', sumAttente ? fmtDuree(sumAttente) : '—'],
               ['Cuisson', sumCuisson ? fmtDuree(sumCuisson) : '—'],
               ['Temps total', sumTotal ? fmtDuree(sumTotal) : '—'],
-              ['Rendement', rendement.trim() || '—'],
+              ['Rendement', rendementLabel.trim() || '—'],
               ["Nombre d'étapes", String(sps.length)],
             ] as const
           ).map(([lbl, val]) => (
