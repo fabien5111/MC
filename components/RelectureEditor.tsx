@@ -30,7 +30,7 @@ const parseAllergens = (raw: string | null | undefined): string[] =>
 
 type IngRow = { key: string; imported: string | null; nom: string; qte: string; unite: string; note: string; allergen: string[] };
 type EtapeRow = { key: string; imported: string | null; texte: string };
-type MatRow = { key: string; nom: string };
+type MatRow = { key: string; nom: string; commentaire: string };
 type SpState = {
   key: string;
   nom: string;
@@ -129,10 +129,14 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const texte = ligatureOeuf(e.texte || '');
       return { key: nextKey(), imported: texte || null, texte };
     }),
+    // Compatible avec l'ancien format (chaîne simple) et le nouveau ({ nom, commentaire }).
     materiel: (sp.materiel || [])
-      .map((m: any) => capitalize(ligatureOeuf(String(m || '')).trim()))
-      .filter(Boolean)
-      .map((nom: string) => ({ key: nextKey(), nom })),
+      .map((m: any) => ({
+        nom: capitalize(ligatureOeuf(String(typeof m === 'string' ? m : m?.nom || '')).trim()),
+        commentaire: ligatureOeuf(String(typeof m === 'string' ? '' : m?.commentaire || '')).trim(),
+      }))
+      .filter((m: { nom: string }) => m.nom)
+      .map((m: { nom: string; commentaire: string }) => ({ key: nextKey(), nom: m.nom, commentaire: m.commentaire })),
     collapsed: false,
   };
 }
@@ -322,12 +326,14 @@ export function RelectureEditor({
   const delIng = (si: number, ii: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ings: sp.ings.filter((_, j) => j !== ii) } : sp)));
   // ── Matériel / ustensiles ──
-  const patchMat = (si: number, mi: number, nom: string) =>
+  const patchMat = (si: number, mi: number, patch: Partial<MatRow>) =>
     setSps((prev) =>
-      prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.map((m, j) => (j === mi ? { ...m, nom } : m)) } : sp)),
+      prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.map((m, j) => (j === mi ? { ...m, ...patch } : m)) } : sp)),
     );
   const addMat = (si: number) =>
-    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, materiel: [...sp.materiel, { key: nextKey(), nom: '' }] } : sp)));
+    setSps((prev) =>
+      prev.map((sp, k) => (k === si ? { ...sp, materiel: [...sp.materiel, { key: nextKey(), nom: '', commentaire: '' }] } : sp)),
+    );
   const delMat = (si: number, mi: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.filter((_, j) => j !== mi) } : sp)));
   const addEtape = (si: number) =>
@@ -439,7 +445,9 @@ export function RelectureEditor({
         }))
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
-      materiel: sp.materiel.map((m) => m.nom.trim()).filter(Boolean),
+      materiel: sp.materiel
+        .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
+        .filter((m) => m.nom),
     }));
     const somme = (k: string) => p.sous_preparations.reduce((n: number, sp: any) => n + (sp.temps?.[k] || 0), 0);
     p.temps = {
@@ -593,11 +601,17 @@ export function RelectureEditor({
         }
       }
 
-      const mats = Array.from(
-        new Set(sousPreps.flatMap((sp: any) => sp.materiel || []).map((m: any) => String(m).trim()).filter(Boolean)),
-      ) as string[];
-      if (mats.length) {
-        const { error } = await supabase.from('recipe_utensils').insert(mats.map((m, i) => ({ recipe_id: recipe.id, name: m, order_index: i })));
+      const matsMap = new Map<string, string | null>();
+      sousPreps
+        .flatMap((sp: any) => sp.materiel || [])
+        .forEach((m: any) => {
+          const nom = String(m?.nom ?? '').trim();
+          if (nom && !matsMap.has(nom)) matsMap.set(nom, m?.commentaire || null);
+        });
+      if (matsMap.size) {
+        const { error } = await supabase
+          .from('recipe_utensils')
+          .insert(Array.from(matsMap.entries()).map(([name, comment], i) => ({ recipe_id: recipe.id, name, comment, order_index: i })));
         if (error) throw error;
       }
 
@@ -1088,7 +1102,7 @@ export function RelectureEditor({
                           <input
                             list="dl-utensils"
                             value={m.nom}
-                            onChange={(e) => patchMat(si, mi, e.target.value)}
+                            onChange={(e) => patchMat(si, mi, { nom: e.target.value })}
                             className={champ}
                             placeholder="Nom de l'ustensile"
                             autoComplete="off"
@@ -1097,6 +1111,12 @@ export function RelectureEditor({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
+                        <input
+                          value={m.commentaire}
+                          onChange={(e) => patchMat(si, mi, { commentaire: e.target.value })}
+                          className={`${champ} text-sm mt-1`}
+                          placeholder="Commentaire (optionnel — taille, réglage…)"
+                        />
                         {isAdmin && m.nom.trim() && !known && (
                           <button
                             type="button"
