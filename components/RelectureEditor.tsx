@@ -206,6 +206,8 @@ export function RelectureEditor({
     return guess;
   });
   const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
+  // Rendement tel qu'extrait par l'IA (avant correction), affiché en référence à côté du sélecteur.
+  const importedRendement = rendementTxt(r0);
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
   // Résumé affiché dans le récap global (live).
   const rendementLabel = useMemo(() => {
@@ -670,7 +672,12 @@ export function RelectureEditor({
           </label>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Taille / Nombre de portions</span>
-            <div className="flex flex-wrap gap-4 mt-1">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 mt-1">
+              <div className="text-sm text-on-surface-variant lg:pt-1.5">
+                {importedRendement ? '• ' + importedRendement : <span className="italic opacity-60">non précisé à l&apos;import</span>}
+              </div>
+              <div>
+            <div className="flex flex-wrap gap-4">
               {(
                 [
                   ['units', "Par nombre d'unités / poids"],
@@ -770,6 +777,8 @@ export function RelectureEditor({
                 placeholder="ex : 20 cm × 5 cm, Ø 22 cm…"
               />
             )}
+              </div>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Difficulté</span>
