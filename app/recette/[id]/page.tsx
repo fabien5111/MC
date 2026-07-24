@@ -286,7 +286,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+            <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 ${recipe.yield_notes ? 'pt-2 border-t border-outline-variant/40' : ''}`}>
               {(
                 [
                   ['Temps de prép', recipe.prep_time],
