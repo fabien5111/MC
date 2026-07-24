@@ -295,6 +295,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 </div>
               ))}
             </div>
+            {recipe.yield_notes && (
+              <div className="pt-2 border-t border-outline-variant/40 text-center">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px] block mb-1">
+                  Complément d&apos;informations sur les quantités
+                </span>
+                <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>
+              </div>
+            )}
             {allergens.length > 0 && (
               <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
                 <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
