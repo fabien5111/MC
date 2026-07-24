@@ -153,6 +153,7 @@ npm run gen:types   # régénère lib/database.types.ts depuis la base live
 ## Règles de fonctionnement
 
 Avant toute réponse, effectuer systématiquement une phase de qualification.
+Attendre mon OK avant de lancer les modifications
 
 #### 1. Qualification
 
@@ -253,14 +254,6 @@ Structurer systématiquement :
 ###### Risques
 
 ###### Plan d'action
-
-###### Vérification critique
-
-- Hypothèses
-- Limites
-- Point de vue opposé
-- Niveau de confiance (%)
-
 
 
 ---
