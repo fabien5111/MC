@@ -74,6 +74,63 @@ export async function getRecipes(opts: {
   return (data as unknown as RecipeCard[]) ?? [];
 }
 
+// Recherche de recettes publiées par titre, ingrédient ou auteur.
+// PostgREST ne permet pas un OR sur des tables jointes différentes en une
+// requête : on collecte donc les identifiants correspondants via trois
+// requêtes ciblées (titre / auteur / ingrédient), puis on récupère les
+// cartes complètes pour l'union dédoublonnée. Le filtre `status = published`
+// est réappliqué au chargement final : une correspondance pointant vers une
+// recette non publiée est ainsi écartée.
+export async function searchRecipes(
+  query: string,
+  opts: { limit?: number } = {},
+): Promise<RecipeCard[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const { limit = 60 } = opts;
+  const supabase = await createClient();
+  const like = `%${q}%`;
+
+  const [titleRes, authorProfiles, ingredientRes] = await Promise.all([
+    // 1. Titre de la recette
+    supabase.from('recipes').select('id').eq('status', 'published').ilike('title', like),
+    // 2. Auteur (nom affiché) → identifiants de profils
+    supabase.from('profiles').select('id').ilike('full_name', like),
+    // 3. Ingrédient → recette via le groupe d'ingrédients
+    supabase.from('ingredients').select('ingredient_groups(recipe_id)').ilike('name', like),
+  ]);
+
+  const ids = new Set<string>();
+  for (const row of titleRes.data ?? []) ids.add(row.id);
+  for (const row of ingredientRes.data ?? []) {
+    const recipeId = (row as { ingredient_groups: { recipe_id: string | null } | null })
+      .ingredient_groups?.recipe_id;
+    if (recipeId) ids.add(recipeId);
+  }
+
+  const authorIds = (authorProfiles.data ?? []).map((p) => p.id);
+  if (authorIds.length) {
+    const byAuthor = await supabase
+      .from('recipes')
+      .select('id')
+      .eq('status', 'published')
+      .in('author_id', authorIds);
+    for (const row of byAuthor.data ?? []) ids.add(row.id);
+  }
+
+  if (!ids.size) return [];
+
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(CARD_SELECT)
+    .eq('status', 'published')
+    .in('id', [...ids])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) console.error('searchRecipes:', error.message);
+  return (data as unknown as RecipeCard[]) ?? [];
+}
+
 export async function getUserRecipes(userId: string) {
   const supabase = await createClient();
   const { data } = await supabase
