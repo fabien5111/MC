@@ -239,6 +239,93 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           </div>
 
+          {/* Hero */}
+          {recipe.hero_image_url && (
+            <div className="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          {/* Bloc technique */}
+          <div className="bg-surface-container-low p-8 mb-12 space-y-8">
+            <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
+              {yInfo && (
+                <div className="flex flex-col gap-1 items-center text-center">
+                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                    {yInfo.label}
+                  </span>
+                  <span className="font-headline-md text-headline-md text-primary">{yInfo.value}</span>
+                </div>
+              )}
+              <div className="flex flex-col gap-1 items-center text-center">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                  Difficulté
+                </span>
+                <div className="flex items-center justify-center gap-2 h-8">
+                  {level ? (
+                    [1, 2, 3, 4, 5].map((i) => (
+                      <MaryseIcon key={i} className={i <= level ? 'text-primary' : 'text-outline-variant'} />
+                    ))
+                  ) : (
+                    <span className="text-sm text-on-surface-variant">—</span>
+                  )}
+                </div>
+                {recipe.difficulties?.name && (
+                  <span className="font-label-md text-label-md text-on-surface">
+                    {recipe.difficulties.name}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+              {(
+                [
+                  ['Temps de prép', recipe.prep_time],
+                  ['Cuisson', recipe.cook_time],
+                  ['Attente', recipe.wait_time],
+                  ['Durée totale', recipe.total_time],
+                ] as const
+              ).map(([label, v]) => (
+                <div key={label} className="flex flex-col gap-1 items-center text-center">
+                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                    {label}
+                  </span>
+                  <span className="font-body-lg text-body-lg font-bold text-primary">{v ? formatTime(v) : '—'}</span>
+                </div>
+              ))}
+            </div>
+            {allergens.length > 0 && (
+              <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                  Allergènes :
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {allergens.map((a) =>
+                    a.picto ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                      <img
+                        key={a.key}
+                        src={a.picto}
+                        alt={a.name}
+                        title={a.name}
+                        className="w-8 h-8 object-contain"
+                      />
+                    ) : (
+                      <span
+                        key={a.key}
+                        title={a.name}
+                        className="px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface font-label-md text-[12px]"
+                      >
+                        {a.name}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           {recipe.description && (
             <div className="bg-primary p-10 text-white relative overflow-hidden mb-12">
@@ -375,93 +462,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </div>
             </div>
           )}
-
-          {/* Hero */}
-          {recipe.hero_image_url && (
-            <div className="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
-              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
-            </div>
-          )}
-
-          {/* Bloc technique */}
-          <div className="bg-surface-container-low p-8 mb-12 space-y-8">
-            <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
-              {yInfo && (
-                <div className="flex flex-col gap-1 items-center text-center">
-                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
-                    {yInfo.label}
-                  </span>
-                  <span className="font-headline-md text-headline-md text-primary">{yInfo.value}</span>
-                </div>
-              )}
-              <div className="flex flex-col gap-1 items-center text-center">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
-                  Difficulté
-                </span>
-                <div className="flex items-center justify-center gap-2 h-8">
-                  {level ? (
-                    [1, 2, 3, 4, 5].map((i) => (
-                      <MaryseIcon key={i} className={i <= level ? 'text-primary' : 'text-outline-variant'} />
-                    ))
-                  ) : (
-                    <span className="text-sm text-on-surface-variant">—</span>
-                  )}
-                </div>
-                {recipe.difficulties?.name && (
-                  <span className="font-label-md text-label-md text-on-surface">
-                    {recipe.difficulties.name}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
-              {(
-                [
-                  ['Temps de prép', recipe.prep_time],
-                  ['Cuisson', recipe.cook_time],
-                  ['Attente', recipe.wait_time],
-                  ['Durée totale', recipe.total_time],
-                ] as const
-              ).map(([label, v]) => (
-                <div key={label} className="flex flex-col gap-1 items-center text-center">
-                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
-                    {label}
-                  </span>
-                  <span className="font-body-lg text-body-lg font-bold text-primary">{v ? formatTime(v) : '—'}</span>
-                </div>
-              ))}
-            </div>
-            {allergens.length > 0 && (
-              <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
-                  Allergènes :
-                </span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {allergens.map((a) =>
-                    a.picto ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                      <img
-                        key={a.key}
-                        src={a.picto}
-                        alt={a.name}
-                        title={a.name}
-                        className="w-8 h-8 object-contain"
-                      />
-                    ) : (
-                      <span
-                        key={a.key}
-                        title={a.name}
-                        className="px-2.5 py-1 rounded-full bg-surface-container-highest text-on-surface font-label-md text-[12px]"
-                      >
-                        {a.name}
-                      </span>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Ustensiles */}
           {utensils.length > 0 && (
