@@ -41,7 +41,6 @@ type SpState = {
   jour: string;
   ings: IngRow[];
   etapes: EtapeRow[];
-  materiel: MatRow[];
   collapsed: boolean;
 };
 
@@ -69,6 +68,17 @@ function composeMoldDesc(forme: string | null | undefined, dims: Record<string, 
   const keys = MOLD_FORME_DIMS[forme || ''] || [];
   const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
   return parts.length ? parts.join(' × ') + ' cm' : null;
+}
+
+// Normalise une liste d'ustensiles (ancien format « chaîne simple » ou
+// nouveau format { nom, commentaire } ; filtre les entrées sans nom).
+function normMateriel(list: any): { nom: string; commentaire: string }[] {
+  return (Array.isArray(list) ? list : [])
+    .map((m: any) => ({
+      nom: capitalize(ligatureOeuf(String(typeof m === 'string' ? m : m?.nom || '')).trim()),
+      commentaire: ligatureOeuf(String(typeof m === 'string' ? '' : m?.commentaire || '')).trim(),
+    }))
+    .filter((m: { nom: string }) => m.nom);
 }
 
 function fmtDuree(min: number): string {
@@ -129,14 +139,6 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const texte = ligatureOeuf(e.texte || '');
       return { key: nextKey(), imported: texte || null, texte };
     }),
-    // Compatible avec l'ancien format (chaîne simple) et le nouveau ({ nom, commentaire }).
-    materiel: (sp.materiel || [])
-      .map((m: any) => ({
-        nom: capitalize(ligatureOeuf(String(typeof m === 'string' ? m : m?.nom || '')).trim()),
-        commentaire: ligatureOeuf(String(typeof m === 'string' ? '' : m?.commentaire || '')).trim(),
-      }))
-      .filter((m: { nom: string }) => m.nom)
-      .map((m: { nom: string; commentaire: string }) => ({ key: nextKey(), nom: m.nom, commentaire: m.commentaire })),
     collapsed: false,
   };
 }
@@ -228,6 +230,26 @@ export function RelectureEditor({
     return [count > 1 ? `${count} ×` : null, mtName, dimsTxt].filter(Boolean).join(' ');
   }, [measure, qtyAmount, qtyUnit, dims, moldForme, moldTypeId, moldCount, dimsDesc, moldTypes]);
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
+  // Ustensiles de la recette : liste unique (regroupée, dédupliquée), au
+  // niveau de la recette et non plus répétée par sous-préparation — comme
+  // dans l'éditeur de recette. `recette.materiel` porte une correction déjà
+  // enregistrée si elle existe ; sinon on agrège l'ancien format réparti par
+  // sous-préparation (import brut ou anciens imports déjà en base).
+  const [utensils, setUtensils] = useState<MatRow[]>(() => {
+    if (Array.isArray(recette.materiel)) {
+      return normMateriel(recette.materiel).map((m) => ({ key: nextKey(), ...m }));
+    }
+    const seen = new Map<string, { nom: string; commentaire: string }>();
+    (recette.sous_preparations || []).forEach((sp: any) => {
+      normMateriel(sp.materiel).forEach((m) => {
+        const k = m.nom.toLowerCase();
+        const prev = seen.get(k);
+        if (!prev) seen.set(k, m);
+        else if (!prev.commentaire && m.commentaire) seen.set(k, { ...prev, commentaire: m.commentaire });
+      });
+    });
+    return Array.from(seen.values()).map((m) => ({ key: nextKey(), ...m }));
+  });
   const [saveStatus, setSaveStatus] = useState('');
   const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [justAddedSpKey, setJustAddedSpKey] = useState<string | null>(null);
@@ -325,17 +347,11 @@ export function RelectureEditor({
     );
   const delIng = (si: number, ii: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ings: sp.ings.filter((_, j) => j !== ii) } : sp)));
-  // ── Matériel / ustensiles ──
-  const patchMat = (si: number, mi: number, patch: Partial<MatRow>) =>
-    setSps((prev) =>
-      prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.map((m, j) => (j === mi ? { ...m, ...patch } : m)) } : sp)),
-    );
-  const addMat = (si: number) =>
-    setSps((prev) =>
-      prev.map((sp, k) => (k === si ? { ...sp, materiel: [...sp.materiel, { key: nextKey(), nom: '', commentaire: '' }] } : sp)),
-    );
-  const delMat = (si: number, mi: number) =>
-    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, materiel: sp.materiel.filter((_, j) => j !== mi) } : sp)));
+  // ── Ustensiles (liste unique au niveau de la recette) ──
+  const patchUtensil = (mi: number, patch: Partial<MatRow>) =>
+    setUtensils((prev) => prev.map((m, j) => (j === mi ? { ...m, ...patch } : m)));
+  const addUtensil = () => setUtensils((prev) => [...prev, { key: nextKey(), nom: '', commentaire: '' }]);
+  const delUtensil = (mi: number) => setUtensils((prev) => prev.filter((_, j) => j !== mi));
   const addEtape = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) => (k === si ? { ...sp, etapes: [...sp.etapes, { key: nextKey(), imported: null, texte: '' }] } : sp)),
@@ -352,7 +368,6 @@ export function RelectureEditor({
     jour: '0',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
-    materiel: [],
     collapsed: false,
   });
   const addSp = () => {
@@ -445,10 +460,10 @@ export function RelectureEditor({
         }))
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
-      materiel: sp.materiel
-        .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
-        .filter((m) => m.nom),
     }));
+    p.materiel = utensils
+      .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
+      .filter((m) => m.nom);
     const somme = (k: string) => p.sous_preparations.reduce((n: number, sp: any) => n + (sp.temps?.[k] || 0), 0);
     p.temps = {
       preparation_min: somme('preparation_min') || null,
@@ -601,17 +616,11 @@ export function RelectureEditor({
         }
       }
 
-      const matsMap = new Map<string, string | null>();
-      sousPreps
-        .flatMap((sp: any) => sp.materiel || [])
-        .forEach((m: any) => {
-          const nom = String(m?.nom ?? '').trim();
-          if (nom && !matsMap.has(nom)) matsMap.set(nom, m?.commentaire || null);
-        });
-      if (matsMap.size) {
+      const mats = (p.materiel || []).filter((m: any) => m?.nom);
+      if (mats.length) {
         const { error } = await supabase
           .from('recipe_utensils')
-          .insert(Array.from(matsMap.entries()).map(([name, comment], i) => ({ recipe_id: recipe.id, name, comment, order_index: i })));
+          .insert(mats.map((m: any, i: number) => ({ recipe_id: recipe.id, name: m.nom, comment: m.commentaire || null, order_index: i })));
         if (error) throw error;
       }
 
@@ -830,6 +839,58 @@ export function RelectureEditor({
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className={champ} placeholder="Conseils de conservation, variantes, astuces…" />
           </label>
         </div>
+      </section>
+
+      {/* Ustensiles (liste unique de la recette, regroupée depuis les sous-préparations importées) */}
+      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Ustensiles</h2>
+        <div className="flex flex-col mb-2">
+          {utensils.length === 0 ? (
+            <p className="text-sm italic text-on-surface-variant py-1">Aucun ustensile importé</p>
+          ) : (
+            utensils.map((m, mi) => {
+              const known = knownUtensils.has(m.nom.trim().toLowerCase());
+              return (
+                <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
+                  <div className="flex items-center gap-2">
+                    <input
+                      list="dl-utensils"
+                      value={m.nom}
+                      onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
+                      className={champ}
+                      placeholder="Nom de l'ustensile"
+                      autoComplete="off"
+                    />
+                    <button type="button" title="Supprimer" onClick={() => delUtensil(mi)} tabIndex={-1} className="text-error hover:opacity-70 shrink-0">
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                  <input
+                    value={m.commentaire}
+                    onChange={(e) => patchUtensil(mi, { commentaire: e.target.value })}
+                    className={`${champ} text-sm mt-1`}
+                    placeholder="Commentaire (optionnel — taille, réglage…)"
+                  />
+                  {isAdmin && m.nom.trim() && !known && (
+                    <button
+                      type="button"
+                      onClick={() => addUtensilRef(m.nom)}
+                      disabled={refBusy === `utensils:${m.nom.trim().toLowerCase()}`}
+                      className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                      title="Ajouter cet ustensile à la base de référence"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                      Ajouter «&nbsp;{m.nom.trim()}&nbsp;» au référentiel
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <button type="button" onClick={addUtensil} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
+          <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ustensile
+        </button>
       </section>
 
       {/* Sous-préparations */}
@@ -1086,56 +1147,6 @@ export function RelectureEditor({
               </div>
               <button type="button" onClick={() => addIng(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-6">
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient
-              </button>
-
-              {/* Ustensiles / matériel */}
-              <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Ustensiles</p>
-              <div className="flex flex-col mb-2">
-                {sp.materiel.length === 0 ? (
-                  <p className="text-sm italic text-on-surface-variant py-1">Aucun ustensile importé</p>
-                ) : (
-                  sp.materiel.map((m, mi) => {
-                    const known = knownUtensils.has(m.nom.trim().toLowerCase());
-                    return (
-                      <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
-                        <div className="flex items-center gap-2">
-                          <input
-                            list="dl-utensils"
-                            value={m.nom}
-                            onChange={(e) => patchMat(si, mi, { nom: e.target.value })}
-                            className={champ}
-                            placeholder="Nom de l'ustensile"
-                            autoComplete="off"
-                          />
-                          <button type="button" title="Supprimer" onClick={() => delMat(si, mi)} tabIndex={-1} className="text-error hover:opacity-70 shrink-0">
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                        <input
-                          value={m.commentaire}
-                          onChange={(e) => patchMat(si, mi, { commentaire: e.target.value })}
-                          className={`${champ} text-sm mt-1`}
-                          placeholder="Commentaire (optionnel — taille, réglage…)"
-                        />
-                        {isAdmin && m.nom.trim() && !known && (
-                          <button
-                            type="button"
-                            onClick={() => addUtensilRef(m.nom)}
-                            disabled={refBusy === `utensils:${m.nom.trim().toLowerCase()}`}
-                            className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
-                            title="Ajouter cet ustensile à la base de référence"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">add_circle</span>
-                            Ajouter «&nbsp;{m.nom.trim()}&nbsp;» au référentiel
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <button type="button" onClick={() => addMat(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-6">
-                <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ustensile
               </button>
 
               {/* Étapes */}
