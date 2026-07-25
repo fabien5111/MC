@@ -263,8 +263,11 @@ export function CreerForm({
   // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
   const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
 
-  const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
-  const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
+  // Listes serveur + libellés ajoutés à la volée. Dédoublonnées : après le
+  // refresh déclenché par un ajout au référentiel, la liste serveur contient
+  // déjà le libellé que l'état local conserve (sinon : options en double).
+  const allIngredientRefs = useMemo(() => [...new Set([...ingredientRefs, ...extraIngredientRefs])], [ingredientRefs, extraIngredientRefs]);
+  const allUtensilRefs = useMemo(() => [...new Set([...utensilRefs, ...extraUtensilRefs])], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
@@ -273,6 +276,13 @@ export function CreerForm({
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
+  //
+  // L'état local (`extra*`) rend le libellé disponible immédiatement ; le
+  // refresh, lui, resynchronise les listes de référence rendues côté serveur —
+  // sans quoi le libellé créé disparaîtrait en revenant sur l'éditeur, et
+  // n'apparaîtrait pas dans le back-office des listes.
+  const refreshRefs = () => router.refresh();
+
   async function addUtensilRef(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -281,6 +291,7 @@ export function CreerForm({
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
+    refreshRefs();
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -300,12 +311,19 @@ export function CreerForm({
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
+    refreshRefs();
   }
 
   // Création d'un tag inexistant dans le référentiel depuis l'éditeur (admin
   // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
   // sélectionné pour la recette en cours. Un doublon (même nom) réutilise le
   // tag existant plutôt que d'échouer sur l'unicité du slug.
+  //
+  // `status: 'published'` est indispensable : getTags() filtre sur
+  // `status = 'published'` (et ce filtre exclut aussi les lignes NULL), donc un
+  // tag inséré sans statut n'apparaîtrait jamais dans la liste de référence.
+  // La création étant réservée aux admins, la publication est immédiate — même
+  // règle que pour une recette soumise par un admin (cf. submit()).
   async function addTag(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -319,7 +337,7 @@ export function CreerForm({
     setRefBusy(`tags:${clean.toLowerCase()}`);
     const { data, error } = await createClient()
       .from('tags')
-      .insert({ name: clean, slug: slugify(clean) })
+      .insert({ name: clean, slug: slugify(clean), status: 'published' })
       .select('id, name, slug')
       .single();
     setRefBusy(null);
@@ -328,10 +346,13 @@ export function CreerForm({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    refreshRefs();
   }
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
-  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
+  // double produirait deux entrées de même clé React dans le sélecteur).
+  const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Somme des temps des étapes : purement informative en édition (affichée à
@@ -612,6 +633,10 @@ export function CreerForm({
 
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
+        // router.refresh() invalide le Router Cache client avant de naviguer,
+        // pour éviter qu'une visite ultérieure de /profil ou de la fiche
+        // recette ne réutilise un segment mis en cache avant cette écriture.
+        router.refresh();
         router.push(`/recette/${recipeId}`);
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
@@ -628,6 +653,9 @@ export function CreerForm({
         }
       } else {
         // « Enregistrer en brouillon et quitter » : retour au profil.
+        // router.refresh() invalide le Router Cache client avant de naviguer
+        // (cf. commentaire ci-dessus).
+        router.refresh();
         router.push('/profil');
       }
     } catch (e) {

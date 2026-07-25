@@ -306,6 +306,9 @@ export function PlanWidget({
       return;
     }
     close();
+    // Invalide le rendu serveur avant de naviguer : sans quoi l'onglet
+    // Planning du profil n'affiche pas la recette qui vient d'être planifiée.
+    router.refresh();
     router.push('/profil#planning');
   }
 

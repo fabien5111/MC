@@ -2,10 +2,10 @@
 
 // Tableau de bord admin (porté de admin.html) : stats, recettes en attente
 // (approuver/supprimer), commentaires en attente (approuver/spam/supprimer).
-// Mutations via le client Supabase navigateur puis router.refresh().
-import { useRouter } from 'next/navigation';
+// Mutations via useMutation (écriture navigateur + resynchro serveur).
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { AdminRecipeRow, PendingComment } from '@/lib/admin';
 
 export function AdminDashboard({
@@ -17,13 +17,7 @@ export function AdminDashboard({
   pending: AdminRecipeRow[];
   comments: PendingComment[];
 }) {
-  const router = useRouter();
-
-  async function run(action: PromiseLike<{ error: unknown }>) {
-    const { error } = await action;
-    if (error) return void alert('Erreur : ' + (error as { message?: string }).message);
-    router.refresh();
-  }
+  const { mutate } = useMutation();
   const sb = () => createClient();
 
   const cards = [
@@ -97,7 +91,7 @@ export function AdminDashboard({
                     <td className="px-8 py-5 text-right">
                       <div className="flex justify-end gap-3">
                         <button
-                          onClick={() => run(sb().from('recipes').update({ status: 'published' }).eq('id', r.id))}
+                          onClick={() => mutate(() => sb().from('recipes').update({ status: 'published' }).eq('id', r.id))}
                           className="p-2 text-primary hover:bg-primary-fixed rounded transition-colors"
                           title="Approuver"
                         >
@@ -107,7 +101,7 @@ export function AdminDashboard({
                           <span className="material-symbols-outlined">edit_square</span>
                         </Link>
                         <button
-                          onClick={() => confirm('Supprimer cette recette ?') && run(sb().from('recipes').delete().eq('id', r.id))}
+                          onClick={() => mutate(() => sb().from('recipes').delete().eq('id', r.id), { confirm: 'Supprimer cette recette ?' })}
                           className="p-2 text-error hover:bg-error-container rounded transition-colors"
                           title="Supprimer"
                         >
@@ -176,19 +170,19 @@ export function AdminDashboard({
                     <td className="px-8 py-5 text-right">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => run(sb().from('comments').update({ status: 'approved' }).eq('id', c.id))}
+                          onClick={() => mutate(() => sb().from('comments').update({ status: 'approved' }).eq('id', c.id))}
                           className="px-3 py-1 bg-primary text-surface-bright rounded text-xs font-label-md hover:bg-primary-container transition-colors"
                         >
                           Approuver
                         </button>
                         <button
-                          onClick={() => run(sb().from('comments').update({ status: 'spam' }).eq('id', c.id))}
+                          onClick={() => mutate(() => sb().from('comments').update({ status: 'spam' }).eq('id', c.id))}
                           className="px-3 py-1 border border-outline text-xs font-label-md hover:bg-surface-container transition-colors"
                         >
                           Spam
                         </button>
                         <button
-                          onClick={() => confirm('Supprimer ?') && run(sb().from('comments').delete().eq('id', c.id))}
+                          onClick={() => mutate(() => sb().from('comments').delete().eq('id', c.id), { confirm: 'Supprimer ?' })}
                           className="px-3 py-1 border border-error text-error text-xs font-label-md hover:bg-error-container transition-colors"
                         >
                           Supprimer

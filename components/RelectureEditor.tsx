@@ -322,8 +322,11 @@ export function RelectureEditor({
   // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
   const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
 
-  const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
-  const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
+  // Listes serveur + libellés ajoutés à la volée. Dédoublonnées : après le
+  // refresh déclenché par un ajout au référentiel, la liste serveur contient
+  // déjà le libellé que l'état local conserve (sinon : options en double).
+  const allIngredientRefs = useMemo(() => [...new Set([...ingredientRefs, ...extraIngredientRefs])], [ingredientRefs, extraIngredientRefs]);
+  const allUtensilRefs = useMemo(() => [...new Set([...utensilRefs, ...extraUtensilRefs])], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
@@ -332,6 +335,13 @@ export function RelectureEditor({
   // Ajout à la volée d'un ustensile dans la table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
+  //
+  // L'état local (`extra*`) rend le libellé disponible immédiatement ; le
+  // refresh, lui, resynchronise les listes de référence rendues côté serveur —
+  // sans quoi le libellé créé disparaîtrait en revenant sur cet écran, et
+  // n'apparaîtrait pas dans le back-office des listes.
+  const refreshRefs = () => router.refresh();
+
   async function addUtensilRef(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -340,6 +350,7 @@ export function RelectureEditor({
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
+    refreshRefs();
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -359,12 +370,17 @@ export function RelectureEditor({
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
+    refreshRefs();
   }
 
   // Création d'un tag inexistant dans le référentiel depuis la relecture
   // (admin uniquement — bouton affiché si `isAdmin`). Le tag créé est
   // aussitôt sélectionné pour la recette en cours. Un doublon (même nom)
   // réutilise le tag existant plutôt que d'échouer sur l'unicité du slug.
+  //
+  // `status: 'published'` est indispensable : getTags() filtre sur
+  // `status = 'published'` (et ce filtre exclut aussi les lignes NULL), donc un
+  // tag inséré sans statut n'apparaîtrait jamais dans la liste de référence.
   async function addTag(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -376,15 +392,22 @@ export function RelectureEditor({
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
-    const { data, error } = await createClient().from('tags').insert({ name: clean, slug: slugify(clean) }).select('id, name, slug').single();
+    const { data, error } = await createClient()
+      .from('tags')
+      .insert({ name: clean, slug: slugify(clean), status: 'published' })
+      .select('id, name, slug')
+      .single();
     setRefBusy(null);
     if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
     setExtraTags((p) => [...p, data]);
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    refreshRefs();
   }
-  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
+  // double produirait deux entrées de même clé React dans le sélecteur).
+  const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Mutations d'état ──
@@ -558,6 +581,9 @@ export function RelectureEditor({
     setBusy(true);
     try {
       await save();
+      // Les corrections viennent d'être écrites en base : on invalide le rendu
+      // serveur pour que « Mes imports » et cette relecture restent en phase.
+      router.refresh();
       setSaveStatus('Corrections enregistrées ✓');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (e) {
@@ -718,6 +744,9 @@ export function RelectureEditor({
       }
 
       await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipe.id }).eq('id', importRow.id);
+      // Invalide le rendu serveur avant de naviguer : le carnet de recettes et
+      // la liste « Mes imports » doivent refléter la recette créée.
+      router.refresh();
       router.push(`/recette/${recipe.id}`);
     } catch (e) {
       alert('Erreur à la création : ' + (e as Error).message);
@@ -730,6 +759,9 @@ export function RelectureEditor({
     const supabase = createClient();
     const { error } = await supabase.from('imports').delete().eq('id', importRow.id);
     if (error) return void alert('Erreur : ' + error.message);
+    // Sans invalidation, l'import supprimé peut réapparaître sur /importer
+    // (segment mis en cache lors d'une visite précédente).
+    router.refresh();
     router.push('/importer');
   }
 

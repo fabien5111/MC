@@ -2,21 +2,19 @@
 
 // Gestion des recettes (porté de admin-recettes.html) : table « à valider »
 // (valider / modifier / refuser) et table « validées & privées » (modifier /
-// refuser). Mutations via le client Supabase navigateur puis router.refresh().
-import { useRouter } from 'next/navigation';
+// refuser). Mutations via useMutation (écriture navigateur + resynchro serveur).
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { AdminRecipeRow } from '@/lib/admin';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
 export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]; managed: AdminRecipeRow[] }) {
-  const router = useRouter();
+  const { mutate } = useMutation();
 
   async function setStatus(id: string, status: string) {
-    const { error } = await createClient().from('recipes').update({ status }).eq('id', id);
-    if (error) return void alert('Erreur : ' + error.message);
-    router.refresh();
+    await mutate(() => createClient().from('recipes').update({ status }).eq('id', id));
   }
 
   function Row({ r, isPending }: { r: AdminRecipeRow; isPending: boolean }) {

@@ -55,6 +55,9 @@ export function PlanNoticeBanner({ text, recipe, plan }: { text: string; recipe:
       setBusy(false);
       return;
     }
+    // La fiche recette rend l'historique des exécutions côté serveur
+    // (getExecutions) : sans invalidation, la session qui démarre y manque.
+    router.refresh();
     router.push(`/execution/${data.id}`);
   }
 

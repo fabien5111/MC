@@ -62,6 +62,7 @@ export function ProfileHeader({
       const { error } = await supabase.from('profiles').upsert({ id: userId, banner_url: dataUrl });
       if (error) return void alert('Erreur lors du téléchargement : ' + error.message);
       setBanner(dataUrl);
+      router.refresh(); // aligne le rendu serveur du profil sur la nouvelle bannière
     }
   }
 
@@ -197,6 +198,7 @@ export function ProfileHeader({
             setBio(newBio);
             setLinks(newLinks);
             setEditorOpen(false);
+            router.refresh(); // bio et liens viennent des props serveur
           }}
         />
       )}

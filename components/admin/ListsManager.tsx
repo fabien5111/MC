@@ -11,7 +11,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { SECTIONS, SLUG_TABLES, type Section } from '@/lib/admin-lists-config';
+import { useMutation } from '@/lib/use-mutation';
+import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
 
@@ -40,6 +41,7 @@ function shortUrl(raw: string): string {
 
 export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]>; moldTypes: MoldType[] }) {
   const router = useRouter();
+  const { mutate } = useMutation();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [moldTypeFilter, setMoldTypeFilter] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -78,13 +80,10 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
   }
 
   async function del(table: string, id: unknown, label: string) {
-    if (!confirm(`Supprimer « ${label} » ?`)) return;
     const q = createClient().from(table as never) as unknown as {
       delete: () => { eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }> };
     };
-    const { error } = await q.delete().eq('id', id);
-    if (error) return void alert('Erreur : ' + error.message);
-    router.refresh();
+    await mutate(() => q.delete().eq('id', id), { confirm: `Supprimer « ${label} » ?` });
   }
 
   return (
@@ -436,6 +435,11 @@ function EntryForm({
       // Tables à colonne slug NOT NULL non exposée dans le formulaire.
       if (SLUG_TABLES.includes(table) && !payload.slug && typeof payload.name === 'string') {
         payload.slug = slugify(payload.name);
+      }
+      // Tables lues avec un filtre `status = 'published'` : sans ce statut à la
+      // création, l'entrée serait invisible dans les listes de référence.
+      if (STATUS_PUBLISHED_TABLES.includes(table) && entry?.id == null) {
+        payload.status = 'published';
       }
     }
     const q = createClient().from(table as never) as unknown as {

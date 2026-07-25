@@ -2,7 +2,7 @@
 
 // Gestion des moules (porté de admin-moules.html) : table filtrable/cherchable +
 // panneau latéral d'ajout/édition + suppression. CRUD via le client Supabase
-// navigateur puis router.refresh().
+// navigateur, resynchronisé côté serveur (useMutation / onSaved).
 //
 // NOTE : le champ « Nombre de personnes » de la maquette vanilla référence une
 // colonne molds.servings ABSENTE de la base live (confirmé par gen:types) ; il
@@ -11,10 +11,12 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { Mold, MoldType } from '@/lib/admin';
 
 export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: MoldType[] }) {
   const router = useRouter();
+  const { mutate } = useMutation();
   const [activeType, setActiveType] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Mold | null | undefined>(undefined); // undefined = fermé, null = création
@@ -37,11 +39,9 @@ export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: M
     }`;
 
   async function remove(m: Mold) {
-    if (!confirm(`Supprimer le moule « ${m.name} » ?`)) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('molds').delete().eq('id', m.id);
-    if (error) return void alert('Erreur : ' + error.message);
-    router.refresh();
+    await mutate(() => createClient().from('molds').delete().eq('id', m.id), {
+      confirm: `Supprimer le moule « ${m.name} » ?`,
+    });
   }
 
   return (

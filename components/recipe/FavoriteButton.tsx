@@ -5,33 +5,34 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 
 export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; initialFav: boolean }) {
   const router = useRouter();
+  const { busy, mutate } = useMutation();
   const [fav, setFav] = useState(initialFav);
-  const [busy, setBusy] = useState(false);
 
   async function toggle() {
     if (busy) return;
-    setBusy(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/connexion');
-      return;
-    }
     const next = !fav;
-    setFav(next);
-    const { error } = next
-      ? await supabase.from('favorites').insert({ user_id: user.id, recipe_id: recipeId })
-      : await supabase.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
-    if (error) {
-      setFav(!next);
-      alert('Favori non enregistré : ' + error.message);
-    }
-    setBusy(false);
+    setFav(next); // optimiste
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/connexion');
+          return null;
+        }
+        return next
+          ? supabase.from('favorites').insert({ user_id: user.id, recipe_id: recipeId })
+          : supabase.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
+      },
+      { errorLabel: 'Favori non enregistré' },
+    );
+    if (!ok) setFav(!next); // rollback de la mise à jour optimiste
   }
 
   return (

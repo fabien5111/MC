@@ -4,10 +4,15 @@
 // « courses-detail » — plus complet que courses.html qui n'a que la coche).
 // La coche est optimiste puis persistée via le client Supabase navigateur
 // (RLS appliquée par la session partagée en cookies).
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
+
+// Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
+const REFRESH_DELAY = 2000;
 
 export function ShoppingItems({
   listId,
@@ -20,6 +25,8 @@ export function ShoppingItems({
   initialItems: ShoppingItem[];
   units: Unit[];
 }) {
+  const router = useRouter();
+  const { mutate } = useMutation();
   const [items, setItems] = useState(() => [...initialItems].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -27,15 +34,47 @@ export function ShoppingItems({
   const total = items.length;
   const done = items.filter((i) => i.checked).length;
 
+  // Les compteurs « Articles / Cochés » du profil sont rendus côté serveur :
+  // ils doivent être resynchronisés après les écritures. Un router.refresh()
+  // par case cochée ferait un aller-retour serveur à chaque clic (usage en
+  // cuisine, réseau parfois médiocre) : on regroupe les écritures et on ne
+  // resynchronise qu'à l'arrêt des clics — ou aussitôt en quittant la liste
+  // (cf. l'effet de démontage ci-dessous). L'affichage local, lui, est déjà à
+  // jour : le refresh ne sert qu'aux vues serveur voisines.
+  const pending = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleRefresh = useCallback(() => {
+    pending.current = true;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      pending.current = false;
+      router.refresh();
+    }, REFRESH_DELAY);
+  }, [router]);
+
+  // Sortie de la liste avant l'échéance : on resynchronise sans attendre, sinon
+  // les compteurs du profil resteraient figés.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (pending.current) router.refresh();
+    },
+    [router],
+  );
+
   async function toggle(id: number, checked: boolean) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked } : i)));
-    const supabase = createClient();
-    const { error } = await supabase.from('shopping_list_items').update({ checked }).eq('id', id);
-    if (error) {
-      // Rollback si l'enregistrement échoue.
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked: !checked } : i)));
-      alert('Coche non enregistrée : ' + error.message);
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked } : i))); // optimiste
+    const ok = await mutate(() => createClient().from('shopping_list_items').update({ checked }).eq('id', id), {
+      errorLabel: 'Coche non enregistrée',
+      refresh: false,
+    });
+    if (!ok) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked: !checked } : i))); // rollback
+      return;
     }
+    scheduleRefresh();
   }
 
   async function applyEdit(id: number, name: string, quantity: string, unit: string) {
@@ -43,19 +82,22 @@ export function ShoppingItems({
       alert('Indiquez un libellé.');
       return;
     }
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('shopping_list_items')
-      .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null })
-      .eq('id', id);
-    if (error) {
-      alert('Erreur : ' + error.message);
-      return;
-    }
+    const ok = await mutate(
+      () =>
+        createClient()
+          .from('shopping_list_items')
+          .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null })
+          .eq('id', id),
+      { refresh: false },
+    );
+    if (!ok) return;
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null } : i)));
     setEditingId(null);
+    scheduleRefresh();
   }
 
+  // Non passé par useMutation : la ligne insérée est nécessaire (son id) pour
+  // compléter l'état local sans attendre la resynchronisation.
   async function addItem(name: string, quantity: string, unit: string) {
     if (!name.trim()) {
       alert('Indiquez un libellé.');
@@ -73,6 +115,7 @@ export function ShoppingItems({
     }
     setItems((prev) => [...prev, data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
     setAdding(false);
+    scheduleRefresh();
   }
 
   return (

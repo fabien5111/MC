@@ -166,6 +166,10 @@ export function ExecutionView({
     setExec((prev) => ({ ...prev, status, date_fin: fin }));
     wakeLock.current?.release?.().catch(() => {});
     window.scrollTo(0, 0);
+    // Uniquement en fin de session (pas à chaque sauvegarde de snapshot, qui
+    // est très fréquente) : les vues serveur listant les exécutions doivent
+    // refléter le nouveau statut.
+    router.refresh();
   }
 
   const s = exec.snapshot;
