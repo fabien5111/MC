@@ -12,6 +12,7 @@ import type { ImportFull } from '@/lib/imports';
 import type { Difficulty, Tag } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { ImageSlot } from '@/components/ImageSlot';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -42,6 +43,7 @@ type SpState = {
   ings: IngRow[];
   etapes: EtapeRow[];
   tips: string;
+  photos: (string | null)[];
   collapsed: boolean;
 };
 
@@ -116,6 +118,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
   const lignesCuisson = (sp.etapes || []).reduce((n: number, e: any) => n + (e.duree_min || 0), 0);
   const tMax = (sp.etapes || []).reduce((m: number, e: any) => Math.max(m, e.temperature_c || 0), 0);
   const t = sp.temps || {};
+  const photos = Array.isArray(sp.photos) ? sp.photos : [];
   return {
     key: nextKey(),
     nom: ligatureOeuf(sp.nom || ''),
@@ -150,6 +153,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       return { key: nextKey(), imported: texte || null, texte };
     }),
     tips: ligatureOeuf(sp.conseils || ''),
+    photos: [0, 1, 2, 3].map((i) => photos[i] || null),
     collapsed: false,
   };
 }
@@ -180,6 +184,7 @@ export function RelectureEditor({
   const router = useRouter();
   const recette = (importRow.recette ?? {}) as any;
 
+  const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
   const [titre, setTitre] = useState(ligatureOeuf(recette.titre || ''));
   const [description, setDescription] = useState(ligatureOeuf(recette.description || ''));
   const [notes, setNotes] = useState(ligatureOeuf(recette.notes || ''));
@@ -397,6 +402,8 @@ export function RelectureEditor({
         k === si ? { ...sp, etapes: sp.etapes.map((e, j) => (j === ei ? { ...e, ...patch } : e)) } : sp,
       ),
     );
+  const patchPhoto = (si: number, pi: number, url: string | null) =>
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi ? url : p)) } : sp)));
   const addIng = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) =>
@@ -427,6 +434,7 @@ export function RelectureEditor({
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
     tips: '',
+    photos: [null, null, null, null],
     collapsed: false,
   });
   const addSp = () => {
@@ -473,6 +481,7 @@ export function RelectureEditor({
     p.notes = notes.trim() || null;
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
+    p.photo_principale = hero;
     p.tags = [...selectedTags.values()];
     p.source = {
       ...(p.source || {}),
@@ -522,6 +531,7 @@ export function RelectureEditor({
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
       conseils: sp.tips.trim() || null,
+      photos: sp.photos.filter((p): p is string => !!p),
     }));
     p.materiel = utensils
       .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
@@ -627,6 +637,7 @@ export function RelectureEditor({
           video_url: p.source?.video_url || null,
           serving_advice: p.conseils_degustation || null,
           yield_notes: r.notes_quantites || null,
+          hero_image_url: p.photo_principale || null,
           difficulty_id: diffRow?.id ?? null,
           prep_time: t.preparation_min ?? null,
           cook_time: t.cuisson_min ?? null,
@@ -648,20 +659,34 @@ export function RelectureEditor({
         const sp = sousPreps[i];
         const spt = sp.temps || {};
         const sousEtapes = (sp.etapes || []).map((e: any) => e.texte).filter(Boolean);
-        await supabase.from('recipe_steps').insert({
-          recipe_id: recipe.id,
-          step_number: i + 1,
-          title: sp.nom || `Étape ${i + 1}`,
-          description: null,
-          prep_time: spt.preparation_min || null,
-          cook_time: spt.cuisson_min || null,
-          cook_temp: sp.temperature_c || null,
-          wait_time: spt.attente_min || null,
-          day_offset: sp.day_offset || 0,
-          tips: sp.conseils || null,
-          sous_etapes: sousEtapes.length ? sousEtapes : null,
-          order_index: i,
-        });
+        const { data: stepRow, error: stepErr } = await supabase
+          .from('recipe_steps')
+          .insert({
+            recipe_id: recipe.id,
+            step_number: i + 1,
+            title: sp.nom || `Étape ${i + 1}`,
+            description: null,
+            prep_time: spt.preparation_min || null,
+            cook_time: spt.cuisson_min || null,
+            cook_temp: sp.temperature_c || null,
+            wait_time: spt.attente_min || null,
+            day_offset: sp.day_offset || 0,
+            tips: sp.conseils || null,
+            sous_etapes: sousEtapes.length ? sousEtapes : null,
+            order_index: i,
+          })
+          .select('id')
+          .single();
+        if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
+
+        const photoUrls: string[] = Array.isArray(sp.photos) ? sp.photos.filter((p: any) => !!p) : [];
+        if (photoUrls.length) {
+          const { error } = await supabase
+            .from('step_photos')
+            .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+          if (error) throw error;
+        }
+
         const lines = (sp.ingredients || [])
           .map((g: any, k: number) => ({
             name: g.nom,
@@ -753,6 +778,17 @@ export function RelectureEditor({
       <section className="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
+          <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
+            <ImageSlot
+              src={hero}
+              onChange={setHero}
+              onClear={() => setHero(null)}
+              shape="rect"
+              maxWidth={1200}
+              placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
+              className="w-full h-full"
+            />
+          </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
             <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
@@ -1321,6 +1357,23 @@ export function RelectureEditor({
               <button type="button" onClick={() => addEtape(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter une sous-étape
               </button>
+
+              {/* Photos de l'étape */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                {sp.photos.map((p, pi) => (
+                  <div key={pi} className="aspect-square border border-dashed border-outline-variant overflow-hidden rounded-lg">
+                    <ImageSlot
+                      src={p}
+                      onChange={(url) => patchPhoto(si, pi, url)}
+                      onClear={() => patchPhoto(si, pi, null)}
+                      shape="rect"
+                      maxWidth={800}
+                      placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
+                      className="w-full h-full"
+                    />
+                  </div>
+                ))}
+              </div>
 
               {/* Conseils & astuces de l'étape */}
               <div className="mt-6">
