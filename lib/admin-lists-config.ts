@@ -17,7 +17,7 @@
 export type Field = {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'select' | 'image' | 'multiref';
+  type?: 'text' | 'number' | 'select' | 'image' | 'multiref' | 'checkbox';
   options?: string[];
   refTable?: string;
   required?: boolean;
@@ -50,11 +50,10 @@ export const SECTIONS: Section[] = [
     fields: [
       { key: 'name', label: 'Nom', required: true },
       { key: 'slug', label: 'Slug' },
-      // Renseigner une icône Material Symbols (ex. « cake ») OU un picto promeut
-      // le tag en catégorie affichée sur l'accueil ; laisser vide pour un tag
-      // ordinaire. Si un picto est fourni, il prime sur l'icône à l'affichage.
-      { key: 'category_icon', label: 'Icône catégorie (accueil)' },
+      // Un tag n'est promu en catégorie affichée sur l'accueil que si la case
+      // est cochée ET qu'un picto est renseigné ; sinon c'est un tag ordinaire.
       { key: 'category_picto', label: 'Picto catégorie (accueil)', type: 'image' },
+      { key: 'show_on_home', label: "Afficher sur l'accueil", type: 'checkbox' },
       TOOLTIP,
     ],
   },

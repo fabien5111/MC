@@ -280,6 +280,19 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                               </td>
                             );
                           }
+                          if (f.type === 'checkbox') {
+                            return (
+                              <td key={f.key} className="px-6 py-4 text-sm">
+                                {val === true ? (
+                                  <span className="material-symbols-outlined text-primary text-xl align-middle" title="Oui">
+                                    check_circle
+                                  </span>
+                                ) : (
+                                  <span className="text-on-surface-variant text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          }
                           if (f.key === 'url' && val) {
                             return (
                               <td key={f.key} className="px-6 py-4 text-sm">
@@ -411,6 +424,10 @@ function EntryForm({
       payload = {};
       for (const f of section.fields) {
         const raw = (values[f.key] ?? '').trim();
+        if (f.type === 'checkbox') {
+          payload[f.key] = raw === 'true';
+          continue;
+        }
         // multiref stocke une chaîne de libellés « a, b, c » ; select (refTable
         // simple) stocke l'id numérique ; number un nombre ; sinon du texte.
         const asNumber = f.type === 'number' || (f.refTable && f.type !== 'multiref');
@@ -528,6 +545,19 @@ function EntryForm({
                     </div>
                     {selected.length >= max && <span className="text-[11px] text-on-surface-variant">Maximum {max} atteint.</span>}
                   </div>
+                );
+              }
+              if (f.type === 'checkbox') {
+                return (
+                  <label key={f.key} className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={values[f.key] === 'true'}
+                      onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked ? 'true' : 'false' }))}
+                      className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                    />
+                    <span className={LABEL}>{f.label}</span>
+                  </label>
                 );
               }
               if (f.type === 'image') {
