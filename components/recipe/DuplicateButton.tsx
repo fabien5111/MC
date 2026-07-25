@@ -39,7 +39,10 @@ export function DuplicateButton({ recipeId }: { recipeId: string }) {
       disabled={busy}
       className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
     >
-      <span className="material-symbols-outlined text-[18px]">content_copy</span> Dupliquer
+      <span className={`material-symbols-outlined text-[18px]${busy ? ' animate-spin' : ''}`}>
+        {busy ? 'progress_activity' : 'content_copy'}
+      </span>{' '}
+      {busy ? 'Duplication…' : 'Dupliquer'}
     </button>
   );
 }
