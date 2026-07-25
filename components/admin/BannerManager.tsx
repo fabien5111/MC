@@ -3,6 +3,7 @@
 // Gestion des bannières d'accueil par appareil (porté de admin-photos.html).
 // Upload → compression data-URL → enregistrement dans site_settings.
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageToDataUrl } from '@/lib/images';
 
@@ -33,6 +34,7 @@ function BannerCard({
   config: (typeof BANNERS)[number];
   initialUrl: string | null;
 }) {
+  const router = useRouter();
   const [url, setUrl] = useState<string | null>(initialUrl);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,6 +50,9 @@ function BannerCard({
         .upsert({ key: key(config.device), value: dataUrl });
       if (error) throw error;
       setUrl(dataUrl);
+      // La bannière est lue côté serveur par l'accueil : sans invalidation,
+      // elle n'y apparaît qu'après un rechargement complet.
+      router.refresh();
       setStatus('Bannière enregistrée ✓');
     } catch (e) {
       setStatus('');

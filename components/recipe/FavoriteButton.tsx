@@ -30,6 +30,10 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
     if (error) {
       setFav(!next);
       alert('Favori non enregistré : ' + error.message);
+    } else {
+      // Rafraîchit les données serveur (liste « Mes favoris », cœurs des
+      // cartes) sans perdre l'état local ni la position de scroll.
+      router.refresh();
     }
     setBusy(false);
   }

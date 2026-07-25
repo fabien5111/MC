@@ -558,6 +558,9 @@ export function RelectureEditor({
     setBusy(true);
     try {
       await save();
+      // Les corrections viennent d'être écrites en base : on invalide le rendu
+      // serveur pour que « Mes imports » et cette relecture restent en phase.
+      router.refresh();
       setSaveStatus('Corrections enregistrées ✓');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (e) {
@@ -718,6 +721,9 @@ export function RelectureEditor({
       }
 
       await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipe.id }).eq('id', importRow.id);
+      // Invalide le rendu serveur avant de naviguer : le carnet de recettes et
+      // la liste « Mes imports » doivent refléter la recette créée.
+      router.refresh();
       router.push(`/recette/${recipe.id}`);
     } catch (e) {
       alert('Erreur à la création : ' + (e as Error).message);
@@ -730,6 +736,9 @@ export function RelectureEditor({
     const supabase = createClient();
     const { error } = await supabase.from('imports').delete().eq('id', importRow.id);
     if (error) return void alert('Erreur : ' + error.message);
+    // Sans invalidation, l'import supprimé peut réapparaître sur /importer
+    // (segment mis en cache lors d'une visite précédente).
+    router.refresh();
     router.push('/importer');
   }
 

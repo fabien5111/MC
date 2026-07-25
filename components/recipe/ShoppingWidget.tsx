@@ -72,6 +72,10 @@ export function ShoppingWidget({
       }));
       const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
       if (itemsErr) throw itemsErr;
+      // Invalide le rendu serveur avant de naviguer : la liste de destination
+      // peut déjà être en cache (articles manquants), et « Listes de courses »
+      // du profil doit voir la liste créée.
+      router.refresh();
       router.push(`/courses/${listId}`);
     } catch (e) {
       alert('Erreur : ' + (e as Error).message);
