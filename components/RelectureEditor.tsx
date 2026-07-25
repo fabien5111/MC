@@ -322,8 +322,11 @@ export function RelectureEditor({
   // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
   const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
 
-  const allIngredientRefs = useMemo(() => [...ingredientRefs, ...extraIngredientRefs], [ingredientRefs, extraIngredientRefs]);
-  const allUtensilRefs = useMemo(() => [...utensilRefs, ...extraUtensilRefs], [utensilRefs, extraUtensilRefs]);
+  // Listes serveur + libellés ajoutés à la volée. Dédoublonnées : après le
+  // refresh déclenché par un ajout au référentiel, la liste serveur contient
+  // déjà le libellé que l'état local conserve (sinon : options en double).
+  const allIngredientRefs = useMemo(() => [...new Set([...ingredientRefs, ...extraIngredientRefs])], [ingredientRefs, extraIngredientRefs]);
+  const allUtensilRefs = useMemo(() => [...new Set([...utensilRefs, ...extraUtensilRefs])], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
   const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
@@ -332,6 +335,13 @@ export function RelectureEditor({
   // Ajout à la volée d'un ustensile dans la table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
+  //
+  // L'état local (`extra*`) rend le libellé disponible immédiatement ; le
+  // refresh, lui, resynchronise les listes de référence rendues côté serveur —
+  // sans quoi le libellé créé disparaîtrait en revenant sur cet écran, et
+  // n'apparaîtrait pas dans le back-office des listes.
+  const refreshRefs = () => router.refresh();
+
   async function addUtensilRef(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -340,6 +350,7 @@ export function RelectureEditor({
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
+    refreshRefs();
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -359,6 +370,7 @@ export function RelectureEditor({
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
+    refreshRefs();
   }
 
   // Création d'un tag inexistant dans le référentiel depuis la relecture
@@ -383,8 +395,11 @@ export function RelectureEditor({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    refreshRefs();
   }
-  const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
+  // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
+  // double produirait deux entrées de même clé React dans le sélecteur).
+  const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Mutations d'état ──
