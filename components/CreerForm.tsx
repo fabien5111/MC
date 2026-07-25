@@ -612,6 +612,10 @@ export function CreerForm({
 
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
+        // router.refresh() invalide le Router Cache client avant de naviguer,
+        // pour éviter qu'une visite ultérieure de /profil ou de la fiche
+        // recette ne réutilise un segment mis en cache avant cette écriture.
+        router.refresh();
         router.push(`/recette/${recipeId}`);
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
@@ -628,6 +632,9 @@ export function CreerForm({
         }
       } else {
         // « Enregistrer en brouillon et quitter » : retour au profil.
+        // router.refresh() invalide le Router Cache client avant de naviguer
+        // (cf. commentaire ci-dessus).
+        router.refresh();
         router.push('/profil');
       }
     } catch (e) {

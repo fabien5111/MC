@@ -32,18 +32,21 @@ export async function requireUser(next?: string): Promise<User> {
 }
 
 // Profil applicatif (table profiles) de l'utilisateur donné.
-export async function getProfile(userId: string): Promise<Profile | null> {
+// Mémoïsé par requête (React cache) : Header et la page appelante partagent
+// un seul appel au lieu d'en refaire un chacun.
+export const getProfile = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient();
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
   return data ?? null;
-}
+});
 
 // Admin = profiles.role === 'admin' (la base live utilise `role`).
-export async function isAdmin(userId: string): Promise<boolean> {
+// Mémoïsé par requête (React cache), même raison que getProfile ci-dessus.
+export const isAdmin = cache(async (userId: string): Promise<boolean> => {
   const supabase = await createClient();
   const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
   return data?.role === 'admin';
-}
+});
 
 // Exige un admin ; redirige sinon. Renvoie l'utilisateur.
 export async function requireAdmin(): Promise<User> {
