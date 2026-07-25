@@ -146,11 +146,19 @@ export async function getRecipesByTag(
 
 export async function getUserRecipes(userId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('recipes')
-    .select('id, title, description, hero_image_url, status, is_public, rating_avg, created_at')
-    .eq('author_id', userId)
-    .order('created_at', { ascending: false });
+  const query = () =>
+    supabase
+      .from('recipes')
+      .select('id, title, description, hero_image_url, status, is_public, rating_avg, created_at')
+      .eq('author_id', userId)
+      .order('created_at', { ascending: false });
+
+  let { data, error } = await query();
+  if (error) {
+    console.error('getUserRecipes:', error.message);
+    ({ data, error } = await query());
+    if (error) console.error('getUserRecipes (retry):', error.message);
+  }
   return data ?? [];
 }
 
