@@ -10,7 +10,8 @@ import { Spinner } from '@/components/Spinner';
 // on la superpose.
 //
 // L'App Router n'expose pas d'événements de navigation ; on détecte donc :
-//  - le départ : un clic sur un lien interne, ou un retour/avant du navigateur ;
+//  - le départ : un clic sur un lien interne, la soumission d'un formulaire
+//    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
 // instantanée ; un filet de sécurité masque l'overlay au bout de 12 s.
@@ -20,6 +21,14 @@ import { Spinner } from '@/components/Spinner';
 // mobiles, l'écart entre le tapotement et l'événement `click` synthétique
 // peut dépasser le délai d'affichage, ce qui masque l'overlay avant même
 // qu'il ait eu la chance d'apparaître. `pointerdown` réagit dès l'appui.
+//
+// Les barres de recherche (HomeSearch, HeaderSearch) redirigent en JS via
+// `router.push` plutôt qu'une vraie soumission de formulaire : on ne peut
+// donc pas les détecter comme un lien. On écoute `submit` en capture sur les
+// formulaires `role="search"` — ce mécanisme centralisé évite de dupliquer un
+// spinner local par composant, dont l'état (`isPending` d'un useTransition)
+// peut rester bloqué à `true` si le Router Cache gèle la page pendant la
+// transition et la restaure telle quelle sur un retour navigateur.
 export function NavigationSpinner() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -83,13 +92,22 @@ export function NavigationSpinner() {
     // Retour / avant du navigateur.
     const onPopState = () => start();
 
+    // Soumission d'une barre de recherche (HomeSearch, HeaderSearch) :
+    // `preventDefault()` dans leur propre handler n'empêche pas cet écouteur
+    // en capture de recevoir l'événement en premier.
+    const onSubmit = (e: SubmitEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('form[role="search"]')) start();
+    };
+
     // Capture pour intercepter avant que Next ne gère le clic du <Link>.
     document.addEventListener('click', onClick, true);
     document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('submit', onSubmit, true);
     window.addEventListener('popstate', onPopState);
     return () => {
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('submit', onSubmit, true);
       window.removeEventListener('popstate', onPopState);
       clearTimers();
     };

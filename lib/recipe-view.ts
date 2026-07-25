@@ -1,5 +1,42 @@
-// Helpers d'affichage d'une recette (porté de recette.html). Fonctions pures.
-import type { RecipeFull } from '@/lib/recipes';
+// Helpers d'affichage d'une recette (porté de recette.html). Fonctions pures
+// — pas d'accès Supabase, utilisables aussi bien côté serveur que dans les
+// Client Components (ex. RecipeCard rendu dans une grille avec pagination).
+import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
+
+// Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
+// dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
+// fait à l'affichage (composant AllergenPictos).
+export function cardAllergenNames(recipe: Pick<RecipeCard, 'ingredient_groups'>): string[] {
+  const seen = new Map<string, string>();
+  for (const g of recipe.ingredient_groups || []) {
+    for (const it of g.ingredients || []) {
+      if (!it.allergen) continue;
+      for (const part of it.allergen.split(/[,;/]/)) {
+        const name = part.trim();
+        if (!name) continue;
+        const k = name.toLowerCase();
+        if (!seen.has(k)) seen.set(k, name);
+      }
+    }
+  }
+  return [...seen.values()];
+}
+
+// Rapproche des noms d'allergènes (texte libre) avec la table de référence
+// (picto + libellé canonique), insensible à la casse et aux accents. Pure —
+// la table de référence est chargée en amont côté serveur (getAllergensWithPicto)
+// puis réutilisée ici, aussi bien côté serveur (AllergenPictos) que côté
+// client (cartes rendues après pagination, avec pictos déjà résolus).
+export type AllergenPictoItem = { key: string; name: string; picto: string | null };
+const normAllergen = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+export function matchAllergenPictos(names: string[], refs: AllergenRef[]): AllergenPictoItem[] {
+  const byName = new Map(refs.map((a) => [normAllergen(a.name), a]));
+  return names.map((n) => {
+    const ref = byName.get(normAllergen(n));
+    return { key: normAllergen(n) || n, name: ref?.name ?? n, picto: ref?.picto ?? null };
+  });
+}
 
 export const UNITS_LBL: Record<string, string> = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
 const MOLDS_LBL: Record<string, string> = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };

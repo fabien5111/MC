@@ -3,10 +3,12 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { HomeBanner } from '@/components/HomeBanner';
-import { RecipeCard } from '@/components/RecipeCard';
+import { HomeRecipeGrid } from '@/components/HomeRecipeGrid';
+import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
-import { getRecipes, cardAllergenNames } from '@/lib/recipes';
+import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { cardAllergenNames } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getSiteSettings } from '@/lib/site';
@@ -43,9 +45,10 @@ export default async function HomePage() {
     getHomeCategories(),
   ]);
   const featured = recipes[0] ?? null;
-  const categories: { icon: string | null; picto: string | null; label: string }[] = homeCategories.length
-    ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name }))
-    : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label }));
+  const categories: { icon: string | null; picto: string | null; label: string; slug: string | null }[] =
+    homeCategories.length
+      ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
+      : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
 
   return (
     <>
@@ -165,22 +168,7 @@ export default async function HomePage() {
             <h2 className="font-headline-lg text-headline-lg text-primary mb-6">
               Que souhaitez-vous préparer aujourd&apos;hui ?
             </h2>
-            <form action="/recherche" method="get" role="search" className="w-full max-w-2xl relative">
-              <input
-                name="q"
-                className="w-full bg-white border-none rounded-full py-5 px-8 text-body-md focus:ring-2 focus:ring-primary luxury-shadow transition-all"
-                placeholder="Rechercher une recette, un ingrédient, un auteur..."
-                aria-label="Rechercher une recette, un ingrédient ou un auteur"
-                type="search"
-              />
-              <button
-                type="submit"
-                aria-label="Rechercher"
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-on-primary p-3 rounded-full hover:bg-opacity-90 transition-colors shadow-lg"
-              >
-                <span className="material-symbols-outlined leading-none">search</span>
-              </button>
-            </form>
+            <HomeSearch />
           </div>
         </section>
 
@@ -196,21 +184,36 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
-            {categories.map((c) => (
-              <div key={c.label} className="group cursor-pointer flex flex-col items-center">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg overflow-hidden">
-                  {c.picto ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                    <img src={c.picto} alt="" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
-                  ) : (
-                    <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>
-                  )}
+            {categories.map((c) => {
+              const inner = (
+                <>
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg overflow-hidden">
+                    {c.picto ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
+                      <img src={c.picto} alt="" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+                    ) : (
+                      <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>
+                    )}
+                  </div>
+                  <span className="font-label-md text-label-md text-center group-hover:text-primary font-medium">
+                    {c.label}
+                  </span>
+                </>
+              );
+              return c.slug ? (
+                <Link
+                  key={c.label}
+                  href={`/recherche?category=${c.slug}`}
+                  className="group flex flex-col items-center"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div key={c.label} className="group flex flex-col items-center">
+                  {inner}
                 </div>
-                <span className="font-label-md text-label-md text-center group-hover:text-primary font-medium">
-                  {c.label}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -247,18 +250,7 @@ export default async function HomePage() {
             </div>
           </div>
           {recipes.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {recipes.map((r) => (
-                  <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
-                ))}
-              </div>
-              <div className="mt-16 text-center">
-                <button className="border-2 border-primary text-primary px-20 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-md hover:shadow-xl">
-                  Charger plus de délices
-                </button>
-              </div>
-            </>
+            <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} />
           ) : (
             <p className="text-on-surface-variant italic">
               Aucune recette publiée pour le moment.
