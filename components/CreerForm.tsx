@@ -633,6 +633,7 @@ export function CreerForm({
           setBusy(false);
           router.refresh();
         } else {
+          setBusy(false);
           router.replace(`/creer?id=${recipeId}`);
         }
       } else {
