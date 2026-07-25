@@ -14,6 +14,7 @@ export function DuplicateButton({ recipeId }: { recipeId: string }) {
 
   async function duplicate() {
     if (busy) return;
+    if (!confirm('Dupliquer cette recette ? Une copie en brouillon sera créée.')) return;
     setBusy(true);
     try {
       const supabase = createClient();
