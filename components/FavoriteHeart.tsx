@@ -41,6 +41,10 @@ export function FavoriteHeart({
     if (error) {
       setFav(!next);
       alert((next ? 'Favori non enregistré : ' : 'Favori non retiré : ') + error.message);
+    } else {
+      // Rafraîchit les données serveur (liste « Mes favoris », favIds…) sans
+      // perdre l'état local des autres composants ni la position de scroll.
+      router.refresh();
     }
     setBusy(false);
   }
