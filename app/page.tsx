@@ -17,8 +17,9 @@ const BANNER_FALLBACK =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
 
 // Catégories affichées si aucune n'est encore définie dans le référentiel des
-// tags (colonne `category_icon`). Sert de repli tant que l'admin n'a pas promu
-// de tags en catégories, pour ne jamais laisser la section vide.
+// tags (case « Afficher sur l'accueil » + picto). Sert de repli tant que
+// l'admin n'a pas promu de tags en catégories, pour ne jamais laisser la
+// section vide.
 const FALLBACK_CATEGORIES = [
   { icon: 'cake', label: 'Gâteaux' },
   { icon: 'icecream', label: 'Entremets' },
@@ -43,7 +44,7 @@ export default async function HomePage() {
   ]);
   const featured = recipes[0] ?? null;
   const categories: { icon: string | null; picto: string | null; label: string }[] = homeCategories.length
-    ? homeCategories.map((c) => ({ icon: c.category_icon, picto: c.category_picto, label: c.name }))
+    ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name }))
     : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label }));
 
   return (
