@@ -136,6 +136,26 @@ export function moldMetrics(
   return { volume: null, surface: null };
 }
 
+// Temps globaux effectifs d'une recette : le temps saisi manuellement prime ;
+// s'il est vide, on retombe sur la somme des temps des étapes correspondantes
+// (durée totale = somme prép + cuisson + attente de toutes les étapes).
+export type RecipeTimes = { prep: number | null; cook: number | null; wait: number | null; total: number | null };
+export function effectiveTimes(
+  recipe: Pick<RecipeFull, 'prep_time' | 'cook_time' | 'wait_time' | 'total_time' | 'recipe_steps'>,
+): RecipeTimes {
+  const steps = recipe.recipe_steps || [];
+  const sum = (k: 'prep_time' | 'cook_time' | 'wait_time') => steps.reduce((n, s) => n + (s[k] || 0), 0);
+  const prepSum = sum('prep_time');
+  const cookSum = sum('cook_time');
+  const waitSum = sum('wait_time');
+  return {
+    prep: recipe.prep_time ?? (prepSum || null),
+    cook: recipe.cook_time ?? (cookSum || null),
+    wait: recipe.wait_time ?? (waitSum || null),
+    total: recipe.total_time ?? (prepSum + cookSum + waitSum || null),
+  };
+}
+
 // Étape « Jour J − n » (hors contexte de planification).
 export function dayLabel(offset: number | null | undefined): string {
   const o = offset || 0;

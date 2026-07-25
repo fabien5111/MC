@@ -233,19 +233,12 @@ export function CreerForm({
   });
   const [dimsDesc, setDimsDesc] = useState(editRecipe?.measure_type === 'dimensions' ? editRecipe?.yield_desc || '' : '');
 
+  // Temps globaux saisis manuellement (prioritaires sur la somme des étapes
+  // en consultation — laissés vides, la somme des étapes fait foi).
   const [prep, setPrep] = useState(editRecipe?.prep_time != null ? String(editRecipe.prep_time) : '');
   const [wait, setWait] = useState(editRecipe?.wait_time != null ? String(editRecipe.wait_time) : '');
   const [cook, setCook] = useState(editRecipe?.cook_time != null ? String(editRecipe.cook_time) : '');
   const [total, setTotal] = useState(editRecipe?.total_time != null ? String(editRecipe.total_time) : '');
-  // Un temps global n'est « verrouillé » (non recalculé auto.) que s'il a une
-  // valeur propre : à la création tout est auto, en édition seuls les champs
-  // réellement enregistrés restent tels quels.
-  const [timeTouched, setTimeTouched] = useState({
-    prep: editRecipe?.prep_time != null,
-    wait: editRecipe?.wait_time != null,
-    cook: editRecipe?.cook_time != null,
-    total: editRecipe?.total_time != null,
-  });
 
   const [utensils, setUtensils] = useState<{ key: string; name: string; comment: string }[]>(() => {
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -341,24 +334,16 @@ export function CreerForm({
   const allTags = useMemo(() => [...tags, ...extraTags], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
-  // ── Temps globaux : somme automatique des étapes tant qu'ils ne sont pas
-  // modifiés à la main. Recalcul dans un effet (après rendu) : fiable, contrairement
-  // à un setState déclenché depuis l'updater d'un autre state, que React ignore. ──
-  useEffect(() => {
+  // ── Somme des temps des étapes : purement informative en édition (affichée à
+  // côté des champs manuels), recalculée en direct depuis les étapes saisies.
+  // Le fallback « manuel vide → somme des étapes » est appliqué en consultation. ──
+  const stepSums = useMemo(() => {
     const sum = (k: 'prep' | 'wait' | 'cook') => steps.reduce((n, s) => n + (parseInt(s[k], 10) || 0), 0);
-    if (!timeTouched.prep) setPrep(String(sum('prep') || ''));
-    if (!timeTouched.wait) setWait(String(sum('wait') || ''));
-    if (!timeTouched.cook) setCook(String(sum('cook') || ''));
-    if (!timeTouched.total) {
-      const t =
-        (timeTouched.prep ? parseInt(prep, 10) || 0 : sum('prep')) +
-        (timeTouched.wait ? parseInt(wait, 10) || 0 : sum('wait')) +
-        (timeTouched.cook ? parseInt(cook, 10) || 0 : sum('cook'));
-      setTotal(String(t > 0 ? t : ''));
-    }
-    // prep/wait/cook n'interviennent que quand le champ est verrouillé (calcul du
-    // total) ; setState ignore une valeur identique → pas de boucle de rendu.
-  }, [steps, timeTouched, prep, wait, cook]);
+    const p = sum('prep');
+    const w = sum('wait');
+    const c = sum('cook');
+    return { prep: p, wait: w, cook: c, total: p + w + c };
+  }, [steps]);
 
   // ── Updaters étapes ──
   function patchStep(i: number, p: Partial<StepState>) {
@@ -1547,51 +1532,79 @@ export function CreerForm({
         <section className="space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
             <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
-            <span className="text-sm text-on-surface-variant italic">Temps pré-remplis depuis les étapes, modifiables</span>
+            <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
           </div>
-          <div className="flex flex-wrap justify-evenly items-start gap-x-10 gap-y-12">
-            <div className="flex flex-col items-center text-center border-b border-outline-variant pb-4">
-              <label className="font-label-md text-label-md text-outline uppercase">Difficulté</label>
-              <div className="flex justify-center gap-2 mt-4">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setLevel(i + 1)}
-                    className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
-                    aria-label={`Niveau ${i + 1}`}
-                  >
-                    <MaryseIcon size={24} />
-                  </button>
-                ))}
-              </div>
+
+          <div className="flex flex-col items-center text-center border-b border-outline-variant pb-4 max-w-[220px] mx-auto">
+            <label className="font-label-md text-label-md text-outline uppercase">Difficulté</label>
+            <div className="flex justify-center gap-2 mt-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setLevel(i + 1)}
+                  className={`transition-transform hover:scale-110 ${i <= level - 1 ? 'text-primary' : 'text-outline-variant'}`}
+                  aria-label={`Niveau ${i + 1}`}
+                >
+                  <MaryseIcon size={24} />
+                </button>
+              ))}
             </div>
-            {(
-              [
-                ['TEMPS DE PRÉP', prep, (v: string) => setPrep(v), 'prep' as const],
-                ['ATTENTE', wait, (v: string) => setWait(v), 'wait' as const],
-                ['CUISSON', cook, (v: string) => setCook(v), 'cook' as const],
-                ['DURÉE TOTALE', total, (v: string) => setTotal(v), 'total' as const],
-              ] as const
-            ).map(([label, val, set, k]) => (
-              <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
-                <label className="font-label-md text-label-md text-outline">{label}</label>
-                <div className="flex items-baseline gap-2">
-                  <input
-                    value={val}
-                    onChange={(e) => {
-                      set(e.target.value);
-                      setTimeTouched((t) => ({ ...t, [k]: e.target.value.trim() !== '' }));
-                    }}
-                    className="editorial-input font-headline-md text-headline-md text-primary"
-                    style={{ width: '5.5rem' }}
-                    type="number"
-                    min={0}
-                  />
-                  <span className="text-sm text-on-surface-variant">min</span>
+          </div>
+
+          {/* Ligne 1 : somme des temps des étapes (lecture seule, informative) */}
+          <div className="space-y-3">
+            <span className="font-label-md text-label-md text-outline uppercase block text-center">Somme des temps des étapes</span>
+            <div className="flex flex-wrap justify-evenly items-start gap-x-10 gap-y-8">
+              {(
+                [
+                  ['TEMPS DE PRÉP', stepSums.prep],
+                  ['ATTENTE', stepSums.wait],
+                  ['CUISSON', stepSums.cook],
+                  ['DURÉE TOTALE', stepSums.total],
+                ] as const
+              ).map(([label, val]) => (
+                <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
+                  <label className="font-label-md text-label-md text-outline">{label}</label>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-headline-md text-headline-md text-on-surface-variant inline-block" style={{ width: '5.5rem' }}>
+                      {val || 0}
+                    </span>
+                    <span className="text-sm text-on-surface-variant">min</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* Ligne 2 : temps saisis manuellement (éditables, prioritaires en consultation) */}
+          <div className="space-y-3">
+            <span className="font-label-md text-label-md text-outline uppercase block text-center">Temps saisi manuellement</span>
+            <div className="flex flex-wrap justify-evenly items-start gap-x-10 gap-y-8">
+              {(
+                [
+                  ['TEMPS DE PRÉP', prep, setPrep],
+                  ['ATTENTE', wait, setWait],
+                  ['CUISSON', cook, setCook],
+                  ['DURÉE TOTALE', total, setTotal],
+                ] as const
+              ).map(([label, val, set]) => (
+                <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
+                  <label className="font-label-md text-label-md text-outline">{label}</label>
+                  <div className="flex items-baseline gap-2">
+                    <input
+                      value={val}
+                      onChange={(e) => set(e.target.value)}
+                      className="editorial-input font-headline-md text-headline-md text-primary"
+                      style={{ width: '5.5rem' }}
+                      type="number"
+                      min={0}
+                    />
+                    <span className="text-sm text-on-surface-variant">min</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
