@@ -8,6 +8,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
+import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '@/lib/recipe-view';
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
@@ -34,39 +35,22 @@ export type RecipeCard = Pick<
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
 };
 
-// Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
-// dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
-// fait à l'affichage (composant AllergenPictos).
-export function cardAllergenNames(recipe: Pick<RecipeCard, 'ingredient_groups'>): string[] {
-  const seen = new Map<string, string>();
-  for (const g of recipe.ingredient_groups || []) {
-    for (const it of g.ingredients || []) {
-      if (!it.allergen) continue;
-      for (const part of it.allergen.split(/[,;/]/)) {
-        const name = part.trim();
-        if (!name) continue;
-        const k = name.toLowerCase();
-        if (!seen.has(k)) seen.set(k, name);
-      }
-    }
-  }
-  return [...seen.values()];
-}
 
 export async function getRecipes(opts: {
   limit?: number;
+  offset?: number;
   status?: string;
   authorId?: string | null;
   typeId?: number | null;
 } = {}): Promise<RecipeCard[]> {
-  const { limit = 12, status = 'published', authorId = null, typeId = null } = opts;
+  const { limit = 12, offset = 0, status = 'published', authorId = null, typeId = null } = opts;
   const supabase = await createClient();
   let q = supabase
     .from('recipes')
     .select(CARD_SELECT)
     .eq('status', status)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
   if (authorId) q = q.eq('author_id', authorId);
   if (typeId) q = q.eq('type_id', typeId);
   const { data, error } = await q;
@@ -128,6 +112,35 @@ export async function searchRecipes(
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) console.error('searchRecipes:', error.message);
+  return (data as unknown as RecipeCard[]) ?? [];
+}
+
+// Recettes publiées rattachées à une catégorie (tag promu sur l'accueil),
+// identifiée par son slug. Même principe que searchRecipes : on résout
+// d'abord les identifiants de recettes concernées (via recipe_tags), puis on
+// récupère les cartes complètes.
+export async function getRecipesByTag(
+  slug: string,
+  opts: { limit?: number } = {},
+): Promise<RecipeCard[]> {
+  const { limit = 60 } = opts;
+  const supabase = await createClient();
+
+  const { data: tag } = await supabase.from('tags').select('id').eq('slug', slug).maybeSingle();
+  if (!tag) return [];
+
+  const { data: links } = await supabase.from('recipe_tags').select('recipe_id').eq('tag_id', tag.id);
+  const ids = (links ?? []).map((l) => l.recipe_id);
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(CARD_SELECT)
+    .eq('status', 'published')
+    .in('id', ids)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) console.error('getRecipesByTag:', error.message);
   return (data as unknown as RecipeCard[]) ?? [];
 }
 
@@ -248,3 +261,16 @@ export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
   }
   return ((data as unknown as AllergenRef[]) ?? []).filter((a) => a.name);
 });
+
+// Résout les pictos d'allergènes pour un lot de cartes (une seule lecture de
+// la table de référence). Utile pour les rendus faits hors d'un Server
+// Component (ex. route API de pagination), où l'on ne peut pas s'appuyer sur
+// le composant asynchrone AllergenPictos.
+export type RecipeCardWithAllergens = RecipeCard & { allergenItems: AllergenPictoItem[] };
+export async function withAllergenPictos<T extends Pick<RecipeCard, 'ingredient_groups'>>(
+  recipes: T[],
+): Promise<(T & { allergenItems: AllergenPictoItem[] })[]> {
+  if (!recipes.length) return [];
+  const refs = await getAllergensWithPicto();
+  return recipes.map((r) => ({ ...r, allergenItems: matchAllergenPictos(cardAllergenNames(r), refs) }));
+}

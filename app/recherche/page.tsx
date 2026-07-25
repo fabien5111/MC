@@ -1,13 +1,16 @@
-// Page de résultats de recherche. La saisie (loupe du bandeau haut) est
-// recherchée dans le titre des recettes, leurs ingrédients et le nom des
-// auteurs. Les résultats reprennent le format « Dernières Créations » ; un
+// Page de résultats de recherche. La saisie (loupe du bandeau haut, ou barre
+// de recherche de l'accueil) est recherchée dans le titre des recettes, leurs
+// ingrédients et le nom des auteurs. Un clic sur une catégorie de l'accueil
+// arrive ici aussi, avec un paramètre `category` (slug du tag) à la place de
+// `q`. Les résultats reprennent le format « Dernières Créations » ; un
 // bandeau publicitaire est intercalé toutes les deux lignes de recettes.
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
-import { searchRecipes } from '@/lib/recipes';
+import { searchRecipes, getRecipesByTag, type RecipeCard as RecipeCardData } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
+import { getTagBySlug } from '@/lib/taxonomy';
 
 // Grille en 3 colonnes (lg) → 2 lignes = 6 cartes entre deux publicités.
 const CARDS_PER_BLOCK = 6;
@@ -38,14 +41,30 @@ function AdBanner() {
 export default async function RecherchePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
-  const { q = '' } = await searchParams;
+  const { q = '', category = '' } = await searchParams;
   const query = q.trim();
+  const categorySlug = category.trim();
 
-  const [recipes, favIds] = query
-    ? await Promise.all([searchRecipes(query), getFavoriteIds()])
-    : [[], new Set<string>()];
+  let recipes: RecipeCardData[] = [];
+  let favIds = new Set<string>();
+  let categoryName: string | null = null;
+
+  if (categorySlug) {
+    const [tag, recipesRes, favIdsRes] = await Promise.all([
+      getTagBySlug(categorySlug),
+      getRecipesByTag(categorySlug),
+      getFavoriteIds(),
+    ]);
+    categoryName = tag?.name ?? null;
+    recipes = recipesRes;
+    favIds = favIdsRes;
+  } else if (query) {
+    const [recipesRes, favIdsRes] = await Promise.all([searchRecipes(query), getFavoriteIds()]);
+    recipes = recipesRes;
+    favIds = favIdsRes;
+  }
 
   const blocks = chunk(recipes, CARDS_PER_BLOCK);
 
@@ -55,9 +74,15 @@ export default async function RecherchePage({
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
         <section className="mb-10">
-          <h1 className="font-headline-lg text-headline-lg text-primary">Résultats de recherche</h1>
+          <h1 className="font-headline-lg text-headline-lg text-primary">
+            {categorySlug ? `Catégorie : ${categoryName ?? categorySlug}` : 'Résultats de recherche'}
+          </h1>
           <div className="h-1 w-12 bg-secondary mt-1" />
-          {query ? (
+          {categorySlug ? (
+            <p className="mt-4 text-on-surface-variant">
+              {recipes.length} recette{recipes.length > 1 ? 's' : ''} dans «&nbsp;{categoryName ?? categorySlug}&nbsp;»
+            </p>
+          ) : query ? (
             <p className="mt-4 text-on-surface-variant">
               {recipes.length} résultat{recipes.length > 1 ? 's' : ''} pour «&nbsp;{query}&nbsp;»
             </p>
@@ -68,9 +93,9 @@ export default async function RecherchePage({
           )}
         </section>
 
-        {query && recipes.length === 0 && (
+        {(query || categorySlug) && recipes.length === 0 && (
           <p className="text-on-surface-variant italic">
-            Aucune recette ne correspond à votre recherche.
+            Aucune recette ne correspond à {categorySlug ? 'cette catégorie' : 'votre recherche'}.
           </p>
         )}
 

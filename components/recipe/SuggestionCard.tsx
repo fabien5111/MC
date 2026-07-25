@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
-import { cardAllergenNames, type RecipeCard as RecipeCardData } from '@/lib/recipes';
+import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
+import { cardAllergenNames } from '@/lib/recipe-view';
 
 export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;

@@ -40,6 +40,19 @@ export async function getHomeCategories(): Promise<HomeCategory[]> {
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 
+// Nom d'un tag (catégorie) à partir de son slug — utilisé par /recherche
+// pour afficher le libellé de la catégorie sélectionnée sur l'accueil.
+export async function getTagBySlug(slug: string): Promise<Tag | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('tags')
+    .select('id, name, slug')
+    .eq('status', 'published')
+    .eq('slug', slug)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function getDifficulties(): Promise<Difficulty[]> {
   const supabase = await createClient();
   const { data } = await supabase.from('difficulties').select('*').order('level');
