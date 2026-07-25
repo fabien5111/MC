@@ -24,6 +24,7 @@ import { PlanToggleButton } from '@/components/recipe/PlanToggleButton';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { ShareButton } from '@/components/recipe/ShareButton';
+import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -224,6 +225,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <span className="material-symbols-outlined text-[18px]">edit_note</span> Éditer
                   </Link>
                 )}
+                {isOwner && <DuplicateButton recipeId={recipe.id} />}
                 <PlanToggleButton />
                 <ShareButton title={recipe.title} />
                 <PrintButton />
