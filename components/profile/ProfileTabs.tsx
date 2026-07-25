@@ -2,11 +2,11 @@
 
 // Onglets du profil (porté de profil.html) : carnet, favoris, planning,
 // listes de courses, messagerie. Bascule d'onglet synchronisée avec le hash.
-// Suppressions via le client Supabase navigateur puis router.refresh().
+// Suppressions via useMutation (écriture navigateur + resynchro du serveur).
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import { formatDate } from '@/lib/format';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
@@ -52,7 +52,7 @@ export function ProfileTabs({
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
-  const router = useRouter();
+  const { mutate } = useMutation();
   const [tab, setTab] = useState<TabKey>('recipes');
 
   useEffect(() => {
@@ -74,14 +74,7 @@ export function ProfileTabs({
   }
 
   async function del(table: 'recipes' | 'planning' | 'shopping_lists', id: string | number, confirmMsg: string) {
-    if (!confirm(confirmMsg)) return;
-    const supabase = createClient();
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) {
-      alert('Erreur : ' + error.message);
-      return;
-    }
-    router.refresh();
+    await mutate(() => createClient().from(table).delete().eq('id', id), { confirm: confirmMsg });
   }
 
   return (

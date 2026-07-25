@@ -69,6 +69,11 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   serveur, RLS appliquée via la session en cookies) ; **Client Components**
   (`'use client'`) pour l'interactivité, avec mutations Supabase côté
   navigateur puis `router.refresh()` pour resynchroniser le rendu serveur.
+- **Toute écriture doit resynchroniser le serveur.** Les lectures étant
+  rendues côté serveur, une écriture sans invalidation laisse les vues déjà
+  rendues figées jusqu'à un rechargement complet (carnet, favoris, listes,
+  compteurs…). Utiliser le hook `useMutation` (`lib/use-mutation.ts`) :
+  écriture + `confirm` optionnel + alerte d'erreur + `router.refresh()`.
 - **Logique métier pure** isolée dans `lib/` (ex. `recipe-plan.ts`,
   `recipe-view.ts`) : fonctions sans effet de bord, utilisables côté serveur
   comme côté client.

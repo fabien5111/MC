@@ -6,8 +6,8 @@
 // ligne (crayon), ajout d'un ingrédient par groupe. Persiste dans
 // `planning.overrides` à chaque modification (client Supabase navigateur).
 import { Fragment, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { RecipeFull } from '@/lib/recipes';
 import type { PlanningEntry } from '@/lib/profile';
 import type { Unit } from '@/lib/profile';
@@ -29,7 +29,7 @@ export function PlanIngredientsEditor({
   units: Unit[];
   unitTips: Record<string, string>;
 }) {
-  const router = useRouter();
+  const { mutate } = useMutation();
   const overrides = normalizeOverrides(plan.overrides);
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingGroup, setAddingGroup] = useState<number | null>(null);
@@ -40,15 +40,14 @@ export function PlanIngredientsEditor({
   // la liste de courses et l'ajusteur de quantités dérivent tous des mêmes
   // overrides côté serveur et doivent rester en phase avec cet éditeur.
   async function persist(next: PlanOverrides) {
-    const { error } = await createClient()
-      .from('planning')
-      .update({ overrides: next as unknown as Json })
-      .eq('id', plan.id);
-    if (error) {
-      alert('Modification non enregistrée : ' + error.message);
-      return;
-    }
-    router.refresh();
+    await mutate(
+      () =>
+        createClient()
+          .from('planning')
+          .update({ overrides: next as unknown as Json })
+          .eq('id', plan.id),
+      { errorLabel: 'Modification non enregistrée' },
+    );
   }
 
   function applyEdit(row: PlanRow, qty: string, coef: string) {

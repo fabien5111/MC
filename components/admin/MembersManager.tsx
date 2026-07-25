@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
 import type { Member } from '@/lib/admin';
 import { formatDate } from '@/lib/format';
 
@@ -17,6 +18,7 @@ function inviteLinkFor(email: string): string {
 
 export function MembersManager({ members }: { members: Member[] }) {
   const router = useRouter();
+  const { mutate } = useMutation();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Member | null>(null);
@@ -47,11 +49,18 @@ export function MembersManager({ members }: { members: Member[] }) {
   );
 
   async function del(m: Member) {
-    if (!confirm(`Supprimer « ${m.fullName || m.email} » ?`)) return;
-    const supabase = createClient();
-    if (m.allowlistId) await supabase.from('allowlist').delete().eq('id', m.allowlistId);
-    if (m.profileId) await supabase.from('profiles').delete().eq('id', m.profileId);
-    router.refresh();
+    await mutate(
+      async () => {
+        const supabase = createClient();
+        if (m.allowlistId) {
+          const { error } = await supabase.from('allowlist').delete().eq('id', m.allowlistId);
+          if (error) return { error };
+        }
+        if (m.profileId) return supabase.from('profiles').delete().eq('id', m.profileId);
+        return { error: null };
+      },
+      { confirm: `Supprimer « ${m.fullName || m.email} » ?` },
+    );
   }
 
   function copyInviteLinkFor(email: string) {

@@ -1,0 +1,70 @@
+'use client';
+
+// Écriture Supabase depuis un composant client, puis resynchronisation du
+// rendu serveur.
+//
+// Motif systématique de l'application : toutes les écritures partent du
+// navigateur (client Supabase, RLS via la session en cookies) tandis que
+// toutes les lectures sont rendues côté serveur. Sans invalidation explicite
+// après une écriture, les vues déjà rendues (carnet, favoris, listes de
+// courses, compteurs du profil…) restent figées jusqu'à un rechargement
+// complet de la page.
+//
+// À utiliser pour toute nouvelle mutation : le router.refresh() n'est plus à
+// retenir composant par composant.
+//
+// Hors périmètre : les formulaires enfants qui remontent un `onSaved()` au
+// parent (celui-ci rafraîchit déjà), et les enregistrements multi-écritures
+// avec navigation (éditeur de recette, relecture d'import) dont la gestion
+// d'erreur est spécifique.
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+// Forme minimale d'un retour supabase-js. `null` permet d'abandonner sans
+// alerte (ex. redirection vers /connexion faute de session active).
+type WriteResult = { error: { message: string } | null };
+type Write = () => PromiseLike<WriteResult | null>;
+
+export type MutateOptions = {
+  // Texte du confirm() préalable ; l'écriture est abandonnée si l'utilisateur
+  // refuse (aucune requête n'est émise).
+  confirm?: string;
+  // Préfixe du message d'alerte en cas d'échec (défaut : « Erreur »).
+  errorLabel?: string;
+  // Resynchroniser le rendu serveur après succès (défaut : true). À passer à
+  // false uniquement pour une écriture très fréquente (coche à la volée…)
+  // dont l'affichage est déjà tenu à jour localement.
+  refresh?: boolean;
+};
+
+export function useMutation() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  // Renvoie true si l'écriture a réussi — permet à l'appelant d'annuler une
+  // mise à jour optimiste en cas d'échec.
+  const mutate = useCallback(
+    async (write: Write, options: MutateOptions = {}): Promise<boolean> => {
+      if (options.confirm && !confirm(options.confirm)) return false;
+      setBusy(true);
+      try {
+        const res = await write();
+        if (!res) return false; // abandon volontaire
+        if (res.error) {
+          alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
+          return false;
+        }
+        if (options.refresh !== false) router.refresh();
+        return true;
+      } catch (e) {
+        alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [router],
+  );
+
+  return { busy, mutate };
+}
