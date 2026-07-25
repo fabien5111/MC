@@ -240,14 +240,6 @@ export default async function HomePage() {
               <h2 className="font-headline-lg text-headline-lg text-primary">Dernières Créations</h2>
               <div className="h-1 w-12 bg-secondary mt-1" />
             </div>
-            <div className="flex gap-4">
-              <button className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-variant transition-colors text-primary shadow-sm" aria-label="Précédent">
-                <span className="material-symbols-outlined">chevron_left</span>
-              </button>
-              <button className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-variant transition-colors text-primary shadow-sm" aria-label="Suivant">
-                <span className="material-symbols-outlined">chevron_right</span>
-              </button>
-            </div>
           </div>
           {recipes.length > 0 ? (
             <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} />
