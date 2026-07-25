@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { Spinner } from '@/components/Spinner';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -253,6 +254,7 @@ export function CreerForm({
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'publish' | 'draft-stay' | 'draft-exit' | null>(null);
   // Index de l'étape en cours de glisser-déposer (null si aucun déplacement).
   const [dragStep, setDragStep] = useState<number | null>(null);
   // Ingrédients / ustensiles / allergènes ajoutés au référentiel pendant la
@@ -460,6 +462,7 @@ export function CreerForm({
       return;
     }
     setBusy(true);
+    setPendingAction(status === 'draft' ? (stay ? 'draft-stay' : 'draft-exit') : 'publish');
     const supabase = createClient();
     try {
       const {
@@ -631,9 +634,11 @@ export function CreerForm({
         // les enregistrements suivants mettent à jour au lieu de dupliquer.
         if (editingId) {
           setBusy(false);
+          setPendingAction(null);
           router.refresh();
         } else {
           setBusy(false);
+          setPendingAction(null);
           router.replace(`/creer?id=${recipeId}`);
         }
       } else {
@@ -643,6 +648,7 @@ export function CreerForm({
     } catch (e) {
       alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
       setBusy(false);
+      setPendingAction(null);
     }
   }
 
@@ -1627,24 +1633,35 @@ export function CreerForm({
             disabled={busy}
             className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
           >
-            {isPublic ? 'Publier la recette' : 'Enregistrer'}
-            <span className="material-symbols-outlined text-[18px]">send</span>
+            {pendingAction === 'publish' ? (
+              <>
+                <Spinner size={18} />
+                {isPublic ? 'Publication…' : 'Enregistrement…'}
+              </>
+            ) : (
+              <>
+                {isPublic ? 'Publier la recette' : 'Enregistrer'}
+                <span className="material-symbols-outlined text-[18px]">send</span>
+              </>
+            )}
           </button>
           <button
             type="button"
             onClick={() => submit('draft', true)}
             disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
           >
-            Enregistrer en brouillon
+            {pendingAction === 'draft-stay' && <Spinner size={18} />}
+            {pendingAction === 'draft-stay' ? 'Enregistrement…' : 'Enregistrer en brouillon'}
           </button>
           <button
             type="button"
             onClick={() => submit('draft', false)}
             disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center rounded-full disabled:opacity-60"
+            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
           >
-            Enregistrer en brouillon et quitter
+            {pendingAction === 'draft-exit' && <Spinner size={18} />}
+            {pendingAction === 'draft-exit' ? 'Enregistrement…' : 'Enregistrer en brouillon et quitter'}
           </button>
         </div>
       </div>
