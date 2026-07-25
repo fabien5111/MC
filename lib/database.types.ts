@@ -1090,31 +1090,31 @@ export type Database = {
       }
       tags: {
         Row: {
-          category_icon: string | null
           category_picto: string | null
           created_at: string | null
           id: number
           name: string
+          show_on_home: boolean
           slug: string
           status: string | null
           tooltip: string | null
         }
         Insert: {
-          category_icon?: string | null
           category_picto?: string | null
           created_at?: string | null
           id?: number
           name: string
+          show_on_home?: boolean
           slug: string
           status?: string | null
           tooltip?: string | null
         }
         Update: {
-          category_icon?: string | null
           category_picto?: string | null
           created_at?: string | null
           id?: number
           name?: string
+          show_on_home?: boolean
           slug?: string
           status?: string | null
           tooltip?: string | null
