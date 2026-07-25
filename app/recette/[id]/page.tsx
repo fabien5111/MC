@@ -8,7 +8,7 @@ import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl } from '@/lib/recipe-view';
+import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl, effectiveTimes } from '@/lib/recipe-view';
 import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum } from '@/lib/recipe-plan';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -99,6 +99,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   };
 
   const yInfo = yieldInfo(recipe);
+  const times = effectiveTimes(recipe);
   const level = recipe.difficulties?.level || 0;
   const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
   const groups = [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -289,10 +290,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 ${recipe.yield_notes ? 'pt-2 border-t border-outline-variant/40' : ''}`}>
               {(
                 [
-                  ['Temps de prép', recipe.prep_time],
-                  ['Cuisson', recipe.cook_time],
-                  ['Attente', recipe.wait_time],
-                  ['Durée totale', recipe.total_time],
+                  ['Temps de prép', times.prep],
+                  ['Cuisson', times.cook],
+                  ['Attente', times.wait],
+                  ['Durée totale', times.total],
                 ] as const
               ).map(([label, v]) => (
                 <div key={label} className="flex flex-col gap-1 items-center text-center">
