@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import { SECTIONS, SLUG_TABLES, type Section } from '@/lib/admin-lists-config';
+import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
 
@@ -435,6 +435,11 @@ function EntryForm({
       // Tables à colonne slug NOT NULL non exposée dans le formulaire.
       if (SLUG_TABLES.includes(table) && !payload.slug && typeof payload.name === 'string') {
         payload.slug = slugify(payload.name);
+      }
+      // Tables lues avec un filtre `status = 'published'` : sans ce statut à la
+      // création, l'entrée serait invisible dans les listes de référence.
+      if (STATUS_PUBLISHED_TABLES.includes(table) && entry?.id == null) {
+        payload.status = 'published';
       }
     }
     const q = createClient().from(table as never) as unknown as {

@@ -377,6 +377,10 @@ export function RelectureEditor({
   // (admin uniquement — bouton affiché si `isAdmin`). Le tag créé est
   // aussitôt sélectionné pour la recette en cours. Un doublon (même nom)
   // réutilise le tag existant plutôt que d'échouer sur l'unicité du slug.
+  //
+  // `status: 'published'` est indispensable : getTags() filtre sur
+  // `status = 'published'` (et ce filtre exclut aussi les lignes NULL), donc un
+  // tag inséré sans statut n'apparaîtrait jamais dans la liste de référence.
   async function addTag(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -388,7 +392,11 @@ export function RelectureEditor({
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
-    const { data, error } = await createClient().from('tags').insert({ name: clean, slug: slugify(clean) }).select('id, name, slug').single();
+    const { data, error } = await createClient()
+      .from('tags')
+      .insert({ name: clean, slug: slugify(clean), status: 'published' })
+      .select('id, name, slug')
+      .single();
     setRefBusy(null);
     if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
     setExtraTags((p) => [...p, data]);

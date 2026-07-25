@@ -318,6 +318,12 @@ export function CreerForm({
   // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
   // sélectionné pour la recette en cours. Un doublon (même nom) réutilise le
   // tag existant plutôt que d'échouer sur l'unicité du slug.
+  //
+  // `status: 'published'` est indispensable : getTags() filtre sur
+  // `status = 'published'` (et ce filtre exclut aussi les lignes NULL), donc un
+  // tag inséré sans statut n'apparaîtrait jamais dans la liste de référence.
+  // La création étant réservée aux admins, la publication est immédiate — même
+  // règle que pour une recette soumise par un admin (cf. submit()).
   async function addTag(name: string) {
     const clean = name.trim();
     if (!clean) return;
@@ -331,7 +337,7 @@ export function CreerForm({
     setRefBusy(`tags:${clean.toLowerCase()}`);
     const { data, error } = await createClient()
       .from('tags')
-      .insert({ name: clean, slug: slugify(clean) })
+      .insert({ name: clean, slug: slugify(clean), status: 'published' })
       .select('id, name, slug')
       .single();
     setRefBusy(null);

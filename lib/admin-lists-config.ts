@@ -32,6 +32,15 @@ const TOOLTIP: Field = { key: 'tooltip', label: 'Infobulle' };
 // comme dans admin-listes.html (saveFormPanel).
 export const SLUG_TABLES = ['recipe_types', 'tags', 'mold_types'];
 
+// Tables dont les lectures filtrent sur `status = 'published'` (cf. getTags,
+// getHomeCategories, getTagBySlug dans lib/taxonomy.ts) alors que le champ
+// n'est pas exposé dans le formulaire. Sans complétion à la création, l'entrée
+// prend le défaut de la base : si celui-ci n'est pas exactement 'published'
+// (NULL inclus — `.eq()` exclut les NULL), elle reste invisible partout.
+// Appliqué à la création uniquement : une modification ne doit pas republier
+// une entrée volontairement dépubliée.
+export const STATUS_PUBLISHED_TABLES = ['tags'];
+
 export const SECTIONS: Section[] = [
   {
     table: 'recipe_types',
