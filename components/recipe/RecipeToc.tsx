@@ -26,31 +26,56 @@ type TocItem = {
   stepIndex?: number;
 };
 
-// Sections fixes du formulaire, dans l'ordre du DOM (cf. components/CreerForm).
-// L'ordre du sommaire suit celui de la page : un sommaire qui remonte pendant
-// que l'on descend rendrait le repérage incompréhensible.
-const SECTIONS_BEFORE_STEPS: TocItem[] = [
-  { id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 },
-  { id: 'sec-taille', label: 'Taille / Portions', icon: 'straighten', level: 1 },
-  { id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 },
-  { id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 },
-];
+// Sections fixes d'un écran, réparties de part et d'autre des entrées
+// d'étapes. L'ordre suit celui du DOM : un sommaire qui remonte pendant que
+// l'on descend rendrait le repérage incompréhensible.
+export type TocSections = { before: TocItem[]; after: TocItem[] };
 
+// Les deux écrans qui portent le sommaire n'ont ni les mêmes sections ni le
+// même ordre ; leurs listes sont regroupées ici pour que tout le vocabulaire du
+// sommaire (libellés, icônes, ancres) reste auditable d'un seul coup d'œil.
+
+// Éditeur de recette — cf. components/CreerForm.
 // « Conseils recette/dégustation » couvre deux sections voisines (astuces puis
 // dégustation et conservation) : une seule entrée, posée sur la première,
 // suffit à y amener.
-const SECTIONS_AFTER_STEPS: TocItem[] = [
-  { id: 'sec-conseils', label: 'Conseils recette/dégustation', icon: 'lightbulb', level: 1 },
-  { id: 'sec-planning', label: 'Planning', icon: 'calendar_month', level: 1 },
-  { id: 'sec-difficulte', label: 'Difficulté & temps', icon: 'speed', level: 1 },
-  { id: 'sec-ingredients', label: 'Récap Ingrédients', icon: 'egg_alt', level: 1 },
-];
+export const CREER_SECTIONS: TocSections = {
+  before: [
+    { id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 },
+    { id: 'sec-taille', label: 'Taille / Portions', icon: 'straighten', level: 1 },
+    { id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 },
+    { id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 },
+  ],
+  after: [
+    { id: 'sec-conseils', label: 'Conseils recette/dégustation', icon: 'lightbulb', level: 1 },
+    { id: 'sec-planning', label: 'Planning', icon: 'calendar_month', level: 1 },
+    { id: 'sec-difficulte', label: 'Difficulté & temps', icon: 'speed', level: 1 },
+    { id: 'sec-ingredients', label: 'Récap Ingrédients', icon: 'egg_alt', level: 1 },
+  ],
+};
+
+// Relecture d'un brouillon importé — cf. components/RelectureEditor. L'écran
+// n'a ni planning, ni difficulté, ni récapitulatif d'ingrédients, et se termine
+// par les indications globales.
+export const RELECTURE_SECTIONS: TocSections = {
+  before: [
+    { id: 'sec-infos', label: 'Informations générales', icon: 'edit_note', level: 1 },
+    { id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 },
+    { id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 },
+  ],
+  after: [
+    { id: 'sec-conseils', label: 'Conseils recette/dégustation', icon: 'lightbulb', level: 1 },
+    { id: 'sec-indications', label: 'Indications globales', icon: 'insights', level: 1 },
+  ],
+};
 
 export function stepAnchorId(index: number) {
   return `sec-etape-${index + 1}`;
 }
 
 type Props = {
+  // Sections fixes de l'écran hôte (CREER_SECTIONS ou RELECTURE_SECTIONS).
+  sections: TocSections;
   // Étapes de la recette en cours d'édition, dans l'ordre d'affichage.
   steps: TocStep[];
   // Appelé avec l'index de l'étape visée avant le défilement, pour la déplier
@@ -58,10 +83,10 @@ type Props = {
   onNavigateToStep?: (index: number) => void;
 };
 
-export function RecipeToc({ steps, onNavigateToStep }: Props) {
+export function RecipeToc({ sections, steps, onNavigateToStep }: Props) {
   const items = useMemo<TocItem[]>(
     () => [
-      ...SECTIONS_BEFORE_STEPS,
+      ...sections.before,
       ...steps.map((st, i) => ({
         id: stepAnchorId(i),
         label: `${i + 1}. ${st.title.trim() || 'Étape sans titre'}`,
@@ -69,9 +94,9 @@ export function RecipeToc({ steps, onNavigateToStep }: Props) {
         level: 2 as const,
         stepIndex: i,
       })),
-      ...SECTIONS_AFTER_STEPS,
+      ...sections.after,
     ],
-    [steps],
+    [sections, steps],
   );
 
   const ids = useMemo(() => items.map((it) => it.id), [items]);

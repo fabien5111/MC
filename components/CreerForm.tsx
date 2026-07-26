@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
-import { RecipeToc, stepAnchorId } from '@/components/recipe/RecipeToc';
+import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { Spinner } from '@/components/Spinner';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
@@ -699,7 +699,7 @@ export function CreerForm({
 
   return (
     <>
-      <RecipeToc steps={tocSteps} onNavigateToStep={expandStep} />
+      <RecipeToc sections={CREER_SECTIONS} steps={tocSteps} onNavigateToStep={expandStep} />
 
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
         <div>
