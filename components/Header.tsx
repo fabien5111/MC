@@ -34,6 +34,7 @@ export async function Header({ current = '/' }: { current?: string }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={item.href.startsWith('/profil') ? false : undefined}
                   className={
                     active
                       ? 'font-label-md text-label-md text-primary border-b-2 border-primary pb-0.5'
@@ -53,6 +54,7 @@ export async function Header({ current = '/' }: { current?: string }) {
             <>
               <Link
                 href="/creer"
+                prefetch={false}
                 className="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span> Créer
@@ -69,6 +71,7 @@ export async function Header({ current = '/' }: { current?: string }) {
               <Link
                 href="/profil"
                 title="Mon profil"
+                prefetch={false}
                 className="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block bg-surface-container"
               >
                 {avatarUrl ? (

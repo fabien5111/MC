@@ -11,6 +11,10 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTabs } from '@/components/profile/ProfileTabs';
 
 export const metadata: Metadata = { title: 'Mon Profil | Maryse Club' };
+// Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
+// dernières recettes/favoris/planning de l'utilisateur, sans dépendre du seul
+// appel implicite à cookies() pour désactiver la mise en cache.
+export const dynamic = 'force-dynamic';
 
 export default async function ProfilPage() {
   const user = await requireUser('/profil');

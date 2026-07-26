@@ -1,6 +1,6 @@
 'use client';
 
-// Déconnexion : efface la session Supabase (client) puis renvoie vers /connexion.
+// Déconnexion : efface la session Supabase (client) puis renvoie vers l'accueil.
 // Remplace authSignOut() du db.js vanilla.
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -14,7 +14,7 @@ export function SignOutButton({ className = '' }: { className?: string }) {
     setBusy(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.replace('/connexion');
+    router.replace('/');
     router.refresh();
   }
 
