@@ -3,23 +3,14 @@
 // Auth & RLS via la session Supabase (cookies), plus besoin de jeton en en-tête.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import {
-  EMPTY_USAGE,
-  IMPORT_MODEL,
-  addUsage,
-  callClaude,
-  parseStrictJson,
-  type ClaudeUsage,
-} from '@/lib/ai/claude';
+import { IMPORT_MODEL, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import {
-  PROMPT,
   buildContenu,
   cleanPivotRecette,
   computeVolume,
   extractLdRecipe,
-  normalizeWithRetry,
-  validatePivot,
+  normalizeRecette,
 } from '@/lib/ai/import-pivot';
 
 export const maxDuration = 60;
@@ -97,15 +88,19 @@ export async function POST(req: Request) {
     contenu = buildContenu(ld, html, url!);
   }
 
-  // 3. Normalisation IA (avec relance) puis validation.
-  // `usageTotal` cumule TOUS les appels facturés de cet import (normalisation,
-  // relance JSON, relance extraction incomplète) : c'est lui qui donne le coût.
-  let usageTotal: ClaudeUsage = EMPTY_USAGE;
+  // 3. Normalisation IA + validation, avec au plus une relance au total (voir
+  // le commentaire de normalizeRecette : au-delà, le risque de dépasser le
+  // temps limite de la fonction devient trop élevé sur une recette complexe).
+  let usageTotal: ClaudeUsage;
   let pivot: Record<string, any>;
+  let erreurs: string[];
+  let alertes: string[];
   try {
-    const normalise = await normalizeWithRetry(apiKey, contenu);
+    const normalise = await normalizeRecette(apiKey, contenu);
     pivot = normalise.pivot;
-    usageTotal = addUsage(usageTotal, normalise.usage);
+    usageTotal = normalise.usage;
+    erreurs = normalise.erreurs;
+    alertes = normalise.alertes;
   } catch (e) {
     // Les appels déjà effectués ont été facturés même si l'import échoue : on
     // les trace en logs, faute de ligne `imports` où les rattacher.
@@ -122,28 +117,6 @@ export async function POST(req: Request) {
       { erreur: "L'import a échoué, réessayez ou saisissez la recette manuellement." },
       { status: 502 },
     );
-  }
-
-  let { erreurs, alertes } = validatePivot(pivot);
-  if (erreurs.length) {
-    try {
-      const raw2 = await callClaude(
-        apiKey,
-        `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`,
-        8000,
-      );
-      usageTotal = addUsage(usageTotal, raw2.usage);
-      const pivot2 = parseStrictJson(raw2.text) as Record<string, any>;
-      const v2 = validatePivot(pivot2);
-      if (!v2.erreurs.length) {
-        pivot = pivot2;
-        erreurs = v2.erreurs;
-        alertes = v2.alertes;
-      }
-    } catch (e) {
-      console.error('[import-url] relance IA (extraction incomplète) échouée :', e);
-      /* on conserve les erreurs de la première extraction */
-    }
   }
   if (erreurs.length) {
     return NextResponse.json({ erreur: 'Extraction incomplète : ' + erreurs.join(' '), erreurs }, { status: 422 });

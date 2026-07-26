@@ -266,30 +266,62 @@ export function validatePivot(p: Pivot): { erreurs: string[]; alertes: string[] 
   return { erreurs, alertes };
 }
 
-// ── Normalisation IA avec une relance (§4.1) ────────────────
-// Renvoie le pivot ET la consommation cumulée : la relance est un second appel
-// facturé, il doit entrer dans le coût de l'import.
-export async function normalizeWithRetry(
+// ── Normalisation IA (§4.1) ──────────────────────────────────
+// Au plus UNE relance au total (JSON invalide OU extraction incomplète, jamais
+// les deux) : la route serverless a un temps limite (maxDuration), et trois
+// appels séquentiels de 8000 tokens chacun peuvent le dépasser sur une recette
+// complexe. Priorité à la validité du JSON, prérequis à toute exploitation.
+export async function normalizeRecette(
   apiKey: string,
   contenu: string,
-): Promise<{ pivot: Pivot; usage: ClaudeUsage }> {
+): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
   const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
   const first = await callClaude(apiKey, base, 8000);
+
+  let pivot: Pivot;
+  let usage = first.usage;
+  let relanceUtilisee = false;
   try {
-    return { pivot: parseStrictJson(first.text) as Pivot, usage: first.usage };
+    pivot = parseStrictJson(first.text) as Pivot;
   } catch (err) {
+    relanceUtilisee = true;
     const retry = await callClaude(
       apiKey,
       `${base}\n\nTa réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
       8000,
     );
-    const usage = addUsage(first.usage, retry.usage);
+    usage = addUsage(usage, retry.usage);
     try {
-      return { pivot: parseStrictJson(retry.text) as Pivot, usage };
+      pivot = parseStrictJson(retry.text) as Pivot;
     } catch (err2) {
       // Les deux appels ont été facturés : on rattache la consommation à
       // l'erreur pour que l'appelant puisse la comptabiliser malgré l'échec.
       throw Object.assign(err2 as Error, { usage });
     }
   }
+
+  let { erreurs, alertes } = validatePivot(pivot);
+  if (erreurs.length && !relanceUtilisee) {
+    const retry = await callClaude(
+      apiKey,
+      `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`,
+      8000,
+    );
+    usage = addUsage(usage, retry.usage);
+    try {
+      const pivot2 = parseStrictJson(retry.text) as Pivot;
+      const v2 = validatePivot(pivot2);
+      if (!v2.erreurs.length) {
+        pivot = pivot2;
+        erreurs = v2.erreurs;
+        alertes = v2.alertes;
+      }
+      // Relance encore incomplète : on garde la première extraction et ses
+      // erreurs plutôt que de tenter une 3e relance.
+    } catch {
+      /* JSON invalide sur la relance : on garde la première extraction */
+    }
+  }
+
+  return { pivot, usage, erreurs, alertes };
 }
