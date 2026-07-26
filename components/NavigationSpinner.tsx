@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Spinner } from '@/components/Spinner';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 // Overlay de chargement affiché PAR-DESSUS la page courante pendant les
 // navigations internes : l'ancienne page reste montée, floutée, derrière le
@@ -113,14 +113,5 @@ export function NavigationSpinner() {
     };
   }, []);
 
-  return (
-    <div
-      aria-hidden={!visible}
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background/40 backdrop-blur-[2px] transition-opacity duration-200 ${
-        visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-      }`}
-    >
-      {visible ? <Spinner size={84} /> : null}
-    </div>
-  );
+  return <LoadingOverlay visible={visible} />;
 }

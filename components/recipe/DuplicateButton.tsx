@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 export function DuplicateButton({ recipeId }: { recipeId: string }) {
   const router = useRouter();
@@ -37,16 +38,16 @@ export function DuplicateButton({ recipeId }: { recipeId: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={duplicate}
-      disabled={busy}
-      className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
-    >
-      <span className={`material-symbols-outlined text-[18px]${busy ? ' animate-spin' : ''}`}>
-        {busy ? 'progress_activity' : 'content_copy'}
-      </span>{' '}
-      {busy ? 'Duplication…' : 'Dupliquer'}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={duplicate}
+        disabled={busy}
+        className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
+      >
+        <span className="material-symbols-outlined text-[18px]">content_copy</span> Dupliquer
+      </button>
+      <LoadingOverlay visible={busy} label="Duplication de la recette…" />
+    </>
   );
 }
