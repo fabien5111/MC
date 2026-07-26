@@ -144,10 +144,9 @@ img {
 /* Libellé masqué par l'opacité et non par `display` : c'est ce qui permet la
    transition douce à l'ouverture du rail.
    La largeur dépliée est figée à 252 px, ce qui laisse 181 px de libellé : les
-   titres d'étapes saisis librement et « Conseils de la recette/dégustation »
-   les dépassent. On tronque à l'ellipse plutôt que de laisser l'`overflow`
-   du rail couper le mot en plein milieu (le libellé complet reste accessible
-   en infobulle). */
+   titres d'étapes, saisis librement, la dépassent régulièrement. On tronque à
+   l'ellipse plutôt que de laisser l'`overflow` du rail couper le mot en plein
+   milieu (le libellé complet reste accessible en infobulle). */
 .recipe-toc a .lbl {
   opacity: 0;
   transition: opacity 0.2s ease 0.05s;

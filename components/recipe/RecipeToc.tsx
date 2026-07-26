@@ -36,14 +36,14 @@ const SECTIONS_BEFORE_STEPS: TocItem[] = [
   { id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 },
 ];
 
-// « Conseils de la recette/dégustation » couvre deux sections voisines
-// (astuces puis dégustation et conservation) : une seule entrée, posée sur la
-// première, suffit à y amener.
+// « Conseils recette/dégustation » couvre deux sections voisines (astuces puis
+// dégustation et conservation) : une seule entrée, posée sur la première,
+// suffit à y amener.
 const SECTIONS_AFTER_STEPS: TocItem[] = [
-  { id: 'sec-conseils', label: 'Conseils de la recette/dégustation', icon: 'lightbulb', level: 1 },
+  { id: 'sec-conseils', label: 'Conseils recette/dégustation', icon: 'lightbulb', level: 1 },
   { id: 'sec-planning', label: 'Planning', icon: 'calendar_month', level: 1 },
   { id: 'sec-difficulte', label: 'Difficulté & temps', icon: 'speed', level: 1 },
-  { id: 'sec-ingredients', label: 'Récapitulatif des ingrédients', icon: 'egg_alt', level: 1 },
+  { id: 'sec-ingredients', label: 'Récap Ingrédients', icon: 'egg_alt', level: 1 },
 ];
 
 export function stepAnchorId(index: number) {
