@@ -8,21 +8,16 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatTime } from '@/lib/format';
+import { effectiveTimes } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { RecipeCardClient } from '@/components/RecipeCardClient';
+import { MaryseIcon } from '@/components/MaryseIcon';
+import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
+import type { UserRecipeCard } from '@/lib/recipes';
 
-export type UserRecipe = {
-  id: string;
-  title: string;
-  description: string | null;
-  hero_image_url: string | null;
-  status: string;
-  is_public: boolean;
-  rating_avg: number | null;
-  created_at: string;
-};
+export type UserRecipe = UserRecipeCard;
 
 type TabKey = 'recipes' | 'favorites' | 'planning' | 'courses' | 'messaging';
 
@@ -116,6 +111,7 @@ export function ProfileTabs({
         <div className="py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {recipeList.map((r) => {
             const st = STATUS[r.status] || STATUS.draft;
+            const times = effectiveTimes(r);
             return (
               <div
                 key={r.id}
@@ -154,6 +150,29 @@ export function ProfileTabs({
                   <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
                 </Link>
                 <div className="p-6">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {(r.difficulties?.level || 0) > 0 && (
+                        <span className="flex items-center gap-0.5 shrink-0">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <MaryseIcon
+                              key={i}
+                              size={14}
+                              className={i <= (r.difficulties?.level || 0) ? 'text-primary' : 'text-outline-variant'}
+                            />
+                          ))}
+                        </span>
+                      )}
+                      {r.recipe_types?.name && (
+                        <span className="font-label-md text-label-md text-secondary uppercase tracking-widest text-xs truncate">
+                          {r.recipe_types.name}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
+                      {formatTime(times.total || times.prep)}
+                    </span>
+                  </div>
                   <Link href={`/recette/${r.id}`}>
                     <h3 className="font-headline-md text-xl text-on-surface mb-2 group-hover:text-primary transition-colors">
                       {r.title}
@@ -162,6 +181,7 @@ export function ProfileTabs({
                   {r.description && (
                     <p className="text-sm text-on-surface-variant line-clamp-2 mb-4">{r.description}</p>
                   )}
+                  <AllergenPictosView items={r.allergenItems} className="mb-4" iconClassName="w-6 h-6" />
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-secondary">
                       {formatDate(r.created_at)}

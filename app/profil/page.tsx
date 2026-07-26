@@ -8,7 +8,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
-import { ProfileTabs, type UserRecipe } from '@/components/profile/ProfileTabs';
+import { ProfileTabs } from '@/components/profile/ProfileTabs';
 
 export const metadata: Metadata = { title: 'Mon Profil | Maryse Club' };
 
@@ -47,7 +47,7 @@ export default async function ProfilPage() {
           isAdmin={admin}
         />
         <ProfileTabs
-          recipes={recipes as UserRecipe[]}
+          recipes={recipes}
           favorites={favorites}
           planning={planning}
           shoppingLists={shoppingLists}
