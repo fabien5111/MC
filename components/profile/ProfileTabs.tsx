@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate } from '@/lib/format';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
@@ -52,7 +53,7 @@ export function ProfileTabs({
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
-  const { mutate } = useMutation();
+  const { mutate, busy } = useMutation();
   const [tab, setTab] = useState<TabKey>('recipes');
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function ProfileTabs({
 
   return (
     <section className="mt-16">
+      <LoadingOverlay visible={busy} label="Suppression en cours…" />
       <div className="flex border-b border-outline-variant overflow-x-auto scrollbar-hide">
         {TABS.map((t) => (
           <button
