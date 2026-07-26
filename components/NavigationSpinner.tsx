@@ -36,22 +36,31 @@ export function NavigationSpinner() {
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // URL effectivement rendue par React (et non celle de `history`, que le
+  // navigateur met à jour avant même d'émettre `popstate`) : sert à savoir,
+  // lors d'un retour navigateur, si la page de destination est déjà affichée.
+  const committedUrl = pathname + (search.toString() ? `?${search}` : '');
+  const committedUrlRef = useRef(committedUrl);
+
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
   };
 
-  // Arrivée sur la nouvelle page → on masque l'overlay.
+  // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
+  // chaîne : `search` est un objet recréé à chaque rendu, donc inutilisable
+  // tel quel comme dépendance.
   useEffect(() => {
+    committedUrlRef.current = committedUrl;
     clearTimers();
     setVisible(false);
-  }, [pathname, search]);
+  }, [committedUrl]);
 
   useEffect(() => {
     const start = () => {
       clearTimers();
       showTimer.current = setTimeout(() => setVisible(true), 120);
-      safetyTimer.current = setTimeout(() => setVisible(false), 12000);
+      safetyTimer.current = setTimeout(() => setVisible(false), 8000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -89,8 +98,19 @@ export function NavigationSpinner() {
       if (isInternalNavigation(e.target)) start();
     };
 
-    // Retour / avant du navigateur.
-    const onPopState = () => start();
+    // Retour / avant du navigateur. Contrairement à un clic sur un lien, le
+    // navigateur a déjà mis `history` à jour quand l'événement nous parvient,
+    // et Next — dont l'écouteur est enregistré avant le nôtre — a souvent déjà
+    // rendu la page de destination (route en cache). Déclencher le spinner
+    // dans ce cas l'affichait par-dessus une page pourtant arrivée, sans plus
+    // aucun changement de route pour le masquer ensuite : il restait jusqu'au
+    // filet de sécurité. On ne l'affiche donc que si React n'a pas encore
+    // committé l'URL vers laquelle on revient.
+    const onPopState = () => {
+      const target = window.location.pathname + window.location.search;
+      if (committedUrlRef.current === target) return;
+      start();
+    };
 
     // Soumission d'une barre de recherche (HomeSearch, HeaderSearch) :
     // `preventDefault()` dans leur propre handler n'empêche pas cet écouteur
