@@ -2,20 +2,17 @@
 // (getFavorites, getPlanning, getShoppingLists, getUnits). Server-side, RLS via session.
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
+import { CARD_SELECT, withAllergenPictos, type RecipeCard, type RecipeCardWithAllergens } from '@/lib/recipes';
 
 export type Unit = Database['public']['Tables']['units']['Row'];
 
+// La recette embarquée reprend exactement les champs de la carte recette
+// (RecipeCard, cf. lib/recipes.ts) : la page profil affiche les favoris avec
+// le composant RecipeCardClient, identique à celui de l'accueil.
 export type FavoriteRow = {
   recipe_id: string;
   created_at: string | null;
-  recipes: {
-    id: string;
-    title: string;
-    description: string | null;
-    hero_image_url: string | null;
-    rating_avg: number | null;
-    profiles: { full_name: string | null } | null;
-  } | null;
+  recipes: RecipeCardWithAllergens | null;
 };
 
 export type PlanningRow = {
@@ -40,12 +37,14 @@ export async function getFavorites(userId: string): Promise<FavoriteRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('favorites')
-    .select(
-      'recipe_id, created_at, recipes(id, title, description, hero_image_url, rating_avg, profiles!recipes_author_id_fkey(full_name))',
-    )
+    .select(`recipe_id, created_at, recipes(${CARD_SELECT})`)
     .eq('user_id', userId);
   if (error) console.error('getFavorites:', error.message);
-  return (data as unknown as FavoriteRow[]) ?? [];
+  const rows = (data as unknown as { recipe_id: string; created_at: string | null; recipes: RecipeCard | null }[]) ?? [];
+  const cards = rows.map((r) => r.recipes).filter((r): r is RecipeCard => !!r);
+  const withPictos = await withAllergenPictos(cards);
+  const byId = new Map(withPictos.map((c) => [c.id, c]));
+  return rows.map((r) => ({ ...r, recipes: r.recipes ? (byId.get(r.recipes.id) ?? null) : null }));
 }
 
 export async function getPlanning(userId: string): Promise<PlanningRow[]> {

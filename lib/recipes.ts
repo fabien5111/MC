@@ -12,7 +12,7 @@ import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
-const CARD_SELECT =
+export const CARD_SELECT =
   'id, title, description, hero_image_url, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
