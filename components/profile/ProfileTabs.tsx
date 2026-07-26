@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate } from '@/lib/format';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
@@ -52,8 +53,13 @@ export function ProfileTabs({
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
-  const { mutate } = useMutation();
+  const { mutate, busy } = useMutation();
   const [tab, setTab] = useState<TabKey>('recipes');
+  // Suppression optimiste locale : le spinner reste affiché jusqu'à ce que la
+  // recette disparaisse effectivement de la liste, sans attendre le
+  // router.refresh() (resynchronisation serveur en arrière-plan).
+  const [recipeList, setRecipeList] = useState(recipes);
+  useEffect(() => setRecipeList(recipes), [recipes]);
 
   useEffect(() => {
     const fromHash = () => {
@@ -77,8 +83,17 @@ export function ProfileTabs({
     await mutate(() => createClient().from(table).delete().eq('id', id), { confirm: confirmMsg });
   }
 
+  async function delRecipe(id: string, title: string) {
+    const ok = await mutate(
+      () => createClient().from('recipes').delete().eq('id', id),
+      { confirm: `Supprimer « ${title} » ?\nCette action est définitive.` },
+    );
+    if (ok) setRecipeList((prev) => prev.filter((r) => r.id !== id));
+  }
+
   return (
     <section className="mt-16">
+      <LoadingOverlay visible={busy} label="Suppression en cours…" />
       <div className="flex border-b border-outline-variant overflow-x-auto scrollbar-hide">
         {TABS.map((t) => (
           <button
@@ -98,7 +113,7 @@ export function ProfileTabs({
       {/* Carnet */}
       {tab === 'recipes' && (
         <div className="py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {recipes.map((r) => {
+          {recipeList.map((r) => {
             const st = STATUS[r.status] || STATUS.draft;
             return (
               <div
@@ -146,7 +161,7 @@ export function ProfileTabs({
                       <button
                         type="button"
                         title="Supprimer"
-                        onClick={() => del('recipes', r.id, `Supprimer « ${r.title} » ?\nCette action est définitive.`)}
+                        onClick={() => delRecipe(r.id, r.title)}
                         className="p-1.5 rounded hover:bg-error/10 transition-colors"
                       >
                         <span className="material-symbols-outlined text-error text-[20px]">delete</span>

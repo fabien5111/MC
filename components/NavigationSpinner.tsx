@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Spinner } from '@/components/Spinner';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 // Overlay de chargement affiché PAR-DESSUS la page courante pendant les
 // navigations internes : l'ancienne page reste montée, floutée, derrière le
@@ -14,13 +14,18 @@ import { Spinner } from '@/components/Spinner';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 12 s.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
 //
-// Le départ est détecté à la fois sur `click` (souris, clavier) et sur
-// `pointerdown` pour les pointeurs tactiles : sur certains navigateurs
-// mobiles, l'écart entre le tapotement et l'événement `click` synthétique
-// peut dépasser le délai d'affichage, ce qui masque l'overlay avant même
-// qu'il ait eu la chance d'apparaître. `pointerdown` réagit dès l'appui.
+// Le départ est détecté sur `click` (souris, clavier) et, pour les pointeurs
+// tactiles, dès le relâchement du doigt : sur certains navigateurs mobiles,
+// l'écart entre le tapotement et l'événement `click` synthétique peut
+// dépasser le délai d'affichage, ce qui masque l'overlay avant même qu'il ait
+// eu la chance d'apparaître. On ne peut pas pour autant réagir dès l'appui
+// (`pointerdown`) : les photos des cartes de recette étant enveloppées dans
+// un lien, poser le doigt dessus pour faire défiler la page déclencherait le
+// spinner alors qu'aucune navigation ne suit. On suit donc le geste complet
+// (appui → déplacement → relâchement) et on n'arme le spinner que si le doigt
+// n'a pas bougé, c'est-à-dire s'il s'agit bien d'un tapotement.
 //
 // Les barres de recherche (HomeSearch, HeaderSearch) redirigent en JS via
 // `router.push` plutôt qu'une vraie soumission de formulaire : on ne peut
@@ -36,22 +41,42 @@ export function NavigationSpinner() {
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // URL effectivement rendue par React (et non celle de `history`, que le
+  // navigateur met à jour avant même d'émettre `popstate`) : sert à savoir,
+  // lors d'un retour navigateur, si la page de destination est déjà affichée.
+  const committedUrl = pathname + (search.toString() ? `?${search}` : '');
+  const committedUrlRef = useRef(committedUrl);
+
+  // Navigation déjà signalée, en attente d'arrivée : évite qu'un second
+  // déclencheur pour le même geste (le `click` qui suit un tapotement) ne
+  // relance le délai d'affichage depuis le début.
+  const pending = useRef(false);
+
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
+    pending.current = false;
   };
 
-  // Arrivée sur la nouvelle page → on masque l'overlay.
+  // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
+  // chaîne : `search` est un objet recréé à chaque rendu, donc inutilisable
+  // tel quel comme dépendance.
   useEffect(() => {
+    committedUrlRef.current = committedUrl;
     clearTimers();
     setVisible(false);
-  }, [pathname, search]);
+  }, [committedUrl]);
 
   useEffect(() => {
     const start = () => {
+      if (pending.current) return;
       clearTimers();
+      pending.current = true;
       showTimer.current = setTimeout(() => setVisible(true), 120);
-      safetyTimer.current = setTimeout(() => setVisible(false), 12000);
+      safetyTimer.current = setTimeout(() => {
+        setVisible(false);
+        pending.current = false;
+      }, 8000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -81,16 +106,53 @@ export function NavigationSpinner() {
       if (isInternalNavigation(e.target)) start();
     };
 
-    // Tactile : réagit dès l'appui plutôt que d'attendre le `click` de
-    // synthèse (voir note ci-dessus). Les pointeurs souris sont laissés à
-    // `click`, qui gère déjà correctement les modificateurs.
+    // Tactile : on suit le geste pour distinguer un tapotement d'un début de
+    // défilement (voir note en tête de fichier). Les pointeurs souris sont
+    // laissés à `click`, qui gère déjà correctement les modificateurs.
+    // Au-delà de ce seuil de déplacement, le geste est un défilement.
+    const TAP_SLOP = 10;
+    let tap: { id: number; x: number; y: number } | null = null;
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return;
+      tap = isInternalNavigation(e.target)
+        ? { id: e.pointerId, x: e.clientX, y: e.clientY }
+        : null;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!tap || e.pointerId !== tap.id) return;
+      if (Math.abs(e.clientX - tap.x) > TAP_SLOP || Math.abs(e.clientY - tap.y) > TAP_SLOP) {
+        tap = null;
+      }
+    };
+
+    // Le navigateur prend la main sur le geste (défilement, zoom…).
+    const onPointerCancel = () => {
+      tap = null;
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const started = tap;
+      tap = null;
+      if (!started || e.pointerId !== started.id) return;
+      // Le doigt peut avoir été relâché ailleurs que sur le lien de départ.
       if (isInternalNavigation(e.target)) start();
     };
 
-    // Retour / avant du navigateur.
-    const onPopState = () => start();
+    // Retour / avant du navigateur. Contrairement à un clic sur un lien, le
+    // navigateur a déjà mis `history` à jour quand l'événement nous parvient,
+    // et Next — dont l'écouteur est enregistré avant le nôtre — a souvent déjà
+    // rendu la page de destination (route en cache). Déclencher le spinner
+    // dans ce cas l'affichait par-dessus une page pourtant arrivée, sans plus
+    // aucun changement de route pour le masquer ensuite : il restait jusqu'au
+    // filet de sécurité. On ne l'affiche donc que si React n'a pas encore
+    // committé l'URL vers laquelle on revient.
+    const onPopState = () => {
+      const target = window.location.pathname + window.location.search;
+      if (committedUrlRef.current === target) return;
+      start();
+    };
 
     // Soumission d'une barre de recherche (HomeSearch, HeaderSearch) :
     // `preventDefault()` dans leur propre handler n'empêche pas cet écouteur
@@ -100,27 +162,26 @@ export function NavigationSpinner() {
     };
 
     // Capture pour intercepter avant que Next ne gère le clic du <Link>.
+    // `pointermove` est passif : on n'y appelle jamais `preventDefault()`, et
+    // un écouteur non passif sur tout le document pénaliserait le défilement.
     document.addEventListener('click', onClick, true);
     document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
+    document.addEventListener('pointercancel', onPointerCancel, true);
+    document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('submit', onSubmit, true);
     window.addEventListener('popstate', onPopState);
     return () => {
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointermove', onPointerMove, true);
+      document.removeEventListener('pointercancel', onPointerCancel, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
       document.removeEventListener('submit', onSubmit, true);
       window.removeEventListener('popstate', onPopState);
       clearTimers();
     };
   }, []);
 
-  return (
-    <div
-      aria-hidden={!visible}
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-background/40 backdrop-blur-[2px] transition-opacity duration-200 ${
-        visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-      }`}
-    >
-      {visible ? <Spinner size={84} /> : null}
-    </div>
-  );
+  return <LoadingOverlay visible={visible} />;
 }

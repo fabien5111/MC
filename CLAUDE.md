@@ -78,6 +78,16 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   `recipe-view.ts`) : fonctions sans effet de bord, utilisables côté serveur
   comme côté client.
 - **Alias d'import** `@/*` → racine du projet (`tsconfig.json`).
+- **Spinner.** Pour toute action asynchrone susceptible de prendre du temps
+  (écriture serveur suivie d'une navigation, traitement IA, import…), utiliser
+  le spinner maison « Le Fouet » (`components/Spinner.tsx`) via l'overlay
+  plein écran `components/LoadingOverlay.tsx` — jamais un indicateur local
+  (icône qui tourne dans un bouton, texte « Chargement… »). Cet overlay est
+  déjà déclenché automatiquement sur les navigations par lien/formulaire
+  (`components/NavigationSpinner.tsx`) ; pour une action déclenchée par du
+  code (mutation suivie d'un `router.push`, appel IA...), afficher
+  `<LoadingOverlay visible={busy} />` explicitement le temps de l'opération
+  (cf. `components/recipe/DuplicateButton.tsx`).
 
 ## Authentification
 
