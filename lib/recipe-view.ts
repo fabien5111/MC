@@ -141,7 +141,9 @@ export function moldMetrics(
 // (durée totale = somme prép + cuisson + attente de toutes les étapes).
 export type RecipeTimes = { prep: number | null; cook: number | null; wait: number | null; total: number | null };
 export function effectiveTimes(
-  recipe: Pick<RecipeFull, 'prep_time' | 'cook_time' | 'wait_time' | 'total_time' | 'recipe_steps'>,
+  recipe: Pick<RecipeFull, 'prep_time' | 'cook_time' | 'wait_time' | 'total_time'> & {
+    recipe_steps: Pick<RecipeFull['recipe_steps'][number], 'prep_time' | 'cook_time' | 'wait_time'>[];
+  },
 ): RecipeTimes {
   const steps = recipe.recipe_steps || [];
   const sum = (k: 'prep_time' | 'cook_time' | 'wait_time') => steps.reduce((n, s) => n + (s[k] || 0), 0);

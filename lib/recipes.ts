@@ -13,9 +13,9 @@ import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
 const CARD_SELECT =
-  'id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, ' +
+  'id, title, description, hero_image_url, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
-  'ingredient_groups(ingredients(allergen))';
+  'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
   Recipe,
@@ -24,6 +24,8 @@ export type RecipeCard = Pick<
   | 'description'
   | 'hero_image_url'
   | 'prep_time'
+  | 'cook_time'
+  | 'wait_time'
   | 'total_time'
   | 'rating_avg'
   | 'rating_count'
@@ -33,6 +35,7 @@ export type RecipeCard = Pick<
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
+  recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
 };
 
 

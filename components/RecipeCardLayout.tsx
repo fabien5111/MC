@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { formatTime } from '@/lib/format';
+import { effectiveTimes } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
@@ -19,6 +20,7 @@ export function RecipeCardLayout({
   allergens: ReactNode;
 }) {
   const r = recipe;
+  const times = effectiveTimes(r);
   return (
     <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
@@ -57,7 +59,7 @@ export function RecipeCardLayout({
               )}
             </div>
             <span className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
-              {formatTime(r.total_time || r.prep_time)}
+              {formatTime(times.total || times.prep)}
             </span>
           </div>
           <h3 className="font-headline-md text-xl text-on-surface mb-2 group-hover:text-primary transition-colors">
