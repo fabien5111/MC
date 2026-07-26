@@ -23,12 +23,15 @@ export function DuplicateButton({ recipeId }: { recipeId: string }) {
       } as never);
       if (error) {
         alert(`Duplication impossible : ${error.message}`);
+        setBusy(false);
         return;
       }
+      // Pas de setBusy(false) ici : on quitte la page, autant garder le
+      // spinner affiché jusqu'à la navigation plutôt que de le faire
+      // disparaître avant même que router.push() n'ait pris effet.
       router.push(`/creer?id=${data as unknown as string}`);
     } catch (e) {
       alert(`Duplication impossible : ${(e as Error).message || 'erreur inattendue'}`);
-    } finally {
       setBusy(false);
     }
   }
