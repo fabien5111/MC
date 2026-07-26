@@ -1,0 +1,263 @@
+# Handoff : Sommaire de navigation verticale — Éditeur de recette (Maryse-Club)
+
+## Overview
+
+Maryse-Club est un carnet de recettes de pâtisserie (site responsive + PWA). L'écran **Création / Modification d'une recette** est un formulaire très long : une recette peut comporter 10, 20 étapes ou plus. Naviguer dedans au défilement est aujourd'hui pénible.
+
+Cette fonctionnalité ajoute un **sommaire de navigation verticale rétractable**, fixé au bord gauche de l'écran, qui permet de sauter directement à n'importe quelle section du formulaire — **sans gêner la saisie**.
+
+Contrainte produit centrale exprimée par le propriétaire du produit : *« je veux pouvoir naviguer plus facilement dans les recettes avec beaucoup d'étapes, mais je ne veux pas que ça me gêne dans la saisie. »* Les deux comportements clés qui en découlent (repli en rail d'icônes + estompage automatique pendant la frappe) sont donc **non négociables**, pas des ornements.
+
+Trois propositions ont été maquettées et comparées ; **l'option B (« Sommaire rétractable ») a été retenue**. C'est celle à implémenter. Les deux autres sont incluses uniquement à titre de contexte de décision.
+
+## About the Design Files
+
+Les fichiers HTML de ce bundle sont des **références de design**, pas du code de production à copier tel quel. Ce sont des prototypes qui montrent l'apparence et le comportement attendus.
+
+Le travail consiste à **recréer ce design dans l'environnement existant du projet cible** (React, Vue, Svelte, SwiftUI, natif…) en suivant ses conventions, ses composants et ses librairies établies. Si aucun environnement n'existe encore, choisir le framework le plus adapté au projet et y implémenter le design.
+
+En particulier :
+
+- Les maquettes utilisent **Tailwind via CDN** et un `tailwind.config` inline. En production, il faut utiliser la configuration Tailwind du projet (ou son équivalent design tokens / CSS-in-JS).
+- Le CSS du sommaire est écrit dans un `<style id="nav-proto-css">` pour la lisibilité de la maquette. À porter en CSS de composant scopé (CSS module, styled-component, `<style scoped>`, etc.).
+- Le JavaScript est en IIFE vanilla. À réécrire de façon idiomatique (hook React, composable Vue, etc.).
+- Les images sont des placeholders `<image-slot>` (composant de maquettage), à remplacer par la gestion d'upload réelle du projet.
+
+## Fidelity
+
+**High-fidelity (hifi).** Les couleurs, la typographie, les espacements, les rayons, les ombres, les durées d'animation et les états d'interaction sont définitifs et doivent être respectés au pixel. Toutes les valeurs exactes sont listées dans la section *Design Tokens*.
+
+## Screens / Views
+
+### Écran : Création / Modification d'une recette (avec sommaire)
+
+**Fichier de référence :** `creer-sommaire.html`
+
+**Purpose :** l'utilisateur saisit ou modifie une recette complète (informations générales, moule/portions, ustensiles, ingrédients, planning, étapes successives, conseils). Le sommaire lui permet de circuler entre ces sections et de garder le repère de « où il en est » dans un formulaire qui dépasse largement la hauteur d'écran (environ 6 700 px de hauteur de document avec 3 étapes ; bien plus avec 10+).
+
+**Layout de la page (inchangé, existant) :** conteneur centré `max-width: 1200px`, marges latérales 64 px en desktop / 16 px en mobile, sections empilées verticalement avec un écart de 64 px (`space-y-16`). En-tête de site sticky en haut (hauteur ≈ 73 px). Le sommaire est un élément **fixe superposé**, il ne modifie pas le flux ni la largeur du formulaire.
+
+---
+
+### Composant : Sommaire rétractable (`#navB`)
+
+#### Position et dimensions
+
+| Propriété | Valeur |
+|---|---|
+| Position | `fixed`, `left: 0`, `top: 50%`, `transform: translateY(-50%)` |
+| `z-index` | `40` (sous l'en-tête sticky du site qui est à `50`) |
+| Largeur repliée | `58px` |
+| Largeur dépliée | `252px` |
+| Transition de largeur | `width .3s cubic-bezier(.4, 0, .2, 1)` |
+| Fond | `#fff8f7` |
+| Bordure | `1px solid #d6c2c3`, **sans bordure gauche** (`border-left: none`) |
+| Rayon | `0 8px 8px 0` |
+| Ombre | `0 8px 32px rgba(74, 30, 38, .07)` |
+| `overflow` | `hidden` (c'est ce qui masque les libellés à l'état replié) |
+
+#### Structure interne
+
+```
+nav#navB
+├── ul  (padding: 8px 0 ; list-style: none)
+│   ├── li > a           ← 6 sections principales
+│   ├── li > a           ← « Étapes » (parent)
+│   ├── li.sub > a       ← une entrée par étape (niveau 2)
+│   └── li > a           ← « Conseils de la recette »
+└── div.pin              ← pied : bouton épingle
+```
+
+#### Entrées du sommaire (ordre et contenu exacts)
+
+| # | Libellé | Icône (Material Symbols Outlined) | Cible (id d'ancre) | Niveau |
+|---|---|---|---|---|
+| 1 | Description | `edit_note` | `sec-description` | 1 |
+| 2 | Taille / Portions | `straighten` | `sec-taille` | 1 |
+| 3 | Difficulté & temps | `speed` | `sec-difficulte` | 1 |
+| 4 | Ustensiles | `blender` | `sec-ustensiles` | 1 |
+| 5 | Ingrédients | `egg_alt` | `sec-ingredients` | 1 |
+| 6 | Planning | `calendar_month` | `sec-planning` | 1 |
+| 7 | Étapes | `format_list_numbered` | `sec-etapes` | 1 |
+| 8 | 1. Réalisation de la pâte | `radio_button_unchecked` (15 px) | `sec-etape-1` | 2 |
+| 9 | 2. Crème Chiboust | `radio_button_unchecked` (15 px) | `sec-etape-2` | 2 |
+| 10 | 3. Caramel & montage | `radio_button_unchecked` (15 px) | `sec-etape-3` | 2 |
+| 11 | Conseils de la recette | `lightbulb` | `sec-conseils` | 1 |
+
+**Important — les entrées d'étapes sont dynamiques.** Dans la maquette elles sont écrites en dur (3 étapes de démonstration). En production, la liste des entrées de niveau 2 doit être **générée depuis le modèle de recette** : une entrée par étape, libellée `«{index}. {titre de l'étape}»`, mise à jour en direct quand l'utilisateur renomme, ajoute, supprime ou réordonne une étape. Une étape encore sans titre doit afficher un intitulé de repli, p. ex. `«{index}. Étape sans titre»`.
+
+#### Style des liens
+
+| État | Style |
+|---|---|
+| Repos (niveau 1) | `display: flex`, `align-items: center`, `gap: 14px`, `padding: 9px 16px`, couleur `#514345`, `font: 500 13px/1.2 'Work Sans'`, `white-space: nowrap`, `border-left: 3px solid transparent` |
+| Survol | fond `#fbeae9`, couleur `#300a12` |
+| Actif (`.on`) | couleur `#300a12`, `font-weight: 600`, `border-left-color: #300a12`, fond `#fff0f0` |
+| Transition | `all .2s ease` |
+| Icône | `font-size: 21px`, `flex: 0 0 22px` |
+| Libellé | `opacity: 0` au repli → `opacity: 1` au survol du nav, `transition: opacity .2s ease .05s` |
+| Niveau 2 (`.sub a`) | `padding-left: 34px`, `font-size: 12.5px`, couleur `#7e5259` |
+
+Note d'implémentation : le libellé est masqué par `opacity`, **pas** par `display: none` — c'est ce qui permet la transition douce. L'`overflow: hidden` du conteneur fait le reste.
+
+#### Pied — bouton épingle (`.pin`)
+
+- Conteneur : `display: flex`, `justify-content: flex-end`, `padding: 6px 10px`, `border-top: 1px solid #efdfde`.
+- Bouton : sans fond ni bordure, `cursor: pointer`, couleur `#847374`, `padding: 4px`, `border-radius: 3px`.
+- Survol : fond `#fbeae9`, couleur `#300a12`.
+- État épinglé : couleur `#300a12`.
+- Icône : `push_pin` en 18 px.
+- Accessibilité : `title` / `aria-label` = « Épingler le sommaire ouvert », `aria-pressed` reflétant l'état.
+
+## Interactions & Behavior
+
+### 1. Repli / dépliage
+
+- **Au repos :** largeur 58 px — seules les icônes sont visibles.
+- **Au survol de la barre** (`:hover` sur le `nav`) : largeur 252 px, les libellés apparaissent.
+- **Épinglé** (classe `.pinned`) : reste déplié en permanence, indépendamment du survol.
+- Le sélecteur CSS est `#navB:hover, #navB.pinned { width: 252px; }`.
+
+En production, prévoir aussi le dépliage **au focus clavier** d'une de ses entrées (`:focus-within`), sinon la navigation au clavier est aveugle. C'est une correction d'accessibilité à apporter par rapport à la maquette.
+
+### 2. Estompage pendant la saisie — comportement clé
+
+- À l'événement `focusin` sur un `input`, `textarea` ou `select` → ajout de la classe `typing` sur `<body>`.
+- CSS : `body.typing .nav-proto { opacity: .18; }` avec `transition: opacity .35s ease`.
+- Exception : `body.typing .nav-proto:hover { opacity: 1; }` — la barre redevient pleinement visible si l'utilisateur la survole, même en pleine saisie.
+- À `focusout` → retrait de la classe après un **délai de 250 ms** (`setTimeout`), ce qui évite un clignotement lors du passage d'un champ au champ suivant. Le timer précédent est annulé (`clearTimeout`) à chaque nouveau focus.
+
+La barre n'est jamais masquée totalement ni rendue non cliquable : elle s'efface visuellement mais reste interactive.
+
+### 3. Navigation par clic (défilement doux)
+
+- Clic sur une entrée → `preventDefault()` puis `window.scrollTo({ top: cible.offsetTop - 110, behavior: 'smooth' })`.
+- Le **décalage de 110 px** compense l'en-tête sticky du site ; sans lui, le titre de section se retrouve caché dessous.
+- Les sections portent en complément la classe utilitaire `scroll-mt-28` (`scroll-margin-top: 7rem`) pour que la navigation par ancre native reste correcte.
+- Respecter `prefers-reduced-motion: reduce` → défilement instantané (`behavior: 'auto'`) : à ajouter par rapport à la maquette.
+
+### 4. Scroll-spy (section active)
+
+- Sur `scroll` (écouteur `{ passive: true }`) et sur `resize`.
+- Algorithme : on parcourt la liste ordonnée des ids cibles ; la section active est **la dernière dont `offsetTop <= window.scrollY + 160`**.
+- La classe `.on` est appliquée au lien correspondant, retirée des autres.
+- Appelé une fois à l'initialisation.
+- En production, préférer un `IntersectionObserver` (plus performant, pas de calcul de layout à chaque frame) tout en gardant la même sémantique de « dernière section franchie ».
+
+### 5. Persistance de l'épinglage
+
+- Clé `localStorage` : `maryse.sommaire.pinned`, valeurs `'1'` / `'0'`.
+- Lue à l'initialisation ; écrite à chaque bascule.
+- En production, ce réglage a vocation à rejoindre les préférences du compte utilisateur si elles existent.
+
+### 6. Responsive
+
+- La maquette masque entièrement la barre sous **700 px** de largeur (`@media (max-width: 700px) { .nav-proto { display: none !important; } }`).
+- **À concevoir séparément :** l'équivalent mobile / PWA. Le rail latéral n'a pas de sens sur un écran étroit ; il faudra probablement un sélecteur de section en bas d'écran (barre d'onglets déroulante ou feuille modale « Aller à… »). Ce design n'existe pas encore — à demander avant de développer la version mobile.
+
+## State Management
+
+État nécessaire, très restreint :
+
+| État | Type | Source / déclencheur | Portée |
+|---|---|---|---|
+| `activeSectionId` | `string \| null` | scroll / resize (scroll-spy) | local au composant |
+| `isPinned` | `boolean` | clic sur l'épingle ; initialisé depuis `localStorage` | local + persisté |
+| `isTyping` | `boolean` | `focusin` / `focusout` sur les champs du formulaire (avec debounce 250 ms) | page / contexte formulaire |
+| `sections` | `Array<{ id, label, icon, level }>` | dérivé du modèle de recette (les étapes, notamment) | dérivé, pas dupliqué |
+
+Le survol (`isHovered`) est géré en CSS pur, pas en état JS.
+
+**Aucun appel réseau** n'est requis par cette fonctionnalité. Elle est purement cliente et ne modifie pas les données de la recette.
+
+**Point d'attention :** `sections` doit rester une **dérivation** du modèle de recette (source de vérité unique), et non une liste dupliquée à synchroniser à la main — sinon le sommaire dérive du formulaire dès qu'une étape est renommée ou supprimée.
+
+## Design Tokens
+
+### Couleurs (Material-style, thème Maryse)
+
+| Token | Hex | Usage dans ce composant |
+|---|---|---|
+| `primary` | `#300a12` | texte actif, bordure d'accent, épingle active |
+| `primary-container` | `#4a1e26` | (bordeaux de marque, ombres) |
+| `secondary` | `#7e5259` | libellés de niveau 2 (étapes) |
+| `surface` / `background` | `#fff8f7` | fond du sommaire |
+| `surface-container-low` | `#fff0f0` | fond de l'entrée active |
+| `surface-container` | `#fbeae9` | fond au survol |
+| `surface-container-highest` | `#efdfde` | bordure du pied |
+| `outline` | `#847374` | icône épingle au repos |
+| `outline-variant` | `#d6c2c3` | bordure du sommaire |
+| `on-surface-variant` | `#514345` | libellés de niveau 1 au repos |
+
+### Typographie
+
+| Rôle | Valeur |
+|---|---|
+| Libellé niveau 1 | `Work Sans`, 13 px, poids 500, `line-height: 1.2` |
+| Libellé niveau 1 actif | idem, poids 600 |
+| Libellé niveau 2 | `Work Sans`, 12.5 px, poids 500 |
+| Icônes | `Material Symbols Outlined`, réglage `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` |
+
+Polices du produit, pour rappel : **Playfair Display** (titres), **Work Sans** (corps et libellés), **Great Vibes** (logo « maryse club » uniquement).
+
+### Espacements
+
+| Valeur | Usage |
+|---|---|
+| `58px` | largeur repliée |
+| `252px` | largeur dépliée |
+| `9px 16px` | padding des liens niveau 1 |
+| `34px` | indentation gauche des liens niveau 2 |
+| `14px` | gap icône ↔ libellé |
+| `8px 0` | padding de la liste |
+| `6px 10px` | padding du pied |
+| `110px` | décalage de défilement (compensation en-tête) |
+| `160px` | seuil de détection du scroll-spy |
+
+### Rayons, ombres, transitions
+
+| Propriété | Valeur |
+|---|---|
+| Rayon du sommaire | `0 8px 8px 0` |
+| Rayon bouton épingle | `3px` |
+| Ombre | `0 8px 32px rgba(74, 30, 38, .07)` |
+| Transition de largeur | `.3s cubic-bezier(.4, 0, .2, 1)` |
+| Transition d'opacité (estompage) | `.35s ease` |
+| Transition des libellés | `opacity .2s ease .05s` |
+| Transition des liens | `all .2s ease` |
+| Opacité en saisie | `.18` |
+
+## Assets
+
+- **Icônes :** Material Symbols Outlined, chargées depuis Google Fonts. Icônes utilisées : `edit_note`, `straighten`, `speed`, `blender`, `egg_alt`, `calendar_month`, `format_list_numbered`, `radio_button_unchecked`, `lightbulb`, `push_pin`. À remplacer par la librairie d'icônes du projet cible si elle existe.
+- **Polices :** Playfair Display, Work Sans, Great Vibes (Google Fonts).
+- **Images :** aucune n'appartient à cette fonctionnalité. Les visuels visibles dans les maquettes sont des placeholders du composant de maquettage `image-slot.js` et **ne font pas partie du périmètre**.
+
+Aucun asset de marque tierce n'est utilisé.
+
+## Files
+
+| Fichier | Rôle |
+|---|---|
+| `creer-sommaire.html` | **Référence à implémenter** — écran de création de recette avec l'option B seule, propre et fonctionnelle. |
+| `creer-nav.html` | Contexte de décision : les 3 propositions (A pastilles / B sommaire / C tiroir) avec un sélecteur en bas à droite. **Non à implémenter.** |
+| `creer.html` | Écran d'origine, avant ajout du sommaire — utile pour un diff. |
+| `image-slot.js` | Composant de maquettage des images (placeholders). Hors périmètre, ne pas porter en production. |
+
+### Où regarder dans `creer-sommaire.html`
+
+- `<style id="nav-proto-css">` dans le `<head>` : tout le CSS du composant.
+- `<nav class="nav-proto" id="navB">` juste avant `<script src="image-slot.js">` : le markup.
+- L'IIFE en fin de `<body>` : scroll-spy, défilement doux, estompage en saisie, épinglage persistant.
+- Les ancres `id="sec-…"` portées par les `<section>` du formulaire, chacune avec la classe `scroll-mt-28`.
+
+## Definition of done
+
+- [ ] Le sommaire est replié à 58 px au repos et se déplie à 252 px au survol, au focus clavier, ou lorsqu'il est épinglé.
+- [ ] Les entrées d'étapes sont générées depuis le modèle de recette et se mettent à jour à l'ajout, au renommage, à la suppression et au réordonnancement.
+- [ ] La section active est correctement surlignée pendant le défilement, y compris sur une recette à 20 étapes.
+- [ ] Le clic sur une entrée amène le titre de section sous l'en-tête sticky, sans le masquer.
+- [ ] La barre s'estompe à `.18` dès la saisie, revient à `1` au survol, et ne clignote pas au passage d'un champ à l'autre.
+- [ ] L'épinglage survit à un rechargement de page.
+- [ ] Navigable entièrement au clavier ; `prefers-reduced-motion` respecté.
+- [ ] Aucune régression de mise en page du formulaire : le sommaire est un calque, il ne réduit pas la largeur de saisie.

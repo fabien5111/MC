@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Maryse-Club | Créer une nouvelle recette</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    "colors": {"on-primary-container":"#c1828b","outline":"#847374","tertiary-container":"#3b262a","inverse-surface":"#382e2e","secondary-container":"#ffc6ce","primary-container":"#4a1e26","on-error":"#ffffff","surface-container-lowest":"#ffffff","secondary-fixed-dim":"#f0b8c0","secondary-fixed":"#ffd9de","tertiary-fixed-dim":"#e0bec2","outline-variant":"#d6c2c3","surface-container":"#fbeae9","tertiary-fixed":"#fddade","primary":"#300a12","on-error-container":"#93000a","tertiary":"#251216","error":"#ba1a1a","on-tertiary-container":"#aa8c90","surface-container-low":"#fff0f0","surface-container-high":"#f5e4e4","on-tertiary-fixed":"#291619","on-secondary":"#ffffff","on-background":"#221a1a","primary-fixed-dim":"#fab4bd","inverse-on-surface":"#feedec","on-tertiary-fixed-variant":"#584044","surface-bright":"#fff8f7","on-tertiary":"#ffffff","on-surface-variant":"#514345","surface-variant":"#efdfde","on-primary":"#ffffff","primary-fixed":"#ffd9dd","on-primary-fixed":"#350e16","on-primary-fixed-variant":"#6a3840","surface-tint":"#854f57","surface-container-highest":"#efdfde","background":"#fff8f7","on-secondary-fixed-variant":"#633b42","surface":"#fff8f7","on-secondary-fixed":"#311118","on-secondary-container":"#7b5056","error-container":"#ffdad6","on-surface":"#221a1a","inverse-primary":"#fab4bd","surface-dim":"#e7d6d6","secondary":"#7e5259"},
+    "borderRadius": {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    "spacing": {"gutter":"24px","unit":"8px","container-max":"1200px","margin-desktop":"64px","margin-mobile":"16px"},
+    "fontFamily": {"label-md":["Work Sans"],"display-lg":["Playfair Display"],"headline-md":["Playfair Display"],"headline-lg-mobile":["Playfair Display"],"body-lg":["Work Sans"],"body-md":["Work Sans"],"headline-lg":["Playfair Display"],"logo":["Great Vibes","cursive"]},
+    "fontSize": {"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"display-lg":["64px",{"lineHeight":"72px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"500"}],"headline-lg-mobile":["32px",{"lineHeight":"40px","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-lg":["40px",{"lineHeight":"48px","fontWeight":"600"}]}
+  } } }
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  .hide-scrollbar::-webkit-scrollbar { display:none; } .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+  .editorial-input { background:transparent; border:none; border-bottom:1px solid #d9b8bc; padding:8px 0; outline:none; transition:border-color .3s ease; }
+  .editorial-input:focus { border-bottom:1px solid #300a12; }
+  .ambient-shadow { box-shadow: 0 0 32px 0 rgba(74,30,38,0.05); }
+  .maryse-logo-font { font-family:'Great Vibes',cursive; }
+  .maryse-pill { width:26px; height:13px; border-radius:9999px; cursor:pointer; transition:all .2s; }
+  image-slot { display:block; }
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+
+<!-- ===== Unified Public Header ===== -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
+<div class="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
+<div class="flex items-center gap-10">
+<a class="maryse-logo-font text-4xl text-primary leading-none" href="index.html">maryse club</a>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="index.html">Accueil</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html#planning">Planning</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="profil.html">Profil</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<a class="flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md shadow-md" href="creer.html"><span class="material-symbols-outlined text-[18px]">add</span> Créer</a>
+<button class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1">search</button>
+<a class="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block" href="profil.html" title="Mon profil">
+<image-slot id="nav-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc69WbfNouydO2CAXMT1IbOzz9MHswuxhhs40X0A8Pl--MkrKI7wD9cqOKDDyHLidm3PX81QsauhNWuLc-B0A5U4O_RCtMCQ7ZMpSWpgBte-2NqzGr09v_GnozRyCjClWDOrrC0BjUdEsdeAheRL_WqN3H6C7ZpelLFySQhKE2lWvEUDWPMJoBwp2OvP6t8e7nKMZWUltZl-VWVtR3Obdb1vDn6Htyqy34YOcpz97L29kwgksEeszuXtuUL65QyiXcU6Y2yf6YyvY" shape="circle" fit="cover" placeholder="Avatar" style="width:100%;height:100%"></image-slot>
+</a>
+</div>
+</div>
+</header>
+
+<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12">
+<!-- Page Header -->
+<div class="mb-12 flex items-end justify-between flex-wrap gap-4">
+<div>
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-primary mb-2">Créer une nouvelle recette</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">L'excellence de la pâtisserie, rédigée par vos soins.</p>
+</div>
+<a href="profil.html" class="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md"><span class="material-symbols-outlined">close</span> Annuler</a>
+</div>
+
+<form class="space-y-16" onsubmit="event.preventDefault();window.location.href='profil.html';">
+<!-- Basic Info & Media -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<div class="lg:col-span-7 space-y-8">
+<div class="flex flex-col">
+<label class="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
+<input class="editorial-input font-headline-lg text-headline-lg text-primary" placeholder="Le Saint-Honoré Traditionnel" type="text">
+</div>
+<div class="flex items-center justify-between py-4 border-b border-outline-variant">
+<div><span class="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span><span class="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span></div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked class="sr-only peer" type="checkbox">
+<div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+<span class="ml-3 font-label-md text-label-md text-primary">Public</span>
+</div>
+</div>
+<div class="space-y-4">
+<label class="font-label-md text-label-md text-outline uppercase">Catégories et Tags</label>
+<div class="flex flex-wrap gap-2" id="tag-row">
+<button class="tag-btn px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md" type="button">Pâtisserie</button>
+<button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Classique</button>
+<button class="tag-btn px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">Expert</button>
+<button class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors" type="button">+ Ajouter un tag</button>
+</div>
+</div>
+</div>
+<div class="lg:col-span-5">
+<div class="aspect-[4/5] border border-dashed border-outline-variant overflow-hidden">
+<image-slot id="creer-main" shape="rect" fit="cover" placeholder="Photo principale de la recette (format vertical)" style="width:100%;height:100%"></image-slot>
+</div>
+</div>
+</section>
+
+<!-- Metadata -->
+<section class="bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow"><div class="space-y-12">
+<div class="grid grid-cols-1 gap-x-16 gap-y-12">
+<div class="flex flex-col border-b border-outline-variant pb-4">
+<label class="font-label-md text-label-md text-outline uppercase mb-4">Taille / Nombre de portions</label>
+<div class="flex flex-wrap gap-6">
+<label class="flex items-center gap-3 cursor-pointer group"><div class="relative flex items-center justify-center"><input checked class="sr-only peer" name="measure_type" type="radio" value="mold"><div class="w-5 h-5 border-2 border-outline rounded-full peer-checked:border-primary transition-colors"></div><div class="absolute w-2.5 h-2.5 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div></div><span class="font-body-md text-on-surface">Moule de référence</span></label>
+<label class="flex items-center gap-3 cursor-pointer group"><div class="relative flex items-center justify-center"><input class="sr-only peer" name="measure_type" type="radio" value="units"><div class="w-5 h-5 border-2 border-outline rounded-full peer-checked:border-primary transition-colors"></div><div class="absolute w-2.5 h-2.5 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div></div><span class="font-body-md text-on-surface">Nombre d'unités / poids</span></label>
+</div>
+<div class="mt-4 flex flex-wrap gap-4 items-end">
+<input class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface" placeholder="ex: 6 x cercle de 6cm x 2cm" type="text">
+<select class="editorial-input flex-1 min-w-[200px] font-body-md text-on-surface bg-transparent border-b border-outline-variant focus:border-primary outline-none py-2 cursor-pointer bg-surface-container-low"><option value="" disabled selected>Choisir le type de moule</option><option value="cercle">Cercle</option><option value="manque">Moule à manqué</option><option value="cadre">Cadre rectangulaire</option></select>
+<div class="w-24 h-24 border border-dashed border-outline-variant rounded flex flex-col items-center justify-center bg-surface-container-low shrink-0 group cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-outline-variant">shape_line</span><span class="text-[10px] uppercase font-label-md text-outline mt-1">Aperçu</span></div>
+</div>
+</div>
+</div>
+<div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-16 gap-y-12">
+<div class="flex flex-col border-b border-outline-variant pb-4">
+<label class="font-label-md text-label-md text-outline uppercase">Difficulté</label>
+<div class="flex gap-2 mt-4" id="difficulty">
+<span class="maryse-pill bg-primary" data-i="0"></span><span class="maryse-pill bg-primary" data-i="1"></span><span class="maryse-pill bg-primary" data-i="2"></span><span class="maryse-pill bg-outline-variant" data-i="3"></span><span class="maryse-pill bg-outline-variant" data-i="4"></span>
+</div>
+</div>
+<div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="1h 30min" type="text"></div>
+<div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">CUISSON</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="45min" type="text"></div>
+<div class="flex flex-col border-b border-outline-variant pb-4"><label class="font-label-md text-label-md text-outline">DURÉE TOTALE</label><input class="editorial-input font-headline-md text-headline-md text-primary" placeholder="2h 15min" type="text"></div>
+</div></div>
+</div></section>
+
+<!-- Tools -->
+<section class="space-y-8">
+<h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+<ul class="space-y-4">
+<li class="flex items-center gap-4 group"><span class="material-symbols-outlined text-outline-variant">drag_indicator</span><input class="flex-grow editorial-input text-on-surface" type="text" value="Poche à douille n°10"><button class="opacity-0 group-hover:opacity-100 transition-opacity text-error" type="button"><span class="material-symbols-outlined">delete</span></button></li>
+<li class="flex items-center gap-4 group"><span class="material-symbols-outlined text-outline-variant">drag_indicator</span><input class="flex-grow editorial-input text-on-surface" type="text" value="Thermomètre à sonde"><button class="opacity-0 group-hover:opacity-100 transition-opacity text-error" type="button"><span class="material-symbols-outlined">delete</span></button></li>
+</ul>
+<button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button"><span class="material-symbols-outlined">add</span> Ajouter un ustensile</button>
+</section>
+
+<!-- Ingredients -->
+<section class="space-y-8">
+<h2 class="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ingrédients</h2>
+<div class="space-y-8">
+<div>
+<input class="font-label-md text-label-md text-primary uppercase border-none focus:ring-0 w-full mb-4 bg-transparent" type="text" value="Pâte Feuilletée">
+<div class="space-y-4">
+<div class="flex items-center gap-4"><input class="w-24 editorial-input text-on-surface" type="text" value="250g"><input class="flex-grow editorial-input text-on-surface" type="text" value="Farine T55"></div>
+<div class="flex items-center gap-4"><input class="w-24 editorial-input text-on-surface" type="text" value="200g"><input class="flex-grow editorial-input text-on-surface" type="text" value="Beurre de tourage"></div>
+</div>
+</div>
+<button class="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline" type="button"><span class="material-symbols-outlined">add_circle</span> Ajouter un groupe d'ingrédients</button>
+</div>
+</section>
+
+<!-- Preparation Planning -->
+<section class="space-y-8">
+<div class="flex justify-between items-end border-b border-primary pb-4"><h2 class="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2><span class="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span></div>
+<div class="bg-surface-container-high p-gutter rounded overflow-x-auto hide-scrollbar">
+<div class="min-w-[800px] h-32 relative flex items-center">
+<div class="absolute h-0.5 w-full bg-outline-variant top-1/2 -translate-y-1/2"></div>
+<div class="flex justify-between w-full relative">
+<div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Préparation</span></div>
+<div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-outline-variant z-10"></div><span class="font-label-md text-[10px] uppercase text-outline">Repos (2h)</span></div>
+<div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Cuisson</span></div>
+<div class="flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary z-10"></div><span class="font-label-md text-[10px] uppercase text-primary">Montage</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Step Details -->
+<section class="space-y-12">
+<div class="flex items-center gap-4 border-b border-primary pb-4"><span class="font-display-lg text-headline-lg text-primary">01</span><input class="flex-grow editorial-input font-headline-md text-headline-md text-primary" placeholder="Titre de l'étape (ex: Réalisation de la pâte)" type="text"></div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<div class="lg:col-span-8 space-y-8">
+<div class="flex gap-8">
+<div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS DE PRÉP</label><input class="editorial-input text-on-surface" placeholder="20 min" type="text"></div>
+<div class="flex flex-col flex-1"><label class="font-label-md text-label-md text-outline">TEMPS D'ATTENTE</label><input class="editorial-input text-on-surface" placeholder="2h (repos)" type="text"></div>
+</div>
+<div class="flex flex-col"><label class="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label><textarea class="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors" placeholder="Décrivez les gestes techniques avec précision..." rows="6"></textarea></div>
+<div class="space-y-4">
+<details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Ingrédients de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4 space-y-2 text-on-surface-variant"><p>• Farine T55 (250g)</p><p>• Sel fin (5g)</p><p>• Eau froide (125g)</p></div></details>
+<details class="group border-b border-outline-variant"><summary class="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">Conseils &amp; Astuces de l'étape<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span></summary><div class="pb-6 px-4"><textarea class="w-full bg-transparent border-none focus:ring-0 italic text-on-surface-variant" placeholder="Une astuce particulière pour cette étape ?"></textarea></div></details>
+</div>
+</div>
+<div class="lg:col-span-4 grid grid-cols-2 gap-4">
+<div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v1" shape="rect" fit="cover" placeholder="Visuel 1" style="width:100%;height:100%"></image-slot></div>
+<div class="aspect-square border border-dashed border-outline-variant overflow-hidden"><image-slot id="creer-step1-v2" shape="rect" fit="cover" placeholder="Visuel 2" style="width:100%;height:100%"></image-slot></div>
+</div>
+</div>
+<div class="flex justify-center py-8"><button class="flex items-center gap-3 px-8 py-3 border border-primary text-primary hover:bg-primary-container hover:text-white transition-all font-label-md text-label-md uppercase tracking-widest" type="button"><span class="material-symbols-outlined">add_circle</span> Ajouter une étape</button></div>
+</section>
+
+<!-- Footer Section -->
+<section class="pt-16 border-t-2 border-primary">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<div class="lg:col-span-8"><h2 class="font-headline-lg text-headline-lg text-primary mb-6">Conseils et astuces de la recette</h2><textarea class="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic" placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..." rows="4"></textarea></div>
+<div class="lg:col-span-4 flex flex-col gap-6">
+<button class="w-full py-6 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary transition-all flex items-center justify-center gap-4" type="submit">Publier la recette<span class="material-symbols-outlined">send</span></button>
+<a href="profil.html" class="w-full py-4 border border-outline-variant text-primary text-center font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-surface-container transition-all">Enregistrer en brouillon</a>
+<p class="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
+</div>
+</div>
+</section>
+</form>
+</main>
+
+<!-- Bottom Navigation (Mobile) -->
+<footer class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50">
+<div class="flex justify-around items-center py-3">
+<a href="index.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">menu_book</span><span class="text-[10px] mt-1">Recettes</span></a>
+<a href="creer.html" class="flex flex-col items-center text-primary font-bold"><span class="material-symbols-outlined">add_circle</span><span class="text-[10px] mt-1">Créer</span></a>
+<a href="profil.html#planning" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">calendar_month</span><span class="text-[10px] mt-1">Planning</span></a>
+<a href="profil.html" class="flex flex-col items-center text-on-surface-variant"><span class="material-symbols-outlined">person</span><span class="text-[10px] mt-1">Profil</span></a>
+</div>
+</footer>
+
+<script src="image-slot.js"></script>
+<script>
+  // difficulty pills
+  document.querySelectorAll('#difficulty .maryse-pill').forEach(p=>{
+    p.addEventListener('click',function(){
+      const i=+this.dataset.i;
+      document.querySelectorAll('#difficulty .maryse-pill').forEach((q,j)=>{
+        q.classList.toggle('bg-primary', j<=i);
+        q.classList.toggle('bg-outline-variant', j>i);
+      });
+    });
+  });
+  // tags
+  document.querySelectorAll('#tag-row .tag-btn').forEach(b=>b.addEventListener('click',function(){
+    this.classList.toggle('bg-primary-container'); this.classList.toggle('text-white');
+    this.classList.toggle('border'); this.classList.toggle('border-outline-variant'); this.classList.toggle('text-on-surface-variant');
+  }));
+</script>
+</body>
+</html>
