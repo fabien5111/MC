@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   try {
     const raw = await callClaude(apiKey, buildContenu(body.recette, prompt, body.moules_reference), 1000);
-    return NextResponse.json(normaliseResultat(parseStrictJson(raw)));
+    return NextResponse.json(normaliseResultat(parseStrictJson(raw.text)));
   } catch {
     return NextResponse.json(
       { erreur: "L'ajustement a échoué, réessayez ou saisissez le coefficient manuellement." },

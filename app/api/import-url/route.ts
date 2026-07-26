@@ -3,7 +3,15 @@
 // Auth & RLS via la session Supabase (cookies), plus besoin de jeton en en-tête.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { callClaude, parseStrictJson } from '@/lib/ai/claude';
+import {
+  EMPTY_USAGE,
+  IMPORT_MODEL,
+  addUsage,
+  callClaude,
+  parseStrictJson,
+  type ClaudeUsage,
+} from '@/lib/ai/claude';
+import { computeCost } from '@/lib/ai/cost';
 import {
   PROMPT,
   buildContenu,
@@ -90,10 +98,25 @@ export async function POST(req: Request) {
   }
 
   // 3. Normalisation IA (avec relance) puis validation.
+  // `usageTotal` cumule TOUS les appels facturés de cet import (normalisation,
+  // relance JSON, relance extraction incomplète) : c'est lui qui donne le coût.
+  let usageTotal: ClaudeUsage = EMPTY_USAGE;
   let pivot: Record<string, any>;
   try {
-    pivot = await normalizeWithRetry(apiKey, contenu);
+    const normalise = await normalizeWithRetry(apiKey, contenu);
+    pivot = normalise.pivot;
+    usageTotal = addUsage(usageTotal, normalise.usage);
   } catch (e) {
+    // Les appels déjà effectués ont été facturés même si l'import échoue : on
+    // les trace en logs, faute de ligne `imports` où les rattacher.
+    const partiel = (e as { usage?: ClaudeUsage }).usage;
+    if (partiel) {
+      const c = computeCost(partiel, IMPORT_MODEL);
+      console.error(
+        `[import-url] normalisation IA échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
+          (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
+      );
+    }
     console.error('[import-url] normalisation IA échouée :', e);
     return NextResponse.json(
       { erreur: "L'import a échoué, réessayez ou saisissez la recette manuellement." },
@@ -109,7 +132,8 @@ export async function POST(req: Request) {
         `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`,
         8000,
       );
-      const pivot2 = parseStrictJson(raw2) as Record<string, any>;
+      usageTotal = addUsage(usageTotal, raw2.usage);
+      const pivot2 = parseStrictJson(raw2.text) as Record<string, any>;
       const v2 = validatePivot(pivot2);
       if (!v2.erreurs.length) {
         pivot = pivot2;
@@ -170,17 +194,27 @@ export async function POST(req: Request) {
     pivot.rendement.moule.volume_cm3 = computeVolume(pivot.rendement.moule);
   }
 
-  // 5. Enregistrement en brouillon (RLS via la session).
-  const { data: row, error } = await supabase
-    .from('imports')
+  // 5. Enregistrement en brouillon (RLS via la session), avec le coût réel de
+  // l'import (somme de tous les appels IA facturés ci-dessus).
+  const cout = computeCost(usageTotal, IMPORT_MODEL);
+  // Colonnes de coût hors typage généré tant que `npm run gen:types` n'a pas été
+  // rejoué après la migration → client non typé pour cette écriture.
+  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
+  const { data: row, error } = await table
     .insert({
       user_id: user.id,
       source_type: texte ? 'texte' : 'url',
-      source_url: url || null,
       statut: 'brouillon',
+      source_url: url || null,
       recette: pivot,
       alertes,
-    })
+      model: IMPORT_MODEL,
+      input_tokens: usageTotal.inputTokens,
+      output_tokens: usageTotal.outputTokens,
+      // null si le modèle est absent de la table de tarifs : mieux vaut un coût
+      // inconnu qu'un coût faux.
+      cost_usd: cout ? cout.usd : null,
+    } as never)
     .select()
     .single();
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 });

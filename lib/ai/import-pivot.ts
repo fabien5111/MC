@@ -1,6 +1,6 @@
 // Logique d'extraction/normalisation d'une recette importée (schéma pivot v1.0).
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
-import { callClaude, parseStrictJson } from '@/lib/ai/claude';
+import { addUsage, callClaude, parseStrictJson, type ClaudeUsage } from '@/lib/ai/claude';
 
 const SCHEMA_EXEMPLE = {
   schema_version: '1.0',
@@ -267,17 +267,29 @@ export function validatePivot(p: Pivot): { erreurs: string[]; alertes: string[] 
 }
 
 // ── Normalisation IA avec une relance (§4.1) ────────────────
-export async function normalizeWithRetry(apiKey: string, contenu: string): Promise<Pivot> {
+// Renvoie le pivot ET la consommation cumulée : la relance est un second appel
+// facturé, il doit entrer dans le coût de l'import.
+export async function normalizeWithRetry(
+  apiKey: string,
+  contenu: string,
+): Promise<{ pivot: Pivot; usage: ClaudeUsage }> {
   const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
-  let raw = await callClaude(apiKey, base, 8000);
+  const first = await callClaude(apiKey, base, 8000);
   try {
-    return parseStrictJson(raw) as Pivot;
+    return { pivot: parseStrictJson(first.text) as Pivot, usage: first.usage };
   } catch (err) {
-    raw = await callClaude(
+    const retry = await callClaude(
       apiKey,
       `${base}\n\nTa réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
       8000,
     );
-    return parseStrictJson(raw) as Pivot;
+    const usage = addUsage(first.usage, retry.usage);
+    try {
+      return { pivot: parseStrictJson(retry.text) as Pivot, usage };
+    } catch (err2) {
+      // Les deux appels ont été facturés : on rattache la consommation à
+      // l'erreur pour que l'appelant puisse la comptabiliser malgré l'échec.
+      throw Object.assign(err2 as Error, { usage });
+    }
   }
 }

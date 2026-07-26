@@ -1,15 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getAdminStats, getPendingRecipes, getPendingComments } from '@/lib/admin';
+import { getAdminStats, getPendingRecipes, getPendingComments, getAiCosts } from '@/lib/admin';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 export const metadata: Metadata = { title: 'Tableau de bord | Admin — Maryse Club' };
 
 export default async function AdminHomePage() {
-  const [stats, pending, comments] = await Promise.all([
+  const [stats, pending, comments, aiCosts] = await Promise.all([
     getAdminStats(),
     getPendingRecipes(),
     getPendingComments(),
+    getAiCosts(),
   ]);
 
   return (
@@ -52,7 +53,7 @@ export default async function AdminHomePage() {
           </div>
         </div>
       </header>
-      <AdminDashboard stats={stats} pending={pending} comments={comments} />
+      <AdminDashboard stats={stats} pending={pending} comments={comments} aiCosts={aiCosts} />
     </>
   );
 }

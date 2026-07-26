@@ -1,5 +1,6 @@
 // Chargeurs de données admin, typés — portés de db.js (getMolds, getMoldTypes).
 import { createClient } from '@/lib/supabase/server';
+import { TAUX_EUR_AFFICHE } from '@/lib/ai/cost';
 import type { Database } from '@/lib/database.types';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
@@ -189,4 +190,81 @@ export async function getListEntries(table: string, orderBy = 'name'): Promise<R
     console.error(`getListEntries(${table}) a levé une exception :`, (e as Error).message);
     return [];
   }
+}
+
+// ── Coûts IA (imports) ───────────────────────────────────────
+// Consommation et coût réels des imports de recettes, mesurés depuis le bloc
+// `usage` renvoyé par l'API Claude (cf. lib/ai/cost.ts). Réservé au back-office.
+export type AiCostSummary = {
+  /** Imports comptabilisés (ceux d'avant la migration n'ont pas de coût). */
+  imports: number;
+  importsSansCout: number;
+  inputTokens: number;
+  outputTokens: number;
+  usd: number;
+  /** Conversion indicative, calculée côté serveur (le taux est une var d'env). */
+  eur: number;
+  /** Coût moyen par import comptabilisé, en dollars. */
+  moyenneUsd: number;
+};
+
+export type AiCosts = {
+  jour: AiCostSummary;
+  mois: AiCostSummary;
+  total: AiCostSummary;
+  /** Modèles rencontrés dans la période (le tarif dépend du modèle). */
+  modeles: string[];
+  /** Taux dollar → euro appliqué, à afficher pour lever l'ambiguïté. */
+  tauxEur: number;
+};
+
+type ImportCostRow = {
+  created_at: string;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost_usd: number | null;
+};
+
+function resume(rows: ImportCostRow[]): AiCostSummary {
+  const avecCout = rows.filter((r) => r.cost_usd != null);
+  const usd = avecCout.reduce((s, r) => s + Number(r.cost_usd), 0);
+  return {
+    imports: rows.length,
+    importsSansCout: rows.length - avecCout.length,
+    inputTokens: rows.reduce((s, r) => s + (r.input_tokens ?? 0), 0),
+    outputTokens: rows.reduce((s, r) => s + (r.output_tokens ?? 0), 0),
+    usd: Math.round(usd * 1e6) / 1e6,
+    eur: Math.round(usd * TAUX_EUR_AFFICHE * 1e6) / 1e6,
+    moyenneUsd: avecCout.length ? Math.round((usd / avecCout.length) * 1e6) / 1e6 : 0,
+  };
+}
+
+// Agrégats jour / mois / total. Nécessite une politique RLS autorisant les
+// admins à lire toute la table `imports` (cf. migration) ; sans elle, les
+// compteurs ne refléteraient que les imports de l'admin connecté.
+export async function getAiCosts(): Promise<AiCosts> {
+  const supabase = await createClient();
+  // Colonnes de coût hors typage généré tant que `npm run gen:types` n'a pas
+  // été rejoué après la migration → client non typé pour cette lecture.
+  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
+  const { data, error } = await table
+    .select('created_at, model, input_tokens, output_tokens, cost_usd')
+    .order('created_at', { ascending: false });
+  if (error) console.error('getAiCosts:', error.message);
+  const rows = (data as unknown as ImportCostRow[]) ?? [];
+
+  const debutJour = new Date();
+  debutJour.setUTCHours(0, 0, 0, 0);
+  const debutMois = new Date();
+  debutMois.setUTCDate(1);
+  debutMois.setUTCHours(0, 0, 0, 0);
+
+  return {
+    jour: resume(rows.filter((r) => new Date(r.created_at) >= debutJour)),
+    mois: resume(rows.filter((r) => new Date(r.created_at) >= debutMois)),
+    total: resume(rows),
+    modeles: [...new Set(rows.map((r) => r.model).filter((m): m is string => !!m))],
+    tauxEur: TAUX_EUR_AFFICHE,
+  };
 }

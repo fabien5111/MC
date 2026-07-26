@@ -6,16 +6,26 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { AdminRecipeRow, PendingComment } from '@/lib/admin';
+import type { AdminRecipeRow, PendingComment, AiCosts } from '@/lib/admin';
+
+// Montants déjà convertis côté serveur (le taux €/$ est une variable
+// d'environnement serveur) : ici, formatage seul.
+function montant(usd: number, eur: number): string {
+  const d = usd < 0.01 && usd > 0 ? `${(usd * 100).toFixed(2)} ¢` : `${usd.toFixed(2)} $`;
+  const e = eur < 0.01 && eur > 0 ? `${(eur * 100).toFixed(2)} c€` : `${eur.toFixed(2)} €`;
+  return `${d} · ${e}`;
+}
 
 export function AdminDashboard({
   stats,
   pending,
   comments,
+  aiCosts,
 }: {
   stats: { totalRecipes: number; pendingRecipes: number; pendingComments: number };
   pending: AdminRecipeRow[];
   comments: PendingComment[];
+  aiCosts: AiCosts;
 }) {
   const { mutate } = useMutation();
   const sb = () => createClient();
@@ -40,6 +50,47 @@ export function AdminDashboard({
             <p className="font-headline-lg text-primary">{c.value}</p>
           </div>
         ))}
+      </section>
+
+      {/* Coûts IA — mesurés depuis la consommation réelle renvoyée par l'API. */}
+      <section className="mb-12">
+        <div className="flex items-baseline justify-between flex-wrap gap-2 mb-6">
+          <h2 className="font-headline-md text-primary flex items-center gap-3">
+            <span className="material-symbols-outlined">payments</span> Coût des imports IA
+          </h2>
+          <span className="text-xs text-on-surface-variant">
+            {aiCosts.modeles.length > 0 ? aiCosts.modeles.join(', ') : 'aucun import mesuré'}
+            {' · '}1 crédit Anthropic = 1 $ · taux € indicatif ({aiCosts.tauxEur})
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+          {[
+            { label: "Aujourd'hui", d: aiCosts.jour },
+            { label: 'Ce mois-ci', d: aiCosts.mois },
+            { label: 'Depuis le début', d: aiCosts.total },
+          ].map(({ label, d }) => (
+            <div key={label} className="bg-surface-container-low border border-tertiary/10 p-8 rounded-xl">
+              <h3 className="font-label-md text-on-surface-variant uppercase tracking-widest text-xs mb-1">
+                {label}
+              </h3>
+              <p className="font-headline-lg text-primary">{montant(d.usd, d.eur)}</p>
+              <p className="text-xs text-on-surface-variant mt-2">
+                {d.imports} import{d.imports > 1 ? 's' : ''}
+                {d.imports > 0 && ` · ${montant(d.moyenneUsd, d.moyenneUsd * aiCosts.tauxEur)} en moyenne`}
+              </p>
+              <p className="text-xs text-on-surface-variant">
+                {(d.inputTokens + d.outputTokens).toLocaleString('fr-FR')} tokens (
+                {d.inputTokens.toLocaleString('fr-FR')} entrée / {d.outputTokens.toLocaleString('fr-FR')} sortie)
+              </p>
+              {d.importsSansCout > 0 && (
+                <p className="text-xs text-on-surface-variant italic mt-2">
+                  {d.importsSansCout} import{d.importsSansCout > 1 ? 's' : ''} sans coût mesuré (antérieur
+                  {d.importsSansCout > 1 ? 's' : ''} à la mesure, ou modèle hors tarif)
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mb-12">
