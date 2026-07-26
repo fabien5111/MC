@@ -12,10 +12,10 @@ import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
-const CARD_SELECT =
-  'id, title, description, hero_image_url, prep_time, total_time, rating_avg, rating_count, created_at, ' +
+export const CARD_SELECT =
+  'id, title, description, hero_image_url, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
-  'ingredient_groups(ingredients(allergen))';
+  'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
   Recipe,
@@ -24,6 +24,8 @@ export type RecipeCard = Pick<
   | 'description'
   | 'hero_image_url'
   | 'prep_time'
+  | 'cook_time'
+  | 'wait_time'
   | 'total_time'
   | 'rating_avg'
   | 'rating_count'
@@ -33,6 +35,7 @@ export type RecipeCard = Pick<
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
+  recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
 };
 
 
@@ -144,12 +147,14 @@ export async function getRecipesByTag(
   return (data as unknown as RecipeCard[]) ?? [];
 }
 
-export async function getUserRecipes(userId: string) {
+export type UserRecipeCard = RecipeCardWithAllergens & { status: string; is_public: boolean };
+
+export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> {
   const supabase = await createClient();
   const query = () =>
     supabase
       .from('recipes')
-      .select('id, title, description, hero_image_url, status, is_public, rating_avg, created_at')
+      .select(`${CARD_SELECT}, status, is_public`)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -159,7 +164,8 @@ export async function getUserRecipes(userId: string) {
     ({ data, error } = await query());
     if (error) console.error('getUserRecipes (retry):', error.message);
   }
-  return data ?? [];
+  const rows = (data as unknown as (RecipeCard & { status: string; is_public: boolean })[]) ?? [];
+  return withAllergenPictos(rows);
 }
 
 export async function getRecipe(id: string) {

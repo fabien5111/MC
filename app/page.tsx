@@ -8,7 +8,7 @@ import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
-import { cardAllergenNames } from '@/lib/recipe-view';
+import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getSiteSettings } from '@/lib/site';
@@ -45,6 +45,7 @@ export default async function HomePage() {
     getHomeCategories(),
   ]);
   const featured = recipes[0] ?? null;
+  const featuredTimes = featured ? effectiveTimes(featured) : null;
   const categories: { icon: string | null; picto: string | null; label: string; slug: string | null }[] =
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
@@ -125,7 +126,7 @@ export default async function HomePage() {
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">schedule</span>
                       <span className="font-label-md text-label-md text-on-surface">
-                        {formatTime(featured.total_time || featured.prep_time)}
+                        {formatTime(featuredTimes!.total || featuredTimes!.prep)}
                       </span>
                     </div>
                     {featured.difficulties?.name && (
