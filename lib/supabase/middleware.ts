@@ -52,8 +52,15 @@ export async function updateSession(request: NextRequest) {
     const isProtected = PROTECTED_PREFIXES.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`),
     );
+    // Les prefetch automatiques de <Link> (survol, apparition dans le
+    // viewport) déclenchent le middleware au même titre qu'une navigation
+    // réelle. S'ils arrivent juste après une connexion (avant propagation
+    // complète du cookie de session), on ne doit pas rediriger le routeur
+    // client vers /connexion sur la base d'un prefetch — seule une
+    // navigation effective doit produire cette redirection.
+    const isPrefetch = request.headers.get('next-router-prefetch') === '1';
 
-    if (!user && isProtected) {
+    if (!user && isProtected && !isPrefetch) {
       const url = request.nextUrl.clone();
       url.pathname = '/connexion';
       url.searchParams.set('next', pathname);

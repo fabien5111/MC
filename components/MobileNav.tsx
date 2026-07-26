@@ -16,16 +16,16 @@ export async function MobileNav({ current = '/' }: { current?: string }) {
           <span className="text-[10px] mt-1 font-label-md">Accueil</span>
         </Link>
         {user && (
-          <Link href="/creer" className={cls('/creer')}>
+          <Link href="/creer" prefetch={false} className={cls('/creer')}>
             <span className="material-symbols-outlined">add_circle</span>
             <span className="text-[10px] mt-1 font-label-md">Créer</span>
           </Link>
         )}
-        <Link href="/profil#planning" className={cls('/planning')}>
+        <Link href="/profil#planning" prefetch={false} className={cls('/planning')}>
           <span className="material-symbols-outlined">calendar_month</span>
           <span className="text-[10px] mt-1 font-label-md">Planning</span>
         </Link>
-        <Link href="/profil" className={cls('/profil')}>
+        <Link href="/profil" prefetch={false} className={cls('/profil')}>
           <span className="material-symbols-outlined">person</span>
           <span className="text-[10px] mt-1 font-label-md">Profil</span>
         </Link>
