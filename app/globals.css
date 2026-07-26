@@ -57,6 +57,153 @@ img {
     border-color: #300a12; /* primary */
   }
 }
+/* ---- Sommaire de navigation de l'éditeur de recette ----------------------
+   Rail vertical fixé au bord gauche (components/recipe/RecipeToc.tsx). Valeurs
+   reprises telles quelles de la maquette (nvelle_fonct/creer.html) : largeurs,
+   espacements, rayons et durées sont validés au pixel. Écrit ici plutôt qu'en
+   utilitaires Tailwind parce qu'aucune de ces mesures (58px, 252px, 12.5px…)
+   ne correspond à un token du thème. */
+.recipe-toc {
+  position: fixed;
+  z-index: 40; /* sous l'en-tête sticky du site, qui est à 50 */
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 58px;
+  overflow: hidden; /* c'est ce qui masque les libellés à l'état replié */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 24px);
+  background: #fff8f7; /* surface */
+  border: 1px solid #d6c2c3; /* outline-variant */
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 8px 32px rgba(74, 30, 38, 0.07);
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.35s ease;
+}
+/* `focus-within` en plus du survol : sans lui, la navigation au clavier se
+   ferait à l'aveugle, les libellés restant masqués. */
+.recipe-toc:hover,
+.recipe-toc:focus-within,
+.recipe-toc.is-pinned {
+  width: 252px;
+}
+/* Estompage pendant la saisie : le rail s'efface mais reste cliquable, et
+   redevient pleinement visible dès qu'on le survole ou qu'on l'atteint au
+   clavier. */
+.recipe-toc.is-typing {
+  opacity: 0.18;
+}
+.recipe-toc.is-typing:hover,
+.recipe-toc.is-typing:focus-within {
+  opacity: 1;
+}
+.recipe-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  /* Une recette à 20 étapes dépasse la hauteur de fenêtre : la liste défile,
+     le pied (épingle) reste visible.
+     `overflow-x` doit être explicite : dès qu'un axe cesse d'être `visible`,
+     l'autre est calculé en `auto` — le rail replié affichait donc un ascenseur
+     horizontal, les libellés en `nowrap` dépassant ses 58 px. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+.recipe-toc a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 16px;
+  color: #514345; /* on-surface-variant */
+  text-decoration: none;
+  font:
+    500 13px/1.2 'Work Sans',
+    sans-serif;
+  white-space: nowrap;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+.recipe-toc a:hover {
+  background: #fbeae9; /* surface-container */
+  color: #300a12; /* primary */
+}
+.recipe-toc a.on {
+  color: #300a12;
+  font-weight: 600;
+  border-left-color: #300a12;
+  background: #fff0f0; /* surface-container-low */
+}
+.recipe-toc a .material-symbols-outlined {
+  font-size: 21px;
+  flex: 0 0 22px;
+}
+/* Libellé masqué par l'opacité et non par `display` : c'est ce qui permet la
+   transition douce à l'ouverture du rail.
+   La largeur dépliée est figée à 252 px, ce qui laisse 181 px de libellé : les
+   titres d'étapes, saisis librement, la dépassent régulièrement. On tronque à
+   l'ellipse plutôt que de laisser l'`overflow` du rail couper le mot en plein
+   milieu (le libellé complet reste accessible en infobulle). */
+.recipe-toc a .lbl {
+  opacity: 0;
+  transition: opacity 0.2s ease 0.05s;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recipe-toc:hover a .lbl,
+.recipe-toc:focus-within a .lbl,
+.recipe-toc.is-pinned a .lbl {
+  opacity: 1;
+}
+.recipe-toc .sub a {
+  padding-left: 34px;
+  font-size: 12.5px;
+  color: #7e5259; /* secondary */
+}
+.recipe-toc .sub a .material-symbols-outlined {
+  font-size: 15px;
+}
+.recipe-toc .pin {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px;
+  border-top: 1px solid #efdfde; /* surface-container-highest */
+}
+.recipe-toc .pin button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #847374; /* outline */
+  display: flex;
+  padding: 4px;
+  border-radius: 3px;
+}
+.recipe-toc .pin button:hover {
+  background: #fbeae9;
+  color: #300a12;
+}
+.recipe-toc.is-pinned .pin button {
+  color: #300a12;
+}
+/* Le rail latéral n'a pas de sens sur un écran étroit ; le sélecteur de
+   section mobile reste à concevoir. */
+@media (max-width: 700px) {
+  .recipe-toc {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recipe-toc,
+  .recipe-toc a,
+  .recipe-toc a .lbl {
+    transition: none;
+  }
+}
+
 /* Halo décoratif (connexion.html) */
 @keyframes subtle-glow {
   0% {

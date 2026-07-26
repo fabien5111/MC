@@ -1,11 +1,11 @@
 'use client';
 
 // Relecture d'un import (porté de relecture.html) : correction du pivot IA
-// (infos générales, sous-préparations avec ingrédients/étapes en vis-à-vis,
+// (infos générales, étapes avec ingrédients/étapes en vis-à-vis,
 // temps et récap global live), enregistrement des corrections, puis conversion
 // en recette (recipes + steps + groups + ingredients + utensils). Mutations via
 // le client Supabase navigateur.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
@@ -14,6 +14,7 @@ import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { ImageSlot } from '@/components/ImageSlot';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
+import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -250,10 +251,10 @@ export function RelectureEditor({
   }, [measure, qtyAmount, qtyUnit, dims, moldForme, moldTypeId, moldCount, dimsDesc, moldTypes]);
   const [sps, setSps] = useState<SpState[]>(() => (recette.sous_preparations || []).map((sp: any) => initSp(sp, refAllergens)));
   // Ustensiles de la recette : liste unique (regroupée, dédupliquée), au
-  // niveau de la recette et non plus répétée par sous-préparation — comme
+  // niveau de la recette et non plus répétée par étape — comme
   // dans l'éditeur de recette. `recette.materiel` porte une correction déjà
   // enregistrée si elle existe ; sinon on agrège l'ancien format réparti par
-  // sous-préparation (import brut ou anciens imports déjà en base).
+  // étape (import brut ou anciens imports déjà en base).
   const [utensils, setUtensils] = useState<MatRow[]>(() => {
     if (Array.isArray(recette.materiel)) {
       return normMateriel(recette.materiel).map((m) => ({ key: nextKey(), ...m }));
@@ -273,14 +274,14 @@ export function RelectureEditor({
   const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [justAddedSpKey, setJustAddedSpKey] = useState<string | null>(null);
 
-  // Focus le nom de la sous-préparation ajoutée (porté de relecture.html).
+  // Focus le nom de l'étape ajoutée (porté de relecture.html).
   useEffect(() => {
     if (!justAddedSpKey) return;
     spNomRefs.current[justAddedSpKey]?.focus();
     setJustAddedSpKey(null);
   }, [justAddedSpKey]);
   const [busy, setBusy] = useState(false);
-  // Index de la sous-préparation en cours de glisser-déposer (null si aucun).
+  // Index de l'étape en cours de glisser-déposer (null si aucun).
   const [dragSp, setDragSp] = useState<number | null>(null);
 
   const alertes = Array.isArray(importRow.alertes) ? (importRow.alertes as string[]) : [];
@@ -472,14 +473,25 @@ export function RelectureEditor({
     setJustAddedSpKey(sp.key);
   };
   const delSp = (si: number) => {
-    if (!confirm('Supprimer cette sous-préparation ?')) return;
+    if (!confirm('Supprimer cette étape ?')) return;
     setSps((prev) => prev.filter((_, k) => k !== si));
   };
-  // Repli / dépli d'une sous-préparation (comme l'éditeur de recette).
+  // Repli / dépli d'une étape (comme l'éditeur de recette).
   const toggleSpCollapse = (si: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, collapsed: !sp.collapsed } : sp)));
   const collapseAllSp = (v: boolean) => setSps((prev) => prev.map((sp) => ({ ...sp, collapsed: v })));
-  // Réordonne une sous-préparation de l'index `from` vers `to` (glisser-déposer).
+
+  // ── Sommaire de navigation ──
+  // Entrées dérivées de `sps` (source de vérité unique) : renommer, ajouter,
+  // supprimer ou réordonner une étape met le sommaire à jour tout seul.
+  const tocSteps = useMemo(() => sps.map((sp) => ({ key: sp.key, title: sp.nom })), [sps]);
+  // Une étape repliée n'a rien à montrer une fois atteinte : on la déplie avant
+  // que le sommaire ne défile vers elle.
+  const expandSp = useCallback(
+    (i: number) => setSps((prev) => (prev[i]?.collapsed ? prev.map((sp, k) => (k === i ? { ...sp, collapsed: false } : sp)) : prev)),
+    [],
+  );
+  // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
   const moveSp = (from: number, to: number) =>
     setSps((prev) => {
       if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
@@ -769,6 +781,8 @@ export function RelectureEditor({
 
   return (
     <>
+      <RecipeToc sections={RELECTURE_SECTIONS} steps={tocSteps} onNavigateToStep={expandSp} />
+
       <div className="flex items-baseline justify-between flex-wrap gap-4 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
           Relecture de l&apos;import
@@ -807,7 +821,7 @@ export function RelectureEditor({
       )}
 
       {/* Infos générales */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
+      <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
           <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
@@ -1058,8 +1072,8 @@ export function RelectureEditor({
         </div>
       </section>
 
-      {/* Ustensiles (liste unique de la recette, regroupée depuis les sous-préparations importées) */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
+      {/* Ustensiles (liste unique de la recette, regroupée depuis les étapes importées) */}
+      <section id="sec-ustensiles" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Ustensiles</h2>
         <div className="flex flex-col mb-2">
           {utensils.length === 0 ? (
@@ -1110,8 +1124,8 @@ export function RelectureEditor({
         </button>
       </section>
 
-      {/* Sous-préparations */}
-      <div className="flex justify-end gap-6 mb-4">
+      {/* Étapes */}
+      <div id="sec-etapes" className="scroll-mt-28 flex justify-end gap-6 mb-4">
         <button type="button" onClick={() => collapseAllSp(true)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] hover:underline">
           <span className="material-symbols-outlined text-[18px]">unfold_less</span> Tout replier
         </button>
@@ -1123,6 +1137,7 @@ export function RelectureEditor({
         {sps.map((sp, si) => (
           <section
             key={sp.key}
+            id={stepAnchorId(si)}
             onDragOver={(e) => {
               if (dragSp === null) return;
               e.preventDefault();
@@ -1134,12 +1149,12 @@ export function RelectureEditor({
               moveSp(dragSp, si);
               setDragSp(null);
             }}
-            className={`border border-outline-variant rounded-xl overflow-hidden ${dragSp === si ? 'opacity-50' : ''}`}
+            className={`scroll-mt-28 border border-outline-variant rounded-xl overflow-hidden ${dragSp === si ? 'opacity-50' : ''}`}
           >
             <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
               <span
                 className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
-                title="Glisser pour déplacer la sous-préparation"
+                title="Glisser pour déplacer l'étape"
                 draggable
                 onDragStart={(e) => {
                   setDragSp(si);
@@ -1170,7 +1185,7 @@ export function RelectureEditor({
               <button
                 type="button"
                 onClick={() => toggleSpCollapse(si)}
-                title="Replier / déplier la sous-préparation"
+                title="Replier / déplier l'étape"
                 className="text-on-surface-variant hover:opacity-70"
               >
                 <span className="material-symbols-outlined text-[20px]">{sp.collapsed ? 'expand_more' : 'expand_less'}</span>
@@ -1431,8 +1446,10 @@ export function RelectureEditor({
         </button>
       </div>
 
-      {/* Conseils et astuces de la recette */}
-      <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+      {/* Conseils et astuces de la recette.
+          Ancre « Conseils recette/dégustation » du sommaire : elle couvre cette
+          section et la suivante, qui se suivent immédiatement. */}
+      <section id="sec-conseils" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils et astuces de la recette</h2>
         <textarea
           value={notes}
@@ -1456,7 +1473,7 @@ export function RelectureEditor({
       </section>
 
       {/* Récap global */}
-      <section className="mt-12 bg-primary text-white rounded-xl p-6 md:p-8">
+      <section id="sec-indications" className="scroll-mt-28 mt-12 bg-primary text-white rounded-xl p-6 md:p-8">
         <h2 className="font-headline-md text-[22px] mb-5 flex items-center gap-3">
           <span className="material-symbols-outlined">insights</span>Indications globales de la recette
         </h2>
