@@ -1,6 +1,6 @@
 'use client';
 
-// Onglets du profil (porté de profil.html) : carnet, favoris, planning,
+// Onglets du profil (porté de profil.html) : carnet, import, favoris, planning,
 // listes de courses, messagerie. Bascule d'onglet synchronisée avec le hash.
 // Suppressions via useMutation (écriture navigateur + resynchro du serveur).
 import { useEffect, useState } from 'react';
@@ -19,7 +19,7 @@ import type { UserRecipeCard } from '@/lib/recipes';
 
 export type UserRecipe = UserRecipeCard;
 
-type TabKey = 'recipes' | 'favorites' | 'planning' | 'courses' | 'messaging';
+type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'courses' | 'messaging';
 
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
@@ -28,8 +28,11 @@ const STATUS: Record<string, { label: string; badge: string }> = {
   rejected: { label: 'Publication refusée', badge: 'bg-error/90' },
 };
 
-const TABS: { key: TabKey; label: string }[] = [
+// `href` : onglet de navigation (change d'URL) plutôt que bascule interne —
+// « Import de recettes » ouvre la page /importer.
+const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: 'recipes', label: 'Mon Carnet de Recettes' },
+  { key: 'imports', label: 'Import de recettes', href: '/importer' },
   { key: 'favorites', label: 'Mes Favoris' },
   { key: 'planning', label: 'Planning' },
   { key: 'courses', label: 'Listes de courses' },
@@ -91,19 +94,22 @@ export function ProfileTabs({
     <section className="mt-16">
       <LoadingOverlay visible={busy} label="Suppression en cours…" />
       <div className="flex border-b border-outline-variant overflow-x-auto scrollbar-hide">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => switchTab(t.key)}
-            className={`px-6 py-4 font-label-md whitespace-nowrap ${
-              tab === t.key
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-on-surface-variant hover:text-primary'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const cls = `px-6 py-4 font-label-md whitespace-nowrap ${
+            tab === t.key
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-on-surface-variant hover:text-primary'
+          }`;
+          return t.href ? (
+            <Link key={t.key} href={t.href} className={cls}>
+              {t.label}
+            </Link>
+          ) : (
+            <button key={t.key} onClick={() => switchTab(t.key)} className={cls}>
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Carnet */}
@@ -205,20 +211,18 @@ export function ProfileTabs({
               </div>
             );
           })}
-          <Link
-            href="/creer"
-            className="group border border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center gap-3 text-on-surface-variant hover:text-primary hover:border-primary transition-colors min-h-[260px]"
-          >
-            <span className="material-symbols-outlined text-[40px]">add_circle</span>
-            <span className="font-label-md text-label-md">Créer une recette</span>
-          </Link>
-          <Link
-            href="/importer"
-            className="group border border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center gap-3 text-on-surface-variant hover:text-primary hover:border-primary transition-colors min-h-[260px]"
-          >
-            <span className="material-symbols-outlined text-[40px]">download</span>
-            <span className="font-label-md text-label-md">Importer une recette</span>
-          </Link>
+        </div>
+      )}
+
+      {/* Carnet vide : message d'accueil (les cartes d'action ont été retirées
+          au profit de l'onglet « Import de recettes » et du bouton d'en-tête). */}
+      {tab === 'recipes' && recipeList.length === 0 && (
+        <div className="text-center pb-12">
+          <span className="material-symbols-outlined text-[48px] text-on-surface-variant mb-4 block">cake</span>
+          <h2 className="font-headline-md text-primary">Votre carnet est vide</h2>
+          <p className="font-body-md text-on-surface-variant max-w-sm mx-auto mt-2">
+            Créez votre première recette ou importez-en une depuis une adresse web ou un texte.
+          </p>
         </div>
       )}
 
