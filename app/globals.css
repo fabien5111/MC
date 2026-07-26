@@ -105,8 +105,12 @@ img {
   margin: 0;
   padding: 8px 0;
   /* Une recette à 20 étapes dépasse la hauteur de fenêtre : la liste défile,
-     le pied (épingle) reste visible. */
+     le pied (épingle) reste visible.
+     `overflow-x` doit être explicite : dès qu'un axe cesse d'être `visible`,
+     l'autre est calculé en `auto` — le rail replié affichait donc un ascenseur
+     horizontal, les libellés en `nowrap` dépassant ses 58 px. */
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
 }
 .recipe-toc a {
