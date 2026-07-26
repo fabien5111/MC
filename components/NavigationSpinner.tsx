@@ -14,13 +14,18 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 12 s.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
 //
-// Le départ est détecté à la fois sur `click` (souris, clavier) et sur
-// `pointerdown` pour les pointeurs tactiles : sur certains navigateurs
-// mobiles, l'écart entre le tapotement et l'événement `click` synthétique
-// peut dépasser le délai d'affichage, ce qui masque l'overlay avant même
-// qu'il ait eu la chance d'apparaître. `pointerdown` réagit dès l'appui.
+// Le départ est détecté sur `click` (souris, clavier) et, pour les pointeurs
+// tactiles, dès le relâchement du doigt : sur certains navigateurs mobiles,
+// l'écart entre le tapotement et l'événement `click` synthétique peut
+// dépasser le délai d'affichage, ce qui masque l'overlay avant même qu'il ait
+// eu la chance d'apparaître. On ne peut pas pour autant réagir dès l'appui
+// (`pointerdown`) : les photos des cartes de recette étant enveloppées dans
+// un lien, poser le doigt dessus pour faire défiler la page déclencherait le
+// spinner alors qu'aucune navigation ne suit. On suit donc le geste complet
+// (appui → déplacement → relâchement) et on n'arme le spinner que si le doigt
+// n'a pas bougé, c'est-à-dire s'il s'agit bien d'un tapotement.
 //
 // Les barres de recherche (HomeSearch, HeaderSearch) redirigent en JS via
 // `router.push` plutôt qu'une vraie soumission de formulaire : on ne peut
@@ -42,9 +47,15 @@ export function NavigationSpinner() {
   const committedUrl = pathname + (search.toString() ? `?${search}` : '');
   const committedUrlRef = useRef(committedUrl);
 
+  // Navigation déjà signalée, en attente d'arrivée : évite qu'un second
+  // déclencheur pour le même geste (le `click` qui suit un tapotement) ne
+  // relance le délai d'affichage depuis le début.
+  const pending = useRef(false);
+
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
+    pending.current = false;
   };
 
   // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
@@ -58,9 +69,14 @@ export function NavigationSpinner() {
 
   useEffect(() => {
     const start = () => {
+      if (pending.current) return;
       clearTimers();
+      pending.current = true;
       showTimer.current = setTimeout(() => setVisible(true), 120);
-      safetyTimer.current = setTimeout(() => setVisible(false), 8000);
+      safetyTimer.current = setTimeout(() => {
+        setVisible(false);
+        pending.current = false;
+      }, 8000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -90,11 +106,37 @@ export function NavigationSpinner() {
       if (isInternalNavigation(e.target)) start();
     };
 
-    // Tactile : réagit dès l'appui plutôt que d'attendre le `click` de
-    // synthèse (voir note ci-dessus). Les pointeurs souris sont laissés à
-    // `click`, qui gère déjà correctement les modificateurs.
+    // Tactile : on suit le geste pour distinguer un tapotement d'un début de
+    // défilement (voir note en tête de fichier). Les pointeurs souris sont
+    // laissés à `click`, qui gère déjà correctement les modificateurs.
+    // Au-delà de ce seuil de déplacement, le geste est un défilement.
+    const TAP_SLOP = 10;
+    let tap: { id: number; x: number; y: number } | null = null;
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return;
+      tap = isInternalNavigation(e.target)
+        ? { id: e.pointerId, x: e.clientX, y: e.clientY }
+        : null;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!tap || e.pointerId !== tap.id) return;
+      if (Math.abs(e.clientX - tap.x) > TAP_SLOP || Math.abs(e.clientY - tap.y) > TAP_SLOP) {
+        tap = null;
+      }
+    };
+
+    // Le navigateur prend la main sur le geste (défilement, zoom…).
+    const onPointerCancel = () => {
+      tap = null;
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const started = tap;
+      tap = null;
+      if (!started || e.pointerId !== started.id) return;
+      // Le doigt peut avoir été relâché ailleurs que sur le lien de départ.
       if (isInternalNavigation(e.target)) start();
     };
 
@@ -120,13 +162,21 @@ export function NavigationSpinner() {
     };
 
     // Capture pour intercepter avant que Next ne gère le clic du <Link>.
+    // `pointermove` est passif : on n'y appelle jamais `preventDefault()`, et
+    // un écouteur non passif sur tout le document pénaliserait le défilement.
     document.addEventListener('click', onClick, true);
     document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
+    document.addEventListener('pointercancel', onPointerCancel, true);
+    document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('submit', onSubmit, true);
     window.addEventListener('popstate', onPopState);
     return () => {
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointermove', onPointerMove, true);
+      document.removeEventListener('pointercancel', onPointerCancel, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
       document.removeEventListener('submit', onSubmit, true);
       window.removeEventListener('popstate', onPopState);
       clearTimers();
