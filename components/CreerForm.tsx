@@ -13,11 +13,12 @@
 // Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
+import { RecipeToc, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { Spinner } from '@/components/Spinner';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
@@ -397,6 +398,18 @@ export function CreerForm({
   const toggleCollapse = (i: number) => setSteps((s) => s.map((st, k) => (k === i ? { ...st, collapsed: !st.collapsed } : st)));
   const collapseAll = (v: boolean) => setSteps((s) => s.map((st) => ({ ...st, collapsed: v })));
 
+  // ── Sommaire de navigation ──
+  // Les entrées d'étapes sont dérivées de `steps` (source de vérité unique) :
+  // renommer, ajouter, supprimer ou réordonner une étape met le sommaire à jour
+  // sans synchronisation manuelle.
+  const tocSteps = useMemo(() => steps.map((st) => ({ key: st.key, title: st.title })), [steps]);
+  // Une étape repliée n'a rien à montrer une fois atteinte : on la déplie avant
+  // que le sommaire ne défile vers elle.
+  const expandStep = useCallback(
+    (i: number) => setSteps((s) => (s[i]?.collapsed ? s.map((st, k) => (k === i ? { ...st, collapsed: false } : st)) : s)),
+    [],
+  );
+
   // ── Sous-étapes : bascule texte libre ⇄ liste éditable ──
   const [dragSub, setDragSub] = useState<{ si: number; idx: number } | null>(null);
   // « Éclater en sous-étapes » : découpe la description en lignes éditables et
@@ -686,6 +699,8 @@ export function CreerForm({
 
   return (
     <>
+      <RecipeToc steps={tocSteps} onNavigateToStep={expandStep} />
+
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display-lg text-headline-lg-mobile md:text-display-lg text-primary mb-2">
@@ -700,7 +715,7 @@ export function CreerForm({
 
       <div className="space-y-16">
         {/* Infos de base & média */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
             <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
             <input
@@ -856,7 +871,7 @@ export function CreerForm({
         </section>
 
         {/* Métadonnées : quantité produite */}
-        <section className="bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
+        <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
           <div className="flex flex-col border-b border-outline-variant pb-4">
             <label className="font-label-md text-label-md text-outline uppercase mb-4">Taille / Nombre de portions</label>
             <div className="flex flex-wrap gap-6">
@@ -988,7 +1003,7 @@ export function CreerForm({
         </section>
 
         {/* Ustensiles */}
-        <section className="space-y-8">
+        <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
           <ul className="space-y-4">
             {utensils.map((u, i) => (
@@ -1045,7 +1060,7 @@ export function CreerForm({
         </section>
 
         {/* Étapes */}
-        <section className="space-y-12">
+        <section id="sec-etapes" className="scroll-mt-28 space-y-12">
           <div className="flex justify-end gap-6">
             <button type="button" onClick={() => collapseAll(true)} className="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:underline">
               <span className="material-symbols-outlined">unfold_less</span> Tout replier
@@ -1058,6 +1073,7 @@ export function CreerForm({
           {steps.map((st, si) => (
             <div
               key={st.key}
+              id={stepAnchorId(si)}
               onDragOver={(e) => {
                 if (dragStep === null) return;
                 e.preventDefault();
@@ -1069,7 +1085,7 @@ export function CreerForm({
                 moveStep(dragStep, si);
                 setDragStep(null);
               }}
-              className={dragStep === si ? 'opacity-50' : undefined}
+              className={`scroll-mt-28${dragStep === si ? ' opacity-50' : ''}`}
             >
               <div className="flex items-center gap-4 border-b border-primary pb-4">
                 <span
@@ -1502,7 +1518,10 @@ export function CreerForm({
         </section>
 
         {/* Conseils de la recette */}
-        <section className="space-y-8">
+        {/* Ancre « Conseils de la recette/dégustation » du sommaire : elle
+            couvre cette section et la suivante (dégustation et conservation),
+            qui se suivent immédiatement. */}
+        <section id="sec-conseils" className="scroll-mt-28 space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
             value={tips}
@@ -1526,7 +1545,7 @@ export function CreerForm({
         </section>
 
         {/* Planning de préparation (aperçu) */}
-        <section className="space-y-8">
+        <section id="sec-planning" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
             <h2 className="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
             <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
@@ -1557,7 +1576,7 @@ export function CreerForm({
         </section>
 
         {/* Difficulté & temps globaux */}
-        <section className="space-y-8">
+        <section id="sec-difficulte" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
             <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
             <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
@@ -1637,7 +1656,7 @@ export function CreerForm({
         </section>
 
         {/* Récapitulatif des ingrédients (aperçu) */}
-        <section className="space-y-8">
+        <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
             <h2 className="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
             <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
