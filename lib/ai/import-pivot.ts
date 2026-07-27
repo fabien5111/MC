@@ -225,23 +225,20 @@ export function extractLdRecipe(html: string): LdRecipe | null {
   return null;
 }
 
-export function ldEstComplet(ld: LdRecipe | null): boolean {
-  if (!ld) return false;
-  const ing = ld.recipeIngredient;
-  const ins = ld.recipeInstructions;
-  const aIng = Array.isArray(ing) ? ing.length > 0 : !!ing;
-  const aIns = Array.isArray(ins) ? ins.length > 0 : !!ins;
-  return aIng && aIns;
-}
-
+// Le JSON-LD "Recipe" de schema.org liste `recipeIngredient` à plat pour toute
+// la recette, sans le rattacher aux étapes de `recipeInstructions` : un
+// ingrédient réutilisé dans plusieurs étapes (ex. un chocolat pour un
+// croustillant ET pour une mousse) y apparaît en une seule ligne, quantité
+// totale confondue. S'appuyer dessus seul pousse l'IA à deviner un partage
+// (typiquement à parts égales) entre les étapes concernées — silencieusement
+// faux. Le texte visible de la page, lui, garde les ingrédients dans leur
+// section d'origine : on le fournit donc toujours en renfort, y compris
+// quand le JSON-LD est présent, et on ne confie au JSON-LD que les
+// métadonnées fiables (titre, temps, rendement, auteur, vidéo).
 export function buildContenu(ld: LdRecipe | null, html: string, url: string): string {
-  if (ldEstComplet(ld)) {
-    return `Données schema.org "Recipe" extraites de ${url} :\n${JSON.stringify(ld)}`;
-  }
   const texte = extractMainText(html);
-  return ld
-    ? `Données schema.org "Recipe" INCOMPLÈTES (sers-t'en pour le titre ou les temps, mais tire les ingrédients et les étapes du texte de la page) :\n${JSON.stringify(ld)}\n\nTexte de la page ${url} :\n${texte}`
-    : `Texte de la page ${url} :\n${texte}`;
+  if (!ld) return `Texte de la page ${url} :\n${texte}`;
+  return `Données schema.org "Recipe" extraites de ${url} — fiables pour le titre, l'auteur, les temps, le rendement, la vidéo, MAIS PAS pour les quantités d'ingrédients : recipeIngredient est une liste globale pour toute la recette, non répartie par étape. Si un même ingrédient sert dans plusieurs étapes, ne devine jamais un partage (ex. à parts égales) — dérive la quantité de chaque étape depuis le texte de la page ci-dessous :\n${JSON.stringify(ld)}\n\nTexte de la page ${url} :\n${texte}`;
 }
 
 export function extractMainText(html: string): string {
