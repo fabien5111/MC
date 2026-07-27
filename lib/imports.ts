@@ -9,6 +9,8 @@ export type ImportRow = {
   statut: string;
   recette: Json;
   alertes: Json;
+  recipe_id: string | null;
+  cost_usd: number | null;
   created_at: string;
 };
 
@@ -73,9 +75,12 @@ export async function getUtensilRefNames(): Promise<string[]> {
 
 export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('imports')
-    .select('id, source_type, source_url, statut, recette, alertes, created_at')
+  // `cost_usd` est hors typage généré tant que `npm run gen:types` n'a pas été
+  // rejoué après la migration → client non typé pour cette colonne (même
+  // motif que `getAiCosts` dans lib/admin.ts).
+  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
+  const { data, error } = await table
+    .select('id, source_type, source_url, statut, recette, alertes, recipe_id, cost_usd, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getImports:', error.message);
