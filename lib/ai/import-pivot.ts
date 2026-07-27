@@ -266,6 +266,11 @@ export function validatePivot(p: Pivot): { erreurs: string[]; alertes: string[] 
   return { erreurs, alertes };
 }
 
+// Budget cumulé des appels IA d'un import, en deçà du `maxDuration = 60` de la
+// route : la marge restante couvre les requêtes Supabase et l'envoi de la
+// réponse.
+const BUDGET_MS = 50_000;
+
 // ── Normalisation IA (§4.1) ──────────────────────────────────
 // Au plus UNE relance au total (JSON invalide OU extraction incomplète, jamais
 // les deux) : la route serverless a un temps limite (maxDuration), et trois
@@ -275,8 +280,14 @@ export async function normalizeRecette(
   apiKey: string,
   contenu: string,
 ): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
+  // Budget de temps partagé par les (au plus deux) appels : la relance ne doit
+  // pas pousser la fonction serverless au-delà de son `maxDuration`, sinon
+  // l'hébergeur la coupe avant qu'on ait pu renvoyer une erreur exploitable.
+  const debut = Date.now();
+  const restant = () => Math.max(5_000, BUDGET_MS - (Date.now() - debut));
+
   const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
-  const first = await callClaude(apiKey, base, 8000);
+  const first = await callClaude(apiKey, base, 8000, restant());
 
   let pivot: Pivot;
   let usage = first.usage;
@@ -289,6 +300,7 @@ export async function normalizeRecette(
       apiKey,
       `${base}\n\nTa réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
       8000,
+      restant(),
     );
     usage = addUsage(usage, retry.usage);
     try {
@@ -306,6 +318,7 @@ export async function normalizeRecette(
       apiKey,
       `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`,
       8000,
+      restant(),
     );
     usage = addUsage(usage, retry.usage);
     try {

@@ -27,7 +27,14 @@ export async function POST(req: Request) {
   if (prompt.length < 3) return NextResponse.json({ erreur: "Décrivez l'ajustement souhaité." }, { status: 400 });
 
   try {
-    const raw = await callClaude(apiKey, buildContenu(body.recette, prompt, body.moules_reference), 1000);
+    // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
+    // avant que l'hébergeur ne coupe la fonction.
+    const raw = await callClaude(
+      apiKey,
+      buildContenu(body.recette, prompt, body.moules_reference),
+      1000,
+      25_000,
+    );
     return NextResponse.json(normaliseResultat(parseStrictJson(raw.text)));
   } catch {
     return NextResponse.json(

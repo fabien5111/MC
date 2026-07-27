@@ -42,47 +42,71 @@ export function parseStrictJson(text: string): unknown {
   return JSON.parse(t);
 }
 
+// Délai maximal par défaut d'un appel. Sans garde-fou, un appel qui ne répond
+// pas laisse la fonction serverless tourner jusqu'à ce que l'hébergeur la tue
+// (504 opaque côté navigateur, sans passer par nos messages d'erreur). Les
+// routes qui ont un `maxDuration` plus court passent leur propre valeur.
+export const TIMEOUT_MS = 45_000;
+
 export async function callClaude(
   apiKey: string,
   userContent: string,
   maxTokens: number,
+  timeoutMs: number = TIMEOUT_MS,
 ): Promise<ClaudeCall> {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: IMPORT_MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: userContent }],
-    }),
-  });
-  if (!r.ok) {
-    throw new Error(`API Claude : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
-  }
-  const data = (await r.json()) as {
-    content?: Array<{ type: string; text: string }>;
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-      cache_read_input_tokens?: number;
-      cache_creation_input_tokens?: number;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: ctl.signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: IMPORT_MODEL,
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    });
+    if (!r.ok) {
+      throw new Error(`API Claude : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
+    }
+    const data = (await r.json()) as {
+      content?: Array<{ type: string; text: string }>;
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_read_input_tokens?: number;
+        cache_creation_input_tokens?: number;
+      };
     };
-  };
-  const u = data.usage ?? {};
-  return {
-    text: (data.content || [])
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join(''),
-    usage: {
-      inputTokens: u.input_tokens ?? 0,
-      outputTokens: u.output_tokens ?? 0,
-      cacheReadTokens: u.cache_read_input_tokens ?? 0,
-      cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
-    },
-  };
+    const u = data.usage ?? {};
+    return {
+      text: (data.content || [])
+        .filter((b) => b.type === 'text')
+        .map((b) => b.text)
+        .join(''),
+      usage: {
+        inputTokens: u.input_tokens ?? 0,
+        outputTokens: u.output_tokens ?? 0,
+        cacheReadTokens: u.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
+      },
+    };
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      // `code` permet aux routes de distinguer ce cas et d'expliquer la panne
+      // à l'utilisateur, au lieu d'un échec générique.
+      throw Object.assign(
+        new Error(`API Claude : aucune réponse au bout de ${Math.round(timeoutMs / 1000)} s (appel interrompu).`),
+        { code: 'TIMEOUT' },
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }

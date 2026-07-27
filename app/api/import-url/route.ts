@@ -113,6 +113,15 @@ export async function POST(req: Request) {
       );
     }
     console.error('[import-url] normalisation IA échouée :', e);
+    if ((e as { code?: string }).code === 'TIMEOUT') {
+      return NextResponse.json(
+        {
+          erreur:
+            "L'analyse n'a pas abouti dans le temps imparti (l'API Claude n'a pas répondu). Réessayez : la seconde tentative est souvent plus rapide.",
+        },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { erreur: "L'import a échoué, réessayez ou saisissez la recette manuellement." },
       { status: 502 },
