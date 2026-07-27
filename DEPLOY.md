@@ -12,7 +12,7 @@ Dans **Settings → Environment Variables** du projet :
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://acbabqolghhyxksouaye.supabase.co` | Production + Preview |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_lWH25Aszggrc6ZttxyMTig_XwXs_IAG` | Production + Preview |
 | `ANTHROPIC_API_KEY` | *(clé Anthropic — jamais préfixée `NEXT_PUBLIC_`)* | Production + Preview |
-| `IMPORT_MODEL` | `claude-sonnet-5` *(optionnel, valeur par défaut)* | Production + Preview |
+| `IMPORT_MODEL` | `claude-haiku-4-5` *(optionnel, valeur par défaut)* | Production + Preview |
 | `IMPORT_DAILY_QUOTA` | `20` *(optionnel, valeur par défaut)* | Production + Preview |
 
 Les deux `NEXT_PUBLIC_*` sont inlinées au build : elles doivent exister avant

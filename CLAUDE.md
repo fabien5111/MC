@@ -33,7 +33,7 @@ données, authentification).
 | Styles | **Tailwind CSS** (design tokens dans `tailwind.config.ts`) | 3.4 |
 | Backend | **Supabase** (PostgreSQL, Auth, RLS) | — |
 | Client Supabase | `@supabase/supabase-js` + `@supabase/ssr` (auth par cookies) | 2.x / 0.12 |
-| IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-sonnet-5` |
+| IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` |
 | Hébergement | **Vercel** (fonctions serverless, projet `mc-snowy`) | Node 22.x |
 
 ## Architecture
@@ -132,7 +132,9 @@ principales :
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`.
 - Clé `ANTHROPIC_API_KEY` **côté serveur uniquement** ; modèle configurable
-  via `IMPORT_MODEL` (défaut `claude-sonnet-5`).
+  via `IMPORT_MODEL` (défaut `claude-haiku-4-5`). Les appels sont en
+  **streaming** : en mode bloquant, une extraction de plusieurs milliers de
+  tokens dépasse le `maxDuration` de la route sans rien laisser observer.
 
 ## Variables d'environnement
 

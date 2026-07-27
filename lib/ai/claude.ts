@@ -1,7 +1,11 @@
 // Appel à l'API Claude + parsing JSON strict, partagés par les routes IA.
 // La clé ANTHROPIC_API_KEY vit uniquement dans les variables d'environnement.
 
-export const IMPORT_MODEL = process.env.IMPORT_MODEL || 'claude-sonnet-5';
+// Haiku par défaut : l'extraction produit plusieurs milliers de tokens de JSON,
+// et son débit de génération est ce qui décide de tenir ou non dans le
+// `maxDuration` de la route. Tâche de structuration d'un texte fourni, où un
+// modèle rapide suffit. Surchargeable par `IMPORT_MODEL`.
+export const IMPORT_MODEL = process.env.IMPORT_MODEL || 'claude-haiku-4-5';
 
 // Consommation réelle renvoyée par l'API à chaque appel (bloc `usage`). Sert à
 // calculer le coût exact d'un import plutôt que de l'estimer (cf. lib/ai/cost.ts).
@@ -13,6 +17,16 @@ export type ClaudeUsage = {
 };
 
 export type ClaudeCall = { text: string; usage: ClaudeUsage };
+
+// Événements du flux SSE effectivement exploités (le flux en contient d'autres,
+// ignorés) : cf. https://docs.anthropic.com/en/api/messages-streaming
+type SseEvent = {
+  type?: string;
+  message?: { usage?: Record<string, number> };
+  delta?: { type?: string; text?: string };
+  usage?: Record<string, number>;
+  error?: { type?: string; message?: string };
+};
 
 export const EMPTY_USAGE: ClaudeUsage = {
   inputTokens: 0,
@@ -56,6 +70,8 @@ export async function callClaude(
 ): Promise<ClaudeCall> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  const debut = Date.now();
+  let premierTokenMs = 0;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -68,34 +84,69 @@ export async function callClaude(
       body: JSON.stringify({
         model: IMPORT_MODEL,
         max_tokens: maxTokens,
+        // En mode non-streaming, rien ne circule tant que la réponse n'est pas
+        // entièrement générée : une extraction de plusieurs milliers de tokens
+        // dépasse alors le temps imparti sans qu'on puisse rien observer.
+        stream: true,
         messages: [{ role: 'user', content: userContent }],
       }),
     });
     if (!r.ok) {
       throw new Error(`API Claude : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
     }
-    const data = (await r.json()) as {
-      content?: Array<{ type: string; text: string }>;
-      usage?: {
-        input_tokens?: number;
-        output_tokens?: number;
-        cache_read_input_tokens?: number;
-        cache_creation_input_tokens?: number;
-      };
-    };
-    const u = data.usage ?? {};
-    return {
-      text: (data.content || [])
-        .filter((b) => b.type === 'text')
-        .map((b) => b.text)
-        .join(''),
-      usage: {
-        inputTokens: u.input_tokens ?? 0,
-        outputTokens: u.output_tokens ?? 0,
-        cacheReadTokens: u.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
-      },
-    };
+    if (!r.body) throw new Error('API Claude : réponse sans corps.');
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    const usage: ClaudeUsage = { ...EMPTY_USAGE };
+    let buffer = '';
+    let text = '';
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // Les événements SSE sont séparés par une ligne vide ; on ne traite que
+      // les blocs complets et on garde le reliquat pour la lecture suivante.
+      let fin = buffer.indexOf('\n\n');
+      while (fin !== -1) {
+        const bloc = buffer.slice(0, fin);
+        buffer = buffer.slice(fin + 2);
+        for (const ligne of bloc.split('\n')) {
+          if (!ligne.startsWith('data:')) continue;
+          const brut = ligne.slice(5).trim();
+          if (!brut) continue;
+          let ev: SseEvent;
+          try {
+            ev = JSON.parse(brut) as SseEvent;
+          } catch {
+            continue; // fragment non exploitable : on l'ignore
+          }
+          if (ev.type === 'message_start') {
+            const u = ev.message?.usage ?? {};
+            usage.inputTokens = u.input_tokens ?? 0;
+            usage.outputTokens = u.output_tokens ?? 0;
+            usage.cacheReadTokens = u.cache_read_input_tokens ?? 0;
+            usage.cacheWriteTokens = u.cache_creation_input_tokens ?? 0;
+          } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+            if (!premierTokenMs) premierTokenMs = Date.now() - debut;
+            text += ev.delta.text ?? '';
+          } else if (ev.type === 'message_delta' && ev.usage?.output_tokens != null) {
+            // Décompte définitif des tokens produits.
+            usage.outputTokens = ev.usage.output_tokens;
+          } else if (ev.type === 'error') {
+            throw new Error(`API Claude : ${ev.error?.type ?? 'erreur'} — ${ev.error?.message ?? ''}`);
+          }
+        }
+        fin = buffer.indexOf('\n\n');
+      }
+    }
+
+    console.log(
+      `[claude] ${IMPORT_MODEL} : ${usage.outputTokens} tokens produits en ${Date.now() - debut} ms ` +
+        `(1er token à ${premierTokenMs} ms)`,
+    );
+    return { text, usage };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       // `code` permet aux routes de distinguer ce cas et d'expliquer la panne
