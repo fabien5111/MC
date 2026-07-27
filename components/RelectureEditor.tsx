@@ -72,6 +72,9 @@ function rendementTxt(r: any): string {
     return r.moule.libelle || [r.moule.forme, r.moule.diametre_cm && r.moule.diametre_cm + ' cm'].filter(Boolean).join(' ');
   if (r.pieces) return `${r.pieces} pièces`;
   if (r.portions) return `${r.portions} parts`;
+  // Rendement extrait en texte libre (ex. « 20 cm - 8 personnes ») : le schéma
+  // d'import ne le structure plus, on affiche la formulation d'origine.
+  if (r.libelle) return String(r.libelle);
   return '';
 }
 

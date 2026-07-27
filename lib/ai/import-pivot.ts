@@ -368,8 +368,11 @@ export function toPivotInterne(r: RecetteIA): Pivot {
       congelation_min: null,
     },
     // Rendement textuel → mode « description libre » de l'éditeur, pré-rempli.
+    // `libelle` conserve la valeur extraite telle quelle (référence affichée à
+    // côté du sélecteur) ; `libelle_corrige` alimente le champ éditable.
     rendement: {
       mode: 'dimensions',
+      libelle: r.rendement || null,
       libelle_corrige: r.rendement || '',
       type: null,
       portions: null,
