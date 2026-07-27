@@ -60,7 +60,7 @@ export function parseStrictJson(text: string): unknown {
 // pas laisse la fonction serverless tourner jusqu'à ce que l'hébergeur la tue
 // (504 opaque côté navigateur, sans passer par nos messages d'erreur). Les
 // routes qui ont un `maxDuration` plus court passent leur propre valeur.
-export const TIMEOUT_MS = 45_000;
+export const TIMEOUT_MS = 50_000;
 
 export async function callClaude(
   apiKey: string,
