@@ -1,8 +1,15 @@
 'use client';
 
-// Formulaire d'import (porté de importer.html) : onglets URL / texte collé →
+// Formulaire d'import (porté de importer.html) : texte collé →
 // POST /api/import-url (auth par cookies, plus d'en-tête Bearer). Affiche l'état
 // (analyse / succès / erreur) puis rafraîchit la liste serveur (router.refresh).
+//
+// Pas d'import par URL : le JSON-LD schema.org des pages de recette liste les
+// ingrédients à plat pour toute la recette, sans les rattacher à leurs étapes
+// — un ingrédient réutilisé dans plusieurs étapes (ex. un chocolat pour un
+// croustillant et pour une mousse) y perd sa répartition, et pousse l'IA à
+// deviner un partage silencieusement faux. Le texte collé, qui garde la
+// structure de la page telle que lue, n'a pas ce problème.
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,14 +25,12 @@ type Result = {
 
 export function ImporterForm() {
   const router = useRouter();
-  const [tab, setTab] = useState<'url' | 'texte'>('url');
-  const [url, setUrl] = useState('');
   const [texte, setTexte] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
 
-  async function launch(payload: { url: string } | { texte: string }, clear: () => void) {
+  async function launch(payload: { texte: string }, clear: () => void) {
     setBusy(true);
     setError(null);
     setResult(null);
@@ -63,14 +68,6 @@ export function ImporterForm() {
     }
   }
 
-  function submitUrl() {
-    if (!url.trim()) {
-      alert('Collez une adresse de recette.');
-      return;
-    }
-    void launch({ url: url.trim() }, () => setUrl(''));
-  }
-
   function submitText() {
     if (texte.trim().length < 80) {
       alert('Collez la recette complète (titre, ingrédients, étapes).');
@@ -79,18 +76,10 @@ export function ImporterForm() {
     void launch({ texte: texte.trim() }, () => setTexte(''));
   }
 
-  const tabCls = (on: boolean) =>
-    `px-6 py-3 font-label-md whitespace-nowrap ${
-      on ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'
-    }`;
-
   return (
     <>
       <div className="flex border-b border-outline-variant mb-8 overflow-x-auto">
-        <button onClick={() => setTab('url')} className={tabCls(tab === 'url')}>
-          Depuis une URL
-        </button>
-        <button onClick={() => setTab('texte')} className={tabCls(tab === 'texte')}>
+        <button className="px-6 py-3 font-label-md whitespace-nowrap text-primary border-b-2 border-primary">
           Texte collé
         </button>
         <button className="px-6 py-3 font-label-md text-on-surface-variant/50 cursor-not-allowed whitespace-nowrap" title="Bientôt disponible">
@@ -101,53 +90,28 @@ export function ImporterForm() {
         </button>
       </div>
 
-      {tab === 'url' ? (
-        <div className="flex flex-wrap items-end gap-3 mb-4">
-          <label className="flex flex-col gap-1 flex-1 min-w-[260px]">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
-              Adresse de la recette
-            </span>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.exemple.fr/recette-paris-brest"
-              className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={submitUrl}
-            disabled={busy}
-            className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
-          >
-            <span className="material-symbols-outlined text-[18px]">download</span> Importer
-          </button>
-        </div>
-      ) : (
-        <div className="mb-4">
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
-              Texte de la recette
-            </span>
-            <textarea
-              rows={12}
-              value={texte}
-              onChange={(e) => setTexte(e.target.value)}
-              placeholder="Collez ici la recette complète : titre, ingrédients, étapes… (depuis un livre, un e-mail, un document)"
-              className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary w-full"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={submitText}
-            disabled={busy}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
-          >
-            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
-          </button>
-        </div>
-      )}
+      <div className="mb-4">
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+            Texte de la recette
+          </span>
+          <textarea
+            rows={12}
+            value={texte}
+            onChange={(e) => setTexte(e.target.value)}
+            placeholder="Collez ici la recette complète : titre, ingrédients, étapes… (depuis un livre, un e-mail, un document, ou copié depuis une page web)"
+            className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary w-full"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={submitText}
+          disabled={busy}
+          className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
+        >
+          <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
+        </button>
+      </div>
 
       <div className="mb-8">
         {busy && (

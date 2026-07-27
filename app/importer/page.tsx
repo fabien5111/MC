@@ -37,8 +37,8 @@ export default async function ImporterPage() {
           </span>
         </div>
         <p className="text-on-surface-variant mb-8">
-          Depuis une adresse web ou un texte collé : la recette est analysée, convertie au format Maryse
-          Club et enregistrée en brouillon privé, que vous pourrez relire et corriger.
+          Collez le texte complet d&apos;une recette : elle est analysée, convertie au format Maryse Club
+          et enregistrée en brouillon privé, que vous pourrez relire et corriger.
         </p>
 
         <ImporterForm />
