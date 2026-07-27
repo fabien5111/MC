@@ -47,11 +47,11 @@ app/                    Pages et routes (App Router)
 ├── execution/[id]/     Écran d'exécution guidée d'une recette
 ├── courses/[id]/       Liste de courses
 ├── profil/             Profil (recettes, favoris, planning, listes)
-├── importer/           Import de recette par IA (URL ou texte)
+├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
-│   ├── import-url/     POST — analyse IA d'une recette (URL/texte) → brouillon
+│   ├── import-url/     POST — analyse IA d'une recette (texte collé) → brouillon
 │   └── scale-recipe/   POST — coefficient IA d'ajustement des quantités
 └── auth/callback/      Callback OAuth / confirmation e-mail
 
@@ -126,9 +126,13 @@ principales :
 
 ## Routes IA (API Anthropic)
 
-- `POST /api/import-url` — analyse une URL ou un texte collé et produit un
-  brouillon de recette structuré. `maxDuration = 60 s`, quota journalier
-  configurable (`IMPORT_DAILY_QUOTA`, défaut 20).
+- `POST /api/import-url` — analyse un texte de recette collé et produit un
+  brouillon de recette structuré (pas d'import par URL : le JSON-LD
+  schema.org des pages de recette liste les ingrédients à plat pour toute la
+  recette sans les rattacher à leurs étapes, ce qui pousse l'IA à deviner un
+  partage de quantité silencieusement faux quand un ingrédient est réutilisé
+  dans plusieurs étapes). `maxDuration = 60 s`, quota journalier configurable
+  (`IMPORT_DAILY_QUOTA`, défaut 20).
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`.
 - Clé `ANTHROPIC_API_KEY` **côté serveur uniquement** ; modèle configurable
@@ -286,7 +290,7 @@ Gestion de la liste des courses
 
 ## Fonctionnalités déjà en place (Plan payant) - Liste non exhaustive
 Ajustement de la recette par IA (texte libre)
-Import de recette depuis une URL, un pdf ou un copier/coller
+Import de recette par copier/coller (l'import depuis une URL a été retiré : le JSON-LD des pages de recette ne rattache pas les ingrédients à leurs étapes, ce qui produisait des quantités erronées sur les ingrédients réutilisés dans plusieurs étapes)
 
 
 

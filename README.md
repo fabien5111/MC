@@ -21,7 +21,7 @@ npm run dev                        # http://localhost:3000
 
 ## Routes API
 
-- `POST /api/import-url` — import de recette (URL ou texte collé) → brouillon
+- `POST /api/import-url` — import de recette (texte collé) → brouillon
 - `POST /api/scale-recipe` — coefficient d'ajustement des quantités (IA)
 
 Auth/RLS via la session (cookies).
