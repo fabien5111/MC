@@ -88,6 +88,16 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   code (mutation suivie d'un `router.push`, appel IA...), afficher
   `<LoadingOverlay visible={busy} />` explicitement le temps de l'opération
   (cf. `components/recipe/DuplicateButton.tsx`).
+- **Suppression optimiste dans une liste.** `useMutation` repasse `busy` à
+  `false` dès que l'écriture réseau aboutit — avant que `router.refresh()`
+  n'ait fini de resynchroniser le rendu serveur. Si la liste vient de props
+  serveur affichées telles quelles, l'élément supprimé reste visible pendant
+  cette fenêtre alors que le spinner a déjà disparu. Toujours doubler
+  `useMutation` d'un état local initialisé depuis les props (`useState` +
+  `useEffect` de resynchronisation) et filtrer l'élément supprimé au succès
+  de la mutation, pour que sa disparition soit synchrone avec l'arrêt du
+  spinner (cf. `ProfileTabs.tsx` `delRecipe` / `components/ImporterList.tsx`
+  `supprimer`).
 
 ## Authentification
 
