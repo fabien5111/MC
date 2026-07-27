@@ -5,13 +5,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { IMPORT_MODEL, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
-import {
-  buildContenu,
-  cleanPivotRecette,
-  computeVolume,
-  extractLdRecipe,
-  normalizeRecette,
-} from '@/lib/ai/import-pivot';
+import { buildContenu, computeVolume, extractLdRecipe, normalizeRecette } from '@/lib/ai/import-pivot';
 
 export const maxDuration = 60;
 
@@ -131,15 +125,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ erreur: 'Extraction incomplète : ' + erreurs.join(' '), erreurs }, { status: 422 });
   }
 
-  // J−n par sous-préparation : entier ≥ 0 (défaut 0).
-  (pivot.sous_preparations || []).forEach((sp: Record<string, any>) => {
-    const d = parseInt(sp.day_offset, 10);
-    sp.day_offset = isNaN(d) || d < 0 ? 0 : d;
-  });
-
-  // Ingrédients/ustensiles : majuscule initiale + suppression des notes qui répètent le nom.
-  cleanPivotRecette(pivot);
-
+  // Nettoyage, normalisation des unités, J−n et mise au format interne sont
+  // assurés par `normalizeRecette` / `toPivotInterne`.
   pivot.schema_version = '1.0';
   pivot.statut = 'brouillon';
   pivot.visibilite = 'privee';

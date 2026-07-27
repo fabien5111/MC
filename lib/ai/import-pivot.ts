@@ -2,88 +2,148 @@
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
 import { addUsage, callClaude, parseStrictJson, type ClaudeUsage } from '@/lib/ai/claude';
 
-const SCHEMA_EXEMPLE = {
-  schema_version: '1.0',
-  titre: 'Entremets vanille-caramel',
-  description: 'Un entremets léger sur biscuit madeleine.',
-  categorie: 'entremets',
-  tags: ['vanille', 'caramel'],
-  difficulte: 3,
-  temps: { preparation_min: 90, cuisson_min: 25, repos_min: 120, congelation_min: 720 },
-  rendement: {
-    type: 'moule',
-    portions: 8,
-    pieces: null,
-    moule: {
-      forme: 'rond',
-      diametre_cm: 20,
-      longueur_cm: null,
-      largeur_cm: null,
-      hauteur_cm: 4.5,
-      volume_cm3: null,
-      libelle: 'Cercle à entremets 20 cm',
-    },
-  },
-  sous_preparations: [
-    {
-      ordre: 1,
-      nom: 'Biscuit madeleine',
-      day_offset: 2,
-      ingredients: [
-        { nom: 'beurre', quantite: 100, unite: 'g', texte_original: '100 g de beurre pommade', note: 'pommade', scaling: 'lineaire' },
-        { nom: 'gélatine', quantite: 4, unite: 'g', texte_original: '2 feuilles de gélatine', note: 'feuilles de 2 g', scaling: 'lineaire_arrondi' },
-      ],
-      etapes: [
-        { ordre: 1, texte: 'Crémer le beurre avec le sucre.', duree_min: null, temperature_c: null },
-        { ordre: 2, texte: 'Cuire 25 min.', duree_min: 25, temperature_c: 170 },
-      ],
-      materiel: ['robot pâtissier', 'cercle 20 cm'],
-    },
-  ],
-  notes: null,
-  conseils_degustation: 'À déguster à température ambiante. Se conserve 3 jours au réfrigérateur dans une boîte hermétique.',
-  source: {
-    auteur_origine: 'Cyril Lignac',
-    url_origine: 'https://exemple.fr/recette',
-    video_url: 'https://www.youtube.com/watch?v=xxxx',
-  },
-  photos: [],
+// ── Schéma d'extraction (sortie brute de l'IA) ───────────────
+// Volontairement plat et concis : chaque clé superflue rallonge la génération,
+// et c'est la durée de génération qui décide de tenir dans le `maxDuration` de
+// la route. Les champs structurés absents ici (moule, difficulté, tags,
+// catégorie) sont saisis à la relecture — cf. `toPivotInterne`.
+export type IngredientIA = { nom?: string; quantite?: number | null; unite?: string | null };
+
+export type EtapeIA = {
+  nom_etape?: string;
+  temps_preparation_minutes?: number | null;
+  temps_attente_minutes?: number | null;
+  temps_cuisson_minutes?: number | null;
+  temperature_cuisson_celsius?: number | null;
+  anticipation_jours?: number | null;
+  ingredients?: IngredientIA[];
+  instructions?: string[];
+  conseils_etape?: string | null;
 };
 
-export const PROMPT = `Tu es un extracteur de recettes de pâtisserie. Analyse le contenu fourni
-et renvoie UNIQUEMENT un objet JSON valide conforme au schéma ci-dessous,
-sans texte avant ni après, sans balises markdown.
+export type RecetteIA = {
+  titre?: string;
+  auteur_origine?: string | null;
+  video_url?: string | null;
+  description?: string | null;
+  rendement?: string | null;
+  ustensiles?: string[];
+  etapes?: EtapeIA[];
+  astuces_recette?: string[];
+  conseils_conservation?: string | null;
+};
 
-Règles :
-- Découpe la recette en sous_preparations (biscuit, crémeux, glaçage…).
-  S'il n'y en a qu'une, crée une seule sous-préparation nommée "Préparation".
-- Normalise chaque quantité en g, ml ou piece. Conversions usuelles :
-  1 c. à s. ≈ 15 ml, 1 c. à c. ≈ 5 ml, 1 feuille de gélatine = 2 g,
-  1 œuf entier ≈ 50 g, 1 jaune ≈ 20 g, 1 blanc ≈ 30 g.
-  Conserve toujours la formulation d'origine dans texte_original.
-- Si une information est absente (temps, moule…), mets null. N'invente rien.
-- Attribue scaling = "lineaire_arrondi" aux œufs et à la gélatine,
-  "fixe" aux pincées et aux éléments de parfum, "lineaire" sinon.
-- Si le moule est mentionné, remplis rendement.moule ; sinon rendement.type
-  = "portions" avec le nombre indiqué, ou null.
-- day_offset = nombre de jours AVANT la dégustation où l'on réalise la
-  sous-préparation. Si la recette donne un planning (« J−2 : réaliser le
-  sablé et les dacquoises ; J−1 : la mousse et le montage ; Jour J : le
-  glaçage »), reporte le bon J−n sur CHAQUE sous-préparation concernée
-  (J−2 → day_offset 2, J−1 → 1, Jour J → 0). Sans indication, mets 0.
-- source.auteur_origine = nom du chef ou de l'auteur de la recette
-  (ex. « Cyril Lignac »), sinon null.
-- source.url_origine = URL de la page/recette d'origine si elle apparaît
-  dans le contenu, sinon null.
-- source.video_url = URL d'une vidéo de la recette (YouTube, etc.) si elle
-  apparaît dans le contenu, sinon null.
-- conseils_degustation = conseils de dégustation ET de conservation
-  (température de service, durée et mode de conservation), en texte libre,
-  sinon null. Ne les mélange pas avec les notes/astuces générales.
+export const PROMPT = `Tu es un expert culinaire. Extrais les informations de la recette fournie et renvoie le résultat UNIQUEMENT sous la forme d'un objet JSON valide. Ne génère aucun texte avant ou après le JSON.
 
-Schéma (exemple) : ${JSON.stringify(SCHEMA_EXEMPLE)}`;
+Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
 
+{
+  "titre": "Nom de la recette",
+  "auteur_origine": "Nom de l'auteur ou source (null si non trouvé)",
+  "video_url": "URL Youtube (null si non trouvé)",
+  "description": "Description courte de la recette",
+  "rendement": "Taille, nombre d'unités ou de personnes (ex: 1 gâteau de 20cm, 8 personnes)",
+  "ustensiles": ["ustensile 1", "ustensile 2"],
+  "etapes": [
+    {
+      "nom_etape": "Nom du regroupement (ex: Biscuit cuillère)",
+      "temps_preparation_minutes": 15,
+      "temps_attente_minutes": 0,
+      "temps_cuisson_minutes": 12,
+      "temperature_cuisson_celsius": 180,
+      "anticipation_jours": 2,
+      "ingredients": [
+        {
+          "nom": "Farine",
+          "quantite": 250,
+          "unite": "g"
+        }
+      ],
+      "instructions": [
+        "Première action de cette étape.",
+        "Deuxième action."
+      ],
+      "conseils_etape": "Conseil spécifique à cette étape (null si aucun)"
+    }
+  ],
+  "astuces_recette": ["Astuce globale 1", "Astuce globale 2"],
+  "conseils_conservation": "Instructions pour la dégustation et conservation"
+}`;
+
+// Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
+// normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
 const UNITES = new Set(['g', 'ml', 'piece']);
+
+// Variantes d'unités rencontrées dans les recettes → unité cible et facteur
+// appliqué à la quantité. Table explicite plutôt que consignes de conversion
+// confiées à l'IA : le résultat est reproductible et ne coûte aucun token.
+const CONVERSIONS: Record<string, { unite: string; facteur: number }> = {
+  g: { unite: 'g', facteur: 1 },
+  gr: { unite: 'g', facteur: 1 },
+  gramme: { unite: 'g', facteur: 1 },
+  grammes: { unite: 'g', facteur: 1 },
+  kg: { unite: 'g', facteur: 1000 },
+  kilo: { unite: 'g', facteur: 1000 },
+  kilos: { unite: 'g', facteur: 1000 },
+  ml: { unite: 'ml', facteur: 1 },
+  millilitre: { unite: 'ml', facteur: 1 },
+  millilitres: { unite: 'ml', facteur: 1 },
+  cl: { unite: 'ml', facteur: 10 },
+  dl: { unite: 'ml', facteur: 100 },
+  l: { unite: 'ml', facteur: 1000 },
+  litre: { unite: 'ml', facteur: 1000 },
+  litres: { unite: 'ml', facteur: 1000 },
+  'c. à s.': { unite: 'ml', facteur: 15 },
+  cas: { unite: 'ml', facteur: 15 },
+  cs: { unite: 'ml', facteur: 15 },
+  'cuillère à soupe': { unite: 'ml', facteur: 15 },
+  'cuillères à soupe': { unite: 'ml', facteur: 15 },
+  'c. à c.': { unite: 'ml', facteur: 5 },
+  cac: { unite: 'ml', facteur: 5 },
+  cc: { unite: 'ml', facteur: 5 },
+  'cuillère à café': { unite: 'ml', facteur: 5 },
+  'cuillères à café': { unite: 'ml', facteur: 5 },
+  feuille: { unite: 'g', facteur: 2 }, // gélatine : 1 feuille ≈ 2 g
+  feuilles: { unite: 'g', facteur: 2 },
+  piece: { unite: 'piece', facteur: 1 },
+  pièce: { unite: 'piece', facteur: 1 },
+  pièces: { unite: 'piece', facteur: 1 },
+  unite: { unite: 'piece', facteur: 1 },
+  unité: { unite: 'piece', facteur: 1 },
+  unités: { unite: 'piece', facteur: 1 },
+  u: { unite: 'piece', facteur: 1 },
+};
+
+// Unité + quantité ramenées aux unités de la base. Renvoie `reconnue: false`
+// quand l'unité est inconnue : la valeur brute est conservée et signalée en
+// alerte, plutôt que silencieusement écrasée.
+export function normaliseUnite(
+  quantite: number | null | undefined,
+  unite: string | null | undefined,
+): { quantite: number | null; unite: string | null; reconnue: boolean } {
+  const q = typeof quantite === 'number' && isFinite(quantite) ? quantite : null;
+  const brut = String(unite ?? '').trim().toLowerCase();
+  if (!brut) return { quantite: q, unite: null, reconnue: true };
+  const conv = CONVERSIONS[brut];
+  if (!conv) return { quantite: q, unite: brut, reconnue: false };
+  return {
+    // Arrondi à 2 décimales : évite les 33.333333 issus des conversions.
+    quantite: q == null ? null : Math.round(q * conv.facteur * 100) / 100,
+    unite: conv.unite,
+    reconnue: true,
+  };
+}
+
+// Comportement d'un ingrédient lors d'un changement de quantités. Déduit du
+// libellé plutôt que demandé à l'IA : règle stable, sans coût de génération.
+export function deduireScaling(nom: string): 'lineaire' | 'lineaire_arrondi' | 'fixe' {
+  // « œ » n'étant pas un caractère de mot, `\b` ne s'amorce pas devant lui :
+  // on rétablit le digramme avant de tester (« œufs » → « oeufs »).
+  const n = nom.toLowerCase().replace(/œ/g, 'oe');
+  if (/\b(oeufs?|jaunes?|blancs?|gélatine|gelatine)\b/.test(n)) return 'lineaire_arrondi';
+  if (/\b(pincée|pincee|sel|vanille|arôme|arome|extrait|zeste|parfum|colorant)\b/.test(n)) return 'fixe';
+  return 'lineaire';
+}
 
 // Met une majuscule à la première lettre d'un libellé (le reste inchangé).
 export function capitalize(s: string | null | undefined): string {
@@ -98,33 +158,34 @@ export function ligatureOeuf(s: string | null | undefined): string {
   return t.replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
 }
 
-// Nettoyage du pivot avant enregistrement :
+// Nettoyage de la sortie IA, sur ses propres clés :
 //  - ligature « œuf » (« oeuf » → « œuf ») sur tous les textes ;
 //  - majuscule initiale sur le nom des ingrédients et des ustensiles
 //    (« jaune d'oeuf » → « Jaune d'œuf ») ;
-//  - suppression de la note d'un ingrédient quand elle ne fait que répéter
-//    son nom (cas fréquent où l'IA recopie le libellé dans `note`).
-export function cleanPivotRecette(p: Pivot): void {
-  if (!p || typeof p !== 'object') return;
-  // Ligature « œuf » sur les textes généraux de la recette.
-  for (const k of ['titre', 'description', 'notes', 'conseils_degustation']) {
-    if (typeof p[k] === 'string') p[k] = ligatureOeuf(p[k]);
+//  - libellés vides retirés des tableaux (instructions, astuces, ustensiles).
+export function cleanPivotRecette(r: RecetteIA): void {
+  if (!r || typeof r !== 'object') return;
+
+  if (typeof r.titre === 'string') r.titre = ligatureOeuf(r.titre).trim();
+  if (typeof r.description === 'string') r.description = ligatureOeuf(r.description).trim() || null;
+  if (typeof r.rendement === 'string') r.rendement = ligatureOeuf(r.rendement).trim() || null;
+  if (typeof r.conseils_conservation === 'string') {
+    r.conseils_conservation = ligatureOeuf(r.conseils_conservation).trim() || null;
   }
-  (p.sous_preparations || []).forEach((sp: Pivot) => {
-    if (typeof sp.nom === 'string') sp.nom = ligatureOeuf(sp.nom);
-    (sp.ingredients || []).forEach((ing: Pivot) => {
+
+  const textes = (v: unknown): string[] =>
+    (Array.isArray(v) ? v : []).map((x) => ligatureOeuf(String(x ?? '')).trim()).filter(Boolean);
+
+  r.astuces_recette = textes(r.astuces_recette);
+  r.ustensiles = textes(r.ustensiles).map(capitalize);
+
+  (r.etapes || []).forEach((e) => {
+    if (typeof e.nom_etape === 'string') e.nom_etape = ligatureOeuf(e.nom_etape).trim();
+    if (typeof e.conseils_etape === 'string') e.conseils_etape = ligatureOeuf(e.conseils_etape).trim() || null;
+    e.instructions = textes(e.instructions);
+    (e.ingredients || []).forEach((ing) => {
       if (typeof ing.nom === 'string') ing.nom = capitalize(ligatureOeuf(ing.nom).trim());
-      if (typeof ing.texte_original === 'string') ing.texte_original = ligatureOeuf(ing.texte_original);
-      const noteRaw = typeof ing.note === 'string' ? ligatureOeuf(ing.note).trim() : '';
-      const nom = typeof ing.nom === 'string' ? ing.nom.trim() : '';
-      ing.note = noteRaw && noteRaw.toLowerCase() !== nom.toLowerCase() ? noteRaw : null;
     });
-    (sp.etapes || []).forEach((e: Pivot) => {
-      if (typeof e.texte === 'string') e.texte = ligatureOeuf(e.texte);
-    });
-    if (Array.isArray(sp.materiel)) {
-      sp.materiel = sp.materiel.map((m: unknown) => capitalize(ligatureOeuf(String(m ?? '')).trim())).filter(Boolean);
-    }
   });
 }
 
@@ -226,44 +287,141 @@ export function computeVolume(moule: Moule | null | undefined): number | null {
 // ── Validation (§4) ──────────────────────────────────────────
 type Pivot = Record<string, any>;
 
-export function validatePivot(p: Pivot): { erreurs: string[]; alertes: string[] } {
+// Validation de la sortie IA, sur ses propres clés. `erreurs` = bloquant
+// (l'import est refusé) ; `alertes` = signalé à la relecture sans bloquer.
+// L'unité inconnue est une alerte et non une erreur : `normaliseUnite` couvre
+// les cas courants, et une unité exotique se corrige en relecture — la refuser
+// ferait perdre toute l'extraction pour un seul ingrédient.
+export function validatePivot(r: RecetteIA): { erreurs: string[]; alertes: string[] } {
   const erreurs: string[] = [];
   const alertes: string[] = [];
-  if (!p || typeof p !== 'object') return { erreurs: ['Objet JSON manquant.'], alertes };
-  if (!p.titre || !String(p.titre).trim()) erreurs.push('Champ obligatoire manquant : titre.');
-  if (!p.rendement || typeof p.rendement !== 'object') erreurs.push('Champ obligatoire manquant : rendement.');
-  const sps: Pivot[] = Array.isArray(p.sous_preparations) ? p.sous_preparations : [];
-  if (!sps.length) erreurs.push('Au moins une sous-préparation est requise.');
-  let cuissonOuRepos =
-    (p.temps && (p.temps.cuisson_min > 0 || p.temps.repos_min > 0 || p.temps.congelation_min > 0)) || false;
-  sps.forEach((sp, i) => {
-    const nom = sp.nom || `sous-préparation ${i + 1}`;
-    const aIng = Array.isArray(sp.ingredients) && sp.ingredients.length > 0;
-    const aEtapes = Array.isArray(sp.etapes) && sp.etapes.length > 0;
-    if (!aIng && !aEtapes) erreurs.push(`« ${nom} » : ni ingrédient ni étape.`);
+  if (!r || typeof r !== 'object') return { erreurs: ['Objet JSON manquant.'], alertes };
+
+  if (!r.titre || !String(r.titre).trim()) erreurs.push('Champ obligatoire manquant : titre.');
+  if (!r.rendement || !String(r.rendement).trim()) {
+    alertes.push('Rendement non détecté : à renseigner à la relecture.');
+  }
+
+  const etapes: EtapeIA[] = Array.isArray(r.etapes) ? r.etapes : [];
+  if (!etapes.length) erreurs.push('Au moins une étape est requise.');
+
+  let cuissonOuRepos = false;
+  etapes.forEach((e, i) => {
+    const nom = e.nom_etape || `étape ${i + 1}`;
+    const aIng = Array.isArray(e.ingredients) && e.ingredients.length > 0;
+    const aInstr = Array.isArray(e.instructions) && e.instructions.length > 0;
+    if (!aIng && !aInstr) erreurs.push(`« ${nom} » : ni ingrédient ni instruction.`);
     else if (!aIng) alertes.push(`« ${nom} » : aucun ingrédient (montage ou assemblage ?) — à vérifier.`);
-    else if (!aEtapes) alertes.push(`« ${nom} » : aucune étape — à vérifier.`);
-    (sp.ingredients || []).forEach((ing: Pivot) => {
-      if (ing.unite != null && !UNITES.has(ing.unite)) {
-        erreurs.push(`« ${nom} » / ${ing.nom} : unité « ${ing.unite} » hors {g, ml, piece}.`);
+    else if (!aInstr) alertes.push(`« ${nom} » : aucune instruction — à vérifier.`);
+
+    (e.ingredients || []).forEach((ing) => {
+      const { quantite, unite, reconnue } = normaliseUnite(ing.quantite, ing.unite);
+      if (!reconnue) {
+        alertes.push(`« ${nom} » / ${ing.nom} : unité « ${unite} » non reconnue — à corriger.`);
       }
-      if (ing.quantite != null && !(ing.quantite > 0)) {
+      if (ing.quantite != null && !(Number(ing.quantite) > 0)) {
         erreurs.push(`« ${nom} » / ${ing.nom} : quantité invalide (${ing.quantite}).`);
       }
-      if (ing.quantite > 2000 && (ing.unite === 'g' || ing.unite === 'ml')) {
-        alertes.push(`Quantité inhabituelle : ${ing.nom} — ${ing.quantite} ${ing.unite}.`);
+      if (quantite != null && quantite > 2000 && unite && UNITES.has(unite) && unite !== 'piece') {
+        alertes.push(`Quantité inhabituelle : ${ing.nom} — ${quantite} ${unite}.`);
       }
     });
-    const ordres: number[] = (sp.etapes || []).map((e: Pivot) => e.ordre).filter((o: number) => o != null);
-    const croissant = ordres.every((o, k) => k === 0 || o > ordres[k - 1]);
-    if (ordres.length && !croissant) erreurs.push(`« ${nom} » : ordre des étapes incohérent.`);
-    (sp.etapes || []).forEach((e: Pivot) => {
-      if (e.temperature_c > 250) alertes.push(`Température élevée : ${e.temperature_c} °C (« ${nom} », étape ${e.ordre}).`);
-      if (e.temperature_c != null || e.duree_min != null) cuissonOuRepos = true;
-    });
+
+    if (Number(e.temperature_cuisson_celsius) > 250) {
+      alertes.push(`Température élevée : ${e.temperature_cuisson_celsius} °C (« ${nom} »).`);
+    }
+    if (Number(e.temps_cuisson_minutes) > 0 || Number(e.temps_attente_minutes) > 0) cuissonOuRepos = true;
   });
+
   if (!cuissonOuRepos) alertes.push('Aucune cuisson ni repos détecté : vérifiez la recette.');
   return { erreurs, alertes };
+}
+
+// ── Adaptateur vers le pivot interne ─────────────────────────
+// L'écran de relecture et l'écriture en base attendent la structure historique
+// (sous_preparations, rendement objet, scaling…). L'IA ne la produit plus :
+// cette fonction fait la conversion, de façon purement déterministe.
+//
+// Champs que l'IA ne renvoie plus et qui restent à saisir à la relecture :
+// catégorie, tags, difficulté, et le moule structuré (forme + dimensions) dont
+// dépend l'ajustement par volume. Le rendement textuel est reporté en mode
+// « description libre » pour ne rien perdre de ce qui a été extrait.
+export function toPivotInterne(r: RecetteIA): Pivot {
+  const etapes: EtapeIA[] = Array.isArray(r.etapes) ? r.etapes : [];
+  const somme = (f: (e: EtapeIA) => unknown): number | null => {
+    const t = etapes.reduce((n, e) => n + (Number(f(e)) || 0), 0);
+    return t > 0 ? t : null;
+  };
+
+  return {
+    schema_version: '1.0',
+    titre: r.titre || '',
+    description: r.description || null,
+    // Non extraits par le nouveau schéma : laissés vides pour la relecture.
+    categorie: null,
+    tags: [],
+    difficulte: null,
+    temps: {
+      preparation_min: somme((e) => e.temps_preparation_minutes),
+      cuisson_min: somme((e) => e.temps_cuisson_minutes),
+      repos_min: somme((e) => e.temps_attente_minutes),
+      congelation_min: null,
+    },
+    // Rendement textuel → mode « description libre » de l'éditeur, pré-rempli.
+    rendement: {
+      mode: 'dimensions',
+      libelle_corrige: r.rendement || '',
+      type: null,
+      portions: null,
+      pieces: null,
+      moule: null,
+    },
+    sous_preparations: etapes.map((e, i) => ({
+      ordre: i + 1,
+      nom: e.nom_etape || `Préparation ${i + 1}`,
+      // Entier ≥ 0 : une anticipation négative ou absente vaut « jour J ».
+      day_offset: Math.max(0, Math.trunc(Number(e.anticipation_jours)) || 0),
+      temps: {
+        preparation_min: Number(e.temps_preparation_minutes) || null,
+        attente_min: Number(e.temps_attente_minutes) || null,
+        cuisson_min: Number(e.temps_cuisson_minutes) || null,
+      },
+      temperature_c: Number(e.temperature_cuisson_celsius) || null,
+      ingredients: (e.ingredients || []).map((ing) => {
+        const { quantite, unite } = normaliseUnite(ing.quantite, ing.unite);
+        return {
+          nom: ing.nom || '',
+          quantite,
+          unite,
+          // `texte_original` est reconstitué par l'éditeur depuis quantité +
+          // unité + nom quand il est absent : inutile de le faire générer.
+          texte_original: null,
+          note: null,
+          scaling: deduireScaling(ing.nom || ''),
+        };
+      }),
+      etapes: (e.instructions || []).map((texte, k) => ({
+        ordre: k + 1,
+        texte,
+        // Les temps sont portés par le regroupement, pas par chaque
+        // instruction : rien à placer ici sans le deviner.
+        duree_min: null,
+        temperature_c: null,
+      })),
+      conseils: e.conseils_etape || null,
+      materiel: [],
+    })),
+    // Ustensiles globaux : le schéma ne les rattache plus à une étape.
+    materiel: Array.isArray(r.ustensiles) ? r.ustensiles : [],
+    notes: (r.astuces_recette || []).join('\n') || null,
+    conseils_degustation: r.conseils_conservation || null,
+    source: {
+      auteur_origine: r.auteur_origine || null,
+      url_origine: null,
+      video_url: r.video_url || null,
+    },
+    photos: [],
+  };
 }
 
 // Budget cumulé des appels IA d'un import, en deçà du `maxDuration = 60` de la
@@ -289,11 +447,11 @@ export async function normalizeRecette(
   const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
   const first = await callClaude(apiKey, base, 8000, restant());
 
-  let pivot: Pivot;
+  let recette: RecetteIA;
   let usage = first.usage;
   let relanceUtilisee = false;
   try {
-    pivot = parseStrictJson(first.text) as Pivot;
+    recette = parseStrictJson(first.text) as RecetteIA;
   } catch (err) {
     relanceUtilisee = true;
     const retry = await callClaude(
@@ -304,7 +462,7 @@ export async function normalizeRecette(
     );
     usage = addUsage(usage, retry.usage);
     try {
-      pivot = parseStrictJson(retry.text) as Pivot;
+      recette = parseStrictJson(retry.text) as RecetteIA;
     } catch (err2) {
       // Les deux appels ont été facturés : on rattache la consommation à
       // l'erreur pour que l'appelant puisse la comptabiliser malgré l'échec.
@@ -312,20 +470,22 @@ export async function normalizeRecette(
     }
   }
 
-  let { erreurs, alertes } = validatePivot(pivot);
+  cleanPivotRecette(recette);
+  let { erreurs, alertes } = validatePivot(recette);
   if (erreurs.length && !relanceUtilisee) {
     const retry = await callClaude(
       apiKey,
-      `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque sous-préparation doit contenir TOUS ses ingrédients et TOUTES ses étapes.`,
+      `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque étape doit contenir TOUS ses ingrédients et TOUTES ses instructions.`,
       8000,
       restant(),
     );
     usage = addUsage(usage, retry.usage);
     try {
-      const pivot2 = parseStrictJson(retry.text) as Pivot;
-      const v2 = validatePivot(pivot2);
+      const recette2 = parseStrictJson(retry.text) as RecetteIA;
+      cleanPivotRecette(recette2);
+      const v2 = validatePivot(recette2);
       if (!v2.erreurs.length) {
-        pivot = pivot2;
+        recette = recette2;
         erreurs = v2.erreurs;
         alertes = v2.alertes;
       }
@@ -336,5 +496,6 @@ export async function normalizeRecette(
     }
   }
 
-  return { pivot, usage, erreurs, alertes };
+  // Conversion vers la structure attendue par la relecture et la base.
+  return { pivot: toPivotInterne(recette), usage, erreurs, alertes };
 }

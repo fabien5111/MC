@@ -10,10 +10,9 @@ import { useRouter } from 'next/navigation';
 type Result = {
   id: number;
   titre: string;
-  categorie: string;
   nbSp: number;
   nbIng: number;
-  moule: string | null;
+  rendement: string | null;
   alertes: string[];
 };
 
@@ -49,10 +48,10 @@ export function ImporterForm() {
       setResult({
         id: data.import.id,
         titre: p.titre || 'Sans titre',
-        categorie: p.categorie || '—',
         nbSp: sps.length,
         nbIng: sps.reduce((n: number, sp: { ingredients?: unknown[] }) => n + (sp.ingredients?.length || 0), 0),
-        moule: p.rendement?.moule?.libelle || null,
+        // Rendement extrait en texte libre (le moule structuré se saisit à la relecture).
+        rendement: p.rendement?.libelle_corrige || null,
         alertes: data.alertes || [],
       });
       clear();
@@ -165,9 +164,9 @@ export function ImporterForm() {
             </p>
             <p className="font-headline-md text-[20px] text-primary">{result.titre}</p>
             <p className="text-sm text-on-surface-variant mt-1">
-              {result.categorie} · {result.nbSp} sous-préparation{result.nbSp > 1 ? 's' : ''} · {result.nbIng}{' '}
-              ingrédient{result.nbIng > 1 ? 's' : ''}
-              {result.moule ? ' · ' + result.moule : ''}
+              {result.nbSp} étape{result.nbSp > 1 ? 's' : ''} · {result.nbIng} ingrédient
+              {result.nbIng > 1 ? 's' : ''}
+              {result.rendement ? ' · ' + result.rendement : ''}
             </p>
             {result.alertes.length > 0 && (
               <div className="mt-3 p-3 bg-error-container/40 rounded">
