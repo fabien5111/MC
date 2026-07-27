@@ -46,6 +46,7 @@ type SpState = {
   tips: string;
   photos: (string | null)[];
   collapsed: boolean;
+  ingsCollapsed: boolean;
 };
 
 let uid = 0;
@@ -159,6 +160,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     tips: ligatureOeuf(sp.conseils || ''),
     photos: [0, 1, 2, 3].map((i) => photos[i] || null),
     collapsed: false,
+    ingsCollapsed: false,
   };
 }
 
@@ -286,6 +288,8 @@ export function RelectureEditor({
   const [busy, setBusy] = useState(false);
   // Index de l'étape en cours de glisser-déposer (null si aucun).
   const [dragSp, setDragSp] = useState<number | null>(null);
+  // Sous-étape en cours de glisser-déposer (étape + index), null si aucune.
+  const [dragEtape, setDragEtape] = useState<{ si: number; ei: number } | null>(null);
 
   const alertes = Array.isArray(importRow.alertes) ? (importRow.alertes as string[]) : [];
   const STATUT_LBL: Record<string, [string, string]> = {
@@ -463,6 +467,7 @@ export function RelectureEditor({
     tips: '',
     photos: [null, null, null, null],
     collapsed: false,
+    ingsCollapsed: false,
   });
   const addSp = () => {
     const sp = emptySp();
@@ -483,6 +488,29 @@ export function RelectureEditor({
   const toggleSpCollapse = (si: number) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, collapsed: !sp.collapsed } : sp)));
   const collapseAllSp = (v: boolean) => setSps((prev) => prev.map((sp) => ({ ...sp, collapsed: v })));
+  // Repli / dépli de la liste d'ingrédients d'une étape.
+  const toggleIngsCollapse = (si: number) =>
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ingsCollapsed: !sp.ingsCollapsed } : sp)));
+  // Insère une sous-étape vierge juste après l'index `ei` (porté de creer.html).
+  const insertEtapeAfter = (si: number, ei: number) =>
+    setSps((prev) =>
+      prev.map((sp, k) =>
+        k === si
+          ? { ...sp, etapes: [...sp.etapes.slice(0, ei + 1), { key: nextKey(), imported: null, texte: '' }, ...sp.etapes.slice(ei + 1)] }
+          : sp,
+      ),
+    );
+  // Réordonne une sous-étape de l'index `from` vers `to`, au sein d'une même étape.
+  const moveEtape = (si: number, from: number, to: number) =>
+    setSps((prev) =>
+      prev.map((sp, k) => {
+        if (k !== si || from === to || from < 0 || to < 0 || from >= sp.etapes.length || to >= sp.etapes.length) return sp;
+        const next = [...sp.etapes];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return { ...sp, etapes: next };
+      }),
+    );
 
   // ── Sommaire de navigation ──
   // Entrées dérivées de `sps` (source de vérité unique) : renommer, ajouter,
@@ -1249,6 +1277,16 @@ export function RelectureEditor({
 
             <div className="p-6">
               {/* Ingrédients */}
+              <button
+                type="button"
+                onClick={() => toggleIngsCollapse(si)}
+                className="flex items-center gap-2 mb-2 text-on-surface-variant hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">{sp.ingsCollapsed ? 'expand_more' : 'expand_less'}</span>
+                <span className="font-label-md text-label-md">Ingrédients ({sp.ings.length})</span>
+              </button>
+              {!sp.ingsCollapsed && (
+              <>
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Contenu importé</p>
                 <div className="hidden lg:grid gap-2" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
@@ -1383,6 +1421,8 @@ export function RelectureEditor({
               <button type="button" onClick={() => addIng(si)} className="flex items-center gap-1 text-secondary font-label-md text-[12px] hover:underline mb-6">
                 <span className="material-symbols-outlined text-[16px]">add</span> Ajouter un ingrédient
               </button>
+              </>
+              )}
 
               {/* Étapes */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
@@ -1391,15 +1431,56 @@ export function RelectureEditor({
               </div>
               <div className="flex flex-col gap-3 mb-2">
                 {sp.etapes.map((e, ei) => (
-                  <div key={e.key} className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start border-b border-outline-variant/20 pb-3">
-                    <div className="text-sm text-on-surface-variant lg:pt-2">
-                      {e.imported ? e.imported : <span className="italic opacity-60">ajoutée</span>}
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <textarea value={e.texte} onChange={(ev) => patchEtape(si, ei, { texte: ev.target.value })} rows={4} className={`${champ} flex-1`} />
-                      <button type="button" title="Supprimer" onClick={() => delEtape(si, ei)} tabIndex={-1} className="text-error hover:opacity-70 mt-2">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
+                  <div
+                    key={e.key}
+                    onDragOver={(ev) => {
+                      if (!dragEtape || dragEtape.si !== si) return;
+                      ev.preventDefault();
+                      ev.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(ev) => {
+                      if (!dragEtape || dragEtape.si !== si) return;
+                      ev.preventDefault();
+                      moveEtape(si, dragEtape.ei, ei);
+                      setDragEtape(null);
+                    }}
+                    className={`flex items-start gap-2 border-b border-outline-variant/20 pb-3 ${
+                      dragEtape?.si === si && dragEtape.ei === ei ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                      title="Glisser pour déplacer la sous-étape"
+                      draggable
+                      onDragStart={(ev) => {
+                        setDragEtape({ si, ei });
+                        ev.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => setDragEtape(null)}
+                    >
+                      drag_indicator
+                    </span>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start flex-1">
+                      <div className="text-sm text-on-surface-variant lg:pt-2">
+                        {e.imported ? e.imported : <span className="italic opacity-60">ajoutée</span>}
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <textarea value={e.texte} onChange={(ev) => patchEtape(si, ei, { texte: ev.target.value })} rows={4} className={`${champ} flex-1`} />
+                        <div className="flex flex-col gap-1 mt-2 shrink-0">
+                          <button
+                            type="button"
+                            title="Insérer une sous-étape après celle-ci"
+                            onClick={() => insertEtapeAfter(si, ei)}
+                            tabIndex={-1}
+                            className="text-secondary hover:opacity-70"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">add_row_below</span>
+                          </button>
+                          <button type="button" title="Supprimer" onClick={() => delEtape(si, ei)} tabIndex={-1} className="text-error hover:opacity-70">
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
