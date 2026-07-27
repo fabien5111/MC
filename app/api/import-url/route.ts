@@ -1,4 +1,6 @@
-// Route Handler — Import de recette par texte collé (schéma pivot v1.0).
+// Route Handler — Import de recette par texte collé ou PDF (schéma pivot v1.0).
+// Le PDF est lu côté navigateur (lib/pdf.ts) : la route reçoit du texte dans
+// les deux cas, seule la provenance change (`source`).
 // Normalisation Claude → validation → brouillon.
 // Auth & RLS via la session Supabase (cookies), plus besoin de jeton en en-tête.
 import { NextResponse } from 'next/server';
@@ -28,9 +30,17 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const texte = typeof body?.texte === 'string' ? body.texte.trim() : '';
+  const estPdf = body?.source === 'pdf';
+  // Nom du fichier d'origine, affiché à la relecture pour situer le brouillon.
+  const fichierOriginal =
+    estPdf && typeof body?.fichier === 'string' ? body.fichier.trim().slice(0, 200) || null : null;
   if (texte.length < 80) {
     return NextResponse.json(
-      { erreur: 'Texte trop court pour être une recette : collez la recette complète (ingrédients et étapes).' },
+      {
+        erreur: estPdf
+          ? "Ce PDF ne contient pas de texte exploitable : c'est probablement un scan ou une suite d'images. Copiez-collez la recette dans l'onglet « Texte collé »."
+          : 'Texte trop court pour être une recette : collez la recette complète (ingrédients et étapes).',
+      },
       { status: 400 },
     );
   }
@@ -50,7 +60,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const contenu = `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
+  const contenu = estPdf
+    ? `Texte de recette extrait d'un PDF, page par page :\n${texte.slice(0, 60000)}`
+    : `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
 
   // Normalisation IA + validation, avec au plus une relance au total (voir le
   // commentaire de normalizeRecette : au-delà, le risque de dépasser le temps
@@ -103,11 +115,11 @@ export async function POST(req: Request) {
   // Champs de provenance : on conserve ce que l'IA a extrait (auteur, vidéo).
   const iaSource = pivot.source && typeof pivot.source === 'object' ? pivot.source : {};
   pivot.source = {
-    type: 'texte',
+    type: estPdf ? 'pdf' : 'texte',
     url: iaSource.url_origine || iaSource.url || null,
     url_origine: iaSource.url_origine || null,
     video_url: iaSource.video_url || null,
-    fichier_original: null,
+    fichier_original: fichierOriginal,
     auteur_origine: iaSource.auteur_origine || null,
     importee_le: new Date().toISOString(),
   };
@@ -129,9 +141,10 @@ export async function POST(req: Request) {
   const { data: row, error } = await table
     .insert({
       user_id: user.id,
-      source_type: 'texte',
+      source_type: estPdf ? 'pdf' : 'texte',
       statut: 'brouillon',
       source_url: null,
+      fichier_original: fichierOriginal,
       recette: pivot,
       alertes,
       model: IMPORT_MODEL,

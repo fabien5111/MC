@@ -11,6 +11,10 @@ export type IngredientIA = { nom?: string; quantite?: number | null; unite?: str
 
 export type EtapeIA = {
   nom_etape?: string;
+  // Page du document où commence l'étape, quand le contenu est paginé (import
+  // PDF : cf. les marqueurs « --- page N --- » posés par lib/pdf.ts). Sert
+  // uniquement à rattacher les photos extraites à la bonne étape.
+  page?: number | null;
   temps_preparation_minutes?: number | null;
   temps_attente_minutes?: number | null;
   temps_cuisson_minutes?: number | null;
@@ -47,6 +51,7 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   "etapes": [
     {
       "nom_etape": "Nom du regroupement (ex: Biscuit cuillère)",
+      "page": 2,
       "temps_preparation_minutes": 15,
       "temps_attente_minutes": 0,
       "temps_cuisson_minutes": 12,
@@ -68,7 +73,9 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   ],
   "astuces_recette": ["Astuce globale 1", "Astuce globale 2"],
   "conseils_conservation": "Instructions pour la dégustation et conservation"
-}`;
+}
+
+Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.`;
 
 // Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
 // normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
@@ -287,6 +294,10 @@ export function toPivotInterne(r: RecetteIA): Pivot {
     sous_preparations: etapes.map((e, i) => ({
       ordre: i + 1,
       nom: e.nom_etape || `Préparation ${i + 1}`,
+      // Reporté tel quel : sert au rattachement des photos d'un import PDF
+      // (cf. `affecterPhotos` dans lib/pdf.ts). L'éditeur de relecture ne le
+      // reprend pas, il disparaît donc à la création de la recette.
+      page: Number(e.page) > 0 ? Math.trunc(Number(e.page)) : null,
       // Entier ≥ 0 : une anticipation négative ou absente vaut « jour J ».
       day_offset: Math.max(0, Math.trunc(Number(e.anticipation_jours)) || 0),
       temps: {

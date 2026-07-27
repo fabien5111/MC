@@ -12,7 +12,8 @@ import type { ImportFull } from '@/lib/imports';
 import type { Difficulty, Tag } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
-import { ImageSlot } from '@/components/ImageSlot';
+import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
+import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 
@@ -191,6 +192,22 @@ export function RelectureEditor({
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
+  // Photos extraites du PDF qui n'ont pas trouvé d'étape (la page indiquée par
+  // l'IA ne correspondait à aucune) : elles restent disponibles au glisser-
+  // déposer. Une photo retirée d'un emplacement y revient, ce qui permet de la
+  // déplacer d'une étape à l'autre.
+  const [banque, setBanque] = useState<PhotoBanque[]>(() =>
+    Array.isArray(recette.photos_pdf) ? (recette.photos_pdf as PhotoBanque[]).filter((p) => p?.url) : [],
+  );
+  const estPdf = importRow.source_type === 'pdf';
+  const rendreALaBanque = useCallback((url: string | null) => {
+    if (!url || !estPdf) return;
+    setBanque((prev) => (prev.some((p) => p.url === url) ? prev : [...prev, { url, page: null }]));
+  }, [estPdf]);
+  const retirerDeLaBanque = useCallback((url: string | null) => {
+    if (!url) return;
+    setBanque((prev) => prev.filter((p) => p.url !== url));
+  }, []);
   const [titre, setTitre] = useState(ligatureOeuf(recette.titre || ''));
   const [description, setDescription] = useState(ligatureOeuf(recette.description || ''));
   const [notes, setNotes] = useState(ligatureOeuf(recette.notes || ''));
@@ -433,8 +450,19 @@ export function RelectureEditor({
         k === si ? { ...sp, etapes: sp.etapes.map((e, j) => (j === ei ? { ...e, ...patch } : e)) } : sp,
       ),
     );
-  const patchPhoto = (si: number, pi: number, url: string | null) =>
+  const patchPhoto = (si: number, pi: number, url: string | null) => {
+    // La photo évincée de l'emplacement retourne dans la banque (import PDF),
+    // pour rester disponible sur une autre étape.
+    const ancienne = sps[si]?.photos[pi] ?? null;
+    if (ancienne && ancienne !== url) rendreALaBanque(ancienne);
+    retirerDeLaBanque(url);
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi ? url : p)) } : sp)));
+  };
+  const patchHero = (url: string | null) => {
+    if (hero && hero !== url) rendreALaBanque(hero);
+    retirerDeLaBanque(url);
+    setHero(url);
+  };
   const addIng = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) =>
@@ -548,6 +576,9 @@ export function RelectureEditor({
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
     p.photo_principale = hero;
+    // La banque suit le brouillon : un enregistrement intermédiaire ne doit pas
+    // faire disparaître les photos du PDF encore non placées.
+    p.photos_pdf = banque;
     p.tags = [...selectedTags.values()];
     p.source = {
       ...(p.source || {}),
@@ -836,6 +867,12 @@ export function RelectureEditor({
         <p className="text-sm text-on-surface-variant mb-6">
           Source : texte collé{recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
         </p>
+      ) : estPdf ? (
+        <p className="text-sm text-on-surface-variant mb-6">
+          Source : PDF
+          {recette.source?.fichier_original ? ` — ${recette.source.fichier_original}` : ''}
+          {recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
+        </p>
       ) : null}
 
       {alertes.length > 0 && (
@@ -851,6 +888,8 @@ export function RelectureEditor({
         </div>
       )}
 
+      <PhotoBank photos={banque} onSupprimer={retirerDeLaBanque} />
+
       {/* Infos générales */}
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
@@ -858,8 +897,8 @@ export function RelectureEditor({
           <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
             <ImageSlot
               src={hero}
-              onChange={setHero}
-              onClear={() => setHero(null)}
+              onChange={patchHero}
+              onClear={() => patchHero(null)}
               shape="rect"
               maxWidth={1200}
               placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
