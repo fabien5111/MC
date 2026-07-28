@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllowlistMembers } from '@/lib/admin';
 import { MembersManager } from '@/components/admin/MembersManager';
+import { ImpersonationAudit } from '@/components/admin/ImpersonationAudit';
 
 export const metadata: Metadata = { title: 'Membres | Admin — Maryse Club' };
 
@@ -16,6 +17,9 @@ export default async function AdminMembresPage() {
         </Link>
       </header>
       <MembersManager members={members} />
+      <div className="px-margin-mobile md:px-margin-desktop max-w-[1400px] w-full pb-12">
+        <ImpersonationAudit />
+      </div>
     </>
   );
 }

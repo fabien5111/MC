@@ -17,8 +17,14 @@
 // parent (celui-ci rafraîchit déjà), et les enregistrements multi-écritures
 // avec navigation (éditeur de recette, relecture d'import) dont la gestion
 // d'erreur est spécifique.
+//
+// Impersonation : quand la session courante est une connexion « en tant que »
+// en lecture seule, aucune écriture n'est émise (message explicite + trace
+// dans le journal d'audit). Les écritures abouties d'une session en mode
+// « modification » sont, elles, tracées.
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
 
 // Forme minimale d'un retour supabase-js. `null` permet d'abandonner sans
 // alerte (ex. redirection vers /connexion faute de session active).
@@ -39,12 +45,22 @@ export type MutateOptions = {
 
 export function useMutation() {
   const router = useRouter();
+  const impersonation = useImpersonation();
   const [busy, setBusy] = useState(false);
 
   // Renvoie true si l'écriture a réussi — permet à l'appelant d'annuler une
   // mise à jour optimiste en cas d'échec.
   const mutate = useCallback(
     async (write: Write, options: MutateOptions = {}): Promise<boolean> => {
+      // Session d'impersonation en lecture seule : rien n'est envoyé.
+      if (impersonation?.mode === 'read_only') {
+        logImpersonationAction('write_blocked', options.errorLabel ?? options.confirm ?? 'Écriture');
+        alert(
+          'Session de consultation : vous êtes connecté en tant que ' +
+            `${impersonation.targetName} en lecture seule. Aucune modification n'est possible.`,
+        );
+        return false;
+      }
       if (options.confirm && !confirm(options.confirm)) return false;
       setBusy(true);
       try {
@@ -53,6 +69,9 @@ export function useMutation() {
         if (res.error) {
           alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
           return false;
+        }
+        if (impersonation) {
+          logImpersonationAction('write', options.errorLabel ?? options.confirm ?? 'Écriture');
         }
         if (options.refresh !== false) router.refresh();
         return true;
@@ -63,7 +82,7 @@ export function useMutation() {
         setBusy(false);
       }
     },
-    [router],
+    [router, impersonation],
   );
 
   return { busy, mutate };

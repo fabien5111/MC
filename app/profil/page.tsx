@@ -16,8 +16,12 @@ export const metadata: Metadata = { title: 'Mon Profil | Maryse Club' };
 // appel implicite à cookies() pour désactiver la mise en cache.
 export const dynamic = 'force-dynamic';
 
-export default async function ProfilPage() {
+type SearchParams = { searchParams: Promise<{ impersonation?: string }> };
+
+export default async function ProfilPage({ searchParams }: SearchParams) {
   const user = await requireUser('/profil');
+  // Motif de redirection depuis une page d'écriture (cf. requireWritableSession).
+  const { impersonation } = await searchParams;
   const meta = (user.user_metadata ?? {}) as { full_name?: string; name?: string; avatar_url?: string; picture?: string };
   const fallbackName = meta.full_name || meta.name || user.email || '';
   const fallbackAvatar = meta.avatar_url || meta.picture || null;
@@ -43,6 +47,14 @@ export default async function ProfilPage() {
     <>
       <Header current="/profil" />
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop mb-24">
+        {impersonation === 'lecture-seule' && (
+          <p className="mt-6 flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+            <span className="material-symbols-outlined text-[20px]" aria-hidden>
+              visibility
+            </span>
+            Cette page n&apos;est pas accessible en session de consultation (lecture seule).
+          </p>
+        )}
         <ProfileHeader
           userId={user.id}
           profile={profile}

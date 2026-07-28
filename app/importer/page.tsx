@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { isAdmin, requireUser } from '@/lib/auth';
+import { requireWritableSession } from '@/lib/impersonation';
 import { getImports } from '@/lib/imports';
 import { Header } from '@/components/Header';
 import { ImporterForm } from '@/components/ImporterForm';
@@ -11,6 +12,8 @@ const QUOTA_JOUR = 20;
 
 export default async function ImporterPage() {
   const user = await requireUser('/importer');
+  // Impersonation en lecture seule : l'import crée un brouillon → interdit.
+  await requireWritableSession();
   const [imports, admin] = await Promise.all([getImports(user.id), isAdmin(user.id)]);
 
   // Quota du jour (UTC), comme la version vanilla.

@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useWriteGuard } from '@/components/ImpersonationProvider';
 import type { RecipeFull } from '@/lib/recipes';
 import type { PlanningEntry } from '@/lib/profile';
 import { normalizeOverrides, buildExecutionSnapshot } from '@/lib/recipe-plan';
@@ -14,11 +15,13 @@ import { PlanEditButton } from '@/components/recipe/PlanEditButton';
 
 export function PlanNoticeBanner({ text, recipe, plan }: { text: string; recipe: RecipeFull; plan: PlanningEntry }) {
   const router = useRouter();
+  const writeGuard = useWriteGuard();
   const [starting, setStarting] = useState(false);
   const [time, setTime] = useState('12:00');
   const [busy, setBusy] = useState(false);
 
   async function start() {
+    if (!writeGuard('Démarrage d’une exécution')) return;
     setBusy(true);
     const supabase = createClient();
     const { data: running } = await supabase

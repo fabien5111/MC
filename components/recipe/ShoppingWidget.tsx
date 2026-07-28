@@ -7,6 +7,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useWriteGuard } from '@/components/ImpersonationProvider';
 import type { MergedIngredient } from '@/lib/recipe-view';
 
 export function ShoppingWidget({
@@ -21,6 +22,7 @@ export function ShoppingWidget({
   isLoggedIn: boolean;
 }) {
   const router = useRouter();
+  const writeGuard = useWriteGuard();
   const [picked, setPicked] = useState<boolean[]>(() => ingredients.map(() => true));
   const [choice, setChoice] = useState<string>('__new__');
   const [name, setName] = useState(`Courses — ${recipeTitle}`);
@@ -31,6 +33,7 @@ export function ShoppingWidget({
   }
 
   async function validate() {
+    if (!writeGuard('Ajout à une liste de courses')) return;
     const items = ingredients.filter((_, k) => picked[k]);
     if (!items.length) {
       alert('Sélectionnez au moins un ingrédient.');

@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { NavigationSpinner } from '@/components/NavigationSpinner';
+import { ImpersonationBanner } from '@/components/ImpersonationBanner';
+import { ImpersonationProvider } from '@/components/ImpersonationProvider';
+import { getImpersonationContext } from '@/lib/impersonation';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,11 +19,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Impersonation en cours (admin connecté « en tant que » ce membre) :
+  // résolue ici pour être disponible sur toutes les pages — bandeau persistant
+  // et bridage des composants client en lecture seule.
+  const impersonation = await getImpersonationContext();
+
   return (
     <html lang="fr">
       <head>
@@ -33,13 +41,31 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body-md text-body-md bg-background text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+      <body
+        data-impersonation={impersonation?.mode}
+        className="font-body-md text-body-md bg-background text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed"
+      >
         {/* Overlay de chargement superposé pendant les navigations internes.
             `useSearchParams` impose une frontière Suspense côté rendu. */}
         <Suspense fallback={null}>
           <NavigationSpinner />
         </Suspense>
-        {children}
+        <ImpersonationProvider
+          value={
+            impersonation
+              ? {
+                  sessionId: impersonation.sessionId,
+                  mode: impersonation.mode,
+                  targetName: impersonation.targetName,
+                }
+              : null
+          }
+        >
+          {impersonation && (
+            <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
+          )}
+          {children}
+        </ImpersonationProvider>
       </body>
     </html>
   );

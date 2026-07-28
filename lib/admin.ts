@@ -1,6 +1,11 @@
 // Chargeurs de données admin, typés — portés de db.js (getMolds, getMoldTypes).
 import { createClient } from '@/lib/supabase/server';
 import { TAUX_EUR_AFFICHE } from '@/lib/ai/cost';
+import {
+  isImpersonationMode,
+  withImpersonationSchema,
+  type ImpersonationMode,
+} from '@/lib/impersonation-types';
 import type { Database } from '@/lib/database.types';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
@@ -102,14 +107,19 @@ export type Member = {
   allowlistId: number | null;
   fullName: string | null;
   recipeCount: number;
+  // Droit d'impersonation hérité par les sessions « connecté en tant que »
+  // ouvertes par ce membre — n'a de sens que pour un admin.
+  impersonationAccess: ImpersonationMode;
 };
 
 export async function getAllowlistMembers(): Promise<Member[]> {
-  const supabase = await createClient();
+  const supabase = withImpersonationSchema(await createClient());
   const [{ data: profiles }, { data: allowlist }, { data: recipes }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, provider, status, role, plan, is_demo, notes, created_at')
+      .select(
+        'id, email, full_name, avatar_url, provider, status, role, plan, is_demo, notes, created_at, impersonation_access',
+      )
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
     supabase.from('recipes').select('author_id'),
@@ -146,6 +156,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       allowlistId: al?.id ?? null,
       fullName: p.full_name,
       recipeCount: recipeMap[p.id] || 0,
+      impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
     };
   });
 
@@ -168,6 +179,8 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       allowlistId: a.id,
       fullName: null,
       recipeCount: 0,
+      // Pas encore de profil : la valeur par défaut s'appliquera à l'inscription.
+      impersonationAccess: 'read_only',
     }));
 
   return [...registered, ...pending];

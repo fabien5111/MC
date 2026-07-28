@@ -1,10 +1,13 @@
 // Barre de navigation basse (mobile), partagée (porté de index.html).
-// « Créer » n'apparaît que connecté.
+// « Créer » n'apparaît que connecté — et jamais pendant une impersonation en
+// lecture seule.
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import { isReadOnlySession } from '@/lib/impersonation';
 
 export async function MobileNav({ current = '/' }: { current?: string }) {
   const user = await getCurrentUser();
+  const readOnly = await isReadOnlySession();
   const cls = (href: string) =>
     `flex flex-col items-center ${current === href ? 'text-primary' : 'text-on-surface-variant'}`;
 
@@ -15,7 +18,7 @@ export async function MobileNav({ current = '/' }: { current?: string }) {
           <span className="material-symbols-outlined">home</span>
           <span className="text-[10px] mt-1 font-label-md">Accueil</span>
         </Link>
-        {user && (
+        {user && !readOnly && (
           <Link href="/creer" prefetch={false} className={cls('/creer')}>
             <span className="material-symbols-outlined">add_circle</span>
             <span className="text-[10px] mt-1 font-label-md">Créer</span>

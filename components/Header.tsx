@@ -4,6 +4,7 @@
 // `data-auth="logged-in"` ni de flash au chargement.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/auth';
+import { isReadOnlySession } from '@/lib/impersonation';
 import { SignOutButton } from '@/components/SignOutButton';
 import { HeaderSearch } from '@/components/HeaderSearch';
 
@@ -19,6 +20,8 @@ export async function Header({ current = '/' }: { current?: string }) {
   const profile = user ? await getProfile(user.id) : null;
   const admin = user ? await isAdmin(user.id) : false;
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
+  // Impersonation en lecture seule : les entrées de création sont masquées.
+  const readOnly = await isReadOnlySession();
 
   return (
     <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
@@ -52,13 +55,15 @@ export async function Header({ current = '/' }: { current?: string }) {
           <HeaderSearch />
           {user ? (
             <>
-              <Link
-                href="/creer"
-                prefetch={false}
-                className="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span> Créer
-              </Link>
+              {!readOnly && (
+                <Link
+                  href="/creer"
+                  prefetch={false}
+                  className="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span> Créer
+                </Link>
+              )}
               {admin && (
                 <Link
                   href="/admin"
