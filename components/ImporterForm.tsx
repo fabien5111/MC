@@ -36,6 +36,11 @@ type Onglet = 'texte' | 'pdf';
 
 const MAX_PDF_OCTETS = 30 * 1024 * 1024;
 
+const tailleLisible = (octets: number): string =>
+  octets < 1024 * 1024
+    ? `${Math.max(1, Math.round(octets / 1024))} Ko`
+    : `${(octets / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
+
 export function ImporterForm() {
   const router = useRouter();
   const [onglet, setOnglet] = useState<Onglet>('texte');
@@ -45,6 +50,7 @@ export function ImporterForm() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [pdf, setPdf] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
@@ -154,21 +160,31 @@ export function ImporterForm() {
     );
   }
 
-  async function submitPdf(fichier: File) {
-    if (fichier.type !== 'application/pdf' && !/\.pdf$/i.test(fichier.name)) {
+  // Le fichier est retenu au dépôt, l'analyse n'est lancée qu'au clic sur
+  // « Importer » : elle consomme le quota journalier, elle ne doit pas partir
+  // sur un fichier déposé par erreur.
+  function choisirPdf(f: File) {
+    if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
       alert('Choisissez un fichier PDF.');
       return;
     }
-    if (fichier.size > MAX_PDF_OCTETS) {
+    if (f.size > MAX_PDF_OCTETS) {
       alert('Ce PDF dépasse 30 Mo. Réduisez-le ou extrayez-en les pages de la recette.');
       return;
     }
+    setError(null);
+    setResult(null);
+    setPdf(f);
+  }
+
+  async function submitPdf() {
+    if (!pdf) return;
     setBusy(true);
     setError(null);
     setResult(null);
     try {
       setEtape('Lecture du PDF…');
-      const extraction = await extrairePdf(fichier, (page, total) =>
+      const extraction = await extrairePdf(pdf, (page, total) =>
         setEtape(`Lecture du PDF… page ${page} / ${total}`),
       );
       if (extraction.texte.replace(/--- page \d+ ---/g, '').trim().length < 80) {
@@ -177,9 +193,9 @@ export function ImporterForm() {
         );
       }
       await launch(
-        { texte: extraction.texte, source: 'pdf', fichier: fichier.name },
+        { texte: extraction.texte, source: 'pdf', fichier: pdf.name },
         { photos: extraction.photos, ecartees: extraction.ecartees, tronquee: extraction.tronquee },
-        () => {},
+        () => setPdf(null),
       );
     } catch (e) {
       setError((e as Error).message);
@@ -242,37 +258,57 @@ export function ImporterForm() {
           <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
             Fichier PDF
           </span>
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Déposer un PDF ou choisir un fichier"
-            onClick={() => fileRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) void submitPdf(f);
-            }}
-            className={`mt-1 flex flex-col items-center justify-center gap-2 border border-dashed rounded-xl px-6 py-12 text-center cursor-pointer transition-colors ${
-              dragOver ? 'border-primary bg-primary/5' : 'border-outline-variant bg-surface-container-lowest'
-            }`}
-          >
-            <span className="material-symbols-outlined text-4xl text-primary opacity-70">picture_as_pdf</span>
-            <p className="font-label-md text-label-md text-primary">Déposez un PDF ou cliquez pour le choisir</p>
-            <p className="text-sm text-on-surface-variant max-w-[420px]">
-              La recette est lue dans votre navigateur : le fichier ne quitte pas votre appareil, seul son texte
-              est analysé. Les photos qu&apos;il contient sont récupérées et rattachées aux étapes.
-            </p>
-            <p className="text-xs text-on-surface-variant/80">30 Mo maximum, 40 pages analysées au plus</p>
-          </div>
+          {pdf ? (
+            <div className="mt-1 flex items-center gap-3 border border-outline-variant rounded-xl px-4 py-3 bg-surface-container-lowest">
+              <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
+              <span className="font-body-md flex-1 min-w-0 truncate" title={pdf.name}>
+                {pdf.name}
+              </span>
+              <span className="text-sm text-on-surface-variant whitespace-nowrap">{tailleLisible(pdf.size)}</span>
+              <button
+                type="button"
+                onClick={() => setPdf(null)}
+                disabled={busy}
+                title="Retirer ce fichier"
+                aria-label="Retirer ce fichier"
+                className="shrink-0 w-9 h-9 rounded-full text-error flex items-center justify-center hover:bg-error hover:text-on-error transition-colors disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </div>
+          ) : (
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Déposer un PDF ou choisir un fichier"
+              onClick={() => fileRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) choisirPdf(f);
+              }}
+              className={`mt-1 flex flex-col items-center justify-center gap-2 border border-dashed rounded-xl px-6 py-12 text-center cursor-pointer transition-colors ${
+                dragOver ? 'border-primary bg-primary/5' : 'border-outline-variant bg-surface-container-lowest'
+              }`}
+            >
+              <span className="material-symbols-outlined text-4xl text-primary opacity-70">picture_as_pdf</span>
+              <p className="font-label-md text-label-md text-primary">Déposez un PDF ou cliquez pour le choisir</p>
+              <p className="text-sm text-on-surface-variant max-w-[420px]">
+                La recette est lue dans votre navigateur : le fichier ne quitte pas votre appareil, seul son texte
+                est analysé. Les photos qu&apos;il contient sont récupérées et rattachées aux étapes.
+              </p>
+              <p className="text-xs text-on-surface-variant/80">30 Mo maximum, 40 pages analysées au plus</p>
+            </div>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -280,14 +316,18 @@ export function ImporterForm() {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void submitPdf(f);
+              if (f) choisirPdf(f);
               e.target.value = '';
             }}
           />
-          <p className="text-sm text-on-surface-variant mt-3">
-            PDF issu d&apos;un scan ou d&apos;une photo (sans texte sélectionnable) : passez par l&apos;onglet
-            « Texte collé ».
-          </p>
+          <button
+            type="button"
+            onClick={() => void submitPdf()}
+            disabled={busy || !pdf}
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+          >
+            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
+          </button>
         </div>
       )}
 
