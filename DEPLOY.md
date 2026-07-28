@@ -11,6 +11,7 @@ Dans **Settings → Environment Variables** du projet :
 |-----|--------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://acbabqolghhyxksouaye.supabase.co` | Production + Preview |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_lWH25Aszggrc6ZttxyMTig_XwXs_IAG` | Production + Preview |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(Supabase → Settings → API Keys → **Secret keys** : `sb_secret_…`. Équivalent historique : Settings → API → `service_role`)* | Production + Preview |
 | `ANTHROPIC_API_KEY` | *(clé Anthropic — jamais préfixée `NEXT_PUBLIC_`)* | Production + Preview |
 | `IMPORT_MODEL` | `claude-haiku-4-5` *(optionnel, valeur par défaut)* | Production + Preview |
 | `IMPORT_DAILY_QUOTA` | `20` *(optionnel, valeur par défaut)* | Production + Preview |
@@ -18,6 +19,14 @@ Dans **Settings → Environment Variables** du projet :
 Les deux `NEXT_PUBLIC_*` sont inlinées au build : elles doivent exister avant
 le déploiement. `ANTHROPIC_API_KEY` sert aux routes `/api/import-url` et
 `/api/scale-recipe`.
+
+`SUPABASE_SERVICE_ROLE_KEY` **contourne la RLS** : à marquer *Sensitive* dans
+Vercel, à ne jamais préfixer `NEXT_PUBLIC_` ni committer. Elle n'est lue que
+par `lib/supabase/admin.ts`, utilisé uniquement par les routes serveur de la
+connexion « en tant que » (génération du lien temporaire et journal d'audit).
+Sans elle, ces routes renvoient 503 avec un message explicite ; le reste du
+site fonctionne normalement. Contrairement aux `NEXT_PUBLIC_*`, elle est lue
+au runtime : un simple redéploiement suffit, sans vider le cache de build.
 
 ## Authentification Supabase
 
