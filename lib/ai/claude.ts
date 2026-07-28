@@ -18,6 +18,13 @@ export type ClaudeUsage = {
 
 export type ClaudeCall = { text: string; usage: ClaudeUsage };
 
+// Contenu d'un message utilisateur lorsqu'il ne se résume pas à du texte
+// (import par photo : les pages de la recette sont envoyées en images, l'IA
+// devant les lire avant de les structurer).
+export type BlocContenu =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+
 // Événements du flux SSE effectivement exploités (le flux en contient d'autres,
 // ignorés) : cf. https://docs.anthropic.com/en/api/messages-streaming
 type SseEvent = {
@@ -64,7 +71,10 @@ export const TIMEOUT_MS = 50_000;
 
 export async function callClaude(
   apiKey: string,
-  userContent: string,
+  // Une chaîne suffit tant que l'entrée est textuelle ; les blocs servent aux
+  // contenus mixtes (photos + consignes). L'API accepte les deux formes pour
+  // `content`, les appelants existants n'ont donc rien à changer.
+  userContent: string | BlocContenu[],
   maxTokens: number,
   timeoutMs: number = TIMEOUT_MS,
 ): Promise<ClaudeCall> {

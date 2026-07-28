@@ -1,6 +1,6 @@
 'use client';
 
-// Formulaire d'import (porté de importer.html) : texte collé ou PDF →
+// Formulaire d'import (porté de importer.html) : texte collé, PDF ou photos →
 // POST /api/import-url (auth par cookies, plus d'en-tête Bearer). Affiche l'état
 // (analyse / succès / erreur) puis rafraîchit la liste serveur (router.refresh).
 //
@@ -8,6 +8,11 @@
 // navigateur (lib/pdf.ts) et c'est son texte qui part à l'analyse. Les photos
 // qu'il contient sont extraites en même temps, puis écrites dans le brouillon
 // une fois celui-ci créé (cf. `enregistrerPhotos`).
+//
+// L'import par photo est le seul dont le contenu traverse le serveur : une
+// photo n'a pas de couche texte, c'est l'IA qui doit la lire. Les images sont
+// donc réduites et pesées ici avant l'envoi, le corps d'une requête serverless
+// étant borné (cf. BUDGET_ENVOI_OCTETS, aligné sur le plafond de la route).
 //
 // Pas d'import par URL : le JSON-LD schema.org des pages de recette liste les
 // ingrédients à plat pour toute la recette, sans les rattacher à leurs étapes
@@ -21,6 +26,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
+import { resizePhotoForAi } from '@/lib/images';
+import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
 
 type Result = {
   id: number;
@@ -32,9 +39,12 @@ type Result = {
   photos: number;
 };
 
-type Onglet = 'texte' | 'pdf';
+type Onglet = 'texte' | 'pdf' | 'photo';
 
 const MAX_PDF_OCTETS = 30 * 1024 * 1024;
+// Doit rester aligné sur les plafonds de la route : c'est elle qui refuse.
+const MAX_PHOTOS = 8;
+const BUDGET_ENVOI_OCTETS = 3_400_000;
 
 const tailleLisible = (octets: number): string =>
   octets < 1024 * 1024
@@ -51,7 +61,11 @@ export function ImporterForm() {
   const [result, setResult] = useState<Result | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [pdf, setPdf] = useState<File | null>(null);
+  // Les fichiers d'origine sont conservés pour pouvoir tout recomprimer d'un
+  // coup si le lot dépasse le poids qu'accepte la fonction serverless.
+  const [photos, setPhotos] = useState<(PhotoChoisie & { fichier: File })[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
   // Elle passe par Supabase (RLS) plutôt que par la route : des data-URL
@@ -99,11 +113,21 @@ export function ImporterForm() {
   }
 
   async function launch(
-    payload: { texte: string; source?: 'pdf'; fichier?: string },
+    payload: {
+      texte?: string;
+      source?: 'pdf' | 'photo';
+      fichier?: string;
+      images?: string[];
+      fichiers?: string[];
+    },
     images: { photos: PhotoPdf[]; ecartees: number; tronquee: boolean },
     clear: () => void,
   ) {
-    setEtape('Analyse en cours… (1 à 2 minutes pour les recettes longues)');
+    setEtape(
+      payload.source === 'photo'
+        ? 'Lecture des photos par l’IA…'
+        : 'Analyse en cours… (1 à 2 minutes pour les recettes longues)',
+    );
     setError(null);
     setResult(null);
     try {
@@ -204,6 +228,101 @@ export function ImporterForm() {
     }
   }
 
+  // ── Photos ──
+  const poidsTotal = photos.reduce((n, p) => n + p.octets, 0);
+
+  async function ajouterPhotos(fichiers: File[]) {
+    const images = fichiers.filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|hei[cf])$/i.test(f.name));
+    if (!images.length) {
+      alert('Choisissez des photos (JPEG, PNG ou WebP).');
+      return;
+    }
+    const libres = MAX_PHOTOS - photos.length;
+    if (libres <= 0) {
+      alert(`${MAX_PHOTOS} photos au maximum par import.`);
+      return;
+    }
+    const aTraiter = images.slice(0, libres);
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      setEtape('Préparation des photos…');
+      const nouvelles: (PhotoChoisie & { fichier: File })[] = [];
+      const echecs: string[] = [];
+      for (const f of aTraiter) {
+        try {
+          const url = await resizePhotoForAi(f);
+          nouvelles.push({
+            id: `${f.name}-${f.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+            nom: f.name,
+            fichier: f,
+            url,
+            octets: url.length,
+          });
+        } catch (e) {
+          echecs.push(`${f.name} (${(e as Error).message})`);
+        }
+      }
+
+      let liste = [...photos, ...nouvelles];
+      // Le poids se juge sur le lot entier, pas photo par photo : on ne le
+      // connaît qu'une fois toutes les images préparées.
+      if (liste.reduce((n, p) => n + p.octets, 0) > BUDGET_ENVOI_OCTETS) {
+        setEtape('Lot trop lourd, recompression…');
+        liste = await Promise.all(
+          liste.map(async (p) => {
+            const url = await resizePhotoForAi(p.fichier, 1100, 0.62);
+            return { ...p, url, octets: url.length };
+          }),
+        );
+      }
+      setPhotos(liste);
+
+      const messages: string[] = [];
+      if (echecs.length) messages.push(`Photo(s) non lisible(s) : ${echecs.join(', ')}.`);
+      if (images.length > libres) {
+        messages.push(`${MAX_PHOTOS} photos au maximum : les suivantes n’ont pas été ajoutées.`);
+      }
+      if (liste.reduce((n, p) => n + p.octets, 0) > BUDGET_ENVOI_OCTETS) {
+        messages.push('Le lot reste trop lourd pour être envoyé : retirez des photos.');
+      }
+      setError(messages.length ? messages.join(' ') : null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function deplacerPhoto(de: number, vers: number) {
+    setPhotos((prev) => {
+      if (de === vers || de < 0 || vers < 0 || de >= prev.length || vers >= prev.length) return prev;
+      const copie = [...prev];
+      const [item] = copie.splice(de, 1);
+      copie.splice(vers, 0, item);
+      return copie;
+    });
+  }
+
+  async function submitPhotos() {
+    if (!photos.length || poidsTotal > BUDGET_ENVOI_OCTETS) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      await launch(
+        {
+          source: 'photo',
+          images: photos.map((p) => p.url),
+          fichiers: photos.map((p) => p.nom),
+        },
+        { photos: [], ecartees: 0, tronquee: false },
+        () => setPhotos([]),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const ongletCls = (actif: boolean) =>
     `px-6 py-3 font-label-md whitespace-nowrap border-b-2 ${
       actif ? 'text-primary border-primary' : 'text-on-surface-variant border-transparent hover:text-primary'
@@ -220,13 +339,8 @@ export function ImporterForm() {
         <button type="button" onClick={() => setOnglet('pdf')} className={ongletCls(onglet === 'pdf')}>
           PDF
         </button>
-        <button
-          type="button"
-          disabled
-          className="px-6 py-3 font-label-md text-on-surface-variant/50 cursor-not-allowed whitespace-nowrap"
-          title="Bientôt disponible"
-        >
-          Photo <span className="text-[10px] uppercase bg-outline-variant/50 px-1.5 py-0.5 rounded ml-1">bientôt</span>
+        <button type="button" onClick={() => setOnglet('photo')} className={ongletCls(onglet === 'photo')}>
+          Photo
         </button>
       </div>
 
@@ -253,7 +367,7 @@ export function ImporterForm() {
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
         </div>
-      ) : (
+      ) : onglet === 'pdf' ? (
         <div className="mb-4">
           <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
             Fichier PDF
@@ -324,6 +438,86 @@ export function ImporterForm() {
             type="button"
             onClick={() => void submitPdf()}
             disabled={busy || !pdf}
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+          >
+            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
+          </button>
+        </div>
+      ) : (
+        <div className="mb-4">
+          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+            Photos de la recette
+          </span>
+
+          <PhotoOrderList
+            photos={photos}
+            onDeplacer={deplacerPhoto}
+            onSupprimer={(id) => setPhotos((prev) => prev.filter((p) => p.id !== id))}
+            disabled={busy}
+          />
+
+          {photos.length < MAX_PHOTOS && (
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Déposer des photos ou les choisir"
+              onClick={() => photoRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') photoRef.current?.click();
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const fs = Array.from(e.dataTransfer.files || []);
+                if (fs.length) void ajouterPhotos(fs);
+              }}
+              className={`mt-2 flex flex-col items-center justify-center gap-2 border border-dashed rounded-xl px-6 text-center cursor-pointer transition-colors ${
+                photos.length ? 'py-6' : 'py-12'
+              } ${dragOver ? 'border-primary bg-primary/5' : 'border-outline-variant bg-surface-container-lowest'}`}
+            >
+              <span className="material-symbols-outlined text-4xl text-primary opacity-70">add_a_photo</span>
+              <p className="font-label-md text-label-md text-primary">
+                {photos.length ? 'Ajouter des photos' : 'Déposez vos photos ou cliquez pour les choisir'}
+              </p>
+              {!photos.length && (
+                <p className="text-sm text-on-surface-variant max-w-[440px]">
+                  Photographiez chaque page de la recette. L&apos;IA les lit dans l&apos;ordre de la liste :
+                  réordonnez-les si besoin avant de lancer l&apos;import.
+                </p>
+              )}
+              <p className="text-xs text-on-surface-variant/80">
+                {MAX_PHOTOS} photos au maximum{photos.length ? ` — ${photos.length} ajoutée${photos.length > 1 ? 's' : ''}` : ''}
+              </p>
+            </div>
+          )}
+
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const fs = Array.from(e.target.files || []);
+              if (fs.length) void ajouterPhotos(fs);
+              e.target.value = '';
+            }}
+          />
+
+          <p className="text-sm text-on-surface-variant mt-3">
+            Une photo se déchiffre, là où un texte se structure : relisez attentivement les quantités et les
+            températures du brouillon obtenu.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => void submitPhotos()}
+            disabled={busy || !photos.length || poidsTotal > BUDGET_ENVOI_OCTETS}
             className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer

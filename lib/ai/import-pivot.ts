@@ -1,6 +1,6 @@
 // Logique d'extraction/normalisation d'une recette importée (schéma pivot v1.0).
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
-import { addUsage, callClaude, parseStrictJson, type ClaudeUsage } from '@/lib/ai/claude';
+import { addUsage, callClaude, parseStrictJson, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
 
 // ── Schéma d'extraction (sortie brute de l'IA) ───────────────
 // Volontairement plat et concis : chaque clé superflue rallonge la génération,
@@ -75,7 +75,7 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   "conseils_conservation": "Instructions pour la dégustation et conservation"
 }
 
-Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.`;
+Si le contenu comporte des marqueurs « --- page N --- » ou des photos numérotées (« Photo N : »), renseigne "page" avec le numéro de la page ou de la photo où commence chaque étape. Sinon, mets "page": null.`;
 
 // Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
 // normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
@@ -353,9 +353,22 @@ const BUDGET_MS = 50_000;
 // les deux) : la route serverless a un temps limite (maxDuration), et trois
 // appels séquentiels de 8000 tokens chacun peuvent le dépasser sur une recette
 // complexe. Priorité à la validité du JSON, prérequis à toute exploitation.
+// Assemble le message envoyé à l'IA, que le contenu soit du texte ou une suite
+// de blocs (photos). Dans les deux cas la consigne finale vient APRÈS le
+// contenu : c'est l'ordre recommandé pour les entrées visuelles, et il ne
+// change rien au cas textuel, qui fonctionnait déjà ainsi.
+function messageAnalyse(contenu: string | BlocContenu[], consigne?: string): string | BlocContenu[] {
+  if (typeof contenu === 'string') {
+    const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
+    return consigne ? `${base}\n\n${consigne}` : base;
+  }
+  const texte = consigne ? `${PROMPT}\n\n${consigne}` : PROMPT;
+  return [...contenu, { type: 'text', text: texte }];
+}
+
 export async function normalizeRecette(
   apiKey: string,
-  contenu: string,
+  contenu: string | BlocContenu[],
 ): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
   // Budget de temps partagé par les (au plus deux) appels : la relance ne doit
   // pas pousser la fonction serverless au-delà de son `maxDuration`, sinon
@@ -363,8 +376,7 @@ export async function normalizeRecette(
   const debut = Date.now();
   const restant = () => Math.max(5_000, BUDGET_MS - (Date.now() - debut));
 
-  const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
-  const first = await callClaude(apiKey, base, 8000, restant());
+  const first = await callClaude(apiKey, messageAnalyse(contenu), 8000, restant());
 
   let recette: RecetteIA;
   let usage = first.usage;
@@ -375,7 +387,10 @@ export async function normalizeRecette(
     relanceUtilisee = true;
     const retry = await callClaude(
       apiKey,
-      `${base}\n\nTa réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
+      messageAnalyse(
+        contenu,
+        `Ta réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
+      ),
       8000,
       restant(),
     );
@@ -394,7 +409,10 @@ export async function normalizeRecette(
   if (erreurs.length && !relanceUtilisee) {
     const retry = await callClaude(
       apiKey,
-      `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque étape doit contenir TOUS ses ingrédients et TOUTES ses instructions.`,
+      messageAnalyse(
+        contenu,
+        `IMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque étape doit contenir TOUS ses ingrédients et TOUTES ses instructions.`,
+      ),
       8000,
       restant(),
     );

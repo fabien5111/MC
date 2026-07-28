@@ -867,9 +867,9 @@ export function RelectureEditor({
         <p className="text-sm text-on-surface-variant mb-6">
           Source : texte collé{recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
         </p>
-      ) : estPdf ? (
+      ) : estPdf || importRow.source_type === 'photo' ? (
         <p className="text-sm text-on-surface-variant mb-6">
-          Source : PDF
+          Source : {estPdf ? 'PDF' : 'photos'}
           {recette.source?.fichier_original ? ` — ${recette.source.fichier_original}` : ''}
           {recette.source?.auteur_origine ? ` — par ${recette.source.auteur_origine}` : ''}
         </p>

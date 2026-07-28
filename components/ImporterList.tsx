@@ -53,7 +53,9 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
             ? 'texte collé'
             : i.source_type === 'pdf'
               ? i.fichier_original || 'PDF'
-              : i.source_type;
+              : i.source_type === 'photo'
+                ? 'photos'
+                : i.source_type;
         if (i.source_url) {
           try {
             host = new URL(i.source_url).hostname.replace(/^www\./, '');
