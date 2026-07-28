@@ -38,14 +38,18 @@ export type ExtractionPdf = {
    * être visible, pas silencieux.
    */
   ecartees: number;
+  /** Vrai si le plafond de photos ou le budget a interrompu la récupération. */
+  tronquee: boolean;
 };
 
 // Garde-fous. Une recette tient en quelques pages : au-delà, on a affaire à un
 // livre entier, que l'extraction complète ferait déborder du contexte de l'IA.
 const MAX_PAGES = 40;
-// Une recette illustrée pas à pas montre facilement trois photos par étape :
-// le plafond doit tenir compte de ce format, pas seulement d'une photo finale.
-const MAX_PHOTOS = 24;
+// Une recette illustrée pas à pas montre facilement trois photos par étape, et
+// les rangées composites se découpent en autant de panneaux : le plafond doit
+// tenir compte de ce format, pas seulement d'une photo finale. C'est le budget
+// en octets qui borne réellement, ce compte n'évite qu'une banque ingérable.
+const MAX_PHOTOS = 40;
 // Seuils d'exclusion des éléments de mise en page. Ils portent sur la
 // résolution à laquelle l'image est *incorporée* au PDF, pas sur sa taille
 // d'affichage : une vignette d'étape issue d'une page web est souvent
@@ -244,6 +248,105 @@ function compresser(canvas: HTMLCanvasElement): string | null {
   return reduit.toDataURL('image/jpeg', QUALITE_JPEG);
 }
 
+// ── Découpe des images composites ────────────────────────────
+//
+// Une rangée de photos d'étape est fréquemment incorporée au PDF comme UNE
+// seule image large (trois clichés côte à côte séparés par un liseré clair),
+// et non comme trois images : l'emplacement carré de l'éditeur n'en montrerait
+// alors que la partie centrale. On recoupe donc ces bandes à leurs séparateurs.
+//
+// Rapport largeur/hauteur en deçà duquel on ne cherche même pas : une photo
+// ordinaire n'est pas concernée.
+const RATIO_COMPOSITE = 1.8;
+// Un séparateur est une colonne claire et unie sur toute la hauteur.
+const SEP_LUMINANCE_MIN = 232;
+const SEP_ECART_MAX = 26;
+const SEP_LARGEUR_MIN = 2;
+const PANNEAUX_MAX = 4;
+
+function luminance(d: Uint8ClampedArray, i: number): number {
+  return (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+}
+
+// Bornes [début, fin[ des colonnes séparatrices.
+function bandesSeparatrices(d: Uint8ClampedArray, largeur: number, hauteur: number): [number, number][] {
+  const bandes: [number, number][] = [];
+  let debut = -1;
+  for (let x = 0; x < largeur; x++) {
+    let somme = 0;
+    let min = 255;
+    let max = 0;
+    let n = 0;
+    // Un échantillonnage d'une ligne sur deux suffit et divise le coût par deux.
+    for (let y = 0; y < hauteur; y += 2) {
+      const l = luminance(d, (y * largeur + x) * 4);
+      somme += l;
+      if (l < min) min = l;
+      if (l > max) max = l;
+      n++;
+    }
+    const separateur = somme / n >= SEP_LUMINANCE_MIN && max - min <= SEP_ECART_MAX;
+    if (separateur && debut === -1) debut = x;
+    else if (!separateur && debut !== -1) {
+      bandes.push([debut, x]);
+      debut = -1;
+    }
+  }
+  if (debut !== -1) bandes.push([debut, largeur]);
+  return bandes;
+}
+
+function extraireBande(source: HTMLCanvasElement, x: number, largeur: number): HTMLCanvasElement | null {
+  const panneau = document.createElement('canvas');
+  panneau.width = largeur;
+  panneau.height = source.height;
+  const ctx = panneau.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(source, x, 0, largeur, source.height, 0, 0, largeur, source.height);
+  return panneau;
+}
+
+/**
+ * Recoupe une image composite en ses panneaux. Renvoie l'image inchangée dans
+ * un tableau d'un élément dès que le découpage n'est pas manifestement justifié
+ * — mieux vaut une bande entière qu'une photo tronquée au mauvais endroit.
+ */
+export function decouperEnPanneaux(canvas: HTMLCanvasElement): HTMLCanvasElement[] {
+  const { width: w, height: h } = canvas;
+  if (!w || !h || w / h < RATIO_COMPOSITE) return [canvas];
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return [canvas];
+
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const bandes = bandesSeparatrices(d, w, h);
+
+  // Les bandes qui touchent un bord sont des marges : elles délimitent la zone
+  // utile sans la découper.
+  const gauche = bandes.find(([a]) => a === 0);
+  const droite = bandes.find(([, b]) => b === w);
+  const debutUtile = gauche ? gauche[1] : 0;
+  const finUtile = droite ? droite[0] : w;
+  const interieures = bandes.filter(
+    ([a, b]) => a > debutUtile && b < finUtile && b - a >= SEP_LARGEUR_MIN,
+  );
+  if (!interieures.length) return [canvas];
+
+  const coupes = [debutUtile, ...interieures.map(([a, b]) => Math.round((a + b) / 2)), finUtile];
+  const panneaux: HTMLCanvasElement[] = [];
+  for (let i = 0; i < coupes.length - 1; i++) {
+    const x = coupes[i];
+    const largeur = coupes[i + 1] - x;
+    // Un panneau doit rester une photo plausible : ni une lichette, ni une
+    // bande. Sinon le découpage est refusé en bloc.
+    if (largeur < w * 0.12 || largeur / h > 3 || largeur / h < 0.35) return [canvas];
+    const panneau = extraireBande(canvas, x, largeur);
+    if (!panneau) return [canvas];
+    panneaux.push(panneau);
+  }
+  if (panneaux.length < 2 || panneaux.length > PANNEAUX_MAX) return [canvas];
+  return panneaux;
+}
+
 function retenir(largeur: number, hauteur: number): boolean {
   if (largeur < MIN_COTE_PX || hauteur < MIN_COTE_PX) return false;
   if (largeur * hauteur < MIN_SURFACE_PX) return false;
@@ -288,6 +391,7 @@ export async function extrairePdf(
   const pagesAvecImagesNonDecodees: number[] = [];
   let octets = 0;
   let ecartees = 0;
+  let tronquee = false;
 
   try {
     for (let n = 1; n <= nbPages; n++) {
@@ -307,7 +411,10 @@ export async function extrairePdf(
           const estIncorporee = fn === OPS.paintInlineImageXObject;
           if (!estReference && !estIncorporee) continue;
           imagesVues++;
-          if (photos.length >= MAX_PHOTOS || octets >= BUDGET_PHOTOS_OCTETS) continue;
+          if (photos.length >= MAX_PHOTOS || octets >= BUDGET_PHOTOS_OCTETS) {
+            tronquee = true;
+            continue;
+          }
 
           const arg = ops.argsArray[i][0];
           // Une même image réutilisée sur plusieurs pages porte le même
@@ -319,17 +426,26 @@ export async function extrairePdf(
           const img = estReference ? await resoudreObjet(page, String(arg)) : (arg as ImagePdf);
           if (!img?.width || !img?.height) continue;
           imagesDecodees++;
-          if (!retenir(img.width, img.height)) {
-            ecartees++;
-            continue;
-          }
 
           const canvas = versCanvas(img, ImageKind);
           if (!canvas) continue;
-          const url = compresser(canvas);
-          if (!url) continue;
-          octets += url.length;
-          photos.push({ url, page: n, surface: img.width * img.height });
+          // Le filtrage porte sur les panneaux et non sur l'image d'origine :
+          // une rangée de trois photos est plus large que ce qu'on accepterait
+          // d'une photo seule, mais chacun de ses panneaux est légitime.
+          for (const panneau of decouperEnPanneaux(canvas)) {
+            if (photos.length >= MAX_PHOTOS || octets >= BUDGET_PHOTOS_OCTETS) {
+              tronquee = true;
+              break;
+            }
+            if (!retenir(panneau.width, panneau.height)) {
+              ecartees++;
+              continue;
+            }
+            const url = compresser(panneau);
+            if (!url) continue;
+            octets += url.length;
+            photos.push({ url, page: n, surface: panneau.width * panneau.height });
+          }
         }
 
         if (imagesVues > 0 && imagesDecodees === 0) pagesAvecImagesNonDecodees.push(n);
@@ -359,6 +475,7 @@ export async function extrairePdf(
       photos,
       imagesIllisibles: !photos.length && pagesAvecImagesNonDecodees.length > 0,
       ecartees,
+      tronquee,
     };
   } finally {
     // Libère le worker et les bitmaps conservés par pdf.js pour ce document.

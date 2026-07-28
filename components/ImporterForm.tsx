@@ -55,6 +55,7 @@ export function ImporterForm() {
     importRow: { id: number; recette: Record<string, any>; alertes?: unknown },
     photos: PhotoPdf[],
     ecartees: number,
+    tronquee: boolean,
   ): Promise<{ pivot: Record<string, any>; alertes: string[]; nbPhotos: number }> {
     const pivot = { ...(importRow.recette || {}) };
     const alertes = Array.isArray(importRow.alertes) ? [...(importRow.alertes as string[])] : [];
@@ -70,6 +71,11 @@ export function ImporterForm() {
     if (ecartees > 0) {
       alertes.push(
         `${ecartees} image${ecartees > 1 ? 's' : ''} du PDF écartée${ecartees > 1 ? 's' : ''} (jugée${ecartees > 1 ? 's' : ''} décorative${ecartees > 1 ? 's' : ''} : trop petite${ecartees > 1 ? 's' : ''} ou trop allongée${ecartees > 1 ? 's' : ''}).`,
+      );
+    }
+    if (tronquee) {
+      alertes.push(
+        'Toutes les photos du PDF n’ont pas pu être reprises : le nombre ou le poids maximal a été atteint.',
       );
     }
 
@@ -88,7 +94,7 @@ export function ImporterForm() {
 
   async function launch(
     payload: { texte: string; source?: 'pdf'; fichier?: string },
-    images: { photos: PhotoPdf[]; ecartees: number },
+    images: { photos: PhotoPdf[]; ecartees: number; tronquee: boolean },
     clear: () => void,
   ) {
     setEtape('Analyse en cours… (1 à 2 minutes pour les recettes longues)');
@@ -111,9 +117,9 @@ export function ImporterForm() {
       let pivot = data.import.recette || {};
       let alertes: string[] = data.alertes || [];
       let nbPhotos = 0;
-      if (images.photos.length || images.ecartees) {
+      if (images.photos.length || images.ecartees || images.tronquee) {
         setEtape('Enregistrement des photos…');
-        const maj = await enregistrerPhotos(data.import, images.photos, images.ecartees);
+        const maj = await enregistrerPhotos(data.import, images.photos, images.ecartees, images.tronquee);
         pivot = maj.pivot;
         alertes = maj.alertes;
         nbPhotos = maj.nbPhotos;
@@ -143,7 +149,7 @@ export function ImporterForm() {
       return;
     }
     setBusy(true);
-    void launch({ texte: texte.trim() }, { photos: [], ecartees: 0 }, () => setTexte('')).finally(() =>
+    void launch({ texte: texte.trim() }, { photos: [], ecartees: 0, tronquee: false }, () => setTexte('')).finally(() =>
       setBusy(false),
     );
   }
@@ -172,7 +178,7 @@ export function ImporterForm() {
       }
       await launch(
         { texte: extraction.texte, source: 'pdf', fichier: fichier.name },
-        { photos: extraction.photos, ecartees: extraction.ecartees },
+        { photos: extraction.photos, ecartees: extraction.ecartees, tronquee: extraction.tronquee },
         () => {},
       );
     } catch (e) {
