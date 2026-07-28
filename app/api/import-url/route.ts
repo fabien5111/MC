@@ -10,11 +10,17 @@
 //    dont le contenu traverse la fonction serverless, d'où les plafonds
 //    ci-dessous — un corps de requête au-delà de ~4,5 Mo est refusé par
 //    l'hébergeur avant même d'atteindre ce code.
+//
+// L'import par photo se fait en DEUX passes : transcription des pages, puis
+// structuration du texte obtenu (cf. lib/ai/transcribe.ts). La seconde passe
+// est celle du texte collé, inchangée — la photo n'est qu'une source de plus
+// en amont. Les deux passes se partagent le `maxDuration` de la route.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { IMPORT_MODEL, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
+import { EMPTY_USAGE, IMPORT_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
+import { transcrirePhotos, type ImagePhoto } from '@/lib/ai/transcribe';
 
 export const maxDuration = 60;
 
@@ -25,19 +31,28 @@ const MAX_PHOTOS = 8;
 const MAX_OCTETS_PHOTOS = 3_500_000;
 const TYPES_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+// Budget de temps global des appels IA, sous le `maxDuration` de 60 s : il faut
+// garder de quoi renvoyer une erreur exploitable plutôt que de se faire couper.
+const BUDGET_TOTAL_MS = 50_000;
+// Part maximale laissée à la transcription. Les pages étant transcrites en
+// parallèle, ce plafond vaut pour l'ensemble et non par photo ; il garantit
+// qu'il reste toujours de quoi structurer.
+const BUDGET_TRANSCRIPTION_MS = 22_000;
+const BUDGET_STRUCTURATION_MIN_MS = 20_000;
+
 /**
  * Convertit les data-URL reçues en blocs d'image, en refusant tout ce qui n'est
  * pas une image d'un type accepté par l'API. Renvoie un message d'erreur plutôt
  * que de laisser l'appel partir avec un contenu douteux.
  */
-function versBlocsImage(images: unknown): { blocs: BlocContenu[] } | { erreur: string } {
+function versImages(images: unknown): { images: ImagePhoto[] } | { erreur: string } {
   if (!Array.isArray(images) || images.length === 0) {
     return { erreur: 'Aucune photo reçue.' };
   }
   if (images.length > MAX_PHOTOS) {
     return { erreur: `${MAX_PHOTOS} photos au maximum par import.` };
   }
-  const blocs: BlocContenu[] = [];
+  const retenues: ImagePhoto[] = [];
   let octets = 0;
   for (let i = 0; i < images.length; i++) {
     const brut = images[i];
@@ -55,13 +70,11 @@ function versBlocsImage(images: unknown): { blocs: BlocContenu[] } | { erreur: s
     if (octets > MAX_OCTETS_PHOTOS) {
       return { erreur: 'Les photos sont trop lourdes : réduisez-en le nombre ou la définition.' };
     }
-    // Chaque image est annoncée par son numéro : l'IA s'en sert pour renseigner
-    // la clé `page` de chaque étape, et l'ordre des photos fait l'ordre de
-    // lecture de la recette.
-    blocs.push({ type: 'text', text: `Photo ${i + 1} :` });
-    blocs.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data } });
+    // L'ordre est conservé : il fait l'ordre de lecture de la recette, et
+    // devient le numéro de page dans la transcription.
+    retenues.push({ mediaType, data });
   }
-  return { blocs };
+  return { images: retenues };
 }
 
 export async function POST(req: Request) {
@@ -85,13 +98,12 @@ export async function POST(req: Request) {
   const estPhoto = body?.source === 'photo';
   const sourceType = estPhoto ? 'photo' : estPdf ? 'pdf' : 'texte';
 
-  let blocsPhotos: BlocContenu[] = [];
-  let nbPhotos = 0;
+  let photos: ImagePhoto[] = [];
+  const nbPhotos = Array.isArray(body?.images) ? body.images.length : 0;
   if (estPhoto) {
-    const resultat = versBlocsImage(body?.images);
+    const resultat = versImages(body?.images);
     if ('erreur' in resultat) return NextResponse.json({ erreur: resultat.erreur }, { status: 400 });
-    blocsPhotos = resultat.blocs;
-    nbPhotos = blocsPhotos.length / 2;
+    photos = resultat.images;
   } else if (texte.length < 80) {
     return NextResponse.json(
       {
@@ -126,36 +138,75 @@ export async function POST(req: Request) {
     );
   }
 
-  const contenu: string | BlocContenu[] = estPhoto
-    ? blocsPhotos
-    : estPdf
-      ? `Texte de recette extrait d'un PDF, page par page :\n${texte.slice(0, 60000)}`
-      : `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
+  const debutIa = Date.now();
 
+  // ── Passe 1 : transcription des photos ──
+  // Elle rend au modèle de structuration ce que le texte collé lui donne
+  // depuis toujours : du texte déjà linéarisé, colonnes séparées. Sans elle,
+  // le modèle lit une page à deux colonnes en travers et fusionne des blocs
+  // indépendants.
+  let usageTranscription: ClaudeUsage = EMPTY_USAGE;
+  let contenu: string;
+  if (estPhoto) {
+    try {
+      const lu = await transcrirePhotos(apiKey, photos, BUDGET_TRANSCRIPTION_MS);
+      usageTranscription = lu.usage;
+      contenu = `Texte de recette transcrit depuis ${nbPhotos} photo${nbPhotos > 1 ? 's' : ''}, page par page :\n${lu.texte}`;
+    } catch (e) {
+      const partiel = (e as { usage?: ClaudeUsage }).usage;
+      if (partiel) {
+        const c = computeCost(partiel, IMPORT_MODEL);
+        console.error(
+          `[import-url] transcription échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
+            (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
+        );
+      }
+      console.error('[import-url] transcription des photos échouée :', e);
+      const timeout = (e as { code?: string }).code === 'TIMEOUT';
+      return NextResponse.json(
+        {
+          erreur: timeout
+            ? "La lecture des photos a dépassé le temps imparti. Réessayez, ou réduisez le nombre de photos."
+            : `La lecture des photos a échoué. ${(e as Error).message} Vérifiez qu'elles sont nettes et bien cadrées.`,
+        },
+        { status: timeout ? 504 : 502 },
+      );
+    }
+  } else if (estPdf) {
+    contenu = `Texte de recette extrait d'un PDF, page par page :\n${texte.slice(0, 60000)}`;
+  } else {
+    contenu = `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
+  }
+
+  // ── Passe 2 : structuration ──
   // Normalisation IA + validation, avec au plus une relance au total (voir le
   // commentaire de normalizeRecette : au-delà, le risque de dépasser le temps
-  // limite de la fonction devient trop élevé sur une recette complexe).
+  // limite de la fonction devient trop élevé sur une recette complexe). Le
+  // budget restant tient compte de ce qu'a consommé la transcription.
+  const budgetStructuration = Math.max(
+    BUDGET_STRUCTURATION_MIN_MS,
+    BUDGET_TOTAL_MS - (Date.now() - debutIa),
+  );
   let usageTotal: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
   let alertes: string[];
   try {
-    const normalise = await normalizeRecette(apiKey, contenu);
+    const normalise = await normalizeRecette(apiKey, contenu, budgetStructuration);
     pivot = normalise.pivot;
-    usageTotal = normalise.usage;
+    // La transcription est facturée, qu'elle mène ou non à un brouillon.
+    usageTotal = addUsage(usageTranscription, normalise.usage);
     erreurs = normalise.erreurs;
     alertes = normalise.alertes;
   } catch (e) {
     // Les appels déjà effectués ont été facturés même si l'import échoue : on
     // les trace en logs, faute de ligne `imports` où les rattacher.
-    const partiel = (e as { usage?: ClaudeUsage }).usage;
-    if (partiel) {
-      const c = computeCost(partiel, IMPORT_MODEL);
-      console.error(
-        `[import-url] normalisation IA échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
-          (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
-      );
-    }
+    const partiel = addUsage(usageTranscription, (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE);
+    const c = computeCost(partiel, IMPORT_MODEL);
+    console.error(
+      `[import-url] normalisation IA échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
+        (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
+    );
     console.error('[import-url] normalisation IA échouée :', e);
     if ((e as { code?: string }).code === 'TIMEOUT') {
       return NextResponse.json(

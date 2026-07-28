@@ -1,6 +1,6 @@
 // Logique d'extraction/normalisation d'une recette importée (schéma pivot v1.0).
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
-import { addUsage, callClaude, parseStrictJson, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
+import { addUsage, callClaude, parseStrictJson, type ClaudeUsage } from '@/lib/ai/claude';
 
 // ── Schéma d'extraction (sortie brute de l'IA) ───────────────
 // Volontairement plat et concis : chaque clé superflue rallonge la génération,
@@ -75,7 +75,9 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   "conseils_conservation": "Instructions pour la dégustation et conservation"
 }
 
-Si le contenu comporte des marqueurs « --- page N --- » ou des photos numérotées (« Photo N : »), renseigne "page" avec le numéro de la page ou de la photo où commence chaque étape. Sinon, mets "page": null.`;
+Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.
+
+MISE EN PAGE. Le contenu peut porter des marqueurs « [colonne N] » : ils restituent la composition d'origine de la page. Un titre de section ne possède QUE les lignes qui le suivent DANS SA COLONNE, jusqu'au titre suivant de cette même colonne. Ne fusionne JAMAIS des lignes appartenant à deux colonnes différentes : deux listes d'ingrédients imprimées côte à côte sont deux sous-préparations distinctes, et l'une ne complète pas l'autre.`;
 
 // Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
 // normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
@@ -353,28 +355,26 @@ const BUDGET_MS = 50_000;
 // les deux) : la route serverless a un temps limite (maxDuration), et trois
 // appels séquentiels de 8000 tokens chacun peuvent le dépasser sur une recette
 // complexe. Priorité à la validité du JSON, prérequis à toute exploitation.
-// Assemble le message envoyé à l'IA, que le contenu soit du texte ou une suite
-// de blocs (photos). Dans les deux cas la consigne finale vient APRÈS le
-// contenu : c'est l'ordre recommandé pour les entrées visuelles, et il ne
-// change rien au cas textuel, qui fonctionnait déjà ainsi.
-function messageAnalyse(contenu: string | BlocContenu[], consigne?: string): string | BlocContenu[] {
-  if (typeof contenu === 'string') {
-    const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
-    return consigne ? `${base}\n\n${consigne}` : base;
-  }
-  const texte = consigne ? `${PROMPT}\n\n${consigne}` : PROMPT;
-  return [...contenu, { type: 'text', text: texte }];
+// Assemble le message envoyé à l'IA. La consigne de relance vient APRÈS le
+// contenu, comme dans la formulation d'origine.
+function messageAnalyse(contenu: string, consigne?: string): string {
+  const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
+  return consigne ? `${base}\n\n${consigne}` : base;
 }
 
 export async function normalizeRecette(
   apiKey: string,
-  contenu: string | BlocContenu[],
+  contenu: string,
+  // Budget de temps alloué à cette étape. L'import par photo consomme déjà une
+  // part du `maxDuration` de la route pour transcrire les pages : il reste
+  // moins que le budget nominal pour structurer.
+  budgetMs: number = BUDGET_MS,
 ): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
   // Budget de temps partagé par les (au plus deux) appels : la relance ne doit
   // pas pousser la fonction serverless au-delà de son `maxDuration`, sinon
   // l'hébergeur la coupe avant qu'on ait pu renvoyer une erreur exploitable.
   const debut = Date.now();
-  const restant = () => Math.max(5_000, BUDGET_MS - (Date.now() - debut));
+  const restant = () => Math.max(5_000, budgetMs - (Date.now() - debut));
 
   const first = await callClaude(apiKey, messageAnalyse(contenu), 8000, restant());
 

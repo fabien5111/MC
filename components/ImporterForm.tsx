@@ -125,7 +125,7 @@ export function ImporterForm() {
   ) {
     setEtape(
       payload.source === 'photo'
-        ? 'Lecture des photos par l’IA…'
+        ? 'Lecture des photos, puis analyse de la recette…'
         : 'Analyse en cours… (1 à 2 minutes pour les recettes longues)',
     );
     setError(null);
