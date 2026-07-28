@@ -32,22 +32,34 @@ export type ExtractionPdf = {
   photos: PhotoPdf[];
   /** Vrai si des images ont été détectées mais qu'aucune n'a pu être décodée. */
   imagesIllisibles: boolean;
+  /**
+   * Images lues puis écartées comme éléments de mise en page (trop petites,
+   * trop allongées). Remontée à l'utilisateur : un filtre qui se trompe doit
+   * être visible, pas silencieux.
+   */
+  ecartees: number;
 };
 
 // Garde-fous. Une recette tient en quelques pages : au-delà, on a affaire à un
 // livre entier, que l'extraction complète ferait déborder du contexte de l'IA.
 const MAX_PAGES = 40;
-const MAX_PHOTOS = 12;
-// Côté minimal d'une image retenue : en deçà, c'est un logo, un picto ou un
-// filet de mise en page, pas une photo de recette.
-const MIN_COTE_PX = 200;
-// Rapport largeur/hauteur au-delà duquel l'image est un bandeau décoratif.
+// Une recette illustrée pas à pas montre facilement trois photos par étape :
+// le plafond doit tenir compte de ce format, pas seulement d'une photo finale.
+const MAX_PHOTOS = 24;
+// Seuils d'exclusion des éléments de mise en page. Ils portent sur la
+// résolution à laquelle l'image est *incorporée* au PDF, pas sur sa taille
+// d'affichage : une vignette d'étape issue d'une page web est souvent
+// incorporée autour de 150 px de côté, un logo ou un picto reste bien en deçà.
+// Le critère de surface fait le tri là où le seul côté minimal ne suffit pas.
+const MIN_COTE_PX = 100;
+const MIN_SURFACE_PX = 20_000; // ≈ 150 × 135
+// Rapport largeur/hauteur au-delà duquel l'image est un bandeau ou un filet.
 const RATIO_MAX = 4;
 const MAX_LARGEUR = 800;
 const QUALITE_JPEG = 0.75;
 // Budget total des photos : elles sont stockées en data-URL dans le JSON du
 // brouillon (`imports.recette`), comme partout ailleurs dans l'application.
-const BUDGET_PHOTOS_OCTETS = 1_500_000;
+const BUDGET_PHOTOS_OCTETS = 3_000_000;
 
 // Variante « legacy » et non la version standard : celle-ci s'appuie sur des
 // primitives que seuls les navigateurs de moins d'un an fournissent
@@ -234,6 +246,7 @@ function compresser(canvas: HTMLCanvasElement): string | null {
 
 function retenir(largeur: number, hauteur: number): boolean {
   if (largeur < MIN_COTE_PX || hauteur < MIN_COTE_PX) return false;
+  if (largeur * hauteur < MIN_SURFACE_PX) return false;
   const ratio = largeur / hauteur;
   return ratio <= RATIO_MAX && ratio >= 1 / RATIO_MAX;
 }
@@ -274,6 +287,7 @@ export async function extrairePdf(
   const vues = new Set<string>();
   const pagesAvecImagesNonDecodees: number[] = [];
   let octets = 0;
+  let ecartees = 0;
 
   try {
     for (let n = 1; n <= nbPages; n++) {
@@ -305,7 +319,10 @@ export async function extrairePdf(
           const img = estReference ? await resoudreObjet(page, String(arg)) : (arg as ImagePdf);
           if (!img?.width || !img?.height) continue;
           imagesDecodees++;
-          if (!retenir(img.width, img.height)) continue;
+          if (!retenir(img.width, img.height)) {
+            ecartees++;
+            continue;
+          }
 
           const canvas = versCanvas(img, ImageKind);
           if (!canvas) continue;
@@ -341,6 +358,7 @@ export async function extrairePdf(
       nbPages: doc.numPages,
       photos,
       imagesIllisibles: !photos.length && pagesAvecImagesNonDecodees.length > 0,
+      ecartees,
     };
   } finally {
     // Libère le worker et les bitmaps conservés par pdf.js pour ce document.

@@ -54,6 +54,7 @@ export function ImporterForm() {
   async function enregistrerPhotos(
     importRow: { id: number; recette: Record<string, any>; alertes?: unknown },
     photos: PhotoPdf[],
+    ecartees: number,
   ): Promise<{ pivot: Record<string, any>; alertes: string[]; nbPhotos: number }> {
     const pivot = { ...(importRow.recette || {}) };
     const alertes = Array.isArray(importRow.alertes) ? [...(importRow.alertes as string[])] : [];
@@ -62,6 +63,13 @@ export function ImporterForm() {
     if (total > 0) {
       alertes.push(
         `${total} photo${total > 1 ? 's' : ''} extraite${total > 1 ? 's' : ''} du PDF : le rattachement aux étapes est déduit du numéro de page, à vérifier ci-dessous.`,
+      );
+    }
+    // Le filtrage des éléments de mise en page ne doit pas être silencieux :
+    // s'il écarte une photo d'étape, l'utilisateur doit pouvoir le constater.
+    if (ecartees > 0) {
+      alertes.push(
+        `${ecartees} image${ecartees > 1 ? 's' : ''} du PDF écartée${ecartees > 1 ? 's' : ''} (jugée${ecartees > 1 ? 's' : ''} décorative${ecartees > 1 ? 's' : ''} : trop petite${ecartees > 1 ? 's' : ''} ou trop allongée${ecartees > 1 ? 's' : ''}).`,
       );
     }
 
@@ -80,7 +88,7 @@ export function ImporterForm() {
 
   async function launch(
     payload: { texte: string; source?: 'pdf'; fichier?: string },
-    photos: PhotoPdf[],
+    images: { photos: PhotoPdf[]; ecartees: number },
     clear: () => void,
   ) {
     setEtape('Analyse en cours… (1 à 2 minutes pour les recettes longues)');
@@ -103,9 +111,9 @@ export function ImporterForm() {
       let pivot = data.import.recette || {};
       let alertes: string[] = data.alertes || [];
       let nbPhotos = 0;
-      if (photos.length) {
+      if (images.photos.length || images.ecartees) {
         setEtape('Enregistrement des photos…');
-        const maj = await enregistrerPhotos(data.import, photos);
+        const maj = await enregistrerPhotos(data.import, images.photos, images.ecartees);
         pivot = maj.pivot;
         alertes = maj.alertes;
         nbPhotos = maj.nbPhotos;
@@ -135,7 +143,9 @@ export function ImporterForm() {
       return;
     }
     setBusy(true);
-    void launch({ texte: texte.trim() }, [], () => setTexte('')).finally(() => setBusy(false));
+    void launch({ texte: texte.trim() }, { photos: [], ecartees: 0 }, () => setTexte('')).finally(() =>
+      setBusy(false),
+    );
   }
 
   async function submitPdf(fichier: File) {
@@ -162,7 +172,7 @@ export function ImporterForm() {
       }
       await launch(
         { texte: extraction.texte, source: 'pdf', fichier: fichier.name },
-        extraction.photos,
+        { photos: extraction.photos, ecartees: extraction.ecartees },
         () => {},
       );
     } catch (e) {
