@@ -69,10 +69,16 @@ export async function resizeImageToDataUrl(
  *
  * `resizeImageToDataUrl` ne borne que la largeur : une photo en portrait
  * ramenée à 1400 px de large reste bien plus haute, coûte des tokens pour rien
- * et se fait de toute façon réduire côté API. Ici les deux dimensions sont
- * tenues, ce qui rend le poids de la requête prévisible.
+ * et se fait de toute façon réduire côté API.
+ *
+ * 1568 px est la limite au-delà de laquelle l'API réduit elle-même l'image :
+ * envoyer plus est du poids perdu, envoyer moins abîme la lecture. Sur une page
+ * de livre photographiée en entier, le corps du texte n'y fait déjà que
+ * quelques pixels de haut — c'est la définition qui décide si « 150 °C » se lit
+ * correctement. Chaque photo partant dans sa propre requête, plus rien
+ * n'oblige à descendre en dessous.
  */
-export async function resizePhotoForAi(file: File, maxLongEdge = 1400, quality = 0.72): Promise<string> {
+export async function resizePhotoForAi(file: File, maxLongEdge = 1568, quality = 0.82): Promise<string> {
   const img = await chargerImage(file);
   const scale = Math.min(1, maxLongEdge / Math.max(img.width, img.height));
   return dessiner(img, img.width * scale, img.height * scale, 'image/jpeg', quality);

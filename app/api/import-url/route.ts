@@ -5,76 +5,47 @@
 // Trois provenances, deux natures d'entrée :
 //  - texte collé et PDF arrivent en texte (le PDF est lu côté navigateur par
 //    lib/pdf.ts, son fichier ne transite pas) ;
-//  - les photos arrivent en images : elles n'ont aucune couche texte, c'est
-//    l'IA qui doit les lire avant de les structurer. C'est la seule provenance
-//    dont le contenu traverse la fonction serverless, d'où les plafonds
-//    ci-dessous — un corps de requête au-delà de ~4,5 Mo est refusé par
-//    l'hébergeur avant même d'atteindre ce code.
+//  - les photos aussi : elles n'ont aucune couche texte, mais leur lecture a
+//    déjà eu lieu quand elles arrivent ici. Le navigateur appelle
+//    /api/transcribe-photo une fois par page, en parallèle, et n'envoie à
+//    cette route que le texte assemblé.
 //
-// L'import par photo se fait en DEUX passes : transcription des pages, puis
-// structuration du texte obtenu (cf. lib/ai/transcribe.ts). La seconde passe
-// est celle du texte collé, inchangée — la photo n'est qu'une source de plus
-// en amont. Les deux passes se partagent le `maxDuration` de la route.
+// L'import par photo se fait donc en DEUX passes, dans deux requêtes
+// distinctes : transcription page par page, puis structuration. Séparer les
+// requêtes libère chaque photo de la limite de corps de requête, qui bridait
+// leur définition, et rend à la structuration la totalité du `maxDuration`.
+// La transcription étant facturée, sa consommation est déclarée par le
+// navigateur et rattachée à l'import.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { EMPTY_USAGE, IMPORT_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
+import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
-import { transcrirePhotos, type ImagePhoto } from '@/lib/ai/transcribe';
 
 export const maxDuration = 60;
 
 const QUOTA = parseInt(process.env.IMPORT_DAILY_QUOTA || '20', 10);
 
-const MAX_PHOTOS = 8;
-// Marge nette sous la limite de corps de requête de l'hébergeur.
-const MAX_OCTETS_PHOTOS = 3_500_000;
-const TYPES_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-// Budget de temps global des appels IA, sous le `maxDuration` de 60 s : il faut
-// garder de quoi renvoyer une erreur exploitable plutôt que de se faire couper.
-const BUDGET_TOTAL_MS = 50_000;
-// Part maximale laissée à la transcription. Les pages étant transcrites en
-// parallèle, ce plafond vaut pour l'ensemble et non par photo ; il garantit
-// qu'il reste toujours de quoi structurer.
-const BUDGET_TRANSCRIPTION_MS = 22_000;
-const BUDGET_STRUCTURATION_MIN_MS = 20_000;
-
 /**
- * Convertit les data-URL reçues en blocs d'image, en refusant tout ce qui n'est
- * pas une image d'un type accepté par l'API. Renvoie un message d'erreur plutôt
- * que de laisser l'appel partir avec un contenu douteux.
+ * Consommation de la passe de transcription, déclarée par le navigateur.
+ *
+ * Elle a eu lieu dans d'autres requêtes (/api/transcribe-photo) : cette route
+ * ne peut que la recevoir. Valeur purement comptable — elle n'ouvre aucun
+ * droit et ne sert qu'à ce que le coût affiché à l'administration reflète les
+ * deux passes plutôt que la seule structuration. Bornée pour qu'une valeur
+ * fantaisiste ne pollue pas les statistiques.
  */
-function versImages(images: unknown): { images: ImagePhoto[] } | { erreur: string } {
-  if (!Array.isArray(images) || images.length === 0) {
-    return { erreur: 'Aucune photo reçue.' };
-  }
-  if (images.length > MAX_PHOTOS) {
-    return { erreur: `${MAX_PHOTOS} photos au maximum par import.` };
-  }
-  const retenues: ImagePhoto[] = [];
-  let octets = 0;
-  for (let i = 0; i < images.length; i++) {
-    const brut = images[i];
-    if (typeof brut !== 'string') return { erreur: `Photo ${i + 1} illisible.` };
-    const separation = brut.indexOf(',');
-    const entete = separation > 0 ? brut.slice(0, separation) : '';
-    const correspondance = /^data:([a-z/+-]+);base64$/i.exec(entete);
-    if (!correspondance) return { erreur: `Photo ${i + 1} : format inattendu.` };
-    const mediaType = correspondance[1].toLowerCase();
-    if (!TYPES_IMAGE.includes(mediaType)) {
-      return { erreur: `Photo ${i + 1} : format ${mediaType} non pris en charge.` };
-    }
-    const data = brut.slice(separation + 1);
-    octets += data.length;
-    if (octets > MAX_OCTETS_PHOTOS) {
-      return { erreur: 'Les photos sont trop lourdes : réduisez-en le nombre ou la définition.' };
-    }
-    // L'ordre est conservé : il fait l'ordre de lecture de la recette, et
-    // devient le numéro de page dans la transcription.
-    retenues.push({ mediaType, data });
-  }
-  return { images: retenues };
+function usageDeclare(brut: unknown): ClaudeUsage {
+  const o = (brut ?? {}) as Record<string, unknown>;
+  const borne = (v: unknown) => {
+    const n = typeof v === 'number' && isFinite(v) ? Math.round(v) : 0;
+    return Math.min(Math.max(n, 0), 5_000_000);
+  };
+  return {
+    ...EMPTY_USAGE,
+    inputTokens: borne(o.inputTokens),
+    outputTokens: borne(o.outputTokens),
+  };
 }
 
 export async function POST(req: Request) {
@@ -98,18 +69,16 @@ export async function POST(req: Request) {
   const estPhoto = body?.source === 'photo';
   const sourceType = estPhoto ? 'photo' : estPdf ? 'pdf' : 'texte';
 
-  let photos: ImagePhoto[] = [];
-  const nbPhotos = Array.isArray(body?.images) ? body.images.length : 0;
-  if (estPhoto) {
-    const resultat = versImages(body?.images);
-    if ('erreur' in resultat) return NextResponse.json({ erreur: resultat.erreur }, { status: 400 });
-    photos = resultat.images;
-  } else if (texte.length < 80) {
+  const nbPhotos = Number.isInteger(body?.nb_photos) ? Math.max(0, body.nb_photos) : 0;
+  const usageTranscription = estPhoto ? usageDeclare(body?.usage_transcription) : EMPTY_USAGE;
+  if (texte.length < 80) {
     return NextResponse.json(
       {
-        erreur: estPdf
-          ? "Ce PDF ne contient pas de texte exploitable : c'est probablement un scan ou une suite d'images. Copiez-collez la recette dans l'onglet « Texte collé »."
-          : 'Texte trop court pour être une recette : collez la recette complète (ingrédients et étapes).',
+        erreur: estPhoto
+          ? "La lecture des photos n'a rien donné d'exploitable. Vérifiez qu'elles sont nettes, bien cadrées et qu'il s'agit bien d'une recette."
+          : estPdf
+            ? "Ce PDF ne contient pas de texte exploitable : c'est probablement un scan ou une suite d'images. Copiez-collez la recette dans l'onglet « Texte collé »."
+            : 'Texte trop court pour être une recette : collez la recette complète (ingrédients et étapes).',
       },
       { status: 400 },
     );
@@ -138,74 +107,36 @@ export async function POST(req: Request) {
     );
   }
 
-  const debutIa = Date.now();
-
-  // ── Passe 1 : transcription des photos ──
-  // Elle rend au modèle de structuration ce que le texte collé lui donne
-  // depuis toujours : du texte déjà linéarisé, colonnes séparées. Sans elle,
-  // le modèle lit une page à deux colonnes en travers et fusionne des blocs
-  // indépendants.
-  let usageTranscription: ClaudeUsage = EMPTY_USAGE;
-  let contenu: string;
-  if (estPhoto) {
-    try {
-      const lu = await transcrirePhotos(apiKey, photos, BUDGET_TRANSCRIPTION_MS);
-      usageTranscription = lu.usage;
-      contenu = `Texte de recette transcrit depuis ${nbPhotos} photo${nbPhotos > 1 ? 's' : ''}, page par page :\n${lu.texte}`;
-    } catch (e) {
-      const partiel = (e as { usage?: ClaudeUsage }).usage;
-      if (partiel) {
-        const c = computeCost(partiel, IMPORT_MODEL);
-        console.error(
-          `[import-url] transcription échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
-            (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
-        );
-      }
-      console.error('[import-url] transcription des photos échouée :', e);
-      const timeout = (e as { code?: string }).code === 'TIMEOUT';
-      return NextResponse.json(
-        {
-          erreur: timeout
-            ? "La lecture des photos a dépassé le temps imparti. Réessayez, ou réduisez le nombre de photos."
-            : `La lecture des photos a échoué. ${(e as Error).message} Vérifiez qu'elles sont nettes et bien cadrées.`,
-        },
-        { status: timeout ? 504 : 502 },
-      );
-    }
-  } else if (estPdf) {
-    contenu = `Texte de recette extrait d'un PDF, page par page :\n${texte.slice(0, 60000)}`;
-  } else {
-    contenu = `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
-  }
+  const contenu = estPhoto
+    ? `Texte de recette transcrit depuis ${nbPhotos} photo${nbPhotos > 1 ? 's' : ''}, page par page :\n${texte.slice(0, 60000)}`
+    : estPdf
+      ? `Texte de recette extrait d'un PDF, page par page :\n${texte.slice(0, 60000)}`
+      : `Texte de recette collé par l'utilisateur :\n${texte.slice(0, 60000)}`;
 
   // ── Passe 2 : structuration ──
   // Normalisation IA + validation, avec au plus une relance au total (voir le
   // commentaire de normalizeRecette : au-delà, le risque de dépasser le temps
-  // limite de la fonction devient trop élevé sur une recette complexe). Le
-  // budget restant tient compte de ce qu'a consommé la transcription.
-  const budgetStructuration = Math.max(
-    BUDGET_STRUCTURATION_MIN_MS,
-    BUDGET_TOTAL_MS - (Date.now() - debutIa),
-  );
-  let usageTotal: ClaudeUsage;
+  // limite de la fonction devient trop élevé sur une recette complexe). La
+  // transcription ayant lieu dans d'autres requêtes, la structuration dispose
+  // ici de la totalité du budget.
+  let usageStructuration: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
   let alertes: string[];
   try {
-    const normalise = await normalizeRecette(apiKey, contenu, budgetStructuration);
+    const normalise = await normalizeRecette(apiKey, contenu);
     pivot = normalise.pivot;
-    // La transcription est facturée, qu'elle mène ou non à un brouillon.
-    usageTotal = addUsage(usageTranscription, normalise.usage);
+    usageStructuration = normalise.usage;
     erreurs = normalise.erreurs;
     alertes = normalise.alertes;
   } catch (e) {
     // Les appels déjà effectués ont été facturés même si l'import échoue : on
     // les trace en logs, faute de ligne `imports` où les rattacher.
-    const partiel = addUsage(usageTranscription, (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE);
-    const c = computeCost(partiel, IMPORT_MODEL);
+    const partiel = (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE;
+    const total = addUsage(usageTranscription, partiel);
     console.error(
-      `[import-url] normalisation IA échouée après ${partiel.inputTokens + partiel.outputTokens} tokens facturés` +
-        (c ? ` (~${c.usd.toFixed(4)} $)` : ''),
+      `[import-url] normalisation IA échouée après ${total.inputTokens + total.outputTokens} tokens facturés ` +
+        `(transcription comprise)`,
     );
     console.error('[import-url] normalisation IA échouée :', e);
     if ((e as { code?: string }).code === 'TIMEOUT') {
@@ -270,7 +201,17 @@ export async function POST(req: Request) {
 
   // Enregistrement en brouillon (RLS via la session), avec le coût réel de
   // l'import (somme de tous les appels IA facturés ci-dessus).
-  const cout = computeCost(usageTotal, IMPORT_MODEL);
+  // Deux modèles peuvent être en jeu : transcrire et structurer ne se facturent
+  // pas au même tarif. Le coût est donc la somme de deux calculs séparés, et
+  // reste inconnu (null) dès que l'un des modèles manque à la table de tarifs —
+  // mieux vaut pas de chiffre qu'un chiffre faux.
+  const usageTotal = addUsage(usageTranscription, usageStructuration);
+  const coutStructuration = computeCost(usageStructuration, IMPORT_MODEL);
+  const coutTranscription = estPhoto ? computeCost(usageTranscription, TRANSCRIBE_MODEL) : null;
+  const coutUsd =
+    coutStructuration == null || (estPhoto && coutTranscription == null)
+      ? null
+      : coutStructuration.usd + (coutTranscription?.usd ?? 0);
   // Colonnes de coût hors typage généré tant que `npm run gen:types` n'a pas été
   // rejoué après la migration → client non typé pour cette écriture.
   const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
@@ -283,12 +224,14 @@ export async function POST(req: Request) {
       fichier_original: fichierOriginal,
       recette: pivot,
       alertes,
-      model: IMPORT_MODEL,
+      // Les deux modèles apparaissent quand ils diffèrent : la colonne ne sert
+      // qu'à l'affichage côté administration.
+      model: estPhoto && TRANSCRIBE_MODEL !== IMPORT_MODEL ? `${TRANSCRIBE_MODEL} + ${IMPORT_MODEL}` : IMPORT_MODEL,
       input_tokens: usageTotal.inputTokens,
       output_tokens: usageTotal.outputTokens,
       // null si le modèle est absent de la table de tarifs : mieux vaut un coût
       // inconnu qu'un coût faux.
-      cost_usd: cout ? cout.usd : null,
+      cost_usd: coutUsd,
     } as never)
     .select()
     .single();

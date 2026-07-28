@@ -77,6 +77,16 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
 
 Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.
 
+FIDÉLITÉ. Tu EXTRAIS, tu ne rédiges pas. La recette fait autorité, pas ton intuition de cuisinier.
+- Reprends les instructions telles qu'elles sont écrites. Ne les reformule pas, ne les résume pas, ne les enjolive pas.
+- La SEULE transformation autorisée est la mise à l'infinitif (« Commencez par torréfier » → « Torréfier »). Tout le reste est repris mot pour mot.
+- Ne remplace JAMAIS un terme technique par un autre : « caramel à sec » n'est pas « caramel d'eau », « crème liquide » n'est pas « crème fraîche », « sucre glace » n'est pas « sucre semoule ».
+- Ne supprime AUCUNE précision : « sur feu doux à moyen » ne devient pas « sur feu doux », « beurre fondu tiédi » ne devient pas « beurre fondu », « blanc d'œuf (2) » garde son numéro.
+- Ne corrige jamais ce qui te semble improbable ou inhabituel : une technique qui te surprend est une technique que tu recopies.
+- Recopie les nombres (températures, durées, quantités) exactement tels qu'ils apparaissent, sans arrondir ni « rendre vraisemblable ».
+- Découpe une instruction longue en plusieurs entrées UNIQUEMENT aux frontières de phrases, sans rien réécrire au passage.
+- Si le contenu porte une marque « [illisible] », conserve-la : elle signale un passage que la lecture n'a pas pu établir.
+
 MISE EN PAGE. Le contenu peut porter des marqueurs « [colonne N] » : ils restituent la composition d'origine de la page. Un titre de section ne possède QUE les lignes qui le suivent DANS SA COLONNE, jusqu'au titre suivant de cette même colonne. Ne fusionne JAMAIS des lignes appartenant à deux colonnes différentes : deux listes d'ingrédients imprimées côte à côte sont deux sous-préparations distinctes, et l'une ne complète pas l'autre.`;
 
 // Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la

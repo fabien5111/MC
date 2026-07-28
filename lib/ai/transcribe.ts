@@ -10,10 +10,14 @@
 // par texte collé lui donne depuis toujours : du texte déjà linéarisé. C'est le
 // chemin éprouvé du produit, la photo n'en devient qu'une source de plus.
 //
-// Une photo par appel, tous en parallèle : huit transcriptions en série
-// dépasseraient le `maxDuration` de la route, alors qu'en parallèle l'ensemble
-// coûte à peu près le temps de la plus lente.
-import { EMPTY_USAGE, addUsage, callClaude, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
+// Une photo par REQUÊTE HTTP, toutes lancées en parallèle par le navigateur
+// (cf. app/api/transcribe-photo). Regrouper les photos dans un seul appel les
+// obligeait à tenir ensemble sous la limite de corps de requête de
+// l'hébergeur, ce qui bridait leur définition : sur une page de livre
+// photographiée en entier, le corps du texte tombait à quelques pixels de haut
+// et « 150 °C » se lisait « 160 °C ». Une photo par requête rend à chacune la
+// limite entière.
+import { TRANSCRIBE_MODEL, callClaude, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
 
 export const PROMPT_TRANSCRIPTION = `Tu transcris la photo d'une page de livre de cuisine ou de fiche de recette.
 Ta seule tâche est de LIRE. Tu ne structures pas, tu n'interprètes pas, tu ne résumes pas.
@@ -25,10 +29,15 @@ Le corps du texte (les étapes rédigées) forme lui aussi une colonne : traite-
 
 FIDÉLITÉ :
 - Transcris mot pour mot. N'ajoute rien, ne complète rien, ne corrige aucune faute.
-- Recopie les nombres chiffre par chiffre, exactement tels qu'ils sont imprimés.
 - Ne convertis JAMAIS une unité. En pâtisserie les liquides se pèsent : « 24 g d'eau » se transcrit « 24 g d'eau », jamais « 24 ml » ni « 240 g ».
 - Garde les titres de section (ex. « CRÉMEUX COMBAVA », « ÉTAPE 1 ») sur leur propre ligne, et les listes d'ingrédients une ligne par ingrédient.
 - Si un caractère est illisible, écris [illisible] à sa place plutôt que de deviner.
+
+LES NOMBRES sont ce qui se lit le plus mal, et une erreur y passe inaperçue jusqu'au four :
+- Recopie chaque nombre chiffre par chiffre, exactement tel qu'il est imprimé.
+- Avant d'écrire une température, une durée ou une quantité, regarde-la une seconde fois.
+- N'arrondis jamais, ne complète jamais un nombre, ne le rends jamais « plus vraisemblable ».
+- Si un chiffre reste douteux, écris [illisible] à sa place. Un trou signalé vaut mieux qu'un chiffre inventé.
 
 À IGNORER : numéro de page, titre courant, nom de l'ouvrage, mentions d'éditeur, légendes de photo décoratives.
 
@@ -36,7 +45,7 @@ Réponds UNIQUEMENT par la transcription, sans commentaire, sans introduction, s
 
 export type ImagePhoto = { mediaType: string; data: string };
 
-async function transcrireUne(
+export async function transcrireUne(
   apiKey: string,
   image: ImagePhoto,
   numero: number,
@@ -48,45 +57,6 @@ async function transcrireUne(
     { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
     { type: 'text', text: PROMPT_TRANSCRIPTION },
   ];
-  const { text, usage } = await callClaude(apiKey, contenu, 3000, timeoutMs);
+  const { text, usage } = await callClaude(apiKey, contenu, 3000, timeoutMs, TRANSCRIBE_MODEL);
   return { texte: `--- page ${numero} ---\n${String(text || '').trim()}`, usage };
-}
-
-/**
- * Transcrit toutes les photos en parallèle et renvoie un texte unique, pages
- * dans l'ordre reçu.
- *
- * Une page manquante retirerait silencieusement des ingrédients de la recette :
- * l'échec d'une seule transcription fait donc échouer l'import, avec la
- * consommation déjà facturée rattachée à l'erreur pour rester comptabilisable.
- */
-export async function transcrirePhotos(
-  apiKey: string,
-  images: ImagePhoto[],
-  timeoutMs: number,
-): Promise<{ texte: string; usage: ClaudeUsage }> {
-  const resultats = await Promise.allSettled(
-    images.map((img, i) => transcrireUne(apiKey, img, i + 1, timeoutMs)),
-  );
-
-  let usage = EMPTY_USAGE;
-  const textes: string[] = [];
-  const echecs: number[] = [];
-  resultats.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      usage = addUsage(usage, r.value.usage);
-      textes.push(r.value.texte);
-    } else {
-      echecs.push(i + 1);
-    }
-  });
-
-  if (echecs.length) {
-    throw Object.assign(new Error(`Photo(s) ${echecs.join(', ')} : lecture impossible.`), {
-      usage,
-      code: 'TRANSCRIPTION',
-      photos: echecs,
-    });
-  }
-  return { texte: textes.join('\n\n'), usage };
 }

@@ -9,10 +9,12 @@
 // qu'il contient sont extraites en même temps, puis écrites dans le brouillon
 // une fois celui-ci créé (cf. `enregistrerPhotos`).
 //
-// L'import par photo est le seul dont le contenu traverse le serveur : une
-// photo n'a pas de couche texte, c'est l'IA qui doit la lire. Les images sont
-// donc réduites et pesées ici avant l'envoi, le corps d'une requête serverless
-// étant borné (cf. BUDGET_ENVOI_OCTETS, aligné sur le plafond de la route).
+// L'import par photo se fait en deux temps, dans des requêtes distinctes :
+// chaque page part seule à /api/transcribe-photo — toutes en parallèle —, puis
+// le texte assemblé suit le chemin du texte collé. Une photo par requête n'est
+// pas un détail : groupées, elles devaient tenir ensemble sous la limite de
+// corps de requête de l'hébergeur, ce qui les réduisait à une définition où le
+// texte d'une page de livre devenait illisible pour l'IA.
 //
 // Pas d'import par URL : le JSON-LD schema.org des pages de recette liste les
 // ingrédients à plat pour toute la recette, sans les rattacher à leurs étapes
@@ -44,7 +46,6 @@ type Onglet = 'texte' | 'pdf' | 'photo';
 const MAX_PDF_OCTETS = 30 * 1024 * 1024;
 // Doit rester aligné sur les plafonds de la route : c'est elle qui refuse.
 const MAX_PHOTOS = 8;
-const BUDGET_ENVOI_OCTETS = 3_400_000;
 
 const tailleLisible = (octets: number): string =>
   octets < 1024 * 1024
@@ -61,9 +62,7 @@ export function ImporterForm() {
   const [result, setResult] = useState<Result | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [pdf, setPdf] = useState<File | null>(null);
-  // Les fichiers d'origine sont conservés pour pouvoir tout recomprimer d'un
-  // coup si le lot dépasse le poids qu'accepte la fonction serverless.
-  const [photos, setPhotos] = useState<(PhotoChoisie & { fichier: File })[]>([]);
+  const [photos, setPhotos] = useState<PhotoChoisie[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
@@ -117,17 +116,14 @@ export function ImporterForm() {
       texte?: string;
       source?: 'pdf' | 'photo';
       fichier?: string;
-      images?: string[];
       fichiers?: string[];
+      nb_photos?: number;
+      usage_transcription?: { inputTokens: number; outputTokens: number };
     },
     images: { photos: PhotoPdf[]; ecartees: number; tronquee: boolean },
     clear: () => void,
   ) {
-    setEtape(
-      payload.source === 'photo'
-        ? 'Lecture des photos, puis analyse de la recette…'
-        : 'Analyse en cours… (1 à 2 minutes pour les recettes longues)',
-    );
+    setEtape('Analyse de la recette… (1 à 2 minutes pour les recettes longues)');
     setError(null);
     setResult(null);
     try {
@@ -229,7 +225,6 @@ export function ImporterForm() {
   }
 
   // ── Photos ──
-  const poidsTotal = photos.reduce((n, p) => n + p.octets, 0);
 
   async function ajouterPhotos(fichiers: File[]) {
     // L'ordre d'un `FileList` ne reflète pas l'ordre de sélection : selon le
@@ -257,7 +252,7 @@ export function ImporterForm() {
     setResult(null);
     try {
       setEtape('Préparation des photos…');
-      const nouvelles: (PhotoChoisie & { fichier: File })[] = [];
+      const nouvelles: PhotoChoisie[] = [];
       const echecs: string[] = [];
       for (const f of aTraiter) {
         try {
@@ -265,7 +260,6 @@ export function ImporterForm() {
           nouvelles.push({
             id: `${f.name}-${f.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
             nom: f.name,
-            fichier: f,
             url,
             octets: url.length,
           });
@@ -274,27 +268,12 @@ export function ImporterForm() {
         }
       }
 
-      let liste = [...photos, ...nouvelles];
-      // Le poids se juge sur le lot entier, pas photo par photo : on ne le
-      // connaît qu'une fois toutes les images préparées.
-      if (liste.reduce((n, p) => n + p.octets, 0) > BUDGET_ENVOI_OCTETS) {
-        setEtape('Lot trop lourd, recompression…');
-        liste = await Promise.all(
-          liste.map(async (p) => {
-            const url = await resizePhotoForAi(p.fichier, 1100, 0.62);
-            return { ...p, url, octets: url.length };
-          }),
-        );
-      }
-      setPhotos(liste);
+      setPhotos([...photos, ...nouvelles]);
 
       const messages: string[] = [];
       if (echecs.length) messages.push(`Photo(s) non lisible(s) : ${echecs.join(', ')}.`);
       if (images.length > libres) {
         messages.push(`${MAX_PHOTOS} photos au maximum : les suivantes n’ont pas été ajoutées.`);
-      }
-      if (liste.reduce((n, p) => n + p.octets, 0) > BUDGET_ENVOI_OCTETS) {
-        messages.push('Le lot reste trop lourd pour être envoyé : retirez des photos.');
       }
       setError(messages.length ? messages.join(' ') : null);
     } finally {
@@ -312,21 +291,65 @@ export function ImporterForm() {
     });
   }
 
+  // Passe 1 : chaque page part seule, toutes en parallèle. Une requête par
+  // photo lui laisse la limite entière de corps de requête, donc une définition
+  // où le texte reste lisible par l'IA.
+  async function transcrirePhotos(): Promise<{ texte: string; usage: { inputTokens: number; outputTokens: number } }> {
+    let faites = 0;
+    const total = photos.length;
+    setEtape(`Lecture des photos… 0/${total}`);
+
+    const resultats = await Promise.all(
+      photos.map(async (p, i) => {
+        const r = await fetch('/api/transcribe-photo', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ image: p.url, page: i + 1 }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.erreur || `Photo ${i + 1} : erreur ${r.status}`);
+        faites++;
+        setEtape(`Lecture des photos… ${faites}/${total}`);
+        return data as { texte: string; usage: { inputTokens: number; outputTokens: number } };
+      }),
+    );
+
+    return {
+      // `Promise.all` préserve l'ordre des entrées, quel que soit l'ordre
+      // d'arrivée des réponses : les pages restent dans l'ordre de la liste.
+      texte: resultats.map((r) => r.texte).join('\n\n'),
+      usage: resultats.reduce(
+        (acc, r) => ({
+          inputTokens: acc.inputTokens + (r.usage?.inputTokens || 0),
+          outputTokens: acc.outputTokens + (r.usage?.outputTokens || 0),
+        }),
+        { inputTokens: 0, outputTokens: 0 },
+      ),
+    };
+  }
+
   async function submitPhotos() {
-    if (!photos.length || poidsTotal > BUDGET_ENVOI_OCTETS) return;
+    if (!photos.length) return;
     setBusy(true);
     setError(null);
     setResult(null);
     try {
+      // Une page illisible retirerait silencieusement des ingrédients de la
+      // recette : l'échec d'une seule interrompt l'import.
+      const lu = await transcrirePhotos();
       await launch(
         {
           source: 'photo',
-          images: photos.map((p) => p.url),
+          texte: lu.texte,
+          nb_photos: photos.length,
+          usage_transcription: lu.usage,
           fichiers: photos.map((p) => p.nom),
         },
         { photos: [], ecartees: 0, tronquee: false },
         () => setPhotos([]),
       );
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -339,7 +362,7 @@ export function ImporterForm() {
 
   return (
     <>
-      <LoadingOverlay visible={busy} label={etape} />
+      <LoadingOverlay visible={busy} label={etape} showLabel />
 
       <div className="flex border-b border-outline-variant mb-8 overflow-x-auto">
         <button type="button" onClick={() => setOnglet('texte')} className={ongletCls(onglet === 'texte')}>
@@ -526,7 +549,7 @@ export function ImporterForm() {
           <button
             type="button"
             onClick={() => void submitPhotos()}
-            disabled={busy || !photos.length || poidsTotal > BUDGET_ENVOI_OCTETS}
+            disabled={busy || !photos.length}
             className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
