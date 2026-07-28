@@ -232,7 +232,16 @@ export function ImporterForm() {
   const poidsTotal = photos.reduce((n, p) => n + p.octets, 0);
 
   async function ajouterPhotos(fichiers: File[]) {
-    const images = fichiers.filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|hei[cf])$/i.test(f.name));
+    // L'ordre d'un `FileList` ne reflète pas l'ordre de sélection : selon le
+    // système, le sélecteur renvoie les fichiers dans l'ordre du dossier ou à
+    // l'envers. On classe donc le lot par nom, en comparaison numérique pour
+    // que « IMG_2 » précède « IMG_10 » — les photos de pages successives sont
+    // presque toujours nommées en séquence. Chaque lot est classé pour
+    // lui-même : un ordre déjà réglé à la main ne doit pas être défait par un
+    // ajout ultérieur.
+    const images = fichiers
+      .filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|hei[cf])$/i.test(f.name))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
     if (!images.length) {
       alert('Choisissez des photos (JPEG, PNG ou WebP).');
       return;
