@@ -12,6 +12,7 @@ import type { ImportFull } from '@/lib/imports';
 import type { Difficulty, Tag } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
@@ -310,6 +311,14 @@ export function RelectureEditor({
     setJustAddedSpKey(null);
   }, [justAddedSpKey]);
   const [busy, setBusy] = useState(false);
+  // Verrou synchrone doublant `busy` : un état React n'est effectif qu'au
+  // rendu suivant et ne protège pas de deux déclenchements dans le même tick.
+  const busyRef = useRef(false);
+  // Recette créée depuis cette relecture. La création écrit la recette puis
+  // ses étapes, photos et ingrédients : si l'un de ces écrits échoue, la
+  // recette existe déjà. Sans cette mémoire, une nouvelle tentative en
+  // créerait une seconde, identique.
+  const createdRecipeIdRef = useRef<string | null>(importRow.recipe_id ?? null);
   // Index de l'étape en cours de glisser-déposer (null si aucun).
   const [dragSp, setDragSp] = useState<number | null>(null);
   // Sous-étape en cours de glisser-déposer (étape + index), null si aucune.
@@ -681,6 +690,8 @@ export function RelectureEditor({
   }
 
   async function onSave() {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await save();
@@ -692,12 +703,17 @@ export function RelectureEditor({
     } catch (e) {
       alert('Erreur : ' + (e as Error).message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
 
   async function onCreate() {
+    // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
+    // pas ouvrir deux créations concurrentes.
+    if (busyRef.current) return;
     if (!confirm('Créer cette recette dans votre carnet (brouillon privé) ?')) return;
+    busyRef.current = true;
     setBusy(true);
     const supabase = createClient();
     try {
@@ -752,34 +768,57 @@ export function RelectureEditor({
 
       const diffRow = p.difficulte ? closestDifficulty(difficulties, p.difficulte) : null;
 
-      const { data: recipe, error: recErr } = await supabase
-        .from('recipes')
-        .insert({
-          author_id: user.id,
-          title: p.titre || 'Recette importée',
-          description: p.description || null,
-          is_public: false,
-          status: 'draft',
-          tips: p.notes || null,
-          source: p.source?.auteur_origine || null,
-          source_url: p.source?.url_origine || null,
-          video_url: p.source?.video_url || null,
-          serving_advice: p.conseils_degustation || null,
-          yield_notes: r.notes_quantites || null,
-          hero_image_url: p.photo_principale || null,
-          difficulty_id: diffRow?.id ?? null,
-          prep_time: t.preparation_min ?? null,
-          cook_time: t.cuisson_min ?? null,
-          wait_time: attente || null,
-          total_time: total || null,
-          ...measure,
-        })
-        .select()
-        .single();
-      if (recErr || !recipe) throw new Error(recErr?.message || 'Création refusée');
+      const payload = {
+        author_id: user.id,
+        title: p.titre || 'Recette importée',
+        description: p.description || null,
+        is_public: false,
+        status: 'draft',
+        tips: p.notes || null,
+        source: p.source?.auteur_origine || null,
+        source_url: p.source?.url_origine || null,
+        video_url: p.source?.video_url || null,
+        serving_advice: p.conseils_degustation || null,
+        yield_notes: r.notes_quantites || null,
+        hero_image_url: p.photo_principale || null,
+        difficulty_id: diffRow?.id ?? null,
+        prep_time: t.preparation_min ?? null,
+        cook_time: t.cuisson_min ?? null,
+        wait_time: attente || null,
+        total_time: total || null,
+        ...measure,
+      };
+
+      // Nouvelle tentative après un échec en cours de création : la recette
+      // existe déjà, on la reprend (mise à jour + purge des liaisons déjà
+      // écrites) au lieu d'en créer une seconde, identique.
+      let recipeId = createdRecipeIdRef.current;
+      if (recipeId) {
+        const { data: updated, error } = await supabase.from('recipes').update(payload).eq('id', recipeId).select('id').maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!updated) {
+          // Recette supprimée du carnet entre-temps : on repart d'une création.
+          recipeId = null;
+          createdRecipeIdRef.current = null;
+        } else {
+          await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId);
+          await supabase.from('recipe_utensils').delete().eq('recipe_id', recipeId);
+          await supabase.from('ingredient_groups').delete().eq('recipe_id', recipeId);
+          await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId);
+        }
+      }
+      if (!recipeId) {
+        const { data: recipe, error: recErr } = await supabase.from('recipes').insert(payload).select('id').single();
+        if (recErr || !recipe) throw new Error(recErr?.message || 'Création refusée');
+        recipeId = recipe.id;
+        createdRecipeIdRef.current = recipe.id;
+        // Rattachement immédiat de l'import à la recette : si la suite échoue,
+        // la reprise repart de cette recette plutôt que d'en créer une autre.
+        await supabase.from('imports').update({ recipe_id: recipe.id }).eq('id', importRow.id);
+      }
 
       if (selectedTags.size > 0) {
-        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
+        const { error } = await supabase.from('recipe_tags').insert([...selectedTags.keys()].map((tag_id) => ({ recipe_id: recipeId, tag_id })));
         if (error) throw error;
       }
 
@@ -791,7 +830,7 @@ export function RelectureEditor({
         const { data: stepRow, error: stepErr } = await supabase
           .from('recipe_steps')
           .insert({
-            recipe_id: recipe.id,
+            recipe_id: recipeId,
             step_number: i + 1,
             title: sp.nom || `Étape ${i + 1}`,
             description: null,
@@ -830,7 +869,7 @@ export function RelectureEditor({
           const { data: grp, error: grpErr } = await supabase
             .from('ingredient_groups')
             .insert({
-              recipe_id: recipe.id,
+              recipe_id: recipeId,
               name: sp.nom || `Étape ${i + 1}`,
               order_index: i,
               scaling_mode: sp.scaling_mode || 'simple',
@@ -847,17 +886,20 @@ export function RelectureEditor({
       if (mats.length) {
         const { error } = await supabase
           .from('recipe_utensils')
-          .insert(mats.map((m: any, i: number) => ({ recipe_id: recipe.id, name: m.nom, comment: m.commentaire || null, order_index: i })));
+          .insert(mats.map((m: any, i: number) => ({ recipe_id: recipeId, name: m.nom, comment: m.commentaire || null, order_index: i })));
         if (error) throw error;
       }
 
-      await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipe.id }).eq('id', importRow.id);
+      await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipeId }).eq('id', importRow.id);
       // Invalide le rendu serveur avant de naviguer : le carnet de recettes et
       // la liste « Mes imports » doivent refléter la recette créée.
       router.refresh();
-      router.push(`/recette/${recipe.id}`);
+      router.push(`/recette/${recipeId}`);
     } catch (e) {
+      // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
+      // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.
       alert('Erreur à la création : ' + (e as Error).message);
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -1791,6 +1833,10 @@ export function RelectureEditor({
             </div>
           );
         })()}
+
+      {/* Écriture en cours (corrections ou création de la recette, suivie
+          d'une navigation) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
+      <LoadingOverlay visible={busy} />
     </>
   );
 }
