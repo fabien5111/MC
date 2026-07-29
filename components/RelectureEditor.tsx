@@ -1204,7 +1204,7 @@ export function RelectureEditor({
                     value={m.commentaire}
                     onChange={(e) => patchUtensil(mi, { commentaire: e.target.value })}
                     className={`${champ} text-sm mt-1 resize-y`}
-                    rows={2}
+                    rows={1}
                     placeholder="Commentaire (optionnel — taille, réglage…)"
                   />
                   {isAdmin && m.nom.trim() && !known && (
@@ -1441,7 +1441,7 @@ export function RelectureEditor({
                           value={g.note}
                           onChange={(e) => patchIng(si, ii, { note: e.target.value })}
                           className={`${champ} text-sm mt-1 resize-y`}
-                          rows={2}
+                          rows={1}
                           placeholder="Commentaire (optionnel — pommade, à froid…)"
                         />
                         <div className="flex flex-wrap items-center gap-1 mt-1">

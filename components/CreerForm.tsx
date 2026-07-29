@@ -1023,7 +1023,7 @@ export function CreerForm({
                       value={u.comment}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
                       className="editorial-input text-on-surface w-full resize-y"
-                      rows={2}
+                      rows={1}
                       placeholder="Commentaire (optionnel)"
                     />
                   </div>
@@ -1330,7 +1330,7 @@ export function CreerForm({
                                 }
                               }}
                               className="editorial-input text-on-surface w-full resize-y"
-                              rows={2}
+                              rows={1}
                               placeholder="Commentaire (optionnel)"
                             />
                           </div>
