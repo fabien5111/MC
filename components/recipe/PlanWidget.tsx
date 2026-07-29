@@ -11,7 +11,7 @@
 // mcEditPlan / plan-validate en mode édition). Le pré-remplissage se limite à
 // la date et, pour le mode « unités », à la quantité ; les modes moule/IA
 // repartent d'un formulaire vierge (édition fine du libellé non reconstituée).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
@@ -71,6 +71,14 @@ export function PlanWidget({
   const [date, setDate] = useState(today);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Set<number>>(new Set());
+
+  // Le panneau est placé en haut de la fiche (avant la photo) : les
+  // déclencheurs situés plus bas (crayon du bandeau « Recette planifiée »)
+  // l'ouvriraient hors écran. `nearest` ne bouge pas s'il est déjà visible.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [open]);
 
   // Ré-initialise le formulaire à chaque ouverture, selon le mode (création vs
   // édition de l'entrée de planning existante).
@@ -355,7 +363,7 @@ export function PlanWidget({
   );
 
   return (
-    <div className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
+    <div ref={panelRef} className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
         {editMode && existingPlan ? 'Modifier la planification' : 'Planifier cette recette'}

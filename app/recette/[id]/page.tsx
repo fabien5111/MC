@@ -242,6 +242,32 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           </div>
 
+          {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
+              clic sur « Planifier », qui doit rester visible sans scroller. */}
+          <PlanWidget
+            recipe={{
+              id: recipe.id,
+              title: recipe.title,
+              measureType: recipe.measure_type,
+              yieldQty: recipe.yield_qty,
+              yieldUnit: recipe.yield_unit,
+              yieldDesc: recipe.yield_desc,
+              moldForme: recipe.mold_types?.forme ?? null,
+              moldDims:
+                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
+                  ? (recipe.mold_dims as Record<string, number>)
+                  : null,
+              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              yieldNotes: recipe.yield_notes,
+            }}
+            moldTypes={moldTypes}
+            ingredients={merged}
+            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
+            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
+            isAdmin={userIsAdmin}
+          />
+
           {/* Hero */}
           {recipe.hero_image_url && (
             <div className="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
@@ -426,31 +452,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </ul>
             </div>
           )}
-
-          {/* Planifier */}
-          <PlanWidget
-            recipe={{
-              id: recipe.id,
-              title: recipe.title,
-              measureType: recipe.measure_type,
-              yieldQty: recipe.yield_qty,
-              yieldUnit: recipe.yield_unit,
-              yieldDesc: recipe.yield_desc,
-              moldForme: recipe.mold_types?.forme ?? null,
-              moldDims:
-                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
-                  ? (recipe.mold_dims as Record<string, number>)
-                  : null,
-              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              yieldNotes: recipe.yield_notes,
-            }}
-            moldTypes={moldTypes}
-            ingredients={merged}
-            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
-            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
-            isAdmin={userIsAdmin}
-          />
 
           {/* Planning de préparation */}
           {steps.length > 0 && (
