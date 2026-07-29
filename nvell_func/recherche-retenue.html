@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Maryse-Club | Recherche avancée — parti retenu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode:"class", theme:{ extend:{
+    colors:{"primary":"#300a12","primary-container":"#4a1e26","on-primary":"#ffffff","primary-fixed":"#ffd9dd","on-primary-fixed":"#350e16","secondary":"#7e5259","secondary-container":"#ffc6ce","on-secondary-container":"#7b5056","secondary-fixed":"#ffd9de","on-secondary-fixed":"#311118","tertiary":"#251216","surface":"#fff8f7","background":"#fff8f7","surface-container-lowest":"#ffffff","surface-container-low":"#fff0f0","surface-container":"#fbeae9","surface-container-high":"#f5e4e4","surface-container-highest":"#efdfde","surface-variant":"#efdfde","outline":"#847374","outline-variant":"#d6c2c3","on-surface":"#221a1a","on-surface-variant":"#514345","error":"#ba1a1a","error-container":"#ffdad6","on-error-container":"#93000a","on-tertiary-container":"#aa8c90","success":"#2f6b3f","success-container":"#d7ecd9"},
+    borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+    fontFamily:{"headline":["Playfair Display"],"body":["Work Sans"],"logo":["Great Vibes","cursive"]}
+  } } }
+</script>
+<style>
+  body { font-family:'Work Sans',sans-serif; background:#e9dedb; color:#221a1a; }
+  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; vertical-align:middle; }
+  .fill { font-variation-settings:'FILL' 1; }
+  .logo { font-family:'Great Vibes',cursive; }
+  h1,h2,h3,h4,.serif { font-family:'Playfair Display',serif; }
+  .card { background:#fff8f7; border:1px solid #d6c2c3; box-shadow:0 12px 40px rgba(48,10,18,.08); }
+  .badge-id { font:700 11px/1 'Work Sans'; letter-spacing:.16em; text-transform:uppercase; background:#300a12; color:#fff; padding:6px 10px; border-radius:3px; }
+  /* range slider */
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:3px; background:#d6c2c3; border-radius:999px; outline:none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:999px; background:#300a12; cursor:pointer; border:3px solid #fff8f7; box-shadow:0 1px 5px rgba(48,10,18,.35); }
+  input[type=range]::-moz-range-thumb { width:18px; height:18px; border-radius:999px; background:#300a12; cursor:pointer; border:3px solid #fff8f7; }
+  /* ingredient badges */
+  .ing { display:inline-flex; align-items:center; gap:6px; padding:5px 8px 5px 10px; border-radius:999px; font:600 12.5px/1 'Work Sans'; }
+  .ing.inc { background:#d7ecd9; color:#1f4d2b; border:1px solid #8fc39b; }
+  .ing.exc { background:#ffdad6; color:#93000a; border:1px solid #e4a49e; text-decoration:line-through; text-decoration-thickness:1.5px; }
+  .ing button { display:flex; border:none; background:none; cursor:pointer; color:inherit; opacity:.65; padding:0; }
+  .ing button:hover { opacity:1; }
+  /* star rating */
+  .stars span { cursor:pointer; color:#c8b4b5; transition:color .15s ease, transform .15s ease; }
+  .stars span.on { color:#4a1e26; }
+  .stars:hover span { color:#c8b4b5; }
+  .stars span:hover, .stars span:hover ~ span { }
+  /* facet chips */
+  .chip { border:1px solid #d6c2c3; background:#fff8f7; color:#514345; padding:6px 13px; border-radius:999px; font:600 12.5px/1 'Work Sans'; cursor:pointer; transition:all .18s ease; }
+  .chip:hover { border-color:#7e5259; color:#300a12; }
+  .chip.on { background:#300a12; border-color:#300a12; color:#fff; }
+  /* difficulty pills */
+  .diffrow { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:5px 0; cursor:pointer; }
+  .diffrow > span:last-child { min-width:0; }
+  .pill { width:20px; height:9px; border-radius:999px; background:#e0d0d0; }
+  .diffrow.on .pill.f { background:#300a12; }
+  .facet-h { font:600 10px/1 'Work Sans'; letter-spacing:.2em; text-transform:uppercase; color:#847374; }
+  .divide-y-soft > * + * { border-top:1px solid rgba(214,194,195,.5); }
+  /* mobile sheet */
+  .sheet { transform:translateY(101%); transition:transform .38s cubic-bezier(.32,.72,0,1); }
+  .sheet.open { transform:translateY(0); }
+  .scrim { opacity:0; pointer-events:none; transition:opacity .3s ease; }
+  .scrim.open { opacity:1; pointer-events:auto; }
+  .hide-sb::-webkit-scrollbar { width:5px; } .hide-sb::-webkit-scrollbar-thumb { background:#d6c2c3; border-radius:9px; }
+  a { color:#4a1e26; } a:hover { color:#300a12; }
+</style>
+</head>
+<body class="pb-32">
+
+<!-- ============ INTRO ============ -->
+<header class="max-w-[1480px] mx-auto px-6 md:px-10 pt-14 pb-10">
+  <span class="logo text-4xl text-primary">maryse club</span>
+  <h1 class="text-[38px] md:text-[46px] leading-tight text-primary mt-2 mb-4" style="max-width:22ch">Recherche avancée — parti retenu</h1>
+  <p class="text-[16px] leading-relaxed text-on-surface-variant" style="max-width:70ch">D'après tes spécifications : facettes classiques, ingrédients à inclure&nbsp;/&nbsp;exclure en badges, notes recette et auteur, tri, compteur et pagination. Approche <strong>mobile-first</strong>, tiroir sur mobile et barre latérale sur desktop.</p>
+  <p class="text-[14px] text-on-surface-variant mt-3">Parti retenu : <strong>1e</strong> (loupe qui se déploie) pour le lancement, <strong>2a</strong> pour le desktop, <strong>2c</strong> pour tablette et mobile. Référence à implémenter — voir <code>README.md</code> du dossier de handoff.</p>
+</header>
+
+<!-- ============ SECTION 1 — PICTOS ============ -->
+<section class="max-w-[1480px] mx-auto px-6 md:px-10" id="pictos">
+  <div class="flex items-baseline gap-4 border-b border-outline-variant/60 pb-4 mb-8">
+    <h2 class="text-[28px] text-primary">1e — Le lancement de la recherche</h2>
+    <span class="text-[13px] text-on-surface-variant">retenu · cliquez la loupe</span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
+
+    <!-- 1a -->
+    
+
+    <!-- 1b -->
+    
+
+    <!-- 1c -->
+    
+
+    <!-- 1d -->
+    
+
+    <!-- 1e -->
+    <article class="card rounded-xl overflow-hidden lg:col-span-2" id="1e">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/50 bg-surface-container-low">
+        <div class="flex items-center gap-3"><span class="badge-id">1e</span><h3 class="text-[19px] text-primary">Loupe qui se déploie</h3></div>
+        <span class="text-[12px] text-on-surface-variant italic">cliquez la loupe pour voir le déploiement</span>
+      </div>
+      <div class="bg-surface-container-high p-6">
+        <div class="bg-surface/90 backdrop-blur border border-outline-variant/40 rounded-lg px-5 py-3" id="exp-host">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-7">
+              <span class="logo text-2xl text-primary leading-none">maryse club</span>
+              <nav class="hidden sm:flex gap-5 text-[12px] font-semibold tracking-wider uppercase text-on-surface-variant"><span class="text-primary">Accueil</span><span>Planning</span><span>Profil</span></nav>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <button class="p-1.5 text-primary hover:opacity-70 transition-opacity" id="exp-btn"><span class="material-symbols-outlined" id="exp-ico">search</span></button>
+              <span class="hidden sm:flex items-center gap-1 bg-primary text-white pl-2.5 pr-3.5 py-1.5 rounded-full text-[12px] font-semibold"><span class="material-symbols-outlined text-[16px]">add</span>Créer</span>
+              <span class="w-8 h-8 rounded-full bg-surface-variant border border-outline-variant"></span>
+            </div>
+          </div>
+          <div class="overflow-hidden transition-all duration-300" id="exp-panel" style="max-height:0;opacity:0">
+            <div class="pt-4 mt-3 border-t border-outline-variant/50 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="flex-1 flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-full px-4 py-2.5">
+                <span class="material-symbols-outlined text-[19px] text-outline">search</span>
+                <input class="flex-1 bg-transparent border-none p-0 text-[14px] placeholder:text-outline/70 focus:ring-0" placeholder="Rechercher une recette, un ingrédient…">
+              </div>
+              <button class="flex items-center justify-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-primary border border-primary rounded-full px-4 py-2.5 hover:bg-primary hover:text-white transition-all shrink-0"><span class="material-symbols-outlined text-[17px]">tune</span>Critères avancés</button>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-outline self-center mr-1">Suggestions</span>
+              <span class="chip">Chocolat</span><span class="chip">Sans gluten</span><span class="chip">Moins d'1h</span><span class="chip">Entremets</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-5 text-[14px] leading-relaxed text-on-surface-variant" style="max-width:95ch">L'en-tête reste épuré ; au clic, la loupe <strong>déploie un bandeau</strong> avec le champ, les suggestions et l'accès aux critères avancés. Le meilleur compromis à mon sens : rien n'encombre au repos, et la recherche avancée est annoncée dès l'ouverture.<br><span class="text-outline italic">Réserve : demande un clic de plus que la version 1b.</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ============ SECTION 2 — ÉCRANS ============ -->
+<section class="max-w-[1480px] mx-auto px-6 md:px-10 mt-20" id="ecrans">
+  <div class="flex items-baseline gap-4 border-b border-outline-variant/60 pb-4 mb-8">
+    <h2 class="text-[28px] text-primary">2a desktop · 2c tablette &amp; mobile</h2>
+    <span class="text-[13px] text-on-surface-variant">retenus · toutes les facettes sont actives</span>
+  </div>
+
+  <!-- ===== 2a — barre latérale desktop ===== -->
+  <article class="card rounded-xl overflow-hidden mb-10" id="2a">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-outline-variant/50 bg-surface-container-low">
+      <div class="flex items-center gap-3"><span class="badge-id">2a</span><h3 class="text-[19px] text-primary">Barre latérale persistante + résultats en direct</h3></div>
+      <span class="text-[12px] text-on-surface-variant italic">recommandé sur desktop</span>
+    </div>
+
+    <div class="bg-background">
+      <!-- search bar row -->
+      <div class="border-b border-outline-variant/50 px-6 md:px-8 py-5 flex flex-col lg:flex-row gap-4 lg:items-center bg-surface-container-low/60">
+        <div class="flex-1 flex items-center gap-2.5 bg-white border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm">
+          <span class="material-symbols-outlined text-[21px] text-outline">search</span>
+          <input class="flex-1 bg-transparent border-none p-0 text-[15px] placeholder:text-outline/70 focus:ring-0" value="praliné">
+          <button class="p-1 text-outline hover:text-primary transition-colors" title="Effacer"><span class="material-symbols-outlined text-[19px]">close</span></button>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <label class="facet-h">Trier par</label>
+          <select class="border-outline-variant rounded-full bg-white text-[13.5px] py-2 pl-4 pr-9 focus:ring-primary focus:border-primary">
+            <option>Pertinence</option><option>Plus récentes</option><option>Mieux notées</option><option>Les plus rapides</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex flex-col lg:flex-row">
+        <!-- SIDEBAR FACETS -->
+        <aside class="w-full lg:w-[318px] shrink-0 border-b lg:border-b-0 lg:border-r border-outline-variant/50 bg-surface-container-low/40" data-facets>
+          <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/50">
+            <span class="flex items-center gap-2 text-primary font-semibold text-[14px]"><span class="material-symbols-outlined text-[19px]">tune</span>Critères <span class="ml-0.5 min-w-[19px] h-[19px] px-1 rounded-full bg-primary text-white text-[10.5px] font-bold flex items-center justify-center" data-count>4</span></span>
+            <button class="text-[12px] font-semibold uppercase tracking-wider text-secondary hover:text-primary transition-colors" data-reset>Réinitialiser</button>
+          </div>
+
+          <div class="divide-y-soft">
+            <!-- ingrédients : LA facette signature -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Ingrédients</p>
+              <div class="flex items-center gap-1 p-0.5 bg-surface-container-high rounded-full mb-3 w-full" data-mode-switch>
+                <button class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-[12px] font-semibold transition-all bg-white text-[#1f4d2b] shadow-sm" data-mode="inc"><span class="material-symbols-outlined text-[15px]">add_circle</span>À inclure</button>
+                <button class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-[12px] font-semibold transition-all text-on-surface-variant" data-mode="exc"><span class="material-symbols-outlined text-[15px]">do_not_disturb_on</span>À exclure</button>
+              </div>
+              <div class="relative" data-ac>
+                <div class="flex items-center gap-2 bg-white border border-outline-variant rounded-lg px-3 py-2.5 focus-within:border-primary transition-colors">
+                  <span class="material-symbols-outlined text-[18px] text-outline">nutrition</span>
+                  <input class="flex-1 bg-transparent border-none p-0 text-[13.5px] placeholder:text-outline/70 focus:ring-0" placeholder="Tapez un ingrédient…" autocomplete="off" data-ac-input>
+                </div>
+                <ul class="absolute left-0 right-0 top-full mt-1 bg-white border border-outline-variant rounded-lg shadow-xl z-30 max-h-[184px] overflow-y-auto hide-sb hidden" data-ac-list></ul>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-3" data-ing-out>
+                <span class="ing inc" data-ing="Chocolat noir" data-kind="inc">Chocolat noir<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+                <span class="ing inc" data-ing="Noisette" data-kind="inc">Noisette<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+                <span class="ing exc" data-ing="Fraise" data-kind="exc">Fraise<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+              </div>
+              <p class="text-[11.5px] text-outline italic mt-2.5">Vert = présent dans la recette · Rouge barré = absent</p>
+            </div>
+
+            <!-- type -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Type de recette</p>
+              <div class="flex flex-col gap-0.5" data-radio="type">
+                <label class="flex items-center gap-2.5 py-1.5 cursor-pointer group"><input type="radio" name="t2a" class="text-primary border-outline focus:ring-primary w-4 h-4" checked><span class="text-[14px] group-hover:text-primary transition-colors">Toutes</span></label>
+                <label class="flex items-center gap-2.5 py-1.5 cursor-pointer group"><input type="radio" name="t2a" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[14px] group-hover:text-primary transition-colors">Entremets</span><span class="ml-auto text-[12px] text-outline">62</span></label>
+                <label class="flex items-center gap-2.5 py-1.5 cursor-pointer group"><input type="radio" name="t2a" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[14px] group-hover:text-primary transition-colors">Tartes</span><span class="ml-auto text-[12px] text-outline">48</span></label>
+                <label class="flex items-center gap-2.5 py-1.5 cursor-pointer group"><input type="radio" name="t2a" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[14px] group-hover:text-primary transition-colors">Gâteaux de voyage</span><span class="ml-auto text-[12px] text-outline">37</span></label>
+                <label class="flex items-center gap-2.5 py-1.5 cursor-pointer group"><input type="radio" name="t2a" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[14px] group-hover:text-primary transition-colors">Viennoiseries</span><span class="ml-auto text-[12px] text-outline">24</span></label>
+              </div>
+            </div>
+
+            <!-- difficulté -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Difficulté</p>
+              <div class="flex flex-col">
+                <label class="diffrow group"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill"></i><i class="pill"></i><i class="pill"></i><i class="pill"></i></span><span class="text-[13.5px] text-on-surface-variant">Très facile</span></label>
+                <label class="diffrow group"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill"></i><i class="pill"></i><i class="pill"></i></span><span class="text-[13.5px] text-on-surface-variant">Facile</span></label>
+                <label class="diffrow on group"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1" checked><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill"></i><i class="pill"></i></span><span class="text-[13.5px] text-on-surface-variant">Intermédiaire</span></label>
+                <label class="diffrow on group"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1" checked><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill"></i></span><span class="text-[13.5px] text-on-surface-variant">Avancé</span></label>
+                <label class="diffrow group"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i></span><span class="text-[13.5px] text-on-surface-variant">Expert</span></label>
+              </div>
+            </div>
+
+            <!-- temps -->
+            <div class="px-6 py-5">
+              <div class="flex items-baseline justify-between mb-4"><p class="facet-h">Temps total</p><span class="text-[13px] font-semibold text-primary" data-time-out>jusqu'à 3 h</span></div>
+              <input type="range" min="30" max="480" step="30" value="180" data-time>
+              <div class="flex justify-between text-[11px] text-outline mt-2"><span>30 min</span><span>8 h et +</span></div>
+            </div>
+
+            <!-- catégories -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Catégories</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="chip on">Chocolat</span><span class="chip">Fruits rouges</span><span class="chip">Vanille</span><span class="chip">Caramel</span><span class="chip">Agrumes</span><span class="chip">Sans four</span><span class="chip">Végétalien</span><span class="chip">Express</span><span class="chip">Fêtes</span>
+              </div>
+            </div>
+
+            <!-- note recette -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Note de la recette</p>
+              <div class="flex items-center gap-3">
+                <div class="stars flex gap-0.5 text-[26px]" data-stars data-val="4">
+                  <span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill">star</span>
+                </div>
+                <span class="text-[13px] text-on-surface-variant" data-stars-out>4 étoiles et plus</span>
+              </div>
+            </div>
+
+            <!-- note auteur -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Note de l'auteur</p>
+              <div class="grid grid-cols-4 gap-1.5" data-seg>
+                <button class="py-2 rounded text-[12.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant hover:border-secondary transition-all on" data-on>Toutes</button>
+                <button class="py-2 rounded text-[12.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant hover:border-secondary transition-all">3★+</button>
+                <button class="py-2 rounded text-[12.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant hover:border-secondary transition-all">4★+</button>
+                <button class="py-2 rounded text-[12.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant hover:border-secondary transition-all">4,5★+</button>
+              </div>
+            </div>
+
+            <!-- allergènes -->
+            <div class="px-6 py-5">
+              <p class="facet-h mb-3">Allergènes à exclure</p>
+              <div class="grid grid-cols-2 gap-y-1.5 gap-x-2">
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13.5px] group-hover:text-primary transition-colors">Gluten</span></label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4" checked><span class="text-[13.5px] group-hover:text-primary transition-colors">Lactose</span></label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13.5px] group-hover:text-primary transition-colors">Œuf</span></label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13.5px] group-hover:text-primary transition-colors">Fruits à coque</span></label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13.5px] group-hover:text-primary transition-colors">Arachide</span></label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer group"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13.5px] group-hover:text-primary transition-colors">Soja</span></label>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- RESULTS -->
+        <div class="flex-1 min-w-0 p-6 md:p-8">
+          <div class="flex flex-wrap items-baseline justify-between gap-3 mb-5">
+            <p class="text-[15px] text-on-surface-variant"><strong class="text-primary text-[19px] serif">42 recettes</strong> pour « praliné »</p>
+          </div>
+          <!-- active criteria recap -->
+          <div class="flex flex-wrap items-center gap-2 pb-5 mb-6 border-b border-outline-variant/50">
+            <span class="facet-h mr-1">Critères actifs</span>
+            <span class="ing inc">Chocolat noir<button type="button"><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+            <span class="ing inc">Noisette<button type="button"><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+            <span class="ing exc">Fraise<button type="button"><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+            <span class="chip on">Sans lactose<span class="material-symbols-outlined text-[14px] ml-1">close</span></span>
+            <span class="chip on">4★ et +<span class="material-symbols-outlined text-[14px] ml-1">close</span></span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" id="res-2a"></div>
+          <div class="mt-10 text-center">
+            <button class="border-2 border-primary text-primary px-12 py-3.5 rounded-full text-[12.5px] font-semibold uppercase tracking-[0.18em] hover:bg-primary hover:text-white transition-all">Charger plus</button>
+            <p class="text-[12px] text-outline mt-3">6 recettes sur 42</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="px-6 py-5 text-[14px] leading-relaxed text-on-surface-variant border-t border-outline-variant/50" style="max-width:100ch">Les critères restent <strong>visibles en permanence</strong> et les résultats se rafraîchissent à côté — l'utilisateur voit immédiatement l'effet de chaque réglage. Le rappel des critères actifs au-dessus de la grille permet d'en retirer un sans revenir dans la colonne.</div>
+  </article>
+
+  <!-- ===== 2b — overlay ===== -->
+  
+
+  <!-- ===== 2c — mobile ===== -->
+  <article class="card rounded-xl overflow-hidden" id="2c">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-outline-variant/50 bg-surface-container-low">
+      <div class="flex items-center gap-3"><span class="badge-id">2c</span><h3 class="text-[19px] text-primary">Tiroir mobile (PWA)</h3></div>
+      <span class="text-[12px] text-on-surface-variant italic">cliquez « Filtres » sur le téléphone de gauche</span>
+    </div>
+
+    <div class="bg-surface-container-highest p-8 md:p-12 flex flex-wrap gap-12 justify-center items-start">
+
+      <!-- phone 1 : results + filter button -->
+      <div class="flex flex-col items-center gap-4">
+        <div class="relative bg-[#1a1113] rounded-[42px] p-2.5 shadow-2xl" style="width:340px">
+          <div class="relative bg-background rounded-[34px] overflow-hidden" style="height:660px">
+            <!-- status -->
+            <div class="flex justify-between items-center px-6 pt-3 pb-1 text-[11px] font-semibold text-primary"><span>9:41</span><div class="flex gap-1 items-center"><span class="material-symbols-outlined text-[13px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[13px]">battery_full</span></div></div>
+            <!-- search header -->
+            <div class="px-4 pt-2 pb-3 bg-surface border-b border-outline-variant/50">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-full px-3.5 py-2.5">
+                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                  <input class="flex-1 bg-transparent border-none p-0 text-[13px] placeholder:text-outline/70 focus:ring-0" value="praliné">
+                </div>
+                <button class="relative flex items-center gap-1 bg-primary text-white pl-3 pr-3.5 py-2.5 rounded-full text-[12px] font-semibold shrink-0 active:scale-95 transition-transform" id="m-open">
+                  <span class="material-symbols-outlined text-[16px]">tune</span>Filtres
+                  <span class="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-primary-container text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface">4</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-3 overflow-x-auto hide-sb pb-0.5">
+                <span class="ing inc shrink-0" style="font-size:11.5px">Praliné<button type="button"><span class="material-symbols-outlined text-[14px]">close</span></button></span>
+                <span class="ing exc shrink-0" style="font-size:11.5px">Gélatine<button type="button"><span class="material-symbols-outlined text-[14px]">close</span></button></span>
+                <span class="chip on shrink-0" style="font-size:11.5px;padding:5px 10px">4★+</span>
+              </div>
+            </div>
+            <!-- results -->
+            <div class="px-4 py-4 overflow-y-auto hide-sb" style="height:calc(660px - 148px)">
+              <div class="flex items-baseline justify-between mb-4">
+                <p class="text-[13px] text-on-surface-variant"><strong class="text-primary text-[16px] serif">42</strong> recettes</p>
+                <button class="flex items-center gap-1 text-[12px] font-semibold text-secondary"><span class="material-symbols-outlined text-[15px]">swap_vert</span>Pertinence</button>
+              </div>
+              <div class="flex flex-col gap-4" id="res-2c"></div>
+            </div>
+            <!-- scrim + sheet -->
+            <div class="absolute inset-0 bg-black/45 scrim" id="m-scrim"></div>
+            <div class="absolute left-0 right-0 bottom-0 bg-surface rounded-t-[22px] sheet flex flex-col" id="m-sheet" style="height:88%" data-facets>
+              <div class="pt-3 pb-1 flex justify-center shrink-0"><span class="w-10 h-1 rounded-full bg-outline-variant"></span></div>
+              <div class="flex items-center justify-between px-5 py-3 border-b border-outline-variant/60 shrink-0">
+                <h4 class="text-[19px] text-primary">Filtres</h4>
+                <button class="text-[11.5px] font-semibold uppercase tracking-wider text-secondary" data-reset>Réinitialiser</button>
+              </div>
+              <div class="flex-1 overflow-y-auto hide-sb px-5 divide-y-soft">
+                <!-- ingrédients -->
+                <div class="py-5">
+                  <p class="facet-h mb-3">Ingrédients</p>
+                  <div class="flex items-center gap-1 p-0.5 bg-surface-container-high rounded-full mb-3" data-mode-switch>
+                    <button class="flex-1 flex items-center justify-center gap-1 py-2 rounded-full text-[11.5px] font-semibold transition-all bg-white text-[#1f4d2b] shadow-sm" data-mode="inc"><span class="material-symbols-outlined text-[14px]">add_circle</span>Inclure</button>
+                    <button class="flex-1 flex items-center justify-center gap-1 py-2 rounded-full text-[11.5px] font-semibold transition-all text-on-surface-variant" data-mode="exc"><span class="material-symbols-outlined text-[14px]">do_not_disturb_on</span>Exclure</button>
+                  </div>
+                  <div class="relative" data-ac>
+                    <div class="flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2.5">
+                      <span class="material-symbols-outlined text-[17px] text-outline">nutrition</span>
+                      <input class="flex-1 bg-transparent border-none p-0 text-[13px] placeholder:text-outline/70 focus:ring-0" placeholder="Ajouter un ingrédient…" autocomplete="off" data-ac-input>
+                    </div>
+                    <ul class="absolute left-0 right-0 top-full mt-1 bg-white border border-outline-variant rounded-lg shadow-xl z-30 max-h-[150px] overflow-y-auto hide-sb hidden" data-ac-list></ul>
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-3" data-ing-out>
+                    <span class="ing inc" data-ing="Praliné" data-kind="inc">Praliné<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+                    <span class="ing exc" data-ing="Gélatine" data-kind="exc">Gélatine<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button></span>
+                  </div>
+                </div>
+                <!-- temps -->
+                <div class="py-5">
+                  <div class="flex items-baseline justify-between mb-4"><p class="facet-h">Temps total</p><span class="text-[12.5px] font-semibold text-primary" data-time-out>jusqu'à 2 h</span></div>
+                  <input type="range" min="30" max="480" step="30" value="120" data-time>
+                </div>
+                <!-- note recette -->
+                <div class="py-5">
+                  <p class="facet-h mb-3">Note de la recette</p>
+                  <div class="stars flex gap-1 text-[30px]" data-stars data-val="4">
+                    <span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill on">star</span><span class="material-symbols-outlined fill">star</span>
+                  </div>
+                  <p class="text-[12.5px] text-on-surface-variant mt-1.5" data-stars-out>4 étoiles et plus</p>
+                </div>
+                <!-- type (accordéons pour le reste) -->
+                <details class="py-4 group" open>
+                  <summary class="flex items-center justify-between cursor-pointer list-none"><span class="facet-h">Type de recette</span><span class="material-symbols-outlined text-[19px] text-outline group-open:rotate-180 transition-transform">expand_more</span></summary>
+                  <div class="flex flex-col gap-0.5 mt-3">
+                    <label class="flex items-center gap-2.5 py-1.5 cursor-pointer"><input type="radio" name="t2c" class="text-primary border-outline focus:ring-primary w-4 h-4" checked><span class="text-[13.5px]">Toutes</span></label>
+                    <label class="flex items-center gap-2.5 py-1.5 cursor-pointer"><input type="radio" name="t2c" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[13.5px]">Entremets</span></label>
+                    <label class="flex items-center gap-2.5 py-1.5 cursor-pointer"><input type="radio" name="t2c" class="text-primary border-outline focus:ring-primary w-4 h-4"><span class="text-[13.5px]">Tartes</span></label>
+                  </div>
+                </details>
+                <details class="py-4 group">
+                  <summary class="flex items-center justify-between cursor-pointer list-none"><span class="facet-h">Difficulté</span><span class="material-symbols-outlined text-[19px] text-outline group-open:rotate-180 transition-transform">expand_more</span></summary>
+                  <div class="flex flex-col mt-3">
+                    <label class="diffrow"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill"></i><i class="pill"></i><i class="pill"></i><i class="pill"></i></span><span class="text-[13px] text-on-surface-variant">Très facile</span></label>
+                    <label class="diffrow"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill"></i><i class="pill"></i></span><span class="text-[13px] text-on-surface-variant">Intermédiaire</span></label>
+                    <label class="diffrow"><input type="checkbox" class="rounded-none border-outline text-primary focus:ring-primary w-4 h-4 mr-1"><span class="flex gap-1"><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i><i class="pill f"></i></span><span class="text-[13px] text-on-surface-variant">Expert</span></label>
+                  </div>
+                </details>
+                <details class="py-4 group">
+                  <summary class="flex items-center justify-between cursor-pointer list-none"><span class="facet-h">Catégories</span><span class="material-symbols-outlined text-[19px] text-outline group-open:rotate-180 transition-transform">expand_more</span></summary>
+                  <div class="flex flex-wrap gap-2 mt-3"><span class="chip on">Chocolat</span><span class="chip">Vanille</span><span class="chip">Caramel</span><span class="chip">Agrumes</span><span class="chip">Express</span></div>
+                </details>
+                <details class="py-4 group">
+                  <summary class="flex items-center justify-between cursor-pointer list-none"><span class="facet-h">Allergènes à exclure</span><span class="material-symbols-outlined text-[19px] text-outline group-open:rotate-180 transition-transform">expand_more</span></summary>
+                  <div class="grid grid-cols-2 gap-y-1.5 mt-3">
+                    <label class="flex items-center gap-2 py-1 cursor-pointer"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13px]">Gluten</span></label>
+                    <label class="flex items-center gap-2 py-1 cursor-pointer"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13px]">Lactose</span></label>
+                    <label class="flex items-center gap-2 py-1 cursor-pointer"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13px]">Œuf</span></label>
+                    <label class="flex items-center gap-2 py-1 cursor-pointer"><input type="checkbox" class="rounded-none border-outline text-error focus:ring-error w-4 h-4"><span class="text-[13px]">Fruits à coque</span></label>
+                  </div>
+                </details>
+                <details class="py-4 group">
+                  <summary class="flex items-center justify-between cursor-pointer list-none"><span class="facet-h">Note de l'auteur</span><span class="material-symbols-outlined text-[19px] text-outline group-open:rotate-180 transition-transform">expand_more</span></summary>
+                  <div class="grid grid-cols-4 gap-1.5 mt-3" data-seg>
+                    <button class="py-2 rounded text-[11.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant on" data-on>Toutes</button>
+                    <button class="py-2 rounded text-[11.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant">3★+</button>
+                    <button class="py-2 rounded text-[11.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant">4★+</button>
+                    <button class="py-2 rounded text-[11.5px] font-semibold border border-outline-variant bg-white text-on-surface-variant">4,5★+</button>
+                  </div>
+                </details>
+                <div class="h-4"></div>
+              </div>
+              <div class="px-5 py-4 border-t border-outline-variant/60 bg-surface-container-low shrink-0">
+                <button class="w-full bg-primary text-white py-3.5 rounded-full text-[12.5px] font-semibold uppercase tracking-[0.18em] active:scale-[0.98] transition-transform" id="m-close">Voir les 18 recettes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[12px] font-semibold uppercase tracking-widest text-outline">Résultats + tiroir</p>
+      </div>
+
+      <!-- phone 2 : empty state -->
+      <div class="flex flex-col items-center gap-4">
+        <div class="relative bg-[#1a1113] rounded-[42px] p-2.5 shadow-2xl" style="width:340px">
+          <div class="relative bg-background rounded-[34px] overflow-hidden" style="height:660px">
+            <div class="flex justify-between items-center px-6 pt-3 pb-1 text-[11px] font-semibold text-primary"><span>9:41</span><div class="flex gap-1 items-center"><span class="material-symbols-outlined text-[13px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[13px]">battery_full</span></div></div>
+            <div class="px-4 pt-2 pb-3 bg-surface border-b border-outline-variant/50">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-full px-3.5 py-2.5">
+                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                  <input class="flex-1 bg-transparent border-none p-0 text-[13px] focus:ring-0" value="tarte au yuzu vegan">
+                </div>
+                <button class="relative flex items-center gap-1 bg-primary text-white pl-3 pr-3.5 py-2.5 rounded-full text-[12px] font-semibold shrink-0"><span class="material-symbols-outlined text-[16px]">tune</span>Filtres<span class="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-primary-container text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface">6</span></button>
+              </div>
+            </div>
+            <div class="px-7 flex flex-col items-center justify-center text-center" style="height:calc(660px - 108px)">
+              <span class="material-symbols-outlined text-[56px] text-outline-variant mb-5">search_off</span>
+              <h4 class="text-[22px] text-primary mb-2.5 leading-snug">Aucune recette ne réunit tous ces critères</h4>
+              <p class="text-[13.5px] text-on-surface-variant leading-relaxed mb-7">Vos filtres sont peut-être un peu stricts. Essayez d'en assouplir un&nbsp;:</p>
+              <div class="flex flex-col gap-2.5 w-full">
+                <button class="flex items-center justify-between gap-3 w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 text-left hover:border-primary transition-colors">
+                  <span class="text-[13px]">Retirer <span class="ing exc" style="font-size:11.5px;padding:3px 8px">Gélatine</span></span>
+                  <span class="text-[12px] font-semibold text-secondary shrink-0">+14</span>
+                </button>
+                <button class="flex items-center justify-between gap-3 w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 text-left hover:border-primary transition-colors">
+                  <span class="text-[13px]">Porter le temps à <strong>4 h</strong></span>
+                  <span class="text-[12px] font-semibold text-secondary shrink-0">+8</span>
+                </button>
+                <button class="flex items-center justify-between gap-3 w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 text-left hover:border-primary transition-colors">
+                  <span class="text-[13px]">Accepter <strong>3 ★ et plus</strong></span>
+                  <span class="text-[12px] font-semibold text-secondary shrink-0">+5</span>
+                </button>
+              </div>
+              <button class="mt-7 text-[12px] font-semibold uppercase tracking-wider text-primary border-b border-primary pb-0.5">Tout réinitialiser</button>
+            </div>
+          </div>
+        </div>
+        <p class="text-[12px] font-semibold uppercase tracking-widest text-outline">État vide</p>
+      </div>
+    </div>
+    <div class="px-6 py-5 text-[14px] leading-relaxed text-on-surface-variant border-t border-outline-variant/50" style="max-width:100ch">Sur mobile, un <strong>tiroir remontant</strong> avec les trois facettes vedettes en clair (ingrédients, temps, note) et le reste en accordéons — la liste reste courte à parcourir au pouce. Le bouton de validation est fixé en bas et annonce le nombre de résultats. L'état vide ne se contente pas de constater l'échec : il propose de <strong>relâcher un critère précis</strong>, chiffres à l'appui.</div>
+  </article>
+</section>
+
+<footer class="max-w-[1480px] mx-auto px-6 md:px-10 mt-16 text-[14px] text-on-surface-variant">
+  <p>Parti retenu : <strong>1e</strong> + <strong>2a</strong> (desktop) + <strong>2c</strong> (tablette &amp; mobile).</p>
+</footer>
+
+<script>
+(function(){
+  const IMGS = [
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDHTKlfTm8YqTM8FYSaTsj2S_r2aRDzQR9xnOaiwJFBfF-qvOJQ1k-gzVImnZdPCrN-bSNVTE13Vy2iV_jPhKSQ8ubtjxNIjjeonIJaQ2IoxAItBhpKLw9XIyVYLcmyVFvbchtPKxo1EED6sETVXiMtDH_FGknuByWwy9V2KeQLxTa-r7nvSqXsWN0HCKEBNfPcW3pt58btKDp0ce4dINpXXI-JuoynNPwRRZtIA65bz_VnAO6lLk910gI1n4AMMlVd9651EvtP_aU",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuCr1XzJJ8kDpMR_HHRBtdMIgCNKUxGA0rh0zl4mMOt9c7-0I0M9Yo0dVPtPVQYk_QEntJGX1s3XXzcpxri80UlaLuIxhfZ-RDAWBgcO5FLLYi64LhCs6osUga3B9ij3TIcnpbzj3rK-n9BugtPcHaRXi9o0lmiKd0VVxRyb7WajAcppjnInxpFmKjP7_5eF7X4Oon_eYzpe5noDeHg103yjJsBwPUMKakSmyhBMjxg1OxPPzBt60yH7yW6U3T10-t5Lc0KsKskL4mk",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDBRwgdDUbhDb7C6lMY5rYJoSe5LOyM3gSH9GJsN6IzRRpSR-6lR_1LggoAeQcA2E1XztqiNCr0iv4TiA8Rf7MzL2OvYUDsWFO4uhQWCH4cCz5FQ5FG47rGEWwvrrKqmxaqrPTReHHAtKW1BkOyUhgWc4g2Yi8qYIGuxOtHJpxA6WbAWJkSjY6owPzJyQQYGo7zhA4wmJGGcaV_nyR2j73WoBkLPDVNjSNxGu9ycEwK-LzRW7trfPYzDWPtt0GiWgXN-v-FKZspX-o",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuANJ0ieXCpxhK3uQ-dFOJsRmE2GpCYh_FY483wjKrW4tVMntWdR9AXo95JqIbogxeldjxEU1IyaiZvFwbbGq1-Y13beZD_ucLMCb77sYY8RuHeQgoOgeO8NXuwaDGjr9G5gY-lDhInwx3Zb9l70UwuWrhhD-VonVaoco9_VPh-Z2SzFAPEZ7broCBC_oiAphVp4uqm0fXtqiWb4JENaz-XgiVBfYiWXMuqPNSCwIqtJw05xFbLDlL52UD1Ni47G9NTSS-KEccKykR8",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuBsoh8IDjaed0PGxAEiHqTbujQyPol7ecVDmkMJBEr58oPqJadrnYA6gbSQ_HPmi9A7qtnHifBt1D4ilHfm74HHzd4VrUkAbhOmxsOxVkMMP-u7JQgrtunND1MdeYFLmdfI0awX5yqJjfWotKzrwaru6vUuUNFbV2ApbYcBFBErMkgu7irv-EyibPMG8Mrq2GI8NVBAweIL46VKBqn6c8qU5Re4bMD3C-StTeFzFIWJ5vur2bXGjjNj56XJwyICQY6U8QVep-52sWU",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuBEzVp4AYJog1Dv280v-4R42WDvpPZhCH5ZNyCjQNZWkK9kzTcvcpgnQ6f7kLSHcrPYZEVCg1yKe5p5OfgsV1TzAx1nqz57AfXBq2CgEZYNuUEYBEJsjfx9AP4Z9paApaY4MjlRgBjTGSiUL04rDpcaOARIdH8uqyu7x-dRwFe1Yf2t66vB8X-vRoFKJ58hzqhFmhfvX-BGhIFKHLKcDiduuTsCoIV5QoNSpXujfzb-V_Ux0m6dEcgaDUFxghyznCu84IzlkzOiN6Q"
+  ];
+  const RECIPES = [
+    {t:"Entremets Praliné Noisette", a:"Chef Antoine", n:"4,9", c:"48", d:3, tm:"3 h"},
+    {t:"Tarte Chocolat Praliné", a:"Marie-Claire", n:"4,7", c:"31", d:2, tm:"1 h 45"},
+    {t:"Paris-Brest Traditionnel", a:"Chef Luc", n:"4,8", c:"64", d:4, tm:"2 h 30"},
+    {t:"Croustillant Praliné Feuilleté", a:"Jean-Pierre", n:"4,5", c:"22", d:2, tm:"55 min"},
+    {t:"Bûche Praliné Café", a:"Chef Antoine", n:"4,6", c:"18", d:4, tm:"4 h"},
+    {t:"Rochers Praliné Maison", a:"Camille L.", n:"4,4", c:"27", d:1, tm:"40 min"}
+  ];
+  const pills = d => Array.from({length:5},(_,i)=>'<i style="width:14px;height:6px;border-radius:999px;display:inline-block;background:'+(i<d?'#300a12':'#e0d0d0')+'"></i>').join('');
+
+  // grid cards (2a)
+  const g = document.getElementById('res-2a');
+  if (g) g.innerHTML = RECIPES.map((r,i)=>`
+    <article class="bg-white border border-outline-variant/60 rounded-xl overflow-hidden group hover:-translate-y-0.5 hover:shadow-lg transition-all">
+      <div class="h-40 overflow-hidden"><img src="${IMGS[i]}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></div>
+      <div class="p-4">
+        <h4 class="text-[16.5px] serif text-primary leading-snug mb-2">${r.t}</h4>
+        <div class="flex items-center gap-1.5 mb-3">
+          <span class="material-symbols-outlined fill text-[15px] text-primary-container">star</span>
+          <span class="text-[12.5px] font-semibold text-primary">${r.n}</span>
+          <span class="text-[11.5px] text-outline">(${r.c})</span>
+          <span class="w-1 h-1 rounded-full bg-outline-variant mx-1"></span>
+          <span class="text-[11.5px] text-on-surface-variant">${r.tm}</span>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-outline-variant/40">
+          <span class="text-[11.5px] italic text-outline">${r.a}</span>
+          <span class="flex gap-0.5 items-center">${pills(r.d)}</span>
+        </div>
+      </div>
+    </article>`).join('');
+
+  // list cards (2c)
+  const l = document.getElementById('res-2c');
+  if (l) l.innerHTML = RECIPES.slice(0,4).map((r,i)=>`
+    <article class="flex gap-3 bg-white border border-outline-variant/60 rounded-lg overflow-hidden p-2">
+      <div class="w-20 h-20 rounded shrink-0 overflow-hidden"><img src="${IMGS[i]}" alt="" class="w-full h-full object-cover"></div>
+      <div class="flex-1 min-w-0 py-0.5 pr-1">
+        <h4 class="text-[14px] serif text-primary leading-snug mb-1.5" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.t}</h4>
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined fill text-[13px] text-primary-container">star</span>
+          <span class="text-[11.5px] font-semibold text-primary">${r.n}</span>
+          <span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+          <span class="text-[11px] text-on-surface-variant">${r.tm}</span>
+        </div>
+        <div class="flex gap-0.5 items-center mt-1.5">${pills(r.d)}</div>
+      </div>
+    </article>`).join('');
+
+  // ---------- ingredient autocomplete + badges ----------
+  const ING = ["Praliné","Pralin","Chocolat noir","Chocolat au lait","Chocolat blanc","Noisette","Pistache","Amande","Beurre","Beurre de tourage","Farine T55","Sucre semoule","Sucre glace","Cassonade","Œuf","Jaune d'œuf","Blanc d'œuf","Lait entier","Crème liquide 35%","Mascarpone","Gélatine","Agar-agar","Vanille","Fève de tonka","Café","Yuzu","Citron","Framboise","Fraise","Mangue","Passion","Caramel","Fleur de sel","Levure chimique","Miel","Rhum"];
+  document.querySelectorAll('[data-facets]').forEach(scope => {
+    let mode = 'inc';
+    const sw = scope.querySelector('[data-mode-switch]');
+    const ac = scope.querySelector('[data-ac]');
+    const out = scope.querySelector('[data-ing-out]');
+    if (sw) sw.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+      mode = b.dataset.mode;
+      sw.querySelectorAll('[data-mode]').forEach(x => {
+        const on = x === b;
+        x.classList.toggle('bg-white', on); x.classList.toggle('shadow-sm', on);
+        x.classList.toggle('text-on-surface-variant', !on);
+        x.style.color = on ? (mode === 'inc' ? '#1f4d2b' : '#93000a') : '';
+      });
+      if (ac) ac.querySelector('[data-ac-input]').focus();
+    }));
+
+    if (ac && out) {
+      const input = ac.querySelector('[data-ac-input]');
+      const list = ac.querySelector('[data-ac-list]');
+      const add = name => {
+        if (!name) return;
+        if (Array.from(out.querySelectorAll('[data-ing]')).some(e => e.dataset.ing.toLowerCase() === name.toLowerCase())) return;
+        const el = document.createElement('span');
+        el.className = 'ing ' + mode;
+        el.dataset.ing = name; el.dataset.kind = mode;
+        el.innerHTML = name + '<button type="button" data-x><span class="material-symbols-outlined text-[15px]">close</span></button>';
+        out.appendChild(el);
+        input.value = ''; list.classList.add('hidden'); bump(scope);
+      };
+      const render = q => {
+        const hits = ING.filter(i => i.toLowerCase().includes(q.toLowerCase())).slice(0, 7);
+        if (!q || !hits.length) { list.classList.add('hidden'); return; }
+        list.innerHTML = hits.map(h => `<li><button type="button" class="w-full text-left px-3.5 py-2.5 text-[13.5px] hover:bg-surface-container transition-colors flex items-center gap-2"><span class="material-symbols-outlined text-[16px] ${mode==='inc'?'text-[#2f6b3f]':'text-error'}">${mode==='inc'?'add_circle':'do_not_disturb_on'}</span>${h}</button></li>`).join('');
+        list.classList.remove('hidden');
+        list.querySelectorAll('button').forEach((b,i) => b.addEventListener('click', () => add(hits[i])));
+      };
+      input.addEventListener('input', () => render(input.value));
+      input.addEventListener('focus', () => render(input.value));
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const f = list.querySelector('button'); f ? f.click() : add(input.value.trim()); } });
+      document.addEventListener('click', e => { if (!ac.contains(e.target)) list.classList.add('hidden'); });
+      out.addEventListener('click', e => { const b = e.target.closest('[data-x]'); if (b) { b.closest('[data-ing]').remove(); bump(scope); } });
+    }
+
+    // chips
+    scope.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { c.classList.toggle('on'); bump(scope); }));
+    // difficulty rows
+    scope.querySelectorAll('.diffrow').forEach(r => {
+      const cb = r.querySelector('input');
+      cb.addEventListener('change', () => { r.classList.toggle('on', cb.checked); bump(scope); });
+    });
+    // segmented
+    scope.querySelectorAll('[data-seg]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      seg.querySelectorAll('button').forEach(x => {
+        const on = x === b;
+        x.classList.toggle('on', on);
+        x.style.background = on ? '#300a12' : ''; x.style.borderColor = on ? '#300a12' : '';
+        x.style.color = on ? '#fff' : '';
+      });
+      bump(scope);
+    })));
+    // stars
+    scope.querySelectorAll('[data-stars]').forEach(st => {
+      const out2 = scope.querySelector('[data-stars-out]');
+      const paint = n => st.querySelectorAll('span').forEach((s,i) => s.classList.toggle('on', i < n));
+      st.querySelectorAll('span').forEach((s,i) => {
+        s.addEventListener('mouseenter', () => paint(i+1));
+        s.addEventListener('click', () => {
+          const v = (+st.dataset.val === i+1) ? 0 : i+1;
+          st.dataset.val = v; paint(v);
+          if (out2) out2.textContent = v ? (v + (v>1?' étoiles':' étoile') + ' et plus') : 'Toutes les notes';
+          bump(scope);
+        });
+      });
+      st.addEventListener('mouseleave', () => paint(+st.dataset.val));
+    });
+    // time slider
+    const tr = scope.querySelector('[data-time]'), to = scope.querySelector('[data-time-out]');
+    if (tr && to) tr.addEventListener('input', () => {
+      const v = +tr.value, h = Math.floor(v/60), m = v%60;
+      to.textContent = v >= 480 ? 'sans limite' : 'jusqu\u2019à ' + (h ? h + ' h' + (m ? ' ' + m : '') : m + ' min');
+    });
+    // author rating slider
+    const ar = scope.querySelector('[data-arate]'), ao = scope.querySelector('[data-arate-out]');
+    if (ar && ao) ar.addEventListener('input', () => {
+      ao.textContent = +ar.value === 0 ? 'Toutes' : (+ar.value).toFixed(1).replace('.', ',') + ' ★ et plus';
+    });
+    // reset
+    const rs = scope.querySelector('[data-reset]');
+    if (rs) rs.addEventListener('click', () => {
+      scope.querySelectorAll('[data-ing]').forEach(e => e.remove());
+      scope.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on'));
+      scope.querySelectorAll('.diffrow').forEach(r => { r.classList.remove('on'); r.querySelector('input').checked = false; });
+      scope.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+      scope.querySelectorAll('[data-stars]').forEach(st => { st.dataset.val = 0; st.querySelectorAll('span').forEach(s => s.classList.remove('on')); });
+      const so = scope.querySelector('[data-stars-out]'); if (so) so.textContent = 'Toutes les notes';
+      bump(scope);
+    });
+  });
+
+  function bump(scope){
+    const c = scope.querySelector('[data-count]');
+    if (!c) return;
+    let n = scope.querySelectorAll('[data-ing]').length + scope.querySelectorAll('.chip.on').length + scope.querySelectorAll('.diffrow.on').length;
+    scope.querySelectorAll('input[type=checkbox]:checked').forEach(cb => { if (!cb.closest('.diffrow')) n++; });
+    scope.querySelectorAll('[data-stars]').forEach(st => { if (+st.dataset.val) n++; });
+    c.textContent = n;
+    c.style.display = n ? '' : 'none';
+  }
+
+  // 1e expander
+  const eb = document.getElementById('exp-btn'), ep = document.getElementById('exp-panel'), ei = document.getElementById('exp-ico');
+  if (eb) eb.addEventListener('click', () => {
+    const open = ep.style.maxHeight !== '0px' && ep.style.maxHeight !== '';
+    ep.style.maxHeight = open ? '0' : '260px';
+    ep.style.opacity = open ? '0' : '1';
+    ei.textContent = open ? 'search' : 'close';
+    if (!open) setTimeout(() => ep.querySelector('input').focus(), 260);
+  });
+
+  // mobile sheet
+  const mo = document.getElementById('m-open'), mc = document.getElementById('m-close'),
+        ms = document.getElementById('m-sheet'), mscr = document.getElementById('m-scrim');
+  const setSheet = o => { ms.classList.toggle('open', o); mscr.classList.toggle('open', o); };
+  if (mo) mo.addEventListener('click', () => setSheet(true));
+  if (mc) mc.addEventListener('click', () => setSheet(false));
+  if (mscr) mscr.addEventListener('click', () => setSheet(false));
+})();
+</script>
+</body>
+</html>
