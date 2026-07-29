@@ -140,7 +140,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       description: desc,
       subSteps,
       tips: s.tips || '',
-      scaling: 'simple',
+      scaling: grp?.scaling_mode || 'simple',
       ings: ings.length
         ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: parseAllergens(i.allergen) }))
         : [emptyIng()],
@@ -1010,7 +1010,7 @@ export function CreerForm({
               <li key={u.key} className="flex items-start gap-4 group">
                 <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
                 <div className="flex-grow">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
                     <input
                       list="dl-utensils"
                       value={u.name}
@@ -1019,10 +1019,11 @@ export function CreerForm({
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
-                    <input
+                    <textarea
                       value={u.comment}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
-                      className="editorial-input text-on-surface w-full"
+                      className="editorial-input text-on-surface w-full resize-y"
+                      rows={1}
                       placeholder="Commentaire (optionnel)"
                     />
                   </div>
@@ -1312,7 +1313,7 @@ export function CreerForm({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <input
+                            <textarea
                               value={g.comment}
                               onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
                               onKeyDown={(e) => {
@@ -1328,8 +1329,8 @@ export function CreerForm({
                                   }, 0);
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full"
-                              type="text"
+                              className="editorial-input text-on-surface w-full resize-y"
+                              rows={1}
                               placeholder="Commentaire (optionnel)"
                             />
                           </div>
@@ -1367,7 +1368,12 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label>
+                    <label className="font-label-md text-label-md text-outline mb-2">
+                      DESCRIPTION{' '}
+                      <span className="italic normal-case font-body-md text-on-surface-variant">
+                        (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                      </span>
+                    </label>
                     {st.subSteps === null ? (
                       // Mode texte libre : description + bouton d'éclatement.
                       <>
@@ -1384,7 +1390,10 @@ export function CreerForm({
                             onClick={() => splitToSubsteps(si)}
                             className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
                           >
-                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes
+                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes{' '}
+                            <span className="italic normal-case font-body-md text-on-surface-variant">
+                              (Permet de suivre plus précisément le déroulé de la recette lors de l&apos;exécution)
+                            </span>
                           </button>
                         </div>
                       </>
