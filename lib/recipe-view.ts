@@ -164,6 +164,24 @@ export function dayLabel(offset: number | null | undefined): string {
   return o > 0 ? `JOUR J − ${o}` : 'JOUR J';
 }
 
+// Libellé de la règle d'ajustement des quantités d'une étape (miroir des
+// options de l'éditeur, cf. `scalingOptions` dans CreerForm.tsx).
+const SCALING_LBL: Record<string, Record<string, string>> = {
+  mold: {
+    simple: 'Ajustement selon la taille du moule (volume)',
+    foncage: 'Ajustement selon la surface (fonçage, glaçage…)',
+    aucun: "Pas d'ajustement pour cette étape",
+  },
+  default: {
+    simple: 'Proportionnel à la quantité à produire',
+    aucun: "Pas d'ajustement pour cette étape",
+  },
+};
+export function scalingModeLabel(mode: string | null | undefined, measureType: string | null | undefined): string {
+  const table = SCALING_LBL[measureType === 'mold' ? 'mold' : 'default'];
+  return table[mode || 'simple'] || table.simple;
+}
+
 // Regroupe les étapes par jour pour le planning de préparation.
 export function planningDays(steps: RecipeFull['recipe_steps']): { offset: number; items: string[] }[] {
   const days: { offset: number; items: string[] }[] = [];

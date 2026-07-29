@@ -77,6 +77,14 @@ function splitSousEtapes(description: string): string[] {
   return parts.length ? parts : [''];
 }
 
+// Zone de commentaire extensible : la hauteur suit le contenu (une ligne au
+// repos), au lieu d'un champ mono-ligne qui tronque le texte saisi.
+function autoResize(el: HTMLTextAreaElement | null): void {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 let uid = 0;
 const key = () => `k${uid++}`;
 
@@ -140,7 +148,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       description: desc,
       subSteps,
       tips: s.tips || '',
-      scaling: 'simple',
+      scaling: grp?.scaling_mode || 'simple',
       ings: ings.length
         ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: parseAllergens(i.allergen) }))
         : [emptyIng()],
@@ -1019,10 +1027,15 @@ export function CreerForm({
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
-                    <input
+                    <textarea
+                      ref={autoResize}
                       value={u.comment}
-                      onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
-                      className="editorial-input text-on-surface w-full"
+                      onChange={(e) => {
+                        setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)));
+                        autoResize(e.target);
+                      }}
+                      className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                      rows={1}
                       placeholder="Commentaire (optionnel)"
                     />
                   </div>
@@ -1312,9 +1325,13 @@ export function CreerForm({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <input
+                            <textarea
+                              ref={autoResize}
                               value={g.comment}
-                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
+                              onChange={(e) => {
+                                patchIng(si, ii, { comment: e.target.value });
+                                autoResize(e.target);
+                              }}
                               onKeyDown={(e) => {
                                 // Tab (sans Maj) depuis le dernier champ de la dernière
                                 // ligne → ouvrir une nouvelle ligne d'ingrédient et y
@@ -1328,8 +1345,8 @@ export function CreerForm({
                                   }, 0);
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full"
-                              type="text"
+                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                              rows={1}
                               placeholder="Commentaire (optionnel)"
                             />
                           </div>
@@ -1367,7 +1384,12 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">DESCRIPTION</label>
+                    <label className="font-label-md text-label-md text-outline mb-2">
+                      DESCRIPTION{' '}
+                      <span className="italic normal-case font-body-md text-on-surface-variant">
+                        (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                      </span>
+                    </label>
                     {st.subSteps === null ? (
                       // Mode texte libre : description + bouton d'éclatement.
                       <>
@@ -1384,7 +1406,10 @@ export function CreerForm({
                             onClick={() => splitToSubsteps(si)}
                             className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
                           >
-                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes
+                            <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes{' '}
+                            <span className="italic normal-case font-body-md text-on-surface-variant">
+                              (Permet de suivre plus précisément le déroulé de la recette lors de l&apos;exécution)
+                            </span>
                           </button>
                         </div>
                       </>
