@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { NavigationSpinner } from '@/components/NavigationSpinner';
+import { ServiceWorkerCleanup } from '@/components/ServiceWorkerCleanup';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
 import { getImpersonationContext } from '@/lib/impersonation';
@@ -50,6 +51,8 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <NavigationSpinner />
         </Suspense>
+        {/* Purge l'ancien service worker de la version vanilla (cf. public/sw.js). */}
+        <ServiceWorkerCleanup />
         <ImpersonationProvider
           value={
             impersonation
