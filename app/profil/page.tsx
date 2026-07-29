@@ -27,10 +27,18 @@ export default async function ProfilPage({ searchParams }: SearchParams) {
   const fallbackAvatar = meta.avatar_url || meta.picture || null;
 
   // Profil applicatif ; créé au vol s'il n'existe pas encore (1re connexion).
+  // `email` et `provider` sont recopiés depuis la session : sans eux, le membre
+  // s'affiche sans adresse dans Admin → Membres et la connexion « en tant que »
+  // n'a plus d'adresse à qui adresser son lien temporaire.
   let profile = await getProfile(user.id);
   if (!profile) {
     const supabase = await createClient();
-    await supabase.from('profiles').upsert({ id: user.id, full_name: fallbackName });
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      full_name: fallbackName,
+      email: user.email ?? null,
+      provider: user.app_metadata?.provider ?? null,
+    });
     profile = await getProfile(user.id);
   }
 
