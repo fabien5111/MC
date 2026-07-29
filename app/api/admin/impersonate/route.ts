@@ -46,16 +46,31 @@ export async function POST(req: Request) {
     .select('id, email, full_name, role')
     .eq('id', targetId)
     .maybeSingle();
-  if (!target?.email) {
+  if (!target) {
     return NextResponse.json(
-      { erreur: "Ce membre n'a pas encore de compte (invitation en attente) : impossible d'ouvrir une session." },
+      { erreur: "Profil introuvable pour ce membre : impossible d'ouvrir une session." },
+      { status: 404 },
+    );
+  }
+
+  // `profiles.email` peut être vide sur les comptes créés avant que le trigger
+  // `handle_new_user` ne le renseigne : on retombe alors sur l'adresse d'auth,
+  // seule donnée réellement exigée par `generateLink`.
+  let targetEmail = target.email;
+  if (!targetEmail) {
+    const { data: authUser } = await admin.auth.admin.getUserById(targetId);
+    targetEmail = authUser?.user?.email ?? null;
+  }
+  if (!targetEmail) {
+    return NextResponse.json(
+      { erreur: "Ce membre n'a pas d'adresse e-mail exploitable : impossible d'ouvrir une session." },
       { status: 400 },
     );
   }
 
   const mode = await getAdminImpersonationAccess(user.id);
   const expiresAt = new Date(Date.now() + IMPERSONATION_TTL_MINUTES * 60_000).toISOString();
-  const targetName = target.full_name || target.email;
+  const targetName = target.full_name || targetEmail;
 
   // Ligne d'audit créée AVANT le lien : une génération de lien laisse une trace
   // même si le lien n'est jamais ouvert (started_at reste null).
@@ -65,7 +80,7 @@ export async function POST(req: Request) {
       admin_id: user.id,
       admin_email: me.email ?? user.email ?? null,
       target_user_id: target.id,
-      target_email: target.email,
+      target_email: targetEmail,
       target_name: target.full_name,
       mode,
       expires_at: expiresAt,
@@ -86,7 +101,7 @@ export async function POST(req: Request) {
   // en cookies httpOnly, exploitable par les Server Components.
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
     type: 'magiclink',
-    email: target.email,
+    email: targetEmail,
   });
 
   if (linkError || !link?.properties?.hashed_token) {

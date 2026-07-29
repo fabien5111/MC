@@ -3,7 +3,7 @@
 // Gestion des membres (porté de admin-membres.html) : stats, filtres, recherche,
 // table (profils inscrits + invitations allowlist), édition (statut/rôle/plan/
 // démo/notes), invitation, suppression. Mutations via le client navigateur.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -26,6 +26,10 @@ export function MembersManager({ members }: { members: Member[] }) {
   const [editing, setEditing] = useState<Member | null>(null);
   const [impersonation, setImpersonation] = useState<ImpersonationLink | null>(null);
   const [impBusy, setImpBusy] = useState(false);
+  // Copie locale des props serveur : permet de retirer une ligne supprimée en
+  // même temps que le spinner, sans attendre la fin du router.refresh().
+  const [rows, setRows] = useState(members);
+  useEffect(() => setRows(members), [members]);
 
   // « Connecter en tant que » : aucun choix de niveau d'accès ici — il est
   // hérité du profil de l'admin (profiles.impersonation_access) et résolu par
@@ -63,17 +67,17 @@ export function MembersManager({ members }: { members: Member[] }) {
 
   const stats = useMemo(
     () => ({
-      total: members.length,
-      active: members.filter((m) => m.status === 'active').length,
-      pending: members.filter((m) => m.status === 'pending').length,
-      disabled: members.filter((m) => m.status === 'disabled').length,
+      total: rows.length,
+      active: rows.filter((m) => m.status === 'active').length,
+      pending: rows.filter((m) => m.status === 'pending').length,
+      disabled: rows.filter((m) => m.status === 'disabled').length,
     }),
-    [members],
+    [rows],
   );
 
   const filtered = useMemo(
     () =>
-      members
+      rows
         .filter((m) => {
           if (filter === 'demo') return m.is_demo;
           if (filter === 'all') return true;
@@ -83,22 +87,31 @@ export function MembersManager({ members }: { members: Member[] }) {
           const q = query.toLowerCase();
           return !q || [m.email, m.fullName || '', m.notes || ''].some((v) => v.toLowerCase().includes(q));
         }),
-    [members, filter, query],
+    [rows, filter, query],
   );
 
+  // La suppression passe par une route serveur : effacer la seule ligne
+  // `profiles` depuis le navigateur laissait le compte d'authentification
+  // intact, donc toujours capable de se connecter (et de recréer son profil).
   async function del(m: Member) {
-    await mutate(
+    const ok = await mutate(
       async () => {
-        const supabase = createClient();
-        if (m.allowlistId) {
-          const { error } = await supabase.from('allowlist').delete().eq('id', m.allowlistId);
-          if (error) return { error };
-        }
-        if (m.profileId) return supabase.from('profiles').delete().eq('id', m.profileId);
-        return { error: null };
+        const res = await fetch('/api/admin/delete-member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId: m.profileId, allowlistId: m.allowlistId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        return { error: res.ok ? null : { message: data?.erreur || 'suppression impossible' } };
       },
-      { confirm: `Supprimer « ${m.fullName || m.email} » ?` },
+      {
+        confirm:
+          `Supprimer « ${m.fullName || m.email} » ?\n\n` +
+          'Le compte de connexion sera également supprimé : le membre ne pourra plus se connecter.',
+        errorLabel: 'Suppression impossible',
+      },
     );
+    if (ok) setRows((prev) => prev.filter((r) => r.id !== m.id));
   }
 
   function copyInviteLinkFor(email: string) {
@@ -155,7 +168,7 @@ export function MembersManager({ members }: { members: Member[] }) {
         ))}
       </div>
 
-      <InviteCard members={members} onInvited={() => router.refresh()} />
+      <InviteCard members={rows} onInvited={() => router.refresh()} />
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="flex gap-2 flex-wrap">
@@ -685,7 +698,8 @@ function Panel({
                 Supprimer définitivement
               </button>
               <p className="text-[10px] text-on-surface-variant text-center">
-                La suppression est irréversible. Les recettes du membre seront orphelinées.
+                La suppression est irréversible : le compte de connexion est supprimé et les recettes du membre
+                seront orphelinées.
               </p>
             </>
           )}
