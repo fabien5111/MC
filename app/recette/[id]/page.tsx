@@ -8,8 +8,8 @@ import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl, effectiveTimes, scalingModeLabel } from '@/lib/recipe-view';
-import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum, buildGroupRows, ownedGroupOrders } from '@/lib/recipe-plan';
+import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl, effectiveTimes } from '@/lib/recipe-view';
+import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum } from '@/lib/recipe-plan';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -145,7 +145,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const merged = mergeIngredients(recipe);
   const days = planningDays(steps);
-  const ownedGroups = overrides ? ownedGroupOrders(overrides, steps) : new Set<number>();
   // Avec un contexte de planification, « JOUR J − n » devient la vraie date.
   const dLabel = (offset: number | null | undefined) =>
     planContext && planContext.planned_date ? planDayLabel(offset, planContext.planned_date) : dayLabel(offset);
@@ -636,7 +635,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
-                const stepRows = planContext && overrides && grp ? buildGroupRows(grp, planContext, overrides, ownedGroups.has(grp.order_index || 0)) : [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const alreadyDone = !!(planContext && overrides && isStepDone(overrides, s.id));
@@ -675,61 +673,19 @@ export default async function RecettePage({ params, searchParams }: Params) {
                           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                         </summary>
                         <div className="p-4 bg-white">
-                          <p className="font-label-md text-[11px] italic text-on-surface-variant mb-3">
-                            {scalingModeLabel(grp?.scaling_mode, recipe.measure_type)}
-                          </p>
-                          {planContext && overrides ? (
-                            <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', columnGap: 32 }}>
-                              <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                <span />
-                                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
-                                <span className="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
-                                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d&apos;origine</span>
+                          <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                            {ings.map((it) => (
+                              <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                <span className="font-label-md text-label-md text-primary">
+                                  <Qty quantity={it.quantity} unit={it.unit} />
+                                </span>
+                                <span className="font-body-md text-body-md">
+                                  {it.name}
+                                  {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                </span>
                               </li>
-                              {stepRows.map((row) => {
-                                const tone = row.removed
-                                  ? 'text-error line-through'
-                                  : row.owned
-                                    ? 'text-green-700 line-through opacity-70'
-                                    : row.addedIdx != null
-                                      ? 'text-green-700'
-                                      : row.modified
-                                        ? 'text-orange-600'
-                                        : '';
-                                return (
-                                  <li key={row.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                    <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
-                                      {row.name}
-                                      {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
-                                    </span>
-                                    <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                                      {row.coef != null ? `× ${fmtNum(row.coef)}` : '—'}
-                                    </span>
-                                    <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
-                                      <Qty quantity={row.adjQty != null ? fmtNum(row.adjQty) : row.quantity} unit={row.unit} />
-                                    </span>
-                                    <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                                      {row.addedIdx != null ? '—' : <Qty quantity={row.quantity} unit={row.unit} />}
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                              {ings.map((it) => (
-                                <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                  <span className="font-label-md text-label-md text-primary">
-                                    <Qty quantity={it.quantity} unit={it.unit} />
-                                  </span>
-                                  <span className="font-body-md text-body-md">
-                                    {it.name}
-                                    {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                            ))}
+                          </ul>
                         </div>
                       </details>
                     )}

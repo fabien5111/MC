@@ -77,14 +77,6 @@ function splitSousEtapes(description: string): string[] {
   return parts.length ? parts : [''];
 }
 
-// Zone de commentaire extensible : la hauteur suit le contenu (une ligne au
-// repos), au lieu d'un champ mono-ligne qui tronque le texte saisi.
-function autoResize(el: HTMLTextAreaElement | null): void {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
-
 let uid = 0;
 const key = () => `k${uid++}`;
 
@@ -1018,7 +1010,7 @@ export function CreerForm({
               <li key={u.key} className="flex items-start gap-4 group">
                 <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
                 <div className="flex-grow">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
                     <input
                       list="dl-utensils"
                       value={u.name}
@@ -1028,14 +1020,10 @@ export function CreerForm({
                       autoComplete="off"
                     />
                     <textarea
-                      ref={autoResize}
                       value={u.comment}
-                      onChange={(e) => {
-                        setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)));
-                        autoResize(e.target);
-                      }}
-                      className="editorial-input text-on-surface w-full resize-none overflow-hidden"
-                      rows={1}
+                      onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      className="editorial-input text-on-surface w-full resize-y"
+                      rows={2}
                       placeholder="Commentaire (optionnel)"
                     />
                   </div>
@@ -1326,12 +1314,8 @@ export function CreerForm({
                           </div>
                           <div className="flex-1 min-w-0">
                             <textarea
-                              ref={autoResize}
                               value={g.comment}
-                              onChange={(e) => {
-                                patchIng(si, ii, { comment: e.target.value });
-                                autoResize(e.target);
-                              }}
+                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
                               onKeyDown={(e) => {
                                 // Tab (sans Maj) depuis le dernier champ de la dernière
                                 // ligne → ouvrir une nouvelle ligne d'ingrédient et y
@@ -1345,8 +1329,8 @@ export function CreerForm({
                                   }, 0);
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
-                              rows={1}
+                              className="editorial-input text-on-surface w-full resize-y"
+                              rows={2}
                               placeholder="Commentaire (optionnel)"
                             />
                           </div>

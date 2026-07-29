@@ -103,14 +103,6 @@ function normMateriel(list: any): { nom: string; commentaire: string }[] {
     .filter((m: { nom: string }) => m.nom);
 }
 
-// Zone de commentaire extensible : la hauteur suit le contenu (une ligne au
-// repos), au lieu d'un champ mono-ligne qui tronque le texte saisi.
-function autoResize(el: HTMLTextAreaElement | null): void {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
-
 function fmtDuree(min: number): string {
   min = Math.round(min);
   const j = Math.floor(min / 1440);
@@ -1209,14 +1201,10 @@ export function RelectureEditor({
                     </button>
                   </div>
                   <textarea
-                    ref={autoResize}
                     value={m.commentaire}
-                    onChange={(e) => {
-                      patchUtensil(mi, { commentaire: e.target.value });
-                      autoResize(e.target);
-                    }}
-                    className={`${champ} text-sm mt-1 resize-none overflow-hidden`}
-                    rows={1}
+                    onChange={(e) => patchUtensil(mi, { commentaire: e.target.value })}
+                    className={`${champ} text-sm mt-1 resize-y`}
+                    rows={2}
                     placeholder="Commentaire (optionnel — taille, réglage…)"
                   />
                   {isAdmin && m.nom.trim() && !known && (
@@ -1450,14 +1438,10 @@ export function RelectureEditor({
                           </button>
                         </div>
                         <textarea
-                          ref={autoResize}
                           value={g.note}
-                          onChange={(e) => {
-                            patchIng(si, ii, { note: e.target.value });
-                            autoResize(e.target);
-                          }}
-                          className={`${champ} text-sm mt-1 resize-none overflow-hidden`}
-                          rows={1}
+                          onChange={(e) => patchIng(si, ii, { note: e.target.value })}
+                          className={`${champ} text-sm mt-1 resize-y`}
+                          rows={2}
                           placeholder="Commentaire (optionnel — pommade, à froid…)"
                         />
                         <div className="flex flex-wrap items-center gap-1 mt-1">
