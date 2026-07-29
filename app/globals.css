@@ -335,3 +335,14 @@ img {
     transform: rotateY(-28deg);
   }
 }
+
+/* ── Impersonation ────────────────────────────────────────────
+   Le bandeau « Connecté en tant que » est `fixed` en haut d'écran : on décale
+   d'autant le contenu, ainsi que les en-têtes collants (`sticky top-0` de
+   Header et des écrans admin) qui viendraient sinon se glisser dessous. */
+body[data-impersonation] {
+  padding-top: 2.75rem;
+}
+body[data-impersonation] .sticky.top-0 {
+  top: 2.75rem;
+}

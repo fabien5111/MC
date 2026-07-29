@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { requireUser, isAdmin } from '@/lib/auth';
+import { requireWritableSession } from '@/lib/impersonation';
 import { getRecipeFull } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
@@ -14,6 +15,8 @@ type SearchParams = { searchParams: Promise<{ id?: string }> };
 
 export default async function CreerPage({ searchParams }: SearchParams) {
   const user = await requireUser('/creer');
+  // Impersonation en lecture seule : l'éditeur n'est pas accessible.
+  await requireWritableSession();
   const { id } = await searchParams;
 
   const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe] =

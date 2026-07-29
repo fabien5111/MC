@@ -18,6 +18,7 @@
 // navigateur et rattachée à l'import.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isReadOnlySession } from '@/lib/impersonation';
 import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
@@ -62,6 +63,16 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+
+  // L'import écrit un brouillon : interdit pendant une impersonation en
+  // lecture seule (le bridage de l'UI ne suffit pas, la route est appelable
+  // directement).
+  if (await isReadOnlySession()) {
+    return NextResponse.json(
+      { erreur: 'Session de consultation (lecture seule) : import impossible.' },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const texte = typeof body?.texte === 'string' ? body.texte.trim() : '';

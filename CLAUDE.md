@@ -53,8 +53,11 @@ app/                    Pages et routes (App Router)
 ├── api/
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
-│   └── scale-recipe/     POST — coefficient IA d'ajustement des quantités
-└── auth/callback/      Callback OAuth / confirmation e-mail
+│   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
+│   ├── admin/impersonate/ POST — lien de connexion « en tant que »
+│   └── impersonation/    POST — fin de session / journal d'audit
+├── auth/callback/      Callback OAuth / confirmation e-mail
+└── auth/impersonation/ Consommation d'un lien « en tant que »
 
 components/             Composants React (client pour l'interactif)
 lib/                    Accès données typés + logique métier pure
@@ -112,6 +115,31 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   dans chaque page (`requireUser`, `requireAdmin`).
 - Rôles applicatifs dans `profiles.role` (`admin` pour le back-office).
 
+### Connexion « en tant que » (impersonation)
+
+- **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`
+  (`read_only` par défaut, ou `write`) de l'admin qui déclenche l'action se
+  réglant depuis Admin → Membres → fiche d'un admin.
+- **Lien temporaire** : `POST /api/admin/impersonate` génère un jeton
+  Supabase à usage unique (clé service_role, `generateLink`), consommé par
+  `/auth/impersonation` qui pose la session en cookies. L'admin doit ouvrir ce
+  lien via **clic droit → fenêtre de navigation privée**, sinon la session du
+  membre remplace la sienne.
+- **Session active** = ligne de `impersonation_sessions` visant l'utilisateur
+  courant (`started_at` non nul, `ended_at` nul, non expirée — TTL 60 min).
+  Pas de cookie dédié : le mode ne peut donc pas être désactivé côté
+  navigateur, et la même condition est réutilisée en SQL par
+  `public.is_read_only_session()` dans les policies RLS d'écriture.
+- **Bandeau persistant** (`components/ImpersonationBanner.tsx`) monté dans le
+  layout racine ; `ImpersonationProvider` expose le mode aux composants
+  client.
+- **Bridage lecture seule** : `useMutation` refuse toute écriture,
+  `useWriteGuard()` couvre les écritures hors `useMutation`,
+  `requireWritableSession()` protège `/creer`, `/importer`, `/relecture`, et
+  `/api/import-url` comme `/api/transcribe-photo` renvoient 403.
+- **Audit** : `impersonation_sessions` (connexions) + `impersonation_events`
+  (écritures abouties ou refusées), consultables en bas d'Admin → Membres.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
@@ -127,6 +155,7 @@ principales :
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |
 | Site | `site_settings` (bannières d'accueil) |
+| Impersonation | `impersonation_sessions`, `impersonation_events` |
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).
@@ -171,6 +200,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase | Publique (inlinée au build) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé publique Supabase | Publique (inlinée au build) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit) | Serveur uniquement |
 | `ANTHROPIC_API_KEY` | API Claude (import / ajustement) | Serveur uniquement |
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |

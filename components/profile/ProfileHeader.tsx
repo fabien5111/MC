@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
+import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { PROFILE_LINKS, activeLinks, normalizeUrl, type ProfileLinkField } from '@/lib/profile-links';
 import type { Profile } from '@/lib/auth';
 
@@ -45,6 +46,9 @@ export function ProfileHeader({
   const [showBioToggle, setShowBioToggle] = useState(false);
   const bioRef = useRef<HTMLParagraphElement>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  // Impersonation en lecture seule : édition du profil masquée et uploads bloqués.
+  const readOnly = useReadOnly();
+  const writeGuard = useWriteGuard();
 
   useEffect(() => {
     const el = bioRef.current;
@@ -52,6 +56,7 @@ export function ProfileHeader({
   }, [bio, bioExpanded]);
 
   async function saveImage(field: 'avatar_url' | 'banner_url', dataUrl: string) {
+    if (!writeGuard('Photo de profil')) return;
     const supabase = createClient();
     if (field === 'avatar_url') {
       const { error } = await supabase.from('profiles').upsert({ id: userId, avatar_url: dataUrl });
@@ -112,12 +117,14 @@ export function ProfileHeader({
                 Administration
               </Link>
             )}
-            <button
-              onClick={() => setEditorOpen(true)}
-              className="flex items-center gap-2 border border-primary text-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary hover:text-white transition-all active:scale-95"
-            >
-              <span className="material-symbols-outlined text-[18px]">edit</span> Modifier le profil
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setEditorOpen(true)}
+                className="flex items-center gap-2 border border-primary text-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary hover:text-white transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span> Modifier le profil
+              </button>
+            )}
             <ShareProfileButton />
           </div>
           <h1 className="font-headline-lg text-headline-lg text-primary text-center md:text-left">

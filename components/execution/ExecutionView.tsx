@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useReadOnly } from '@/components/ImpersonationProvider';
 import { formatTime } from '@/lib/format';
 import type { Execution } from '@/lib/executions';
 import type { ExecutionSnapshot, ExecStep, ExecJalon, ExecSousEtape } from '@/lib/recipe-plan';
@@ -58,7 +59,10 @@ export function ExecutionView({
 }) {
   const router = useRouter();
   const [exec, setExec] = useState(initialExec);
-  const readOnly = exec.status !== 'en_cours' || lecture;
+  // Une impersonation en lecture seule rend l'écran d'exécution consultatif,
+  // exactement comme une exécution terminée (aucune écriture émise).
+  const impersonationReadOnly = useReadOnly();
+  const readOnly = exec.status !== 'en_cours' || lecture || impersonationReadOnly;
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
@@ -88,6 +92,7 @@ export function ExecutionView({
   }, [exec.status, readOnly]);
 
   async function persistSnapshot(next: ExecutionSnapshot) {
+    if (readOnly) return; // sécurité : les contrôles sont déjà désactivés
     setExec((prev) => ({ ...prev, snapshot: next }));
     const { error } = await createClient().from('executions').update({ snapshot: next as unknown as Json }).eq('id', exec.id);
     if (error) alert('Sauvegarde impossible : ' + error.message);
@@ -156,6 +161,7 @@ export function ExecutionView({
   }
 
   async function endSession(status: 'terminee' | 'abandonnee', message: string) {
+    if (readOnly) return;
     if (!confirm(message)) return;
     const fin = new Date().toISOString();
     const { error } = await createClient().from('executions').update({ status, date_fin: fin }).eq('id', exec.id);
@@ -181,7 +187,9 @@ export function ExecutionView({
     .filter(Boolean)
     .join(' — ');
 
-  const showMep = exec.status === 'en_cours' && !lecture && !s.mise_en_place?.passee && ((s.mise_en_place?.ustensiles || []).length > 0 || (s.mise_en_place?.ingredients || []).length > 0);
+  // `readOnly` couvre à la fois « exécution close », « mode lecture » et
+  // « impersonation en lecture seule ».
+  const showMep = !readOnly && !s.mise_en_place?.passee && ((s.mise_en_place?.ustensiles || []).length > 0 || (s.mise_en_place?.ingredients || []).length > 0);
 
   return (
     <>
@@ -199,9 +207,11 @@ export function ExecutionView({
         )}
       </div>
 
-      {exec.status !== 'en_cours' && !showMep && <SummaryPanel exec={exec} lecture={lecture} onGlobalComment={onGlobalComment} />}
+      {exec.status !== 'en_cours' && !showMep && (
+        <SummaryPanel exec={exec} lecture={lecture || impersonationReadOnly} onGlobalComment={onGlobalComment} />
+      )}
 
-      {exec.status === 'en_cours' && !lecture && !showMep && (
+      {!readOnly && !showMep && (
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="max-w-[900px] mx-auto flex gap-3">
             <button

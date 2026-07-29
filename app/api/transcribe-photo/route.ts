@@ -12,6 +12,7 @@
 // linéarisée.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isReadOnlySession } from '@/lib/impersonation';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/claude';
 import { transcrireUne } from '@/lib/ai/transcribe';
 
@@ -40,6 +41,15 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+
+  // Première passe d'un import, facturée : interdite pendant une impersonation
+  // en lecture seule, comme /api/import-url qu'elle alimente.
+  if (await isReadOnlySession()) {
+    return NextResponse.json(
+      { erreur: 'Session de consultation (lecture seule) : import impossible.' },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const brut = typeof body?.image === 'string' ? body.image : '';

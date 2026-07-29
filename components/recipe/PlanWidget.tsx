@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { UNITS_LBL, moldMetrics, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { Json } from '@/lib/database.types';
@@ -60,6 +61,7 @@ export function PlanWidget({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
   const today = useMemo(() => {
     const d = new Date();
@@ -243,6 +245,7 @@ export function PlanWidget({
   }
 
   async function validate() {
+    if (!writeGuard('Planification d’une recette')) return;
     if (!date) {
       alert('Choisissez une date.');
       return;

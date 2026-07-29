@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser, isAdmin } from '@/lib/auth';
+import { requireWritableSession } from '@/lib/impersonation';
 import {
   getImport,
   getIngredientRefNames,
@@ -20,6 +21,8 @@ type Params = { params: Promise<{ id: string }> };
 
 export default async function RelecturePage({ params }: Params) {
   const user = await requireUser();
+  // Impersonation en lecture seule : la relecture publie/modifie → interdit.
+  await requireWritableSession();
   const { id } = await params;
   const numId = Number(id);
 
