@@ -13,14 +13,14 @@
 // Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
-import { Spinner } from '@/components/Spinner';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -248,7 +248,18 @@ export function CreerForm({
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'publish' | 'draft-stay' | 'draft-exit' | null>(null);
+  // Verrou synchrone doublant `busy` : un état React n'est effectif qu'au
+  // rendu suivant et ne protège donc pas de deux déclenchements dans le même
+  // tick (double clic, double événement tactile).
+  const busyRef = useRef(false);
+  // Id de la recette créée pendant cette session d'édition. `editingId` ne
+  // vient que des props serveur : après une création, il reste `null` tant que
+  // le rendu déclenché par `router.replace('/creer?id=…')` n'est pas revenu.
+  // Sans cette mémoire, un second enregistrement dans cet intervalle repart en
+  // création et produit une deuxième recette identique.
+  const createdIdRef = useRef<string | null>(null);
+  // Enregistrement terminé, en attente du passage effectif en mode édition.
+  const [awaitingEditMode, setAwaitingEditMode] = useState(false);
   // Index de l'étape en cours de glisser-déposer (null si aucun déplacement).
   const [dragStep, setDragStep] = useState<number | null>(null);
   // Ingrédients / ustensiles / allergènes ajoutés au référentiel pendant la
@@ -263,6 +274,29 @@ export function CreerForm({
   const [refBusy, setRefBusy] = useState<string | null>(null);
   // Ingrédient dont la popup de choix d'allergènes est ouverte (si/ii), ou null.
   const [allergenPopup, setAllergenPopup] = useState<{ si: number; ii: number } | null>(null);
+
+  // Bascule « création → édition » après un enregistrement en brouillon :
+  // l'éditeur reste verrouillé jusqu'à ce que le rendu serveur déclenché par
+  // `router.replace('/creer?id=…')` lui rende l'id dans ses props. Sans cette
+  // attente, les boutons redeviendraient cliquables alors que le formulaire se
+  // croit encore en création (c'est le doublon qu'on observait).
+  // Filet de sécurité : si la navigation n'aboutit pas (réseau coupé), on
+  // relâche quand même au bout de RELEASE_MS — `createdIdRef` garantit alors
+  // qu'un nouvel enregistrement met à jour la recette au lieu d'en créer une.
+  useEffect(() => {
+    if (!awaitingEditMode) return;
+    const release = () => {
+      busyRef.current = false;
+      setBusy(false);
+      setAwaitingEditMode(false);
+    };
+    if (editingId) {
+      release();
+      return;
+    }
+    const timer = setTimeout(release, 10_000);
+    return () => clearTimeout(timer);
+  }, [awaitingEditMode, editingId]);
 
   // Listes serveur + libellés ajoutés à la volée. Dédoublonnées : après le
   // refresh déclenché par un ajout au référentiel, la liste serveur contient
@@ -476,12 +510,15 @@ export function CreerForm({
   const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
 
   async function submit(status: 'draft' | 'pending', stay = false) {
+    // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
+    // pas ouvrir deux enregistrements concurrents.
+    if (busyRef.current) return;
     if (!title.trim()) {
       alert('Donnez un titre à votre recette.');
       return;
     }
+    busyRef.current = true;
     setBusy(true);
-    setPendingAction(status === 'draft' ? (stay ? 'draft-stay' : 'draft-exit') : 'publish');
     const supabase = createClient();
     try {
       const {
@@ -555,19 +592,24 @@ export function CreerForm({
         hero_image_url: hero,
       };
 
-      let recipeId: string;
-      if (editingId) {
-        const { error } = await supabase.from('recipes').update(payload).eq('id', editingId);
+      // Recette à mettre à jour : celle ouverte en édition, ou celle créée
+      // quelques instants plus tôt dans cette même session d'édition (l'id
+      // n'est pas encore redescendu dans les props). Tout enregistrement qui
+      // suit une création est donc une mise à jour, jamais une seconde
+      // création — y compris après une erreur en cours d'enregistrement.
+      let recipeId = editingId ?? createdIdRef.current;
+      if (recipeId) {
+        const { error } = await supabase.from('recipes').update(payload).eq('id', recipeId);
         if (error) throw error;
-        recipeId = editingId;
-        await supabase.from('recipe_tags').delete().eq('recipe_id', editingId);
-        await supabase.from('recipe_utensils').delete().eq('recipe_id', editingId);
-        await supabase.from('ingredient_groups').delete().eq('recipe_id', editingId);
-        await supabase.from('recipe_steps').delete().eq('recipe_id', editingId);
+        await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId);
+        await supabase.from('recipe_utensils').delete().eq('recipe_id', recipeId);
+        await supabase.from('ingredient_groups').delete().eq('recipe_id', recipeId);
+        await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId);
       } else {
         const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id }).select('id').single();
         if (error || !data) throw error || new Error('Création refusée');
         recipeId = data.id;
+        createdIdRef.current = data.id;
       }
 
       // En modification, les liaisons ci-dessus ont été supprimées avant
@@ -654,14 +696,16 @@ export function CreerForm({
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
         // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
-        // les enregistrements suivants mettent à jour au lieu de dupliquer.
+        // les enregistrements suivants mettent à jour au lieu de dupliquer ;
+        // le verrou n'est levé qu'au retour de ce rendu serveur (cf. l'effet
+        // `awaitingEditMode`), sans quoi un clic dans l'intervalle repartirait
+        // sur un formulaire qui se croit encore en création.
         if (editingId) {
+          busyRef.current = false;
           setBusy(false);
-          setPendingAction(null);
           router.refresh();
         } else {
-          setBusy(false);
-          setPendingAction(null);
+          setAwaitingEditMode(true);
           router.replace(`/creer?id=${recipeId}`);
         }
       } else {
@@ -672,9 +716,12 @@ export function CreerForm({
         router.push('/profil');
       }
     } catch (e) {
+      // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
+      // sont écrits ensuite) : `createdIdRef` fait qu'une nouvelle tentative la
+      // met à jour au lieu d'en créer une seconde.
       alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
+      busyRef.current = false;
       setBusy(false);
-      setPendingAction(null);
     }
   }
 
@@ -1702,17 +1749,8 @@ export function CreerForm({
             disabled={busy}
             className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
           >
-            {pendingAction === 'publish' ? (
-              <>
-                <Spinner size={18} />
-                {isPublic ? 'Publication…' : 'Enregistrement…'}
-              </>
-            ) : (
-              <>
-                {isPublic ? 'Publier la recette' : 'Enregistrer'}
-                <span className="material-symbols-outlined text-[18px]">send</span>
-              </>
-            )}
+            {isPublic ? 'Publier la recette' : 'Enregistrer'}
+            <span className="material-symbols-outlined text-[18px]">send</span>
           </button>
           <button
             type="button"
@@ -1720,8 +1758,7 @@ export function CreerForm({
             disabled={busy}
             className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
           >
-            {pendingAction === 'draft-stay' && <Spinner size={18} />}
-            {pendingAction === 'draft-stay' ? 'Enregistrement…' : 'Enregistrer en brouillon'}
+            Enregistrer en brouillon
           </button>
           <button
             type="button"
@@ -1729,8 +1766,7 @@ export function CreerForm({
             disabled={busy}
             className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
           >
-            {pendingAction === 'draft-exit' && <Spinner size={18} />}
-            {pendingAction === 'draft-exit' ? 'Enregistrement…' : 'Enregistrer en brouillon et quitter'}
+            Enregistrer en brouillon et quitter
           </button>
         </div>
       </div>
@@ -1811,6 +1847,10 @@ export function CreerForm({
             </div>
           );
         })()}
+
+      {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
+          édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
+      <LoadingOverlay visible={busy} label="Enregistrement de la recette…" />
     </>
   );
 }
