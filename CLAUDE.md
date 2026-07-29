@@ -33,7 +33,7 @@ données, authentification).
 | Styles | **Tailwind CSS** (design tokens dans `tailwind.config.ts`) | 3.4 |
 | Backend | **Supabase** (PostgreSQL, Auth, RLS) | — |
 | Client Supabase | `@supabase/supabase-js` + `@supabase/ssr` (auth par cookies) | 2.x / 0.12 |
-| IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` |
+| IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` (structuration) / `claude-sonnet-5` (lecture de photos) |
 | Hébergement | **Vercel** (fonctions serverless, projet `mc-snowy`) | Node 22.x |
 
 ## Architecture
@@ -51,9 +51,13 @@ app/                    Pages et routes (App Router)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
-│   ├── import-url/     POST — analyse IA d'une recette (texte collé) → brouillon
-│   └── scale-recipe/   POST — coefficient IA d'ajustement des quantités
-└── auth/callback/      Callback OAuth / confirmation e-mail
+│   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
+│   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
+│   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
+│   ├── admin/impersonate/ POST — lien de connexion « en tant que »
+│   └── impersonation/    POST — fin de session / journal d'audit
+├── auth/callback/      Callback OAuth / confirmation e-mail
+└── auth/impersonation/ Consommation d'un lien « en tant que »
 
 components/             Composants React (client pour l'interactif)
 lib/                    Accès données typés + logique métier pure
@@ -132,7 +136,7 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 - **Bridage lecture seule** : `useMutation` refuse toute écriture,
   `useWriteGuard()` couvre les écritures hors `useMutation`,
   `requireWritableSession()` protège `/creer`, `/importer`, `/relecture`, et
-  `/api/import-url` renvoie 403.
+  `/api/import-url` comme `/api/transcribe-photo` renvoient 403.
 - **Audit** : `impersonation_sessions` (connexions) + `impersonation_events`
   (écritures abouties ou refusées), consultables en bas d'Admin → Membres.
 
@@ -169,8 +173,22 @@ principales :
   partage de quantité silencieusement faux quand un ingrédient est réutilisé
   dans plusieurs étapes). `maxDuration = 60 s`, quota journalier configurable
   (`IMPORT_DAILY_QUOTA`, défaut 20).
+- `POST /api/transcribe-photo` — transcrit **une** photo de page en texte
+  (import par photo). Une photo par requête, et non un lot : le corps d'une
+  fonction serverless étant borné (~4,5 Mo), grouper les pages les obligeait à
+  être réduites à une définition où le texte d'une page de livre devenait
+  illisible pour l'IA (« 150 °C » lu « 160 °C »). Le navigateur lance les
+  requêtes en parallèle, assemble les transcriptions et les envoie à
+  `/api/import-url`. `maxDuration = 60 s`.
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`.
+
+**L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
+*lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la
+structurer en même temps — deux tâches difficiles à la fois, qui faisaient lire
+une page à deux colonnes en travers et fusionner des sous-préparations
+indépendantes. La transcription rend au modèle de structuration ce que l'import
+par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 - Clé `ANTHROPIC_API_KEY` **côté serveur uniquement** ; modèle configurable
   via `IMPORT_MODEL` (défaut `claude-haiku-4-5`). Les appels sont en
   **streaming** : en mode bloquant, une extraction de plusieurs milliers de
@@ -184,7 +202,8 @@ principales :
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé publique Supabase | Publique (inlinée au build) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit) | Serveur uniquement |
 | `ANTHROPIC_API_KEY` | API Claude (import / ajustement) | Serveur uniquement |
-| `IMPORT_MODEL` | Modèle IA (optionnel) | Serveur uniquement |
+| `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
+| `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
@@ -327,6 +346,8 @@ Gestion de la liste des courses
 
 ## Fonctionnalités déjà en place (Plan payant) - Liste non exhaustive
 Ajustement de la recette par IA (texte libre)
+Import de recette par photos (pages photographiées, lues par IA)
+Import de recette par PDF
 Import de recette par copier/coller (l'import depuis une URL a été retiré : le JSON-LD des pages de recette ne rattache pas les ingrédients à leurs étapes, ce qui produisait des quantités erronées sur les ingrédients réutilisés dans plusieurs étapes)
 
 
@@ -359,8 +380,6 @@ Messagerie interne entre utilisateurs.
 ## Fonctionnalités à venir (Plan payant) - Liste non exhaustive
 
 Importation automatisée de recettes depuis des sites internet tiers grâce à l'IA
-
-Scan et numérisation de recettes physiques grâce à l'IA
 
 Génération de fiches techniques professionnelles (poids final, portions, coût matière, prix de revient, DLC conseillée).
 

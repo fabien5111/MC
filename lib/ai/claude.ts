@@ -7,6 +7,13 @@
 // modèle rapide suffit. Surchargeable par `IMPORT_MODEL`.
 export const IMPORT_MODEL = process.env.IMPORT_MODEL || 'claude-haiku-4-5';
 
+// Modèle de la passe de TRANSCRIPTION (import par photo). Déchiffrer une page
+// imprimée est la tâche où la force du modèle se paie le plus : une
+// température mal lue passe inaperçue jusqu'au four. La sortie ne fait que
+// quelques centaines de tokens par page, le surcoût reste donc modeste.
+// Ramener cette variable à `claude-haiku-4-5` pour revenir au modèle rapide.
+export const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'claude-sonnet-5';
+
 // Consommation réelle renvoyée par l'API à chaque appel (bloc `usage`). Sert à
 // calculer le coût exact d'un import plutôt que de l'estimer (cf. lib/ai/cost.ts).
 export type ClaudeUsage = {
@@ -17,6 +24,13 @@ export type ClaudeUsage = {
 };
 
 export type ClaudeCall = { text: string; usage: ClaudeUsage };
+
+// Contenu d'un message utilisateur lorsqu'il ne se résume pas à du texte
+// (import par photo : les pages de la recette sont envoyées en images, l'IA
+// devant les lire avant de les structurer).
+export type BlocContenu =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
 
 // Événements du flux SSE effectivement exploités (le flux en contient d'autres,
 // ignorés) : cf. https://docs.anthropic.com/en/api/messages-streaming
@@ -64,9 +78,15 @@ export const TIMEOUT_MS = 50_000;
 
 export async function callClaude(
   apiKey: string,
-  userContent: string,
+  // Une chaîne suffit tant que l'entrée est textuelle ; les blocs servent aux
+  // contenus mixtes (photos + consignes). L'API accepte les deux formes pour
+  // `content`, les appelants existants n'ont donc rien à changer.
+  userContent: string | BlocContenu[],
   maxTokens: number,
   timeoutMs: number = TIMEOUT_MS,
+  // Le modèle n'est pas le même selon la passe : transcrire une photo et
+  // structurer un texte n'exigent pas les mêmes qualités.
+  model: string = IMPORT_MODEL,
 ): Promise<ClaudeCall> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
@@ -82,7 +102,7 @@ export async function callClaude(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: IMPORT_MODEL,
+        model,
         max_tokens: maxTokens,
         // En mode non-streaming, rien ne circule tant que la réponse n'est pas
         // entièrement générée : une extraction de plusieurs milliers de tokens
@@ -143,7 +163,7 @@ export async function callClaude(
     }
 
     console.log(
-      `[claude] ${IMPORT_MODEL} : ${usage.outputTokens} tokens produits en ${Date.now() - debut} ms ` +
+      `[claude] ${model} : ${usage.outputTokens} tokens produits en ${Date.now() - debut} ms ` +
         `(1er token à ${premierTokenMs} ms)`,
     );
     return { text, usage };

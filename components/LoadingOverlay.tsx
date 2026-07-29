@@ -5,7 +5,19 @@ import { Spinner } from '@/components/Spinner';
 // serveur suivie d'une navigation, traitement IA…). Cf. CLAUDE.md, section
 // « Spinner ». Factorisé depuis NavigationSpinner pour être réutilisable par
 // les actions déclenchées hors navigation par lien (router.push programmatique).
-export function LoadingOverlay({ visible, label }: { visible: boolean; label?: string }) {
+export function LoadingOverlay({
+  visible,
+  label,
+  // Par défaut le libellé n'est qu'un nom accessible : l'overlay reste muet à
+  // l'écran, comme partout dans l'application. `showLabel` l'affiche, pour les
+  // attentes longues où l'utilisateur a besoin de savoir où en est le
+  // traitement (lecture de plusieurs photos, par exemple).
+  showLabel = false,
+}: {
+  visible: boolean;
+  label?: string;
+  showLabel?: boolean;
+}) {
   return (
     <div
       aria-hidden={!visible}
@@ -13,7 +25,18 @@ export function LoadingOverlay({ visible, label }: { visible: boolean; label?: s
         visible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
-      {visible ? <Spinner size={84} label={label} /> : null}
+      {visible ? (
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size={84} label={label} />
+          {showLabel && label ? (
+            // Déjà annoncé par le nom accessible du spinner : on ne le fait pas
+            // lire deux fois.
+            <p aria-hidden="true" className="text-body-md text-secondary text-center px-6">
+              {label}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

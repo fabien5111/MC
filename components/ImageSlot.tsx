@@ -10,6 +10,14 @@ import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
+/**
+ * Type de données d'un glisser-déposer d'image *déjà compressée* entre deux
+ * zones de la page (banque de photos d'un import PDF → emplacement d'étape).
+ * Le glissement transporte la data-URL telle quelle : rien à recompresser,
+ * contrairement au dépôt d'un fichier.
+ */
+export const PHOTO_DND_TYPE = 'application/x-mc-photo';
+
 const SHAPE_RADIUS: Record<Shape, string> = {
   rect: '0',
   rounded: '12px',
@@ -105,6 +113,11 @@ export function ImageSlot({
           : (e) => {
               e.preventDefault();
               setDragOver(false);
+              const dataUrl = e.dataTransfer.getData(PHOTO_DND_TYPE);
+              if (dataUrl) {
+                onChange?.(dataUrl);
+                return;
+              }
               const file = e.dataTransfer.files?.[0];
               if (file) void ingest(file);
             }

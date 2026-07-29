@@ -48,7 +48,14 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
         const recette = (i.recette ?? {}) as { titre?: string };
         const alertes = Array.isArray(i.alertes) ? (i.alertes as string[]) : [];
         const [lbl, cls] = STATUT_LBL[i.statut] || [i.statut, 'bg-secondary'];
-        let host = i.source_type === 'texte' ? 'texte collé' : i.source_type;
+        let host =
+          i.source_type === 'texte'
+            ? 'texte collé'
+            : i.source_type === 'pdf'
+              ? i.fichier_original || 'PDF'
+              : i.source_type === 'photo'
+                ? 'photos'
+                : i.source_type;
         if (i.source_url) {
           try {
             host = new URL(i.source_url).hostname.replace(/^www\./, '');
