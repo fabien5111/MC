@@ -28,7 +28,7 @@ import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 
 type Params = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; planifier?: string }>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { plan } = await searchParams;
+  const { plan, planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -169,7 +169,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       </div>
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <PlanProvider>
+        <PlanProvider autoOpen={planifier === '1'}>
         <div className="lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
