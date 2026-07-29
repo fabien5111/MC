@@ -6,6 +6,7 @@ export type ImportRow = {
   id: number;
   source_type: string;
   source_url: string | null;
+  fichier_original: string | null;
   statut: string;
   recette: Json;
   alertes: Json;
@@ -80,7 +81,7 @@ export async function getImports(userId: string): Promise<ImportRow[]> {
   // motif que `getAiCosts` dans lib/admin.ts).
   const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
   const { data, error } = await table
-    .select('id, source_type, source_url, statut, recette, alertes, recipe_id, cost_usd, created_at')
+    .select('id, source_type, source_url, fichier_original, statut, recette, alertes, recipe_id, cost_usd, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getImports:', error.message);

@@ -11,6 +11,10 @@ export type IngredientIA = { nom?: string; quantite?: number | null; unite?: str
 
 export type EtapeIA = {
   nom_etape?: string;
+  // Page du document où commence l'étape, quand le contenu est paginé (import
+  // PDF : cf. les marqueurs « --- page N --- » posés par lib/pdf.ts). Sert
+  // uniquement à rattacher les photos extraites à la bonne étape.
+  page?: number | null;
   temps_preparation_minutes?: number | null;
   temps_attente_minutes?: number | null;
   temps_cuisson_minutes?: number | null;
@@ -47,6 +51,7 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   "etapes": [
     {
       "nom_etape": "Nom du regroupement (ex: Biscuit cuillère)",
+      "page": 2,
       "temps_preparation_minutes": 15,
       "temps_attente_minutes": 0,
       "temps_cuisson_minutes": 12,
@@ -68,7 +73,21 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   ],
   "astuces_recette": ["Astuce globale 1", "Astuce globale 2"],
   "conseils_conservation": "Instructions pour la dégustation et conservation"
-}`;
+}
+
+Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.
+
+FIDÉLITÉ. Tu EXTRAIS, tu ne rédiges pas. La recette fait autorité, pas ton intuition de cuisinier.
+- Reprends les instructions telles qu'elles sont écrites. Ne les reformule pas, ne les résume pas, ne les enjolive pas.
+- La SEULE transformation autorisée est la mise à l'infinitif (« Commencez par torréfier » → « Torréfier »). Tout le reste est repris mot pour mot.
+- Ne remplace JAMAIS un terme technique par un autre : « caramel à sec » n'est pas « caramel d'eau », « crème liquide » n'est pas « crème fraîche », « sucre glace » n'est pas « sucre semoule ».
+- Ne supprime AUCUNE précision : « sur feu doux à moyen » ne devient pas « sur feu doux », « beurre fondu tiédi » ne devient pas « beurre fondu », « blanc d'œuf (2) » garde son numéro.
+- Ne corrige jamais ce qui te semble improbable ou inhabituel : une technique qui te surprend est une technique que tu recopies.
+- Recopie les nombres (températures, durées, quantités) exactement tels qu'ils apparaissent, sans arrondir ni « rendre vraisemblable ».
+- Découpe une instruction longue en plusieurs entrées UNIQUEMENT aux frontières de phrases, sans rien réécrire au passage.
+- Si le contenu porte une marque « [illisible] », conserve-la : elle signale un passage que la lecture n'a pas pu établir.
+
+MISE EN PAGE. Le contenu peut porter des marqueurs « [colonne N] » : ils restituent la composition d'origine de la page. Un titre de section ne possède QUE les lignes qui le suivent DANS SA COLONNE, jusqu'au titre suivant de cette même colonne. Ne fusionne JAMAIS des lignes appartenant à deux colonnes différentes : deux listes d'ingrédients imprimées côte à côte sont deux sous-préparations distinctes, et l'une ne complète pas l'autre.`;
 
 // Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
 // normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
@@ -287,6 +306,10 @@ export function toPivotInterne(r: RecetteIA): Pivot {
     sous_preparations: etapes.map((e, i) => ({
       ordre: i + 1,
       nom: e.nom_etape || `Préparation ${i + 1}`,
+      // Reporté tel quel : sert au rattachement des photos d'un import PDF
+      // (cf. `affecterPhotos` dans lib/pdf.ts). L'éditeur de relecture ne le
+      // reprend pas, il disparaît donc à la création de la recette.
+      page: Number(e.page) > 0 ? Math.trunc(Number(e.page)) : null,
       // Entier ≥ 0 : une anticipation négative ou absente vaut « jour J ».
       day_offset: Math.max(0, Math.trunc(Number(e.anticipation_jours)) || 0),
       temps: {
@@ -342,18 +365,28 @@ const BUDGET_MS = 50_000;
 // les deux) : la route serverless a un temps limite (maxDuration), et trois
 // appels séquentiels de 8000 tokens chacun peuvent le dépasser sur une recette
 // complexe. Priorité à la validité du JSON, prérequis à toute exploitation.
+// Assemble le message envoyé à l'IA. La consigne de relance vient APRÈS le
+// contenu, comme dans la formulation d'origine.
+function messageAnalyse(contenu: string, consigne?: string): string {
+  const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
+  return consigne ? `${base}\n\n${consigne}` : base;
+}
+
 export async function normalizeRecette(
   apiKey: string,
   contenu: string,
+  // Budget de temps alloué à cette étape. L'import par photo consomme déjà une
+  // part du `maxDuration` de la route pour transcrire les pages : il reste
+  // moins que le budget nominal pour structurer.
+  budgetMs: number = BUDGET_MS,
 ): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
   // Budget de temps partagé par les (au plus deux) appels : la relance ne doit
   // pas pousser la fonction serverless au-delà de son `maxDuration`, sinon
   // l'hébergeur la coupe avant qu'on ait pu renvoyer une erreur exploitable.
   const debut = Date.now();
-  const restant = () => Math.max(5_000, BUDGET_MS - (Date.now() - debut));
+  const restant = () => Math.max(5_000, budgetMs - (Date.now() - debut));
 
-  const base = `${PROMPT}\n\nContenu à analyser :\n${contenu}`;
-  const first = await callClaude(apiKey, base, 8000, restant());
+  const first = await callClaude(apiKey, messageAnalyse(contenu), 8000, restant());
 
   let recette: RecetteIA;
   let usage = first.usage;
@@ -364,7 +397,10 @@ export async function normalizeRecette(
     relanceUtilisee = true;
     const retry = await callClaude(
       apiKey,
-      `${base}\n\nTa réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
+      messageAnalyse(
+        contenu,
+        `Ta réponse précédente n'était pas un JSON valide (erreur : ${(err as Error).message}). Renvoie UNIQUEMENT l'objet JSON corrigé.`,
+      ),
       8000,
       restant(),
     );
@@ -383,7 +419,10 @@ export async function normalizeRecette(
   if (erreurs.length && !relanceUtilisee) {
     const retry = await callClaude(
       apiKey,
-      `${PROMPT}\n\nContenu à analyser :\n${contenu}\n\nIMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque étape doit contenir TOUS ses ingrédients et TOUTES ses instructions.`,
+      messageAnalyse(
+        contenu,
+        `IMPORTANT : une première extraction était incomplète — ${erreurs.join(' ')} Relis attentivement le contenu et renvoie le JSON COMPLET : chaque étape doit contenir TOUS ses ingrédients et TOUTES ses instructions.`,
+      ),
       8000,
       restant(),
     );
