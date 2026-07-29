@@ -42,6 +42,10 @@ type SpState = {
   cuisson: string;
   temp: string;
   jour: string;
+  // Comment les quantités de l'étape suivent un changement de rendement.
+  // Même mécanisme que l'éditeur de recette : persisté dans
+  // `ingredient_groups.scaling_mode` à la création.
+  scaling: string;
   ings: IngRow[];
   etapes: EtapeRow[];
   tips: string;
@@ -133,6 +137,9 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     cuisson: t.cuisson_min ?? (lignesCuisson || ''),
     temp: sp.temperature_c ?? (tMax || ''),
     jour: String(sp.day_offset ?? 0),
+    // Absent d'un import (l'IA ne le déduit pas) : l'ajustement proportionnel
+    // est le comportement attendu par défaut, comme à la création.
+    scaling: typeof sp.scaling_mode === 'string' ? sp.scaling_mode : 'simple',
     ings: (sp.ingredients || []).map((g: any) => {
       // Ligature « œuf » puis majuscule initiale sur le nom importé
       // (« jaune d'oeuf » → « Jaune d'œuf »).
@@ -436,6 +443,26 @@ export function RelectureEditor({
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
 
   // ── Mutations d'état ──
+  // Mêmes intitulés que l'éditeur de recette : les options dépendent de la
+  // façon dont le rendement est exprimé (un fonçage n'a de sens que pour un
+  // moule).
+  const scalingOptions: [string, string][] =
+    measure === 'mold'
+      ? [
+          ['simple', 'Ajustement selon la taille du moule (volume)'],
+          ['foncage', 'Recouvre une surface (fonçage, glaçage…)'],
+          ['aucun', "Pas d'ajustement pour cette étape"],
+        ]
+      : [
+          ['simple', 'Proportionnel à la quantité à produire'],
+          ['aucun', "Pas d'ajustement"],
+        ];
+
+  // Le mode de rendement peut changer après le choix d'un ajustement :
+  // « fonçage » n'est alors plus proposé, et ne doit pas rester enregistré à
+  // l'insu de l'utilisateur.
+  const normScaling = (v: string): string => (scalingOptions.some(([o]) => o === v) ? v : 'simple');
+
   const patchSp = (i: number, patch: Partial<SpState>) =>
     setSps((prev) => prev.map((sp, k) => (k === i ? { ...sp, ...patch } : sp)));
   const patchIng = (si: number, ii: number, patch: Partial<IngRow>) =>
@@ -490,6 +517,7 @@ export function RelectureEditor({
     cuisson: '',
     temp: '',
     jour: '0',
+    scaling: 'simple',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
     tips: '',
@@ -617,6 +645,7 @@ export function RelectureEditor({
       },
       temperature_c: numOrNull(sp.temp),
       day_offset: numOrNull(sp.jour) || 0,
+      scaling_mode: normScaling(sp.scaling),
       ingredients: sp.ings
         .map((g) => ({
           nom: g.nom.trim(),
@@ -800,7 +829,12 @@ export function RelectureEditor({
         if (lines.length) {
           const { data: grp, error: grpErr } = await supabase
             .from('ingredient_groups')
-            .insert({ recipe_id: recipe.id, name: sp.nom || `Étape ${i + 1}`, order_index: i })
+            .insert({
+              recipe_id: recipe.id,
+              name: sp.nom || `Étape ${i + 1}`,
+              order_index: i,
+              scaling_mode: sp.scaling_mode || 'simple',
+            })
             .select()
             .single();
           if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
@@ -1267,6 +1301,29 @@ export function RelectureEditor({
 
             {!sp.collapsed && (
             <>
+            {/* Ajustement des quantités : même réglage que l'éditeur de
+                recette, absent jusqu'ici de la relecture — une recette
+                importée arrivait donc toujours en ajustement proportionnel,
+                sans moyen de le corriger avant sa création. */}
+            <div className="px-6 py-3 border-b border-outline-variant/50 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant shrink-0">
+                Ajustement des quantités de cette étape
+              </span>
+              <select
+                value={normScaling(sp.scaling)}
+                onChange={(e) => patchSp(si, { scaling: e.target.value })}
+                aria-label={`Ajustement des quantités — étape ${si + 1}`}
+                className={`${champ} cursor-pointer`}
+                style={{ width: 'auto' }}
+              >
+                {scalingOptions.map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="px-6 py-4 bg-surface-container-low/40 border-b border-outline-variant/50 flex flex-wrap items-end gap-x-6 gap-y-3">
               {(
                 [
