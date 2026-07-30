@@ -50,6 +50,7 @@ type SpState = {
   ings: IngRow[];
   etapes: EtapeRow[];
   tips: string;
+  videoUrl: string;
   photos: (string | null)[];
   collapsed: boolean;
   ingsCollapsed: boolean;
@@ -167,6 +168,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       return { key: nextKey(), imported: texte || null, texte };
     }),
     tips: ligatureOeuf(sp.conseils || ''),
+    videoUrl: sp.video || '',
     photos: [0, 1, 2, 3].map((i) => photos[i] || null),
     collapsed: false,
     ingsCollapsed: false,
@@ -530,6 +532,7 @@ export function RelectureEditor({
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
     tips: '',
+    videoUrl: '',
     photos: [null, null, null, null],
     collapsed: false,
     ingsCollapsed: false,
@@ -666,6 +669,7 @@ export function RelectureEditor({
         .filter((g) => g.nom),
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
       conseils: sp.tips.trim() || null,
+      video: sp.videoUrl.trim() || null,
       photos: sp.photos.filter((p): p is string => !!p),
     }));
     p.materiel = utensils
@@ -840,6 +844,7 @@ export function RelectureEditor({
             wait_time: spt.attente_min || null,
             day_offset: sp.day_offset || 0,
             tips: sp.conseils || null,
+            video_url: sp.video || null,
             sous_etapes: sousEtapes.length ? sousEtapes : null,
             order_index: i,
           })
@@ -1644,6 +1649,18 @@ export function RelectureEditor({
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* Lien vidéo de l'étape */}
+              <div className="mt-6">
+                <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Lien vidéo (YouTube, Vimeo…)</p>
+                <input
+                  value={sp.videoUrl}
+                  onChange={(e) => patchSp(si, { videoUrl: e.target.value })}
+                  type="url"
+                  className={champ}
+                  placeholder="https://… (optionnel)"
+                />
               </div>
 
               {/* Conseils & astuces de l'étape */}

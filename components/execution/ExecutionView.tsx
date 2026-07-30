@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly } from '@/components/ImpersonationProvider';
+import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { formatTime } from '@/lib/format';
 import type { Execution } from '@/lib/executions';
 import type { ExecutionSnapshot, ExecStep, ExecJalon, ExecSousEtape } from '@/lib/recipe-plan';
@@ -517,6 +518,12 @@ function StepCard({
         </ul>
       ) : (
         e.description && <div className="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface whitespace-pre-line">{e.description}</div>
+      )}
+
+      {e.video && (
+        <div className="px-4 pb-3">
+          <StepVideoPlayer url={e.video} />
+        </div>
       )}
 
       {e.tips && (
