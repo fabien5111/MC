@@ -1,17 +1,40 @@
 'use client';
 
 // Formulaire de connexion / inscription + OAuth (Google).
-// Porté fidèlement de connexion.html + db.js (authSignIn / authSignUp / signInWith*).
+// Le panneau s'ouvre sur la connexion ; l'inscription se fait par bascule et
+// impose une confirmation du mot de passe + les règles de `lib/password.ts`.
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
+import { MaryseIcon } from '@/components/MaryseIcon';
+
+// Couleur des maryses de la jauge de complexité, par nombre de critères
+// satisfaits : 1 → noire, 2 → rouge, 3 → orange, 4 (tout ok) → verte.
+// Toutes les maryses atteintes partagent la même couleur, comme les paliers
+// d'un feu tricolore plutôt qu'un dégradé continu.
+const STRENGTH_ICON_COLOR = ['text-outline-variant', 'text-black', 'text-error', 'text-orange-600', 'text-green-600'];
+
+// Traduction des messages d'erreur Supabase Auth les plus courants ; les
+// autres remontent tels quels (anglais) plutôt que d'être masqués.
+const AUTH_ERRORS: Record<string, string> = {
+  'User already registered': 'Un compte existe déjà avec cette adresse e-mail.',
+  'Invalid login credentials': 'Adresse e-mail ou mot de passe incorrect.',
+  'Email not confirmed': "Confirmez votre adresse e-mail avant de vous connecter (lien envoyé à l'inscription).",
+  'Password should be at least 6 characters': 'Le mot de passe doit contenir au moins 6 caractères.',
+};
+
+function translateAuthError(message: string): string {
+  return AUTH_ERRORS[message] ?? message;
+}
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +43,17 @@ export function LoginForm({ next }: { next: string }) {
 
   const isSignup = mode === 'signup';
 
+  const strength = useMemo(() => evaluatePassword(password), [password]);
+  const mismatch = isSignup && confirm.length > 0 && confirm !== password;
+  // À l'inscription seulement : la complexité, la confirmation et
+  // l'acceptation des conditions bloquent l'envoi. En connexion, aucun
+  // contrôle — les comptes existants peuvent avoir un mot de passe
+  // antérieur à ces règles.
+  const blocked = isSignup && (!strength.valid || password !== confirm || !terms);
+
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
+    setConfirm('');
     setError(null);
     setNotice(null);
   }
@@ -30,6 +62,16 @@ export function LoginForm({ next }: { next: string }) {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    if (blocked) {
+      setError(
+        password !== confirm
+          ? 'Les deux mots de passe ne correspondent pas.'
+          : !terms
+            ? "Vous devez accepter les conditions d'utilisation."
+            : 'Le mot de passe ne respecte pas les règles de sécurité.',
+      );
+      return;
+    }
     setBusy(true);
     const supabase = createClient();
     try {
@@ -39,7 +81,7 @@ export function LoginForm({ next }: { next: string }) {
         router.replace(next);
         router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -48,10 +90,17 @@ export function LoginForm({ next }: { next: string }) {
           },
         });
         if (error) throw error;
+        // Avec la confirmation par e-mail activée, Supabase ne renvoie pas
+        // d'erreur pour une adresse déjà inscrite (anti-énumération) : il
+        // renvoie un utilisateur factice sans identité associée.
+        if (data.user && data.user.identities?.length === 0) {
+          setError('Un compte existe déjà avec cette adresse e-mail.');
+          return;
+        }
         setNotice('Vérifiez vos e-mails pour confirmer votre compte.');
       }
     } catch (err) {
-      setError((err as Error).message || 'Une erreur est survenue.');
+      setError(translateAuthError((err as Error).message) || 'Une erreur est survenue.');
     } finally {
       setBusy(false);
     }
@@ -125,7 +174,8 @@ export function LoginForm({ next }: { next: string }) {
               id="password"
               type={showPassword ? 'text' : 'password'}
               required
-              minLength={6}
+              minLength={isSignup ? PASSWORD_MIN_LENGTH : undefined}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -134,25 +184,109 @@ export function LoginForm({ next }: { next: string }) {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
             >
               <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
             </button>
           </div>
+
+          {isSignup && (
+            // Jauge de complexité : une maryse par critère satisfait.
+            <div className="pt-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex gap-2"
+                  role="progressbar"
+                  aria-label="Complexité du mot de passe"
+                  aria-valuemin={0}
+                  aria-valuemax={strength.total}
+                  aria-valuenow={strength.score}
+                  aria-valuetext={strength.label}
+                >
+                  {strength.criteria.map((critere, i) => (
+                    <MaryseIcon
+                      key={critere.id}
+                      size={20}
+                      className={`transition-colors duration-300 ${
+                        i < strength.score ? STRENGTH_ICON_COLOR[strength.score] : 'text-outline-variant/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="font-label-md text-[12px] text-secondary">
+                  {password.length > 0 ? strength.label : ''}
+                </span>
+              </div>
+              <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {strength.criteria.map((critere) => (
+                  <li
+                    key={critere.id}
+                    className={`flex items-center gap-1 text-[12px] ${
+                      critere.ok ? 'text-primary' : 'text-on-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px] leading-none">
+                      {critere.ok ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    {critere.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {!isSignup && (
             <a href="#" className="text-[12px] text-secondary hover:text-primary mt-2 ml-1 inline-block">
               Mot de passe oublié ?
             </a>
           )}
         </div>
+
+        {isSignup && (
+          <div className="space-y-1">
+            <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="confirm">
+              Confirmer le mot de passe
+            </label>
+            <div className="relative">
+              <input
+                id="confirm"
+                type={showPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                aria-invalid={mismatch}
+                className={`${FIELD} ${mismatch ? 'border-error' : ''}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
+              </button>
+            </div>
+            {mismatch && (
+              <p className="text-[12px] text-error mt-2 ml-1">Les deux mots de passe ne correspondent pas.</p>
+            )}
+          </div>
+        )}
+
         {isSignup && (
           <div className="flex items-start gap-3 py-2">
             <input
               id="terms"
               type="checkbox"
+              required
               checked={terms}
               onChange={(e) => setTerms(e.target.checked)}
-              className="mt-1 w-4 h-4 border-outline rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer"
+              aria-invalid={!terms && error === "Vous devez accepter les conditions d'utilisation."}
+              className={`mt-1 w-4 h-4 rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer ${
+                !terms && error === "Vous devez accepter les conditions d'utilisation." ? 'border-error' : 'border-outline'
+              }`}
             />
             <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
               J&apos;accepte les{' '}
@@ -164,12 +298,31 @@ export function LoginForm({ next }: { next: string }) {
           </div>
         )}
 
-        {error && <p className="text-sm text-error text-center">{error}</p>}
+        {error && (
+          <p className="text-sm text-error text-center">
+            {error}
+            {error === 'Un compte existe déjà avec cette adresse e-mail.' && (
+              <>
+                {' '}
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleMode();
+                  }}
+                  className="underline underline-offset-4 hover:text-error/80"
+                >
+                  Se connecter
+                </a>
+              </>
+            )}
+          </p>
+        )}
         {notice && <p className="text-sm text-primary text-center">{notice}</p>}
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || blocked}
           className="w-full bg-primary-container text-on-primary py-4 px-8 mt-4 hover:bg-primary transition-all duration-500 active:scale-[0.98] font-label-md text-label-md tracking-widest uppercase disabled:opacity-60"
         >
           {busy ? 'Chargement...' : isSignup ? "S'inscrire" : 'Se connecter'}
@@ -187,7 +340,7 @@ export function LoginForm({ next }: { next: string }) {
             }}
             className="text-primary font-semibold underline underline-offset-4 hover:text-secondary transition-colors ml-1"
           >
-            {isSignup ? 'Se connecter' : "S'inscrire"}
+            {isSignup ? 'Se connecter' : 'Créer un compte'}
           </a>
         </p>
       </div>
