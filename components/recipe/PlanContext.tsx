@@ -5,15 +5,31 @@
 // bas), pour reproduire la bascule bouton→panneau de recette.html sans
 // imbriquer l'un dans l'autre. Deux modes : création (nouvelle entrée de
 // planning) ou édition (modifie l'entrée de planning en cours).
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 type PlanCtxValue = { open: boolean; editMode: boolean; openCreate: () => void; openEdit: () => void; close: () => void };
 
 const PlanCtx = createContext<PlanCtxValue | null>(null);
 
-export function PlanProvider({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function PlanProvider({
+  children,
+  autoOpen = false,
+}: {
+  children: React.ReactNode;
+  // Ouvre le panneau au chargement (clic sur l'icône « calendrier » d'une
+  // carte recette, avant même d'arriver sur la fiche) — même chemin que le
+  // bouton « Planifier » (mode création), pour bénéficier du même
+  // scrollIntoView dans PlanWidget.
+  autoOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(autoOpen);
   const [editMode, setEditMode] = useState(false);
+
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <PlanCtx.Provider
       value={{

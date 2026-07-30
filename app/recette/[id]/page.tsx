@@ -28,7 +28,7 @@ import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 
 type Params = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; planifier?: string }>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { plan } = await searchParams;
+  const { plan, planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -169,7 +169,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       </div>
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <PlanProvider>
+        <PlanProvider autoOpen={planifier === '1'}>
         <div className="lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
@@ -241,6 +241,32 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
             </div>
           </div>
+
+          {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
+              clic sur « Planifier », qui doit rester visible sans scroller. */}
+          <PlanWidget
+            recipe={{
+              id: recipe.id,
+              title: recipe.title,
+              measureType: recipe.measure_type,
+              yieldQty: recipe.yield_qty,
+              yieldUnit: recipe.yield_unit,
+              yieldDesc: recipe.yield_desc,
+              moldForme: recipe.mold_types?.forme ?? null,
+              moldDims:
+                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
+                  ? (recipe.mold_dims as Record<string, number>)
+                  : null,
+              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
+              yieldNotes: recipe.yield_notes,
+            }}
+            moldTypes={moldTypes}
+            ingredients={merged}
+            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
+            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
+            isAdmin={userIsAdmin}
+          />
 
           {/* Hero */}
           {recipe.hero_image_url && (
@@ -426,31 +452,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </ul>
             </div>
           )}
-
-          {/* Planifier */}
-          <PlanWidget
-            recipe={{
-              id: recipe.id,
-              title: recipe.title,
-              measureType: recipe.measure_type,
-              yieldQty: recipe.yield_qty,
-              yieldUnit: recipe.yield_unit,
-              yieldDesc: recipe.yield_desc,
-              moldForme: recipe.mold_types?.forme ?? null,
-              moldDims:
-                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
-                  ? (recipe.mold_dims as Record<string, number>)
-                  : null,
-              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              yieldNotes: recipe.yield_notes,
-            }}
-            moldTypes={moldTypes}
-            ingredients={merged}
-            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
-            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
-            isAdmin={userIsAdmin}
-          />
 
           {/* Planning de préparation */}
           {steps.length > 0 && (
