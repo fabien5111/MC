@@ -196,7 +196,7 @@ export function LoginForm({ next }: { next: string }) {
             <div className="pt-3 space-y-2">
               <div className="flex items-center gap-3">
                 <div
-                  className="flex flex-1 gap-2"
+                  className="flex gap-2"
                   role="progressbar"
                   aria-label="Complexité du mot de passe"
                   aria-valuemin={0}
@@ -214,9 +214,7 @@ export function LoginForm({ next }: { next: string }) {
                     />
                   ))}
                 </div>
-                {/* Largeur fixe : le libellé change de longueur sans faire
-                    varier celle de la jauge. */}
-                <span className="w-20 shrink-0 text-right font-label-md text-[12px] text-secondary">
+                <span className="font-label-md text-[12px] text-secondary">
                   {password.length > 0 ? strength.label : ''}
                 </span>
               </div>
