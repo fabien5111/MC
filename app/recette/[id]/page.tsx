@@ -469,9 +469,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Planning de préparation */}
+          {/* Planning de préparation — sans intérêt à l'impression quand
+              toutes les étapes tombent le même jour (un seul jalon à
+              afficher) : masqué dans ce cas, conservé à l'écran. */}
           {steps.length > 0 && (
-            <div className="mb-12 py-10 border-y border-outline-variant">
+            <div className={`${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}>
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
               <div className="relative flex flex-col md:flex-row gap-8">
                 <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
