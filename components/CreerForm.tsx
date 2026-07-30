@@ -114,7 +114,7 @@ const emptyStep = (): StepState => ({
   videoUrl: '',
   scaling: 'simple',
   ings: [emptyIng()],
-  photos: [null, null, null, null],
+  photos: [null, null, null, null, null, null, null, null],
   collapsed: false,
 });
 
@@ -147,7 +147,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       ings: ings.length
         ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: parseAllergens(i.allergen) }))
         : [emptyIng()],
-      photos: [0, 1, 2, 3].map((i) => photos[i] || null),
+      photos: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => photos[i] || null),
       collapsed: false,
     };
   });

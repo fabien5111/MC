@@ -169,7 +169,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     }),
     tips: ligatureOeuf(sp.conseils || ''),
     videoUrl: sp.video || '',
-    photos: [0, 1, 2, 3].map((i) => photos[i] || null),
+    photos: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => photos[i] || null),
     collapsed: false,
     ingsCollapsed: false,
   };
@@ -533,7 +533,7 @@ export function RelectureEditor({
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
     tips: '',
     videoUrl: '',
-    photos: [null, null, null, null],
+    photos: [null, null, null, null, null, null, null, null],
     collapsed: false,
     ingsCollapsed: false,
   });
