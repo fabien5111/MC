@@ -1653,6 +1653,11 @@ export function CreerForm({
                 </button>
               ))}
             </div>
+            {level > 0 && (
+              <span className="font-label-md text-label-md text-on-surface mt-2">
+                {difficulties.find((d) => d.level === level)?.name}
+              </span>
+            )}
           </div>
 
           {/* Ligne 1 : somme des temps des étapes (lecture seule, informative) */}

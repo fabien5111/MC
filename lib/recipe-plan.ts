@@ -166,15 +166,15 @@ export function buildGroupRows(group: RecipeFull['ingredient_groups'][number], p
 // ── Fusion effective (mode planifié) : groupes « possédés » exclus, lignes barrées
 // exclues, ajustements appliqués, ajouts inclus. Sert à la liste de courses et à
 // la mise en place de l'exécution.
-export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; modified: boolean };
+export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; modified: boolean; comment: string | null };
 
 export function effectiveMergedRows(recipe: RecipeFull, plan: PlanningEntry, overrides: PlanOverrides): MergedPlanRow[] {
   const rows: (MergedPlanRow & { key: string })[] = [];
-  const push = (name: string, unit: string, adjN: number | null, origN: number | null, origRaw: string, added: boolean, modFlag: boolean) => {
+  const push = (name: string, unit: string, adjN: number | null, origN: number | null, origRaw: string, added: boolean, modFlag: boolean, comment: string | null) => {
     const key = name.toLowerCase() + '|' + unit.toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
-      r = { key, name, unit, adj: null, orig: null, origTxt: [], added: false, modified: false };
+      r = { key, name, unit, adj: null, orig: null, origTxt: [], added: false, modified: false, comment: null };
       rows.push(r);
     }
     if (adjN != null) r.adj = round2((r.adj || 0) + adjN);
@@ -182,6 +182,7 @@ export function effectiveMergedRows(recipe: RecipeFull, plan: PlanningEntry, ove
     else if (origRaw) r.origTxt.push(origRaw);
     if (added) r.added = true;
     if (modFlag) r.modified = true;
+    if (comment && comment !== r.comment) r.comment = r.comment ? r.comment + ' ; ' + comment : comment;
   };
   const owned = ownedGroupOrders(overrides, recipe.recipe_steps);
   const modeMap = scalingModeMap(recipe);
@@ -189,11 +190,11 @@ export function effectiveMergedRows(recipe: RecipeFull, plan: PlanningEntry, ove
     if (owned.has(g.order_index || 0)) return;
     (g.ingredients || []).forEach((it) => {
       if (!it.name || isRemovedIng(overrides, it.id)) return;
-      push(it.name, it.unit || '', effAdjustedQty(plan, overrides, modeMap[String(it.id)], it), numify(it.quantity), it.quantity || '', false, isModifiedIng(overrides, it.id));
+      push(it.name, it.unit || '', effAdjustedQty(plan, overrides, modeMap[String(it.id)], it), numify(it.quantity), it.quantity || '', false, isModifiedIng(overrides, it.id), it.comment);
     });
   });
   overrides.added.forEach((a) => {
-    if (a.name) push(a.name, a.unit || '', numify(a.qty), null, '', true, false);
+    if (a.name) push(a.name, a.unit || '', numify(a.qty), null, '', true, false, null);
   });
   rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return rows.map(({ key: _key, ...r }) => r);

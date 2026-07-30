@@ -568,7 +568,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         const tone = r.added && r.orig == null && !r.origTxt.length ? 'text-green-700' : r.added || r.modified ? 'text-orange-600' : '';
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>{r.name}</span>
+                            <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                              {r.name}
+                              {r.comment && <span className="text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                            </span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
                               <Qty quantity={r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ')} unit={r.unit} />
@@ -593,7 +596,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
                         {merged.map((m, k) => (
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className="font-body-md text-body-md">{m.name}</span>
+                            <span className="font-body-md text-body-md">
+                              {m.name}
+                              {m.comment && <span className="text-on-surface-variant text-sm italic"> — {m.comment}</span>}
+                            </span>
                             <span className="font-label-md text-label-md text-primary">
                               <Qty quantity={m.qty} unit={m.unit} />
                             </span>
@@ -608,7 +614,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
                 <ShoppingWidget
                   recipeTitle={recipe.title}
-                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit })) : merged}
+                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment })) : merged}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
                 />

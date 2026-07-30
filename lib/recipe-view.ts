@@ -62,7 +62,7 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
 }
 
 // Fusion des ingrédients identiques (nom + unité) pour la liste complète.
-export type MergedIngredient = { name: string; qty: string; unit: string };
+export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null };
 export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
@@ -72,17 +72,18 @@ export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
       const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
       const ex = merged.find((m) => m.key === key);
       if (!ex) {
-        merged.push({ key, name: it.name, qty: it.quantity || '', unit });
+        merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null });
         return;
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(it.quantity || '').replace(',', '.'));
       if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
       else ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
+      if (it.comment && it.comment !== ex.comment) ex.comment = ex.comment ? ex.comment + ' ; ' + it.comment : it.comment;
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+  return merged.map(({ name, qty, unit, comment }) => ({ name, qty, unit, comment }));
 }
 
 // ── Moules : dimensions par forme + métriques (volume / surface) ──
