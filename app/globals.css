@@ -481,7 +481,17 @@ img {
   /* 6. Échelle typographique ----------------------------------------------
      Scope au contenu de la recette (`.recipe-print-content`, le conteneur
      `lg:col-span-8` de la page) : le reste du site, imprimé depuis une autre
-     page, ne doit pas hériter de ce corps de texte à 11px. */
+     page, ne doit pas hériter de ce corps de texte à 11px.
+
+     La plupart des textes portent déjà une classe Tailwind de taille
+     (text-body-md, text-label-md...), qui l'emporte sur l'héritage du
+     conteneur même avec `!important` ici (une valeur posée directement sur
+     l'élément gagne toujours face à une valeur seulement héritée). Les
+     tailles ci-dessous sont donc appliquées par des marqueurs `.print-fs-*`
+     posés explicitement dans la page sur chaque élément à ajuster, plutôt
+     que déduites du style écran — plus verbeux, mais chaque taille reste
+     réglable indépendamment sans effet de bord sur un élément voisin qui
+     partagerait la même classe Tailwind. */
   .recipe-print-content {
     font-size: 11px !important;
     line-height: 1.5 !important;
@@ -499,29 +509,42 @@ img {
     font-size: 14px !important;
     line-height: 1.3 !important;
   }
-  /* Notes, légendes, mentions légales : libellés de champs (Coef., Temps de
-     prép, Difficulté...), commentaires accolés aux ingrédients/ustensiles,
-     et les blocs marqués `.print-note` (source, signature, badges d'étape,
-     allergène inline) qui n'ont pas de marqueur de style commun exploitable
-     en sélecteur. */
-  .recipe-print-content .uppercase.tracking-widest,
-  .recipe-print-content .text-sm.italic,
-  .recipe-print-content .print-note {
+  .recipe-print-content .print-fs-9 {
     font-size: 9px !important;
   }
+  .recipe-print-content .print-fs-11 {
+    font-size: 11px !important;
+  }
 
-  /* 7. Photos d'étape : taille divisée par 4 ------------------------------
-     La grille écran (2 puis 4 colonnes selon la largeur) est remplacée par
-     des vignettes de taille fixe, un quart de leur taille imprimée
-     précédente (~36mm en 4 colonnes sur ~150mm de contenu → 9mm). */
+  /* 7. Temps (prép/cuisson/attente/total) : une seule ligne --------------- */
+  .print-times {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    text-align: left !important;
+  }
+  .print-times-item {
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.3em !important;
+  }
+  .print-times-item:not(:last-child)::after {
+    content: '·';
+    margin-left: 0.6em;
+    color: inherit;
+  }
+
+  /* 8. Photos d'étape : taille divisée par 2 ------------------------------
+     (initialement divisée par 4, puis redoublée sur retour utilisateur :
+     net, la taille imprimée est divisée par 2 par rapport à l'original.) */
   .print-step-photos {
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 4px !important;
   }
   .print-step-photos > div {
-    width: 9mm !important;
-    height: 9mm !important;
+    width: 18mm !important;
+    height: 18mm !important;
     flex: none !important;
   }
 }
