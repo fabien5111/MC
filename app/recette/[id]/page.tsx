@@ -172,7 +172,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
-        <div className="lg:col-span-8">
+        <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
             <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary text-center">
@@ -384,7 +384,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Source & liens d'origine */}
           {(recipe.source || recipe.source_url || recipe.video_url) && (
-            <div className="mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
+            <div className="print-note mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
               {(recipe.source || recipe.source_url) &&
                 (recipe.source_url ? (
                   <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
@@ -545,7 +545,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   )}
                                   {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                   {it.allergen && (
-                                    <span className="text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
+                                    <span className="print-note text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
                                   )}
                                 </span>
                               </li>
@@ -671,7 +671,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <h4 className="font-headline-md text-headline-md text-primary">
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
                       </h4>
-                      <div className="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                      <div className="print-note flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
                         {alreadyDone && <span className="bg-green-700 text-white px-3 py-1">DÉJÀ RÉALISÉE ✓</span>}
                         {badges.map((b, k) => (
                           <span key={k} className="bg-surface-variant px-3 py-1">
@@ -707,7 +707,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </details>
                     )}
                     {photos.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
                         {photos.map((p, k) => (
                           <div key={k} className="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
@@ -756,7 +756,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </h3>
               <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{recipe.tips}</p>
               {recipe.profiles?.full_name && (
-                <p className="mt-6 font-label-md text-label-md">— {recipe.profiles.full_name}</p>
+                <p className="print-note mt-6 font-label-md text-label-md">— {recipe.profiles.full_name}</p>
               )}
             </div>
           )}
