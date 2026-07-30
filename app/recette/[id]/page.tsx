@@ -157,8 +157,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   return (
     <>
+      <div className="no-print">
       <Header />
-      <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
+      </div>
+      <div className="no-print max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
         <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
           <Link className="hover:text-primary" href="/">
             Accueil
@@ -176,7 +178,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary text-center">
               {recipe.title}
             </h1>
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="no-print flex items-center gap-4 flex-wrap">
               {statusBadge && (
                 <span className={`${statusBadge.cls} px-3 py-1 font-label-md text-[10px] uppercase tracking-widest`}>
                   {statusBadge.label}
@@ -195,7 +197,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
                 Par{' '}
-                <Link className="flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
+                <Link className="no-print flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
                   <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -208,6 +210,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   </span>
                   <span className="border-b border-primary">{recipe.profiles?.full_name || 'Auteur'}</span>
                 </Link>
+                {/* Version imprimée : le nom de l'auteur reste, sans avatar ni lien. */}
+                <span className="hidden print:inline">{recipe.profiles?.full_name || 'Auteur'}</span>
               </span>
               <span className="w-1 h-1 bg-outline-variant rounded-full" />
               <span>
@@ -215,7 +219,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </span>
             </div>
             <div className="mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
-              <div className="flex flex-wrap gap-3 text-secondary">
+              <div className="no-print flex flex-wrap gap-3 text-secondary">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 {isOwner && (
                   <Link
@@ -244,6 +248,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
               clic sur « Planifier », qui doit rester visible sans scroller. */}
+          <div className="no-print">
           <PlanWidget
             recipe={{
               id: recipe.id,
@@ -267,10 +272,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
             isAdmin={userIsAdmin}
           />
+          </div>
 
           {/* Hero */}
           {recipe.hero_image_url && (
-            <div className="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+            <div className="print-hero w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
               {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
               <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
             </div>
@@ -405,6 +411,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Contexte planifié (bannière + démarrage d'exécution) */}
           {planContext && planContext.planned_date && (
+            <div className="no-print">
             <PlanNoticeBanner
               recipe={recipe}
               plan={planContext}
@@ -423,11 +430,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     : '')
               }
             />
+            </div>
           )}
 
           {/* Sessions de préparation (historique) */}
           {execHistory.length > 0 && (
-            <div className="mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
+            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
               <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
               <ul className="flex flex-col">
                 {execHistory.map((x) => {
@@ -612,18 +620,20 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
 
               {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
+                <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
                   ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment })) : merged}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
                 />
+                </div>
               )}
             </div>
           )}
 
           {/* Publicité */}
-          <div className="mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="no-print mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col gap-1">
               <span className="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
               <h4 className="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
@@ -767,7 +777,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </PlanProvider>
 
         {/* Sidebar */}
-        <aside className="lg:col-span-4 flex flex-col gap-12">
+        <aside className="no-print lg:col-span-4 flex flex-col gap-12">
           <div className="relative">
             <input
               className="w-full border-0 border-b border-outline py-4 px-0 bg-transparent focus:ring-0 focus:border-primary font-body-md text-body-md placeholder:text-outline/60"
@@ -793,8 +803,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </aside>
       </main>
 
+      <div className="no-print">
       <Footer />
       <MobileNav />
+      </div>
     </>
   );
 }
