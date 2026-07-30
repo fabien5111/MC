@@ -259,12 +259,111 @@ export type Database = {
           },
         ]
       }
+      impersonation_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          label: string | null
+          path: string | null
+          session_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: never
+          label?: string | null
+          path?: string | null
+          session_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: never
+          label?: string | null
+          path?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "impersonation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impersonation_sessions: {
+        Row: {
+          admin_email: string | null
+          admin_id: string
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          expires_at: string
+          id: string
+          mode: string
+          started_at: string | null
+          target_email: string | null
+          target_name: string | null
+          target_user_id: string
+        }
+        Insert: {
+          admin_email?: string | null
+          admin_id: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at: string
+          id?: string
+          mode: string
+          started_at?: string | null
+          target_email?: string | null
+          target_name?: string | null
+          target_user_id: string
+        }
+        Update: {
+          admin_email?: string | null
+          admin_id?: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at?: string
+          id?: string
+          mode?: string
+          started_at?: string | null
+          target_email?: string | null
+          target_name?: string | null
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_sessions_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imports: {
         Row: {
           alertes: Json | null
+          cost_usd: number | null
           created_at: string
           fichier_original: string | null
           id: number
+          input_tokens: number | null
+          model: string | null
+          output_tokens: number | null
           recette: Json
           recipe_id: string | null
           source_type: string
@@ -274,9 +373,13 @@ export type Database = {
         }
         Insert: {
           alertes?: Json | null
+          cost_usd?: number | null
           created_at?: string
           fichier_original?: string | null
           id?: number
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
           recette: Json
           recipe_id?: string | null
           source_type: string
@@ -286,9 +389,13 @@ export type Database = {
         }
         Update: {
           alertes?: Json | null
+          cost_usd?: number | null
           created_at?: string
           fichier_original?: string | null
           id?: number
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
           recette?: Json
           recipe_id?: string | null
           source_type?: string
@@ -562,6 +669,7 @@ export type Database = {
           following_count: number | null
           full_name: string | null
           id: string
+          impersonation_access: string
           instagram: string | null
           instagram_url: string | null
           is_admin: boolean | null
@@ -590,6 +698,7 @@ export type Database = {
           following_count?: number | null
           full_name?: string | null
           id: string
+          impersonation_access?: string
           instagram?: string | null
           instagram_url?: string | null
           is_admin?: boolean | null
@@ -618,6 +727,7 @@ export type Database = {
           following_count?: number | null
           full_name?: string | null
           id?: string
+          impersonation_access?: string
           instagram?: string | null
           instagram_url?: string | null
           is_admin?: boolean | null
@@ -650,6 +760,7 @@ export type Database = {
           step_number: number
           tips: string | null
           title: string | null
+          video_url: string | null
           wait_time: number | null
         }
         Insert: {
@@ -665,6 +776,7 @@ export type Database = {
           step_number: number
           tips?: string | null
           title?: string | null
+          video_url?: string | null
           wait_time?: number | null
         }
         Update: {
@@ -680,6 +792,7 @@ export type Database = {
           step_number?: number
           tips?: string | null
           title?: string | null
+          video_url?: string | null
           wait_time?: number | null
         }
         Relationships: [
@@ -1180,7 +1293,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
+      is_admin_user: { Args: never; Returns: boolean }
+      is_read_only_session: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
