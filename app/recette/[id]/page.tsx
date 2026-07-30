@@ -157,8 +157,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   return (
     <>
+      <div className="no-print">
       <Header />
-      <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
+      </div>
+      <div className="no-print max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
         <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
           <Link className="hover:text-primary" href="/">
             Accueil
@@ -170,13 +172,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
-        <div className="lg:col-span-8">
+        <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
             <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary text-center">
               {recipe.title}
             </h1>
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="no-print flex items-center gap-4 flex-wrap">
               {statusBadge && (
                 <span className={`${statusBadge.cls} px-3 py-1 font-label-md text-[10px] uppercase tracking-widest`}>
                   {statusBadge.label}
@@ -195,7 +197,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
                 Par{' '}
-                <Link className="flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
+                <Link className="no-print flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
                   <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -208,13 +210,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   </span>
                   <span className="border-b border-primary">{recipe.profiles?.full_name || 'Auteur'}</span>
                 </Link>
+                {/* Version imprimée : le nom de l'auteur reste, sans avatar ni lien. */}
+                <span className="hidden print:inline">{recipe.profiles?.full_name || 'Auteur'}</span>
               </span>
               <span className="w-1 h-1 bg-outline-variant rounded-full" />
               <span>
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            <div className="mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
+            <div className="no-print mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
               <div className="flex flex-wrap gap-3 text-secondary">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 {isOwner && (
@@ -244,6 +248,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
               clic sur « Planifier », qui doit rester visible sans scroller. */}
+          <div className="no-print">
           <PlanWidget
             recipe={{
               id: recipe.id,
@@ -267,10 +272,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
             isAdmin={userIsAdmin}
           />
+          </div>
 
           {/* Hero */}
           {recipe.hero_image_url && (
-            <div className="w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+            <div className="print-hero w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
               {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
               <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
             </div>
@@ -281,14 +287,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
               {yInfo && (
                 <div className="flex flex-col gap-1 items-center text-center">
-                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                  <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {yInfo.label}
                   </span>
-                  <span className="font-headline-md text-headline-md text-primary">{yInfo.value}</span>
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{yInfo.value}</span>
                 </div>
               )}
               <div className="flex flex-col gap-1 items-center text-center">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                   Difficulté
                 </span>
                 <div className="flex items-center justify-center gap-2 h-8">
@@ -299,9 +305,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ) : (
                     <span className="text-sm text-on-surface-variant">—</span>
                   )}
+                  {/* Impression : le nom de la difficulté rejoint les pictos sur
+                      la même ligne, sous le libellé « Difficulté » — au lieu
+                      d'une 3e ligne comme à l'écran. */}
+                  {recipe.difficulties?.name && (
+                    <span className="hidden print:inline font-label-md text-label-md text-on-surface">
+                      {recipe.difficulties.name}
+                    </span>
+                  )}
                 </div>
                 {recipe.difficulties?.name && (
-                  <span className="font-label-md text-label-md text-on-surface">
+                  <span className="no-print font-label-md text-label-md text-on-surface">
                     {recipe.difficulties.name}
                   </span>
                 )}
@@ -309,13 +323,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
             {recipe.yield_notes && (
               <div className="pt-2 border-t border-outline-variant/40 text-center">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px] block mb-1">
+                <span className="print-fs-11 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px] block mb-1">
                   Complément d&apos;informations sur les quantités
                 </span>
-                <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>
+                <p className="print-fs-11 font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>
               </div>
             )}
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 ${recipe.yield_notes ? 'pt-2 border-t border-outline-variant/40' : ''}`}>
+            <div className={`print-times grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 ${recipe.yield_notes ? 'pt-2 border-t border-outline-variant/40' : ''}`}>
               {(
                 [
                   ['Temps de prép', times.prep],
@@ -324,17 +338,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ['Durée totale', times.total],
                 ] as const
               ).map(([label, v]) => (
-                <div key={label} className="flex flex-col gap-1 items-center text-center">
-                  <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                <div key={label} className="print-times-item flex flex-col gap-1 items-center text-center">
+                  <span className="print-fs-11 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {label}
                   </span>
-                  <span className="font-body-lg text-body-lg font-bold text-primary">{v ? formatTime(v) : '—'}</span>
+                  <span className="print-fs-11 font-body-lg text-body-lg font-bold text-primary">{v ? formatTime(v) : '—'}</span>
                 </div>
               ))}
             </div>
             {allergens.length > 0 && (
               <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                   Allergènes :
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -372,13 +386,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <h3 className="font-headline-md text-headline-md mb-4 flex items-center gap-3">
                 <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
               </h3>
-              <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed">{recipe.description}</p>
+              <p className="print-fs-11 font-body-lg text-body-lg italic opacity-90 leading-relaxed">{recipe.description}</p>
             </div>
           )}
 
           {/* Source & liens d'origine */}
           {(recipe.source || recipe.source_url || recipe.video_url) && (
-            <div className="mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
+            <div className="print-fs-9 mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
               {(recipe.source || recipe.source_url) &&
                 (recipe.source_url ? (
                   <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
@@ -405,6 +419,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Contexte planifié (bannière + démarrage d'exécution) */}
           {planContext && planContext.planned_date && (
+            <div className="no-print">
             <PlanNoticeBanner
               recipe={recipe}
               plan={planContext}
@@ -423,11 +438,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     : '')
               }
             />
+            </div>
           )}
 
           {/* Sessions de préparation (historique) */}
           {execHistory.length > 0 && (
-            <div className="mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
+            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
               <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
               <ul className="flex flex-col">
                 {execHistory.map((x) => {
@@ -453,9 +469,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Planning de préparation */}
+          {/* Planning de préparation — sans intérêt à l'impression quand
+              toutes les étapes tombent le même jour (un seul jalon à
+              afficher) : masqué dans ce cas, conservé à l'écran. */}
           {steps.length > 0 && (
-            <div className="mb-12 py-10 border-y border-outline-variant">
+            <div className={`${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}>
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
               <div className="relative flex flex-col md:flex-row gap-8">
                 <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
@@ -492,7 +510,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       ) : (
                         u.name
                       )}
-                      {u.comment && <span className="text-on-surface-variant text-sm italic"> — {u.comment}</span>}
+                      {u.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {u.comment}</span>}
                     </li>
                   );
                 })}
@@ -504,6 +522,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {groups.length > 0 && (
             <div className="mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
+              {/* Détail par groupe/étape : redondant à l'impression avec le total
+                  ci-dessous et les « Ingrédients de l'étape » dans le déroulé —
+                  masqué au print, conservé à l'écran (édition du plan incluse). */}
+              <div className="no-print">
               {planContext && overrides ? (
                 <PlanIngredientsEditor groups={groups} steps={steps} plan={planContext} units={units} unitTips={unitTips} />
               ) : (
@@ -535,9 +557,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   ) : (
                                     it.name
                                   )}
-                                  {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                   {it.allergen && (
-                                    <span className="text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
+                                    <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
                                   )}
                                 </span>
                               </li>
@@ -548,6 +570,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ))}
                 </div>
               )}
+              </div>
 
               {planMerged && planMerged.length > 0 ? (
                 <details className="group border border-outline-variant mt-12">
@@ -559,9 +582,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', columnGap: 40 }}>
                       <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                         <span />
-                        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
-                        <span className="font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
-                        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d&apos;origine</span>
+                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
+                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
+                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d&apos;origine</span>
                       </li>
                       {planMerged.map((r, k) => {
                         const coef = r.orig && r.adj != null ? r.adj / r.orig : null;
@@ -570,7 +593,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
                               {r.name}
-                              {r.comment && <span className="text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                              {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
                             </span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
@@ -598,7 +621,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className="font-body-md text-body-md">
                               {m.name}
-                              {m.comment && <span className="text-on-surface-variant text-sm italic"> — {m.comment}</span>}
+                              {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
                             </span>
                             <span className="font-label-md text-label-md text-primary">
                               <Qty quantity={m.qty} unit={m.unit} />
@@ -612,18 +635,20 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
 
               {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
+                <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
                   ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment })) : merged}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
                 />
+                </div>
               )}
             </div>
           )}
 
           {/* Publicité */}
-          <div className="mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="no-print mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col gap-1">
               <span className="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
               <h4 className="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
@@ -661,7 +686,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <h4 className="font-headline-md text-headline-md text-primary">
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
                       </h4>
-                      <div className="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                      <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
                         {alreadyDone && <span className="bg-green-700 text-white px-3 py-1">DÉJÀ RÉALISÉE ✓</span>}
                         {badges.map((b, k) => (
                           <span key={k} className="bg-surface-variant px-3 py-1">
@@ -688,7 +713,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 </span>
                                 <span className="font-body-md text-body-md">
                                   {it.name}
-                                  {it.comment && <span className="text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                 </span>
                               </li>
                             ))}
@@ -697,7 +722,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </details>
                     )}
                     {photos.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
                         {photos.map((p, k) => (
                           <div key={k} className="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
@@ -746,7 +771,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </h3>
               <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{recipe.tips}</p>
               {recipe.profiles?.full_name && (
-                <p className="mt-6 font-label-md text-label-md">— {recipe.profiles.full_name}</p>
+                <p className="print-fs-9 mt-6 font-label-md text-label-md">— {recipe.profiles.full_name}</p>
               )}
             </div>
           )}
@@ -767,7 +792,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </PlanProvider>
 
         {/* Sidebar */}
-        <aside className="lg:col-span-4 flex flex-col gap-12">
+        <aside className="no-print lg:col-span-4 flex flex-col gap-12">
           <div className="relative">
             <input
               className="w-full border-0 border-b border-outline py-4 px-0 bg-transparent focus:ring-0 focus:border-primary font-body-md text-body-md placeholder:text-outline/60"
@@ -793,8 +818,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </aside>
       </main>
 
+      <div className="no-print">
       <Footer />
       <MobileNav />
+      </div>
     </>
   );
 }

@@ -336,6 +336,235 @@ img {
   }
 }
 
+/* ---- Impression -----------------------------------------------------------
+   Une fiche imprimée ne doit contenir que la recette : photos, ingrédients,
+   ustensiles, instructions, conseils. Tout ce qui relève de la page web
+   (en-tête, navigation, fil d'Ariane, boutons d'action, planification, liste
+   de courses, encarts publicitaires, suggestions, pied de page) porte la
+   classe `no-print` et disparaît ici.
+
+   Les règles suivantes adaptent ensuite le reste au papier. La plus critique
+   est celle des fonds : les navigateurs n'impriment pas les arrière-plans par
+   défaut, si bien qu'un bloc `bg-primary text-white` (« En quelques mots »,
+   « Conseils et astuces ») sortait en blanc sur blanc, donc vide. */
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  /* 1. Interface --------------------------------------------------------- */
+  .no-print {
+    display: none !important;
+  }
+  /* Superpositions flottantes (overlay de chargement, bandeau
+     d'impersonation, sommaire de l'éditeur) : elles se répéteraient sur
+     chaque page ou recouvriraient le contenu. */
+  .fixed,
+  .recipe-toc {
+    display: none !important;
+  }
+  /* Les en-têtes collants n'ont plus de sens hors défilement. */
+  .sticky {
+    position: static !important;
+  }
+  body[data-impersonation] {
+    padding-top: 0 !important;
+  }
+  /* Icônes de police : décoratives (chevrons, pictos d'ambiance) et rendues
+     en toutes lettres si la police Material n'est pas chargée à temps.
+     Les pictogrammes d'allergènes sont des <img> et restent imprimés. */
+  .material-symbols-outlined {
+    display: none !important;
+  }
+
+  /* 2. Couleurs et fonds ------------------------------------------------- */
+  body {
+    background: #fff !important;
+  }
+  .bg-primary {
+    background: transparent !important;
+    color: #300a12 !important;
+    border: 1px solid #300a12 !important;
+  }
+  .text-white,
+  .text-on-primary {
+    color: #300a12 !important;
+  }
+  .bg-secondary,
+  .bg-secondary-fixed,
+  .bg-error,
+  .bg-green-700,
+  .bg-white,
+  .bg-surface-variant,
+  .bg-surface-container,
+  .bg-surface-container-low,
+  .bg-surface-container-lowest,
+  .bg-surface-container-high,
+  .bg-surface-container-highest {
+    background: transparent !important;
+  }
+  .luxury-shadow,
+  .ambient-shadow {
+    box-shadow: none !important;
+  }
+  .opacity-90 {
+    opacity: 1 !important;
+  }
+  /* Liens : ni couleur ni soulignement, l'adresse n'est pas cliquable. */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  .unit-tip {
+    text-decoration: none !important;
+  }
+
+  /* 3. Mise en page : une seule colonne, pleine largeur ------------------ */
+  main {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  main > * {
+    width: 100% !important;
+  }
+  /* La photo principale, en 16/9 pleine largeur, mangeait la moitié de la
+     première page. */
+  .print-hero {
+    aspect-ratio: auto !important;
+    height: 70mm !important;
+  }
+
+  /* 4. Densité : les respirations de l'écran gaspillent du papier -------- */
+  .mb-12,
+  .mt-20 {
+    margin-bottom: 1.25rem !important;
+  }
+  .mt-20,
+  .mt-12 {
+    margin-top: 1.25rem !important;
+  }
+  .space-y-16 > * + * {
+    margin-top: 1.5rem !important;
+  }
+  .p-8,
+  .p-10 {
+    padding: 1rem !important;
+  }
+  .py-10 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  .pb-14 {
+    padding-bottom: 1rem !important;
+  }
+
+  /* 5. Coupures de page -------------------------------------------------- */
+  h1,
+  h3,
+  h4,
+  summary {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  li,
+  img,
+  details {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  img {
+    max-width: 100% !important;
+  }
+
+  /* 6. Échelle typographique ----------------------------------------------
+     Scope au contenu de la recette (`.recipe-print-content`, le conteneur
+     `lg:col-span-8` de la page) : le reste du site, imprimé depuis une autre
+     page, ne doit pas hériter de ce corps de texte à 11px.
+
+     La plupart des textes portent déjà une classe Tailwind de taille
+     (text-body-md, text-label-md...), qui l'emporte sur l'héritage du
+     conteneur même avec `!important` ici (une valeur posée directement sur
+     l'élément gagne toujours face à une valeur seulement héritée). Les
+     tailles ci-dessous sont donc appliquées par des marqueurs `.print-fs-*`
+     posés explicitement dans la page sur chaque élément à ajuster, plutôt
+     que déduites du style écran — plus verbeux, mais chaque taille reste
+     réglable indépendamment sans effet de bord sur un élément voisin qui
+     partagerait la même classe Tailwind. */
+  .recipe-print-content {
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+  }
+  .recipe-print-content h1 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+  .recipe-print-content h3 {
+    font-size: 18px !important;
+    line-height: 1.25 !important;
+  }
+  /* Titre d'étape (seul <h4> restant à l'impression, le nom de groupe
+     d'ingrédients étant maintenant masqué avec le détail par étape) : même
+     taille que le titre de section « Ingrédients ». Les <summary> restent à
+     14px, distincts du h4 depuis cette demande. */
+  .recipe-print-content h4 {
+    font-size: 18px !important;
+    line-height: 1.25 !important;
+  }
+  .recipe-print-content summary {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+  }
+  .recipe-print-content .print-fs-9 {
+    font-size: 9px !important;
+  }
+  .recipe-print-content .print-fs-11 {
+    font-size: 11px !important;
+  }
+  /* Quantité produite : même police que les valeurs de temps (Work Sans
+     gras) plutôt que le style éditorial (Playfair) habituel du bloc
+     technique. */
+  .recipe-print-content .print-yield-value {
+    font-family: 'Work Sans', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+  }
+
+  /* 7. Temps (prép/cuisson/attente/total) : une seule ligne --------------- */
+  .print-times {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    text-align: left !important;
+  }
+  .print-times-item {
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.3em !important;
+  }
+  .print-times-item:not(:last-child)::after {
+    content: '·';
+    margin-left: 0.6em;
+    color: inherit;
+  }
+
+
+  /* 8. Photos d'étape : taille multipliée par 2 ---------------------------
+     (9mm → 18mm → 36mm au fil des retours ; taille imprimée nette = moitié
+     de l'originale.) */
+  .print-step-photos {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .print-step-photos > div {
+    width: 36mm !important;
+    height: 36mm !important;
+    flex: none !important;
+  }
+}
+
 /* ── Impersonation ────────────────────────────────────────────
    Le bandeau « Connecté en tant que » est `fixed` en haut d'écran : on décale
    d'autant le contenu, ainsi que les en-têtes collants (`sticky top-0` de

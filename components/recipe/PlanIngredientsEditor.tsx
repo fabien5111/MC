@@ -169,7 +169,7 @@ export function PlanIngredientsEditor({
                       <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
                         {row.addedIdx != null ? '—' : withUnit(origText, row.unit)}
                       </span>
-                      <span className="flex items-center gap-1 justify-self-center">
+                      <span className="no-print flex items-center gap-1 justify-self-center">
                         <button
                           type="button"
                           onClick={() => setEditing(editing === key ? null : key)}
@@ -207,7 +207,7 @@ export function PlanIngredientsEditor({
             {addingGroup === g.id ? (
               <AddForm units={units} onAdd={(n, q, u) => addIng(g.id, n, q, u)} onCancel={() => setAddingGroup(null)} />
             ) : (
-              <button type="button" onClick={() => setAddingGroup(g.id)} className="mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
+              <button type="button" onClick={() => setAddingGroup(g.id)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
               </button>
             )}
