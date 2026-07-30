@@ -512,6 +512,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {groups.length > 0 && (
             <div className="mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
+              {/* Détail par groupe/étape : redondant à l'impression avec le total
+                  ci-dessous et les « Ingrédients de l'étape » dans le déroulé —
+                  masqué au print, conservé à l'écran (édition du plan incluse). */}
+              <div className="no-print">
               {planContext && overrides ? (
                 <PlanIngredientsEditor groups={groups} steps={steps} plan={planContext} units={units} unitTips={unitTips} />
               ) : (
@@ -556,6 +560,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ))}
                 </div>
               )}
+              </div>
 
               {planMerged && planMerged.length > 0 ? (
                 <details className="group border border-outline-variant mt-12">
