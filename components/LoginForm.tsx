@@ -12,6 +12,19 @@ import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 // faible, puis dégradé de bruns du thème jusqu'au brun foncé « Excellent ».
 const STRENGTH_COLOR = ['bg-outline-variant', 'bg-error', 'bg-secondary', 'bg-primary-container', 'bg-primary'];
 
+// Traduction des messages d'erreur Supabase Auth les plus courants ; les
+// autres remontent tels quels (anglais) plutôt que d'être masqués.
+const AUTH_ERRORS: Record<string, string> = {
+  'User already registered': 'Un compte existe déjà avec cette adresse e-mail.',
+  'Invalid login credentials': 'Adresse e-mail ou mot de passe incorrect.',
+  'Email not confirmed': "Confirmez votre adresse e-mail avant de vous connecter (lien envoyé à l'inscription).",
+  'Password should be at least 6 characters': 'Le mot de passe doit contenir au moins 6 caractères.',
+};
+
+function translateAuthError(message: string): string {
+  return AUTH_ERRORS[message] ?? message;
+}
+
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -29,10 +42,11 @@ export function LoginForm({ next }: { next: string }) {
 
   const strength = useMemo(() => evaluatePassword(password), [password]);
   const mismatch = isSignup && confirm.length > 0 && confirm !== password;
-  // À l'inscription seulement : la complexité et la confirmation bloquent
-  // l'envoi. En connexion, aucun contrôle — les comptes existants peuvent
-  // avoir un mot de passe antérieur à ces règles.
-  const blocked = isSignup && (!strength.valid || password !== confirm);
+  // À l'inscription seulement : la complexité, la confirmation et
+  // l'acceptation des conditions bloquent l'envoi. En connexion, aucun
+  // contrôle — les comptes existants peuvent avoir un mot de passe
+  // antérieur à ces règles.
+  const blocked = isSignup && (!strength.valid || password !== confirm || !terms);
 
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
@@ -49,7 +63,9 @@ export function LoginForm({ next }: { next: string }) {
       setError(
         password !== confirm
           ? 'Les deux mots de passe ne correspondent pas.'
-          : "Le mot de passe ne respecte pas les règles de sécurité.",
+          : !terms
+            ? "Vous devez accepter les conditions d'utilisation."
+            : 'Le mot de passe ne respecte pas les règles de sécurité.',
       );
       return;
     }
@@ -62,7 +78,7 @@ export function LoginForm({ next }: { next: string }) {
         router.replace(next);
         router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -71,10 +87,17 @@ export function LoginForm({ next }: { next: string }) {
           },
         });
         if (error) throw error;
+        // Avec la confirmation par e-mail activée, Supabase ne renvoie pas
+        // d'erreur pour une adresse déjà inscrite (anti-énumération) : il
+        // renvoie un utilisateur factice sans identité associée.
+        if (data.user && data.user.identities?.length === 0) {
+          setError('Un compte existe déjà avec cette adresse e-mail.');
+          return;
+        }
         setNotice('Vérifiez vos e-mails pour confirmer votre compte.');
       }
     } catch (err) {
-      setError((err as Error).message || 'Une erreur est survenue.');
+      setError(translateAuthError((err as Error).message) || 'Une erreur est survenue.');
     } finally {
       setBusy(false);
     }
@@ -255,9 +278,13 @@ export function LoginForm({ next }: { next: string }) {
             <input
               id="terms"
               type="checkbox"
+              required
               checked={terms}
               onChange={(e) => setTerms(e.target.checked)}
-              className="mt-1 w-4 h-4 border-outline rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer"
+              aria-invalid={!terms && error === "Vous devez accepter les conditions d'utilisation."}
+              className={`mt-1 w-4 h-4 rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer ${
+                !terms && error === "Vous devez accepter les conditions d'utilisation." ? 'border-error' : 'border-outline'
+              }`}
             />
             <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
               J&apos;accepte les{' '}
@@ -269,7 +296,26 @@ export function LoginForm({ next }: { next: string }) {
           </div>
         )}
 
-        {error && <p className="text-sm text-error text-center">{error}</p>}
+        {error && (
+          <p className="text-sm text-error text-center">
+            {error}
+            {error === 'Un compte existe déjà avec cette adresse e-mail.' && (
+              <>
+                {' '}
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleMode();
+                  }}
+                  className="underline underline-offset-4 hover:text-error/80"
+                >
+                  Se connecter
+                </a>
+              </>
+            )}
+          </p>
+        )}
         {notice && <p className="text-sm text-primary text-center">{notice}</p>}
 
         <button
