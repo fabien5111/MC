@@ -7,10 +7,13 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
+import { MaryseIcon } from '@/components/MaryseIcon';
 
-// Couleur de la jauge de complexité : rouge tant que le mot de passe est
-// faible, puis dégradé de bruns du thème jusqu'au brun foncé « Excellent ».
-const STRENGTH_COLOR = ['bg-outline-variant', 'bg-error', 'bg-secondary', 'bg-primary-container', 'bg-primary'];
+// Couleur des maryses de la jauge de complexité, par nombre de critères
+// satisfaits : 1 → noire, 2 → rouge, 3 → orange, 4 (tout ok) → verte.
+// Toutes les maryses atteintes partagent la même couleur, comme les paliers
+// d'un feu tricolore plutôt qu'un dégradé continu.
+const STRENGTH_ICON_COLOR = ['text-outline-variant', 'text-black', 'text-error', 'text-orange-600', 'text-green-600'];
 
 // Traduction des messages d'erreur Supabase Auth les plus courants ; les
 // autres remontent tels quels (anglais) plutôt que d'être masqués.
@@ -189,11 +192,11 @@ export function LoginForm({ next }: { next: string }) {
           </div>
 
           {isSignup && (
-            // Jauge de complexité : un segment par critère satisfait.
+            // Jauge de complexité : une maryse par critère satisfait.
             <div className="pt-3 space-y-2">
               <div className="flex items-center gap-3">
                 <div
-                  className="flex flex-1 gap-1"
+                  className="flex flex-1 gap-2"
                   role="progressbar"
                   aria-label="Complexité du mot de passe"
                   aria-valuemin={0}
@@ -202,10 +205,11 @@ export function LoginForm({ next }: { next: string }) {
                   aria-valuetext={strength.label}
                 >
                   {strength.criteria.map((critere, i) => (
-                    <span
+                    <MaryseIcon
                       key={critere.id}
-                      className={`h-1 flex-1 transition-colors duration-300 ${
-                        i < strength.score ? STRENGTH_COLOR[strength.score] : 'bg-outline-variant/40'
+                      size={20}
+                      className={`transition-colors duration-300 ${
+                        i < strength.score ? STRENGTH_ICON_COLOR[strength.score] : 'text-outline-variant/40'
                       }`}
                     />
                   ))}
