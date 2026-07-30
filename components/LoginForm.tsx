@@ -1,17 +1,24 @@
 'use client';
 
 // Formulaire de connexion / inscription + OAuth (Google).
-// Porté fidèlement de connexion.html + db.js (authSignIn / authSignUp / signInWith*).
+// Le panneau s'ouvre sur la connexion ; l'inscription se fait par bascule et
+// impose une confirmation du mot de passe + les règles de `lib/password.ts`.
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
+
+// Couleur de la jauge de complexité : rouge tant que le mot de passe est
+// faible, puis dégradé de bruns du thème jusqu'au brun foncé « Excellent ».
+const STRENGTH_COLOR = ['bg-outline-variant', 'bg-error', 'bg-secondary', 'bg-primary-container', 'bg-primary'];
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +27,16 @@ export function LoginForm({ next }: { next: string }) {
 
   const isSignup = mode === 'signup';
 
+  const strength = useMemo(() => evaluatePassword(password), [password]);
+  const mismatch = isSignup && confirm.length > 0 && confirm !== password;
+  // À l'inscription seulement : la complexité et la confirmation bloquent
+  // l'envoi. En connexion, aucun contrôle — les comptes existants peuvent
+  // avoir un mot de passe antérieur à ces règles.
+  const blocked = isSignup && (!strength.valid || password !== confirm);
+
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
+    setConfirm('');
     setError(null);
     setNotice(null);
   }
@@ -30,6 +45,14 @@ export function LoginForm({ next }: { next: string }) {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    if (blocked) {
+      setError(
+        password !== confirm
+          ? 'Les deux mots de passe ne correspondent pas.'
+          : "Le mot de passe ne respecte pas les règles de sécurité.",
+      );
+      return;
+    }
     setBusy(true);
     const supabase = createClient();
     try {
@@ -125,7 +148,8 @@ export function LoginForm({ next }: { next: string }) {
               id="password"
               type={showPassword ? 'text' : 'password'}
               required
-              minLength={6}
+              minLength={isSignup ? PASSWORD_MIN_LENGTH : undefined}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -134,17 +158,98 @@ export function LoginForm({ next }: { next: string }) {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
             >
               <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
             </button>
           </div>
+
+          {isSignup && (
+            // Jauge de complexité : un segment par critère satisfait.
+            <div className="pt-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex flex-1 gap-1"
+                  role="progressbar"
+                  aria-label="Complexité du mot de passe"
+                  aria-valuemin={0}
+                  aria-valuemax={strength.total}
+                  aria-valuenow={strength.score}
+                  aria-valuetext={strength.label}
+                >
+                  {strength.criteria.map((critere, i) => (
+                    <span
+                      key={critere.id}
+                      className={`h-1 flex-1 transition-colors duration-300 ${
+                        i < strength.score ? STRENGTH_COLOR[strength.score] : 'bg-outline-variant/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+                {/* Largeur fixe : le libellé change de longueur sans faire
+                    varier celle de la jauge. */}
+                <span className="w-20 shrink-0 text-right font-label-md text-[12px] text-secondary">
+                  {password.length > 0 ? strength.label : ''}
+                </span>
+              </div>
+              <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {strength.criteria.map((critere) => (
+                  <li
+                    key={critere.id}
+                    className={`flex items-center gap-1 text-[12px] ${
+                      critere.ok ? 'text-primary' : 'text-on-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px] leading-none">
+                      {critere.ok ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    {critere.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {!isSignup && (
             <a href="#" className="text-[12px] text-secondary hover:text-primary mt-2 ml-1 inline-block">
               Mot de passe oublié ?
             </a>
           )}
         </div>
+
+        {isSignup && (
+          <div className="space-y-1">
+            <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="confirm">
+              Confirmer le mot de passe
+            </label>
+            <div className="relative">
+              <input
+                id="confirm"
+                type={showPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                aria-invalid={mismatch}
+                className={`${FIELD} ${mismatch ? 'border-error' : ''}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
+              </button>
+            </div>
+            {mismatch && (
+              <p className="text-[12px] text-error mt-2 ml-1">Les deux mots de passe ne correspondent pas.</p>
+            )}
+          </div>
+        )}
+
         {isSignup && (
           <div className="flex items-start gap-3 py-2">
             <input
@@ -169,7 +274,7 @@ export function LoginForm({ next }: { next: string }) {
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || blocked}
           className="w-full bg-primary-container text-on-primary py-4 px-8 mt-4 hover:bg-primary transition-all duration-500 active:scale-[0.98] font-label-md text-label-md tracking-widest uppercase disabled:opacity-60"
         >
           {busy ? 'Chargement...' : isSignup ? "S'inscrire" : 'Se connecter'}
@@ -187,7 +292,7 @@ export function LoginForm({ next }: { next: string }) {
             }}
             className="text-primary font-semibold underline underline-offset-4 hover:text-secondary transition-colors ml-1"
           >
-            {isSignup ? 'Se connecter' : "S'inscrire"}
+            {isSignup ? 'Se connecter' : 'Créer un compte'}
           </a>
         </p>
       </div>
