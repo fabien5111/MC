@@ -187,6 +187,7 @@ export type RecipeStepView = {
   wait_time: number | null;
   cook_temp: number | null;
   tips: string | null;
+  video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
   step_photos: { url: string; order_index: number | null }[];

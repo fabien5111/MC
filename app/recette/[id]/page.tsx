@@ -25,6 +25,7 @@ import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { DuplicateButton } from '@/components/recipe/DuplicateButton';
+import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -731,6 +732,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         ))}
                       </div>
                     )}
+                    {s.video_url && <StepVideoPlayer url={s.video_url} />}
                     {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
                       <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
                         {s.sous_etapes.map((t, k) => (

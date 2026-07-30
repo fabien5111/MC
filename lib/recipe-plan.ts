@@ -285,7 +285,7 @@ export function buildExecutionSnapshot(recipe: RecipeFull, plan: PlanningEntry, 
       attente: s.wait_time || 0,
       cuisson: s.cook_time || 0,
       temperature: s.cook_temp || null,
-      video: null, // recipe_steps.video_url absent de la base live (maquette vanilla uniquement)
+      video: s.video_url || null,
       faite: done,
       date_faite: null,
       commentaire: '',

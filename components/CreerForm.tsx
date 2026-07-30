@@ -46,6 +46,7 @@ type StepState = {
   // vide) → mode liste : la description est éclatée en sous-étapes éditables.
   subSteps: string[] | null;
   tips: string;
+  videoUrl: string;
   scaling: string;
   ings: IngLine[];
   photos: (string | null)[];
@@ -110,9 +111,10 @@ const emptyStep = (): StepState => ({
   description: '',
   subSteps: null,
   tips: '',
+  videoUrl: '',
   scaling: 'simple',
   ings: [emptyIng()],
-  photos: [null, null, null, null],
+  photos: [null, null, null, null, null, null, null, null],
   collapsed: false,
 });
 
@@ -140,11 +142,12 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       description: desc,
       subSteps,
       tips: s.tips || '',
+      videoUrl: s.video_url || '',
       scaling: grp?.scaling_mode || 'simple',
       ings: ings.length
         ? ings.map((i) => ({ key: key(), name: i.name, qty: i.quantity || '', unit: i.unit || '', comment: i.comment || '', allergen: parseAllergens(i.allergen) }))
         : [emptyIng()],
-      photos: [0, 1, 2, 3].map((i) => photos[i] || null),
+      photos: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => photos[i] || null),
       collapsed: false,
     };
   });
@@ -660,6 +663,7 @@ export function CreerForm({
             wait_time: gmin(st.wait),
             day_offset: Math.max(0, parseInt(st.dayOffset, 10) || 0),
             tips: st.tips.trim() || null,
+            video_url: st.videoUrl.trim() || null,
             sous_etapes: subs.length ? subs : null,
             order_index: gi,
           })
@@ -1540,6 +1544,17 @@ export function CreerForm({
                         />
                       </div>
                     ))}
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Lien vidéo (YouTube, Vimeo…)</label>
+                    <input
+                      value={st.videoUrl}
+                      onChange={(e) => patchStep(si, { videoUrl: e.target.value })}
+                      type="url"
+                      className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                      placeholder="https://… (optionnel)"
+                    />
                   </div>
 
                   <details open className="group border-b border-outline-variant">
