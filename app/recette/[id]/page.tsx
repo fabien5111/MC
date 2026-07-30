@@ -293,7 +293,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="print-yield-value font-headline-md text-headline-md text-primary">{yInfo.value}</span>
                 </div>
               )}
-              <div className="print-difficulty flex flex-col gap-1 items-center text-center">
+              <div className="flex flex-col gap-1 items-center text-center">
                 <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                   Difficulté
                 </span>
@@ -305,9 +305,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ) : (
                     <span className="text-sm text-on-surface-variant">—</span>
                   )}
+                  {/* Impression : le nom de la difficulté rejoint les pictos sur
+                      la même ligne, sous le libellé « Difficulté » — au lieu
+                      d'une 3e ligne comme à l'écran. */}
+                  {recipe.difficulties?.name && (
+                    <span className="hidden print:inline font-label-md text-label-md text-on-surface">
+                      {recipe.difficulties.name}
+                    </span>
+                  )}
                 </div>
                 {recipe.difficulties?.name && (
-                  <span className="font-label-md text-label-md text-on-surface">
+                  <span className="no-print font-label-md text-label-md text-on-surface">
                     {recipe.difficulties.name}
                   </span>
                 )}

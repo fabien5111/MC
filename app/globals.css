@@ -549,12 +549,6 @@ img {
     color: inherit;
   }
 
-  /* Difficulté : libellé, pictos et nom sur une seule ligne. */
-  .print-difficulty {
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 0.5em !important;
-  }
 
   /* 8. Photos d'étape : taille multipliée par 2 ---------------------------
      (9mm → 18mm → 36mm au fil des retours ; taille imprimée nette = moitié
