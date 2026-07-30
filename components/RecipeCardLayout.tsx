@@ -81,6 +81,7 @@ export function RecipeCardLayout({
       <Link
         href={`/recette/${r.id}?planifier=1`}
         title="Planifier cette recette"
+        prefetch={false}
         className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
       >
         <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
