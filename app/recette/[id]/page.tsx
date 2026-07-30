@@ -218,8 +218,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            <div className="mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
-              <div className="no-print flex flex-wrap gap-3 text-secondary">
+            <div className="no-print mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
+              <div className="flex flex-wrap gap-3 text-secondary">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 {isOwner && (
                   <Link
@@ -290,10 +290,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {yInfo.label}
                   </span>
-                  <span className="font-headline-md text-headline-md text-primary">{yInfo.value}</span>
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{yInfo.value}</span>
                 </div>
               )}
-              <div className="flex flex-col gap-1 items-center text-center">
+              <div className="print-difficulty flex flex-col gap-1 items-center text-center">
                 <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                   Difficulté
                 </span>
