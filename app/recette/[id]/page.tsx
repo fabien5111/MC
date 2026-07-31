@@ -732,10 +732,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                             {ings.map((it) => (
                               <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                                 <span className="font-label-md text-label-md text-primary">
+                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                   <Qty quantity={it.quantity} unit={it.unit} />
                                 </span>
                                 <span className="font-body-md text-body-md">
-                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                   {it.name}
                                   {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                 </span>
