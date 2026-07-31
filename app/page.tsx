@@ -11,6 +11,7 @@ import { getRecipes, withAllergenPictos } from '@/lib/recipes';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { getFavoriteIds } from '@/lib/favorites';
+import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
@@ -38,11 +39,12 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, favIds, banners, homeCategories] = await Promise.all([
+  const [recipes, favIds, banners, homeCategories, user] = await Promise.all([
     getRecipes({ limit: 6 }),
     getFavoriteIds(),
     getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
     getHomeCategories(),
+    getCurrentUser(),
   ]);
   const featured = recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
@@ -243,7 +245,7 @@ export default async function HomePage() {
             </div>
           </div>
           {recipes.length > 0 ? (
-            <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} />
+            <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} currentUserId={user?.id} />
           ) : (
             <p className="text-on-surface-variant italic">
               Aucune recette publiée pour le moment.

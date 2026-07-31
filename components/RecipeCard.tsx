@@ -6,11 +6,20 @@ import { RecipeCardLayout } from '@/components/RecipeCardLayout';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 import { cardAllergenNames } from '@/lib/recipe-view';
 
-export function RecipeCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
+export function RecipeCard({
+  recipe,
+  isFav,
+  isOwner,
+}: {
+  recipe: RecipeCardData;
+  isFav: boolean;
+  isOwner?: boolean;
+}) {
   return (
     <RecipeCardLayout
       recipe={recipe}
       isFav={isFav}
+      isOwner={isOwner}
       allergens={<AllergenPictos names={cardAllergenNames(recipe)} className="mb-4" iconClassName="w-6 h-6" />}
     />
   );

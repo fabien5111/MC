@@ -13,14 +13,23 @@ import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 export function RecipeCardLayout({
   recipe,
   isFav,
+  isOwner = false,
   allergens,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
+  // Affiche le picto Éditer entre Favori et Planifier — uniquement pour
+  // l'auteur de la recette. Optionnel : les écrans qui ne le renseignent pas
+  // (profil, suggestions) gardent le comportement d'avant son introduction.
+  isOwner?: boolean;
   allergens: ReactNode;
 }) {
   const r = recipe;
   const times = effectiveTimes(r);
+  // Planifier se décale d'un cran quand Éditer s'intercale entre Favori et
+  // lui — même incrément que celui qui sépare déjà Favori (right-3) de
+  // Planifier (right-14).
+  const planPos = isOwner ? 'right-[6.25rem]' : 'right-14';
   return (
     <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
@@ -78,11 +87,21 @@ export function RecipeCardLayout({
 
       {/* Contrôles superposés — frères du lien, positionnés sur l'image. */}
       <FavoriteHeart recipeId={r.id} initialFav={isFav} />
+      {isOwner && (
+        <Link
+          href={`/creer?id=${r.id}`}
+          title="Éditer cette recette"
+          prefetch={false}
+          className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+        </Link>
+      )}
       <Link
         href={`/recette/${r.id}?planifier=1`}
         title="Planifier cette recette"
         prefetch={false}
-        className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+        className={`absolute top-3 ${planPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
       >
         <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
       </Link>
