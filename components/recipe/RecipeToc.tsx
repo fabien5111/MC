@@ -11,6 +11,7 @@
 // du formulaire. Masqué sous 700 px, l'équivalent mobile restant à concevoir.
 import { useCallback, useMemo } from 'react';
 import { useToc } from '@/lib/use-toc';
+import { useRailTooltip } from '@/lib/use-rail-tooltip';
 
 // Titre d'étape tel qu'affiché dans le sommaire. Volontairement réduit au
 // minimum : le sommaire dérive du modèle de recette, il ne le duplique pas.
@@ -73,6 +74,23 @@ export function stepAnchorId(index: number) {
   return `sec-etape-${index + 1}`;
 }
 
+// Style des boutons d'action du pied du rail : reprend la hiérarchie visuelle
+// de la barre de bas de page qu'ils remplacent (sortie discrète, enregistrement
+// intermédiaire plus affirmé, action principale pleine et destruction en
+// évidence côté relecture).
+export type TocActionVariant = 'outline' | 'outline-strong' | 'filled' | 'outline-danger';
+
+export type TocAction = {
+  id: string;
+  icon: string;
+  // Sert à la fois d'aria-label et de texte du tooltip : les deux doivent
+  // rester identiques pour un lecteur d'écran comme à la souris.
+  label: string;
+  variant: TocActionVariant;
+  onClick: () => void;
+  disabled?: boolean;
+};
+
 type Props = {
   // Sections fixes de l'écran hôte (CREER_SECTIONS ou RELECTURE_SECTIONS).
   sections: TocSections;
@@ -81,9 +99,13 @@ type Props = {
   // Appelé avec l'index de l'étape visée avant le défilement, pour la déplier
   // si elle est repliée.
   onNavigateToStep?: (index: number) => void;
+  // Boutons d'action en pied de rail (quitter/enregistrer/publier côté éditeur,
+  // créer/enregistrer/supprimer côté relecture). Absent : le pied du rail ne
+  // garde que le bouton d'épinglage, comme avant leur introduction.
+  actions?: TocAction[];
 };
 
-export function RecipeToc({ sections, steps, onNavigateToStep }: Props) {
+export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props) {
   const items = useMemo<TocItem[]>(
     () => [
       ...sections.before,
@@ -110,6 +132,7 @@ export function RecipeToc({ sections, steps, onNavigateToStep }: Props) {
   );
 
   const { activeId, pinned, typing, togglePin, navigate } = useToc(ids, onBeforeNavigate);
+  const { show: showTip, hide: hideTip, node: tooltipNode } = useRailTooltip();
 
   const classes = ['recipe-toc'];
   if (pinned) classes.push('is-pinned');
@@ -139,6 +162,28 @@ export function RecipeToc({ sections, steps, onNavigateToStep }: Props) {
           </li>
         ))}
       </ul>
+      {actions && actions.length > 0 && (
+        <div className="actions">
+          {actions.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={a.onClick}
+              disabled={a.disabled}
+              className={`variant-${a.variant}`}
+              aria-label={a.label}
+              onMouseEnter={(e) => showTip(e.currentTarget, a.label)}
+              onMouseLeave={hideTip}
+              onFocus={(e) => showTip(e.currentTarget, a.label)}
+              onBlur={hideTip}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {a.icon}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="pin">
         <button
           type="button"
@@ -152,6 +197,7 @@ export function RecipeToc({ sections, steps, onNavigateToStep }: Props) {
           </span>
         </button>
       </div>
+      {tooltipNode}
     </nav>
   );
 }

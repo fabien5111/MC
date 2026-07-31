@@ -924,7 +924,26 @@ export function RelectureEditor({
 
   return (
     <>
-      <RecipeToc sections={RELECTURE_SECTIONS} steps={tocSteps} onNavigateToStep={expandSp} />
+      <RecipeToc
+        sections={RELECTURE_SECTIONS}
+        steps={tocSteps}
+        onNavigateToStep={expandSp}
+        actions={[
+          {
+            id: 'create',
+            icon: 'menu_book',
+            label: importRow.statut !== 'brouillon' && importRow.recipe_id ? 'Voir la recette créée' : 'Créer la recette dans mon carnet',
+            variant: 'filled',
+            onClick: () => {
+              if (importRow.statut !== 'brouillon' && importRow.recipe_id) router.push(`/recette/${importRow.recipe_id}`);
+              else onCreate();
+            },
+            disabled: busy,
+          },
+          { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy },
+          { id: 'delete', icon: 'delete', label: 'Supprimer cet import', variant: 'outline-danger', onClick: onDelete, disabled: busy },
+        ]}
+      />
 
       <div className="flex items-baseline justify-between flex-wrap gap-4 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
@@ -1750,7 +1769,7 @@ export function RelectureEditor({
 
       {/* Barre d'actions fixe */}
       <div
-        className="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3"
+        className="recipe-toc-fallback-bar fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-3">

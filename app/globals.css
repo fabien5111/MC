@@ -196,10 +196,100 @@ body {
 .recipe-toc.is-pinned .pin button {
   color: #300a12;
 }
+/* Boutons d'action (quitter/enregistrer/publier, ou créer/enregistrer/
+   supprimer côté relecture) : toujours ronds et visibles, y compris rail
+   replié — contrairement au reste du rail, ce ne sont pas des raccourcis
+   secondaires qu'il faudrait découvrir en dépliant. */
+.recipe-toc .actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid #efdfde; /* surface-container-highest */
+}
+.recipe-toc .actions button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.recipe-toc .actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.recipe-toc .actions button .material-symbols-outlined {
+  font-size: 18px;
+}
+.recipe-toc .actions .variant-outline {
+  background: transparent;
+  border: 1px solid #d6c2c3; /* outline-variant */
+  color: #847374; /* outline */
+}
+.recipe-toc .actions .variant-outline:hover:not(:disabled) {
+  border-color: #7e5259; /* secondary */
+  color: #300a12; /* primary */
+}
+.recipe-toc .actions .variant-outline-strong {
+  background: transparent;
+  border: 1px solid #847374; /* outline */
+  color: #300a12; /* primary */
+}
+.recipe-toc .actions .variant-outline-strong:hover:not(:disabled) {
+  background: #fbeae9; /* surface-container */
+}
+.recipe-toc .actions .variant-filled {
+  background: #4a1e26; /* primary-container */
+  border: none;
+  color: #fff;
+}
+.recipe-toc .actions .variant-filled:hover:not(:disabled) {
+  background: #300a12; /* primary */
+}
+.recipe-toc .actions .variant-outline-danger {
+  background: transparent;
+  border: 1px solid #ba1a1a; /* error */
+  color: #ba1a1a; /* error */
+}
+.recipe-toc .actions .variant-outline-danger:hover:not(:disabled) {
+  background: #ffdad6; /* error-container */
+}
+/* Tooltip du rail : cf. lib/use-rail-tooltip.ts pour la raison du portail en
+   position fixed (le rail replié coupe tout ce qui déborde de ses 58px). */
+.recipe-toc-tooltip {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 60;
+  background: #300a12; /* primary */
+  color: #fff;
+  font:
+    600 11px/1 'Work Sans',
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 11px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 /* Le rail latéral n'a pas de sens sur un écran étroit ; le sélecteur de
    section mobile reste à concevoir. */
 @media (max-width: 700px) {
   .recipe-toc {
+    display: none !important;
+  }
+}
+/* Barre d'actions de secours (CreerForm, RelectureEditor) : les boutons du
+   rail la rendent redondante dès que celui-ci est visible. Seuil identique à
+   `.recipe-toc` ci-dessus — sinon une bande de largeur existerait sans aucun
+   moyen d'enregistrer, publier ou supprimer. */
+@media (min-width: 701px) {
+  .recipe-toc-fallback-bar {
     display: none !important;
   }
 }
