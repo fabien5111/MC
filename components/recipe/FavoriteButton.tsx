@@ -40,9 +40,9 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
       type="button"
       onClick={toggle}
       disabled={busy}
-      className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
+      className="flex items-center gap-1.5 px-3 py-1 border border-secondary rounded-full font-label-md text-[10px] uppercase tracking-widest leading-none hover:bg-secondary-container transition-colors disabled:opacity-60"
     >
-      <span className="material-symbols-outlined text-[18px] text-error" style={{ fontVariationSettings: fav ? "'FILL' 1" : "'FILL' 0" }}>
+      <span className="material-symbols-outlined text-[14px] text-error" style={{ fontVariationSettings: fav ? "'FILL' 1" : "'FILL' 0" }}>
         favorite
       </span>{' '}
       Favori

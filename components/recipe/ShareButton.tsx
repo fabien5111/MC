@@ -31,9 +31,9 @@ export function ShareButton({ title }: { title: string }) {
     <button
       type="button"
       onClick={share}
-      className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"
+      className="flex items-center gap-1.5 px-3 py-1 border border-secondary rounded-full font-label-md text-[10px] uppercase tracking-widest leading-none hover:bg-secondary-container transition-colors"
     >
-      <span className="material-symbols-outlined text-[18px]">share</span> {copied ? 'Lien copié !' : 'Partager'}
+      <span className="material-symbols-outlined text-[14px]">share</span> {copied ? 'Lien copié !' : 'Partager'}
     </button>
   );
 }
