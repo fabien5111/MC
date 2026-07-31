@@ -39,7 +39,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   return (
     <>
       <Header current="/creer" />
-      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-40 md:pb-32">
+      <main className="creer-page max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-40 md:pb-32">
         <CreerForm
           tags={tags}
           units={units}
