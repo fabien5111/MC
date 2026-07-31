@@ -31,9 +31,11 @@ export function ShareButton({ title }: { title: string }) {
     <button
       type="button"
       onClick={share}
-      className="flex items-center gap-1.5 px-3 py-1 border border-secondary rounded-full font-label-md text-[10px] uppercase tracking-widest leading-none hover:bg-secondary-container transition-colors"
+      aria-label={copied ? 'Lien copié' : 'Partager'}
+      title={copied ? 'Lien copié' : 'Partager'}
+      className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
     >
-      <span className="material-symbols-outlined text-[14px]">share</span> {copied ? 'Lien copié !' : 'Partager'}
+      <span className="material-symbols-outlined text-[16px]">{copied ? 'check' : 'share'}</span>
     </button>
   );
 }
