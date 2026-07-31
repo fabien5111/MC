@@ -20,12 +20,12 @@ import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
-import { PlanToggleButton } from '@/components/recipe/PlanToggleButton';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { ShareButton } from '@/components/recipe/ShareButton';
-import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { type TocSections } from '@/components/recipe/RecipeToc';
+import { RecetteToc } from '@/components/recipe/RecetteToc';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -150,6 +150,25 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const dLabel = (offset: number | null | undefined) =>
     planContext && planContext.planned_date ? planDayLabel(offset, planContext.planned_date) : dayLabel(offset);
 
+  // Sommaire de consultation : contrairement à l'éditeur, une section absente
+  // de la recette n'existe pas dans le DOM — elle n'a donc rien à faire dans
+  // la liste, sous peine de lien mort (pas de scroll-spy possible non plus).
+  const tocSections: TocSections = {
+    before: [
+      { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
+      ...(recipe.description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
+      ...(steps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
+      ...(utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
+      ...(groups.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(steps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
+    ],
+    after: [
+      ...(recipe.tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
+      ...(recipe.serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
+    ],
+  };
+  const tocSteps = steps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
+
   let statusBadge: { label: string; cls: string } | null = null;
   if (recipe.status === 'pending') statusBadge = { label: 'En attente de validation', cls: 'bg-secondary text-white' };
   else if (recipe.status === 'draft') statusBadge = { label: 'Brouillon', cls: 'bg-secondary text-white' };
@@ -171,8 +190,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
       </div>
 
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main className="recette-page max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
+        <RecetteToc recipeId={recipe.id} isOwner={isOwner} sections={tocSections} steps={tocSteps} />
         <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
@@ -194,6 +214,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="text-on-surface-variant opacity-70">({recipe.rating_count})</span>
                 </span>
               )}
+              <span className="flex items-center gap-2 text-secondary ml-auto">
+                <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
+                <ShareButton title={recipe.title} />
+                <PrintButton />
+              </span>
             </div>
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
@@ -219,32 +244,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            <div className="no-print mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
-              <div className="flex flex-wrap gap-3 text-secondary">
-                <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
-                {isOwner && (
-                  <Link
-                    href={`/creer?id=${recipe.id}`}
-                    className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span> Éditer
-                  </Link>
-                )}
-                {isOwner && <DuplicateButton recipeId={recipe.id} />}
-                <PlanToggleButton />
-                <ShareButton title={recipe.title} />
-                <PrintButton />
+            {tags.length > 0 && (
+              <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
+                {tags.map((n) => (
+                  <span key={n} className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">
+                    {n}
+                  </span>
+                ))}
               </div>
-              {tags.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {tags.map((n) => (
-                    <span key={n} className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">
-                      {n}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
@@ -284,7 +292,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           {/* Bloc technique */}
-          <div className="bg-surface-container-low p-8 mb-12 space-y-8">
+          <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-8 mb-12 space-y-8">
             <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
               {yInfo && (
                 <div className="flex flex-col gap-1 items-center text-center">
@@ -380,7 +388,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Description */}
           {recipe.description && (
-            <div className="bg-primary p-10 text-white relative overflow-hidden mb-12">
+            <div id="sec-description" className="scroll-mt-28 bg-primary p-10 text-white relative overflow-hidden mb-12">
               <div className="absolute -right-10 -top-10 opacity-10">
                 <span className="material-symbols-outlined text-[120px]">restaurant_menu</span>
               </div>
@@ -474,7 +482,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               toutes les étapes tombent le même jour (un seul jalon à
               afficher) : masqué dans ce cas, conservé à l'écran. */}
           {steps.length > 0 && (
-            <div className={`${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}>
+            <div id="sec-planning" className={`scroll-mt-28 ${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}>
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
               <div className="relative flex flex-col md:flex-row gap-8">
                 <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
@@ -497,7 +505,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Ustensiles */}
           {utensils.length > 0 && (
-            <div className="mb-12">
+            <div id="sec-ustensiles" className="scroll-mt-28 mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-6">Ustensiles nécessaires</h3>
               <ul className="grid grid-cols-1 gap-y-2 list-none">
                 {utensils.map((u) => {
@@ -521,7 +529,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Ingrédients */}
           {groups.length > 0 && (
-            <div className="mb-12">
+            <div id="sec-ingredients" className="scroll-mt-28 mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
               {/* Détail par groupe/étape : redondant à l'impression avec le total
                   ci-dessous et les « Ingrédients de l'étape » dans le déroulé —
@@ -593,6 +601,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                              {/* Case à cocher au stylo — uniquement à l'impression, cochée
+                                  à la main pendant les courses ou la préparation. */}
+                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {r.name}
                               {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
                             </span>
@@ -621,6 +632,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         {merged.map((m, k) => (
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className="font-body-md text-body-md">
+                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {m.name}
                               {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
                             </span>
@@ -664,7 +676,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Étapes */}
           {steps.length > 0 && (
-            <div className="space-y-16">
+            <div id="sec-etapes" className="scroll-mt-28 space-y-16">
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
@@ -682,7 +694,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       : '',
                 ].filter(Boolean);
                 return (
-                  <div key={s.id} className={`flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}>
+                  <div
+                    key={s.id}
+                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
+                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
+                    // module « use client » — un Server Component peut le rendre en
+                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
+                    // fonction plante au rendu serveur (référence client, pas de code
+                    // exécutable côté serveur).
+                    id={`sec-etape-${i + 1}`}
+                    className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
+                  >
                     <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
                       <h4 className="font-headline-md text-headline-md text-primary">
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
@@ -710,6 +732,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                             {ings.map((it) => (
                               <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                                 <span className="font-label-md text-label-md text-primary">
+                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                   <Qty quantity={it.quantity} unit={it.unit} />
                                 </span>
                                 <span className="font-body-md text-body-md">
@@ -764,7 +787,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Conseils de la recette */}
           {recipe.tips && (
-            <div className="mt-20 bg-primary p-10 text-white relative overflow-hidden">
+            <div id="sec-conseils" className="scroll-mt-28 mt-20 bg-primary p-10 text-white relative overflow-hidden">
               <div className="absolute -right-10 -top-10 opacity-10">
                 <span className="material-symbols-outlined text-[120px]">lightbulb</span>
               </div>
@@ -780,7 +803,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Conseils de dégustation et de conservation */}
           {recipe.serving_advice && (
-            <div className="mt-12 bg-surface-container-low border border-outline-variant p-10 relative overflow-hidden">
+            <div id="sec-degustation" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant p-10 relative overflow-hidden">
               <div className="absolute -right-10 -top-10 opacity-10">
                 <span className="material-symbols-outlined text-[120px] text-primary">restaurant</span>
               </div>

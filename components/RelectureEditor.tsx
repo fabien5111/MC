@@ -316,6 +316,21 @@ export function RelectureEditor({
   // Verrou synchrone doublant `busy` : un état React n'est effectif qu'au
   // rendu suivant et ne protège pas de deux déclenchements dans le même tick.
   const busyRef = useRef(false);
+  // Distinct de `busy` (dédié à l'enregistrement/la création, avec leurs
+  // propres retours) : cliquer sur Quitter ne passe par aucune écriture.
+  const [leaving, setLeaving] = useState(false);
+  // Suivi grossier de la saisie pour la confirmation de sortie, cf.
+  // CreerForm. Écouteur délégué sur le document plutôt qu'`onChange` sur un
+  // conteneur unique : contrairement à CreerForm, l'écran n'a pas de wrapper
+  // englobant toutes les sections éditables.
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    const markDirty = () => {
+      dirtyRef.current = true;
+    };
+    document.addEventListener('change', markDirty);
+    return () => document.removeEventListener('change', markDirty);
+  }, []);
   // Recette créée depuis cette relecture. La création écrit la recette puis
   // ses étapes, photos et ingrédients : si l'un de ces écrits échoue, la
   // recette existe déjà. Sans cette mémoire, une nouvelle tentative en
@@ -909,22 +924,42 @@ export function RelectureEditor({
     }
   }
 
-  async function onDelete() {
-    if (!confirm('Supprimer définitivement cet import ?')) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('imports').delete().eq('id', importRow.id);
-    if (error) return void alert('Erreur : ' + error.message);
-    // Sans invalidation, l'import supprimé peut réapparaître sur /importer
-    // (segment mis en cache lors d'une visite précédente).
-    router.refresh();
+  // Bouton « Quitter » du rail : la suppression d'un import ne se fait plus
+  // depuis la relecture (déplacée dans la liste des imports, cf.
+  // ImporterList `supprimer`) — ce bouton ne fait que quitter, avec
+  // confirmation si des corrections n'ont pas été enregistrées.
+  const handleLeave = useCallback(() => {
+    if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+    // Pas de reset à false ensuite : on quitte la page, autant garder le
+    // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
+    setLeaving(true);
     router.push('/importer');
-  }
+  }, [router]);
 
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
 
   return (
     <>
-      <RecipeToc sections={RELECTURE_SECTIONS} steps={tocSteps} onNavigateToStep={expandSp} />
+      <RecipeToc
+        sections={RELECTURE_SECTIONS}
+        steps={tocSteps}
+        onNavigateToStep={expandSp}
+        actions={[
+          {
+            id: 'create',
+            icon: 'menu_book',
+            label: importRow.statut !== 'brouillon' && importRow.recipe_id ? 'Voir la recette créée' : 'Créer la recette dans mon carnet',
+            variant: 'filled',
+            onClick: () => {
+              if (importRow.statut !== 'brouillon' && importRow.recipe_id) router.push(`/recette/${importRow.recipe_id}`);
+              else onCreate();
+            },
+            disabled: busy || leaving,
+          },
+          { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+        ]}
+      />
 
       <div className="flex items-baseline justify-between flex-wrap gap-4 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
@@ -1750,7 +1785,7 @@ export function RelectureEditor({
 
       {/* Barre d'actions fixe */}
       <div
-        className="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3"
+        className="recipe-toc-fallback-bar fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-3">
@@ -1765,7 +1800,7 @@ export function RelectureEditor({
             <button
               type="button"
               onClick={onCreate}
-              disabled={busy}
+              disabled={busy || leaving}
               className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[18px]">menu_book</span> Créer la recette dans mon carnet
@@ -1774,14 +1809,19 @@ export function RelectureEditor({
           <button
             type="button"
             onClick={onSave}
-            disabled={busy}
+            disabled={busy || leaving}
             className="border border-primary text-primary px-6 py-3 rounded-full font-label-md text-label-md hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-60"
           >
             Enregistrer les corrections
           </button>
           <span className="text-sm text-secondary font-label-md">{saveStatus}</span>
-          <button type="button" onClick={onDelete} className="ml-auto flex items-center gap-2 text-error font-label-md text-label-md hover:underline">
-            <span className="material-symbols-outlined text-[18px]">delete</span> Supprimer cet import
+          <button
+            type="button"
+            onClick={handleLeave}
+            disabled={busy || leaving}
+            className="ml-auto flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:text-primary hover:underline disabled:opacity-60"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span> Quitter sans enregistrer
           </button>
         </div>
       </div>
@@ -1853,7 +1893,7 @@ export function RelectureEditor({
 
       {/* Écriture en cours (corrections ou création de la recette, suivie
           d'une navigation) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
-      <LoadingOverlay visible={busy} />
+      <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour à la liste des imports…' : undefined} />
     </>
   );
 }

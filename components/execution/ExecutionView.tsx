@@ -6,11 +6,12 @@
 // dégustation, wake lock, résumé de fin de session. Persistance immédiate du
 // snapshot JSON à chaque interaction (autonome — n'affecte plus jamais la
 // recette ni le planning une fois créé).
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly } from '@/components/ImpersonationProvider';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
 import type { Execution } from '@/lib/executions';
 import type { ExecutionSnapshot, ExecStep, ExecJalon, ExecSousEtape } from '@/lib/recipe-plan';
@@ -28,6 +29,11 @@ const fmtHeure = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', m
 const fmtJour = (d: Date) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 const STATUS_LBL: Record<string, string> = { en_cours: 'En cours', terminee: 'Terminée', abandonnee: 'Abandonnée' };
 const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
+// Ancre + libellé d'un jalon dans le sommaire du rail — distincts des étapes de
+// l'éditeur (`stepAnchorId`) : les jalons n'ont pas de titre propre, seulement
+// un décalage de jour, contrairement aux étapes de recette.
+const jalonAnchorId = (ji: number) => `sec-jalon-${ji}`;
+const jalonLabel = (j: ExecJalon) => (j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J');
 
 // Sous-étapes : la description est découpée sur les tirets « - » (un par ligne).
 function subSteps(description: string): string[] {
@@ -67,6 +73,13 @@ export function ExecutionView({
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
+  // Jalons dépliés depuis le sommaire du rail : un <details> normalement
+  // replié (jalon ni courant ni en retard) doit rester ouvert une fois qu'on
+  // y a navigué, sans quoi le sommaire scrollerait vers un contenu invisible.
+  const [manuallyOpenedJalons, setManuallyOpenedJalons] = useState<Set<number>>(new Set());
+  const expandJalon = useCallback((ji: number) => {
+    setManuallyOpenedJalons((prev) => (prev.has(ji) ? prev : new Set(prev).add(ji)));
+  }, []);
 
   // ── Wake Lock : empêche la mise en veille pendant une session en cours ──
   useEffect(() => {
@@ -192,8 +205,23 @@ export function ExecutionView({
   // « impersonation en lecture seule ».
   const showMep = !readOnly && !s.mise_en_place?.passee && ((s.mise_en_place?.ustensiles || []).length > 0 || (s.mise_en_place?.ingredients || []).length > 0);
 
+  // Sommaire du rail : sans intérêt pendant la mise en place (les jalons ne
+  // sont pas encore dans le DOM), ni s'il n'y a aucun jalon. Le résumé n'y
+  // figure que lorsqu'il est réellement affiché (session close).
+  const jalons = s.jalons || [];
+  const showResume = exec.status !== 'en_cours' && !showMep;
+  const tocSteps = useMemo(() => jalons.map((j, ji) => ({ key: String(ji), title: jalonLabel(j) })), [jalons]);
+  const tocSections: TocSections = useMemo(
+    () => ({
+      before: [],
+      after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la session', icon: 'insights', level: 1 }] : [],
+    }),
+    [showResume],
+  );
+
   return (
     <>
+      {!showMep && jalons.length > 0 && <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} />}
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{s.titre || 'Session de préparation'}</h1>
         <span className="font-label-md text-[12px] px-3 py-1 rounded-full bg-secondary/90 text-white">{STATUS_LBL[exec.status] || exec.status}</span>
@@ -204,7 +232,17 @@ export function ExecutionView({
         {showMep ? (
           <MiseEnPlace snapshot={s} onToggle={toggleMep} onDone={mepDone} />
         ) : (
-          <ExecutionBody exec={exec} readOnly={readOnly} prevComments={prevComments} onToggleStep={toggleStep} onToggleSub={toggleSub} onToggleIng={toggleIng} onIngReal={setIngReal} onStepComment={onStepComment} />
+          <ExecutionBody
+            exec={exec}
+            readOnly={readOnly}
+            prevComments={prevComments}
+            manuallyOpenedJalons={manuallyOpenedJalons}
+            onToggleStep={toggleStep}
+            onToggleSub={toggleSub}
+            onToggleIng={toggleIng}
+            onIngReal={setIngReal}
+            onStepComment={onStepComment}
+          />
         )}
       </div>
 
@@ -295,6 +333,7 @@ function ExecutionBody({
   exec,
   readOnly,
   prevComments,
+  manuallyOpenedJalons,
   onToggleStep,
   onToggleSub,
   onToggleIng,
@@ -304,6 +343,7 @@ function ExecutionBody({
   exec: Execution;
   readOnly: boolean;
   prevComments: Record<number, { date: string; texte: string }[]>;
+  manuallyOpenedJalons: Set<number>;
   onToggleStep: (ji: number, ei: number, checked: boolean) => void;
   onToggleSub: (ji: number, ei: number, si: number, checked: boolean) => void;
   onToggleIng: (ji: number, ei: number, ii: number, checked: boolean) => void;
@@ -366,8 +406,9 @@ function ExecutionBody({
         return (
           <details
             key={ji}
-            open={isCurrent || (readOnly && !jDone)}
-            className={`rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
+            id={jalonAnchorId(ji)}
+            open={isCurrent || (readOnly && !jDone) || manuallyOpenedJalons.has(ji)}
+            className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
           >
             <summary className={`flex items-center gap-4 p-4 cursor-pointer list-none ${isCurrent ? 'bg-primary/5' : 'bg-surface-container-low'}`}>
               <span
@@ -604,7 +645,7 @@ function SummaryPanel({ exec, lecture, onGlobalComment }: { exec: Execution; lec
   );
 
   return (
-    <div className="mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
+    <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la session</h2>
       <div className="flex flex-wrap gap-10">
         <div>

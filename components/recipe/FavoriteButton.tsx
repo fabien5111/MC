@@ -40,12 +40,13 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
       type="button"
       onClick={toggle}
       disabled={busy}
-      className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors disabled:opacity-60"
+      aria-label={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors disabled:opacity-60"
     >
-      <span className="material-symbols-outlined text-[18px] text-error" style={{ fontVariationSettings: fav ? "'FILL' 1" : "'FILL' 0" }}>
+      <span className="material-symbols-outlined text-[16px] text-error" style={{ fontVariationSettings: fav ? "'FILL' 1" : "'FILL' 0" }}>
         favorite
-      </span>{' '}
-      Favori
+      </span>
     </button>
   );
 }

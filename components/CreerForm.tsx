@@ -251,10 +251,25 @@ export function CreerForm({
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
+  // Distinct de `busy` (dédié à l'enregistrement, avec son propre libellé de
+  // spinner) : cliquer sur Quitter ne passe par aucune écriture.
+  const [leaving, setLeaving] = useState(false);
   // Verrou synchrone doublant `busy` : un état React n'est effectif qu'au
   // rendu suivant et ne protège donc pas de deux déclenchements dans le même
   // tick (double clic, double événement tactile).
   const busyRef = useRef(false);
+  // Suivi grossier de la saisie pour le bouton « Quitter » du rail : un ref
+  // suffit (pas de rendu à déclencher), et sa mise à jour n'a besoin d'être
+  // précise que dans un sens — un faux positif ne coûte qu'une confirmation
+  // superflue, un faux négatif perdrait une saisie en cours sans prévenir.
+  // Couvre les champs contrôlés (texte, bascules, fichiers via ImageSlot) via
+  // la délégation `onChange` posée sur le conteneur du formulaire ; les
+  // actions déclenchées par clic seul (tags, difficulté, ajout/suppression de
+  // lignes) n'y sont pas.
+  const dirtyRef = useRef(false);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
   // Id de la recette créée pendant cette session d'édition. `editingId` ne
   // vient que des props serveur : après une création, il reste `null` tant que
   // le rendu déclenché par `router.replace('/creer?id=…')` n'est pas revenu.
@@ -729,6 +744,21 @@ export function CreerForm({
     }
   }
 
+  // Bouton « Quitter » du rail : aucun enregistrement, avec une confirmation
+  // dès qu'une saisie a été détectée depuis le chargement de l'écran. Retour
+  // à la fiche recette pour une édition (ou une création déjà enregistrée en
+  // brouillon dans cette session) ; à défaut de recette existante, retour au
+  // profil — contrairement au lien « Annuler » ci-dessous, qui revient
+  // toujours au profil.
+  const handleLeave = useCallback(() => {
+    if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+    // Pas de reset à false ensuite : on quitte la page, autant garder le
+    // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
+    setLeaving(true);
+    const recipeId = editingId ?? createdIdRef.current;
+    router.push(recipeId ? `/recette/${recipeId}` : '/profil');
+  }, [router, editingId]);
+
   const scalingOptions =
     measure === 'mold'
       ? [
@@ -750,7 +780,30 @@ export function CreerForm({
 
   return (
     <>
-      <RecipeToc sections={CREER_SECTIONS} steps={tocSteps} onNavigateToStep={expandStep} />
+      <RecipeToc
+        sections={CREER_SECTIONS}
+        steps={tocSteps}
+        onNavigateToStep={expandStep}
+        actions={[
+          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          {
+            id: 'save',
+            icon: 'save',
+            label: 'Enregistrer en brouillon',
+            variant: 'outline-strong',
+            onClick: () => submit('draft', true),
+            disabled: busy || leaving,
+          },
+          {
+            id: 'publish',
+            icon: 'send',
+            label: isPublic ? 'Publier la recette' : 'Enregistrer',
+            variant: 'filled',
+            onClick: () => submit('pending'),
+            disabled: busy || leaving,
+          },
+        ]}
+      />
 
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
         <div>
@@ -764,7 +817,7 @@ export function CreerForm({
         </Link>
       </div>
 
-      <div className="space-y-16">
+      <div className="space-y-16" onChange={markDirty}>
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
@@ -1759,7 +1812,7 @@ export function CreerForm({
       </div>
 
       <div
-        className="fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
+        className="recipe-toc-fallback-bar fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-[1200px] mx-auto flex flex-wrap justify-center gap-3 px-margin-mobile md:px-margin-desktop">
@@ -1870,7 +1923,7 @@ export function CreerForm({
 
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
-      <LoadingOverlay visible={busy} label="Enregistrement de la recette…" />
+      <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
     </>
   );
 }

@@ -36,7 +36,7 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
         </div>
       </header>
 
-      <main className="max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
+      <main className="execution-page max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         {!exec ? (
           <p className="text-error">Session introuvable.</p>
         ) : (

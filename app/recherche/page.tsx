@@ -25,6 +25,7 @@ import { LoadMore } from '@/components/search/LoadMore';
 import type { FacetRefs } from '@/components/search/SearchFacets';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getAllergensWithPicto } from '@/lib/recipes';
+import { getCurrentUser } from '@/lib/auth';
 import { relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
 import { countActiveCriteria, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
 import { getDifficulties, getRecipeTypes, getTags } from '@/lib/taxonomy';
@@ -67,13 +68,14 @@ export default async function RecherchePage({
   // colonne est déjà là).
   const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  const [result, favIds, types, difficulties, tags, allergens] = await Promise.all([
+  const [result, favIds, types, difficulties, tags, allergens, user] = await Promise.all([
     searchAdvanced(criteria),
     getFavoriteIds(),
     getRecipeTypes(),
     getDifficulties(),
     getTags(),
     getAllergensWithPicto(),
+    getCurrentUser(),
   ]);
 
   const refs: FacetRefs = {
@@ -147,7 +149,7 @@ export default async function RecherchePage({
                     <section key={i} className="mb-12">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {block.map((r) => (
-                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
+                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
                         ))}
                       </div>
                       {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le dernier. */}

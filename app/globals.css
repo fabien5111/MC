@@ -196,10 +196,129 @@ body {
 .recipe-toc.is-pinned .pin button {
   color: #300a12;
 }
+/* Boutons d'action (quitter/enregistrer/publier, ou créer/enregistrer/
+   supprimer côté relecture) : le badge rond reste toujours entier et centré
+   au même point (padding latéral choisi pour tomber juste sur les 58px du
+   rail replié), qu'il soit visible seul ou suivi de son libellé déplié —
+   contrairement au reste du rail, ce ne sont pas des raccourcis secondaires
+   qu'il faudrait découvrir en survolant. */
+.recipe-toc .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 11px;
+  border-top: 1px solid #efdfde; /* surface-container-highest */
+}
+.recipe-toc .actions button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.recipe-toc .actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.recipe-toc .actions .badge {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  /* ~15% sous les pictos des sections du rail (`.recipe-toc a`, 21px) : à
+     cette taille pleine, ils débordaient visuellement du badge rond. */
+  font-size: 18px;
+}
+/* Libellé masqué par l'opacité (comme `.recipe-toc a .lbl`) : la place
+   réservée déborde du rail replié, absorbée par l'`overflow:hidden` du
+   conteneur plutôt que par une largeur ou un `display` conditionnels. */
+.recipe-toc .actions .lbl {
+  opacity: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font:
+    500 13px/1.2 'Work Sans',
+    sans-serif;
+  color: #514345; /* on-surface-variant */
+  transition: opacity 0.2s ease 0.05s;
+}
+.recipe-toc:hover .actions .lbl,
+.recipe-toc:focus-within .actions .lbl,
+.recipe-toc.is-pinned .actions .lbl {
+  opacity: 1;
+}
+.recipe-toc .actions .variant-outline {
+  background: transparent;
+  border: 1px solid #d6c2c3; /* outline-variant */
+  color: #847374; /* outline */
+}
+.recipe-toc .actions button:hover:not(:disabled) .variant-outline {
+  border-color: #7e5259; /* secondary */
+  color: #300a12; /* primary */
+}
+.recipe-toc .actions .variant-outline-strong {
+  background: transparent;
+  border: 1px solid #847374; /* outline */
+  color: #300a12; /* primary */
+}
+.recipe-toc .actions button:hover:not(:disabled) .variant-outline-strong {
+  background: #fbeae9; /* surface-container */
+}
+.recipe-toc .actions .variant-filled {
+  background: #4a1e26; /* primary-container */
+  border: none;
+  color: #fff;
+}
+.recipe-toc .actions button:hover:not(:disabled) .variant-filled {
+  background: #300a12; /* primary */
+}
+.recipe-toc .actions .variant-outline-danger {
+  background: transparent;
+  border: 1px solid #ba1a1a; /* error */
+  color: #ba1a1a; /* error */
+}
+.recipe-toc .actions button:hover:not(:disabled) .variant-outline-danger {
+  background: #ffdad6; /* error-container */
+}
+/* Tooltip du rail : cf. lib/use-rail-tooltip.ts pour la raison du portail en
+   position fixed (le rail replié coupe tout ce qui déborde de ses 58px). */
+.recipe-toc-tooltip {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 60;
+  background: #300a12; /* primary */
+  color: #fff;
+  font:
+    600 11px/1 'Work Sans',
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 11px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 /* Le rail latéral n'a pas de sens sur un écran étroit ; le sélecteur de
    section mobile reste à concevoir. */
 @media (max-width: 700px) {
   .recipe-toc {
+    display: none !important;
+  }
+}
+/* Barre d'actions de secours (CreerForm, RelectureEditor) : les boutons du
+   rail la rendent redondante dès que celui-ci est visible. Seuil identique à
+   `.recipe-toc` ci-dessus — sinon une bande de largeur existerait sans aucun
+   moyen d'enregistrer, publier ou supprimer. */
+@media (min-width: 701px) {
+  .recipe-toc-fallback-bar {
     display: none !important;
   }
 }
@@ -217,12 +336,16 @@ body {
    uniquement — le survol/épinglage passe par-dessus le contenu, pas dedans.
    Même point de rupture que .recipe-toc pour son masquage. */
 .creer-page,
-.relecture-page {
+.relecture-page,
+.recette-page,
+.execution-page {
   margin-left: 58px;
 }
 @media (max-width: 700px) {
   .creer-page,
-  .relecture-page {
+  .relecture-page,
+  .recette-page,
+  .execution-page {
     margin-left: 0;
   }
 }
@@ -385,6 +508,12 @@ body {
   .fixed,
   .recipe-toc {
     display: none !important;
+  }
+  /* Le rail se masque juste au-dessus, mais la marge qui lui réservait de la
+     place reste : sans ce reset, chaque page imprimée garderait un décalage
+     vide à gauche. */
+  .recette-page {
+    margin-left: 0 !important;
   }
   /* Les en-têtes collants n'ont plus de sens hors défilement. */
   .sticky {

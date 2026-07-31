@@ -11,9 +11,12 @@ const PAGE_SIZE = 6;
 export function HomeRecipeGrid({
   initialRecipes,
   initialFavIds,
+  currentUserId,
 }: {
   initialRecipes: RecipeCardWithAllergens[];
   initialFavIds: string[];
+  // Absent si non connecté : aucune carte ne peut alors être la sienne.
+  currentUserId?: string | null;
 }) {
   const [recipes, setRecipes] = useState(initialRecipes);
   const [favIds, setFavIds] = useState(new Set(initialFavIds));
@@ -44,7 +47,7 @@ export function HomeRecipeGrid({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {recipes.map((r) => (
-          <RecipeCardClient key={r.id} recipe={r} isFav={favIds.has(r.id)} />
+          <RecipeCardClient key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!currentUserId && r.author_id === currentUserId} />
         ))}
       </div>
       {hasMore && (

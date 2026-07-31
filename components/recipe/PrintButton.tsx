@@ -35,9 +35,11 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"
+      aria-label="Imprimer"
+      title="Imprimer"
+      className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
     >
-      <span className="material-symbols-outlined text-[18px]">print</span> Imprimer
+      <span className="material-symbols-outlined text-[16px]">print</span>
     </button>
   );
 }
