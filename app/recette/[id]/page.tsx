@@ -20,13 +20,12 @@ import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
-import { PlanToggleButton } from '@/components/recipe/PlanToggleButton';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { ShareButton } from '@/components/recipe/ShareButton';
-import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
-import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
+import { type TocSections } from '@/components/recipe/RecipeToc';
+import { RecetteToc } from '@/components/recipe/RecetteToc';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -178,7 +177,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   return (
     <>
-      <RecipeToc sections={tocSections} steps={tocSteps} />
       <div className="no-print">
       <Header />
       </div>
@@ -194,6 +192,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
       <main className="recette-page max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
+        <RecetteToc recipeId={recipe.id} isOwner={isOwner} sections={tocSections} steps={tocSteps} />
         <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">
@@ -215,6 +214,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="text-on-surface-variant opacity-70">({recipe.rating_count})</span>
                 </span>
               )}
+              <span className="flex items-center gap-3 text-secondary ml-auto">
+                <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
+                <ShareButton title={recipe.title} />
+                <PrintButton />
+              </span>
             </div>
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
@@ -240,32 +244,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            <div className="no-print mt-4 border-y border-outline-variant py-4 flex flex-col gap-4">
-              <div className="flex flex-wrap gap-3 text-secondary">
-                <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
-                {isOwner && (
-                  <Link
-                    href={`/creer?id=${recipe.id}`}
-                    className="flex items-center gap-2 px-3 py-1 border border-secondary rounded-full text-label-md font-label-md hover:bg-secondary-container transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span> Éditer
-                  </Link>
-                )}
-                {isOwner && <DuplicateButton recipeId={recipe.id} />}
-                <PlanToggleButton />
-                <ShareButton title={recipe.title} />
-                <PrintButton />
+            {tags.length > 0 && (
+              <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
+                {tags.map((n) => (
+                  <span key={n} className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">
+                    {n}
+                  </span>
+                ))}
               </div>
-              {tags.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {tags.map((n) => (
-                    <span key={n} className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">
-                      {n}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
