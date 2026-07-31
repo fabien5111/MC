@@ -27,9 +27,6 @@ export const TIME_STEP = 30;
 // Cartes chargées par palier (« Charger plus »).
 export const PAGE_SIZE = 12;
 
-// Note de l'auteur : segment à quatre positions de la maquette.
-export const AUTHOR_RATING_STEPS = [3, 4, 4.5] as const;
-
 export type IngredientMode = 'inc' | 'exc';
 
 export type SearchCriteria = {
@@ -141,8 +138,9 @@ export function parseSearchCriteria(sp: RawParams): SearchCriteria {
     cat: dedupeLoose([...asList(sp.cat), ...asList(sp.category)]),
     allerg: dedupeLoose(asList(sp.allerg)),
     minRecipeRating: rr === null ? null : clamp(Math.round(rr), 1, 5),
-    // 0 = position « Toutes » du segment : pas de filtre.
-    minAuthorRating: ar === null || ar <= 0 ? null : clamp(ar, 0, 5),
+    // Même principe que la note de la recette : entier 1..5, 0 ou absent =
+    // pas de filtre.
+    minAuthorRating: ar === null || ar <= 0 ? null : clamp(Math.round(ar), 1, 5),
     sort,
     shown,
   };

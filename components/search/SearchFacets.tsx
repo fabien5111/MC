@@ -4,10 +4,11 @@
 // persistante (≥ 1024 px) et le tiroir remontant (< 1024 px) : mêmes
 // contrôles, mêmes libellés, seule la mise en page change.
 //
-// Ordre volontaire — Ingrédients, Type, Difficulté, Temps, Catégories, Note de
-// la recette, Note de l'auteur, Allergènes : les ingrédients ouvrent la liste
-// parce que c'est la facette qui différencie le produit, les allergènes la
-// ferment parce qu'on y revient rarement une fois posés.
+// Ordre volontaire — Ingrédients, Catégories, Type, Difficulté, Temps, Note de
+// la recette, Note de l'auteur, Allergènes : ingrédients et catégories
+// ouvrent la liste — ce sont les deux facettes à zone de saisie, celles où
+// l'utilisateur doit pouvoir taper tout de suite sans dérouler le reste — les
+// allergènes la ferment parce qu'on y revient rarement une fois posés.
 //
 // En tiroir, les trois facettes vedettes (Ingrédients, Temps, Note de la
 // recette) restent dépliées et le reste passe en accordéons — la liste doit
@@ -15,8 +16,8 @@
 import { useState, type ReactNode } from 'react';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { IngredientPicker } from '@/components/search/IngredientPicker';
+import { TagPicker } from '@/components/search/TagPicker';
 import {
-  AUTHOR_RATING_STEPS,
   ratingLabel,
   timeLabel,
   toggleValue,
@@ -54,6 +55,12 @@ export function SearchFacets({
   const ingredients = (
     <IngredientPicker value={value} onChange={onChange} compact={sheet} showLegend={!sheet} />
   );
+
+  // ── Catégories ───────────────────────────────────────────────────────
+  // Zone de saisie avec autocomplétion — même principe que l'ajout de tags
+  // dans l'éditeur de recette (pastilles retirables), la mécanique d'ajout
+  // reprenant celle de la facette Ingrédients (saisie filtrée).
+  const categories = <TagPicker value={value} onChange={onChange} tags={refs.tags} />;
 
   // ── Type de recette (radio, « Toutes » par défaut) ─────────────────────
   const type = (
@@ -129,80 +136,28 @@ export function SearchFacets({
     </div>
   );
 
-  // ── Catégories (puces multi-sélection) ─────────────────────────────────
-  const categories = (
-    <div className="flex flex-wrap gap-2">
-      {refs.tags.map((t) => {
-        const on = value.cat.includes(t.slug);
-        return (
-          <button
-            key={t.id}
-            type="button"
-            aria-pressed={on}
-            onClick={() => set({ cat: toggleValue(value.cat, t.slug) })}
-            className={`px-3 py-1.5 rounded-full text-[12.5px] border transition-all ${
-              on
-                ? 'bg-primary text-on-primary border-primary'
-                : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-secondary'
-            }`}
-          >
-            {t.name}
-          </button>
-        );
-      })}
-    </div>
-  );
-
   // ── Note de la recette (étoiles ; re-cliquer la valeur courante annule) ─
   const recipeRating = (
-    <div className={sheet ? '' : 'flex items-center gap-3'}>
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-label={`${n} étoile${n > 1 ? 's' : ''} et plus`}
-            aria-pressed={value.minRecipeRating === n}
-            onClick={() => set({ minRecipeRating: value.minRecipeRating === n ? null : n })}
-            className={`material-symbols-outlined leading-none transition-colors ${
-              sheet ? 'text-[30px]' : 'text-[26px]'
-            } ${n <= (value.minRecipeRating ?? 0) ? 'text-primary' : 'text-outline-variant'}`}
-            style={{ fontVariationSettings: `'FILL' ${n <= (value.minRecipeRating ?? 0) ? 1 : 0}` }}
-          >
-            star
-          </button>
-        ))}
-      </div>
-      <span className={`text-[13px] text-on-surface-variant ${sheet ? 'block mt-1.5' : ''}`}>
-        {ratingLabel(value.minRecipeRating)}
-      </span>
-    </div>
+    <RatingStars
+      value={value.minRecipeRating}
+      onChange={(n) => set({ minRecipeRating: n })}
+      sheet={sheet}
+      ariaSuffix=""
+    />
   );
 
   // ── Note de l'auteur ───────────────────────────────────────────────────
-  // Moyenne des notes de ses recettes publiées (vue SQL `author_ratings`) :
-  // le produit n'a pas d'autre notion de note d'auteur.
+  // Même principe que la note de la recette : cinq étoiles cumulables,
+  // re-cliquer la valeur courante l'annule. Moyenne des notes de ses
+  // recettes publiées (vue SQL `author_ratings`) — le produit n'a pas
+  // d'autre notion de note d'auteur.
   const authorRating = (
-    <div className="grid grid-cols-4 gap-1.5">
-      {[null, ...AUTHOR_RATING_STEPS].map((step) => {
-        const on = value.minAuthorRating === step;
-        return (
-          <button
-            key={step ?? 'all'}
-            type="button"
-            aria-pressed={on}
-            onClick={() => set({ minAuthorRating: step })}
-            className={`py-2 rounded font-label-md text-[12px] border transition-all ${
-              on
-                ? 'bg-primary text-on-primary border-primary'
-                : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-secondary'
-            }`}
-          >
-            {step === null ? 'Toutes' : `${String(step).replace('.', ',')}★+`}
-          </button>
-        );
-      })}
-    </div>
+    <RatingStars
+      value={value.minAuthorRating}
+      onChange={(n) => set({ minAuthorRating: n })}
+      sheet={sheet}
+      ariaSuffix=" pour l'auteur"
+    />
   );
 
   // ── Allergènes à exclure ───────────────────────────────────────────────
@@ -235,6 +190,7 @@ export function SearchFacets({
     return (
       <div className="divide-y divide-outline-variant/50">
         <Block>{ingredients}</Block>
+        <Block>{categories}</Block>
         <Block title="Type de recette">{type}</Block>
         <Block title="Difficulté">{difficulty}</Block>
         <Block
@@ -243,9 +199,8 @@ export function SearchFacets({
         >
           {time}
         </Block>
-        <Block title="Catégories">{categories}</Block>
         <Block title="Note de la recette">{recipeRating}</Block>
-        <Block title={"Note de l'auteur"}>{authorRating}</Block>
+        <Block title="Note de l&apos;auteur">{authorRating}</Block>
         <Block title="Allergènes à exclure">{allergens}</Block>
       </div>
     );
@@ -265,14 +220,57 @@ export function SearchFacets({
         <p className="facet-h mb-3">Note de la recette</p>
         {recipeRating}
       </div>
-      {/* Le premier accordéon est ouvert : il signale qu'il y a une suite. */}
-      <Accordion title="Type de recette" defaultOpen>
-        {type}
+      {/* Catégories garde sa zone de saisie même repliée : le premier
+          accordéon est ouvert par défaut, comme avant, il signale qu'il y a
+          une suite. */}
+      <Accordion title="Catégories" defaultOpen>
+        {categories}
       </Accordion>
+      <Accordion title="Type de recette">{type}</Accordion>
       <Accordion title="Difficulté">{difficulty}</Accordion>
-      <Accordion title="Catégories">{categories}</Accordion>
       <Accordion title="Allergènes à exclure">{allergens}</Accordion>
       <Accordion title={"Note de l'auteur"}>{authorRating}</Accordion>
+    </div>
+  );
+}
+
+// Rangée de 5 étoiles cumulables, partagée entre la note de la recette et la
+// note de l'auteur : re-cliquer la valeur courante l'annule (retour à
+// « toutes les notes »). `ariaSuffix` distingue les deux dans le libellé
+// accessible sans dupliquer le balisage.
+function RatingStars({
+  value,
+  onChange,
+  sheet,
+  ariaSuffix,
+}: {
+  value: number | null;
+  onChange: (n: number | null) => void;
+  sheet: boolean;
+  ariaSuffix: string;
+}) {
+  return (
+    <div className={sheet ? '' : 'flex items-center gap-3'}>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n} étoile${n > 1 ? 's' : ''} et plus${ariaSuffix}`}
+            aria-pressed={value === n}
+            onClick={() => onChange(value === n ? null : n)}
+            className={`material-symbols-outlined leading-none transition-colors ${
+              sheet ? 'text-[30px]' : 'text-[26px]'
+            } ${n <= (value ?? 0) ? 'text-primary' : 'text-outline-variant'}`}
+            style={{ fontVariationSettings: `'FILL' ${n <= (value ?? 0) ? 1 : 0}` }}
+          >
+            star
+          </button>
+        ))}
+      </div>
+      <span className={`text-[13px] text-on-surface-variant ${sheet ? 'block mt-1.5' : ''}`}>
+        {ratingLabel(value)}
+      </span>
     </div>
   );
 }
