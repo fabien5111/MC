@@ -232,8 +232,9 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  /* Même taille que les pictos des sections du rail (`.recipe-toc a`). */
-  font-size: 21px;
+  /* ~15% sous les pictos des sections du rail (`.recipe-toc a`, 21px) : à
+     cette taille pleine, ils débordaient visuellement du badge rond. */
+  font-size: 18px;
 }
 /* Libellé masqué par l'opacité (comme `.recipe-toc a .lbl`) : la place
    réservée déborde du rail replié, absorbée par l'`overflow:hidden` du
