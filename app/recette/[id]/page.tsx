@@ -26,7 +26,7 @@ import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { DuplicateButton } from '@/components/recipe/DuplicateButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
-import { RecipeToc, stepAnchorId, type TocSections } from '@/components/recipe/RecipeToc';
+import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -705,7 +705,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 return (
                   <div
                     key={s.id}
-                    id={stepAnchorId(i)}
+                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
+                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
+                    // module « use client » — un Server Component peut le rendre en
+                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
+                    // fonction plante au rendu serveur (référence client, pas de code
+                    // exécutable côté serveur).
+                    id={`sec-etape-${i + 1}`}
                     className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
                   >
                     <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
