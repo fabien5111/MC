@@ -170,16 +170,16 @@ export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props)
               type="button"
               onClick={a.onClick}
               disabled={a.disabled}
-              className={`variant-${a.variant}`}
               aria-label={a.label}
               onMouseEnter={(e) => showTip(e.currentTarget, a.label)}
               onMouseLeave={hideTip}
               onFocus={(e) => showTip(e.currentTarget, a.label)}
               onBlur={hideTip}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
+              <span className={`badge variant-${a.variant} material-symbols-outlined`} aria-hidden="true">
                 {a.icon}
               </span>
+              <span className="lbl">{a.label}</span>
             </button>
           ))}
         </div>
