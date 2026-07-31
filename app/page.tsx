@@ -48,6 +48,11 @@ export default async function HomePage() {
   ]);
   const featured = recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
+  const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
+  // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
+  // s'intercale entre Favori (right-6) et lui — même principe que sur les
+  // cartes de la grille (RecipeCardLayout).
+  const featuredPlanPos = featuredIsOwner ? 'right-28' : 'right-[4.25rem]';
   const categories: { icon: string | null; picto: string | null; label: string; slug: string | null }[] =
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
@@ -113,6 +118,24 @@ export default async function HomePage() {
                   initialFav={favIds.has(featured.id)}
                   className="top-6 right-6"
                 />
+                {featuredIsOwner && (
+                  <Link
+                    href={`/creer?id=${featured.id}`}
+                    title="Éditer cette recette"
+                    prefetch={false}
+                    className="absolute top-6 right-[4.25rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                  >
+                    <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+                  </Link>
+                )}
+                <Link
+                  href={`/recette/${featured.id}?planifier=1`}
+                  title="Planifier cette recette"
+                  prefetch={false}
+                  className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+                >
+                  <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+                </Link>
 
                 <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
                   <span className="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">
