@@ -16,7 +16,6 @@
 //    aucun moyen de revenir en arrière. Seul le compteur du bouton de pied
 //    est mis à jour en direct, via un appel « compte seul ».
 import { useEffect, useState } from 'react';
-import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { SearchFacets, type FacetRefs } from '@/components/search/SearchFacets';
 import { useSearch } from '@/components/search/SearchProvider';
 import {
@@ -29,16 +28,12 @@ import {
 const COUNT_DEBOUNCE_MS = 300;
 
 export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
-  const { criteria, update, pending, panelOpen, setPanelOpen } = useSearch();
+  const { criteria, update, panelOpen, setPanelOpen } = useSearch();
 
   // Brouillon du tiroir : initialisé depuis les critères appliqués, et
   // resynchronisé à chaque ouverture.
   const [draft, setDraft] = useState<SearchCriteria>(criteria);
   const [draftTotal, setDraftTotal] = useState<number | null>(null);
-  // Vrai uniquement entre la validation du tiroir et l'arrivée des
-  // nouveaux résultats : c'est le seul cas qui justifie le fouet plein
-  // écran (voir le pied de fichier).
-  const [applying, setApplying] = useState(false);
   // Le tiroir est masqué en CSS au-dessus de 1024 px, mais `panelOpen` peut y
   // être vrai (arrivée par `?panel=1` depuis l'en-tête). Sans cette garde, son
   // blocage du défilement s'appliquait sur desktop : la page se figeait sans
@@ -104,10 +99,6 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       controller.abort();
     };
   }, [draftKey, drawerOpen]);
-
-  useEffect(() => {
-    if (!pending) setApplying(false);
-  }, [pending]);
 
   const appliedCount = countActiveCriteria(criteria);
   const draftCount = countActiveCriteria(draft);
@@ -181,7 +172,6 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
             <button
               type="button"
               onClick={() => {
-                setApplying(true);
                 update(draft);
                 setPanelOpen(false);
               }}
@@ -195,13 +185,6 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
         </div>
       </div>
 
-      {/* Le fouet n'apparaît QUE pour la validation du tiroir : la fermeture
-          du tiroir suivie du rafraîchissement complet est une action
-          déclenchée par du code. Sur la colonne desktop, où chaque case
-          cochée relance une requête, un overlay plein écran rendrait
-          l'écran « résultats en direct » inutilisable — les résultats s'y
-          estompent le temps du rafraîchissement (`.search-results`). */}
-      <LoadingOverlay visible={applying && pending} />
     </>
   );
 }

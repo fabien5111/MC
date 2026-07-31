@@ -649,20 +649,13 @@ body[data-impersonation] .sticky.top-0 {
   cursor: pointer;
 }
 
-/* Résultats en cours de rafraîchissement : le contenu s'estompe le temps que
-   le serveur renvoie la nouvelle page. Volontairement pas de spinner — un
-   overlay plein écran à chaque case cochée rendrait l'écran « résultats en
-   direct » inutilisable. */
-.search-results[aria-busy='true'] {
-  opacity: 0.55;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
+/* Résultats en cours de rafraîchissement : le fouet plein écran
+   (components/search/SearchResults.tsx) porte l'attente. `aria-busy` reste
+   posé sur le conteneur pour les lecteurs d'écran. */
 
 @media (prefers-reduced-motion: reduce) {
   .search-scrim,
-  .search-sheet,
-  .search-results {
+  .search-sheet {
     transition: none;
   }
   .search-sheet {

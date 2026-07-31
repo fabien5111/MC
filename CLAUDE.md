@@ -175,11 +175,12 @@ remontant** en dessous.
 - **Compteurs par facette** : volontairement absents. Un compteur juste se
   calcule « tous les filtres sauf celui-ci » ; un compteur faux est pire
   qu'absent.
-- **Spinner** : le fouet est réservé aux actions ponctuelles (validation du
-  tiroir mobile, « Charger plus »). Sur la colonne desktop, où chaque réglage
-  relance une requête, les résultats s'estompent (`.search-results`,
-  `aria-busy`) — un overlay plein écran à chaque case cochée rendrait l'écran
-  inutilisable.
+- **Spinner** : le fouet plein écran couvre tout rafraîchissement des
+  résultats — réglage d'une facette, validation du tiroir, « Charger plus ».
+  Il est déclaré à un seul endroit (`components/search/SearchResults.tsx`) :
+  plusieurs `LoadingOverlay` montés en même temps empileraient leurs voiles.
+  Un délai de 120 ms avant affichage (le même que `NavigationSpinner`) évite
+  le clignotement sur un rafraîchissement instantané.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
 
