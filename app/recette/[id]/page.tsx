@@ -214,7 +214,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="text-on-surface-variant opacity-70">({recipe.rating_count})</span>
                 </span>
               )}
-              <span className="flex items-center gap-2 text-secondary">
+              <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 <ShareButton title={recipe.title} />
                 <PrintButton />
