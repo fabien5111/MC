@@ -744,16 +744,20 @@ export function CreerForm({
     }
   }
 
-  // Bouton « Quitter » du rail : mêmes conditions que le lien « Annuler »
-  // (aucun enregistrement), avec une confirmation en plus dès qu'une saisie a
-  // été détectée depuis le chargement de l'écran.
+  // Bouton « Quitter » du rail : aucun enregistrement, avec une confirmation
+  // dès qu'une saisie a été détectée depuis le chargement de l'écran. Retour
+  // à la fiche recette pour une édition (ou une création déjà enregistrée en
+  // brouillon dans cette session) ; à défaut de recette existante, retour au
+  // profil — contrairement au lien « Annuler » ci-dessous, qui revient
+  // toujours au profil.
   const handleLeave = useCallback(() => {
     if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
     // Pas de reset à false ensuite : on quitte la page, autant garder le
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
     setLeaving(true);
-    router.push('/profil');
-  }, [router]);
+    const recipeId = editingId ?? createdIdRef.current;
+    router.push(recipeId ? `/recette/${recipeId}` : '/profil');
+  }, [router, editingId]);
 
   const scalingOptions =
     measure === 'mold'
