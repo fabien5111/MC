@@ -63,6 +63,13 @@ img {
    espacements, rayons et durées sont validés au pixel. Écrit ici plutôt qu'en
    utilitaires Tailwind parce qu'aucune de ces mesures (58px, 252px, 12.5px…)
    ne correspond à un token du thème. */
+/* Le rail est positionné à `left: 0` : la marge par défaut de <body> doit
+   être neutralisée, sinon un espace parasite apparaît entre le bord de la
+   fenêtre et le rail. */
+html,
+body {
+  margin: 0;
+}
 .recipe-toc {
   position: fixed;
   z-index: 40; /* sous l'en-tête sticky du site, qui est à 50 */
@@ -201,6 +208,22 @@ img {
   .recipe-toc a,
   .recipe-toc a .lbl {
     transition: none;
+  }
+}
+/* Le rail est en position: fixed (hors du flux) : sans cette réserve, il se
+   superpose aux titres et au texte du contenu au lieu de lui laisser de la
+   place. Appliqué aux conteneurs principaux des écrans qui montent
+   <RecipeToc> (éditeur /creer, relecture), sur la largeur repliée (58px)
+   uniquement — le survol/épinglage passe par-dessus le contenu, pas dedans.
+   Même point de rupture que .recipe-toc pour son masquage. */
+.creer-page,
+.relecture-page {
+  margin-left: 58px;
+}
+@media (max-width: 700px) {
+  .creer-page,
+  .relecture-page {
+    margin-left: 0;
   }
 }
 
