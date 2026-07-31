@@ -672,3 +672,29 @@ body[data-impersonation] .sticky.top-0 {
     display: none;
   }
 }
+
+/* Colonne de critères (≥ 1024 px) : « persistante » veut dire qu'elle reste à
+   l'écran pendant qu'on parcourt les résultats — elle est donc collée sous
+   l'en-tête et défile pour elle-même. Sans cela, huit facettes dépassent la
+   hauteur d'écran et il faut faire défiler toute la page (résultats compris)
+   pour atteindre les dernières.
+
+   `--mc-header-h` = hauteur de l'en-tête collant (py-4 ×2 + 36px de logo
+   `leading-none` + 1px de bordure), à suivre si l'en-tête change. Le bandeau
+   d'impersonation, fixé en haut d'écran, s'y ajoute. */
+:root {
+  --mc-header-h: 69px;
+}
+body[data-impersonation] {
+  --mc-header-h: 113px; /* 69px + 2.75rem de bandeau */
+}
+
+@media (min-width: 1024px) {
+  .search-facets-column {
+    position: sticky;
+    top: var(--mc-header-h);
+    height: calc(100vh - var(--mc-header-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

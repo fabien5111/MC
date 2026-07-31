@@ -39,17 +39,36 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
   // nouveaux résultats : c'est le seul cas qui justifie le fouet plein
   // écran (voir le pied de fichier).
   const [applying, setApplying] = useState(false);
+  // Le tiroir est masqué en CSS au-dessus de 1024 px, mais `panelOpen` peut y
+  // être vrai (arrivée par `?panel=1` depuis l'en-tête). Sans cette garde, son
+  // blocage du défilement s'appliquait sur desktop : la page se figeait sans
+  // qu'aucun tiroir ne soit visible.
+  const [wide, setWide] = useState(false);
+  const drawerOpen = panelOpen && !wide;
 
   useEffect(() => {
-    if (panelOpen) setDraft(criteria);
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => {
+      setWide(mq.matches);
+      // En passant sur la colonne, l'ouverture du tiroir n'a plus de sens :
+      // on l'oublie, pour qu'un retour en dessous de 1024 px ne le rouvre pas.
+      if (mq.matches) setPanelOpen(false);
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [setPanelOpen]);
+
+  useEffect(() => {
+    if (drawerOpen) setDraft(criteria);
     // On ne resynchronise qu'à l'ouverture : pendant l'édition, le brouillon
     // ne doit pas être écrasé par les critères appliqués.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelOpen]);
+  }, [drawerOpen]);
 
   // Fermeture au clavier + blocage du défilement de la page derrière le tiroir.
   useEffect(() => {
-    if (!panelOpen) return;
+    if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPanelOpen(false);
     };
@@ -60,13 +79,13 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previous;
     };
-  }, [panelOpen, setPanelOpen]);
+  }, [drawerOpen, setPanelOpen]);
 
   // Compteur du bouton de pied : requête « compte seul », dernière réponse
   // seule appliquée (la précédente est annulée).
   const draftKey = criteriaToQueryString(draft);
   useEffect(() => {
-    if (!panelOpen) return;
+    if (!drawerOpen) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -84,7 +103,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [draftKey, panelOpen]);
+  }, [draftKey, drawerOpen]);
 
   useEffect(() => {
     if (!pending) setApplying(false);
@@ -96,7 +115,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
   return (
     <>
       {/* ── Colonne persistante (≥ 1024 px) ── */}
-      <aside className="hidden lg:block w-[318px] shrink-0 border-r border-outline-variant/50 bg-surface-container-low/40">
+      <aside className="search-facets-column hidden lg:block w-[318px] shrink-0 border-r border-outline-variant/50 bg-surface-container-low/40">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/50">
           <span className="flex items-center gap-2 text-primary font-semibold text-[14px]">
             <span className="material-symbols-outlined text-[19px]">tune</span>
@@ -119,17 +138,17 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
           z-[60] : au-dessus de MobileNav (z-50), dont la hauteur est aussi
           compensée sous le pied du tiroir. */}
       <div
-        className={`lg:hidden fixed inset-0 z-[60] ${panelOpen ? '' : 'pointer-events-none'}`}
-        aria-hidden={!panelOpen}
+        className={`lg:hidden fixed inset-0 z-[60] ${drawerOpen ? '' : 'pointer-events-none'}`}
+        aria-hidden={!drawerOpen}
       >
         <div
           className="search-scrim absolute inset-0 bg-black/45"
-          data-open={panelOpen}
+          data-open={drawerOpen}
           onClick={() => setPanelOpen(false)}
         />
         <div
           className="search-sheet absolute left-0 right-0 bottom-0 h-[88%] bg-surface rounded-t-[22px] shadow-2xl flex flex-col"
-          data-open={panelOpen}
+          data-open={drawerOpen}
           role="dialog"
           aria-modal="true"
           aria-label="Critères de recherche"
