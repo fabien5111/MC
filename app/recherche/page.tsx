@@ -118,7 +118,23 @@ export default async function RecherchePage({
               <SearchSummary total={result.total} refs={refs} />
 
               <SearchResults>
-                {result.total === 0 ? (
+                {result.error ? (
+                  <div className="max-w-[560px] mx-auto py-12 text-center">
+                    <span className="material-symbols-outlined text-[56px] text-outline-variant mb-5 block">
+                      error_outline
+                    </span>
+                    <h2 className="font-headline-md text-[22px] text-primary mb-2.5">
+                      La recherche n&apos;a pas pu aboutir
+                    </h2>
+                    <p className="text-[13.5px] text-on-surface-variant leading-relaxed">
+                      Ce n&apos;est pas une recherche sans résultat : la requête elle-même a échoué.
+                      Réessayez dans un instant.
+                    </p>
+                    {process.env.NODE_ENV !== 'production' && (
+                      <p className="mt-5 text-[12px] text-error font-mono break-words">{result.error}</p>
+                    )}
+                  </div>
+                ) : result.total === 0 ? (
                   hasAnySearch(criteria) ? (
                     <SearchEmptyState criteria={criteria} relaxations={relaxations} />
                   ) : (

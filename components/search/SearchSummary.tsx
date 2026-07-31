@@ -29,6 +29,11 @@ export function SearchSummary({ total, refs }: { total: number; refs: FacetRefs 
   const { criteria, update } = useSearch();
   const activeCount = countActiveCriteria(criteria);
   const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || criteria.q);
+  // Sans terme de recherche l'option « Pertinence » disparaît, mais le critère
+  // peut encore la porter : on affiche alors le tri réellement appliqué par le
+  // SQL (les plus récentes), plutôt qu'une option choisie par défaut par le
+  // navigateur faute de correspondance.
+  const shownSort: SortKey = sortOptions.includes(criteria.sort) ? criteria.sort : 'recent';
 
   const label = (slug: string, list: { slug: string; name: string }[]) =>
     list.find((x) => x.slug === slug)?.name ?? slug;
@@ -97,7 +102,7 @@ export function SearchSummary({ total, refs }: { total: number; refs: FacetRefs 
           <span className="material-symbols-outlined text-[15px]">swap_vert</span>
           <span className="sr-only">Trier par</span>
           <select
-            value={criteria.sort}
+            value={shownSort}
             onChange={(e) => update({ ...criteria, sort: e.target.value as SortKey })}
             className="bg-transparent font-semibold text-secondary focus:outline-none"
           >

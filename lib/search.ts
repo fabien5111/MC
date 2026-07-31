@@ -21,7 +21,11 @@ import {
   type SearchCriteria,
 } from '@/lib/search-params';
 
-export type SearchResult = { total: number; recipes: RecipeCard[] };
+// `error` distingue « la base a répondu : rien ne correspond » de « la requête
+// n'a pas abouti ». Sans cette distinction, une RPC absente ou en erreur
+// s'affichait exactement comme une recherche sans résultat — le pire des
+// symptômes, puisqu'il ressemble à un fonctionnement normal.
+export type SearchResult = { total: number; recipes: RecipeCard[]; error: string | null };
 
 type RpcArgs = {
   search_term: string | null;
@@ -75,10 +79,10 @@ async function callRpc(args: RpcArgs): Promise<SearchResult> {
   const { data, error } = await supabase.rpc('search_advanced_recipes' as never, args as never);
   if (error) {
     console.error('searchAdvanced:', error.message);
-    return { total: 0, recipes: [] };
+    return { total: 0, recipes: [], error: error.message };
   }
   const res = data as unknown as { total?: number; recipes?: RecipeCard[] } | null;
-  return { total: res?.total ?? 0, recipes: res?.recipes ?? [] };
+  return { total: res?.total ?? 0, recipes: res?.recipes ?? [], error: null };
 }
 
 // Page de résultats + total. `shown` (paramètre `n` de l'URL) est le nombre

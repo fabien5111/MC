@@ -17,6 +17,11 @@ export function SearchHeaderBar() {
   // « Pertinence » n'a pas de sens sans terme de recherche : l'option
   // disparaît, et le tri par défaut devient « Plus récentes » côté SQL.
   const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || criteria.q);
+  // Sans terme de recherche l'option « Pertinence » disparaît, mais le critère
+  // peut encore la porter : on affiche alors le tri réellement appliqué par le
+  // SQL (les plus récentes), plutôt qu'une option choisie par défaut par le
+  // navigateur faute de correspondance.
+  const shownSort: SortKey = sortOptions.includes(criteria.sort) ? criteria.sort : 'recent';
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:items-center border-b border-outline-variant/50 px-margin-mobile md:px-margin-desktop py-5 bg-surface-container-low/60">
@@ -54,7 +59,7 @@ export function SearchHeaderBar() {
         </label>
         <select
           id="search-sort"
-          value={criteria.sort}
+          value={shownSort}
           onChange={(e) => update({ ...criteria, sort: e.target.value as SortKey })}
           className="border border-outline-variant rounded-full bg-surface-container-lowest text-[13.5px] py-2 pl-4 pr-9 focus:border-primary focus:outline-none"
         >

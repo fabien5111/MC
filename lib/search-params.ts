@@ -95,8 +95,13 @@ const asList = (v: string | string[] | undefined): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+// Paramètre numérique absent → null, et non zéro. `Number('')` vaut `0` : sans
+// ce garde-fou, une URL sans paramètre se lisait comme « temps ≤ 30 min » et
+// « note ≥ 1 étoile », deux critères que personne n'avait demandés.
 function asNumber(v: string | string[] | undefined): number | null {
-  const n = Number(first(v).replace(',', '.'));
+  const raw = first(v).trim();
+  if (!raw) return null;
+  const n = Number(raw.replace(',', '.'));
   return Number.isFinite(n) ? n : null;
 }
 
@@ -136,7 +141,8 @@ export function parseSearchCriteria(sp: RawParams): SearchCriteria {
     cat: dedupeLoose([...asList(sp.cat), ...asList(sp.category)]),
     allerg: dedupeLoose(asList(sp.allerg)),
     minRecipeRating: rr === null ? null : clamp(Math.round(rr), 1, 5),
-    minAuthorRating: ar === null ? null : clamp(ar, 0, 5) || null,
+    // 0 = position « Toutes » du segment : pas de filtre.
+    minAuthorRating: ar === null || ar <= 0 ? null : clamp(ar, 0, 5),
     sort,
     shown,
   };
