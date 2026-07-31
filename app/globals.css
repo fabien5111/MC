@@ -336,12 +336,16 @@ body {
    uniquement — le survol/épinglage passe par-dessus le contenu, pas dedans.
    Même point de rupture que .recipe-toc pour son masquage. */
 .creer-page,
-.relecture-page {
+.relecture-page,
+.recette-page,
+.execution-page {
   margin-left: 58px;
 }
 @media (max-width: 700px) {
   .creer-page,
-  .relecture-page {
+  .relecture-page,
+  .recette-page,
+  .execution-page {
     margin-left: 0;
   }
 }
@@ -504,6 +508,12 @@ body {
   .fixed,
   .recipe-toc {
     display: none !important;
+  }
+  /* Le rail se masque juste au-dessus, mais la marge qui lui réservait de la
+     place reste : sans ce reset, chaque page imprimée garderait un décalage
+     vide à gauche. */
+  .recette-page {
+    margin-left: 0 !important;
   }
   /* Les en-têtes collants n'ont plus de sens hors défilement. */
   .sticky {
