@@ -601,6 +601,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                              {/* Case à cocher au stylo — uniquement à l'impression, cochée
+                                  à la main pendant les courses ou la préparation. */}
+                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {r.name}
                               {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
                             </span>
@@ -629,6 +632,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         {merged.map((m, k) => (
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className="font-body-md text-body-md">
+                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {m.name}
                               {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
                             </span>
@@ -731,6 +735,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   <Qty quantity={it.quantity} unit={it.unit} />
                                 </span>
                                 <span className="font-body-md text-body-md">
+                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                   {it.name}
                                   {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                 </span>
