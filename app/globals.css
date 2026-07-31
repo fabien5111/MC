@@ -575,3 +575,119 @@ body[data-impersonation] {
 body[data-impersonation] .sticky.top-0 {
   top: 2.75rem;
 }
+
+/* ── Recherche avancée ─────────────────────────────────────────
+   Valeurs reprises de la maquette (nvell_func/recherche-retenue.html) qui ne
+   correspondent à aucun token du thème : intitulés de facettes, tiroir
+   mobile, masquage de barre de défilement. */
+
+/* Intitulé de facette : 10px / 600 / .2em, capitales. */
+.facet-h {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #847374; /* outline */
+}
+
+/* Bandes de critères actifs en défilement horizontal (mobile). */
+.hide-sb {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-sb::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tiroir remontant (< 1024 px). Le voile et la feuille sont animés
+   séparément : la feuille glisse, le voile se contente d'un fondu. */
+.search-scrim {
+  opacity: 0;
+  transition: opacity 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.search-scrim[data-open='true'] {
+  opacity: 1;
+}
+.search-sheet {
+  transform: translateY(101%);
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.search-sheet[data-open='true'] {
+  transform: translateY(0);
+}
+
+/* Curseur du temps total : la piste et la poignée du thème par défaut ne
+   reprennent pas les couleurs du DA. */
+.search-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: #d6c2c3; /* outline-variant */
+  outline: none;
+}
+.search-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #300a12; /* primary */
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(48, 10, 18, 0.35);
+  cursor: pointer;
+}
+.search-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #300a12;
+  box-shadow: 0 1px 4px rgba(48, 10, 18, 0.35);
+  cursor: pointer;
+}
+
+/* Résultats en cours de rafraîchissement : le fouet plein écran
+   (components/search/SearchResults.tsx) porte l'attente. `aria-busy` reste
+   posé sur le conteneur pour les lecteurs d'écran. */
+
+@media (prefers-reduced-motion: reduce) {
+  .search-scrim,
+  .search-sheet {
+    transition: none;
+  }
+  .search-sheet {
+    transform: translateY(0);
+  }
+  .search-sheet:not([data-open='true']) {
+    display: none;
+  }
+}
+
+/* Colonne de critères (≥ 1024 px) : « persistante » veut dire qu'elle reste à
+   l'écran pendant qu'on parcourt les résultats — elle est donc collée sous
+   l'en-tête et défile pour elle-même. Sans cela, huit facettes dépassent la
+   hauteur d'écran et il faut faire défiler toute la page (résultats compris)
+   pour atteindre les dernières.
+
+   `--mc-header-h` = hauteur de l'en-tête collant (py-4 ×2 + 36px de logo
+   `leading-none` + 1px de bordure), à suivre si l'en-tête change. Le bandeau
+   d'impersonation, fixé en haut d'écran, s'y ajoute. */
+:root {
+  --mc-header-h: 69px;
+}
+body[data-impersonation] {
+  --mc-header-h: 113px; /* 69px + 2.75rem de bandeau */
+}
+
+@media (min-width: 1024px) {
+  .search-facets-column {
+    position: sticky;
+    top: var(--mc-header-h);
+    height: calc(100vh - var(--mc-header-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

@@ -59,6 +59,18 @@ const config: Config = {
         'on-error': '#ffffff',
         'tertiary-fixed-dim': '#e0bec2',
         'primary-fixed-dim': '#fab4bd',
+        // Badges d'ingrédients de la recherche avancée (inclure / exclure).
+        // Ces verts et ces rouges n'appartiennent pas à la palette Material du
+        // thème : ils sont nommés ici plutôt qu'écrits en dur dans les
+        // composants, pour rester modifiables au même endroit que le reste du
+        // DA. Le rouge d'exclusion est volontairement distinct de `error` —
+        // exclure un ingrédient n'est pas une erreur.
+        'ingredient-include': '#d7ecd9',
+        'ingredient-include-text': '#1f4d2b',
+        'ingredient-include-border': '#8fc39b',
+        'ingredient-exclude': '#ffdad6',
+        'ingredient-exclude-text': '#93000a',
+        'ingredient-exclude-border': '#e4a49e',
       },
       borderRadius: {
         DEFAULT: '0.125rem',

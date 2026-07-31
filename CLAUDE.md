@@ -47,6 +47,7 @@ app/                    Pages et routes (App Router)
 ├── execution/[id]/     Écran d'exécution guidée d'une recette
 ├── courses/[id]/       Liste de courses
 ├── profil/             Profil (recettes, favoris, planning, listes)
+├── recherche/          Recherche avancée (facettes + résultats)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
@@ -54,6 +55,9 @@ app/                    Pages et routes (App Router)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
+│   ├── recherche/compte/ GET  — compte seul des résultats (tiroir mobile)
+│   ├── ingredients/      GET  — autocomplétion des ingrédients
+│   ├── recipes/          GET  — pagination de l'accueil
 │   ├── admin/impersonate/ POST — lien de connexion « en tant que »
 │   └── impersonation/    POST — fin de session / journal d'audit
 ├── auth/callback/      Callback OAuth / confirmation e-mail
@@ -140,6 +144,46 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 - **Audit** : `impersonation_sessions` (connexions) + `impersonation_events`
   (écritures abouties ou refusées), consultables en bas d'Admin → Membres.
 
+## Recherche avancée
+
+Écran `/recherche` : huit facettes (ingrédients à inclure / exclure, type,
+difficulté, temps total, catégories, note de la recette, note de l'auteur,
+allergènes à exclure), colonne persistante au-dessus de **1024 px**, **tiroir
+remontant** en dessous.
+
+- **L'URL est le seul état de l'écran** (`lib/search-params.ts`, fonctions
+  pures) : rechargement, partage de lien et retour arrière restituent la même
+  recherche. Les facettes réécrivent l'URL (`router.replace` débouncé, 300 ms)
+  et le Server Component re-rend — **pas d'API de résultats, pas de seconde
+  grille côté client**. `RecipeCard`, les pictos d'allergènes et le bandeau
+  publicitaire toutes les deux lignes restent donc calculés à un seul endroit.
+  Les requêtes concurrentes sont gérées par le routeur (une navigation en
+  remplace une autre), sans `AbortController`.
+- **Une seule requête SQL** : la RPC `search_advanced_recipes` renvoie la page
+  **et** le total (compte fenêtré), en respectant la RLS (`SECURITY INVOKER`).
+  Elle remplace les trois requêtes de l'ancien `searchRecipes`.
+- **Filtre temps** : la fonction SQL reproduit `effectiveTimes()` (temps saisi,
+  sinon somme des étapes) — sinon les résultats contrediraient le temps affiché
+  sur les cartes. La butée haute du curseur (8 h) vaut « sans limite ».
+- **Allergènes** : le filtre interroge **les deux sources** — la référence
+  (`ingredient_refs.allergen_id`) et le texte libre (`ingredients.allergen`),
+  qui est ce qui alimente les pictos des cartes. Présenté comme une aide au
+  tri, jamais comme une garantie de sécurité alimentaire.
+- **Note de l'auteur** : vue `author_ratings` (moyenne des notes de ses
+  recettes publiées). Pas de colonne dénormalisée, donc pas de trigger à
+  maintenir ni de dérive silencieuse.
+- **Compteurs par facette** : volontairement absents. Un compteur juste se
+  calcule « tous les filtres sauf celui-ci » ; un compteur faux est pire
+  qu'absent.
+- **Spinner** : le fouet plein écran couvre tout rafraîchissement des
+  résultats — réglage d'une facette, validation du tiroir, « Charger plus ».
+  Il est déclaré à un seul endroit (`components/search/SearchResults.tsx`) :
+  plusieurs `LoadingOverlay` montés en même temps empileraient leurs voiles.
+  Un délai de 120 ms avant affichage (le même que `NavigationSpinner`) évite
+  le clignotement sur un rafraîchissement instantané.
+- **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
+  alias de `cat`, fusionné à la lecture — aucune redirection.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
@@ -156,6 +200,7 @@ principales :
 | Import IA | `imports` |
 | Site | `site_settings` (bannières d'accueil) |
 | Impersonation | `impersonation_sessions`, `impersonation_events` |
+| Recherche | colonne générée `recipes.fts` (GIN), vue `author_ratings`, fonctions `mc_norm`, `search_advanced_recipes`, `suggest_ingredients` |
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).

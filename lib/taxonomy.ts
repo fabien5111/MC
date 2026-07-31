@@ -53,6 +53,20 @@ export async function getTagBySlug(slug: string): Promise<Tag | null> {
   return data ?? null;
 }
 
+// Types de recette publiés — facette « Type de recette » de la recherche
+// avancée (le filtre SQL travaille sur le slug, comme les catégories).
+export type RecipeType = Pick<Database['public']['Tables']['recipe_types']['Row'], 'id' | 'name' | 'slug'>;
+
+export async function getRecipeTypes(): Promise<RecipeType[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('recipe_types')
+    .select('id, name, slug')
+    .eq('status', 'published')
+    .order('name');
+  return data ?? [];
+}
+
 export async function getDifficulties(): Promise<Difficulty[]> {
   const supabase = await createClient();
   const { data } = await supabase.from('difficulties').select('*').order('level');

@@ -7,6 +7,7 @@ import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/aut
 import { isReadOnlySession } from '@/lib/impersonation';
 import { SignOutButton } from '@/components/SignOutButton';
 import { HeaderSearch } from '@/components/HeaderSearch';
+import { getHomeCategories } from '@/lib/taxonomy';
 
 const NAV = [
   { href: '/', label: 'Accueil' },
@@ -22,6 +23,12 @@ export async function Header({ current = '/' }: { current?: string }) {
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
   // Impersonation en lecture seule : les entrées de création sont masquées.
   const readOnly = await isReadOnlySession();
+  // Suggestions du panneau de recherche : les catégories promues par l'admin
+  // sur l'accueil, jamais une liste codée en dur. Limitées à quatre pour que
+  // le panneau reste une ligne.
+  const suggestions = (await getHomeCategories())
+    .slice(0, 4)
+    .map((c) => ({ label: c.name, slug: c.slug }));
 
   return (
     <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
@@ -52,7 +59,7 @@ export async function Header({ current = '/' }: { current?: string }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <HeaderSearch />
+          <HeaderSearch suggestions={suggestions} />
           {user ? (
             <>
               {!readOnly && (
