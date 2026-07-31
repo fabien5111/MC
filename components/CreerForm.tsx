@@ -251,6 +251,9 @@ export function CreerForm({
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
+  // Distinct de `busy` (dédié à l'enregistrement, avec son propre libellé de
+  // spinner) : cliquer sur Quitter ne passe par aucune écriture.
+  const [leaving, setLeaving] = useState(false);
   // Verrou synchrone doublant `busy` : un état React n'est effectif qu'au
   // rendu suivant et ne protège donc pas de deux déclenchements dans le même
   // tick (double clic, double événement tactile).
@@ -746,6 +749,9 @@ export function CreerForm({
   // été détectée depuis le chargement de l'écran.
   const handleLeave = useCallback(() => {
     if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+    // Pas de reset à false ensuite : on quitte la page, autant garder le
+    // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
+    setLeaving(true);
     router.push('/profil');
   }, [router]);
 
@@ -775,14 +781,14 @@ export function CreerForm({
         steps={tocSteps}
         onNavigateToStep={expandStep}
         actions={[
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy },
+          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           {
             id: 'save',
             icon: 'save',
             label: 'Enregistrer en brouillon',
             variant: 'outline-strong',
             onClick: () => submit('draft', true),
-            disabled: busy,
+            disabled: busy || leaving,
           },
           {
             id: 'publish',
@@ -790,7 +796,7 @@ export function CreerForm({
             label: isPublic ? 'Publier la recette' : 'Enregistrer',
             variant: 'filled',
             onClick: () => submit('pending'),
-            disabled: busy,
+            disabled: busy || leaving,
           },
         ]}
       />
@@ -1913,7 +1919,7 @@ export function CreerForm({
 
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
-      <LoadingOverlay visible={busy} label="Enregistrement de la recette…" />
+      <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
     </>
   );
 }
