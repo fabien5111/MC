@@ -61,91 +61,11 @@ export async function getRecipes(opts: {
   return (data as unknown as RecipeCard[]) ?? [];
 }
 
-// Recherche de recettes publiées par titre, ingrédient ou auteur.
-// PostgREST ne permet pas un OR sur des tables jointes différentes en une
-// requête : on collecte donc les identifiants correspondants via trois
-// requêtes ciblées (titre / auteur / ingrédient), puis on récupère les
-// cartes complètes pour l'union dédoublonnée. Le filtre `status = published`
-// est réappliqué au chargement final : une correspondance pointant vers une
-// recette non publiée est ainsi écartée.
-export async function searchRecipes(
-  query: string,
-  opts: { limit?: number } = {},
-): Promise<RecipeCard[]> {
-  const q = query.trim();
-  if (!q) return [];
-  const { limit = 60 } = opts;
-  const supabase = await createClient();
-  const like = `%${q}%`;
-
-  const [titleRes, authorProfiles, ingredientRes] = await Promise.all([
-    // 1. Titre de la recette
-    supabase.from('recipes').select('id').eq('status', 'published').ilike('title', like),
-    // 2. Auteur (nom affiché) → identifiants de profils
-    supabase.from('profiles').select('id').ilike('full_name', like),
-    // 3. Ingrédient → recette via le groupe d'ingrédients
-    supabase.from('ingredients').select('ingredient_groups(recipe_id)').ilike('name', like),
-  ]);
-
-  const ids = new Set<string>();
-  for (const row of titleRes.data ?? []) ids.add(row.id);
-  for (const row of ingredientRes.data ?? []) {
-    const recipeId = (row as { ingredient_groups: { recipe_id: string | null } | null })
-      .ingredient_groups?.recipe_id;
-    if (recipeId) ids.add(recipeId);
-  }
-
-  const authorIds = (authorProfiles.data ?? []).map((p) => p.id);
-  if (authorIds.length) {
-    const byAuthor = await supabase
-      .from('recipes')
-      .select('id')
-      .eq('status', 'published')
-      .in('author_id', authorIds);
-    for (const row of byAuthor.data ?? []) ids.add(row.id);
-  }
-
-  if (!ids.size) return [];
-
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(CARD_SELECT)
-    .eq('status', 'published')
-    .in('id', [...ids])
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) console.error('searchRecipes:', error.message);
-  return (data as unknown as RecipeCard[]) ?? [];
-}
-
-// Recettes publiées rattachées à une catégorie (tag promu sur l'accueil),
-// identifiée par son slug. Même principe que searchRecipes : on résout
-// d'abord les identifiants de recettes concernées (via recipe_tags), puis on
-// récupère les cartes complètes.
-export async function getRecipesByTag(
-  slug: string,
-  opts: { limit?: number } = {},
-): Promise<RecipeCard[]> {
-  const { limit = 60 } = opts;
-  const supabase = await createClient();
-
-  const { data: tag } = await supabase.from('tags').select('id').eq('slug', slug).maybeSingle();
-  if (!tag) return [];
-
-  const { data: links } = await supabase.from('recipe_tags').select('recipe_id').eq('tag_id', tag.id);
-  const ids = (links ?? []).map((l) => l.recipe_id);
-  if (!ids.length) return [];
-
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(CARD_SELECT)
-    .eq('status', 'published')
-    .in('id', ids)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) console.error('getRecipesByTag:', error.message);
-  return (data as unknown as RecipeCard[]) ?? [];
-}
+// La recherche (page /recherche) passe désormais par la RPC
+// `search_advanced_recipes` — voir lib/search.ts. Les anciennes fonctions
+// `searchRecipes` et `getRecipesByTag` faisaient jusqu'à quatre requêtes pour
+// reconstituer une union d'identifiants, sans total ni pagination réelle :
+// elles sont retirées plutôt que laissées en doublon d'un chemin plus complet.
 
 export type UserRecipeCard = RecipeCardWithAllergens & { status: string; is_public: boolean };
 

@@ -1,16 +1,33 @@
-// Page de résultats de recherche. La saisie (loupe du bandeau haut, ou barre
-// de recherche de l'accueil) est recherchée dans le titre des recettes, leurs
-// ingrédients et le nom des auteurs. Un clic sur une catégorie de l'accueil
-// arrive ici aussi, avec un paramètre `category` (slug du tag) à la place de
-// `q`. Les résultats reprennent le format « Dernières Créations » ; un
-// bandeau publicitaire est intercalé toutes les deux lignes de recettes.
+// Page de résultats — recherche avancée.
+//
+// Deux principes structurants :
+//  1. Tous les critères vivent dans l'URL (cf. lib/search-params.ts) :
+//     rechargement, partage de lien et retour arrière restituent la même
+//     recherche. Les facettes réécrivent l'URL, ce Server Component re-rend.
+//  2. Une seule grille, rendue ici : `RecipeCard` reste inchangé, les pictos
+//     d'allergènes sont résolus côté serveur et le bandeau publicitaire est
+//     toujours intercalé toutes les deux lignes de recettes.
+//
+// Compatibilité : le paramètre `?category=` des catégories de l'accueil est
+// accepté comme alias de `cat` et fusionné avec lui — les liens existants
+// continuent de fonctionner, sans redirection.
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
-import { searchRecipes, getRecipesByTag, type RecipeCard as RecipeCardData } from '@/lib/recipes';
+import { SearchProvider } from '@/components/search/SearchProvider';
+import { SearchHeaderBar } from '@/components/search/SearchHeaderBar';
+import { SearchFiltersPanel } from '@/components/search/SearchFiltersPanel';
+import { SearchSummary } from '@/components/search/SearchSummary';
+import { SearchResults } from '@/components/search/SearchResults';
+import { SearchEmptyState } from '@/components/search/SearchEmptyState';
+import { LoadMore } from '@/components/search/LoadMore';
+import type { FacetRefs } from '@/components/search/SearchFacets';
 import { getFavoriteIds } from '@/lib/favorites';
-import { getTagBySlug } from '@/lib/taxonomy';
+import { getAllergensWithPicto } from '@/lib/recipes';
+import { relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
+import { countActiveCriteria, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
+import { getDifficulties, getRecipeTypes, getTags } from '@/lib/taxonomy';
 
 // Grille en 3 colonnes (lg) → 2 lignes = 6 cartes entre deux publicités.
 const CARDS_PER_BLOCK = 6;
@@ -41,80 +58,98 @@ function AdBanner() {
 export default async function RecherchePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q = '', category = '' } = await searchParams;
-  const query = q.trim();
-  const categorySlug = category.trim();
+  const sp = await searchParams;
+  const criteria = parseSearchCriteria(sp);
+  // `?panel=1` — arrivée depuis « Critères avancés » de l'en-tête : le tiroir
+  // s'ouvre d'emblée sur mobile (sans effet au-dessus de 1024 px, où la
+  // colonne est déjà là).
+  const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  let recipes: RecipeCardData[] = [];
-  let favIds = new Set<string>();
-  let categoryName: string | null = null;
+  const [result, favIds, types, difficulties, tags, allergens] = await Promise.all([
+    searchAdvanced(criteria),
+    getFavoriteIds(),
+    getRecipeTypes(),
+    getDifficulties(),
+    getTags(),
+    getAllergensWithPicto(),
+  ]);
 
-  if (categorySlug) {
-    const [tag, recipesRes, favIdsRes] = await Promise.all([
-      getTagBySlug(categorySlug),
-      getRecipesByTag(categorySlug),
-      getFavoriteIds(),
-    ]);
-    categoryName = tag?.name ?? null;
-    recipes = recipesRes;
-    favIds = favIdsRes;
-  } else if (query) {
-    const [recipesRes, favIdsRes] = await Promise.all([searchRecipes(query), getFavoriteIds()]);
-    recipes = recipesRes;
-    favIds = favIdsRes;
-  }
+  const refs: FacetRefs = {
+    types,
+    difficulties: difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level })),
+    tags,
+    allergens: allergens.map((a) => ({ id: a.id, name: a.name })),
+  };
 
-  const blocks = chunk(recipes, CARDS_PER_BLOCK);
+  // Recomptes d'assouplissement : uniquement quand le total est nul.
+  const relaxations: Relaxation[] =
+    result.total === 0 && hasAnySearch(criteria) ? await relaxationSuggestions(criteria) : [];
+
+  // Titre : une catégorie seule (lien de l'accueil) garde son intitulé
+  // d'origine, pour ne pas dérouter qui arrive de la page d'accueil.
+  const soleCategory =
+    !criteria.q && criteria.cat.length === 1 && countActiveCriteria(criteria) === 1
+      ? (tags.find((t) => t.slug === criteria.cat[0])?.name ?? criteria.cat[0])
+      : null;
+
+  const blocks = chunk(result.recipes, CARDS_PER_BLOCK);
 
   return (
     <>
       <Header />
 
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
-        <section className="mb-10">
-          <h1 className="font-headline-lg text-headline-lg text-primary">
-            {categorySlug ? `Catégorie : ${categoryName ?? categorySlug}` : 'Résultats de recherche'}
-          </h1>
-          <div className="h-1 w-12 bg-secondary mt-1" />
-          {categorySlug ? (
-            <p className="mt-4 text-on-surface-variant">
-              {recipes.length} recette{recipes.length > 1 ? 's' : ''} dans «&nbsp;{categoryName ?? categorySlug}&nbsp;»
-            </p>
-          ) : query ? (
-            <p className="mt-4 text-on-surface-variant">
-              {recipes.length} résultat{recipes.length > 1 ? 's' : ''} pour «&nbsp;{query}&nbsp;»
-            </p>
-          ) : (
-            <p className="mt-4 text-on-surface-variant italic">
-              Saisissez un terme dans la loupe pour rechercher une recette, un ingrédient ou un auteur.
-            </p>
-          )}
-        </section>
-
-        {(query || categorySlug) && recipes.length === 0 && (
-          <p className="text-on-surface-variant italic">
-            Aucune recette ne correspond à {categorySlug ? 'cette catégorie' : 'votre recherche'}.
-          </p>
-        )}
-
-        {blocks.map((block, i) => (
-          <section key={i} className="mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {block.map((r) => (
-                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
-              ))}
-            </div>
-            {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le dernier. */}
-            {i < blocks.length - 1 && (
-              <div className="mt-12">
-                <AdBanner />
-              </div>
-            )}
+      <SearchProvider criteria={criteria} initialPanelOpen={panelOpen}>
+        <main className="max-w-[1400px] mx-auto pb-24">
+          <section className="px-margin-mobile md:px-margin-desktop pt-12 pb-6">
+            <h1 className="font-headline-lg text-headline-lg text-primary">
+              {soleCategory ? `Catégorie : ${soleCategory}` : 'Résultats de recherche'}
+            </h1>
+            <div className="h-1 w-12 bg-secondary mt-1" />
           </section>
-        ))}
-      </main>
+
+          <SearchHeaderBar />
+
+          <div className="flex flex-col lg:flex-row">
+            <SearchFiltersPanel refs={refs} />
+
+            <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
+              <SearchSummary total={result.total} refs={refs} />
+
+              <SearchResults>
+                {result.total === 0 ? (
+                  hasAnySearch(criteria) ? (
+                    <SearchEmptyState criteria={criteria} relaxations={relaxations} />
+                  ) : (
+                    <p className="text-on-surface-variant italic">
+                      Aucune recette publiée pour le moment.
+                    </p>
+                  )
+                ) : (
+                  blocks.map((block, i) => (
+                    <section key={i} className="mb-12">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                        {block.map((r) => (
+                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
+                        ))}
+                      </div>
+                      {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le dernier. */}
+                      {i < blocks.length - 1 && (
+                        <div className="mt-12">
+                          <AdBanner />
+                        </div>
+                      )}
+                    </section>
+                  ))
+                )}
+              </SearchResults>
+
+              <LoadMore shown={result.recipes.length} total={result.total} />
+            </div>
+          </div>
+        </main>
+      </SearchProvider>
 
       <Footer />
       <MobileNav />
