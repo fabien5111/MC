@@ -18,7 +18,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { fmtNum, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
 
-type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'keep_cooking' | 'cook_time'>;
+type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'keep_cooking'>;
 type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
 type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done'>;
 
@@ -38,14 +38,16 @@ export function PlanStepDonePanel({
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
-  // Étape entièrement traitée : titre + badges (server) toujours visibles,
-  // tout le reste replié derrière un chevron, fermé par défaut. `meta` (les
-  // badges) partage sa ligne avec la case et le chevron ; `title` reste seul
-  // au-dessus, sur sa propre ligne.
+  // Étape entièrement traitée : repliée derrière un chevron, fermée par
+  // défaut — la case « Déjà réalisé » reste visible hors du volet replié,
+  // pour pouvoir revenir dessus sans déplier. Sans chevron sinon, toujours
+  // dépliée (étape active).
   collapsible?: boolean;
-  title?: ReactNode;
-  meta?: ReactNode;
-  // Contenu serveur (photos, vidéo, astuces…) à replier avec les listes.
+  // Titre seul sur sa ligne ; `meta` (les badges) partage sa ligne avec la
+  // case et, si repliable, le chevron.
+  title: ReactNode;
+  meta: ReactNode;
+  // Contenu serveur (photos, vidéo, astuces…) affiché avec les listes.
   children?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
@@ -72,8 +74,8 @@ export function PlanStepDonePanel({
   }
 
   function toggleDone() {
-    // Repasser une étape « à faire » remet aussi la cuisson dans son état par
-    // défaut : garder `keep_cooking` à vrai sur une étape active n'a pas de sens.
+    // `keep_cooking` n'est plus proposé dans l'interface (case masquée), mais
+    // se remet à `false` par sécurité si une ligne existante l'avait à `true`.
     patchStep(step.already_done ? { already_done: false, keep_cooking: false } : { already_done: true });
   }
 
@@ -117,18 +119,6 @@ export function PlanStepDonePanel({
         className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
       />
       Déjà réalisé
-    </label>
-  );
-
-  const cookingToggle = step.already_done && step.cook_time != null && step.cook_time > 0 && (
-    <label className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
-      <input
-        type="checkbox"
-        checked={step.keep_cooking}
-        onChange={() => patchStep({ keep_cooking: !step.keep_cooking })}
-        className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-      />
-      La cuisson reste à faire
     </label>
   );
 
@@ -209,19 +199,6 @@ export function PlanStepDonePanel({
     </>
   );
 
-  if (!collapsible) {
-    return (
-      <div className="flex flex-col gap-3">
-        <LoadingOverlay visible={busy} label="Modification en cours…" />
-        <div className="no-print flex items-center gap-4 flex-wrap">
-          {doneToggle}
-          {cookingToggle}
-        </div>
-        {lists}
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
@@ -231,20 +208,21 @@ export function PlanStepDonePanel({
           {meta}
           <div className="no-print flex items-center gap-3 shrink-0">
             {doneToggle}
-            <button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
-              className="text-on-surface-variant hover:text-primary"
-            >
-              <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
-            </button>
+            {collapsible && (
+              <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
+                className="text-on-surface-variant hover:text-primary"
+              >
+                <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
       {open && (
         <div className="flex flex-col gap-6">
-          {cookingToggle}
           {lists}
           {children}
         </div>

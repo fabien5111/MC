@@ -761,7 +761,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   id: s.id,
                   already_done: s.already_done ?? false,
                   keep_cooking: planStepsById.get(s.id)?.keep_cooking ?? false,
-                  cook_time: s.cook_time,
                 };
                 const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
                 // Contenu replié avec le reste quand l'étape est entièrement traitée
@@ -828,43 +827,46 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     // suivante, sans doubler la ligne visible.
                     className={`scroll-mt-28 flex flex-col gap-6${!s.fully_done && i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
                   >
-                    {planContext && s.fully_done ? (
+                    {planContext ? (
                       // Étape entièrement traitée : repliée par défaut, plus rien n'y
                       // reste à faire — seul le titre barré, ses badges et la case
                       // « Déjà réalisé » restent visibles hors du volet replié.
-                      <PlanStepDonePanel collapsible title={stepTitle} meta={stepMeta} step={planStepProps} ingredients={planIngredientsOfStep} substeps={rawSubsteps}>
+                      <PlanStepDonePanel
+                        collapsible={!!s.fully_done}
+                        title={stepTitle}
+                        meta={stepMeta}
+                        step={planStepProps}
+                        ingredients={planIngredientsOfStep}
+                        substeps={rawSubsteps}
+                      >
                         {extra}
                       </PlanStepDonePanel>
                     ) : (
                       <>
                         <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">{header}</div>
-                        {planContext ? (
-                          <PlanStepDonePanel step={planStepProps} ingredients={planIngredientsOfStep} substeps={rawSubsteps} />
-                        ) : (
-                          ings.length > 0 && (
-                            <details className="group border border-outline-variant mb-2" open>
-                              <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                                <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
-                                <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                              </summary>
-                              <div className="p-4 bg-white">
-                                <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                                  {ings.map((it) => (
-                                    <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                      <span className="font-label-md text-label-md text-primary">
-                                        <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                                        <Qty quantity={it.quantity} unit={it.unit} />
-                                      </span>
-                                      <span className="font-body-md text-body-md">
-                                        {it.name}
-                                        {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </details>
-                          )
+                        {ings.length > 0 && (
+                          <details className="group border border-outline-variant mb-2" open>
+                            <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                              <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+                              <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                            </summary>
+                            <div className="p-4 bg-white">
+                              <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                                {ings.map((it) => (
+                                  <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                    <span className="font-label-md text-label-md text-primary">
+                                      <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                                      <Qty quantity={it.quantity} unit={it.unit} />
+                                    </span>
+                                    <span className="font-body-md text-body-md">
+                                      {it.name}
+                                      {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </details>
                         )}
                         {extra}
                       </>
