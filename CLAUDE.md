@@ -245,13 +245,18 @@ devient indépendant de la recette d'origine.
   dorure d'une pâte déjà façonnée mais pas encore badigeonnée ni cuite, ou la
   puce « Porter à ébullition » d'une étape dont le mélange initial est déjà
   fait) — un ingrédient ou une sous-étape conservés gardent aussi leur étape
-  visible dans le déroulé même sans `keep_cooking` (`stepHiddenFromFlow`).
+  affichée normalement, même sans `keep_cooking`. **Une étape n'est jamais
+  retirée du déroulé** (ni de la fiche recette planifiée, ni d'une exécution
+  démarrée par la suite) : une fois entièrement traitée (`already_done`, sans
+  `keep_cooking`, sans aucun ingrédient/sous-étape gardé), elle reste affichée,
+  simplement barrée (`stepFullyDone`) — pour que la progression reste visible
+  et qu'une case cochée par erreur se corrige sans faire disparaître l'étape.
   **Ne jamais implémenter ça en basculant `plan_ingredients.removed`** : ça
   écraserait les suppressions faites à la main ligne par ligne, et décocher
   l'étape les rétablirait silencieusement — c'est la même corruption que
   l'ancien modèle `overrides` (`plan_substeps` n'a pas cette colonne : rien à y
   écraser). Les filtres concernés sont centralisés dans `lib/recipe-plan.ts`
-  (`planIngredientExcluded`, `planSubstepExcluded`, `stepHiddenFromFlow`,
+  (`planIngredientExcluded`, `planSubstepExcluded`, `stepFullyDone`,
   `remainingStepTimes`) : tout l'aval (courses, mise en place, temps affiché,
   tempo d'exécution) en découle. Conséquences assumées, cohérentes avec le
   modèle : une session déjà démarrée n'est pas retouchée, et une liste de

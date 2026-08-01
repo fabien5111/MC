@@ -744,7 +744,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
                   >
                     <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-                      <h4 className="font-headline-md text-headline-md text-primary">
+                      <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
                       </h4>
                       <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">

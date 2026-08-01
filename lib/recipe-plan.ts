@@ -108,26 +108,30 @@ function excludedInPlan(plan: PlanFull): (it: PlanIngredientRow) => boolean {
   return (it) => planIngredientExcluded(it.step_id != null ? (stepById.get(it.step_id) ?? NO_STEP) : NO_STEP, it);
 }
 
-// L'étape disparaît complètement du déroulé (et donc du temps restant) :
-// déjà faite, sans cuisson à conserver, et sans aucun ingrédient ni
-// sous-étape gardés — s'il en reste un (l'œuf de dorure, une puce de
-// cuisson), l'étape reste visible pour lui, même sans cuisson à proprement
-// parler.
-export function stepHiddenFromFlow(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
+// L'étape ne disparaît jamais du déroulé — une étape entièrement traitée y
+// reste visible, barrée, plutôt que de s'effacer (on doit pouvoir constater sa
+// progression, et revenir sur une case cochée par erreur). Ce prédicat sert
+// uniquement à décider ce rendu barré : déjà faite, sans cuisson à conserver,
+// et sans aucun ingrédient ni sous-étape gardés — s'il en reste un (l'œuf de
+// dorure, une puce de cuisson), l'étape s'affiche normalement pour lui, même
+// sans cuisson à proprement parler.
+export function stepFullyDone(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
   if (!step.already_done || step.keep_cooking) return false;
   return ingredientsOfStep.every((it) => planIngredientExcluded(step, it)) && substepsOfStep.every((su) => planSubstepExcluded(step, su));
 }
 
-// Temps restant d'une étape : une étape conservée pour sa seule cuisson a déjà
-// consommé sa préparation et son attente. Sans ça, le temps total affiché sur
-// le plan contredirait ce qu'il reste réellement à faire.
+// Temps restant d'une étape : une étape entièrement traitée n'a plus rien à
+// annoncer (ni préparation, ni attente, ni cuisson) ; une étape conservée
+// pour sa seule cuisson a déjà consommé sa préparation et son attente. Sans
+// ça, le temps affiché contredirait ce qu'il reste réellement à faire.
 export function remainingStepTimes(s: StepDoneFlags & Pick<PlanStepRow, 'prep_time' | 'wait_time' | 'cook_time'>): {
   prep_time: number | null;
   wait_time: number | null;
   cook_time: number | null;
 } {
-  if (s.already_done && s.keep_cooking) return { prep_time: null, wait_time: null, cook_time: s.cook_time };
-  return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
+  if (!s.already_done) return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
+  if (s.keep_cooking) return { prep_time: null, wait_time: null, cook_time: s.cook_time };
+  return { prep_time: null, wait_time: null, cook_time: null };
 }
 
 // Sélection complète d'un plan, à utiliser par lib/profile.ts (getPlan).
@@ -184,9 +188,9 @@ function qtyDisplay(it: Pick<PlanIngredientRow, 'quantity' | 'quantity_text'>): 
 
 export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
   return [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => {
+      const ingredientsOfStep = plan.plan_ingredients.filter((it) => it.step_id === s.id);
       // Sous-étapes exclues (« déjà fait ») retirées de cette vue non
       // interactive (impression, sommaire…) ; l'exception ligne par ligne se
       // règle via PlanStepDonePanel, qui lit les lignes brutes de son côté.
@@ -201,6 +205,7 @@ export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
         tips: s.tips,
         video_url: s.video_url,
         already_done: s.already_done,
+        fully_done: stepFullyDone(s, ingredientsOfStep, s.plan_substeps),
         sous_etapes: visibleSubsteps.length ? visibleSubsteps.map((su) => su.texte) : null,
         order_index: s.order_index,
         step_photos: [], // non dupliquées dans le plan : restent liées à la recette d'origine
@@ -209,14 +214,11 @@ export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
 }
 
 export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingredient_groups'] {
-  // Un groupe disparaît avec son étape (même règle que planStepsAsRecipeSteps,
-  // avec laquelle il reste en phase par order_index) ; sinon, seuls les
+  // Chaque étape garde son groupe, même entièrement traité (l'éditeur du plan
+  // l'affiche barré plutôt que de le faire disparaître) ; seuls les
   // ingrédients exclus (retirés à la main, ou déjà faits et non conservés)
-  // sortent de la liste. Les lignes exclues restent visibles (barrées) dans
-  // l'éditeur du plan, qui lit les tables plan_* brutes — rien n'est perdu, le
-  // retour arrière se fait en décochant l'étape ou la ligne.
+  // sortent de la liste de ce groupe.
   return [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
     .map((step) => ({
       id: step.id,
@@ -410,13 +412,11 @@ export type MatExecUtensil = { plan_utensil_id: number; name: string };
 export type MaterializedExecution = { steps: MatExecStep[]; utensils: MatExecUtensil[] };
 
 export function materializeExecution(plan: PlanFull): MaterializedExecution {
-  // Une étape déjà faite n'entre pas dans la session : ni ses ingrédients ni
-  // ses sous-étapes (sauf ceux/celles explicitement conservés — donc pas de
-  // mise en place à leur sujet), ni l'étape elle-même sauf si sa cuisson
-  // reste à faire ou qu'un ingrédient/une sous-étape conservé la garde
-  // visible (stepHiddenFromFlow). Le figeage joue ensuite normalement — une
-  // session démarrée n'est jamais resynchronisée si le plan change après
-  // coup (cf. CLAUDE.md).
+  // Une étape déjà faite entre quand même dans la session (elle s'y affiche
+  // barrée, cf. stepFullyDone côté lecture) : seuls ses ingrédients et
+  // sous-étapes exclus (non conservés) n'ont pas de mise en place à leur
+  // sujet. Le figeage joue ensuite normalement — une session démarrée n'est
+  // jamais resynchronisée si le plan change après coup (cf. CLAUDE.md).
   const excluded = excludedInPlan(plan);
   const ingByStep = new Map<number, PlanIngredientRow[]>();
   plan.plan_ingredients
@@ -429,7 +429,6 @@ export function materializeExecution(plan: PlanFull): MaterializedExecution {
     });
 
   const steps: MatExecStep[] = [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => ({
       plan_step_id: s.id,
