@@ -9,7 +9,7 @@ import { getMoldTypes } from '@/lib/admin';
 import { getExecutions } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl, effectiveTimes } from '@/lib/recipe-view';
-import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum } from '@/lib/recipe-plan';
+import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum, planFactor } from '@/lib/recipe-plan';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -101,6 +101,25 @@ export default async function RecettePage({ params, searchParams }: Params) {
   };
 
   const yInfo = yieldInfo(recipe);
+  // Quantité ajustée par la planification en cours, affichée à la place de la
+  // quantité de base (elle-même reportée en dessous, en plus petit). Pour une
+  // recette « unités », un simple produit par le facteur du plan suffit ; pour
+  // une recette « moule »/« dimensions », il n'y a pas de quantité numérique
+  // unique à multiplier — on réutilise `adjust_label`, déjà construit par
+  // PlanWidget lors de la planification (description du moule/coefficient cible).
+  const adjustedYield = ((): string | null => {
+    if (!planContext || !yInfo) return null;
+    const factor = planFactor(planContext);
+    if (recipe.measure_type === 'units' && recipe.yield_qty) {
+      if (factor === 1) return null;
+      const q = parseFloat(String(recipe.yield_qty).replace(',', '.'));
+      if (isNaN(q)) return null;
+      const u = UNITS_LBL[recipe.yield_unit || ''] || recipe.yield_unit || '';
+      return `${fmtNum(q * factor)} ${u}`.trim();
+    }
+    if (factor !== 1 || overrides?.mold_target) return planContext.adjust_label || null;
+    return null;
+  })();
   const times = effectiveTimes(recipe);
   const level = recipe.difficulties?.level || 0;
   const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
@@ -244,6 +263,32 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
+            {/* Source & liens d'origine */}
+            {(recipe.source || recipe.source_url || recipe.video_url) && (
+              <div className="print-fs-9 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
+                {(recipe.source || recipe.source_url) &&
+                  (recipe.source_url ? (
+                    <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                      <span className="material-symbols-outlined text-[18px]">menu_book</span>
+                      {recipe.source ? (
+                        <>Source :&nbsp;<span className="font-semibold">{recipe.source}</span></>
+                      ) : (
+                        <>Recette d&apos;origine</>
+                      )}
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
+                      Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
+                    </span>
+                  ))}
+                {recipe.video_url && (
+                  <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                    <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
+                  </a>
+                )}
+              </div>
+            )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
                 {tags.map((n) => (
@@ -322,7 +367,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {yInfo.label}
                   </span>
-                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{yInfo.value}</span>
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
+                  {adjustedYield && (
+                    <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">
+                      Recette d&apos;origine : {yInfo.value}
+                    </span>
+                  )}
                 </div>
               )}
               <div className="flex flex-col gap-1 items-center text-center">
@@ -419,33 +469,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
               </h3>
               <p className="print-fs-11 font-body-lg text-body-lg italic opacity-90 leading-relaxed">{recipe.description}</p>
-            </div>
-          )}
-
-          {/* Source & liens d'origine */}
-          {(recipe.source || recipe.source_url || recipe.video_url) && (
-            <div className="print-fs-9 mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
-              {(recipe.source || recipe.source_url) &&
-                (recipe.source_url ? (
-                  <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
-                    <span className="material-symbols-outlined text-[18px]">menu_book</span>
-                    {recipe.source ? (
-                      <>Source :&nbsp;<span className="font-semibold">{recipe.source}</span></>
-                    ) : (
-                      <>Recette d&apos;origine</>
-                    )}
-                  </a>
-                ) : (
-                  <span className="inline-flex items-center gap-2 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
-                    Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
-                  </span>
-                ))}
-              {recipe.video_url && (
-                <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
-                  <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
-                </a>
-              )}
             </div>
           )}
 
