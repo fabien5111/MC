@@ -31,16 +31,20 @@ export function PlanStepDonePanel({
   ingredients: initialIngredients,
   substeps: initialSubsteps,
   collapsible = false,
-  header,
+  title,
+  meta,
   children,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
   // Étape entièrement traitée : titre + badges (server) toujours visibles,
-  // tout le reste replié derrière un chevron, fermé par défaut.
+  // tout le reste replié derrière un chevron, fermé par défaut. `meta` (les
+  // badges) partage sa ligne avec la case et le chevron ; `title` reste seul
+  // au-dessus, sur sa propre ligne.
   collapsible?: boolean;
-  header?: ReactNode;
+  title?: ReactNode;
+  meta?: ReactNode;
   // Contenu serveur (photos, vidéo, astuces…) à replier avec les listes.
   children?: ReactNode;
 }) {
@@ -221,18 +225,21 @@ export function PlanStepDonePanel({
   return (
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
-      <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-        <div className="flex items-center gap-4 flex-wrap flex-1 min-w-0">{header}</div>
-        <div className="no-print flex items-center gap-3 shrink-0">
-          {doneToggle}
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
-            className="text-on-surface-variant hover:text-primary"
-          >
-            <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
-          </button>
+      <div className="flex flex-col gap-3 border-b border-outline pb-4">
+        {title}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {meta}
+          <div className="no-print flex items-center gap-3 shrink-0">
+            {doneToggle}
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
+              className="text-on-surface-variant hover:text-primary"
+            >
+              <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
+            </button>
+          </div>
         </div>
       </div>
       {open && (

@@ -734,21 +734,27 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       ? `CUISSON ${s.cook_temp} °C`
                       : '',
                 ].filter(Boolean);
+                const stepTitle = (
+                  <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
+                    {i + 1}. {s.title || 'Étape ' + (i + 1)}
+                  </h4>
+                );
+                const stepMeta = (
+                  <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                    {badges.map((b, k) => (
+                      <span key={k} className="bg-surface-variant px-3 py-1">
+                        {b}
+                      </span>
+                    ))}
+                    {stepTotal > 0 && (
+                      <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
+                    )}
+                  </div>
+                );
                 const header = (
                   <>
-                    <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
-                      {i + 1}. {s.title || 'Étape ' + (i + 1)}
-                    </h4>
-                    <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
-                      {badges.map((b, k) => (
-                        <span key={k} className="bg-surface-variant px-3 py-1">
-                          {b}
-                        </span>
-                      ))}
-                      {stepTotal > 0 && (
-                        <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
-                      )}
-                    </div>
+                    {stepTitle}
+                    {stepMeta}
                   </>
                 );
                 const planStepProps = {
@@ -826,7 +832,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       // Étape entièrement traitée : repliée par défaut, plus rien n'y
                       // reste à faire — seul le titre barré, ses badges et la case
                       // « Déjà réalisé » restent visibles hors du volet replié.
-                      <PlanStepDonePanel collapsible header={header} step={planStepProps} ingredients={planIngredientsOfStep} substeps={rawSubsteps}>
+                      <PlanStepDonePanel collapsible title={stepTitle} meta={stepMeta} step={planStepProps} ingredients={planIngredientsOfStep} substeps={rawSubsteps}>
                         {extra}
                       </PlanStepDonePanel>
                     ) : (
