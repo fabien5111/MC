@@ -2,9 +2,11 @@
 
 // Planification d'une recette (porté du panneau « Planifier » de recette.html) :
 // date de dégustation + ajustement (quantité produite / par ingrédient / moule
-// via volume-surface / dimensions par IA) + étapes déjà réalisées → crée une
-// entrée `planning` (facteur + libellé + overrides). Apparaît ensuite dans
-// l'onglet Planning du profil.
+// via volume-surface / dimensions par IA) → crée une entrée `planning`
+// (facteur + libellé + overrides). Apparaît ensuite dans l'onglet Planning du
+// profil. Les étapes déjà réalisées à la planification (overrides.etapes_faites)
+// ne se règlent plus ici : elles sont conservées telles quelles en édition, et
+// se piloteront depuis la recette planifiée.
 //
 // En mode édition (crayon du bandeau « Recette planifiée »), modifie l'entrée
 // de planning existante à la place d'en créer une nouvelle (porté de
@@ -47,14 +49,12 @@ export function PlanWidget({
   recipe,
   moldTypes,
   ingredients,
-  steps,
   existingPlan,
   isAdmin = false,
 }: {
   recipe: PlanRecipe;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
-  steps: { id: number; title: string | null }[];
   existingPlan?: ExistingPlan | null;
   // Réservé aux administrateurs pour le moment : ajustement des quantités par IA
   // (texte libre) proposé comme troisième mode d'ajustement dans le mode « unités ».
@@ -70,7 +70,6 @@ export function PlanWidget({
 
   const [date, setDate] = useState(today);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<Set<number>>(new Set());
 
   // Le panneau est placé en haut de la fiche (avant la photo) : les
   // déclencheurs situés plus bas (crayon du bandeau « Recette planifiée »)
@@ -93,14 +92,12 @@ export function PlanWidget({
     setAiMsg(null);
     if (editMode && existingPlan) {
       setDate(existingPlan.plannedDate);
-      setDone(new Set(existingPlan.overrides.etapes_faites.map(Number)));
       if (recipe.measureType === 'units') {
         const y = num(recipe.yieldQty);
         if (y) setQty(String(Math.round(y * (existingPlan.factor || 1) * 100) / 100));
       }
     } else if (!editMode) {
       setDate(today);
-      setDone(new Set());
       setQty(recipe.yieldQty || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,7 +160,6 @@ export function PlanWidget({
     factor: number;
     label: string | null;
     overrides: Record<string, unknown> | null;
-    etapesFaites: string[];
     moldCoefs: { surface: number; volume: number } | null;
     moldTarget: Record<string, unknown> | null;
   } | null {
@@ -244,12 +240,11 @@ export function PlanWidget({
     }
 
     factor = Math.round(factor * 1000) / 1000;
-    const etapesFaites = [...done].map(String);
     const overrides =
-      etapesFaites.length || moldCoefs || moldTarget
-        ? { mods: {}, added: [], etapes_faites: etapesFaites, ...(moldCoefs ? { mold_coefs: moldCoefs } : {}), ...(moldTarget ? { mold_target: moldTarget } : {}) }
+      moldCoefs || moldTarget
+        ? { mods: {}, added: [], etapes_faites: [], ...(moldCoefs ? { mold_coefs: moldCoefs } : {}), ...(moldTarget ? { mold_target: moldTarget } : {}) }
         : null;
-    return { factor, label, overrides, etapesFaites, moldCoefs, moldTarget };
+    return { factor, label, overrides, moldCoefs, moldTarget };
   }
 
   async function validate() {
@@ -277,7 +272,6 @@ export function PlanWidget({
     if (editing) {
       const overrides = {
         ...existingPlan.overrides,
-        etapes_faites: res.etapesFaites,
         ...(res.moldCoefs ? { mold_coefs: res.moldCoefs } : {}),
         ...(res.moldTarget ? { mold_target: res.moldTarget } : {}),
       };
@@ -328,6 +322,20 @@ export function PlanWidget({
   const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary';
   const LBL = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
 
+  // Rappel de la quantité de base de la recette, affiché sous les sélecteurs
+  // d'ajustement pour que le choix (quantité / ingrédient / moule…) se fasse
+  // en connaissance de la production initiale.
+  const qtyInfoBlock = (recipe.rendement || recipe.yieldNotes) && (
+    <div className="flex flex-col gap-1">
+      {recipe.rendement && (
+        <span className="font-body-md text-on-surface">
+          <span className={LBL}>Quantité produite </span> {recipe.rendement}
+        </span>
+      )}
+      {recipe.yieldNotes && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yieldNotes}</p>}
+    </div>
+  );
+
   // Bloc d'ajustement par IA (texte libre → coefficient), partagé entre le mode
   // « dimensions » et le troisième mode « unités » réservé aux administrateurs.
   const aiBlock = (
@@ -369,11 +377,11 @@ export function PlanWidget({
         {editMode && existingPlan ? 'Modifier la planification' : 'Planifier cette recette'}
       </h3>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2" style={{ maxWidth: '16rem' }}>
+        <div className="flex items-center gap-3">
           <label className={LBL} htmlFor="plan-date">
             Date de dégustation
           </label>
-          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} />
+          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} style={{ width: '10rem' }} />
         </div>
 
         {/* Ajustement selon le type de mesure */}
@@ -398,6 +406,7 @@ export function PlanWidget({
                 </label>
               )}
             </div>
+            {qtyInfoBlock}
             {uMode === 'ia' ? (
               aiBlock
             ) : uMode === 'qty' ? (
@@ -455,6 +464,7 @@ export function PlanWidget({
                 </label>
               </div>
             )}
+            {qtyInfoBlock}
             {mMode === 'ia' ? (
               aiBlock
             ) : (
@@ -502,33 +512,10 @@ export function PlanWidget({
           </div>
         )}
 
-        {recipe.measureType === 'dimensions' && aiBlock}
-
-        {/* Étapes déjà réalisées */}
-        {steps.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className={LBL}>
-              J&apos;ai déjà réalisé ces étapes{' '}
-              <span className="normal-case tracking-normal">(leurs ingrédients seront marqués comme déjà en votre possession)</span>
-            </span>
-            {steps.map((s) => (
-              <label key={s.id} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={done.has(s.id)}
-                  onChange={() =>
-                    setDone((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(s.id)) n.delete(s.id);
-                      else n.add(s.id);
-                      return n;
-                    })
-                  }
-                  className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                />
-                <span className="font-body-md">{s.title || 'Étape'}</span>
-              </label>
-            ))}
+        {recipe.measureType === 'dimensions' && (
+          <div className="flex flex-col gap-4">
+            {qtyInfoBlock}
+            {aiBlock}
           </div>
         )}
 

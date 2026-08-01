@@ -277,7 +277,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
             }}
             moldTypes={moldTypes}
             ingredients={merged}
-            steps={steps.map((s) => ({ id: s.id, title: s.title }))}
             existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
             isAdmin={userIsAdmin}
           />
