@@ -38,9 +38,11 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
 // de vérité (jamais éditée à la main).
 type PlanStepPending = { already_done: boolean; keep_cooking: boolean };
 export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
-export type PlanSubstepRow = Database['public']['Tables']['plan_substeps']['Row'];
 // `excluded_when_done` fait partie de la même migration en attente (cf.
-// PlanStepPending ci-dessus).
+// PlanStepPending ci-dessus) : mêmes semantique et défaut que sur
+// plan_ingredients, appliqués aux sous-étapes.
+type PlanSubstepPending = { excluded_when_done: boolean };
+export type PlanSubstepRow = Database['public']['Tables']['plan_substeps']['Row'] & PlanSubstepPending;
 type PlanIngredientPending = { excluded_when_done: boolean };
 export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']['Row'] &
   PlanIngredientPending & {
@@ -72,8 +74,15 @@ export type PlanFull = Database['public']['Tables']['planning']['Row'] & {
 //                              le déroulé avec sa température et son temps de
 //                              cuisson, sans temps de préparation ni
 //                              d'attente, déjà écoulés.
+//
+// `plan_substeps.excluded_when_done` reprend la même exception ligne par
+// ligne pour les sous-étapes (texte libre découpé en puces) : par défaut
+// toutes sortent du déroulé avec l'étape, mais l'une d'elles peut rester
+// utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
+// déjà fait).
 type StepDoneFlags = Pick<PlanStepRow, 'already_done' | 'keep_cooking'>;
 type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_done'>;
+type SubstepDoneFlags = Pick<PlanSubstepRow, 'excluded_when_done'>;
 
 // Un ingrédient sort du parcours (courses, mise en place, exécution) s'il a
 // été retiré à la main, ou si son étape est déjà faite et qu'il n'a pas été
@@ -81,6 +90,12 @@ type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_do
 export function planIngredientExcluded(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
   if (ing.removed) return true;
   return step.already_done && ing.excluded_when_done;
+}
+
+// Même règle pour une sous-étape, sans notion de suppression manuelle
+// (`plan_substeps` n'a pas de colonne `removed`).
+export function planSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags): boolean {
+  return step.already_done && sub.excluded_when_done;
 }
 
 const NO_STEP: StepDoneFlags = { already_done: false, keep_cooking: false };
@@ -94,12 +109,13 @@ function excludedInPlan(plan: PlanFull): (it: PlanIngredientRow) => boolean {
 }
 
 // L'étape disparaît complètement du déroulé (et donc du temps restant) :
-// déjà faite, sans cuisson à conserver, et sans aucun ingrédient gardé — s'il
-// en reste un (l'œuf de dorure), l'étape reste visible pour lui, même sans
-// cuisson à proprement parler.
-export function stepHiddenFromFlow(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[]): boolean {
+// déjà faite, sans cuisson à conserver, et sans aucun ingrédient ni
+// sous-étape gardés — s'il en reste un (l'œuf de dorure, une puce de
+// cuisson), l'étape reste visible pour lui, même sans cuisson à proprement
+// parler.
+export function stepHiddenFromFlow(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
   if (!step.already_done || step.keep_cooking) return false;
-  return ingredientsOfStep.every((it) => planIngredientExcluded(step, it));
+  return ingredientsOfStep.every((it) => planIngredientExcluded(step, it)) && substepsOfStep.every((su) => planSubstepExcluded(step, su));
 }
 
 // Temps restant d'une étape : une étape conservée pour sa seule cuisson a déjà
@@ -168,24 +184,28 @@ function qtyDisplay(it: Pick<PlanIngredientRow, 'quantity' | 'quantity_text'>): 
 
 export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
   return [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id)))
+    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
-    .map((s) => ({
-      id: s.id,
-      title: s.title,
-      description: s.description,
-      day_offset: s.day_offset,
-      ...remainingStepTimes(s),
-      cook_temp: s.cook_temp,
-      tips: s.tips,
-      video_url: s.video_url,
-      already_done: s.already_done,
-      sous_etapes: s.plan_substeps.length
-        ? [...s.plan_substeps].sort((a, b) => a.order_index - b.order_index).map((su) => su.texte)
-        : null,
-      order_index: s.order_index,
-      step_photos: [], // non dupliquées dans le plan : restent liées à la recette d'origine
-    }));
+    .map((s) => {
+      // Sous-étapes exclues (« déjà fait ») retirées de cette vue non
+      // interactive (impression, sommaire…) ; l'exception ligne par ligne se
+      // règle via PlanStepDonePanel, qui lit les lignes brutes de son côté.
+      const visibleSubsteps = [...s.plan_substeps].sort((a, b) => a.order_index - b.order_index).filter((su) => !planSubstepExcluded(s, su));
+      return {
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        day_offset: s.day_offset,
+        ...remainingStepTimes(s),
+        cook_temp: s.cook_temp,
+        tips: s.tips,
+        video_url: s.video_url,
+        already_done: s.already_done,
+        sous_etapes: visibleSubsteps.length ? visibleSubsteps.map((su) => su.texte) : null,
+        order_index: s.order_index,
+        step_photos: [], // non dupliquées dans le plan : restent liées à la recette d'origine
+      };
+    });
 }
 
 export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingredient_groups'] {
@@ -196,7 +216,7 @@ export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingred
   // l'éditeur du plan, qui lit les tables plan_* brutes — rien n'est perdu, le
   // retour arrière se fait en décochant l'étape ou la ligne.
   return [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id)))
+    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
     .map((step) => ({
       id: step.id,
@@ -390,12 +410,13 @@ export type MatExecUtensil = { plan_utensil_id: number; name: string };
 export type MaterializedExecution = { steps: MatExecStep[]; utensils: MatExecUtensil[] };
 
 export function materializeExecution(plan: PlanFull): MaterializedExecution {
-  // Une étape déjà faite n'entre pas dans la session : ni ses ingrédients (sauf
-  // ceux explicitement conservés — donc pas de mise en place à leur sujet), ni
-  // l'étape elle-même sauf si sa cuisson reste à faire ou qu'un ingrédient
-  // conservé la garde visible (stepHiddenFromFlow). Le figeage joue ensuite
-  // normalement — une session démarrée n'est jamais resynchronisée si le plan
-  // change après coup (cf. CLAUDE.md).
+  // Une étape déjà faite n'entre pas dans la session : ni ses ingrédients ni
+  // ses sous-étapes (sauf ceux/celles explicitement conservés — donc pas de
+  // mise en place à leur sujet), ni l'étape elle-même sauf si sa cuisson
+  // reste à faire ou qu'un ingrédient/une sous-étape conservé la garde
+  // visible (stepHiddenFromFlow). Le figeage joue ensuite normalement — une
+  // session démarrée n'est jamais resynchronisée si le plan change après
+  // coup (cf. CLAUDE.md).
   const excluded = excludedInPlan(plan);
   const ingByStep = new Map<number, PlanIngredientRow[]>();
   plan.plan_ingredients
@@ -408,7 +429,7 @@ export function materializeExecution(plan: PlanFull): MaterializedExecution {
     });
 
   const steps: MatExecStep[] = [...plan.plan_steps]
-    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id)))
+    .filter((s) => !stepHiddenFromFlow(s, plan.plan_ingredients.filter((it) => it.step_id === s.id), s.plan_substeps))
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => ({
       plan_step_id: s.id,
@@ -416,6 +437,7 @@ export function materializeExecution(plan: PlanFull): MaterializedExecution {
       order_index: s.order_index,
       day_offset: s.day_offset,
       substeps: [...s.plan_substeps]
+        .filter((su) => !planSubstepExcluded(s, su))
         .sort((a, b) => a.order_index - b.order_index)
         .map((su) => ({ plan_substep_id: su.id, texte: su.texte, order_index: su.order_index })),
       ingredients: (ingByStep.get(s.id) || [])

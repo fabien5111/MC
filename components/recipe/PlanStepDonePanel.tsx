@@ -13,19 +13,29 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { fmtNum, type PlanIngredientRow, type PlanStepRow } from '@/lib/recipe-plan';
+import { fmtNum, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
 
 type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'keep_cooking' | 'cook_time'>;
 type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
+type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done'>;
 
 function qtyText(it: Pick<IngRow, 'quantity' | 'quantity_text'>): string {
   return it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '';
 }
 
-export function PlanStepDonePanel({ step: initialStep, ingredients: initialIngredients }: { step: StepFlags; ingredients: IngRow[] }) {
+export function PlanStepDonePanel({
+  step: initialStep,
+  ingredients: initialIngredients,
+  substeps: initialSubsteps,
+}: {
+  step: StepFlags;
+  ingredients: IngRow[];
+  substeps: SubRow[];
+}) {
   const { mutate, busy } = useMutation();
   const [step, setStep] = useState(initialStep);
   const [ingredients, setIngredients] = useState(initialIngredients);
+  const [substeps, setSubsteps] = useState(initialSubsteps);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
   // router.refresh() n'ait fini de resynchroniser les props — état local mis
   // à jour au succès de la mutation pour que les cases changent en même temps
@@ -33,6 +43,7 @@ export function PlanStepDonePanel({ step: initialStep, ingredients: initialIngre
   // une liste »).
   useEffect(() => setStep(initialStep), [initialStep]);
   useEffect(() => setIngredients(initialIngredients), [initialIngredients]);
+  useEffect(() => setSubsteps(initialSubsteps), [initialSubsteps]);
 
   async function patchStep(patch: Partial<Pick<PlanStepRow, 'already_done' | 'keep_cooking'>>) {
     const ok = await mutate(
@@ -55,6 +66,17 @@ export function PlanStepDonePanel({ step: initialStep, ingredients: initialIngre
       { errorLabel: 'Modification non enregistrée' },
     );
     if (ok) setIngredients((prev) => prev.map((r) => (r.id === row.id ? { ...r, excluded_when_done: next } : r)));
+  }
+
+  // Même exception, pour une puce de sous-étape (ex. « Porter à ébullition »
+  // gardée alors que le reste de l'étape est déjà fait).
+  async function toggleSubstep(sub: SubRow) {
+    const next = !sub.excluded_when_done;
+    const ok = await mutate(
+      () => createClient().from('plan_substeps').update({ excluded_when_done: next } as never).eq('id', sub.id),
+      { errorLabel: 'Modification non enregistrée' },
+    );
+    if (ok) setSubsteps((prev) => prev.map((s) => (s.id === sub.id ? { ...s, excluded_when_done: next } : s)));
   }
 
   // Une ligne retirée à la main (éditeur de quantités) reste exclue quelle
@@ -135,6 +157,35 @@ export function PlanStepDonePanel({ step: initialStep, ingredients: initialIngre
             </ul>
           </div>
         </details>
+      )}
+      {substeps.length > 0 && (
+        <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
+          {[...substeps]
+            .sort((a, b) => a.order_index - b.order_index)
+            .map((su) => {
+              const excluded = step.already_done && su.excluded_when_done;
+              return (
+                <li key={su.id} className="flex gap-3 items-start">
+                  {step.already_done ? (
+                    <input
+                      type="checkbox"
+                      checked={su.excluded_when_done}
+                      onChange={() => toggleSubstep(su)}
+                      title={
+                        excluded
+                          ? 'Déjà pris en compte — décocher pour garder cette sous-étape (ex. la cuisson)'
+                          : 'Conservée malgré l’étape déjà réalisée'
+                      }
+                      className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-1"
+                    />
+                  ) : (
+                    <span className="text-primary shrink-0">–</span>
+                  )}
+                  <span className={excluded ? 'text-on-surface-variant line-through opacity-60' : ''}>{su.texte}</span>
+                </li>
+              );
+            })}
+        </ul>
       )}
     </div>
   );

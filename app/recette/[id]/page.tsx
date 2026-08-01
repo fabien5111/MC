@@ -712,6 +712,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
+                // Lignes brutes (plan_substeps) pour PlanStepDonePanel : `s.sous_etapes`
+                // (RecipeStepView) est déjà filtré des sous-étapes exclues, donc
+                // inutilisable pour proposer la case « conserver » sur ces lignes-là.
+                const rawSubsteps = planStepsById.get(s.id)?.plan_substeps ?? [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
@@ -763,6 +767,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                           cook_time: s.cook_time,
                         }}
                         ingredients={planContext.plan_ingredients.filter((it) => it.step_id === s.id)}
+                        substeps={rawSubsteps}
                       />
                     ) : (
                       ings.length > 0 && (
@@ -801,7 +806,16 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </div>
                     )}
                     {s.video_url && <StepVideoPlayer url={s.video_url} />}
-                    {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
+                    {/* Mode planifié : la puce/case des sous-étapes est déjà rendue par
+                        PlanStepDonePanel ci-dessus ; ici, seul le repli sur la description
+                        reste à afficher s'il n'y a pas de sous-étapes du tout. */}
+                    {planContext ? (
+                      rawSubsteps.length === 0 && s.description ? (
+                        <div className="font-body-lg text-body-lg leading-relaxed text-on-surface whitespace-pre-line">
+                          {s.description}
+                        </div>
+                      ) : null
+                    ) : Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
                       <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
                         {s.sous_etapes.map((t, k) => (
                           <li key={k} className="flex gap-3">
