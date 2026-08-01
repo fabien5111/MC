@@ -282,15 +282,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            {recipe.source_url && (
-              <a
-                href={recipe.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
+            {planContext && (
+              <Link
+                href={`/recette/${recipe.id}`}
                 className="no-print inline-flex items-center gap-2 self-start text-primary underline underline-offset-2 hover:text-secondary font-label-md text-label-md"
               >
                 <span className="material-symbols-outlined text-[18px]">menu_book</span>Recette d&apos;origine
-              </a>
+              </Link>
             )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
@@ -453,23 +451,32 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Source & vidéo — le lien vers la recette d'origine (source_url) est
-              affiché plus haut, sous le nom de l'auteur. */}
-          {(recipe.source && !recipe.source_url) || recipe.video_url ? (
+          {/* Source & liens d'origine */}
+          {(recipe.source || recipe.source_url || recipe.video_url) && (
             <div className="print-fs-9 mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 font-body-md text-body-md">
-              {recipe.source && !recipe.source_url && (
-                <span className="inline-flex items-center gap-2 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
-                  Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
-                </span>
-              )}
+              {(recipe.source || recipe.source_url) &&
+                (recipe.source_url ? (
+                  <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
+                    <span className="material-symbols-outlined text-[18px]">menu_book</span>
+                    {recipe.source ? (
+                      <>Source :&nbsp;<span className="font-semibold">{recipe.source}</span></>
+                    ) : (
+                      <>Recette d&apos;origine</>
+                    )}
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-2 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
+                    Source :&nbsp;<span className="font-semibold text-on-surface">{recipe.source}</span>
+                  </span>
+                ))}
               {recipe.video_url && (
                 <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline underline-offset-2 hover:text-secondary">
                   <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
                 </a>
               )}
             </div>
-          ) : null}
+          )}
 
           {/* Sessions de préparation (historique) */}
           {execHistory.length > 0 && (
