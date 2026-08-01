@@ -1,15 +1,18 @@
 'use client';
 
 // Case « Déjà réalisé » d'une étape + exception ligne par ligne par
-// ingrédient, affichées directement dans le déroulé de la recette planifiée
-// (à côté de la liste « Ingrédients de l'étape »), plutôt que dans l'éditeur
-// de quantités plus haut sur la page — voir CLAUDE.md « Recettes planifiées ».
+// ingrédient/sous-étape, affichées directement dans le déroulé de la recette
+// planifiée — voir CLAUDE.md « Recettes planifiées ».
 //
-// Un seul composant pour la case de l'étape et la liste de ses ingrédients :
-// les deux doivent rester synchronisées instantanément (cocher l'étape coche
-// aussitôt tous ses ingrédients), ce que deux instances séparées ne
-// garantiraient pas avant le prochain router.refresh().
-import { useEffect, useState } from 'react';
+// Un seul composant pour la case de l'étape, la liste d'ingrédients et la
+// liste de sous-étapes : les trois doivent rester synchronisés instantanément
+// (cocher l'étape coche aussitôt tout son contenu), ce que des instances
+// séparées ne garantiraient pas avant le prochain router.refresh().
+//
+// Une étape entièrement traitée (`collapsible`) se replie derrière son titre
+// — la case « Déjà réalisé » reste néanmoins visible hors du volet replié,
+// pour pouvoir revenir dessus sans déplier.
+import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -27,15 +30,26 @@ export function PlanStepDonePanel({
   step: initialStep,
   ingredients: initialIngredients,
   substeps: initialSubsteps,
+  collapsible = false,
+  header,
+  children,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
+  // Étape entièrement traitée : titre + badges (server) toujours visibles,
+  // tout le reste replié derrière un chevron, fermé par défaut.
+  collapsible?: boolean;
+  header?: ReactNode;
+  // Contenu serveur (photos, vidéo, astuces…) à replier avec les listes.
+  children?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
   const [step, setStep] = useState(initialStep);
   const [ingredients, setIngredients] = useState(initialIngredients);
   const [substeps, setSubsteps] = useState(initialSubsteps);
+  // Repliée par défaut si repliable ; sinon toujours dépliée (étape active).
+  const [open, setOpen] = useState(!collapsible);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
   // router.refresh() n'ait fini de resynchroniser les props — état local mis
   // à jour au succès de la mutation pour que les cases changent en même temps
@@ -83,38 +97,39 @@ export function PlanStepDonePanel({
   // que soit la case ici — elle ne s'affiche donc pas dans ce parcours.
   const visible = ingredients.filter((it) => !it.removed);
 
-  return (
-    <div className="flex flex-col gap-3">
-      <LoadingOverlay visible={busy} label="Modification en cours…" />
-      <div className="no-print flex items-center gap-4 flex-wrap">
-        <label
-          className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer"
-          title={
-            step.already_done
-              ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
-              : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
-          }
-        >
-          <input
-            type="checkbox"
-            checked={step.already_done}
-            onChange={toggleDone}
-            className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-          />
-          Déjà réalisé
-        </label>
-        {step.already_done && step.cook_time != null && step.cook_time > 0 && (
-          <label className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
-            <input
-              type="checkbox"
-              checked={step.keep_cooking}
-              onChange={() => patchStep({ keep_cooking: !step.keep_cooking })}
-              className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-            />
-            La cuisson reste à faire
-          </label>
-        )}
-      </div>
+  const doneToggle = (
+    <label
+      className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer"
+      title={
+        step.already_done
+          ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
+          : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
+      }
+    >
+      <input
+        type="checkbox"
+        checked={step.already_done}
+        onChange={toggleDone}
+        className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+      />
+      Déjà réalisé
+    </label>
+  );
+
+  const cookingToggle = step.already_done && step.cook_time != null && step.cook_time > 0 && (
+    <label className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
+      <input
+        type="checkbox"
+        checked={step.keep_cooking}
+        onChange={() => patchStep({ keep_cooking: !step.keep_cooking })}
+        className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+      />
+      La cuisson reste à faire
+    </label>
+  );
+
+  const lists = (
+    <>
       {visible.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
@@ -186,6 +201,46 @@ export function PlanStepDonePanel({
               );
             })}
         </ul>
+      )}
+    </>
+  );
+
+  if (!collapsible) {
+    return (
+      <div className="flex flex-col gap-3">
+        <LoadingOverlay visible={busy} label="Modification en cours…" />
+        <div className="no-print flex items-center gap-4 flex-wrap">
+          {doneToggle}
+          {cookingToggle}
+        </div>
+        {lists}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <LoadingOverlay visible={busy} label="Modification en cours…" />
+      <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-4 flex-wrap flex-1 min-w-0">{header}</div>
+        <div className="no-print flex items-center gap-3 shrink-0">
+          {doneToggle}
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
+            className="text-on-surface-variant hover:text-primary"
+          >
+            <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="flex flex-col gap-6">
+          {cookingToggle}
+          {lists}
+          {children}
+        </div>
       )}
     </div>
   );
