@@ -290,6 +290,30 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Contexte planifié (bannière + démarrage d'exécution) */}
+          {planContext && planContext.planned_date && (
+            <div className="no-print">
+            <PlanNoticeBanner
+              recipe={recipe}
+              plan={planContext}
+              text={
+                `Recette planifiée pour le ` +
+                new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                }) +
+                (planContext.factor && planContext.factor !== 1
+                  ? ` — quantités ajustées × ${String(planContext.factor).replace('.', ',')}`
+                  : planContext.adjust_label
+                    ? ` — ${planContext.adjust_label}`
+                    : '')
+              }
+            />
+            </div>
+          )}
+
           {/* Bloc technique */}
           <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-8 mb-12 space-y-8">
             <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
@@ -422,30 +446,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
                 </a>
               )}
-            </div>
-          )}
-
-          {/* Contexte planifié (bannière + démarrage d'exécution) */}
-          {planContext && planContext.planned_date && (
-            <div className="no-print">
-            <PlanNoticeBanner
-              recipe={recipe}
-              plan={planContext}
-              text={
-                `Recette planifiée pour le ` +
-                new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                }) +
-                (planContext.factor && planContext.factor !== 1
-                  ? ` — quantités ajustées × ${String(planContext.factor).replace('.', ',')}`
-                  : planContext.adjust_label
-                    ? ` — ${planContext.adjust_label}`
-                    : '')
-              }
-            />
             </div>
           )}
 
