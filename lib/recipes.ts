@@ -184,18 +184,16 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
 
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
 // visuel d'un allergène saisi en texte libre dans une recette (rapprochement
-// par nom). Colonne `picto` hors typage généré → client non typé, cast local.
-// Mémoïsé par requête (React cache) : plusieurs cartes sur une même page ne
-// déclenchent qu'une seule lecture.
+// par nom). Mémoïsé par requête (React cache) : plusieurs cartes sur une même
+// page ne déclenchent qu'une seule lecture.
 export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
   const supabase = await createClient();
-  const q = supabase.from('allergens' as never) as ReturnType<typeof supabase.from>;
-  const { data, error } = await q.select('id, name, picto, tooltip').order('name');
+  const { data, error } = await supabase.from('allergens').select('id, name, picto, tooltip').order('name');
   if (error) {
     console.error('getAllergensWithPicto:', error.message);
     return [];
   }
-  return ((data as unknown as AllergenRef[]) ?? []).filter((a) => a.name);
+  return (data ?? []).filter((a) => a.name);
 });
 
 // Résout les pictos d'allergènes pour un lot de cartes (une seule lecture de

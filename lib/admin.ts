@@ -191,7 +191,7 @@ export async function getListEntries(table: string, orderBy = 'name'): Promise<R
   const supabase = await createClient();
   try {
     // Table dynamique : hors du typage statique, cast local assumé.
-    const { data, error } = await (supabase.from(table as never) as ReturnType<typeof supabase.from>)
+    const { data, error } = await (supabase.from(table as any) as ReturnType<typeof supabase.from>)
       .select('*')
       .order(orderBy);
     if (error) {
@@ -258,10 +258,8 @@ function resume(rows: ImportCostRow[]): AiCostSummary {
 // compteurs ne refléteraient que les imports de l'admin connecté.
 export async function getAiCosts(): Promise<AiCosts> {
   const supabase = await createClient();
-  // Colonnes de coût hors typage généré tant que `npm run gen:types` n'a pas
-  // été rejoué après la migration → client non typé pour cette lecture.
-  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
-  const { data, error } = await table
+  const { data, error } = await supabase
+    .from('imports')
     .select('created_at, model, input_tokens, output_tokens, cost_usd')
     .order('created_at', { ascending: false });
   if (error) console.error('getAiCosts:', error.message);

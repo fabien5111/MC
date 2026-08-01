@@ -223,10 +223,8 @@ export async function POST(req: Request) {
     coutStructuration == null || (estPhoto && coutTranscription == null)
       ? null
       : coutStructuration.usd + (coutTranscription?.usd ?? 0);
-  // Colonnes de coût hors typage généré tant que `npm run gen:types` n'a pas été
-  // rejoué après la migration → client non typé pour cette écriture.
-  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
-  const { data: row, error } = await table
+  const { data: row, error } = await supabase
+    .from('imports')
     .insert({
       user_id: user.id,
       source_type: sourceType,
@@ -243,7 +241,7 @@ export async function POST(req: Request) {
       // null si le modèle est absent de la table de tarifs : mieux vaut un coût
       // inconnu qu'un coût faux.
       cost_usd: coutUsd,
-    } as never)
+    })
     .select()
     .single();
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 });
