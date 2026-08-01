@@ -357,9 +357,7 @@ export function CreerForm({
     const supabase = createClient();
     const list = allergenNames.map((a) => a.trim()).filter(Boolean).slice(0, MAX_ALLERGENS);
     const allergenCsv = list.length ? list.join(', ') : null;
-    // Colonne `allergen` hors typage généré → insertion via client non typé.
-    const q = supabase.from('ingredient_refs' as never) as ReturnType<typeof supabase.from>;
-    const { error } = await q.insert({ name: clean, allergen: allergenCsv } as never);
+    const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen: allergenCsv });
     setRefBusy(null);
     if (error) return void alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);

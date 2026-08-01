@@ -24,20 +24,17 @@ export async function getTags(): Promise<Tag[]> {
 // Tags promus en catégories d'accueil : case « Afficher sur l'accueil »
 // cochée (`show_on_home`) ET picto renseigné (`category_picto`). Triées par
 // nom (alphabétique, accents inclus). Tolérant aux erreurs (colonnes absentes
-// avant migration → []). Colonnes hors typage généré → client non typé, cast
-// local assumé.
+// avant migration → []).
 export async function getHomeCategories(): Promise<HomeCategory[]> {
   const supabase = await createClient();
-  const q = supabase.from('tags' as never) as ReturnType<typeof supabase.from>;
-  const { data, error } = await q
+  const { data, error } = await supabase
+    .from('tags')
     .select('id, name, slug, category_picto')
     .eq('status', 'published')
     .eq('show_on_home', true)
     .not('category_picto', 'is', null);
   if (error) return [];
-  return ((data as unknown as HomeCategory[]) ?? [])
-    .filter((t) => !!t.category_picto)
-    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return (data ?? []).filter((t) => !!t.category_picto).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 
 // Nom d'un tag (catégorie) à partir de son slug — utilisé par /recherche

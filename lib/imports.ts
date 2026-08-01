@@ -48,11 +48,9 @@ export async function getIngredientRefNames(): Promise<string[]> {
 // champ.
 export async function getIngredientRefAllergens(): Promise<Record<string, string>> {
   const supabase = await createClient();
-  // Colonne texte `allergen` (« a, b, c ») hors typage généré → client non typé.
-  const q = supabase.from('ingredient_refs' as never) as ReturnType<typeof supabase.from>;
-  const { data } = await q.select('name, allergen');
+  const { data } = await supabase.from('ingredient_refs').select('name, allergen');
   const map: Record<string, string> = {};
-  (data as unknown as { name: string | null; allergen: string | null }[] | null)?.forEach((r) => {
+  data?.forEach((r) => {
     if (r.name) map[r.name.trim().toLowerCase()] = r.allergen || '';
   });
   return map;
@@ -76,11 +74,8 @@ export async function getUtensilRefNames(): Promise<string[]> {
 
 export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
-  // `cost_usd` est hors typage généré tant que `npm run gen:types` n'a pas été
-  // rejoué après la migration → client non typé pour cette colonne (même
-  // motif que `getAiCosts` dans lib/admin.ts).
-  const table = supabase.from('imports' as never) as ReturnType<typeof supabase.from>;
-  const { data, error } = await table
+  const { data, error } = await supabase
+    .from('imports')
     .select('id, source_type, source_url, fichier_original, statut, recette, alertes, recipe_id, cost_usd, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
