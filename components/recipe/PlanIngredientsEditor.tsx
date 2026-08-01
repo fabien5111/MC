@@ -180,6 +180,22 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
         return (
           <div key={step.id}>
             <div className="border-b border-outline-variant pb-2 mb-4 flex items-center gap-3 flex-wrap">
+              <label
+                className="no-print flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer shrink-0"
+                title={
+                  step.already_done
+                    ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
+                    : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={step.already_done}
+                  onChange={() => toggleDone(step)}
+                  className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                />
+                Déjà réalisé
+              </label>
               <h4 className={`font-label-md text-label-md flex-1 min-w-0 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
                 {step.title || ''}
               </h4>
@@ -194,21 +210,6 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                   La cuisson reste à faire
                 </label>
               )}
-              <button
-                type="button"
-                onClick={() => toggleDone(step)}
-                title={
-                  step.already_done
-                    ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
-                    : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
-                }
-                className={`no-print flex items-center gap-1 px-3 py-1 rounded-full font-label-md text-[11px] border transition-colors ${
-                  step.already_done ? 'border-primary text-primary bg-primary/5' : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">{step.already_done ? 'task_alt' : 'radio_button_unchecked'}</span>
-                Déjà réalisé
-              </button>
             </div>
             {rows.length > 0 && (
               <ul style={gridStyle(step.already_done)}>
