@@ -32,6 +32,8 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   // dans une liste », même mécanisme appliqué ici à une case à cocher).
   const [steps, setSteps] = useState(plan.plan_steps);
   useEffect(() => setSteps(plan.plan_steps), [plan.plan_steps]);
+  const [ingredients, setIngredients] = useState(plan.plan_ingredients);
+  useEffect(() => setIngredients(plan.plan_ingredients), [plan.plan_ingredients]);
 
   // Chaque action est une écriture ciblée sur `plan_ingredients` (via
   // useMutation : spinner + confirm optionnel + resynchronisation du Server
@@ -79,6 +81,20 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
   }
 
+  // Exception ligne par ligne à une étape « déjà réalisée » : par défaut tous
+  // ses ingrédients sortent des courses / de la mise en place (case cochée),
+  // mais certains restent utiles plus tard dans la même étape — l'œuf de
+  // dorure d'une pâte déjà façonnée mais pas encore cuite. Décocher les garde
+  // dans le parcours sans toucher à `removed` ni à l'état « déjà réalisé ».
+  async function toggleExcludedWhenDone(row: PlanIngredientRow) {
+    const next = !row.excluded_when_done;
+    const ok = await mutate(
+      () => createClient().from('plan_ingredients').update({ excluded_when_done: next } as never).eq('id', row.id),
+      { errorLabel: 'Modification non enregistrée' },
+    );
+    if (ok) setIngredients((prev) => prev.map((r) => (r.id === row.id ? { ...r, excluded_when_done: next } : r)));
+  }
+
   function removeAdded(row: PlanIngredientRow) {
     mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
   }
@@ -106,7 +122,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
       return;
     }
     const n = numify(qtyStr);
-    const stepRows = plan.plan_ingredients.filter((it) => it.step_id === stepId);
+    const stepRows = ingredients.filter((it) => it.step_id === stepId);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
     setAddingStep(null);
     await mutate(
@@ -128,7 +144,10 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
-  const gridStyle = { display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content max-content', columnGap: 32 } as const;
+  // Colonne de case à cocher en tête, uniquement pour les étapes déjà
+  // réalisées (case « conserver cet ingrédient » — cf. toggleExcludedWhenDone).
+  const gridStyle = (withCheckbox: boolean) =>
+    ({ display: 'grid', gridTemplateColumns: `${withCheckbox ? 'max-content ' : ''}max-content max-content max-content max-content max-content`, columnGap: 32 }) as const;
   const rowStyle = { display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' } as const;
 
   const withUnit = (text: string, unit: string | null) => {
@@ -156,7 +175,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
       {sortedSteps.map((step) => {
-        const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
+        const rows = ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
         return (
           <div key={step.id}>
@@ -192,8 +211,9 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
               </button>
             </div>
             {rows.length > 0 && (
-              <ul style={gridStyle}>
+              <ul style={gridStyle(step.already_done)}>
                 <li className="pb-1" style={rowStyle}>
+                  {step.already_done && <span />}
                   <span />
                   <span className={LBL}>Coef.</span>
                   <span className={`${LBL} text-primary`}>Quantité ajustée</span>
@@ -203,12 +223,16 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                 {rows.map((row) => {
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  // Étape déjà faite : toutes ses lignes sortent du parcours,
-                  // sans que leur propre état (retirée / ajoutée) soit modifié.
-                  const tone = step.already_done
-                    ? 'text-on-surface-variant line-through opacity-60'
-                    : row.removed
-                      ? 'text-error line-through'
+                  // Étape déjà faite : ses ingrédients sortent du parcours,
+                  // sauf ceux explicitement conservés (case décochée) — sans
+                  // modifier leur propre état (retirée / ajoutée). `removed`
+                  // prime toujours : une ligne retirée à la main reste barrée
+                  // même si on la « conserve » malgré l'étape déjà faite.
+                  const excludedByStep = step.already_done && row.excluded_when_done;
+                  const tone = row.removed
+                    ? 'text-error line-through'
+                    : excludedByStep
+                      ? 'text-on-surface-variant line-through opacity-60'
                       : row.added
                         ? 'text-green-700'
                         : '';
@@ -217,6 +241,23 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                   return (
                     <Fragment key={row.id}>
                       <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
+                        {step.already_done && (
+                          <span className="justify-self-center">
+                            {!row.removed && (
+                              <input
+                                type="checkbox"
+                                checked={row.excluded_when_done}
+                                onChange={() => toggleExcludedWhenDone(row)}
+                                title={
+                                  row.excluded_when_done
+                                    ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
+                                    : 'Conservé malgré l’étape déjà réalisée'
+                                }
+                                className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                              />
+                            )}
+                          </span>
+                        )}
                         <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
                           {row.url ? (
                             <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">

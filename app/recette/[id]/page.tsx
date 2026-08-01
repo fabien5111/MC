@@ -174,7 +174,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   })();
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
-  const steps = planContext ? planStepsAsRecipeSteps(planContext.plan_steps) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const utensils = planContext
     ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
     : [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));

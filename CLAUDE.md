@@ -228,20 +228,26 @@ devient indépendant de la recette d'origine.
   (ex. bouton « Retirer du planning » de l'onglet Planning) doit d'abord
   tenter l'archivage plutôt qu'un `delete` qui échouerait en violation de
   contrainte dès qu'une session existe.
-- **Étape « déjà faite »** (`plan_steps.already_done`, `plan_steps.keep_cooking`) :
-  l'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
-  est déjà au congélateur »). C'est une **intention**, donc portée par le plan
-  et non par l'exécution — la liste de courses est générée depuis le plan, bien
-  avant qu'une session existe. `already_done` sort les ingrédients de l'étape
-  des courses, de la mise en place et de l'exécution ; `keep_cooking` garde
-  l'étape dans le déroulé pour sa seule cuisson (température et temps de
-  cuisson conservés, préparation et attente remises à zéro puisque déjà
-  écoulées). **Ne jamais implémenter ça en basculant
-  `plan_ingredients.removed`** : ça écraserait les suppressions faites à la
-  main ligne par ligne, et décocher l'étape les rétablirait silencieusement —
-  c'est la même corruption que l'ancien modèle `overrides`. Les trois filtres
-  concernés sont centralisés dans `lib/recipe-plan.ts`
-  (`stepDropsIngredients`, `stepHiddenFromFlow`, `remainingStepTimes`) : tout
+- **Étape « déjà faite »** (`plan_steps.already_done`, `plan_steps.keep_cooking`,
+  `plan_ingredients.excluded_when_done`) : l'utilisateur signale qu'il a
+  réalisé une étape en amont (« la pâte sucrée est déjà au congélateur »).
+  C'est une **intention**, donc portée par le plan et non par l'exécution — la
+  liste de courses est générée depuis le plan, bien avant qu'une session
+  existe. `already_done` sort les ingrédients de l'étape des courses, de la
+  mise en place et de l'exécution ; `keep_cooking` garde l'étape dans le
+  déroulé pour sa seule cuisson (température et temps de cuisson conservés,
+  préparation et attente remises à zéro puisque déjà écoulées).
+  `plan_ingredients.excluded_when_done` (par défaut `true`) permet une
+  exception ligne par ligne : un ingrédient de l'étape reste dans le parcours
+  malgré `already_done` si l'utilisateur l'a explicitement décoché (ex. l'œuf
+  de dorure d'une pâte déjà façonnée mais pas encore badigeonnée ni cuite) — un
+  ingrédient conservé garde aussi son étape visible dans le déroulé même sans
+  `keep_cooking` (`stepHiddenFromFlow`). **Ne jamais implémenter ça en
+  basculant `plan_ingredients.removed`** : ça écraserait les suppressions
+  faites à la main ligne par ligne, et décocher l'étape les rétablirait
+  silencieusement — c'est la même corruption que l'ancien modèle `overrides`.
+  Les filtres concernés sont centralisés dans `lib/recipe-plan.ts`
+  (`planIngredientExcluded`, `stepHiddenFromFlow`, `remainingStepTimes`) : tout
   l'aval (courses, mise en place, temps affiché, tempo d'exécution) en découle.
   Conséquences assumées, cohérentes avec le modèle : une session déjà démarrée
   n'est pas retouchée, et une liste de courses déjà générée non plus (les deux
