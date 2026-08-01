@@ -31,12 +31,12 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
 }
 
 // ── Lignes des tables plan_* / execution_* ────────────────────────────
-// `already_done` / `keep_cooking` sont ajoutées par la migration « étape déjà
-// faite » (cf. CLAUDE.md « Recettes planifiées »). Elles sont déclarées ici en
-// attendant que `npm run gen:types` soit rejoué sur la base migrée — retirer
-// cette intersection à ce moment-là, `lib/database.types.ts` étant la source
-// de vérité (jamais éditée à la main).
-type PlanStepPending = { already_done: boolean; keep_cooking: boolean };
+// `already_done` est ajoutée par la migration « étape déjà faite » (cf.
+// CLAUDE.md « Recettes planifiées »). Déclarée ici en attendant que
+// `npm run gen:types` soit rejoué sur la base migrée — retirer cette
+// intersection à ce moment-là, `lib/database.types.ts` étant la source de
+// vérité (jamais éditée à la main).
+type PlanStepPending = { already_done: boolean };
 export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
 // `excluded_when_done` fait partie de la même migration en attente (cf.
 // PlanStepPending ci-dessus) : mêmes semantique et défaut que sur
@@ -63,24 +63,18 @@ export type PlanFull = Database['public']['Tables']['planning']['Row'] & {
 //
 // Distinct de `plan_ingredients.removed` : le « déjà fait » ne doit pas
 // écraser les suppressions faites à la main ligne par ligne, sinon décocher
-// l'étape les rétablirait silencieusement.
-//   - `already_done`         → les ingrédients de l'étape sortent des courses,
-//                              de la mise en place et de l'exécution, sauf
-//                              ceux explicitement conservés (ex. l'œuf de
-//                              dorure d'une pâte déjà façonnée mais pas
-//                              encore badigeonnée/cuite) — `excluded_when_done`
-//                              à `false` sur ces lignes-là.
-//   - `keep_cooking`         → la cuisson reste à faire : l'étape demeure dans
-//                              le déroulé avec sa température et son temps de
-//                              cuisson, sans temps de préparation ni
-//                              d'attente, déjà écoulés.
+// l'étape les rétablirait silencieusement. `already_done` sort les
+// ingrédients de l'étape des courses, de la mise en place et de l'exécution,
+// sauf ceux explicitement conservés (ex. l'œuf de dorure d'une pâte déjà
+// façonnée mais pas encore badigeonnée/cuite) — `excluded_when_done` à
+// `false` sur ces lignes-là.
 //
 // `plan_substeps.excluded_when_done` reprend la même exception ligne par
 // ligne pour les sous-étapes (texte libre découpé en puces) : par défaut
 // toutes sortent du déroulé avec l'étape, mais l'une d'elles peut rester
 // utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
 // déjà fait).
-type StepDoneFlags = Pick<PlanStepRow, 'already_done' | 'keep_cooking'>;
+type StepDoneFlags = Pick<PlanStepRow, 'already_done'>;
 type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_done'>;
 type SubstepDoneFlags = Pick<PlanSubstepRow, 'excluded_when_done'>;
 
@@ -98,7 +92,7 @@ export function planSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags):
   return step.already_done && sub.excluded_when_done;
 }
 
-const NO_STEP: StepDoneFlags = { already_done: false, keep_cooking: false };
+const NO_STEP: StepDoneFlags = { already_done: false };
 
 // Prédicat lié à un plan donné : une ligne d'ingrédient ne porte que son
 // `step_id`, jamais son étape entière — utilisé par mergePlanIngredients et
@@ -111,26 +105,23 @@ function excludedInPlan(plan: PlanFull): (it: PlanIngredientRow) => boolean {
 // L'étape ne disparaît jamais du déroulé — une étape entièrement traitée y
 // reste visible, barrée, plutôt que de s'effacer (on doit pouvoir constater sa
 // progression, et revenir sur une case cochée par erreur). Ce prédicat sert
-// uniquement à décider ce rendu barré : déjà faite, sans cuisson à conserver,
-// et sans aucun ingrédient ni sous-étape gardés — s'il en reste un (l'œuf de
-// dorure, une puce de cuisson), l'étape s'affiche normalement pour lui, même
-// sans cuisson à proprement parler.
+// uniquement à décider ce rendu barré : déjà faite, et sans aucun ingrédient
+// ni sous-étape gardés — s'il en reste un (l'œuf de dorure), l'étape s'affiche
+// normalement pour lui.
 export function stepFullyDone(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
-  if (!step.already_done || step.keep_cooking) return false;
+  if (!step.already_done) return false;
   return ingredientsOfStep.every((it) => planIngredientExcluded(step, it)) && substepsOfStep.every((su) => planSubstepExcluded(step, su));
 }
 
 // Temps restant d'une étape : une étape entièrement traitée n'a plus rien à
-// annoncer (ni préparation, ni attente, ni cuisson) ; une étape conservée
-// pour sa seule cuisson a déjà consommé sa préparation et son attente. Sans
-// ça, le temps affiché contredirait ce qu'il reste réellement à faire.
+// annoncer (ni préparation, ni attente, ni cuisson). Sans ça, le temps affiché
+// contredirait ce qu'il reste réellement à faire.
 export function remainingStepTimes(s: StepDoneFlags & Pick<PlanStepRow, 'prep_time' | 'wait_time' | 'cook_time'>): {
   prep_time: number | null;
   wait_time: number | null;
   cook_time: number | null;
 } {
   if (!s.already_done) return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
-  if (s.keep_cooking) return { prep_time: null, wait_time: null, cook_time: s.cook_time };
   return { prep_time: null, wait_time: null, cook_time: null };
 }
 
@@ -151,10 +142,7 @@ export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // plan depuis (FK à null).
 export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
   execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
-  plan_steps: Pick<
-    PlanStepRow,
-    'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'keep_cooking'
-  > | null;
+  plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done'> | null;
 };
 export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'];
 export type ExecutionUtensilRow = Database['public']['Tables']['execution_utensils']['Row'];
@@ -169,7 +157,7 @@ export type ExecutionFull = ExecutionRow & {
 
 export const EXECUTION_FULL_SELECT = `
   *,
-  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done, keep_cooking)),
+  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done)),
   execution_ingredients(*),
   execution_utensils(*),
   planning(recipe_title)

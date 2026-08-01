@@ -18,7 +18,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { fmtNum, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
 
-type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'keep_cooking'>;
+type StepFlags = Pick<PlanStepRow, 'id' | 'already_done'>;
 type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
 type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done'>;
 
@@ -65,18 +65,13 @@ export function PlanStepDonePanel({
   useEffect(() => setIngredients(initialIngredients), [initialIngredients]);
   useEffect(() => setSubsteps(initialSubsteps), [initialSubsteps]);
 
-  async function patchStep(patch: Partial<Pick<PlanStepRow, 'already_done' | 'keep_cooking'>>) {
+  async function toggleDone() {
+    const next = !step.already_done;
     const ok = await mutate(
-      () => createClient().from('plan_steps').update(patch as never).eq('id', step.id),
+      () => createClient().from('plan_steps').update({ already_done: next } as never).eq('id', step.id),
       { errorLabel: 'Modification non enregistrée' },
     );
-    if (ok) setStep((s) => ({ ...s, ...patch }));
-  }
-
-  function toggleDone() {
-    // `keep_cooking` n'est plus proposé dans l'interface (case masquée), mais
-    // se remet à `false` par sécurité si une ligne existante l'avait à `true`.
-    patchStep(step.already_done ? { already_done: false, keep_cooking: false } : { already_done: true });
+    if (ok) setStep((s) => ({ ...s, already_done: next }));
   }
 
   async function toggleIngredient(row: IngRow) {

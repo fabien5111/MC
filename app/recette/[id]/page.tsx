@@ -176,8 +176,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
   const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  // Étape brute (plan_steps) par id, pour la case « Déjà réalisé » du mode
-  // planifié : `steps` (RecipeStepView) ne porte pas `keep_cooking`.
+  // Étape brute (plan_steps) par id, pour les sous-étapes brutes du mode
+  // planifié (voir rawSubsteps ci-dessous).
   const planStepsById = new Map((planContext?.plan_steps ?? []).map((ps) => [ps.id, ps]));
   const utensils = planContext
     ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
@@ -757,11 +757,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {stepMeta}
                   </>
                 );
-                const planStepProps = {
-                  id: s.id,
-                  already_done: s.already_done ?? false,
-                  keep_cooking: planStepsById.get(s.id)?.keep_cooking ?? false,
-                };
+                const planStepProps = { id: s.id, already_done: s.already_done ?? false };
                 const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
                 // Contenu replié avec le reste quand l'étape est entièrement traitée
                 // (photos, vidéo, astuces…) — inchangé sinon.
