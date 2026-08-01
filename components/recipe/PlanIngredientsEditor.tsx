@@ -9,6 +9,7 @@
 import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { Unit } from '@/lib/profile';
 import { fmtNum, type PlanFull, type PlanIngredientRow, type PlanStepRow } from '@/lib/recipe-plan';
 
@@ -21,7 +22,10 @@ const numify = (v: string): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 
 export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFull; units: Unit[]; unitTips: Record<string, string> }) {
-  const { mutate } = useMutation();
+  // Toute écriture ici passe par router.refresh() (useMutation) : le résultat
+  // (case cochée, ligne barrée) ne revient qu'après le round-trip serveur, pas
+  // au clic — d'où le spinner plein écran plutôt qu'un état optimiste local.
+  const { mutate, busy } = useMutation();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
 
@@ -145,6 +149,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
 
   return (
     <div className="space-y-10">
+      <LoadingOverlay visible={busy} label="Modification en cours…" />
       {steps.map((step) => {
         const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
@@ -154,7 +159,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
               <h4 className={`font-label-md text-label-md flex-1 min-w-0 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
                 {step.title || ''}
               </h4>
-              {step.already_done && (
+              {step.already_done && step.cook_time != null && step.cook_time > 0 && (
                 <label className="no-print flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
                   <input
                     type="checkbox"
