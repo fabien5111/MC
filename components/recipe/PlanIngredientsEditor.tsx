@@ -6,7 +6,7 @@
 // directement sur `plan_ingredients` (le plan possède sa propre copie des
 // ingrédients — voir CLAUDE.md « Recettes planifiées ») : chaque action est
 // une écriture ciblée sur la ligne concernée, plus de blob JSON à réécrire.
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -22,12 +22,16 @@ const numify = (v: string): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 
 export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFull; units: Unit[]; unitTips: Record<string, string> }) {
-  // Toute écriture ici passe par router.refresh() (useMutation) : le résultat
-  // (case cochée, ligne barrée) ne revient qu'après le round-trip serveur, pas
-  // au clic — d'où le spinner plein écran plutôt qu'un état optimiste local.
   const { mutate, busy } = useMutation();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
+  // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
+  // router.refresh() n'ait fini de resynchroniser `plan` — sans ce doublon
+  // local, la case « Déjà fait » changeait d'état après la disparition du
+  // spinner plutôt qu'en même temps (cf. CLAUDE.md « Suppression optimiste
+  // dans une liste », même mécanisme appliqué ici à une case à cocher).
+  const [steps, setSteps] = useState(plan.plan_steps);
+  useEffect(() => setSteps(plan.plan_steps), [plan.plan_steps]);
 
   // Chaque action est une écriture ciblée sur `plan_ingredients` (via
   // useMutation : spinner + confirm optionnel + resynchronisation du Server
@@ -53,8 +57,8 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   //
   // Le cast couvre les deux colonnes tant que `lib/database.types.ts` n'a pas
   // été régénéré sur la base migrée (cf. lib/recipe-plan.ts).
-  function patchStep(step: PlanStepRow, patch: { already_done?: boolean; keep_cooking?: boolean }) {
-    mutate(
+  async function patchStep(step: PlanStepRow, patch: { already_done?: boolean; keep_cooking?: boolean }) {
+    const ok = await mutate(
       () =>
         createClient()
           .from('plan_steps')
@@ -62,6 +66,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
           .eq('id', step.id),
       { errorLabel: 'Modification non enregistrée' },
     );
+    if (ok) setSteps((prev) => prev.map((s) => (s.id === step.id ? { ...s, ...patch } : s)));
   }
 
   function toggleDone(step: PlanStepRow) {
@@ -145,12 +150,12 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     );
   };
 
-  const steps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
+  const sortedSteps = [...steps].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
-      {steps.map((step) => {
+      {sortedSteps.map((step) => {
         const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
         return (
