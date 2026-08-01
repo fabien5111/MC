@@ -734,33 +734,25 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       ? `CUISSON ${s.cook_temp} °C`
                       : '',
                 ].filter(Boolean);
-                return (
-                  <div
-                    key={s.id}
-                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
-                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
-                    // module « use client » — un Server Component peut le rendre en
-                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
-                    // fonction plante au rendu serveur (référence client, pas de code
-                    // exécutable côté serveur).
-                    id={`sec-etape-${i + 1}`}
-                    className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
-                  >
-                    <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-                      <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
-                        {i + 1}. {s.title || 'Étape ' + (i + 1)}
-                      </h4>
-                      <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
-                        {badges.map((b, k) => (
-                          <span key={k} className="bg-surface-variant px-3 py-1">
-                            {b}
-                          </span>
-                        ))}
-                        {stepTotal > 0 && (
-                          <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
-                        )}
-                      </div>
+                const header = (
+                  <>
+                    <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
+                      {i + 1}. {s.title || 'Étape ' + (i + 1)}
+                    </h4>
+                    <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                      {badges.map((b, k) => (
+                        <span key={k} className="bg-surface-variant px-3 py-1">
+                          {b}
+                        </span>
+                      ))}
+                      {stepTotal > 0 && (
+                        <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
+                      )}
                     </div>
+                  </>
+                );
+                const body = (
+                  <>
                     {planContext ? (
                       <PlanStepDonePanel
                         step={{
@@ -840,6 +832,36 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         </summary>
                         <div className="p-4 bg-white font-body-md text-body-md italic whitespace-pre-line">{s.tips}</div>
                       </details>
+                    )}
+                  </>
+                );
+                return (
+                  <div
+                    key={s.id}
+                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
+                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
+                    // module « use client » — un Server Component peut le rendre en
+                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
+                    // fonction plante au rendu serveur (référence client, pas de code
+                    // exécutable côté serveur).
+                    id={`sec-etape-${i + 1}`}
+                    className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
+                  >
+                    {s.fully_done ? (
+                      // Étape entièrement traitée : repliée par défaut, plus rien n'y
+                      // reste à faire — seul le titre barré + ses badges restent visibles.
+                      <details className="group">
+                        <summary className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3 cursor-pointer list-none">
+                          {header}
+                          <span className="material-symbols-outlined group-open:rotate-180 transition-transform text-on-surface-variant">expand_more</span>
+                        </summary>
+                        <div className="flex flex-col gap-6 pt-6">{body}</div>
+                      </details>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">{header}</div>
+                        {body}
+                      </>
                     )}
                   </div>
                 );
