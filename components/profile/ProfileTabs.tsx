@@ -61,6 +61,8 @@ export function ProfileTabs({
   useEffect(() => setRecipeList(recipes), [recipes]);
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
+  const [shoppingList, setShoppingList] = useState(shoppingLists);
+  useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
 
   useEffect(() => {
     const fromHash = () => {
@@ -80,8 +82,12 @@ export function ProfileTabs({
     history.replaceState(null, '', hash === ' ' ? location.pathname : hash);
   }
 
-  async function del(table: 'recipes' | 'shopping_lists', id: string | number, confirmMsg: string) {
-    await mutate(() => createClient().from(table).delete().eq('id', id), { confirm: confirmMsg });
+  async function delShoppingList(id: number, name: string) {
+    const ok = await mutate(
+      () => createClient().from('shopping_lists').delete().eq('id', id),
+      { confirm: `Supprimer la liste « ${name} » ?` },
+    );
+    if (ok) setShoppingList((prev) => prev.filter((l) => l.id !== id));
   }
 
   async function delRecipe(id: string, title: string) {
@@ -348,7 +354,7 @@ export function ProfileTabs({
           <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
             <span className="material-symbols-outlined">shopping_bag</span> Mes listes de courses
           </h2>
-          {shoppingLists.length > 0 ? (
+          {shoppingList.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse bg-white border border-outline-variant rounded-lg overflow-hidden">
                 <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
@@ -361,7 +367,7 @@ export function ProfileTabs({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
-                  {shoppingLists.map((l) => {
+                  {shoppingList.map((l) => {
                     const items = l.shopping_list_items || [];
                     const done = items.filter((i) => i.checked).length;
                     return (
@@ -384,7 +390,7 @@ export function ProfileTabs({
                           <button
                             type="button"
                             title="Supprimer la liste"
-                            onClick={() => del('shopping_lists', l.id, `Supprimer la liste « ${l.name} » ?`)}
+                            onClick={() => delShoppingList(l.id, l.name)}
                             className="p-1.5 rounded text-error hover:bg-error/10 transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
