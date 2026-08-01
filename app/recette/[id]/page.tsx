@@ -282,6 +282,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
+            {planContext && (
+              <Link
+                href={`/recette/${recipe.id}`}
+                className="no-print inline-flex items-center gap-2 self-start text-primary underline underline-offset-2 hover:text-secondary font-label-md text-label-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">menu_book</span>Recette d&apos;origine
+              </Link>
+            )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
                 {tags.map((n) => (
