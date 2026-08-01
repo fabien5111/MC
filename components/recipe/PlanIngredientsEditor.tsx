@@ -188,7 +188,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">{step.already_done ? 'task_alt' : 'radio_button_unchecked'}</span>
-                Déjà fait
+                Déjà réalisé
               </button>
             </div>
             {rows.length > 0 && (

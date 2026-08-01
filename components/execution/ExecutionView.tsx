@@ -525,7 +525,7 @@ function StepCard({
   // à faire » n'annonce ni préparation ni attente (remainingStepTimes).
   const times = plan ? remainingStepTimes(plan) : null;
   const badges = [
-    plan?.already_done ? 'PRÉPARATION DÉJÀ FAITE' : '',
+    plan?.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
     times?.prep_time ? `PRÉP ${formatTime(times.prep_time).toUpperCase()}` : '',
     times?.wait_time ? `ATTENTE ${formatTime(times.wait_time).toUpperCase()}` : '',
     times?.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${plan?.cook_temp ? ' · ' + plan.cook_temp + ' °C' : ''}` : plan?.cook_temp ? `CUISSON ${plan.cook_temp} °C` : '',

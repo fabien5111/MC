@@ -714,7 +714,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   dLabel(Math.max(0, s.day_offset || 0)),
                   // Mode planifié : étape conservée pour sa seule cuisson, ses
                   // ingrédients et son temps de préparation ont déjà été retirés.
-                  s.already_done ? 'PRÉPARATION DÉJÀ FAITE' : '',
+                  s.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
                   s.wait_time ? `ATTENTE ${formatTime(s.wait_time).toUpperCase()}` : '',
                   s.cook_time
