@@ -6,12 +6,12 @@
 // directement sur `plan_ingredients` (le plan possède sa propre copie des
 // ingrédients — voir CLAUDE.md « Recettes planifiées ») : chaque action est
 // une écriture ciblée sur la ligne concernée, plus de blob JSON à réécrire.
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { Unit } from '@/lib/profile';
-import { fmtNum, type PlanFull, type PlanIngredientRow, type PlanStepRow } from '@/lib/recipe-plan';
+import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
 
 type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
@@ -25,15 +25,6 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   const { mutate, busy } = useMutation();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
-  // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
-  // router.refresh() n'ait fini de resynchroniser `plan` — sans ce doublon
-  // local, la case « Déjà fait » changeait d'état après la disparition du
-  // spinner plutôt qu'en même temps (cf. CLAUDE.md « Suppression optimiste
-  // dans une liste », même mécanisme appliqué ici à une case à cocher).
-  const [steps, setSteps] = useState(plan.plan_steps);
-  useEffect(() => setSteps(plan.plan_steps), [plan.plan_steps]);
-  const [ingredients, setIngredients] = useState(plan.plan_ingredients);
-  useEffect(() => setIngredients(plan.plan_ingredients), [plan.plan_ingredients]);
 
   // Chaque action est une écriture ciblée sur `plan_ingredients` (via
   // useMutation : spinner + confirm optionnel + resynchronisation du Server
@@ -52,47 +43,8 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
   }
 
-  // « Déjà fait » : les ingrédients de l'étape sortent des courses, de la mise
-  // en place et de l'exécution — sans toucher à `plan_ingredients.removed`,
-  // pour ne pas écraser les suppressions faites ligne par ligne (décocher
-  // l'étape doit les laisser telles quelles).
-  //
-  // Le cast couvre les deux colonnes tant que `lib/database.types.ts` n'a pas
-  // été régénéré sur la base migrée (cf. lib/recipe-plan.ts).
-  async function patchStep(step: PlanStepRow, patch: { already_done?: boolean; keep_cooking?: boolean }) {
-    const ok = await mutate(
-      () =>
-        createClient()
-          .from('plan_steps')
-          .update(patch as never)
-          .eq('id', step.id),
-      { errorLabel: 'Modification non enregistrée' },
-    );
-    if (ok) setSteps((prev) => prev.map((s) => (s.id === step.id ? { ...s, ...patch } : s)));
-  }
-
-  function toggleDone(step: PlanStepRow) {
-    // Repasser une étape « à faire » remet aussi la cuisson dans son état par
-    // défaut : garder `keep_cooking` à vrai sur une étape active n'a pas de sens.
-    patchStep(step, step.already_done ? { already_done: false, keep_cooking: false } : { already_done: true });
-  }
-
   function toggleRemove(row: PlanIngredientRow) {
     mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
-  }
-
-  // Exception ligne par ligne à une étape « déjà réalisée » : par défaut tous
-  // ses ingrédients sortent des courses / de la mise en place (case cochée),
-  // mais certains restent utiles plus tard dans la même étape — l'œuf de
-  // dorure d'une pâte déjà façonnée mais pas encore cuite. Décocher les garde
-  // dans le parcours sans toucher à `removed` ni à l'état « déjà réalisé ».
-  async function toggleExcludedWhenDone(row: PlanIngredientRow) {
-    const next = !row.excluded_when_done;
-    const ok = await mutate(
-      () => createClient().from('plan_ingredients').update({ excluded_when_done: next } as never).eq('id', row.id),
-      { errorLabel: 'Modification non enregistrée' },
-    );
-    if (ok) setIngredients((prev) => prev.map((r) => (r.id === row.id ? { ...r, excluded_when_done: next } : r)));
   }
 
   function removeAdded(row: PlanIngredientRow) {
@@ -122,7 +74,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
       return;
     }
     const n = numify(qtyStr);
-    const stepRows = ingredients.filter((it) => it.step_id === stepId);
+    const stepRows = plan.plan_ingredients.filter((it) => it.step_id === stepId);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
     setAddingStep(null);
     await mutate(
@@ -144,10 +96,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
-  // Colonne de case à cocher en tête, uniquement pour les étapes déjà
-  // réalisées (case « conserver cet ingrédient » — cf. toggleExcludedWhenDone).
-  const gridStyle = (withCheckbox: boolean) =>
-    ({ display: 'grid', gridTemplateColumns: `${withCheckbox ? 'max-content ' : ''}max-content max-content max-content max-content max-content`, columnGap: 32 }) as const;
+  const gridStyle = { display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content max-content', columnGap: 32 } as const;
   const rowStyle = { display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' } as const;
 
   const withUnit = (text: string, unit: string | null) => {
@@ -169,52 +118,26 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     );
   };
 
-  const sortedSteps = [...steps].sort((a, b) => a.order_index - b.order_index);
+  const sortedSteps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
       {sortedSteps.map((step) => {
-        const rows = ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
+        const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
         return (
           <div key={step.id}>
-            <div className="border-b border-outline-variant pb-2 mb-4 flex items-center gap-3 flex-wrap">
-              <label
-                className="no-print flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer shrink-0"
-                title={
-                  step.already_done
-                    ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
-                    : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={step.already_done}
-                  onChange={() => toggleDone(step)}
-                  className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                />
-                Déjà réalisé
-              </label>
-              <h4 className={`font-label-md text-label-md flex-1 min-w-0 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
-                {step.title || ''}
-              </h4>
-              {step.already_done && step.cook_time != null && step.cook_time > 0 && (
-                <label className="no-print flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={step.keep_cooking}
-                    onChange={() => patchStep(step, { keep_cooking: !step.keep_cooking })}
-                    className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                  />
-                  La cuisson reste à faire
-                </label>
-              )}
-            </div>
+            {/* La case « Déjà réalisé » et l'exception par ingrédient vivent
+                dans le déroulé de la recette (PlanStepDonePanel), pas ici —
+                cette section ne fait plus qu'informer (titre barré, lignes
+                grisées) de l'état déjà réglé là-bas. */}
+            <h4 className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
+              {step.title || ''}
+            </h4>
             {rows.length > 0 && (
-              <ul style={gridStyle(step.already_done)}>
+              <ul style={gridStyle}>
                 <li className="pb-1" style={rowStyle}>
-                  {step.already_done && <span />}
                   <span />
                   <span className={LBL}>Coef.</span>
                   <span className={`${LBL} text-primary`}>Quantité ajustée</span>
@@ -224,11 +147,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                 {rows.map((row) => {
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  // Étape déjà faite : ses ingrédients sortent du parcours,
-                  // sauf ceux explicitement conservés (case décochée) — sans
-                  // modifier leur propre état (retirée / ajoutée). `removed`
-                  // prime toujours : une ligne retirée à la main reste barrée
-                  // même si on la « conserve » malgré l'étape déjà faite.
+                  // `removed` prime toujours sur l'exclusion « déjà fait ».
                   const excludedByStep = step.already_done && row.excluded_when_done;
                   const tone = row.removed
                     ? 'text-error line-through'
@@ -242,23 +161,6 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                   return (
                     <Fragment key={row.id}>
                       <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
-                        {step.already_done && (
-                          <span className="justify-self-center">
-                            {!row.removed && (
-                              <input
-                                type="checkbox"
-                                checked={row.excluded_when_done}
-                                onChange={() => toggleExcludedWhenDone(row)}
-                                title={
-                                  row.excluded_when_done
-                                    ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
-                                    : 'Conservé malgré l’étape déjà réalisée'
-                                }
-                                className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                              />
-                            )}
-                          </span>
-                        )}
                         <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
                           {row.url ? (
                             <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">

@@ -31,6 +31,7 @@ import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
+import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { type TocSections } from '@/components/recipe/RecipeToc';
@@ -175,6 +176,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
   const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Étape brute (plan_steps) par id, pour la case « Déjà réalisé » du mode
+  // planifié : `steps` (RecipeStepView) ne porte pas `keep_cooking`.
+  const planStepsById = new Map((planContext?.plan_steps ?? []).map((ps) => [ps.id, ps]));
   const utensils = planContext
     ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
     : [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -750,29 +754,41 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         )}
                       </div>
                     </div>
-                    {ings.length > 0 && (
-                      <details className="group border border-outline-variant mb-2" open>
-                        <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                          <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
-                          <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                        </summary>
-                        <div className="p-4 bg-white">
-                          <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                            {ings.map((it) => (
-                              <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                <span className="font-label-md text-label-md text-primary">
-                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                                  <Qty quantity={it.quantity} unit={it.unit} />
-                                </span>
-                                <span className="font-body-md text-body-md">
-                                  {it.name}
-                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
+                    {planContext ? (
+                      <PlanStepDonePanel
+                        step={{
+                          id: s.id,
+                          already_done: s.already_done ?? false,
+                          keep_cooking: planStepsById.get(s.id)?.keep_cooking ?? false,
+                          cook_time: s.cook_time,
+                        }}
+                        ingredients={planContext.plan_ingredients.filter((it) => it.step_id === s.id)}
+                      />
+                    ) : (
+                      ings.length > 0 && (
+                        <details className="group border border-outline-variant mb-2" open>
+                          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                            <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+                            <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                          </summary>
+                          <div className="p-4 bg-white">
+                            <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                              {ings.map((it) => (
+                                <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                  <span className="font-label-md text-label-md text-primary">
+                                    <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                                    <Qty quantity={it.quantity} unit={it.unit} />
+                                  </span>
+                                  <span className="font-body-md text-body-md">
+                                    {it.name}
+                                    {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </details>
+                      )
                     )}
                     {photos.length > 0 && (
                       <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
