@@ -122,6 +122,10 @@ export type IngredientView = {
   url: string | null;
   allergen: string | null;
   order_index: number | null;
+  // Sélectionné via `ingredients(*, ...)` mais absent de ce type jusqu'ici :
+  // nécessaire pour reporter le lien vers le référentiel lors de la
+  // matérialisation d'un plan (lib/recipe-plan.ts).
+  ref_id: number | null;
   ingredient_refs: { url: string | null; allergens: AllergenRef | null } | null;
 };
 // Allergène de référence rattaché à un ingrédient (picto + infobulle).

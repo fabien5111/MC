@@ -2,23 +2,30 @@
 
 // Planification d'une recette (porté du panneau « Planifier » de recette.html) :
 // date de dégustation + ajustement (quantité produite / par ingrédient / moule
-// via volume-surface / dimensions par IA) + étapes déjà réalisées → crée une
-// entrée `planning` (facteur + libellé + overrides). Apparaît ensuite dans
-// l'onglet Planning du profil.
+// via volume-surface / dimensions par IA) → matérialise une copie indépendante
+// de la recette (planning + plan_steps/plan_substeps/plan_ingredients/
+// plan_utensils, scalés par le facteur choisi). Apparaît ensuite dans l'onglet
+// Planning du profil. Les étapes déjà réalisées à la planification ne se
+// règlent plus ici : elles se piloteront depuis l'exécution (cf. CLAUDE.md
+// « Recettes planifiées »).
 //
 // En mode édition (crayon du bandeau « Recette planifiée »), modifie l'entrée
-// de planning existante à la place d'en créer une nouvelle (porté de
-// mcEditPlan / plan-validate en mode édition). Le pré-remplissage se limite à
-// la date et, pour le mode « unités », à la quantité ; les modes moule/IA
-// repartent d'un formulaire vierge (édition fine du libellé non reconstituée).
+// de planning existante à la place d'en créer une nouvelle. Le pré-remplissage
+// se limite à la date et, pour le mode « unités », à la quantité ; les modes
+// moule/IA repartent d'un formulaire vierge (édition fine du libellé non
+// reconstituée). Un changement d'ajustement en édition réapplique le nouveau
+// facteur à toutes les lignes issues de la recette (base_quantity connu) —
+// les quantités individuellement modifiées dans l'éditeur d'ingrédients sont
+// alors réinitialisées, faute de distinguer un ajustement automatique d'une
+// modification manuelle dans ce modèle.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
-import { UNITS_LBL, moldMetrics, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
+import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
-import type { Json } from '@/lib/database.types';
-import type { PlanOverrides } from '@/lib/recipe-plan';
+import type { RecipeFull } from '@/lib/recipes';
+import { materializePlan, scalingCoef, scaleFromBase, type PlanFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -27,35 +34,101 @@ const num = (v: string | number | null | undefined): number | null => {
 };
 const fr = (n: number): string => String(n).replace('.', ',');
 
-export type PlanRecipe = {
-  id: string;
-  title: string;
-  measureType: string | null;
-  yieldQty: string | null;
-  yieldUnit: string | null;
-  yieldDesc: string | null;
-  moldForme: string | null;
-  moldDims: Record<string, number> | null;
-  moldSummary: string | null;
-  rendement: string | null;
-  yieldNotes: string | null;
-};
+type Supabase = ReturnType<typeof createClient>;
 
-export type ExistingPlan = { id: number; plannedDate: string; factor: number | null; overrides: PlanOverrides };
+// Insère le contenu matérialisé (étapes → sous-étapes/ingrédients, puis
+// ustensiles) sous une ligne `planning` déjà créée. Séquentiel : chaque
+// plan_step doit exister avant d'insérer ses plan_substeps/plan_ingredients
+// (FK step_id), donc pas de simple insert() en lot pour les étapes.
+async function insertMaterializedPlan(
+  supabase: Supabase,
+  planningId: number,
+  recipe: RecipeFull,
+  factor: number,
+  moldCoefs: { surface: number; volume: number } | null,
+) {
+  const mat = materializePlan(recipe, { factor, moldCoefs });
+  for (const step of mat.steps) {
+    const { data: stepRow, error: stepErr } = await supabase
+      .from('plan_steps')
+      .insert({
+        planning_id: planningId,
+        order_index: step.order_index,
+        day_offset: step.day_offset,
+        title: step.title,
+        description: step.description,
+        tips: step.tips,
+        video_url: step.video_url,
+        prep_time: step.prep_time,
+        cook_time: step.cook_time,
+        wait_time: step.wait_time,
+        cook_temp: step.cook_temp,
+        scaling_mode: step.scaling_mode,
+        source_recipe_id: recipe.id,
+        source_step_id: step.source_step_id,
+      })
+      .select('id')
+      .single();
+    if (stepErr || !stepRow) throw stepErr || new Error('Étape non créée');
+    if (step.substeps.length) {
+      const { error } = await supabase.from('plan_substeps').insert(step.substeps.map((texte, i) => ({ step_id: stepRow.id, order_index: i, texte })));
+      if (error) throw error;
+    }
+    if (step.ingredients.length) {
+      const { error } = await supabase.from('plan_ingredients').insert(
+        step.ingredients.map((it) => ({
+          planning_id: planningId,
+          step_id: stepRow.id,
+          order_index: it.order_index,
+          ref_id: it.ref_id,
+          name: it.name,
+          base_quantity: it.base_quantity,
+          quantity: it.quantity,
+          quantity_text: it.quantity_text,
+          unit: it.unit,
+          comment: it.comment,
+          url: it.url,
+          allergen: it.allergen,
+          source_recipe_id: recipe.id,
+        })),
+      );
+      if (error) throw error;
+    }
+  }
+  if (mat.utensils.length) {
+    const { error } = await supabase
+      .from('plan_utensils')
+      .insert(mat.utensils.map((u) => ({ planning_id: planningId, order_index: u.order_index, name: u.name, comment: u.comment, url: u.url, source_recipe_id: recipe.id })));
+    if (error) throw error;
+  }
+}
+
+// Réapplique un nouveau facteur/coefficients moule aux lignes issues de la
+// recette (base_quantity connu) d'un plan déjà matérialisé. Les lignes
+// ajoutées à la main dans l'éditeur d'ingrédients ne sont jamais touchées.
+async function rescalePlanIngredients(supabase: Supabase, plan: PlanFull, factor: number, moldCoefs: { surface: number; volume: number } | null) {
+  for (const step of plan.plan_steps) {
+    const coef = scalingCoef(step.scaling_mode, factor, moldCoefs);
+    const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id && !it.added);
+    for (const it of rows) {
+      const { quantity, quantity_text } = scaleFromBase(it.base_quantity, it.quantity_text, coef);
+      const { error } = await supabase.from('plan_ingredients').update({ quantity, quantity_text }).eq('id', it.id);
+      if (error) throw error;
+    }
+  }
+}
 
 export function PlanWidget({
   recipe,
   moldTypes,
   ingredients,
-  steps,
   existingPlan,
   isAdmin = false,
 }: {
-  recipe: PlanRecipe;
+  recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
-  steps: { id: number; title: string | null }[];
-  existingPlan?: ExistingPlan | null;
+  existingPlan?: PlanFull | null;
   // Réservé aux administrateurs pour le moment : ajustement des quantités par IA
   // (texte libre) proposé comme troisième mode d'ajustement dans le mode « unités ».
   isAdmin?: boolean;
@@ -68,9 +141,13 @@ export function PlanWidget({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
+  const yInfo = yieldInfo(recipe);
+  const moldSummary = [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null;
+  const moldForme = recipe.mold_types?.forme ?? null;
+  const moldDims = recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims) ? (recipe.mold_dims as Record<string, number>) : null;
+
   const [date, setDate] = useState(today);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<Set<number>>(new Set());
 
   // Le panneau est placé en haut de la fiche (avant la photo) : les
   // déclencheurs situés plus bas (crayon du bandeau « Recette planifiée »)
@@ -92,16 +169,14 @@ export function PlanWidget({
     setAiCoef('');
     setAiMsg(null);
     if (editMode && existingPlan) {
-      setDate(existingPlan.plannedDate);
-      setDone(new Set(existingPlan.overrides.etapes_faites.map(Number)));
-      if (recipe.measureType === 'units') {
-        const y = num(recipe.yieldQty);
+      setDate(existingPlan.planned_date || today);
+      if (recipe.measure_type === 'units') {
+        const y = num(recipe.yield_qty);
         if (y) setQty(String(Math.round(y * (existingPlan.factor || 1) * 100) / 100));
       }
     } else if (!editMode) {
       setDate(today);
-      setDone(new Set());
-      setQty(recipe.yieldQty || '');
+      setQty(recipe.yield_qty || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editMode]);
@@ -109,16 +184,16 @@ export function PlanWidget({
   // Mode « unités »
   const numeric = ingredients.filter((m) => (num(m.qty) || 0) > 0);
   const [uMode, setUMode] = useState<'qty' | 'ing' | 'ia'>('qty');
-  const [qty, setQty] = useState(recipe.yieldQty || '');
+  const [qty, setQty] = useState(recipe.yield_qty || '');
   const [ingIdx, setIngIdx] = useState(0);
   const [ingQty, setIngQty] = useState('');
 
   // Mode « moule » (avec, pour les administrateurs, un sous-mode IA en texte libre)
   const [mMode, setMMode] = useState<'mold' | 'ia'>('mold');
-  const [moldCount, setMoldCount] = useState(String(parseInt(recipe.yieldQty || '', 10) > 0 ? parseInt(recipe.yieldQty!, 10) : 1));
+  const [moldCount, setMoldCount] = useState(String(parseInt(recipe.yield_qty || '', 10) > 0 ? parseInt(recipe.yield_qty!, 10) : 1));
   const [targetType, setTargetType] = useState(''); // '' = moule de la recette
   const [dims, setDims] = useState<Record<string, string>>({});
-  const targetForme = targetType === '' ? recipe.moldForme : moldTypes.find((t) => String(t.id) === targetType)?.forme || null;
+  const targetForme = targetType === '' ? moldForme : moldTypes.find((t) => String(t.id) === targetType)?.forme || null;
 
   // Mode « dimensions » (IA)
   const [aiPrompt, setAiPrompt] = useState('');
@@ -141,8 +216,8 @@ export function PlanWidget({
           prompt: aiPrompt.trim(),
           recette: {
             titre: recipe.title,
-            rendement: recipe.rendement,
-            yield_notes: recipe.yieldNotes,
+            rendement: yInfo?.value ?? null,
+            yield_notes: recipe.yield_notes,
             ingredients: ingredients.map((m) => ({ nom: m.name, quantite: m.qty, unite: m.unit })),
           },
           moules_reference: [],
@@ -159,21 +234,13 @@ export function PlanWidget({
     }
   }
 
-  function compute(): {
-    factor: number;
-    label: string | null;
-    overrides: Record<string, unknown> | null;
-    etapesFaites: string[];
-    moldCoefs: { surface: number; volume: number } | null;
-    moldTarget: Record<string, unknown> | null;
-  } | null {
+  function compute(): { factor: number; label: string | null; moldCoefs: { surface: number; volume: number } | null } | null {
     let factor = 1;
     let label: string | null = null;
     let moldCoefs: { surface: number; volume: number } | null = null;
-    let moldTarget: Record<string, unknown> | null = null;
 
-    if (recipe.measureType === 'units' && (num(recipe.yieldQty) || 0) > 0) {
-      const unitLbl = UNITS_LBL[recipe.yieldUnit || ''] || recipe.yieldUnit || '';
+    if (recipe.measure_type === 'units' && (num(recipe.yield_qty) || 0) > 0) {
+      const unitLbl = UNITS_LBL[recipe.yield_unit || ''] || recipe.yield_unit || '';
       if (uMode === 'ing') {
         const m = numeric[ingIdx];
         const base = num(m?.qty);
@@ -198,10 +265,10 @@ export function PlanWidget({
           alert('Indiquez une quantité valide.');
           return null;
         }
-        factor = want / num(recipe.yieldQty)!;
+        factor = want / num(recipe.yield_qty)!;
         label = `Quantité : ${want} ${unitLbl}`.trim();
       }
-    } else if (recipe.measureType === 'mold' && mMode === 'ia') {
+    } else if (recipe.measure_type === 'mold' && mMode === 'ia') {
       const c = num(aiCoef);
       if (!(c && c > 0)) {
         alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
@@ -209,15 +276,15 @@ export function PlanWidget({
       }
       factor = c;
       label = aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
-    } else if (recipe.measureType === 'mold') {
+    } else if (recipe.measure_type === 'mold') {
       const tgtDims: Record<string, number> = {};
       for (const k of MOLD_FORME_DIMS[targetForme || ''] || []) {
         const v = num(dims[k]);
         if (v && v > 0) tgtDims[k] = v;
       }
-      const src = moldMetrics(recipe.moldForme, recipe.moldDims || {});
+      const src = moldMetrics(moldForme, moldDims || {});
       const tgt = moldMetrics(targetForme, tgtDims);
-      const srcCount = parseInt(recipe.yieldQty || '', 10) > 0 ? parseInt(recipe.yieldQty!, 10) : 1;
+      const srcCount = parseInt(recipe.yield_qty || '', 10) > 0 ? parseInt(recipe.yield_qty!, 10) : 1;
       const tgtCount = parseInt(moldCount, 10) > 0 ? parseInt(moldCount, 10) : srcCount;
       const nRatio = tgtCount / srcCount;
       const coefVol = src.volume && tgt.volume ? (nRatio * tgt.volume) / src.volume : null;
@@ -230,8 +297,7 @@ export function PlanWidget({
       const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v).join(' × ');
       const tname = targetType === '' ? 'Moule de la recette' : moldTypes.find((t) => String(t.id) === targetType)?.name || 'Moule';
       label = `Moule : ${tgtCount > 1 ? tgtCount + ' × ' : ''}${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
-      moldTarget = { type_id: targetType ? Number(targetType) : null, forme: targetForme || null, dims: tgtDims, count: tgtCount };
-    } else if (recipe.measureType === 'dimensions') {
+    } else if (recipe.measure_type === 'dimensions') {
       const c = num(aiCoef);
       if (aiPrompt.trim() && !(c && c > 0)) {
         alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
@@ -244,12 +310,7 @@ export function PlanWidget({
     }
 
     factor = Math.round(factor * 1000) / 1000;
-    const etapesFaites = [...done].map(String);
-    const overrides =
-      etapesFaites.length || moldCoefs || moldTarget
-        ? { mods: {}, added: [], etapes_faites: etapesFaites, ...(moldCoefs ? { mold_coefs: moldCoefs } : {}), ...(moldTarget ? { mold_target: moldTarget } : {}) }
-        : null;
-    return { factor, label, overrides, etapesFaites, moldCoefs, moldTarget };
+    return { factor, label, moldCoefs };
   }
 
   async function validate() {
@@ -265,30 +326,38 @@ export function PlanWidget({
     const res = compute();
     if (!res) return;
     const editing = editMode && existingPlan;
+    // Rien à réajuster si l'ajustement n'a pas changé — évite d'écraser
+    // pour rien les quantités individuellement modifiées dans l'éditeur.
+    const adjustmentChanged = !!editing && (res.factor !== (existingPlan.factor ?? 1) || res.label !== existingPlan.adjust_label);
+
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const lines = [editing ? `Modifier la planification de « ${recipe.title} » pour le ${dateTxt} ?` : `Planifier « ${recipe.title} » le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
     if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
+    if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
     if (!confirm(lines.join('\n'))) return;
 
     setBusy(true);
     const supabase = createClient();
 
     if (editing) {
-      const overrides = {
-        ...existingPlan.overrides,
-        etapes_faites: res.etapesFaites,
-        ...(res.moldCoefs ? { mold_coefs: res.moldCoefs } : {}),
-        ...(res.moldTarget ? { mold_target: res.moldTarget } : {}),
-      };
       const { error } = await supabase
         .from('planning')
-        .update({ planned_date: date, factor: res.factor, adjust_label: res.label, overrides: overrides as unknown as Json })
+        .update({ planned_date: date, ...(adjustmentChanged ? { factor: res.factor, adjust_label: res.label } : {}) })
         .eq('id', existingPlan.id);
       if (error) {
         alert('Erreur : ' + error.message);
         setBusy(false);
         return;
+      }
+      if (adjustmentChanged) {
+        try {
+          await rescalePlanIngredients(supabase, existingPlan, res.factor, res.moldCoefs);
+        } catch (e) {
+          alert('La date a été mise à jour, mais le nouvel ajustement des quantités a échoué : ' + (e as Error).message);
+          setBusy(false);
+          return;
+        }
       }
       close();
       router.refresh();
@@ -302,17 +371,21 @@ export function PlanWidget({
       router.push('/connexion');
       return;
     }
-    const { error } = await supabase.from('planning').insert({
-      user_id: user.id,
-      recipe_id: recipe.id,
-      planned_date: date,
-      factor: res.factor,
-      adjust_label: res.label,
-      overrides: res.overrides as Json,
-      notes: null,
-    });
-    if (error) {
-      alert('Erreur : ' + error.message);
+    const { data: planRow, error } = await supabase
+      .from('planning')
+      .insert({ user_id: user.id, recipe_id: recipe.id, recipe_title: recipe.title, planned_date: date, factor: res.factor, adjust_label: res.label, status: 'planifie', notes: null })
+      .select('id')
+      .single();
+    if (error || !planRow) {
+      alert('Erreur : ' + (error?.message || 'création refusée'));
+      setBusy(false);
+      return;
+    }
+    try {
+      await insertMaterializedPlan(supabase, planRow.id, recipe, res.factor, res.moldCoefs);
+    } catch (e) {
+      await supabase.from('planning').delete().eq('id', planRow.id);
+      alert('Erreur lors de la création du plan : ' + (e as Error).message);
       setBusy(false);
       return;
     }
@@ -327,6 +400,20 @@ export function PlanWidget({
 
   const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary';
   const LBL = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
+
+  // Rappel de la quantité de base de la recette, affiché sous les sélecteurs
+  // d'ajustement pour que le choix (quantité / ingrédient / moule…) se fasse
+  // en connaissance de la production initiale.
+  const qtyInfoBlock = (yInfo?.value || recipe.yield_notes) && (
+    <div className="flex flex-col gap-1">
+      {yInfo?.value && (
+        <span className="font-body-md text-on-surface">
+          <span className={LBL}>Quantité produite </span> {yInfo.value}
+        </span>
+      )}
+      {recipe.yield_notes && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>}
+    </div>
+  );
 
   // Bloc d'ajustement par IA (texte libre → coefficient), partagé entre le mode
   // « dimensions » et le troisième mode « unités » réservé aux administrateurs.
@@ -369,15 +456,15 @@ export function PlanWidget({
         {editMode && existingPlan ? 'Modifier la planification' : 'Planifier cette recette'}
       </h3>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2" style={{ maxWidth: '16rem' }}>
+        <div className="flex items-center gap-3">
           <label className={LBL} htmlFor="plan-date">
             Date de dégustation
           </label>
-          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} />
+          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} style={{ width: '10rem' }} />
         </div>
 
         {/* Ajustement selon le type de mesure */}
-        {recipe.measureType === 'units' && (num(recipe.yieldQty) || 0) > 0 && (
+        {recipe.measure_type === 'units' && (num(recipe.yield_qty) || 0) > 0 && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -398,6 +485,7 @@ export function PlanWidget({
                 </label>
               )}
             </div>
+            {qtyInfoBlock}
             {uMode === 'ia' ? (
               aiBlock
             ) : uMode === 'qty' ? (
@@ -406,7 +494,7 @@ export function PlanWidget({
                   <label className={LBL}>Quantité à produire</label>
                   <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
                 </div>
-                <span className="font-body-md text-on-surface-variant pb-2">{UNITS_LBL[recipe.yieldUnit || ''] || recipe.yieldUnit || ''}</span>
+                <span className="font-body-md text-on-surface-variant pb-2">{UNITS_LBL[recipe.yield_unit || ''] || recipe.yield_unit || ''}</span>
               </div>
             ) : (
               <div className="flex flex-wrap items-end gap-4">
@@ -439,7 +527,7 @@ export function PlanWidget({
           </div>
         )}
 
-        {recipe.measureType === 'mold' && (
+        {recipe.measure_type === 'mold' && (
           <div className="flex flex-col gap-4">
             {isAdmin && (
               <div className="flex flex-wrap gap-6">
@@ -455,6 +543,7 @@ export function PlanWidget({
                 </label>
               </div>
             )}
+            {qtyInfoBlock}
             {mMode === 'ia' ? (
               aiBlock
             ) : (
@@ -473,7 +562,7 @@ export function PlanWidget({
                     className={`${INPUT} flex-1`}
                     style={{ minWidth: '220px' }}
                   >
-                    <option value="">{recipe.moldSummary ? `Moule de la recette — ${recipe.moldSummary}` : 'Moule de la recette'}</option>
+                    <option value="">{moldSummary ? `Moule de la recette — ${moldSummary}` : 'Moule de la recette'}</option>
                     {moldTypes.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
@@ -502,33 +591,10 @@ export function PlanWidget({
           </div>
         )}
 
-        {recipe.measureType === 'dimensions' && aiBlock}
-
-        {/* Étapes déjà réalisées */}
-        {steps.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className={LBL}>
-              J&apos;ai déjà réalisé ces étapes{' '}
-              <span className="normal-case tracking-normal">(leurs ingrédients seront marqués comme déjà en votre possession)</span>
-            </span>
-            {steps.map((s) => (
-              <label key={s.id} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={done.has(s.id)}
-                  onChange={() =>
-                    setDone((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(s.id)) n.delete(s.id);
-                      else n.add(s.id);
-                      return n;
-                    })
-                  }
-                  className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                />
-                <span className="font-body-md">{s.title || 'Étape'}</span>
-              </label>
-            ))}
+        {recipe.measure_type === 'dimensions' && (
+          <div className="flex flex-col gap-4">
+            {qtyInfoBlock}
+            {aiBlock}
           </div>
         )}
 

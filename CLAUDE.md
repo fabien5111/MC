@@ -184,6 +184,60 @@ remontant** en dessous.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
 
+## Recettes planifiées (planning / exécution)
+
+Un plan est une **copie matérialisée** de la recette au moment de la
+planification, pas un diff appliqué sur la recette vivante. L'ancien modèle
+(`planning.overrides` référençant les `id` de `ingredients` / `recipe_steps`
+de la recette) se corrompait silencieusement dès que l'auteur ré-enregistrait
+sa recette : `CreerForm` fait un `delete` + `insert` complet de
+`ingredient_groups` / `recipe_steps` à chaque sauvegarde, ce qui change tous
+les `id` — un plan existant perdait ses ajustements, réaffichait des
+ingrédients supprimés, et pouvait désynchroniser liste de courses et mise en
+place. Le nouveau modèle matérialise le contenu dans le plan lui-même, qui
+devient indépendant de la recette d'origine.
+
+- **`planning`** (+ `plan_steps`, `plan_substeps`, `plan_ingredients`,
+  `plan_utensils`) porte l'**intention** : une copie de la recette propre à
+  l'utilisateur, modifiable (quantités, ingrédients ajoutés/supprimés, et à
+  terme remplacement d'un ingrédient par une sous-recette) sans dépendre de
+  l'évolution de la recette d'origine. `planning.recipe_id` est en
+  `ON DELETE SET NULL` (`recipe_title` dénormalisé prend le relais pour
+  l'affichage si la recette est supprimée). `plan_ingredients.step_id` est une
+  vraie clé étrangère vers `plan_steps` — contrairement à l'ancien appariement
+  par `order_index` entre `ingredient_groups` et `recipe_steps` (aucune FK),
+  ce qui permettra d'insérer les étapes d'une sous-recette sans désynchroniser
+  le lien étape ↔ ingrédients. `order_index` est `numeric` (pas `integer`)
+  pour pouvoir intercaler une insertion sans renuméroter toute la suite.
+- **`executions`** (+ `execution_steps`, `execution_substeps`,
+  `execution_ingredients`, `execution_utensils`) porte la **réalisation** :
+  une session par « je cuisine ce plan maintenant », plusieurs sessions
+  possibles par plan. Chaque ligne **fige** au démarrage le nom, l'unité et
+  la quantité prévue (`planned_quantity` / `planned_text`), et n'ajoute que
+  l'état constaté (`done`, `real_quantity`, `commentaire`). Ses clés
+  étrangères vers les tables `plan_*` sont en `ON DELETE SET NULL`.
+  **Ne jamais resynchroniser ces colonnes figées depuis le plan** — même bien
+  intentionné, ça détruirait la trace de ce qui a réellement été fait le jour
+  J. Si le plan évolue après une session (l'auteur remplace la pâte de
+  pistache par du praliné, ou vous corrigez le plan vous-même), la session
+  passée reste inchangée : c'est le but, pas un oubli.
+- Un plan **ayant au moins une exécution ne peut plus être supprimé**
+  (`executions.planning_id` en `ON DELETE RESTRICT`) — seulement archivé
+  (`planning.status = 'archive'`). C'est ce qui garantit la trace des
+  recettes planifiées déjà réalisées. Toute action « supprimer un plan »
+  (ex. bouton « Retirer du planning » de l'onglet Planning) doit d'abord
+  tenter l'archivage plutôt qu'un `delete` qui échouerait en violation de
+  contrainte dès qu'une session existe.
+- **Replanifier** une recette à partir d'un plan existant = dupliquer les
+  lignes `plan_*` d'un `planning.id` vers un nouveau, avec une nouvelle
+  `planned_date` (`planning.source_plan_id` trace la filiation). Ça ne
+  requête jamais la recette d'origine — le plan copié est déjà autonome.
+- **RLS à deux couches**, motif repris de `shopping_lists` : une policy
+  `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur
+  `owns_plan()` / `owns_execution()`) + trois policies `impersonation_ro_*`
+  (`RESTRICTIVE`, rôle `authenticated`) qui bloquent toute écriture en
+  session « en tant que » lecture seule, quel que soit le propriétaire.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
@@ -195,7 +249,7 @@ principales :
 | Recettes | `recipes`, `recipe_steps`, `step_photos`, `ingredient_groups`, `ingredients`, `recipe_utensils`, `recipe_tags`, `tags`, `difficulties` |
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
-| Planification | `planning` (avec `overrides` JSON), `executions` (snapshot JSON) |
+| Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |
 | Site | `site_settings` (bannières d'accueil) |

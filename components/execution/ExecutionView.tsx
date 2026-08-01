@@ -2,10 +2,17 @@
 
 // Écran d'exécution guidé par jalons (porté de execution.html) : mise en place
 // optionnelle, jalons en accordéon avec étapes à cocher (sous-étapes,
-// ingrédients avec quantité réellement utilisée), tempo vs heure de
-// dégustation, wake lock, résumé de fin de session. Persistance immédiate du
-// snapshot JSON à chaque interaction (autonome — n'affecte plus jamais la
-// recette ni le planning une fois créé).
+// ingrédients avec quantité réellement utilisée + commentaire), tempo vs heure
+// de dégustation, wake lock, résumé de fin de session.
+//
+// Écritures ciblées par ligne (execution_steps/execution_substeps/
+// execution_ingredients/execution_utensils), plus de blob JSON à réécrire en
+// entier à chaque interaction. Chaque ligne fige nom/unité/quantité prévue au
+// démarrage (colonnes `planned_*`) — jamais resynchronisées depuis le plan
+// ensuite (cf. CLAUDE.md « Recettes planifiées ») : les ajustements de
+// quantité et commentaires saisis ici restent attachés à cette session,
+// retrouvables via `plan_ingredient_id` / `plan_step_id` même si le plan
+// évolue par la suite.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -14,17 +21,15 @@ import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
 import type { Execution } from '@/lib/executions';
-import type { ExecutionSnapshot, ExecStep, ExecJalon, ExecSousEtape } from '@/lib/recipe-plan';
-import type { Json } from '@/lib/database.types';
+import { groupExecutionSteps, mergeExecutionIngredientsForMep, fmtNum, type ExecJalon, type ExecutionStepRow, type ExecutionIngredientRow } from '@/lib/recipe-plan';
 
 const MIN = 60000;
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return isNaN(n) ? null : n;
 };
-const fmtNum = (n: number): string => String(+(+n).toFixed(2)).replace('.', ',');
-const stepDur = (e: ExecStep) => (e.prep || 0) + (e.attente || 0) + (e.cuisson || 0);
-const jalonDur = (j: ExecJalon) => (j.etapes || []).reduce((n, e) => n + stepDur(e), 0);
+const stepDur = (s: ExecutionStepRow) => (s.plan_steps?.prep_time || 0) + (s.plan_steps?.wait_time || 0) + (s.plan_steps?.cook_time || 0);
+const jalonDur = (j: ExecJalon) => j.steps.reduce((n, s) => n + stepDur(s), 0);
 const fmtHeure = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const fmtJour = (d: Date) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 const STATUS_LBL: Record<string, string> = { en_cours: 'En cours', terminee: 'Terminée', abandonnee: 'Abandonnée' };
@@ -34,18 +39,6 @@ const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-sur
 // un décalage de jour, contrairement aux étapes de recette.
 const jalonAnchorId = (ji: number) => `sec-jalon-${ji}`;
 const jalonLabel = (j: ExecJalon) => (j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J');
-
-// Sous-étapes : la description est découpée sur les tirets « - » (un par ligne).
-function subSteps(description: string): string[] {
-  return description
-    .split(/(?:^|(?<=\s))[-•]\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function withStep(snapshot: ExecutionSnapshot, ji: number, ei: number, patch: (e: ExecStep) => ExecStep): ExecutionSnapshot {
-  return { ...snapshot, jalons: snapshot.jalons.map((j, i) => (i !== ji ? j : { ...j, etapes: j.etapes.map((e, k) => (k !== ei ? e : patch(e))) })) };
-}
 
 function fmtDuree(ms: number): string {
   const min = Math.max(0, Math.round(ms / MIN));
@@ -70,7 +63,7 @@ export function ExecutionView({
   // exactement comme une exécution terminée (aucune écriture émise).
   const impersonationReadOnly = useReadOnly();
   const readOnly = exec.status !== 'en_cours' || lecture || impersonationReadOnly;
-  const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const commentTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   // Jalons dépliés depuis le sommaire du rail : un <details> normalement
@@ -105,64 +98,77 @@ export function ExecutionView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exec.status, readOnly]);
 
-  async function persistSnapshot(next: ExecutionSnapshot) {
-    if (readOnly) return; // sécurité : les contrôles sont déjà désactivés
-    setExec((prev) => ({ ...prev, snapshot: next }));
-    const { error } = await createClient().from('executions').update({ snapshot: next as unknown as Json }).eq('id', exec.id);
+  async function updateStep(id: number, patch: Partial<Pick<ExecutionStepRow, 'done' | 'done_at' | 'commentaire'>>) {
+    if (readOnly) return;
+    setExec((prev) => ({ ...prev, execution_steps: prev.execution_steps.map((s) => (s.id !== id ? s : { ...s, ...patch })) }));
+    const { error } = await createClient().from('execution_steps').update(patch).eq('id', id);
     if (error) alert('Sauvegarde impossible : ' + error.message);
   }
 
-  function toggleStep(ji: number, ei: number, checked: boolean) {
-    const next = withStep(exec.snapshot, ji, ei, (e) => ({ ...e, faite: checked, date_faite: checked ? new Date().toISOString() : null }));
-    persistSnapshot(next);
+  function toggleStep(id: number, checked: boolean) {
+    updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null });
     if (checked) {
       setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
     }
   }
 
-  function toggleSub(ji: number, ei: number, si: number, checked: boolean) {
-    const next = withStep(exec.snapshot, ji, ei, (e) => {
-      let sousEtapes: ExecSousEtape[] = Array.isArray(e.sous_etapes) && e.sous_etapes[si] ? e.sous_etapes : subSteps(e.description).map((t) => ({ texte: t, fait: false }));
-      sousEtapes = sousEtapes.map((s, k) => (k !== si ? s : { ...s, fait: checked }));
-      return { ...e, sous_etapes: sousEtapes };
-    });
-    persistSnapshot(next);
-  }
-
-  function toggleIng(ji: number, ei: number, ii: number, checked: boolean) {
-    const next = withStep(exec.snapshot, ji, ei, (e) => ({ ...e, ingredients: e.ingredients.map((ing, k) => (k !== ii ? ing : { ...ing, fait: checked })) }));
-    persistSnapshot(next);
-  }
-
-  function setIngReal(ji: number, ei: number, ii: number, value: string) {
-    const next = withStep(exec.snapshot, ji, ei, (e) => ({
-      ...e,
-      ingredients: e.ingredients.map((ing, k) => (k !== ii ? ing : { ...ing, quantite_reelle: numify(value) })),
-    }));
-    persistSnapshot(next);
-  }
-
-  function onStepComment(ji: number, ei: number, value: string) {
-    const next = withStep(exec.snapshot, ji, ei, (e) => ({ ...e, commentaire: value }));
-    setExec((prev) => ({ ...prev, snapshot: next }));
-    const key = `${ji}-${ei}`;
-    clearTimeout(commentTimers.current[key]);
-    commentTimers.current[key] = setTimeout(async () => {
-      const { error } = await createClient().from('executions').update({ snapshot: next as unknown as Json }).eq('id', exec.id);
+  function onStepComment(id: number, value: string) {
+    setExec((prev) => ({ ...prev, execution_steps: prev.execution_steps.map((s) => (s.id !== id ? s : { ...s, commentaire: value })) }));
+    clearTimeout(commentTimers.current[id]);
+    commentTimers.current[id] = setTimeout(async () => {
+      const { error } = await createClient().from('execution_steps').update({ commentaire: value }).eq('id', id);
       if (error) alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
 
-  function toggleMep(kind: 'ustensiles' | 'ingredients', i: number, checked: boolean) {
-    const mep = exec.snapshot.mise_en_place;
-    const next: ExecutionSnapshot = { ...exec.snapshot, mise_en_place: { ...mep, [kind]: mep[kind].map((it, k) => (k !== i ? it : { ...it, fait: checked })) } };
-    persistSnapshot(next);
+  async function toggleSub(id: number, checked: boolean) {
+    if (readOnly) return;
+    setExec((prev) => ({
+      ...prev,
+      execution_steps: prev.execution_steps.map((s) => ({ ...s, execution_substeps: s.execution_substeps.map((su) => (su.id !== id ? su : { ...su, done: checked })) })),
+    }));
+    const { error } = await createClient().from('execution_substeps').update({ done: checked }).eq('id', id);
+    if (error) alert('Sauvegarde impossible : ' + error.message);
   }
 
-  function mepDone() {
-    const next: ExecutionSnapshot = { ...exec.snapshot, mise_en_place: { ...exec.snapshot.mise_en_place, passee: true } };
-    persistSnapshot(next);
+  async function updateIngredient(id: number, patch: Partial<Pick<ExecutionIngredientRow, 'done' | 'real_quantity' | 'commentaire'>>) {
+    if (readOnly) return;
+    setExec((prev) => ({ ...prev, execution_ingredients: prev.execution_ingredients.map((it) => (it.id !== id ? it : { ...it, ...patch })) }));
+    const { error } = await createClient().from('execution_ingredients').update(patch).eq('id', id);
+    if (error) alert('Sauvegarde impossible : ' + error.message);
+  }
+
+  function onIngComment(id: number, value: string) {
+    setExec((prev) => ({ ...prev, execution_ingredients: prev.execution_ingredients.map((it) => (it.id !== id ? it : { ...it, commentaire: value })) }));
+    const key = -id; // distinct de la clé des commentaires d'étape (id positif)
+    clearTimeout(commentTimers.current[key]);
+    commentTimers.current[key] = setTimeout(async () => {
+      const { error } = await createClient().from('execution_ingredients').update({ commentaire: value }).eq('id', id);
+      if (error) alert('Sauvegarde impossible : ' + error.message);
+    }, 800);
+  }
+
+  // Mise en place : les lignes fusionnées (mêmes nom + unité, éventuellement
+  // réparties sur plusieurs étapes) se cochent ensemble.
+  async function toggleMepIngredients(ids: number[], checked: boolean) {
+    if (readOnly) return;
+    setExec((prev) => ({ ...prev, execution_ingredients: prev.execution_ingredients.map((it) => (ids.includes(it.id) ? { ...it, mep_done: checked } : it)) }));
+    const { error } = await createClient().from('execution_ingredients').update({ mep_done: checked }).in('id', ids);
+    if (error) alert('Sauvegarde impossible : ' + error.message);
+  }
+
+  async function toggleMepUtensil(id: number, checked: boolean) {
+    if (readOnly) return;
+    setExec((prev) => ({ ...prev, execution_utensils: prev.execution_utensils.map((u) => (u.id !== id ? u : { ...u, mep_done: checked })) }));
+    const { error } = await createClient().from('execution_utensils').update({ mep_done: checked }).eq('id', id);
+    if (error) alert('Sauvegarde impossible : ' + error.message);
+  }
+
+  async function mepDone() {
+    setExec((prev) => ({ ...prev, mep_done: true }));
     window.scrollTo(0, 0);
+    const { error } = await createClient().from('executions').update({ mep_done: true }).eq('id', exec.id);
+    if (error) alert('Sauvegarde impossible : ' + error.message);
   }
 
   function onGlobalComment(value: string) {
@@ -186,29 +192,27 @@ export function ExecutionView({
     setExec((prev) => ({ ...prev, status, date_fin: fin }));
     wakeLock.current?.release?.().catch(() => {});
     window.scrollTo(0, 0);
-    // Uniquement en fin de session (pas à chaque sauvegarde de snapshot, qui
-    // est très fréquente) : les vues serveur listant les exécutions doivent
-    // refléter le nouveau statut.
+    // Uniquement en fin de session (pas à chaque écriture, très fréquente) :
+    // les vues serveur listant les exécutions doivent refléter le nouveau statut.
     router.refresh();
   }
 
-  const s = exec.snapshot;
+  const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
   const deg = exec.degustation_at
     ? new Date(exec.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : null;
-  const nbEtapes = (s.jalons || []).reduce((n, j) => n + (j.etapes || []).length, 0);
-  const meta = [deg ? `Dégustation prévue ${deg}` : '', `${(s.jalons || []).length} jalon${(s.jalons || []).length > 1 ? 's' : ''} · ${nbEtapes} étape${nbEtapes > 1 ? 's' : ''}`]
+  const nbEtapes = exec.execution_steps.length;
+  const meta = [deg ? `Dégustation prévue ${deg}` : '', `${jalons.length} jalon${jalons.length > 1 ? 's' : ''} · ${nbEtapes} étape${nbEtapes > 1 ? 's' : ''}`]
     .filter(Boolean)
     .join(' — ');
 
   // `readOnly` couvre à la fois « exécution close », « mode lecture » et
   // « impersonation en lecture seule ».
-  const showMep = !readOnly && !s.mise_en_place?.passee && ((s.mise_en_place?.ustensiles || []).length > 0 || (s.mise_en_place?.ingredients || []).length > 0);
+  const showMep = !readOnly && !exec.mep_done && (exec.execution_utensils.length > 0 || exec.execution_ingredients.length > 0);
 
   // Sommaire du rail : sans intérêt pendant la mise en place (les jalons ne
   // sont pas encore dans le DOM), ni s'il n'y a aucun jalon. Le résumé n'y
   // figure que lorsqu'il est réellement affiché (session close).
-  const jalons = s.jalons || [];
   const showResume = exec.status !== 'en_cours' && !showMep;
   const tocSteps = useMemo(() => jalons.map((j, ji) => ({ key: String(ji), title: jalonLabel(j) })), [jalons]);
   const tocSections: TocSections = useMemo(
@@ -223,24 +227,26 @@ export function ExecutionView({
     <>
       {!showMep && jalons.length > 0 && <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} />}
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
-        <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{s.titre || 'Session de préparation'}</h1>
+        <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{exec.planning?.recipe_title || 'Session de préparation'}</h1>
         <span className="font-label-md text-[12px] px-3 py-1 rounded-full bg-secondary/90 text-white">{STATUS_LBL[exec.status] || exec.status}</span>
       </div>
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
 
       <div className="flex flex-col gap-6">
         {showMep ? (
-          <MiseEnPlace snapshot={s} onToggle={toggleMep} onDone={mepDone} />
+          <MiseEnPlace exec={exec} onToggleIngredients={toggleMepIngredients} onToggleUtensil={toggleMepUtensil} onDone={mepDone} />
         ) : (
           <ExecutionBody
             exec={exec}
+            jalons={jalons}
             readOnly={readOnly}
             prevComments={prevComments}
             manuallyOpenedJalons={manuallyOpenedJalons}
             onToggleStep={toggleStep}
             onToggleSub={toggleSub}
-            onToggleIng={toggleIng}
-            onIngReal={setIngReal}
+            onToggleIng={(id, checked) => updateIngredient(id, { done: checked })}
+            onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
+            onIngComment={onIngComment}
             onStepComment={onStepComment}
           />
         )}
@@ -275,46 +281,60 @@ export function ExecutionView({
 }
 
 function MiseEnPlace({
-  snapshot,
-  onToggle,
+  exec,
+  onToggleIngredients,
+  onToggleUtensil,
   onDone,
 }: {
-  snapshot: ExecutionSnapshot;
-  onToggle: (kind: 'ustensiles' | 'ingredients', i: number, checked: boolean) => void;
+  exec: Execution;
+  onToggleIngredients: (ids: number[], checked: boolean) => void;
+  onToggleUtensil: (id: number, checked: boolean) => void;
   onDone: () => void;
 }) {
-  const mep = snapshot.mise_en_place;
-  const items = (kind: 'ustensiles' | 'ingredients', arr: typeof mep.ustensiles) =>
-    arr.map((it, i) => (
-      <li key={i} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
-        <input
-          type="checkbox"
-          checked={!!it.fait}
-          onChange={(e) => onToggle(kind, i, e.target.checked)}
-          className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
-        />
-        <span className={`font-body-md flex-1${it.fait ? ' line-through opacity-50' : ''}`}>{it.nom}</span>
-        {it.quantite != null && it.quantite !== '' && (
-          <span className={`font-label-md text-label-md text-primary whitespace-nowrap${it.fait ? ' line-through opacity-50' : ''}`}>
-            {[typeof it.quantite === 'number' ? fmtNum(it.quantite) : it.quantite, it.unite].filter(Boolean).join(' ')}
-          </span>
-        )}
-      </li>
-    ));
+  const mepIngredients = useMemo(() => mergeExecutionIngredientsForMep(exec.execution_ingredients), [exec.execution_ingredients]);
   return (
     <div className="border border-primary rounded-xl bg-surface-container-lowest p-6">
       <h2 className="font-headline-md text-headline-md text-primary mb-1">Mise en place</h2>
       <p className="text-on-surface-variant text-sm mb-6">Vérifiez que tout est prêt — ou passez directement à la recette.</p>
-      {(mep.ustensiles || []).length > 0 && (
+      {exec.execution_utensils.length > 0 && (
         <>
           <p className={`${LBL_CLS} mb-1`}>Ustensiles</p>
-          <ul className="mb-6">{items('ustensiles', mep.ustensiles)}</ul>
+          <ul className="mb-6">
+            {exec.execution_utensils.map((u) => (
+              <li key={u.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
+                <input
+                  type="checkbox"
+                  checked={u.mep_done}
+                  onChange={(e) => onToggleUtensil(u.id, e.target.checked)}
+                  className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                />
+                <span className={`font-body-md flex-1${u.mep_done ? ' line-through opacity-50' : ''}`}>{u.name}</span>
+              </li>
+            ))}
+          </ul>
         </>
       )}
-      {(mep.ingredients || []).length > 0 && (
+      {mepIngredients.length > 0 && (
         <>
           <p className={`${LBL_CLS} mb-1`}>Ingrédients</p>
-          <ul className="mb-6">{items('ingredients', mep.ingredients)}</ul>
+          <ul className="mb-6">
+            {mepIngredients.map((it) => (
+              <li key={it.key} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
+                <input
+                  type="checkbox"
+                  checked={it.done}
+                  onChange={(e) => onToggleIngredients(it.ids, e.target.checked)}
+                  className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                />
+                <span className={`font-body-md flex-1${it.done ? ' line-through opacity-50' : ''}`}>{it.name}</span>
+                {(it.quantity != null || it.quantityText) && (
+                  <span className={`font-label-md text-label-md text-primary whitespace-nowrap${it.done ? ' line-through opacity-50' : ''}`}>
+                    {[it.quantity != null ? fmtNum(it.quantity) : it.quantityText, it.unit].filter(Boolean).join(' ')}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </>
       )}
       <div className="flex gap-3">
@@ -331,6 +351,7 @@ function MiseEnPlace({
 
 function ExecutionBody({
   exec,
+  jalons,
   readOnly,
   prevComments,
   manuallyOpenedJalons,
@@ -338,23 +359,24 @@ function ExecutionBody({
   onToggleSub,
   onToggleIng,
   onIngReal,
+  onIngComment,
   onStepComment,
 }: {
   exec: Execution;
+  jalons: ExecJalon[];
   readOnly: boolean;
   prevComments: Record<number, { date: string; texte: string }[]>;
   manuallyOpenedJalons: Set<number>;
-  onToggleStep: (ji: number, ei: number, checked: boolean) => void;
-  onToggleSub: (ji: number, ei: number, si: number, checked: boolean) => void;
-  onToggleIng: (ji: number, ei: number, ii: number, checked: boolean) => void;
-  onIngReal: (ji: number, ei: number, ii: number, value: string) => void;
-  onStepComment: (ji: number, ei: number, value: string) => void;
+  onToggleStep: (id: number, checked: boolean) => void;
+  onToggleSub: (id: number, checked: boolean) => void;
+  onToggleIng: (id: number, checked: boolean) => void;
+  onIngReal: (id: number, value: string) => void;
+  onIngComment: (id: number, value: string) => void;
+  onStepComment: (id: number, value: string) => void;
 }) {
-  const s = exec.snapshot;
-  const jalons = s.jalons || [];
-  const all = jalons.flatMap((j) => j.etapes || []);
-  const done = all.filter((e) => e.faite).length;
-  const curIdx = jalons.findIndex((j) => (j.etapes || []).some((e) => !e.faite));
+  const all = jalons.flatMap((j) => j.steps);
+  const done = all.filter((s) => s.done).length;
+  const curIdx = jalons.findIndex((j) => j.steps.some((s) => !s.done));
   let pendingMarked = false;
 
   // Tempo du jalon courant : heure attendue = cible + durées des étapes déjà faites.
@@ -370,11 +392,11 @@ function ExecutionBody({
   }
   function tempoChip() {
     if (exec.status !== 'en_cours' || !exec.degustation_at) return null;
-    const j = jalons.find((x) => (x.etapes || []).some((e) => !e.faite));
+    const j = jalons.find((x) => x.steps.some((s) => !s.done));
     if (!j) return null;
     const target = jalonTarget(j);
     if (!target) return null;
-    const doneMin = j.etapes.filter((e) => e.faite).reduce((n, e) => n + stepDur(e), 0);
+    const doneMin = j.steps.filter((s) => s.done).reduce((n, s) => n + stepDur(s), 0);
     const expected = new Date(target.getTime() + doneMin * MIN);
     const diff = Math.round((Date.now() - expected.getTime()) / MIN);
     if (diff < -720) return <span className="font-label-md text-[12px] px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant">À démarrer le {fmtJour(target)} vers {fmtHeure(target)}</span>;
@@ -399,7 +421,7 @@ function ExecutionBody({
       </div>
 
       {jalons.map((j, ji) => {
-        const jDone = (j.etapes || []).every((e) => e.faite);
+        const jDone = j.steps.every((s) => s.done);
         const isCurrent = ji === curIdx;
         const dt = jalonDate(j);
         const target = jalonTarget(j);
@@ -423,29 +445,29 @@ function ExecutionBody({
                 </span>
                 <span className="text-[12px] text-on-surface-variant">
                   {target ? `À démarrer vers ${fmtHeure(target)} · ` : ''}
-                  {formatTime(jalonDur(j))} de travail · {(j.etapes || []).filter((e) => e.faite).length}/{(j.etapes || []).length} étape
-                  {(j.etapes || []).length > 1 ? 's' : ''}
+                  {formatTime(jalonDur(j))} de travail · {j.steps.filter((s) => s.done).length}/{j.steps.length} étape
+                  {j.steps.length > 1 ? 's' : ''}
                 </span>
               </span>
               <span className="material-symbols-outlined text-on-surface-variant">expand_more</span>
             </summary>
             <div className="p-4 flex flex-col gap-4">
-              {(j.etapes || []).map((e, ei) => {
-                const isPending = !pendingMarked && !e.faite;
+              {j.steps.map((s) => {
+                const isPending = !pendingMarked && !s.done;
                 if (isPending) pendingMarked = true;
                 return (
                   <StepCard
-                    key={e.id}
-                    ji={ji}
-                    ei={ei}
-                    step={e}
+                    key={s.id}
+                    step={s}
+                    ingredients={exec.execution_ingredients.filter((it) => it.execution_step_id === s.id)}
                     readOnly={readOnly}
                     isPending={isPending}
-                    prevComments={prevComments[e.id] || []}
+                    prevComments={(s.plan_step_id != null && prevComments[s.plan_step_id]) || []}
                     onToggleStep={onToggleStep}
                     onToggleSub={onToggleSub}
                     onToggleIng={onToggleIng}
                     onIngReal={onIngReal}
+                    onIngComment={onIngComment}
                     onStepComment={onStepComment}
                   />
                 );
@@ -459,9 +481,8 @@ function ExecutionBody({
 }
 
 function StepCard({
-  ji,
-  ei,
-  step: e,
+  step: s,
+  ingredients,
   readOnly,
   isPending,
   prevComments,
@@ -469,59 +490,60 @@ function StepCard({
   onToggleSub,
   onToggleIng,
   onIngReal,
+  onIngComment,
   onStepComment,
 }: {
-  ji: number;
-  ei: number;
-  step: ExecStep;
+  step: ExecutionStepRow;
+  ingredients: ExecutionIngredientRow[];
   readOnly: boolean;
   isPending: boolean;
   prevComments: { date: string; texte: string }[];
-  onToggleStep: (ji: number, ei: number, checked: boolean) => void;
-  onToggleSub: (ji: number, ei: number, si: number, checked: boolean) => void;
-  onToggleIng: (ji: number, ei: number, ii: number, checked: boolean) => void;
-  onIngReal: (ji: number, ei: number, ii: number, value: string) => void;
-  onStepComment: (ji: number, ei: number, value: string) => void;
+  onToggleStep: (id: number, checked: boolean) => void;
+  onToggleSub: (id: number, checked: boolean) => void;
+  onToggleIng: (id: number, checked: boolean) => void;
+  onIngReal: (id: number, value: string) => void;
+  onIngComment: (id: number, value: string) => void;
+  onStepComment: (id: number, value: string) => void;
 }) {
+  const plan = s.plan_steps;
   const badges = [
-    e.prep ? `PRÉP ${formatTime(e.prep).toUpperCase()}` : '',
-    e.attente ? `ATTENTE ${formatTime(e.attente).toUpperCase()}` : '',
-    e.cuisson ? `CUISSON ${formatTime(e.cuisson).toUpperCase()}${e.temperature ? ' · ' + e.temperature + ' °C' : ''}` : e.temperature ? `CUISSON ${e.temperature} °C` : '',
+    plan?.prep_time ? `PRÉP ${formatTime(plan.prep_time).toUpperCase()}` : '',
+    plan?.wait_time ? `ATTENTE ${formatTime(plan.wait_time).toUpperCase()}` : '',
+    plan?.cook_time ? `CUISSON ${formatTime(plan.cook_time).toUpperCase()}${plan.cook_temp ? ' · ' + plan.cook_temp + ' °C' : ''}` : plan?.cook_temp ? `CUISSON ${plan.cook_temp} °C` : '',
   ].filter(Boolean);
-
-  const parts: { texte: string; fait: boolean }[] | null = Array.isArray(e.sous_etapes) && e.sous_etapes.length ? e.sous_etapes : e.description && subSteps(e.description).length > 1 ? subSteps(e.description).map((t) => ({ texte: t, fait: false })) : null;
+  const substeps = [...s.execution_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
   return (
-    <div className={`border border-outline-variant rounded-lg bg-white overflow-hidden${e.faite ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div className={`border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
         <input
           type="checkbox"
-          checked={e.faite}
+          checked={s.done}
           disabled={readOnly}
-          onChange={(ev) => onToggleStep(ji, ei, ev.target.checked)}
+          onChange={(ev) => onToggleStep(s.id, ev.target.checked)}
           className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
         />
         <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[20px] text-primary block${e.faite ? ' line-through' : ''}`}>{e.titre}</span>
+          <span className={`font-headline-md text-[20px] text-primary block${s.done ? ' line-through' : ''}`}>{s.titre}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
         </span>
       </label>
 
-      {e.ingredients.length > 0 && (
+      {ingredients.length > 0 && (
         <ul className="px-4 pb-2">
-          {e.ingredients.map((ing, ii) => {
-            const prevTxt = [typeof ing.quantite_prevue === 'number' ? fmtNum(ing.quantite_prevue) : ing.quantite_prevue || '', ing.unite].filter(Boolean).join(' ');
-            const struck = ing.fait ? ' line-through opacity-50' : '';
+          {ingredients.map((ing) => {
+            const prevTxt = [ing.planned_quantity != null ? fmtNum(ing.planned_quantity) : ing.planned_text || '', ing.unit].filter(Boolean).join(' ');
+            const struck = ing.done ? ' line-through opacity-50' : '';
             return (
-              <li key={ii} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
+              <li key={ing.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 flex-wrap">
                 <input
                   type="checkbox"
-                  checked={ing.fait}
+                  checked={ing.done}
                   disabled={readOnly}
-                  onChange={(ev) => onToggleIng(ji, ei, ii, ev.target.checked)}
+                  onChange={(ev) => onToggleIng(ing.id, ev.target.checked)}
                   className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                 />
-                <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.nom}</span>
+                <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
                 <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>prévu {prevTxt}</span>
                 <input
                   type="number"
@@ -530,47 +552,55 @@ function StepCard({
                   inputMode="decimal"
                   placeholder="réel"
                   disabled={readOnly}
-                  defaultValue={ing.quantite_reelle != null ? ing.quantite_reelle : ''}
-                  onBlur={(ev) => onIngReal(ji, ei, ii, ev.target.value)}
+                  defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
+                  onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
                   className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center"
                   style={{ width: '5rem' }}
                 />
-                <span className="text-sm text-on-surface-variant">{ing.unite || ''}</span>
+                <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
+                <input
+                  type="text"
+                  placeholder="note (ex : trop sec, viser +10 g)"
+                  disabled={readOnly}
+                  defaultValue={ing.commentaire || ''}
+                  onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
+                  className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-[10rem]"
+                />
               </li>
             );
           })}
         </ul>
       )}
 
-      {parts ? (
+      {substeps.length > 0 ? (
         <ul className="px-4 pb-3 flex flex-col gap-4">
-          {parts.map((p, si) => (
-            <li key={si} className="flex items-start gap-3">
+          {substeps.map((su) => (
+            <li key={su.id} className="flex items-start gap-3">
               <input
                 type="checkbox"
-                checked={!!p.fait}
+                checked={su.done}
                 disabled={readOnly}
-                onChange={(ev) => onToggleSub(ji, ei, si, ev.target.checked)}
+                onChange={(ev) => onToggleSub(su.id, ev.target.checked)}
                 className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
               />
-              <span className={`font-body-md text-body-md leading-relaxed${p.fait ? ' line-through opacity-50' : ''}`}>{p.texte}</span>
+              <span className={`font-body-md text-body-md leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
             </li>
           ))}
         </ul>
       ) : (
-        e.description && <div className="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface whitespace-pre-line">{e.description}</div>
+        plan?.description && <div className="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface whitespace-pre-line">{plan.description}</div>
       )}
 
-      {e.video && (
+      {plan?.video_url && (
         <div className="px-4 pb-3">
-          <StepVideoPlayer url={e.video} />
+          <StepVideoPlayer url={plan.video_url} />
         </div>
       )}
 
-      {e.tips && (
+      {plan?.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
-          <div className="font-body-md text-sm italic whitespace-pre-line">{e.tips}</div>
+          <div className="font-body-md text-sm italic whitespace-pre-line">{plan.tips}</div>
         </div>
       )}
 
@@ -590,8 +620,8 @@ function StepCard({
           rows={2}
           placeholder="Commentaire sur cette étape (sauvegardé automatiquement)…"
           disabled={readOnly}
-          value={e.commentaire || ''}
-          onChange={(ev) => onStepComment(ji, ei, ev.target.value)}
+          value={s.commentaire || ''}
+          onChange={(ev) => onStepComment(s.id, ev.target.value)}
           className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
         />
       </div>
@@ -600,24 +630,24 @@ function StepCard({
 }
 
 function SummaryPanel({ exec, lecture, onGlobalComment }: { exec: Execution; lecture: boolean; onGlobalComment: (v: string) => void }) {
-  function jalonDate(j: ExecJalon): Date | null {
+  function jalonDate(offset: number): Date | null {
     if (!exec.degustation_at) return null;
     const d = new Date(exec.degustation_at);
-    d.setDate(d.getDate() - (j.offset || 0));
+    d.setDate(d.getDate() - offset);
     return d;
   }
-  const s = exec.snapshot;
-  const all = (s.jalons || []).flatMap((j) => j.etapes || []);
-  const done = all.filter((e) => e.faite).length;
+  const jalons = groupExecutionSteps(exec.execution_steps);
+  const all = exec.execution_steps;
+  const done = all.filter((s) => s.done).length;
   const duree = exec.date_fin ? fmtDuree(+new Date(exec.date_fin) - +new Date(exec.date_debut)) : '—';
-  const jalonRows = (s.jalons || []).map((j, ji) => {
+  const jalonRows = jalons.map((j, ji) => {
     const label = j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J';
-    if (!(j.etapes || []).length) return null;
-    if (!(j.etapes || []).every((e) => e.faite)) return <li key={ji}>{label} : <span className="text-on-surface-variant">non terminé</span></li>;
-    const dates = j.etapes.filter((e) => e.date_faite).map((e) => new Date(e.date_faite!).getTime());
+    if (!j.steps.length) return null;
+    if (!j.steps.every((s) => s.done)) return <li key={ji}>{label} : <span className="text-on-surface-variant">non terminé</span></li>;
+    const dates = j.steps.filter((s) => s.done_at).map((s) => new Date(s.done_at!).getTime());
     if (!dates.length) return <li key={ji}>{label} : terminé</li>;
     const last = new Date(Math.max(...dates));
-    const deadline = jalonDate(j);
+    const deadline = jalonDate(j.offset);
     const diff = deadline ? Math.round((+last - +deadline) / MIN) : null;
     return (
       <li key={ji}>
@@ -626,23 +656,19 @@ function SummaryPanel({ exec, lecture, onGlobalComment }: { exec: Execution; lec
       </li>
     );
   });
-  const ecarts: { key: string; nom: string; prev: string; reel: string }[] = [];
-  (s.jalons || []).forEach((j) =>
-    (j.etapes || []).forEach((e) =>
-      (e.ingredients || []).forEach((i, k) => {
-        if (i.quantite_reelle != null && numify(i.quantite_prevue) !== i.quantite_reelle) {
-          const u = i.unite ? ' ' + i.unite : '';
-          ecarts.push({ key: `${e.id}-${k}`, nom: i.nom, prev: (typeof i.quantite_prevue === 'number' ? fmtNum(i.quantite_prevue) : i.quantite_prevue) + u, reel: fmtNum(i.quantite_reelle) + u });
-        }
-      }),
-    ),
-  );
-  const comms: { key: string; titre: string; texte: string }[] = [];
-  (s.jalons || []).forEach((j) =>
-    (j.etapes || []).forEach((e) => {
-      if (e.commentaire) comms.push({ key: String(e.id), titre: e.titre, texte: e.commentaire });
-    }),
-  );
+  const ecarts = exec.execution_ingredients
+    .filter((it) => (it.real_quantity != null && it.real_quantity !== it.planned_quantity) || it.commentaire)
+    .map((it) => {
+      const u = it.unit ? ' ' + it.unit : '';
+      return {
+        key: it.id,
+        nom: it.name,
+        prev: (it.planned_quantity != null ? fmtNum(it.planned_quantity) : it.planned_text || '') + u,
+        reel: it.real_quantity != null ? fmtNum(it.real_quantity) + u : null,
+        commentaire: it.commentaire,
+      };
+    });
+  const comms = exec.execution_steps.filter((s) => s.commentaire).map((s) => ({ key: s.id, titre: s.titre, texte: s.commentaire! }));
 
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
@@ -663,11 +689,13 @@ function SummaryPanel({ exec, lecture, onGlobalComment }: { exec: Execution; lec
       </div>
       {ecarts.length > 0 && (
         <div>
-          <p className={`${LBL_CLS} mb-1`}>Écarts de quantités</p>
+          <p className={`${LBL_CLS} mb-1`}>Ajustements d&apos;ingrédients</p>
           <ul className="text-sm flex flex-col gap-1">
             {ecarts.map((e) => (
               <li key={e.key}>
-                {e.nom} : prévu {e.prev} → utilisé <span className="font-bold text-primary">{e.reel}</span>
+                {e.nom} : prévu {e.prev}
+                {e.reel && <> → utilisé <span className="font-bold text-primary">{e.reel}</span></>}
+                {e.commentaire && <span className="italic text-on-surface-variant"> — {e.commentaire}</span>}
               </li>
             ))}
           </ul>
