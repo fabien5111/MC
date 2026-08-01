@@ -3,6 +3,7 @@
 // Grille « Dernières créations » de l'accueil, avec chargement incrémental
 // (bouton « Charger plus de délices ») via /api/recipes.
 import { useState } from 'react';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { RecipeCardClient } from '@/components/RecipeCardClient';
 import type { RecipeCardWithAllergens } from '@/lib/recipes';
 
@@ -45,6 +46,7 @@ export function HomeRecipeGrid({
 
   return (
     <>
+      <LoadingOverlay visible={loading} label="Chargement des recettes" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {recipes.map((r) => (
           <RecipeCardClient key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!currentUserId && r.author_id === currentUserId} />
@@ -58,7 +60,7 @@ export function HomeRecipeGrid({
             disabled={loading}
             className="border-2 border-primary text-primary px-20 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-md hover:shadow-xl disabled:opacity-60"
           >
-            {loading ? 'Chargement…' : 'Charger plus de délices'}
+            Charger plus de délices
           </button>
         </div>
       )}
