@@ -1,101 +1,97 @@
 'use client';
 
 // Ingrédients en mode planifié (porté de recette.html) : colonnes Coef. /
-// Quantité ajustée / Quantité d'origine, lignes barrées (retirées) / modifiées
-// (orange) / ajoutées (vert) / déjà en possession (vert barré), édition en
-// ligne (crayon), ajout d'un ingrédient par groupe. Persiste dans
-// `planning.overrides` à chaque modification (client Supabase navigateur).
+// Quantité ajustée / Quantité d'origine, lignes barrées (retirées) / ajoutées
+// (vert), édition en ligne (crayon), ajout d'un ingrédient par étape. Écrit
+// directement sur `plan_ingredients` (le plan possède sa propre copie des
+// ingrédients — voir CLAUDE.md « Recettes planifiées ») : chaque action est
+// une écriture ciblée sur la ligne concernée, plus de blob JSON à réécrire.
 import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { RecipeFull } from '@/lib/recipes';
-import type { PlanningEntry } from '@/lib/profile';
 import type { Unit } from '@/lib/profile';
-import type { Json } from '@/lib/database.types';
-import { normalizeOverrides, buildGroupRows, ownedGroupOrders, fmtNum, type PlanOverrides, type PlanRow } from '@/lib/recipe-plan';
+import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
 
-type EditKey = string | null; // `${groupId}:${rowId}`
+type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
-export function PlanIngredientsEditor({
-  groups,
-  steps,
-  plan,
-  units,
-  unitTips,
-}: {
-  groups: RecipeFull['ingredient_groups'];
-  steps: RecipeFull['recipe_steps'];
-  plan: PlanningEntry;
-  units: Unit[];
-  unitTips: Record<string, string>;
-}) {
+const numify = (v: string): number | null => {
+  const n = parseFloat(v.replace(',', '.'));
+  return isNaN(n) ? null : n;
+};
+const round2 = (n: number): number => +n.toFixed(2);
+
+export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFull; units: Unit[]; unitTips: Record<string, string> }) {
   const { mutate } = useMutation();
-  const overrides = normalizeOverrides(plan.overrides);
   const [editing, setEditing] = useState<EditKey>(null);
-  const [addingGroup, setAddingGroup] = useState<number | null>(null);
+  const [addingStep, setAddingStep] = useState<number | null>(null);
 
-  const owned = ownedGroupOrders(overrides, steps);
+  // Chaque action est une écriture ciblée sur `plan_ingredients` (via
+  // useMutation : spinner + confirm optionnel + resynchronisation du Server
+  // Component parent — fiche recette, liste de courses, onglet Planning).
+  function applyEdit(row: PlanIngredientRow, qtyStr: string, coefStr: string) {
+    const qv = qtyStr.trim() === '' ? null : numify(qtyStr);
+    const cv = coefStr.trim() === '' ? null : numify(coefStr);
+    let patch: { quantity: number | null; quantity_text: string | null } | null = null;
+    if (qv != null && !isNaN(qv)) {
+      patch = { quantity: qv, quantity_text: null };
+    } else if (cv != null && !isNaN(cv) && cv > 0 && row.base_quantity != null) {
+      patch = { quantity: round2(row.base_quantity * cv), quantity_text: null };
+    }
+    setEditing(null);
+    if (!patch) return;
+    mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+  }
 
-  // Persiste puis rafraîchit le Server Component parent : la liste complète,
-  // la liste de courses et l'ajusteur de quantités dérivent tous des mêmes
-  // overrides côté serveur et doivent rester en phase avec cet éditeur.
-  async function persist(next: PlanOverrides) {
-    await mutate(
+  function toggleRemove(row: PlanIngredientRow) {
+    mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+  }
+
+  function removeAdded(row: PlanIngredientRow) {
+    mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
+  }
+
+  function applyEditAdded(row: PlanIngredientRow, name: string, qtyStr: string, unit: string) {
+    if (!name.trim()) {
+      alert("Indiquez un nom d'ingrédient.");
+      return;
+    }
+    const n = numify(qtyStr);
+    setEditing(null);
+    mutate(
       () =>
         createClient()
-          .from('planning')
-          .update({ overrides: next as unknown as Json })
-          .eq('id', plan.id),
+          .from('plan_ingredients')
+          .update({ name: name.trim(), quantity: n, quantity_text: n == null && qtyStr.trim() ? qtyStr.trim() : null, unit: unit.trim() || null })
+          .eq('id', row.id),
       { errorLabel: 'Modification non enregistrée' },
     );
   }
 
-  function applyEdit(row: PlanRow, qty: string, coef: string) {
-    const qv = qty.trim() === '' ? null : parseFloat(qty.replace(',', '.'));
-    const cv = coef.trim() === '' ? null : parseFloat(coef.replace(',', '.'));
-    const mods = { ...overrides.mods };
-    const key = row.id;
-    if (qv != null && !isNaN(qv) && qv !== row.adjQty) {
-      mods[key] = { qty: qv };
-    } else if (cv != null && !isNaN(cv) && cv > 0 && cv !== row.coef) {
-      mods[key] = { coef: cv };
-    } else {
-      setEditing(null);
-      return;
-    }
-    setEditing(null);
-    persist({ ...overrides, mods });
-  }
-
-  function toggleRemove(row: PlanRow) {
-    const mods = { ...overrides.mods };
-    mods[row.id] = { ...mods[row.id], removed: !mods[row.id]?.removed };
-    persist({ ...overrides, mods });
-  }
-
-  function removeAdded(idx: number) {
-    const added = overrides.added.filter((_, i) => i !== idx);
-    persist({ ...overrides, added });
-  }
-
-  function applyEditAdded(idx: number, name: string, qty: string, unit: string) {
+  async function addIng(stepId: number, name: string, qtyStr: string, unit: string) {
     if (!name.trim()) {
       alert("Indiquez un nom d'ingrédient.");
       return;
     }
-    const added = overrides.added.map((a, i) => (i === idx ? { ...a, name: name.trim(), qty: qty.trim(), unit: unit.trim() } : a));
-    setEditing(null);
-    persist({ ...overrides, added });
-  }
-
-  function addIng(groupId: number, name: string, qty: string, unit: string) {
-    if (!name.trim()) {
-      alert("Indiquez un nom d'ingrédient.");
-      return;
-    }
-    const added = [...overrides.added, { group: String(groupId), name: name.trim(), qty: qty.trim(), unit: unit.trim() }];
-    setAddingGroup(null);
-    persist({ ...overrides, added });
+    const n = numify(qtyStr);
+    const stepRows = plan.plan_ingredients.filter((it) => it.step_id === stepId);
+    const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
+    setAddingStep(null);
+    await mutate(
+      () =>
+        createClient()
+          .from('plan_ingredients')
+          .insert({
+            planning_id: plan.id,
+            step_id: stepId,
+            order_index: nextOrder,
+            name: name.trim(),
+            quantity: n,
+            quantity_text: n == null && qtyStr.trim() ? qtyStr.trim() : null,
+            unit: unit.trim() || null,
+            added: true,
+          }),
+      { errorLabel: 'Ajout impossible' },
+    );
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
@@ -121,93 +117,87 @@ export function PlanIngredientsEditor({
     );
   };
 
+  const steps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
+
   return (
     <div className="space-y-10">
-      {groups.map((g) => {
-        const rows = buildGroupRows(g, plan, overrides, owned.has(g.order_index || 0));
+      {steps.map((step) => {
+        const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
+        if (!rows.length && addingStep !== step.id) return null;
         return (
-          <div key={g.id}>
-            <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">{g.name || ''}</h4>
-            <ul style={gridStyle}>
-              <li className="pb-1" style={rowStyle}>
-                <span />
-                <span className={LBL}>Coef.</span>
-                <span className={`${LBL} text-primary`}>Quantité ajustée</span>
-                <span className={LBL}>Quantité d&apos;origine</span>
-                <span />
-              </li>
-              {rows.map((row) => {
-                const key = `${g.id}:${row.id}`;
-                const tone = row.removed
-                  ? 'text-error line-through'
-                  : row.owned
-                    ? 'text-green-700 line-through opacity-70'
-                    : row.addedIdx != null
-                      ? 'text-green-700'
-                      : row.modified
-                        ? 'text-orange-600'
-                        : '';
-                const adjText = row.adjQty != null ? fmtNum(row.adjQty) : row.quantity || '';
-                const origText = row.addedIdx != null ? '—' : row.quantity || '';
-                return (
-                  <Fragment key={row.id}>
-                    <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
-                      <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
-                        {row.url ? (
-                          <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                            {row.name}
-                          </a>
-                        ) : (
-                          row.name
-                        )}
-                        {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
-                      </span>
-                      <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                        {row.coef != null ? `× ${fmtNum(row.coef)}` : '—'}
-                      </span>
-                      <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit)}</span>
-                      <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                        {row.addedIdx != null ? '—' : withUnit(origText, row.unit)}
-                      </span>
-                      <span className="no-print flex items-center gap-1 justify-self-center">
-                        <button
-                          type="button"
-                          onClick={() => setEditing(editing === key ? null : key)}
-                          title={row.addedIdx != null ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
-                          className="text-primary hover:opacity-70"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        {row.addedIdx != null ? (
-                          <button type="button" onClick={() => removeAdded(row.addedIdx!)} title="Retirer cet ajout" className="text-error hover:opacity-70">
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        ) : (
+          <div key={step.id}>
+            <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">{step.title || ''}</h4>
+            {rows.length > 0 && (
+              <ul style={gridStyle}>
+                <li className="pb-1" style={rowStyle}>
+                  <span />
+                  <span className={LBL}>Coef.</span>
+                  <span className={`${LBL} text-primary`}>Quantité ajustée</span>
+                  <span className={LBL}>Quantité d&apos;origine</span>
+                  <span />
+                </li>
+                {rows.map((row) => {
+                  const key = `${step.id}:${row.id}`;
+                  const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
+                  const tone = row.removed ? 'text-error line-through' : row.added ? 'text-green-700' : '';
+                  const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
+                  const origText = row.added ? '—' : row.base_quantity != null ? fmtNum(row.base_quantity) : row.quantity_text || '—';
+                  return (
+                    <Fragment key={row.id}>
+                      <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
+                        <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                          {row.url ? (
+                            <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                              {row.name}
+                            </a>
+                          ) : (
+                            row.name
+                          )}
+                          {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
+                        </span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit)}</span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{row.added ? '—' : withUnit(origText, row.unit)}</span>
+                        <span className="no-print flex items-center gap-1 justify-self-center">
                           <button
                             type="button"
-                            onClick={() => toggleRemove(row)}
-                            title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
-                            className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                            onClick={() => setEditing(editing === key ? null : key)}
+                            title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
+                            className="text-primary hover:opacity-70"
                           >
-                            <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                        )}
-                      </span>
-                    </li>
-                    {editing === key &&
-                      (row.addedIdx != null ? (
-                        <AddedEditForm key={key + '-form'} row={row} units={units} onApply={(n, q, u) => applyEditAdded(row.addedIdx!, n, q, u)} onCancel={() => setEditing(null)} />
-                      ) : (
-                        <LineEditForm key={key + '-form'} row={row} onApply={(q, c) => applyEdit(row, q, c)} onCancel={() => setEditing(null)} />
-                      ))}
-                  </Fragment>
-                );
-              })}
-            </ul>
-            {addingGroup === g.id ? (
-              <AddForm units={units} onAdd={(n, q, u) => addIng(g.id, n, q, u)} onCancel={() => setAddingGroup(null)} />
+                          {row.added ? (
+                            <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleRemove(row)}
+                              title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
+                              className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                      {editing === key &&
+                        (row.added ? (
+                          <AddedEditForm key={key + '-form'} row={row} units={units} onApply={(n, q, u) => applyEditAdded(row, n, q, u)} onCancel={() => setEditing(null)} />
+                        ) : (
+                          <LineEditForm key={key + '-form'} row={row} onApply={(q, c) => applyEdit(row, q, c)} onCancel={() => setEditing(null)} />
+                        ))}
+                    </Fragment>
+                  );
+                })}
+              </ul>
+            )}
+            {addingStep === step.id ? (
+              <AddForm units={units} onAdd={(n, q, u) => addIng(step.id, n, q, u)} onCancel={() => setAddingStep(null)} />
             ) : (
-              <button type="button" onClick={() => setAddingGroup(g.id)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
+              <button type="button" onClick={() => setAddingStep(step.id)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
               </button>
             )}
@@ -220,22 +210,23 @@ export function PlanIngredientsEditor({
 
 const FIELD = 'border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm';
 
-function LineEditForm({ row, onApply, onCancel }: { row: PlanRow; onApply: (qty: string, coef: string) => void; onCancel: () => void }) {
-  const [coef, setCoef] = useState(row.coef != null ? fmtNum(row.coef) : '');
-  const [qty, setQty] = useState(row.adjQty != null ? fmtNum(row.adjQty) : '');
+function LineEditForm({ row, onApply, onCancel }: { row: PlanIngredientRow; onApply: (qty: string, coef: string) => void; onCancel: () => void }) {
+  const coef = row.base_quantity && row.quantity != null ? +(row.quantity / row.base_quantity).toFixed(2) : null;
+  const [coefStr, setCoefStr] = useState(coef != null ? fmtNum(coef) : '');
+  const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : '');
   return (
     <li style={{ gridColumn: '1/-1' }} className="py-3">
       <div className="flex flex-wrap items-end gap-3">
         <span className="font-body-md text-sm text-on-surface-variant pb-2">{row.name} :</span>
         <label className="flex flex-col gap-1">
           <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Coefficient</span>
-          <input type="number" min={0} step="any" value={coef} onChange={(e) => setCoef(e.target.value)} className={FIELD} style={{ width: '6rem' }} />
+          <input type="number" min={0} step="any" value={coefStr} onChange={(e) => setCoefStr(e.target.value)} disabled={row.base_quantity == null} className={FIELD} style={{ width: '6rem' }} />
         </label>
         <label className="flex flex-col gap-1">
           <span className="font-label-md text-[10px] uppercase text-on-surface-variant">ou quantité ajustée{row.unit ? ` (${row.unit})` : ''}</span>
           <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} className={FIELD} style={{ width: '7rem' }} />
         </label>
-        <button type="button" onClick={() => onApply(qty, coef)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+        <button type="button" onClick={() => onApply(qty, coefStr)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
           OK
         </button>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
@@ -246,9 +237,9 @@ function LineEditForm({ row, onApply, onCancel }: { row: PlanRow; onApply: (qty:
   );
 }
 
-function AddedEditForm({ row, units, onApply, onCancel }: { row: PlanRow; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
+function AddedEditForm({ row, units, onApply, onCancel }: { row: PlanIngredientRow; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
   const [name, setName] = useState(row.name);
-  const [qty, setQty] = useState(row.quantity || '');
+  const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '');
   const [unit, setUnit] = useState(row.unit || '');
   return (
     <li style={{ gridColumn: '1/-1' }} className="py-3">

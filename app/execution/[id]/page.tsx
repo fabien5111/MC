@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { getExecution, getPastExecutions } from '@/lib/executions';
+import { getExecution, getPastStepComments } from '@/lib/executions';
 import { ExecutionView } from '@/components/execution/ExecutionView';
 
 type Params = {
@@ -12,7 +12,7 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const exec = Number.isFinite(Number(id)) ? await getExecution(Number(id)) : null;
-  return { title: exec ? `Exécution — ${exec.snapshot.titre} | Maryse-Club` : 'Exécution | Maryse-Club' };
+  return { title: exec ? `Exécution — ${exec.planning?.recipe_title || 'Session'} | Maryse-Club` : 'Exécution | Maryse-Club' };
 }
 
 export default async function ExecutionPage({ params, searchParams }: Params) {
@@ -42,24 +42,11 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
         ) : (
           <ExecutionView
             exec={exec}
-            prevComments={exec.status === 'en_cours' ? await buildPrevComments(exec.planning_id, exec.id) : {}}
+            prevComments={exec.status === 'en_cours' ? await getPastStepComments(exec.planning_id, exec.id) : {}}
             lecture={lecture === '1'}
           />
         )}
       </main>
     </>
   );
-}
-
-async function buildPrevComments(planningId: number, excludeId: number): Promise<Record<number, { date: string; texte: string }[]>> {
-  const past = await getPastExecutions(planningId, excludeId);
-  const map: Record<number, { date: string; texte: string }[]> = {};
-  past.forEach((p) => {
-    (p.snapshot?.jalons || []).forEach((j) => {
-      (j.etapes || []).forEach((e) => {
-        if (e.commentaire) (map[e.id] = map[e.id] || []).push({ date: p.date_debut, texte: e.commentaire });
-      });
-    });
-  });
-  return map;
 }

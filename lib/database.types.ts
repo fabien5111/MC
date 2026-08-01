@@ -146,6 +146,218 @@ export type Database = {
         }
         Relationships: []
       }
+      execution_ingredients: {
+        Row: {
+          added_during_run: boolean
+          commentaire: string | null
+          done: boolean
+          execution_id: number
+          execution_step_id: number | null
+          id: number
+          mep_done: boolean
+          name: string
+          plan_ingredient_id: number | null
+          planned_quantity: number | null
+          planned_text: string | null
+          real_quantity: number | null
+          unit: string | null
+        }
+        Insert: {
+          added_during_run?: boolean
+          commentaire?: string | null
+          done?: boolean
+          execution_id: number
+          execution_step_id?: number | null
+          id?: number
+          mep_done?: boolean
+          name: string
+          plan_ingredient_id?: number | null
+          planned_quantity?: number | null
+          planned_text?: string | null
+          real_quantity?: number | null
+          unit?: string | null
+        }
+        Update: {
+          added_during_run?: boolean
+          commentaire?: string | null
+          done?: boolean
+          execution_id?: number
+          execution_step_id?: number | null
+          id?: number
+          mep_done?: boolean
+          name?: string
+          plan_ingredient_id?: number | null
+          planned_quantity?: number | null
+          planned_text?: string | null
+          real_quantity?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_ingredients_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_ingredients_execution_step_id_fkey"
+            columns: ["execution_step_id"]
+            isOneToOne: false
+            referencedRelation: "execution_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_ingredients_plan_ingredient_id_fkey"
+            columns: ["plan_ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "plan_ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      execution_steps: {
+        Row: {
+          commentaire: string | null
+          day_offset: number | null
+          done: boolean
+          done_at: string | null
+          execution_id: number
+          id: number
+          order_index: number | null
+          plan_step_id: number | null
+          titre: string | null
+        }
+        Insert: {
+          commentaire?: string | null
+          day_offset?: number | null
+          done?: boolean
+          done_at?: string | null
+          execution_id: number
+          id?: number
+          order_index?: number | null
+          plan_step_id?: number | null
+          titre?: string | null
+        }
+        Update: {
+          commentaire?: string | null
+          day_offset?: number | null
+          done?: boolean
+          done_at?: string | null
+          execution_id?: number
+          id?: number
+          order_index?: number | null
+          plan_step_id?: number | null
+          titre?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_steps_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_steps_plan_step_id_fkey"
+            columns: ["plan_step_id"]
+            isOneToOne: false
+            referencedRelation: "plan_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      execution_substeps: {
+        Row: {
+          done: boolean
+          execution_id: number
+          execution_step_id: number | null
+          id: number
+          order_index: number | null
+          plan_substep_id: number | null
+          texte: string | null
+        }
+        Insert: {
+          done?: boolean
+          execution_id: number
+          execution_step_id?: number | null
+          id?: number
+          order_index?: number | null
+          plan_substep_id?: number | null
+          texte?: string | null
+        }
+        Update: {
+          done?: boolean
+          execution_id?: number
+          execution_step_id?: number | null
+          id?: number
+          order_index?: number | null
+          plan_substep_id?: number | null
+          texte?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_substeps_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_substeps_execution_step_id_fkey"
+            columns: ["execution_step_id"]
+            isOneToOne: false
+            referencedRelation: "execution_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_substeps_plan_substep_id_fkey"
+            columns: ["plan_substep_id"]
+            isOneToOne: false
+            referencedRelation: "plan_substeps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      execution_utensils: {
+        Row: {
+          execution_id: number
+          id: number
+          mep_done: boolean
+          name: string
+          plan_utensil_id: number | null
+        }
+        Insert: {
+          execution_id: number
+          id?: number
+          mep_done?: boolean
+          name: string
+          plan_utensil_id?: number | null
+        }
+        Update: {
+          execution_id?: number
+          id?: number
+          mep_done?: boolean
+          name?: string
+          plan_utensil_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_utensils_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execution_utensils_plan_utensil_id_fkey"
+            columns: ["plan_utensil_id"]
+            isOneToOne: false
+            referencedRelation: "plan_utensils"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       executions: {
         Row: {
           commentaire_global: string | null
@@ -154,8 +366,8 @@ export type Database = {
           date_fin: string | null
           degustation_at: string | null
           id: number
+          mep_done: boolean
           planning_id: number
-          snapshot: Json
           status: string
           user_id: string
         }
@@ -166,8 +378,8 @@ export type Database = {
           date_fin?: string | null
           degustation_at?: string | null
           id?: number
+          mep_done?: boolean
           planning_id: number
-          snapshot: Json
           status?: string
           user_id: string
         }
@@ -178,8 +390,8 @@ export type Database = {
           date_fin?: string | null
           degustation_at?: string | null
           id?: number
+          mep_done?: boolean
           planning_id?: number
-          snapshot?: Json
           status?: string
           user_id?: string
         }
@@ -189,6 +401,13 @@ export type Database = {
             columns: ["planning_id"]
             isOneToOne: false
             referencedRelation: "planning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -605,6 +824,267 @@ export type Database = {
           },
         ]
       }
+      plan_ingredients: {
+        Row: {
+          added: boolean
+          allergen: string | null
+          base_quantity: number | null
+          comment: string | null
+          created_at: string
+          expanded_into_recipe_id: string | null
+          id: number
+          name: string
+          order_index: number
+          planning_id: number
+          quantity: number | null
+          quantity_text: string | null
+          ref_id: number | null
+          removed: boolean
+          scaling_mode: string | null
+          source_ingredient_id: number | null
+          source_recipe_id: string | null
+          step_id: number | null
+          unit: string | null
+          url: string | null
+        }
+        Insert: {
+          added?: boolean
+          allergen?: string | null
+          base_quantity?: number | null
+          comment?: string | null
+          created_at?: string
+          expanded_into_recipe_id?: string | null
+          id?: number
+          name: string
+          order_index: number
+          planning_id: number
+          quantity?: number | null
+          quantity_text?: string | null
+          ref_id?: number | null
+          removed?: boolean
+          scaling_mode?: string | null
+          source_ingredient_id?: number | null
+          source_recipe_id?: string | null
+          step_id?: number | null
+          unit?: string | null
+          url?: string | null
+        }
+        Update: {
+          added?: boolean
+          allergen?: string | null
+          base_quantity?: number | null
+          comment?: string | null
+          created_at?: string
+          expanded_into_recipe_id?: string | null
+          id?: number
+          name?: string
+          order_index?: number
+          planning_id?: number
+          quantity?: number | null
+          quantity_text?: string | null
+          ref_id?: number | null
+          removed?: boolean
+          scaling_mode?: string | null
+          source_ingredient_id?: number | null
+          source_recipe_id?: string | null
+          step_id?: number | null
+          unit?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_ingredients_expanded_into_recipe_id_fkey"
+            columns: ["expanded_into_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_ingredients_planning_id_fkey"
+            columns: ["planning_id"]
+            isOneToOne: false
+            referencedRelation: "planning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_ingredients_ref_id_fkey"
+            columns: ["ref_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_refs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_ingredients_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_ingredients_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "plan_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_steps: {
+        Row: {
+          cook_temp: number | null
+          cook_time: number | null
+          created_at: string
+          day_offset: number
+          description: string | null
+          id: number
+          order_index: number
+          planning_id: number
+          prep_time: number | null
+          scaling_mode: string | null
+          source_ingredient_id: number | null
+          source_recipe_id: string | null
+          source_step_id: number | null
+          tips: string | null
+          title: string | null
+          video_url: string | null
+          wait_time: number | null
+        }
+        Insert: {
+          cook_temp?: number | null
+          cook_time?: number | null
+          created_at?: string
+          day_offset?: number
+          description?: string | null
+          id?: number
+          order_index: number
+          planning_id: number
+          prep_time?: number | null
+          scaling_mode?: string | null
+          source_ingredient_id?: number | null
+          source_recipe_id?: string | null
+          source_step_id?: number | null
+          tips?: string | null
+          title?: string | null
+          video_url?: string | null
+          wait_time?: number | null
+        }
+        Update: {
+          cook_temp?: number | null
+          cook_time?: number | null
+          created_at?: string
+          day_offset?: number
+          description?: string | null
+          id?: number
+          order_index?: number
+          planning_id?: number
+          prep_time?: number | null
+          scaling_mode?: string | null
+          source_ingredient_id?: number | null
+          source_recipe_id?: string | null
+          source_step_id?: number | null
+          tips?: string | null
+          title?: string | null
+          video_url?: string | null
+          wait_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_steps_planning_id_fkey"
+            columns: ["planning_id"]
+            isOneToOne: false
+            referencedRelation: "planning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_steps_source_ingredient_fkey"
+            columns: ["source_ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "plan_ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_steps_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_substeps: {
+        Row: {
+          id: number
+          order_index: number
+          step_id: number
+          texte: string
+        }
+        Insert: {
+          id?: number
+          order_index: number
+          step_id: number
+          texte: string
+        }
+        Update: {
+          id?: number
+          order_index?: number
+          step_id?: number
+          texte?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_substeps_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "plan_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_utensils: {
+        Row: {
+          comment: string | null
+          id: number
+          name: string
+          order_index: number
+          planning_id: number
+          source_recipe_id: string | null
+          url: string | null
+        }
+        Insert: {
+          comment?: string | null
+          id?: number
+          name: string
+          order_index: number
+          planning_id: number
+          source_recipe_id?: string | null
+          url?: string | null
+        }
+        Update: {
+          comment?: string | null
+          id?: number
+          name?: string
+          order_index?: number
+          planning_id?: number
+          source_recipe_id?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_utensils_planning_id_fkey"
+            columns: ["planning_id"]
+            isOneToOne: false
+            referencedRelation: "planning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_utensils_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning: {
         Row: {
           adjust_label: string | null
@@ -612,9 +1092,12 @@ export type Database = {
           factor: number
           id: number
           notes: string | null
-          overrides: Json | null
           planned_date: string | null
           recipe_id: string | null
+          recipe_title: string | null
+          source_plan_id: number | null
+          status: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -623,9 +1106,12 @@ export type Database = {
           factor?: number
           id?: number
           notes?: string | null
-          overrides?: Json | null
           planned_date?: string | null
           recipe_id?: string | null
+          recipe_title?: string | null
+          source_plan_id?: number | null
+          status?: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -634,9 +1120,12 @@ export type Database = {
           factor?: number
           id?: number
           notes?: string | null
-          overrides?: Json | null
           planned_date?: string | null
           recipe_id?: string | null
+          recipe_title?: string | null
+          source_plan_id?: number | null
+          status?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
@@ -645,6 +1134,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_source_plan_id_fkey"
+            columns: ["source_plan_id"]
+            isOneToOne: false
+            referencedRelation: "planning"
             referencedColumns: ["id"]
           },
           {
@@ -917,6 +1413,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           difficulty_id: number | null
+          fts: unknown
           global_tips: string | null
           hero_image_url: string | null
           id: string
@@ -951,6 +1448,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_id?: number | null
+          fts?: unknown
           global_tips?: string | null
           hero_image_url?: string | null
           id?: string
@@ -985,6 +1483,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_id?: number | null
+          fts?: unknown
           global_tips?: string | null
           hero_image_url?: string | null
           id?: string
@@ -1290,12 +1789,56 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      author_ratings: {
+        Row: {
+          author_id: string | null
+          rated_recipes: number | null
+          rating_avg: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
       is_admin_user: { Args: never; Returns: boolean }
       is_read_only_session: { Args: never; Returns: boolean }
+      mc_norm: { Args: { txt: string }; Returns: string }
+      owns_execution: { Args: { p_execution_id: number }; Returns: boolean }
+      owns_plan: { Args: { p_planning_id: number }; Returns: boolean }
+      search_advanced_recipes: {
+        Args: {
+          count_only?: boolean
+          difficulty_levels?: number[]
+          exc_allergens?: string[]
+          exc_ingredients?: string[]
+          inc_ingredients?: string[]
+          limit_val?: number
+          max_total_time?: number
+          min_author_rating?: number
+          min_recipe_rating?: number
+          offset_val?: number
+          search_term?: string
+          sort_by?: string
+          tag_slugs?: string[]
+          type_slug?: string
+        }
+        Returns: Json
+      }
+      suggest_ingredients: {
+        Args: { max_results?: number; term: string }
+        Returns: {
+          id: number
+          name: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

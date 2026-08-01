@@ -4,12 +4,21 @@ import { getRecipeFull, getAllergensWithPicto, type AllergenRef } from '@/lib/re
 import { getRecipes } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
-import { getUnits, getShoppingLists, getPlanningEntry } from '@/lib/profile';
+import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, moldLbl, effectiveTimes } from '@/lib/recipe-view';
-import { normalizeOverrides, effectiveMergedRows, mergedRowQtyText, planDayLabel, isStepDone, fmtNum, planFactor } from '@/lib/recipe-plan';
+import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import {
+  mergePlanIngredients,
+  mergedRowQtyText,
+  planDayLabel,
+  planFactor,
+  planGroupsAsIngredientGroups,
+  planStepsAsRecipeSteps,
+  planUtensilsAsRecipeUtensils,
+  fmtNum,
+} from '@/lib/recipe-plan';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -40,7 +49,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { plan, planifier } = await searchParams;
+  const { plan: planParam, planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -64,10 +73,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getAllergensWithPicto(),
   ]);
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
-  const planEntry = plan && Number.isFinite(Number(plan)) ? await getPlanningEntry(Number(plan)) : null;
+  // Le plan est une copie matérialisée indépendante de la recette (voir
+  // CLAUDE.md « Recettes planifiées ») : ingrédients/étapes/ustensiles du
+  // mode planifié viennent de ses propres tables, pas de `recipe`.
+  const planEntry = planParam && Number.isFinite(Number(planParam)) ? await getPlan(Number(planParam)) : null;
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
-  const overrides = planContext ? normalizeOverrides(planContext.overrides) : null;
-  const planMerged = planContext && overrides ? effectiveMergedRows(recipe, planContext, overrides) : null;
+  const planMerged = planContext ? mergePlanIngredients(planContext.plan_ingredients) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
   const isOwner = !!user && recipe.author_id === user.id;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
@@ -117,13 +128,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
       const u = UNITS_LBL[recipe.yield_unit || ''] || recipe.yield_unit || '';
       return `${fmtNum(q * factor)} ${u}`.trim();
     }
-    if (factor !== 1 || overrides?.mold_target) return planContext.adjust_label || null;
-    return null;
+    return planContext.adjust_label || null;
   })();
-  const times = effectiveTimes(recipe);
   const level = recipe.difficulties?.level || 0;
   const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
-  const groups = [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Mode planifié : groupes/étapes/ustensiles viennent du plan matérialisé
+  // (sa propre copie), pas de la recette — elle a pu évoluer depuis.
+  const groups = planContext
+    ? planGroupsAsIngredientGroups(planContext)
+    : [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   // Allergènes de la recette : on part des infos contenues dans la recette
   // elle-même — le champ « allergène » (texte libre) de chaque ingrédient,
   // éventuellement multiple — complété par l'allergène du référentiel rattaché.
@@ -161,8 +174,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
   })();
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
-  const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const steps = planContext ? planStepsAsRecipeSteps(planContext.plan_steps) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const utensils = planContext
+    ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
+    : [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Temps : ceux du plan (somme de ses propres étapes) en mode planifié — le
+  // plan ne reprend pas un éventuel temps global forcé sur la recette
+  // d'origine (non dupliqué à la matérialisation, limitation acceptée).
+  const times = planContext ? effectiveTimes({ prep_time: null, cook_time: null, wait_time: null, total_time: null, recipe_steps: steps }) : effectiveTimes(recipe);
   const merged = mergeIngredients(recipe);
   const days = planningDays(steps);
   // Avec un contexte de planification, « JOUR J − n » devient la vraie date.
@@ -277,28 +296,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
               clic sur « Planifier », qui doit rester visible sans scroller. */}
           <div className="no-print">
-          <PlanWidget
-            recipe={{
-              id: recipe.id,
-              title: recipe.title,
-              measureType: recipe.measure_type,
-              yieldQty: recipe.yield_qty,
-              yieldUnit: recipe.yield_unit,
-              yieldDesc: recipe.yield_desc,
-              moldForme: recipe.mold_types?.forme ?? null,
-              moldDims:
-                recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims)
-                  ? (recipe.mold_dims as Record<string, number>)
-                  : null,
-              moldSummary: [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              rendement: yInfo?.value || [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null,
-              yieldNotes: recipe.yield_notes,
-            }}
-            moldTypes={moldTypes}
-            ingredients={merged}
-            existingPlan={planContext && overrides && planContext.planned_date ? { id: planContext.id, plannedDate: planContext.planned_date, factor: planContext.factor, overrides } : null}
-            isAdmin={userIsAdmin}
-          />
+          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
           </div>
 
           {/* Hero */}
@@ -313,7 +311,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {planContext && planContext.planned_date && (
             <div className="no-print">
             <PlanNoticeBanner
-              recipe={recipe}
               plan={planContext}
               text={
                 `Recette planifiée pour le ` +
@@ -558,8 +555,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   ci-dessous et les « Ingrédients de l'étape » dans le déroulé —
                   masqué au print, conservé à l'écran (édition du plan incluse). */}
               <div className="no-print">
-              {planContext && overrides ? (
-                <PlanIngredientsEditor groups={groups} steps={steps} plan={planContext} units={units} unitTips={unitTips} />
+              {planContext ? (
+                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} />
               ) : (
                 <div className="space-y-10">
                   {groups.map((g) => (
@@ -620,7 +617,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </li>
                       {planMerged.map((r, k) => {
                         const coef = r.orig && r.adj != null ? r.adj / r.orig : null;
-                        const tone = r.added && r.orig == null && !r.origTxt.length ? 'text-green-700' : r.added || r.modified ? 'text-orange-600' : '';
+                        const tone = r.added ? 'text-green-700' : '';
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
@@ -705,7 +702,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
-                const alreadyDone = !!(planContext && overrides && isStepDone(overrides, s.id));
                 const badges: string[] = [
                   dLabel(Math.max(0, s.day_offset || 0)),
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
@@ -733,7 +729,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         {i + 1}. {s.title || 'Étape ' + (i + 1)}
                       </h4>
                       <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
-                        {alreadyDone && <span className="bg-green-700 text-white px-3 py-1">DÉJÀ RÉALISÉE ✓</span>}
                         {badges.map((b, k) => (
                           <span key={k} className="bg-surface-variant px-3 py-1">
                             {b}

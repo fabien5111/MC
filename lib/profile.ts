@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { CARD_SELECT, withAllergenPictos, type RecipeCard, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { PLAN_FULL_SELECT, type PlanFull } from '@/lib/recipe-plan';
 
 export type Unit = Database['public']['Tables']['units']['Row'];
 
@@ -18,9 +19,15 @@ export type FavoriteRow = {
 export type PlanningRow = {
   id: number;
   recipe_id: string | null;
+  recipe_title: string | null;
   planned_date: string | null;
   factor: number | null;
   adjust_label: string | null;
+  status: string;
+  // Compte des exécutions liées : `executions.planning_id` est en
+  // ON DELETE RESTRICT, donc un plan déjà cuisiné ne peut pas être
+  // supprimé — seulement archivé (cf. CLAUDE.md « Recettes planifiées »).
+  executions: { count: number }[];
   recipes: {
     id: string;
     title: string | null;
@@ -51,8 +58,9 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
-    .select('*, recipes(id, title, hero_image_url, prep_time)')
+    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time)')
     .eq('user_id', userId)
+    .eq('status', 'planifie')
     .order('planned_date', { ascending: true });
   if (error) console.error('getPlanning:', error.message);
   return (data as unknown as PlanningRow[]) ?? [];
@@ -69,24 +77,19 @@ export async function getShoppingLists(userId: string): Promise<ShoppingListSumm
   return (data as unknown as ShoppingListSummary[]) ?? [];
 }
 
-export type PlanningEntry = {
-  id: number;
-  recipe_id: string | null;
-  planned_date: string | null;
-  factor: number | null;
-  adjust_label: string | null;
-  overrides: Database['public']['Tables']['planning']['Row']['overrides'];
-};
+// L'en-tête d'un plan (ligne `planning` seule, sans son contenu) — utilisé
+// partout où seuls facteur/libellé/date sont nécessaires (bandeau, formulaire
+// d'édition). `lib/recipe-plan.ts` s'appuie dessus pour `planFactor()`.
+export type PlanningEntry = Database['public']['Tables']['planning']['Row'];
 
-// Une entrée de planning (contexte planifié d'une recette). null si absente/RLS.
-export async function getPlanningEntry(id: number): Promise<PlanningEntry | null> {
+// Un plan complet (en-tête + étapes/sous-étapes/ingrédients/ustensiles
+// matérialisés). null si absent/RLS. C'est la copie indépendante de la
+// recette au moment de la planification — voir CLAUDE.md.
+export async function getPlan(id: number): Promise<PlanFull | null> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('planning')
-    .select('id, recipe_id, planned_date, factor, adjust_label, overrides')
-    .eq('id', id)
-    .maybeSingle();
-  return (data as PlanningEntry | null) ?? null;
+  const { data, error } = await supabase.from('planning').select(PLAN_FULL_SELECT).eq('id', id).maybeSingle();
+  if (error) console.error('getPlan:', error.message);
+  return (data as unknown as PlanFull | null) ?? null;
 }
 
 export async function getUnits(): Promise<Unit[]> {

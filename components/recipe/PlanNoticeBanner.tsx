@@ -3,17 +3,58 @@
 // Bandeau de contexte planifié (porté de #plan-notice de recette.html) :
 // texte + bouton « Démarrer la recette » (déroule le formulaire d'heure de
 // dégustation puis crée une exécution) + crayon d'édition du plan.
+//
+// Démarrer matérialise l'exécution à partir du plan (executions +
+// execution_steps/execution_substeps/execution_ingredients/execution_utensils),
+// en figeant nom/unité/quantité prévue de chaque ligne — voir CLAUDE.md
+// « Recettes planifiées » : ces colonnes ne sont plus jamais resynchronisées
+// depuis le plan une fois la session créée.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
-import type { RecipeFull } from '@/lib/recipes';
-import type { PlanningEntry } from '@/lib/profile';
-import { normalizeOverrides, buildExecutionSnapshot } from '@/lib/recipe-plan';
-import type { Json } from '@/lib/database.types';
+import { materializeExecution, type PlanFull } from '@/lib/recipe-plan';
 import { PlanEditButton } from '@/components/recipe/PlanEditButton';
 
-export function PlanNoticeBanner({ text, recipe, plan }: { text: string; recipe: RecipeFull; plan: PlanningEntry }) {
+type Supabase = ReturnType<typeof createClient>;
+
+async function insertMaterializedExecution(supabase: Supabase, executionId: number, plan: PlanFull) {
+  const mat = materializeExecution(plan);
+  for (const step of mat.steps) {
+    const { data: stepRow, error: stepErr } = await supabase
+      .from('execution_steps')
+      .insert({ execution_id: executionId, plan_step_id: step.plan_step_id, titre: step.titre, order_index: step.order_index, day_offset: step.day_offset })
+      .select('id')
+      .single();
+    if (stepErr || !stepRow) throw stepErr || new Error('Étape non créée');
+    if (step.substeps.length) {
+      const { error } = await supabase.from('execution_substeps').insert(
+        step.substeps.map((su) => ({ execution_id: executionId, execution_step_id: stepRow.id, plan_substep_id: su.plan_substep_id, texte: su.texte, order_index: su.order_index })),
+      );
+      if (error) throw error;
+    }
+    if (step.ingredients.length) {
+      const { error } = await supabase.from('execution_ingredients').insert(
+        step.ingredients.map((it) => ({
+          execution_id: executionId,
+          execution_step_id: stepRow.id,
+          plan_ingredient_id: it.plan_ingredient_id,
+          name: it.name,
+          unit: it.unit,
+          planned_quantity: it.planned_quantity,
+          planned_text: it.planned_text,
+        })),
+      );
+      if (error) throw error;
+    }
+  }
+  if (mat.utensils.length) {
+    const { error } = await supabase.from('execution_utensils').insert(mat.utensils.map((u) => ({ execution_id: executionId, plan_utensil_id: u.plan_utensil_id, name: u.name })));
+    if (error) throw error;
+  }
+}
+
+export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull }) {
   const router = useRouter();
   const writeGuard = useWriteGuard();
   const [starting, setStarting] = useState(false);
@@ -46,22 +87,28 @@ export function PlanNoticeBanner({ text, recipe, plan }: { text: string; recipe:
       return;
     }
     const degustationAt = new Date(`${plan.planned_date}T${time}:00`).toISOString();
-    const overrides = normalizeOverrides(plan.overrides);
-    const snapshot = buildExecutionSnapshot(recipe, plan, overrides);
-    const { data, error } = await supabase
+    const { data: execRow, error } = await supabase
       .from('executions')
-      .insert({ planning_id: plan.id, user_id: user.id, status: 'en_cours', degustation_at: degustationAt, snapshot: snapshot as unknown as Json })
+      .insert({ planning_id: plan.id, user_id: user.id, status: 'en_cours', degustation_at: degustationAt })
       .select('id')
       .single();
-    if (error) {
-      alert('Erreur au démarrage de la session : ' + error.message);
+    if (error || !execRow) {
+      alert('Erreur au démarrage de la session : ' + (error?.message || 'création refusée'));
+      setBusy(false);
+      return;
+    }
+    try {
+      await insertMaterializedExecution(supabase, execRow.id, plan);
+    } catch (e) {
+      await supabase.from('executions').delete().eq('id', execRow.id);
+      alert('Erreur au démarrage de la session : ' + (e as Error).message);
       setBusy(false);
       return;
     }
     // La fiche recette rend l'historique des exécutions côté serveur
     // (getExecutions) : sans invalidation, la session qui démarre y manque.
     router.refresh();
-    router.push(`/execution/${data.id}`);
+    router.push(`/execution/${execRow.id}`);
   }
 
   const dateTxt = plan.planned_date

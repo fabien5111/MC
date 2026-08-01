@@ -92,12 +92,23 @@ export function ProfileTabs({
     if (ok) setRecipeList((prev) => prev.filter((r) => r.id !== id));
   }
 
-  async function delPlan(id: number) {
+  async function delPlan(plan: PlanningRow) {
+    // Un plan déjà cuisiné (au moins une exécution) ne peut pas être supprimé
+    // — `executions.planning_id` est en ON DELETE RESTRICT pour garantir la
+    // trace des recettes réalisées (cf. CLAUDE.md). On l'archive à la place.
+    const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
     const ok = await mutate(
-      () => createClient().from('planning').delete().eq('id', id),
-      { confirm: 'Retirer cette recette du planning ?' },
+      () =>
+        hasExecutions
+          ? createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id)
+          : createClient().from('planning').delete().eq('id', plan.id),
+      {
+        confirm: hasExecutions
+          ? 'Cette recette a déjà été cuisinée : elle sera archivée (conservée dans l’historique) plutôt que supprimée. Continuer ?'
+          : 'Retirer cette recette du planning ?',
+      },
     );
-    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== id));
+    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
   }
 
   return (
@@ -314,7 +325,7 @@ export function ProfileTabs({
                     <button
                       type="button"
                       title="Retirer du planning"
-                      onClick={() => delPlan(p.id)}
+                      onClick={() => delPlan(p)}
                       className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
                     >
                       <span className="material-symbols-outlined">delete</span>
