@@ -59,6 +59,8 @@ export function ProfileTabs({
   // router.refresh() (resynchronisation serveur en arrière-plan).
   const [recipeList, setRecipeList] = useState(recipes);
   useEffect(() => setRecipeList(recipes), [recipes]);
+  const [planningList, setPlanningList] = useState(planning);
+  useEffect(() => setPlanningList(planning), [planning]);
 
   useEffect(() => {
     const fromHash = () => {
@@ -78,7 +80,7 @@ export function ProfileTabs({
     history.replaceState(null, '', hash === ' ' ? location.pathname : hash);
   }
 
-  async function del(table: 'recipes' | 'planning' | 'shopping_lists', id: string | number, confirmMsg: string) {
+  async function del(table: 'recipes' | 'shopping_lists', id: string | number, confirmMsg: string) {
     await mutate(() => createClient().from(table).delete().eq('id', id), { confirm: confirmMsg });
   }
 
@@ -88,6 +90,14 @@ export function ProfileTabs({
       { confirm: `Supprimer « ${title} » ?\nCette action est définitive.` },
     );
     if (ok) setRecipeList((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function delPlan(id: number) {
+    const ok = await mutate(
+      () => createClient().from('planning').delete().eq('id', id),
+      { confirm: 'Retirer cette recette du planning ?' },
+    );
+    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== id));
   }
 
   return (
@@ -262,9 +272,9 @@ export function ProfileTabs({
           <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
             <span className="material-symbols-outlined">calendar_month</span> Recettes planifiées
           </h2>
-          {planning.length > 0 ? (
+          {planningList.length > 0 ? (
             <div className="space-y-4 max-w-3xl">
-              {planning.map((p) => {
+              {planningList.map((p) => {
                 const meta = [
                   p.planned_date
                     ? 'Prévu pour ' +
@@ -304,7 +314,7 @@ export function ProfileTabs({
                     <button
                       type="button"
                       title="Retirer du planning"
-                      onClick={() => del('planning', p.id, 'Retirer cette recette du planning ?')}
+                      onClick={() => delPlan(p.id)}
                       className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
                     >
                       <span className="material-symbols-outlined">delete</span>
