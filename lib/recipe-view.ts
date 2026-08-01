@@ -165,12 +165,18 @@ export function dayLabel(offset: number | null | undefined): string {
   return o > 0 ? `JOUR J − ${o}` : 'JOUR J';
 }
 
-// Regroupe les étapes par jour pour le planning de préparation.
-export function planningDays(steps: RecipeFull['recipe_steps']): { offset: number; items: string[] }[] {
-  const days: { offset: number; items: string[] }[] = [];
+// Regroupe les étapes par jour pour le planning de préparation. `fully_done`
+// (mode planifié seulement, cf. lib/recipe-plan.ts) barre l'intitulé quand
+// l'étape est entièrement traitée — absent sur une recette, jamais vrai pour
+// la « Dégustation » de synthèse.
+type PlanningStep = Pick<RecipeFull['recipe_steps'][number], 'title' | 'day_offset' | 'order_index'> & { fully_done?: boolean };
+export type PlanningDayItem = { title: string; fully_done: boolean };
+
+export function planningDays(steps: PlanningStep[]): { offset: number; items: PlanningDayItem[] }[] {
+  const days: { offset: number; items: PlanningDayItem[] }[] = [];
   [...steps]
     .sort((a, b) => (b.day_offset || 0) - (a.day_offset || 0) || (a.order_index || 0) - (b.order_index || 0))
-    .concat([{ title: 'Dégustation', day_offset: 0 } as RecipeFull['recipe_steps'][number]])
+    .concat([{ title: 'Dégustation', day_offset: 0, order_index: 0 }])
     .forEach((s) => {
       const o = Math.max(0, s.day_offset || 0);
       let d = days.find((x) => x.offset === o);
@@ -178,7 +184,7 @@ export function planningDays(steps: RecipeFull['recipe_steps']): { offset: numbe
         d = { offset: o, items: [] };
         days.push(d);
       }
-      d.items.push(s.title || '');
+      d.items.push({ title: s.title || '', fully_done: s.fully_done ?? false });
     });
   return days;
 }

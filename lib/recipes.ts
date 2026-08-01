@@ -112,6 +112,13 @@ export type RecipeStepView = {
   sous_etapes: string[] | null;
   order_index: number | null;
   step_photos: { url: string; order_index: number | null }[];
+  // Mode planifié seulement : étape signalée « déjà faite » et conservée pour
+  // sa seule cuisson (cf. lib/recipe-plan.ts). Absente sur une recette.
+  already_done?: boolean;
+  // Mode planifié seulement : déjà faite, sans cuisson à conserver et sans
+  // aucun ingrédient/sous-étape gardé — l'étape reste affichée, mais barrée
+  // (cf. stepFullyDone). Absente sur une recette.
+  fully_done?: boolean;
 };
 export type IngredientView = {
   id: number;

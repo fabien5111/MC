@@ -21,14 +21,29 @@ import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
 import type { Execution } from '@/lib/executions';
-import { groupExecutionSteps, mergeExecutionIngredientsForMep, fmtNum, type ExecJalon, type ExecutionStepRow, type ExecutionIngredientRow } from '@/lib/recipe-plan';
+import {
+  groupExecutionSteps,
+  mergeExecutionIngredientsForMep,
+  remainingStepTimes,
+  fmtNum,
+  type ExecJalon,
+  type ExecutionStepRow,
+  type ExecutionIngredientRow,
+} from '@/lib/recipe-plan';
 
 const MIN = 60000;
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return isNaN(n) ? null : n;
 };
-const stepDur = (s: ExecutionStepRow) => (s.plan_steps?.prep_time || 0) + (s.plan_steps?.wait_time || 0) + (s.plan_steps?.cook_time || 0);
+// Tempo : une étape conservée pour sa seule cuisson ne compte plus sa
+// préparation ni son attente, déjà écoulées avant la session (remainingStepTimes).
+const stepDur = (s: ExecutionStepRow) => {
+  const p = s.plan_steps;
+  if (!p) return 0;
+  const t = remainingStepTimes(p);
+  return (t.prep_time || 0) + (t.wait_time || 0) + (t.cook_time || 0);
+};
 const jalonDur = (j: ExecJalon) => j.steps.reduce((n, s) => n + stepDur(s), 0);
 const fmtHeure = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const fmtJour = (d: Date) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -506,10 +521,14 @@ function StepCard({
   onStepComment: (id: number, value: string) => void;
 }) {
   const plan = s.plan_steps;
+  // Les temps affichés sont ceux qui restent : une étape « déjà faite, cuisson
+  // à faire » n'annonce ni préparation ni attente (remainingStepTimes).
+  const times = plan ? remainingStepTimes(plan) : null;
   const badges = [
-    plan?.prep_time ? `PRÉP ${formatTime(plan.prep_time).toUpperCase()}` : '',
-    plan?.wait_time ? `ATTENTE ${formatTime(plan.wait_time).toUpperCase()}` : '',
-    plan?.cook_time ? `CUISSON ${formatTime(plan.cook_time).toUpperCase()}${plan.cook_temp ? ' · ' + plan.cook_temp + ' °C' : ''}` : plan?.cook_temp ? `CUISSON ${plan.cook_temp} °C` : '',
+    plan?.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
+    times?.prep_time ? `PRÉP ${formatTime(times.prep_time).toUpperCase()}` : '',
+    times?.wait_time ? `ATTENTE ${formatTime(times.wait_time).toUpperCase()}` : '',
+    times?.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${plan?.cook_temp ? ' · ' + plan.cook_temp + ' °C' : ''}` : plan?.cook_temp ? `CUISSON ${plan.cook_temp} °C` : '',
   ].filter(Boolean);
   const substeps = [...s.execution_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 

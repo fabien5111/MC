@@ -228,6 +228,36 @@ devient indépendant de la recette d'origine.
   (ex. bouton « Retirer du planning » de l'onglet Planning) doit d'abord
   tenter l'archivage plutôt qu'un `delete` qui échouerait en violation de
   contrainte dès qu'une session existe.
+- **Étape « déjà faite »** (`plan_steps.already_done`,
+  `plan_ingredients.excluded_when_done`, `plan_substeps.excluded_when_done`) :
+  l'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
+  est déjà au congélateur »). C'est une **intention**, donc portée par le plan
+  et non par l'exécution — la liste de courses est générée depuis le plan, bien
+  avant qu'une session existe. `already_done` sort les ingrédients et
+  sous-étapes de l'étape des courses, de la mise en place et de l'exécution.
+  `plan_ingredients.excluded_when_done` / `plan_substeps.excluded_when_done`
+  (par défaut `true` chacune) permettent une exception ligne par ligne : un
+  ingrédient ou une sous-étape de l'étape restent dans le parcours malgré
+  `already_done` si l'utilisateur l'a explicitement décoché (ex. l'œuf de
+  dorure d'une pâte déjà façonnée mais pas encore badigeonnée ni cuite, ou la
+  puce « Porter à ébullition » d'une étape dont le mélange initial est déjà
+  fait) — un ingrédient ou une sous-étape conservés gardent aussi leur étape
+  affichée normalement. **Une étape n'est jamais retirée du déroulé** (ni de la
+  fiche recette planifiée, ni d'une exécution démarrée par la suite) : une fois
+  entièrement traitée (`already_done`, sans aucun ingrédient/sous-étape gardé),
+  elle reste affichée, simplement barrée (`stepFullyDone`) — pour que la
+  progression reste visible et qu'une case cochée par erreur se corrige sans
+  faire disparaître l'étape. **Ne jamais implémenter ça en basculant
+  `plan_ingredients.removed`** : ça écraserait les suppressions faites à la
+  main ligne par ligne, et décocher l'étape les rétablirait silencieusement —
+  c'est la même corruption que l'ancien modèle `overrides` (`plan_substeps`
+  n'a pas cette colonne : rien à y écraser). Les filtres concernés sont
+  centralisés dans `lib/recipe-plan.ts`
+  (`planIngredientExcluded`, `planSubstepExcluded`, `stepFullyDone`,
+  `remainingStepTimes`) : tout l'aval (courses, mise en place, temps affiché,
+  tempo d'exécution) en découle. Conséquences assumées, cohérentes avec le
+  modèle : une session déjà démarrée n'est pas retouchée, et une liste de
+  courses déjà générée non plus (les deux sont des instantanés).
 - **Replanifier** une recette à partir d'un plan existant = dupliquer les
   lignes `plan_*` d'un `planning.id` vers un nouveau, avec une nouvelle
   `planned_date` (`planning.source_plan_id` trace la filiation). Ça ne
@@ -456,6 +486,9 @@ Import de recette par copier/coller (l'import depuis une URL a été retiré : l
 Communauté de patissier, personnes suivies, like sur les profils et sur les recettes
 
 Éclatement d'un ingrédient spécifique en sous-étapes de préparation détaillées.
+
+Marquage d'une étape déjà réalisée dans une recette planifiée (retire ses
+ingrédients des courses et de la mise en place, cuisson conservable).
 
 Déclenchement automatique du chronomètre du téléphone selon le timing des étapes.
 

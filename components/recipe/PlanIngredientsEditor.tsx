@@ -9,6 +9,7 @@
 import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { Unit } from '@/lib/profile';
 import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
 
@@ -21,7 +22,7 @@ const numify = (v: string): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 
 export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFull; units: Unit[]; unitTips: Record<string, string> }) {
-  const { mutate } = useMutation();
+  const { mutate, busy } = useMutation();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
 
@@ -117,16 +118,23 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     );
   };
 
-  const steps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
+  const sortedSteps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <div className="space-y-10">
-      {steps.map((step) => {
+      <LoadingOverlay visible={busy} label="Modification en cours…" />
+      {sortedSteps.map((step) => {
         const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
         return (
           <div key={step.id}>
-            <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">{step.title || ''}</h4>
+            {/* La case « Déjà réalisé » et l'exception par ingrédient vivent
+                dans le déroulé de la recette (PlanStepDonePanel), pas ici —
+                cette section ne fait plus qu'informer (titre barré, lignes
+                grisées) de l'état déjà réglé là-bas. */}
+            <h4 className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
+              {step.title || ''}
+            </h4>
             {rows.length > 0 && (
               <ul style={gridStyle}>
                 <li className="pb-1" style={rowStyle}>
@@ -139,7 +147,15 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                 {rows.map((row) => {
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  const tone = row.removed ? 'text-error line-through' : row.added ? 'text-green-700' : '';
+                  // `removed` prime toujours sur l'exclusion « déjà fait ».
+                  const excludedByStep = step.already_done && row.excluded_when_done;
+                  const tone = row.removed
+                    ? 'text-error line-through'
+                    : excludedByStep
+                      ? 'text-on-surface-variant line-through opacity-60'
+                      : row.added
+                        ? 'text-green-700'
+                        : '';
                   const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
                   const origText = row.added ? '—' : row.base_quantity != null ? fmtNum(row.base_quantity) : row.quantity_text || '—';
                   return (

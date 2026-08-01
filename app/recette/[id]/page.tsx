@@ -31,6 +31,7 @@ import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
+import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { type TocSections } from '@/components/recipe/RecipeToc';
@@ -78,7 +79,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // mode planifié viennent de ses propres tables, pas de `recipe`.
   const planEntry = planParam && Number.isFinite(Number(planParam)) ? await getPlan(Number(planParam)) : null;
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
-  const planMerged = planContext ? mergePlanIngredients(planContext.plan_ingredients) : null;
+  const planMerged = planContext ? mergePlanIngredients(planContext) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
   const isOwner = !!user && recipe.author_id === user.id;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
@@ -174,7 +175,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
   })();
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
-  const steps = planContext ? planStepsAsRecipeSteps(planContext.plan_steps) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Étape brute (plan_steps) par id, pour les sous-étapes brutes du mode
+  // planifié (voir rawSubsteps ci-dessous).
+  const planStepsById = new Map((planContext?.plan_steps ?? []).map((ps) => [ps.id, ps]));
   const utensils = planContext
     ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
     : [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -520,9 +524,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       {i + 1}
                     </div>
                     <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
-                    {d.items.map((t, k) => (
-                      <p key={k} className="font-body-md text-body-md font-semibold">
-                        {t}
+                    {d.items.map((it, k) => (
+                      <p
+                        key={k}
+                        className={`font-body-md text-body-md font-semibold${it.fully_done ? ' text-on-surface-variant line-through' : ''}`}
+                      >
+                        {it.title}
                       </p>
                     ))}
                   </div>
@@ -708,10 +715,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
+                // Lignes brutes (plan_substeps) pour PlanStepDonePanel : `s.sous_etapes`
+                // (RecipeStepView) est déjà filtré des sous-étapes exclues, donc
+                // inutilisable pour proposer la case « conserver » sur ces lignes-là.
+                const rawSubsteps = planStepsById.get(s.id)?.plan_substeps ?? [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
                   dLabel(Math.max(0, s.day_offset || 0)),
+                  // Mode planifié : étape conservée pour sa seule cuisson, ses
+                  // ingrédients et son temps de préparation ont déjà été retirés.
+                  s.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
                   s.wait_time ? `ATTENTE ${formatTime(s.wait_time).toUpperCase()}` : '',
                   s.cook_time
@@ -720,57 +734,35 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       ? `CUISSON ${s.cook_temp} °C`
                       : '',
                 ].filter(Boolean);
-                return (
-                  <div
-                    key={s.id}
-                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
-                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
-                    // module « use client » — un Server Component peut le rendre en
-                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
-                    // fonction plante au rendu serveur (référence client, pas de code
-                    // exécutable côté serveur).
-                    id={`sec-etape-${i + 1}`}
-                    className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
-                  >
-                    <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-                      <h4 className="font-headline-md text-headline-md text-primary">
-                        {i + 1}. {s.title || 'Étape ' + (i + 1)}
-                      </h4>
-                      <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
-                        {badges.map((b, k) => (
-                          <span key={k} className="bg-surface-variant px-3 py-1">
-                            {b}
-                          </span>
-                        ))}
-                        {stepTotal > 0 && (
-                          <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
-                        )}
-                      </div>
-                    </div>
-                    {ings.length > 0 && (
-                      <details className="group border border-outline-variant mb-2" open>
-                        <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                          <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
-                          <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                        </summary>
-                        <div className="p-4 bg-white">
-                          <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                            {ings.map((it) => (
-                              <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                <span className="font-label-md text-label-md text-primary">
-                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                                  <Qty quantity={it.quantity} unit={it.unit} />
-                                </span>
-                                <span className="font-body-md text-body-md">
-                                  {it.name}
-                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
+                const stepTitle = (
+                  <h4 className={`font-headline-md text-headline-md ${s.fully_done ? 'text-on-surface-variant line-through' : 'text-primary'}`}>
+                    {i + 1}. {s.title || 'Étape ' + (i + 1)}
+                  </h4>
+                );
+                const stepMeta = (
+                  <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+                    {badges.map((b, k) => (
+                      <span key={k} className="bg-surface-variant px-3 py-1">
+                        {b}
+                      </span>
+                    ))}
+                    {stepTotal > 0 && (
+                      <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
                     )}
+                  </div>
+                );
+                const header = (
+                  <>
+                    {stepTitle}
+                    {stepMeta}
+                  </>
+                );
+                const planStepProps = { id: s.id, already_done: s.already_done ?? false };
+                const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
+                // Contenu replié avec le reste quand l'étape est entièrement traitée
+                // (photos, vidéo, astuces…) — inchangé sinon.
+                const extra = (
+                  <>
                     {photos.length > 0 && (
                       <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
                         {photos.map((p, k) => (
@@ -782,7 +774,16 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </div>
                     )}
                     {s.video_url && <StepVideoPlayer url={s.video_url} />}
-                    {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
+                    {/* Mode planifié : la puce/case des sous-étapes est déjà rendue par
+                        PlanStepDonePanel ci-dessus ; ici, seul le repli sur la description
+                        reste à afficher s'il n'y a pas de sous-étapes du tout. */}
+                    {planContext ? (
+                      rawSubsteps.length === 0 && s.description ? (
+                        <div className="font-body-lg text-body-lg leading-relaxed text-on-surface whitespace-pre-line">
+                          {s.description}
+                        </div>
+                      ) : null
+                    ) : Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
                       <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
                         {s.sous_etapes.map((t, k) => (
                           <li key={k} className="flex gap-3">
@@ -804,6 +805,67 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         </summary>
                         <div className="p-4 bg-white font-body-md text-body-md italic whitespace-pre-line">{s.tips}</div>
                       </details>
+                    )}
+                  </>
+                );
+                return (
+                  <div
+                    key={s.id}
+                    // Même format que `stepAnchorId` (components/recipe/RecipeToc.tsx),
+                    // recalculé ici plutôt qu'importé : cette fonction vient d'un
+                    // module « use client » — un Server Component peut le rendre en
+                    // JSX (<RecipeToc />), mais appeler une de ses exports comme une
+                    // fonction plante au rendu serveur (référence client, pas de code
+                    // exécutable côté serveur).
+                    id={`sec-etape-${i + 1}`}
+                    // Pas de séparateur supplémentaire pour une étape repliée : son
+                    // propre trait sous le titre suffit déjà à la distinguer de la
+                    // suivante, sans doubler la ligne visible.
+                    className={`scroll-mt-28 flex flex-col gap-6${!s.fully_done && i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
+                  >
+                    {planContext ? (
+                      // Étape entièrement traitée : repliée par défaut, plus rien n'y
+                      // reste à faire — seul le titre barré, ses badges et la case
+                      // « Déjà réalisé » restent visibles hors du volet replié.
+                      <PlanStepDonePanel
+                        collapsible={!!s.fully_done}
+                        title={stepTitle}
+                        meta={stepMeta}
+                        step={planStepProps}
+                        ingredients={planIngredientsOfStep}
+                        substeps={rawSubsteps}
+                      >
+                        {extra}
+                      </PlanStepDonePanel>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">{header}</div>
+                        {ings.length > 0 && (
+                          <details className="group border border-outline-variant mb-2" open>
+                            <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                              <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+                              <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                            </summary>
+                            <div className="p-4 bg-white">
+                              <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                                {ings.map((it) => (
+                                  <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                    <span className="font-label-md text-label-md text-primary">
+                                      <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                                      <Qty quantity={it.quantity} unit={it.unit} />
+                                    </span>
+                                    <span className="font-body-md text-body-md">
+                                      {it.name}
+                                      {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </details>
+                        )}
+                        {extra}
+                      </>
                     )}
                   </div>
                 );
