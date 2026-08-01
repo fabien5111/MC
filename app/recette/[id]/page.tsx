@@ -524,9 +524,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       {i + 1}
                     </div>
                     <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
-                    {d.items.map((t, k) => (
-                      <p key={k} className="font-body-md text-body-md font-semibold">
-                        {t}
+                    {d.items.map((it, k) => (
+                      <p
+                        key={k}
+                        className={`font-body-md text-body-md font-semibold${it.fully_done ? ' text-on-surface-variant line-through' : ''}`}
+                      >
+                        {it.title}
                       </p>
                     ))}
                   </div>
