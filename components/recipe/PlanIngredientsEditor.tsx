@@ -10,7 +10,7 @@ import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { Unit } from '@/lib/profile';
-import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
+import { fmtNum, type PlanFull, type PlanIngredientRow, type PlanStepRow } from '@/lib/recipe-plan';
 
 type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
@@ -40,6 +40,30 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
     setEditing(null);
     if (!patch) return;
     mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+  }
+
+  // « Déjà fait » : les ingrédients de l'étape sortent des courses, de la mise
+  // en place et de l'exécution — sans toucher à `plan_ingredients.removed`,
+  // pour ne pas écraser les suppressions faites ligne par ligne (décocher
+  // l'étape doit les laisser telles quelles).
+  //
+  // Le cast couvre les deux colonnes tant que `lib/database.types.ts` n'a pas
+  // été régénéré sur la base migrée (cf. lib/recipe-plan.ts).
+  function patchStep(step: PlanStepRow, patch: { already_done?: boolean; keep_cooking?: boolean }) {
+    mutate(
+      () =>
+        createClient()
+          .from('plan_steps')
+          .update(patch as never)
+          .eq('id', step.id),
+      { errorLabel: 'Modification non enregistrée' },
+    );
+  }
+
+  function toggleDone(step: PlanStepRow) {
+    // Repasser une étape « à faire » remet aussi la cuisson dans son état par
+    // défaut : garder `keep_cooking` à vrai sur une étape active n'a pas de sens.
+    patchStep(step, step.already_done ? { already_done: false, keep_cooking: false } : { already_done: true });
   }
 
   function toggleRemove(row: PlanIngredientRow) {
@@ -126,7 +150,37 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
         if (!rows.length && addingStep !== step.id) return null;
         return (
           <div key={step.id}>
-            <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">{step.title || ''}</h4>
+            <div className="border-b border-outline-variant pb-2 mb-4 flex items-center gap-3 flex-wrap">
+              <h4 className={`font-label-md text-label-md flex-1 min-w-0 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
+                {step.title || ''}
+              </h4>
+              {step.already_done && (
+                <label className="no-print flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={step.keep_cooking}
+                    onChange={() => patchStep(step, { keep_cooking: !step.keep_cooking })}
+                    className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                  />
+                  La cuisson reste à faire
+                </label>
+              )}
+              <button
+                type="button"
+                onClick={() => toggleDone(step)}
+                title={
+                  step.already_done
+                    ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
+                    : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
+                }
+                className={`no-print flex items-center gap-1 px-3 py-1 rounded-full font-label-md text-[11px] border transition-colors ${
+                  step.already_done ? 'border-primary text-primary bg-primary/5' : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">{step.already_done ? 'task_alt' : 'radio_button_unchecked'}</span>
+                Déjà fait
+              </button>
+            </div>
             {rows.length > 0 && (
               <ul style={gridStyle}>
                 <li className="pb-1" style={rowStyle}>
@@ -139,7 +193,15 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                 {rows.map((row) => {
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  const tone = row.removed ? 'text-error line-through' : row.added ? 'text-green-700' : '';
+                  // Étape déjà faite : toutes ses lignes sortent du parcours,
+                  // sans que leur propre état (retirée / ajoutée) soit modifié.
+                  const tone = step.already_done
+                    ? 'text-on-surface-variant line-through opacity-60'
+                    : row.removed
+                      ? 'text-error line-through'
+                      : row.added
+                        ? 'text-green-700'
+                        : '';
                   const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
                   const origText = row.added ? '—' : row.base_quantity != null ? fmtNum(row.base_quantity) : row.quantity_text || '—';
                   return (

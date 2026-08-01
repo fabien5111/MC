@@ -31,7 +31,13 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
 }
 
 // ── Lignes des tables plan_* / execution_* ────────────────────────────
-export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'];
+// `already_done` / `keep_cooking` sont ajoutées par la migration « étape déjà
+// faite » (cf. CLAUDE.md « Recettes planifiées »). Elles sont déclarées ici en
+// attendant que `npm run gen:types` soit rejoué sur la base migrée — retirer
+// cette intersection à ce moment-là, `lib/database.types.ts` étant la source
+// de vérité (jamais éditée à la main).
+type PlanStepPending = { already_done: boolean; keep_cooking: boolean };
+export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
 export type PlanSubstepRow = Database['public']['Tables']['plan_substeps']['Row'];
 export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']['Row'] & {
   ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
@@ -42,6 +48,47 @@ export type PlanFull = Database['public']['Tables']['planning']['Row'] & {
   plan_ingredients: PlanIngredientRow[];
   plan_utensils: PlanUtensilRow[];
 };
+
+// ── Étape « déjà faite » ───────────────────────────────────────────────
+// L'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
+// est déjà au congélateur »). C'est une intention, donc porté par le plan et
+// non par l'exécution : la liste de courses est générée depuis le plan, bien
+// avant qu'une session existe.
+//
+// Deux niveaux, volontairement distincts de `plan_ingredients.removed` : le
+// « déjà fait » ne doit pas écraser les suppressions faites à la main ligne
+// par ligne, sinon décocher l'étape les rétablirait silencieusement.
+//   - `already_done`  → les ingrédients de l'étape sortent des courses, de la
+//                       mise en place et de l'exécution.
+//   - `keep_cooking`  → mais la cuisson reste à faire : l'étape demeure dans
+//                       le déroulé avec sa température et son temps de
+//                       cuisson, sans ses ingrédients et sans son temps de
+//                       préparation ni d'attente, déjà écoulés.
+type StepDoneFlags = Pick<PlanStepRow, 'already_done' | 'keep_cooking'>;
+
+// L'étape ne fournit plus d'ingrédients (dans les deux cas « déjà fait »).
+export const stepDropsIngredients = (s: StepDoneFlags): boolean => s.already_done;
+
+// L'étape disparaît complètement du déroulé (et donc du temps restant) :
+// « déjà faite » sans cuisson à conserver.
+export const stepHiddenFromFlow = (s: StepDoneFlags): boolean => s.already_done && !s.keep_cooking;
+
+// Étapes dont les ingrédients sortent du parcours, par id — pour filtrer les
+// `plan_ingredients`, qui portent leur étape via `step_id`.
+export const doneStepIds = (plan: PlanFull): Set<number> =>
+  new Set(plan.plan_steps.filter(stepDropsIngredients).map((s) => s.id));
+
+// Temps restant d'une étape : une étape conservée pour sa seule cuisson a déjà
+// consommé sa préparation et son attente. Sans ça, le temps total affiché sur
+// le plan contredirait ce qu'il reste réellement à faire.
+export function remainingStepTimes(s: StepDoneFlags & Pick<PlanStepRow, 'prep_time' | 'wait_time' | 'cook_time'>): {
+  prep_time: number | null;
+  wait_time: number | null;
+  cook_time: number | null;
+} {
+  if (s.already_done && s.keep_cooking) return { prep_time: null, wait_time: null, cook_time: s.cook_time };
+  return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
+}
 
 // Sélection complète d'un plan, à utiliser par lib/profile.ts (getPlan).
 export const PLAN_FULL_SELECT = `
@@ -60,7 +107,10 @@ export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // plan depuis (FK à null).
 export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
   execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
-  plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp'> | null;
+  plan_steps: Pick<
+    PlanStepRow,
+    'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'keep_cooking'
+  > | null;
 };
 export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'];
 export type ExecutionUtensilRow = Database['public']['Tables']['execution_utensils']['Row'];
@@ -75,7 +125,7 @@ export type ExecutionFull = ExecutionRow & {
 
 export const EXECUTION_FULL_SELECT = `
   *,
-  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp)),
+  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done, keep_cooking)),
   execution_ingredients(*),
   execution_utensils(*),
   planning(recipe_title)
@@ -94,18 +144,18 @@ function qtyDisplay(it: Pick<PlanIngredientRow, 'quantity' | 'quantity_text'>): 
 
 export function planStepsAsRecipeSteps(steps: PlanFull['plan_steps']): RecipeStepView[] {
   return [...steps]
+    .filter((s) => !stepHiddenFromFlow(s))
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => ({
       id: s.id,
       title: s.title,
       description: s.description,
       day_offset: s.day_offset,
-      prep_time: s.prep_time,
-      cook_time: s.cook_time,
-      wait_time: s.wait_time,
+      ...remainingStepTimes(s),
       cook_temp: s.cook_temp,
       tips: s.tips,
       video_url: s.video_url,
+      already_done: s.already_done,
       sous_etapes: s.plan_substeps.length
         ? [...s.plan_substeps].sort((a, b) => a.order_index - b.order_index).map((su) => su.texte)
         : null,
@@ -115,7 +165,12 @@ export function planStepsAsRecipeSteps(steps: PlanFull['plan_steps']): RecipeSte
 }
 
 export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingredient_groups'] {
+  // Une étape déjà faite ne fournit plus d'ingrédients : son groupe disparaît
+  // de la liste. Les lignes restent visibles (barrées) dans l'éditeur du plan,
+  // qui lit les tables plan_* brutes — rien n'est perdu, le retour arrière se
+  // fait en décochant l'étape.
   return [...plan.plan_steps]
+    .filter((s) => !stepDropsIngredients(s))
     .sort((a, b) => a.order_index - b.order_index)
     .map((step) => ({
       id: step.id,
@@ -152,10 +207,11 @@ export function planUtensilsAsRecipeUtensils(utensils: PlanUtensilRow[]): Recipe
 // ne suit plus les étapes réalisées (déplacé côté exécution, cf. CLAUDE.md).
 export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null };
 
-export function mergePlanIngredients(ingredients: PlanIngredientRow[]): MergedPlanRow[] {
+export function mergePlanIngredients(plan: PlanFull): MergedPlanRow[] {
   const rows: (MergedPlanRow & { key: string })[] = [];
-  ingredients
-    .filter((it) => !it.removed && it.name)
+  const doneSteps = doneStepIds(plan);
+  plan.plan_ingredients
+    .filter((it) => !it.removed && it.name && !(it.step_id != null && doneSteps.has(it.step_id)))
     .forEach((it) => {
       const unit = it.unit || '';
       const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
@@ -308,9 +364,14 @@ export type MatExecUtensil = { plan_utensil_id: number; name: string };
 export type MaterializedExecution = { steps: MatExecStep[]; utensils: MatExecUtensil[] };
 
 export function materializeExecution(plan: PlanFull): MaterializedExecution {
+  // Une étape déjà faite n'entre pas dans la session : ni ses ingrédients (donc
+  // pas de mise en place à préparer), ni l'étape elle-même sauf si sa cuisson
+  // reste à faire. Le figeage joue ensuite normalement — une session démarrée
+  // n'est jamais resynchronisée si le plan change après coup (cf. CLAUDE.md).
+  const doneSteps = doneStepIds(plan);
   const ingByStep = new Map<number, PlanIngredientRow[]>();
   plan.plan_ingredients
-    .filter((it) => !it.removed && it.step_id != null)
+    .filter((it) => !it.removed && it.step_id != null && !doneSteps.has(it.step_id))
     .forEach((it) => {
       const k = it.step_id as number;
       const arr = ingByStep.get(k);
@@ -319,6 +380,7 @@ export function materializeExecution(plan: PlanFull): MaterializedExecution {
     });
 
   const steps: MatExecStep[] = [...plan.plan_steps]
+    .filter((s) => !stepHiddenFromFlow(s))
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => ({
       plan_step_id: s.id,

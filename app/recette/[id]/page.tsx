@@ -78,7 +78,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // mode planifié viennent de ses propres tables, pas de `recipe`.
   const planEntry = planParam && Number.isFinite(Number(planParam)) ? await getPlan(Number(planParam)) : null;
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
-  const planMerged = planContext ? mergePlanIngredients(planContext.plan_ingredients) : null;
+  const planMerged = planContext ? mergePlanIngredients(planContext) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
   const isOwner = !!user && recipe.author_id === user.id;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
@@ -712,6 +712,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
                   dLabel(Math.max(0, s.day_offset || 0)),
+                  // Mode planifié : étape conservée pour sa seule cuisson, ses
+                  // ingrédients et son temps de préparation ont déjà été retirés.
+                  s.already_done ? 'PRÉPARATION DÉJÀ FAITE' : '',
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
                   s.wait_time ? `ATTENTE ${formatTime(s.wait_time).toUpperCase()}` : '',
                   s.cook_time
