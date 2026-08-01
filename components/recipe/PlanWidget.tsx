@@ -27,6 +27,7 @@ import type { MergedIngredient } from '@/lib/recipe-view';
 import type { RecipeFull } from '@/lib/recipes';
 import { materializePlan, scalingCoef, scaleFromBase, type PlanFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -390,13 +391,20 @@ export function PlanWidget({
       return;
     }
     close();
-    // Invalide le rendu serveur avant de naviguer : sans quoi l'onglet
-    // Planning du profil n'affiche pas la recette qui vient d'être planifiée.
-    router.refresh();
+    // `busy` reste vrai jusqu'au démontage par la navigation : le spinner doit
+    // rester affiché pendant la transition vers /profil#planning.
+    // router.refresh() APRÈS le push (et non avant) : appelé avant, il ne
+    // rafraîchit que la route qu'on quitte (la fiche recette) — l'onglet
+    // Planning du profil, déjà visité dans la session, resservait alors une
+    // entrée du cache client antérieure à la création du plan.
     router.push('/profil#planning');
+    router.refresh();
   }
 
-  if (!open) return null;
+  // Rendu même panneau fermé (après `close()` en fin de validation) : la
+  // navigation vers /profil#planning reste à couvrir par le spinner jusqu'à
+  // ce qu'elle prenne effet.
+  if (!open) return <LoadingOverlay visible={busy} label="Enregistrement du plan…" />;
 
   const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary';
   const LBL = 'font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]';
@@ -451,6 +459,7 @@ export function PlanWidget({
 
   return (
     <div ref={panelRef} className="mb-12 border border-secondary bg-surface-container-low p-8 rounded-xl">
+      <LoadingOverlay visible={busy} label="Enregistrement du plan…" />
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
         {editMode && existingPlan ? 'Modifier la planification' : 'Planifier cette recette'}
