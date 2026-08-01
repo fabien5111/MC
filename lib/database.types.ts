@@ -931,12 +931,14 @@ export type Database = {
       }
       plan_steps: {
         Row: {
+          already_done: boolean
           cook_temp: number | null
           cook_time: number | null
           created_at: string
           day_offset: number
           description: string | null
           id: number
+          keep_cooking: boolean
           order_index: number
           planning_id: number
           prep_time: number | null
@@ -950,12 +952,14 @@ export type Database = {
           wait_time: number | null
         }
         Insert: {
+          already_done?: boolean
           cook_temp?: number | null
           cook_time?: number | null
           created_at?: string
           day_offset?: number
           description?: string | null
           id?: number
+          keep_cooking?: boolean
           order_index: number
           planning_id: number
           prep_time?: number | null
@@ -969,12 +973,14 @@ export type Database = {
           wait_time?: number | null
         }
         Update: {
+          already_done?: boolean
           cook_temp?: number | null
           cook_time?: number | null
           created_at?: string
           day_offset?: number
           description?: string | null
           id?: number
+          keep_cooking?: boolean
           order_index?: number
           planning_id?: number
           prep_time?: number | null
