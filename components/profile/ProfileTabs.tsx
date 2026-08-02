@@ -174,15 +174,31 @@ export function ProfileTabs({
                     </div>
                   </div>
                 </Link>
-                <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} />
                 <Link
                   href={`/recette/${r.id}?planifier=1`}
                   title="Planifier cette recette"
                   prefetch={false}
-                  className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                  className="absolute top-3 right-[9rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
                 >
                   <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
                 </Link>
+                <Link
+                  href={`/creer?id=${r.id}`}
+                  title="Modifier"
+                  prefetch={false}
+                  className="absolute top-3 right-[6.25rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                >
+                  <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+                </Link>
+                <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-14" />
+                <button
+                  type="button"
+                  title="Supprimer"
+                  onClick={() => delRecipe(r.id, r.title)}
+                  className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                >
+                  <span className="material-symbols-outlined text-[20px] text-error">delete</span>
+                </button>
                 <div className="p-6">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -221,19 +237,6 @@ export function ProfileTabs({
                       {formatDate(r.created_at)}
                       {r.rating_avg ? ' · ' + Number(r.rating_avg).toFixed(1) + ' ★' : ''}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <Link href={`/creer?id=${r.id}`} title="Modifier" className="p-1.5 rounded hover:bg-surface-container transition-colors">
-                        <span className="material-symbols-outlined text-primary text-[20px]">edit_note</span>
-                      </Link>
-                      <button
-                        type="button"
-                        title="Supprimer"
-                        onClick={() => delRecipe(r.id, r.title)}
-                        className="p-1.5 rounded hover:bg-error/10 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-error text-[20px]">delete</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
