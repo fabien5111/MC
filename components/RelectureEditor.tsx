@@ -937,7 +937,7 @@ export function RelectureEditor({
       // Invalide le rendu serveur avant de naviguer : le carnet de recettes et
       // la liste « Mes imports » doivent refléter la recette créée.
       router.refresh();
-      router.push(`/recette/${recipeId}`);
+      router.push(`/creer?id=${recipeId}`);
     } catch (e) {
       // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
       // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.

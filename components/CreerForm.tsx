@@ -533,6 +533,12 @@ export function CreerForm({
       alert('Donnez un titre à votre recette.');
       return;
     }
+    if (status === 'draft' && editRecipe?.status === 'published') {
+      const msg = isPublic
+        ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'
+        : 'Cette recette est publiée. La repasser en brouillon la retirera de votre carnet publié. Continuer ?';
+      if (!confirm(msg)) return;
+    }
     busyRef.current = true;
     setBusy(true);
     const supabase = createClient();

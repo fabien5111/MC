@@ -61,6 +61,9 @@ export function RecipeCardLayout({
                   ))}
                 </span>
               )}
+              {r.difficulties?.name && (
+                <span className="font-label-md text-label-md text-on-surface shrink-0">{r.difficulties.name}</span>
+              )}
               {r.recipe_types?.name && (
                 <span className="font-label-md text-label-md text-secondary uppercase tracking-widest text-xs truncate">
                   {r.recipe_types.name}
