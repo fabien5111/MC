@@ -1290,25 +1290,24 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES », alignés sur
-                        leur colonne. Les éléments miroirs (select d'unité +
-                        bouton) sont invisibles mais occupent leur largeur pour
-                        aligner précisément malgré la largeur auto de l'unité.
-                        En dessous de `xl` (≤ lg), le « casseur de ligne »
-                        (`basis-full xl:hidden`) force le retour à la ligne
-                        entre unité et allergènes — miroir du même repli sur la
-                        ligne de données, pour rester aligné avec elle. Liseré
-                        transparent + même retrait que les lignes en dessous
-                        de `xl` : sans lui, les libellés d'en-tête ne
-                        tomberaient plus sur leur colonne une fois les lignes
-                        de données décalées par leur propre liseré. En dessous
-                        de `xl`, « ALLERGÈNES » ne s'affiche plus ici : seule
-                        la première ligne d'ingrédient se trouve juste en
-                        dessous de cet en-tête, les suivantes en sont trop
-                        loin pour que le libellé leur reste rattaché. Un
-                        intitulé plus petit est répété au-dessus du bloc
-                        allergènes de chaque ligne à la place (cf. plus bas). */}
-                    <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex flex-wrap xl:flex-nowrap items-center gap-4 mb-2">
+                    {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,
+                        toujours utiles : alignent la colonne « unité », dont
+                        la largeur auto dépend des options). En dessous de
+                        `xl`, le groupe « ALLERGÈNES »/commentaire/suppression
+                        (`hidden xl:contents`) ne s'affiche pas du tout — sans
+                        lui l'en-tête tiendrait sur une ligne comme
+                        aujourd'hui, mais réserverait quand même la hauteur
+                        d'une 2e ligne vide (le texte masqué occupe toujours
+                        sa boîte). `xl:contents` le neutralise en tant
+                        qu'élément (ses enfants redeviennent des items directs
+                        du flex à partir de `xl`, alignement desktop
+                        inchangé). Le libellé « ALLERGÈNES » lui-même n'a plus
+                        de raison d'être ici en dessous de `xl` : seule la 1re
+                        ligne d'ingrédient est juste en dessous, les suivantes
+                        en sont trop loin — un intitulé plus petit est répété
+                        au-dessus du bloc allergènes de chaque ligne à la
+                        place (cf. plus bas). */}
+                    <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex items-center gap-4 mb-2">
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
@@ -1321,14 +1320,15 @@ export function CreerForm({
                           </option>
                         ))}
                       </select>
-                      <div className="basis-full xl:hidden" />
-                      <div className="flex-1 min-w-0">
-                        <span className="hidden xl:inline font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                      <div className="hidden xl:contents">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                        </div>
+                        <div className="flex-1 min-w-0" />
+                        <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
                       </div>
-                      <div className="flex-1 min-w-0" />
-                      <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
                     </div>
                     <div className="space-y-6">
                       {st.ings.map((g, ii) => (
@@ -1447,6 +1447,14 @@ export function CreerForm({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
+                            {/* Miroir invisible du libellé « Allergènes » de la
+                                colonne voisine : sans lui, le champ commentaire
+                                (sans libellé au-dessus) remonte plus haut que
+                                le select/les puces d'allergènes en dessous de
+                                `xl`, malgré `items-center`. */}
+                            <span aria-hidden className="xl:hidden block invisible font-label-md text-[10px] uppercase tracking-widest mb-1">
+                              Allergènes
+                            </span>
                             <textarea
                               value={g.comment}
                               onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
