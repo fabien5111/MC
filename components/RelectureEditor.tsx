@@ -129,7 +129,7 @@ function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; uni
       const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: i.qte.trim(), unit: i.unite });
+        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite });
         return;
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
