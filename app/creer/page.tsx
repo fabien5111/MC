@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
-import { getRecipeFull, getRecipes } from '@/lib/recipes';
-import { getFavoriteIds } from '@/lib/favorites';
+import { getRecipeFull } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
 import { Header } from '@/components/Header';
 import { CreerForm } from '@/components/CreerForm';
-import { SuggestionsSidebar } from '@/components/recipe/SuggestionsSidebar';
 
 export const metadata: Metadata = { title: 'Créer une recette | Maryse Club' };
 
@@ -21,7 +19,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   await requireWritableSession();
   const { id } = await searchParams;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe, suggestionsRaw, favIds] =
+  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe] =
     await Promise.all([
       getTags(),
       getUnits(),
@@ -33,14 +31,10 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       getUtensilRefNames(),
       isAdmin(user.id),
       id ? getRecipeFull(id) : Promise.resolve(null),
-      getRecipes({ limit: 4 }),
-      getFavoriteIds(),
     ]);
 
   // Édition réservée à l'auteur ; sinon on repart d'un formulaire vierge.
   const owned = editRecipe && editRecipe.author_id === user.id ? editRecipe : null;
-  // Exclut la recette en cours d'édition de ses propres suggestions.
-  const suggestions = suggestionsRaw.filter((r) => r.id !== owned?.id).slice(0, 2);
 
   return (
     <>
@@ -58,7 +52,6 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           utensilRefs={utensilRefs}
           isAdmin={admin}
           editRecipe={owned}
-          sidebar={<SuggestionsSidebar suggestions={suggestions} favIds={favIds} />}
         />
       </main>
       </div>

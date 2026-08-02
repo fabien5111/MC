@@ -25,7 +25,6 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
-import type { ReactNode } from 'react';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -188,7 +187,6 @@ export function CreerForm({
   utensilRefs,
   isAdmin,
   editRecipe,
-  sidebar,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -200,11 +198,6 @@ export function CreerForm({
   utensilRefs: string[];
   isAdmin: boolean;
   editRecipe: RecipeFull | null;
-  // Colonne latérale (recherche + suggestions), rendue côté serveur par la
-  // page appelante — un composant serveur (AllergenPictos y accède à
-  // Supabase) ne peut pas être importé depuis ce module client, seulement
-  // reçu déjà rendu.
-  sidebar: ReactNode;
 }) {
   const router = useRouter();
   const editingId = editRecipe?.id ?? null;
@@ -810,8 +803,6 @@ export function CreerForm({
         ]}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-      <div className="lg:col-span-8">
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display-lg text-headline-lg-mobile md:text-display-lg text-primary mb-2">
@@ -1816,10 +1807,6 @@ export function CreerForm({
         <section className="pt-10 border-t-2 border-primary">
           <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
         </section>
-      </div>
-      </div>
-
-      {sidebar}
       </div>
 
       <div
