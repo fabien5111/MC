@@ -112,6 +112,20 @@ export const SECTIONS: Section[] = [
     ],
   },
   {
+    table: 'ingredient_conversions',
+    label: 'Conversions d’ingrédients',
+    type: 'Garde-manger',
+    badge: 'bg-tertiary-fixed text-on-tertiary-fixed',
+    desc: 'Équivalences quantité/unité pour un ingrédient (ex. 1 œuf = 50 g)',
+    fields: [
+      { key: 'ingredient_ref_id', label: 'Ingrédient', type: 'select', refTable: 'ingredient_refs', required: true },
+      { key: 'from_quantity', label: 'Quantité de départ', type: 'number', required: true },
+      { key: 'from_unit_id', label: 'Unité de départ', type: 'select', refTable: 'units', required: true },
+      { key: 'to_quantity', label: 'Quantité d’arrivée', type: 'number', required: true },
+      { key: 'to_unit_id', label: 'Unité d’arrivée', type: 'select', refTable: 'units', required: true },
+    ],
+  },
+  {
     table: 'allergens',
     label: 'Allergènes',
     type: 'Nutrition',

@@ -6,7 +6,7 @@ import { ListsManager } from '@/components/admin/ListsManager';
 
 export const metadata: Metadata = { title: 'Listes | Admin — Maryse Club' };
 
-const ORDER: Record<string, string> = { recipe_types: 'id', difficulties: 'level' };
+const ORDER: Record<string, string> = { recipe_types: 'id', difficulties: 'level', ingredient_conversions: 'id' };
 const REGULAR_SECTIONS = SECTIONS.filter((s) => s.table !== 'molds');
 
 export default async function AdminListesPage() {
