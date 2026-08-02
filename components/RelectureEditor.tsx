@@ -263,7 +263,7 @@ export function RelectureEditor({
     return guess;
   });
   const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
-  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || ''));
+  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || rendementTxt(r0)));
   // Rendement tel qu'extrait par l'IA (avant correction), affiché en référence à côté du sélecteur.
   const importedRendement = rendementTxt(r0);
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
