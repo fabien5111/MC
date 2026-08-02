@@ -69,6 +69,19 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
     return entries;
   }, [activeKey, section, isMolds, moldTypeFilter, search, data]);
 
+  // Libellé d'une entrée pour la confirmation de suppression : le premier
+  // champ, résolu via refTable s'il s'agit d'une référence (ex. l'ingrédient
+  // d'une règle de conversion) plutôt que d'afficher l'id brut.
+  function entryLabel(e: Entry, s: Section): string {
+    const f = s.fields[0];
+    if (!f) return String(e.id);
+    if (f.refTable) {
+      const linked = (data[f.refTable] || []).find((x) => String(x.id) === String(e[f.key]));
+      return linked ? String(linked.name) : String(e[f.key]);
+    }
+    return String(e[f.key] ?? e.id);
+  }
+
   function selectList(key: string) {
     if (activeKey === key) {
       setActiveKey(null);
@@ -332,7 +345,7 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                             <span className="material-symbols-outlined text-xl">edit_note</span>
                           </button>
                           <button
-                            onClick={() => del(activeKey!, e.id, isMolds ? String(e.name) : String(e[section.fields[0].key]))}
+                            onClick={() => del(activeKey!, e.id, isMolds ? String(e.name) : entryLabel(e, section))}
                             className="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error"
                             title="Supprimer"
                           >
