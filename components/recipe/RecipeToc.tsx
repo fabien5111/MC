@@ -56,8 +56,8 @@ export const CREER_SECTIONS: TocSections = {
 };
 
 // Relecture d'un brouillon importé — cf. components/RelectureEditor. L'écran
-// n'a ni planning, ni difficulté, ni récapitulatif d'ingrédients, et se termine
-// par les indications globales.
+// n'a ni planning ni difficulté, et se termine par les indications globales
+// suivies du récapitulatif d'ingrédients.
 export const RELECTURE_SECTIONS: TocSections = {
   before: [
     { id: 'sec-infos', label: 'Informations générales', icon: 'edit_note', level: 1 },
@@ -67,6 +67,7 @@ export const RELECTURE_SECTIONS: TocSections = {
   after: [
     { id: 'sec-conseils', label: 'Conseils recette/dégustation', icon: 'lightbulb', level: 1 },
     { id: 'sec-indications', label: 'Indications globales', icon: 'insights', level: 1 },
+    { id: 'sec-ingredients', label: 'Récap Ingrédients', icon: 'egg_alt', level: 1 },
   ],
 };
 

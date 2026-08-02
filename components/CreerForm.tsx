@@ -1242,7 +1242,12 @@ export function CreerForm({
                     </select>
                   </div>
 
-                  <div className="flex flex-wrap gap-8">
+                  {/* gap-6/w-44 (au lieu de gap-8/w-48) : à 1024px (`lg`), la
+                      largeur reste réduite de 58px pour le rail (`.creer-page`)
+                      — sous cette marge, gap-8/w-48 dépassait de peu et
+                      renvoyait le 4ᵉ champ à la ligne. Vérifié à tenir sur une
+                      ligne de 1024px jusqu'au repli naturel sous 768px. */}
+                  <div className="flex flex-wrap gap-6">
                     {(
                       [
                         ['TEMPS DE PRÉP', st.prep, (v: string) => patchStep(si, { prep: v }), 'min'],
@@ -1251,7 +1256,7 @@ export function CreerForm({
                         ['T°C DE CUISSON', st.temp, (v: string) => patchStep(si, { temp: v }), '°C'],
                       ] as const
                     ).map(([label, val, set, unit]) => (
-                      <div key={label} className="flex flex-col w-48">
+                      <div key={label} className="flex flex-col w-44">
                         <label className="font-label-md text-label-md text-outline text-left">{label}</label>
                         {/* Champ centré dans la colonne : deux espaceurs égaux
                             l'encadrent, l'unité vit dans celui de droite. */}
@@ -1285,12 +1290,24 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES » sur une même
-                        ligne, alignés sur leur colonne. Les éléments miroirs
-                        (select d'unité + bouton) sont invisibles mais occupent
-                        leur largeur pour aligner précisément malgré la largeur
-                        auto de l'unité. */}
-                    <div className="flex items-center gap-4 mb-2">
+                    {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,
+                        toujours utiles : alignent la colonne « unité », dont
+                        la largeur auto dépend des options). En dessous de
+                        `xl`, le groupe « ALLERGÈNES »/commentaire/suppression
+                        (`hidden xl:contents`) ne s'affiche pas du tout — sans
+                        lui l'en-tête tiendrait sur une ligne comme
+                        aujourd'hui, mais réserverait quand même la hauteur
+                        d'une 2e ligne vide (le texte masqué occupe toujours
+                        sa boîte). `xl:contents` le neutralise en tant
+                        qu'élément (ses enfants redeviennent des items directs
+                        du flex à partir de `xl`, alignement desktop
+                        inchangé). Le libellé « ALLERGÈNES » lui-même n'a plus
+                        de raison d'être ici en dessous de `xl` : seule la 1re
+                        ligne d'ingrédient est juste en dessous, les suivantes
+                        en sont trop loin — un intitulé plus petit est répété
+                        au-dessus du bloc allergènes de chaque ligne à la
+                        place (cf. plus bas). */}
+                    <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex items-center gap-4 mb-2">
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
@@ -1303,18 +1320,29 @@ export function CreerForm({
                           </option>
                         ))}
                       </select>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                      <div className="hidden xl:contents">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                        </div>
+                        <div className="flex-1 min-w-0" />
+                        <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
                       </div>
-                      <div className="flex-1 min-w-0" />
-                      <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {st.ings.map((g, ii) => (
-                        <div key={g.key}>
-                        <div className="flex items-center gap-4">
+                        // Liseré + resserrement de l'écart interne (repris de
+                        // l'encart ExecutionView) : sous `xl`, les 2 lignes
+                        // d'un même ingrédient (repli flex-wrap) doivent se
+                        // distinguer du bloc suivant. `space-y-6` (au lieu de
+                        // l'ancien `space-y-4`, identique au `gap-4` interne)
+                        // creuse l'écart entre ingrédients ; `gap-y-1.5`
+                        // resserre celui entre les 2 lignes d'un même
+                        // ingrédient — sans toucher au `gap-x-4` horizontal
+                        // entre les champs d'une même ligne.
+                        <div key={g.key} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
+                        <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
                           <div className="relative flex-1 min-w-0">
                             <input
                               list="dl-ingredients"
@@ -1362,7 +1390,11 @@ export function CreerForm({
                               </option>
                             ))}
                           </select>
+                          <div className="basis-full xl:hidden" />
                           <div className="flex-1 min-w-0">
+                            <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
+                              Allergènes
+                            </span>
                             <div className="flex flex-wrap items-center gap-1">
                               {g.allergen.map((a) => (
                                 <span
@@ -1415,6 +1447,14 @@ export function CreerForm({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
+                            {/* Miroir invisible du libellé « Allergènes » de la
+                                colonne voisine : sans lui, le champ commentaire
+                                (sans libellé au-dessus) remonte plus haut que
+                                le select/les puces d'allergènes en dessous de
+                                `xl`, malgré `items-center`. */}
+                            <span aria-hidden className="xl:hidden block invisible font-label-md text-[10px] uppercase tracking-widest mb-1">
+                              Allergènes
+                            </span>
                             <textarea
                               value={g.comment}
                               onChange={(e) => patchIng(si, ii, { comment: e.target.value })}

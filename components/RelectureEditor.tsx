@@ -118,6 +118,30 @@ const numOrNull = (v: string): number | null => {
   return isNaN(n) ? null : n;
 };
 
+// Fusion des ingrédients identiques (nom + unité) de toutes les étapes, pour
+// le récapitulatif global — même logique que `mergeRecapLines` de CreerForm.
+function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string }[] {
+  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
+  sps.forEach((sp) =>
+    sp.ings.forEach((i) => {
+      const name = i.nom.trim();
+      if (!name) return;
+      const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase();
+      const ex = merged.find((m) => m.key === mkey);
+      if (!ex) {
+        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite });
+        return;
+      }
+      const a = parseFloat(String(ex.qty).replace(',', '.'));
+      const b = parseFloat(String(i.qte).replace(',', '.'));
+      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
+      else ex.qty = [ex.qty, i.qte].filter(Boolean).join(' + ');
+    }),
+  );
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+}
+
 // Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
 function closestDifficulty(difficulties: Difficulty[], level: number): Difficulty | null {
   return difficulties.reduce<Difficulty | null>(
@@ -263,7 +287,7 @@ export function RelectureEditor({
     return guess;
   });
   const [dimsDesc, setDimsDesc] = useState(r0.libelle_corrige || rendementTxt(r0));
-  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || ''));
+  const [yieldNotes, setYieldNotes] = useState(ligatureOeuf(r0.notes_quantites || rendementTxt(r0)));
   // Rendement tel qu'extrait par l'IA (avant correction), affiché en référence à côté du sélecteur.
   const importedRendement = rendementTxt(r0);
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
@@ -619,6 +643,7 @@ export function RelectureEditor({
   const sumAttente = sps.reduce((n, sp) => n + (numOrNull(sp.attente) || 0), 0);
   const sumCuisson = sps.reduce((n, sp) => n + (numOrNull(sp.cuisson) || 0), 0);
   const sumTotal = sumPrep + sumAttente + sumCuisson;
+  const ingredientsRecap = useMemo(() => mergeIngredientsRecap(sps), [sps]);
 
   // ── Lecture du formulaire → pivot corrigé ──
   function readForm(): any {
@@ -1768,6 +1793,27 @@ export function RelectureEditor({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Récapitulatif des ingrédients : fusion des lignes identiques (nom +
+          unité) de toutes les étapes, purement dérivé (rien n'est enregistré
+          ici) — même principe que dans l'éditeur de recette (CreerForm). */}
+      <section id="sec-ingredients" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Récapitulatif des ingrédients</h2>
+        {ingredientsRecap.length === 0 ? (
+          <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
+        ) : (
+          <div className="max-w-2xl" style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+            {ingredientsRecap.map((m, k) => (
+              <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
+                  {[m.qty, UNITE_LBL[m.unit] || m.unit].filter(Boolean).join(' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <datalist id="dl-ingredients">

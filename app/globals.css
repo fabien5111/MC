@@ -334,7 +334,11 @@ body {
    place. Appliqué aux conteneurs principaux des écrans qui montent
    <RecipeToc> (éditeur /creer, relecture), sur la largeur repliée (58px)
    uniquement — le survol/épinglage passe par-dessus le contenu, pas dedans.
-   Même point de rupture que .recipe-toc pour son masquage. */
+   Même point de rupture que .recipe-toc pour son masquage.
+   IMPORTANT : à poser sur un <div> englobant, jamais sur l'élément qui porte
+   aussi `mx-auto` (Tailwind) — les deux règles ciblent `margin-left` avec la
+   même spécificité, et celle-ci (déclarée après `@tailwind utilities`)
+   l'emporterait sur `auto`, cassant le centrage de la page. */
 .creer-page,
 .relecture-page,
 .recette-page,
