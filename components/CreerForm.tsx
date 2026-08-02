@@ -1292,8 +1292,12 @@ export function CreerForm({
                         En dessous de `xl` (≤ lg), le « casseur de ligne »
                         (`basis-full xl:hidden`) force le retour à la ligne
                         entre unité et allergènes — miroir du même repli sur la
-                        ligne de données, pour rester aligné avec elle. */}
-                    <div className="flex flex-wrap xl:flex-nowrap items-center gap-4 mb-2">
+                        ligne de données, pour rester aligné avec elle. Liseré
+                        transparent + même retrait que les lignes en dessous
+                        de `xl` : sans lui, les libellés d'en-tête ne
+                        tomberaient plus sur leur colonne une fois les lignes
+                        de données décalées par leur propre liseré. */}
+                    <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex flex-wrap xl:flex-nowrap items-center gap-4 mb-2">
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
@@ -1315,10 +1319,19 @@ export function CreerForm({
                         <span className="material-symbols-outlined text-[18px]">delete</span>
                       </button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {st.ings.map((g, ii) => (
-                        <div key={g.key}>
-                        <div className="flex flex-wrap xl:flex-nowrap items-center gap-4">
+                        // Liseré + resserrement de l'écart interne (repris de
+                        // l'encart ExecutionView) : sous `xl`, les 2 lignes
+                        // d'un même ingrédient (repli flex-wrap) doivent se
+                        // distinguer du bloc suivant. `space-y-6` (au lieu de
+                        // l'ancien `space-y-4`, identique au `gap-4` interne)
+                        // creuse l'écart entre ingrédients ; `gap-y-1.5`
+                        // resserre celui entre les 2 lignes d'un même
+                        // ingrédient — sans toucher au `gap-x-4` horizontal
+                        // entre les champs d'une même ligne.
+                        <div key={g.key} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
+                        <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
                           <div className="relative flex-1 min-w-0">
                             <input
                               list="dl-ingredients"
