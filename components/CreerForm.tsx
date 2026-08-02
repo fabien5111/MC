@@ -1285,12 +1285,15 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES » sur une même
-                        ligne, alignés sur leur colonne. Les éléments miroirs
-                        (select d'unité + bouton) sont invisibles mais occupent
-                        leur largeur pour aligner précisément malgré la largeur
-                        auto de l'unité. */}
-                    <div className="flex items-center gap-4 mb-2">
+                    {/* En-têtes « INGRÉDIENTS » / « ALLERGÈNES », alignés sur
+                        leur colonne. Les éléments miroirs (select d'unité +
+                        bouton) sont invisibles mais occupent leur largeur pour
+                        aligner précisément malgré la largeur auto de l'unité.
+                        En dessous de `xl` (≤ lg), le « casseur de ligne »
+                        (`basis-full xl:hidden`) force le retour à la ligne
+                        entre unité et allergènes — miroir du même repli sur la
+                        ligne de données, pour rester aligné avec elle. */}
+                    <div className="flex flex-wrap xl:flex-nowrap items-center gap-4 mb-2">
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
@@ -1303,6 +1306,7 @@ export function CreerForm({
                           </option>
                         ))}
                       </select>
+                      <div className="basis-full xl:hidden" />
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
                       </div>
@@ -1314,7 +1318,7 @@ export function CreerForm({
                     <div className="space-y-4">
                       {st.ings.map((g, ii) => (
                         <div key={g.key}>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap xl:flex-nowrap items-center gap-4">
                           <div className="relative flex-1 min-w-0">
                             <input
                               list="dl-ingredients"
@@ -1362,6 +1366,7 @@ export function CreerForm({
                               </option>
                             ))}
                           </select>
+                          <div className="basis-full xl:hidden" />
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-1">
                               {g.allergen.map((a) => (
