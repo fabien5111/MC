@@ -1242,7 +1242,12 @@ export function CreerForm({
                     </select>
                   </div>
 
-                  <div className="flex flex-wrap gap-8">
+                  {/* gap-6/w-44 (au lieu de gap-8/w-48) : à 1024px (`lg`), la
+                      largeur reste réduite de 58px pour le rail (`.creer-page`)
+                      — sous cette marge, gap-8/w-48 dépassait de peu et
+                      renvoyait le 4ᵉ champ à la ligne. Vérifié à tenir sur une
+                      ligne de 1024px jusqu'au repli naturel sous 768px. */}
+                  <div className="flex flex-wrap gap-6">
                     {(
                       [
                         ['TEMPS DE PRÉP', st.prep, (v: string) => patchStep(si, { prep: v }), 'min'],
@@ -1251,7 +1256,7 @@ export function CreerForm({
                         ['T°C DE CUISSON', st.temp, (v: string) => patchStep(si, { temp: v }), '°C'],
                       ] as const
                     ).map(([label, val, set, unit]) => (
-                      <div key={label} className="flex flex-col w-48">
+                      <div key={label} className="flex flex-col w-44">
                         <label className="font-label-md text-label-md text-outline text-left">{label}</label>
                         {/* Champ centré dans la colonne : deux espaceurs égaux
                             l'encadrent, l'unité vit dans celui de droite. */}
