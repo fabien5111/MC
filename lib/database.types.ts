@@ -632,6 +632,58 @@ export type Database = {
           },
         ]
       }
+      ingredient_conversions: {
+        Row: {
+          created_at: string
+          from_quantity: number
+          from_unit_id: number
+          id: number
+          ingredient_ref_id: number
+          to_quantity: number
+          to_unit_id: number
+        }
+        Insert: {
+          created_at?: string
+          from_quantity: number
+          from_unit_id: number
+          id?: number
+          ingredient_ref_id: number
+          to_quantity: number
+          to_unit_id: number
+        }
+        Update: {
+          created_at?: string
+          from_quantity?: number
+          from_unit_id?: number
+          id?: number
+          ingredient_ref_id?: number
+          to_quantity?: number
+          to_unit_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_conversions_from_unit_id_fkey"
+            columns: ["from_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_conversions_ingredient_ref_id_fkey"
+            columns: ["ingredient_ref_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_refs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_conversions_to_unit_id_fkey"
+            columns: ["to_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredient_groups: {
         Row: {
           id: number
