@@ -1301,7 +1301,13 @@ export function CreerForm({
                         transparent + même retrait que les lignes en dessous
                         de `xl` : sans lui, les libellés d'en-tête ne
                         tomberaient plus sur leur colonne une fois les lignes
-                        de données décalées par leur propre liseré. */}
+                        de données décalées par leur propre liseré. En dessous
+                        de `xl`, « ALLERGÈNES » ne s'affiche plus ici : seule
+                        la première ligne d'ingrédient se trouve juste en
+                        dessous de cet en-tête, les suivantes en sont trop
+                        loin pour que le libellé leur reste rattaché. Un
+                        intitulé plus petit est répété au-dessus du bloc
+                        allergènes de chaque ligne à la place (cf. plus bas). */}
                     <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex flex-wrap xl:flex-nowrap items-center gap-4 mb-2">
                       <div className="flex-1 min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
@@ -1317,7 +1323,7 @@ export function CreerForm({
                       </select>
                       <div className="basis-full xl:hidden" />
                       <div className="flex-1 min-w-0">
-                        <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                        <span className="hidden xl:inline font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
                       </div>
                       <div className="flex-1 min-w-0" />
                       <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
@@ -1386,6 +1392,9 @@ export function CreerForm({
                           </select>
                           <div className="basis-full xl:hidden" />
                           <div className="flex-1 min-w-0">
+                            <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
+                              Allergènes
+                            </span>
                             <div className="flex flex-wrap items-center gap-1">
                               {g.allergen.map((a) => (
                                 <span
