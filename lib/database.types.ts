@@ -831,6 +831,7 @@ export type Database = {
           base_quantity: number | null
           comment: string | null
           created_at: string
+          excluded_when_done: boolean
           expanded_into_recipe_id: string | null
           id: number
           name: string
@@ -853,6 +854,7 @@ export type Database = {
           base_quantity?: number | null
           comment?: string | null
           created_at?: string
+          excluded_when_done?: boolean
           expanded_into_recipe_id?: string | null
           id?: number
           name: string
@@ -875,6 +877,7 @@ export type Database = {
           base_quantity?: number | null
           comment?: string | null
           created_at?: string
+          excluded_when_done?: boolean
           expanded_into_recipe_id?: string | null
           id?: number
           name?: string
@@ -938,7 +941,6 @@ export type Database = {
           day_offset: number
           description: string | null
           id: number
-          keep_cooking: boolean
           order_index: number
           planning_id: number
           prep_time: number | null
@@ -959,7 +961,6 @@ export type Database = {
           day_offset?: number
           description?: string | null
           id?: number
-          keep_cooking?: boolean
           order_index: number
           planning_id: number
           prep_time?: number | null
@@ -980,7 +981,6 @@ export type Database = {
           day_offset?: number
           description?: string | null
           id?: number
-          keep_cooking?: boolean
           order_index?: number
           planning_id?: number
           prep_time?: number | null
@@ -1019,18 +1019,21 @@ export type Database = {
       }
       plan_substeps: {
         Row: {
+          excluded_when_done: boolean
           id: number
           order_index: number
           step_id: number
           texte: string
         }
         Insert: {
+          excluded_when_done?: boolean
           id?: number
           order_index: number
           step_id: number
           texte: string
         }
         Update: {
+          excluded_when_done?: boolean
           id?: number
           order_index?: number
           step_id?: number
