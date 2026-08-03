@@ -351,6 +351,22 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Liste de courses — remontée juste sous le bandeau de planification
+              en mode planifié (au lieu de fin de section Ingrédients), pour
+              rester visible sans scroller depuis « Démarrer la recette ». */}
+          {planContext && planMerged && planMerged.length > 0 && (
+            <div className="no-print mb-12">
+              <ShoppingWidget
+                recipeTitle={recipe.title}
+                ingredients={planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id }))}
+                lists={shoppingLists}
+                isLoggedIn={!!user}
+                conversions={conversions}
+                units={units}
+              />
+            </div>
+          )}
+
           {/* Bloc technique */}
           <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-8 mb-12 space-y-8">
             <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
@@ -691,11 +707,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 )
               )}
 
-              {(planMerged ? planMerged.length > 0 : merged.length > 0) && (
+              {/* Mode planifié : la liste de courses est affichée plus haut,
+                  juste sous le bandeau de planification (cf. plus bas dans le
+                  fichier) — pas ici, pour ne pas la dupliquer. */}
+              {!planContext && merged.length > 0 && (
                 <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
-                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id })) : merged}
+                  ingredients={merged}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
                   conversions={conversions}
