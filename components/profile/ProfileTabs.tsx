@@ -417,13 +417,14 @@ export function ProfileTabs({
                   {shoppingList.map((l) => {
                     const items = l.shopping_list_items || [];
                     const done = items.filter((i) => i.checked).length;
+                    const allDone = items.length > 0 && done === items.length;
                     return (
                       <Fragment key={l.id}>
                         <tr className="hover:bg-surface-container-low transition-colors">
                           <td className="px-6 py-4">
                             <Link
                               href={`/courses/${l.id}`}
-                              className="font-label-md text-primary hover:underline flex items-center gap-2 text-left"
+                              className={`font-label-md text-primary hover:underline flex items-center gap-2 text-left ${allDone ? 'line-through opacity-50' : ''}`}
                             >
                               <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
                               {l.name}
