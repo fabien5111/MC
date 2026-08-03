@@ -75,15 +75,45 @@ export function ShoppingWidget({
       } else {
         listId = Number(choice);
       }
-      const rows = items.map((m) => ({
-        list_id: listId,
-        name: m.name,
-        quantity: String(m.qty || '') || null,
-        unit: m.unit || null,
-        ref_id: m.ref_id,
-      }));
-      const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
-      if (itemsErr) throw itemsErr;
+
+      // Liste existante : fusionne la quantité des articles dont le libellé
+      // ET l'unité sont identiques à un article déjà présent — une unité
+      // différente reste une ligne à part (pas de fusion).
+      let toInsert = items;
+      if (choice !== '__new__') {
+        const { data: existing, error: existingErr } = await supabase
+          .from('shopping_list_items')
+          .select('id, name, quantity, unit')
+          .eq('list_id', listId);
+        if (existingErr) throw existingErr;
+        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
+        const byKey = new Map((existing || []).map((e) => [key(e.name, e.unit), e]));
+        toInsert = [];
+        for (const m of items) {
+          const match = byKey.get(key(m.name, m.unit));
+          if (!match) {
+            toInsert.push(m);
+            continue;
+          }
+          const a = parseFloat(String(match.quantity || '').replace(',', '.'));
+          const b = parseFloat(String(m.qty || '').replace(',', '.'));
+          const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [match.quantity, m.qty].filter(Boolean).join(' + ');
+          const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', match.id);
+          if (updErr) throw updErr;
+        }
+      }
+
+      if (toInsert.length) {
+        const rows = toInsert.map((m) => ({
+          list_id: listId,
+          name: m.name,
+          quantity: String(m.qty || '') || null,
+          unit: m.unit || null,
+          ref_id: m.ref_id,
+        }));
+        const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
+        if (itemsErr) throw itemsErr;
+      }
       // Invalide le rendu serveur avant de naviguer : la liste de destination
       // peut déjà être en cache (articles manquants), et « Listes de courses »
       // du profil doit voir la liste créée.
