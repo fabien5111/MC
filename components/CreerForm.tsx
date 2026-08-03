@@ -668,6 +668,7 @@ export function CreerForm({
             comment: l.comment.trim() || null,
             allergen: l.allergen.length ? l.allergen.join(', ') : null,
             order_index: i,
+            ref_id: resolveIngredientRefId(l.name, ingredientRefIds),
           }))
           .filter((l) => l.name);
         const photoUrls = st.photos.filter((p): p is string => !!p);

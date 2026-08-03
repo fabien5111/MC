@@ -913,6 +913,7 @@ export function RelectureEditor({
             comment: g.note || null,
             allergen: g.allergene || null,
             order_index: k,
+            ref_id: resolveIngredientRefId(g.nom || '', ingredientRefIds),
           }))
           .filter((l: any) => l.name);
         if (lines.length) {
