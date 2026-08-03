@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
@@ -95,6 +96,8 @@ export function ShoppingWidget({
   }
 
   return (
+    <>
+    <LoadingOverlay visible={busy} label="Ajout à la liste de courses…" />
     <details className="group border border-secondary/40 rounded-xl mt-4 bg-surface-container-low">
       <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
         <span className="font-label-md text-label-md text-primary flex items-center gap-2">
@@ -170,12 +173,13 @@ export function ShoppingWidget({
                 disabled={busy}
                 className="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md text-[12px] disabled:opacity-60"
               >
-                {busy ? 'Ajout…' : 'Valider'}
+                Valider
               </button>
             </div>
           </>
         )}
       </div>
     </details>
+    </>
   );
 }
