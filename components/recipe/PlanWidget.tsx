@@ -22,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { RecipeFull } from '@/lib/recipes';
@@ -135,6 +136,7 @@ export function PlanWidget({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
   const today = useMemo(() => {
@@ -204,7 +206,7 @@ export function PlanWidget({
 
   async function askAi() {
     if (aiPrompt.trim().length < 3) {
-      alert("Décrivez l'ajustement souhaité.");
+      dialog.alert("Décrivez l'ajustement souhaité.");
       return;
     }
     setAiBusy(true);
@@ -247,7 +249,7 @@ export function PlanWidget({
         const base = num(m?.qty);
         const want = num(ingQty);
         if (!m || !base || !want || want <= 0) {
-          alert('Indiquez une quantité valide.');
+          dialog.alert('Indiquez une quantité valide.');
           return null;
         }
         factor = want / base;
@@ -255,7 +257,7 @@ export function PlanWidget({
       } else if (uMode === 'ia') {
         const c = num(aiCoef);
         if (!(c && c > 0)) {
-          alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+          dialog.alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
           return null;
         }
         factor = c;
@@ -263,7 +265,7 @@ export function PlanWidget({
       } else {
         const want = num(qty);
         if (!want || want <= 0) {
-          alert('Indiquez une quantité valide.');
+          dialog.alert('Indiquez une quantité valide.');
           return null;
         }
         factor = want / num(recipe.yield_qty)!;
@@ -272,7 +274,7 @@ export function PlanWidget({
     } else if (recipe.measure_type === 'mold' && mMode === 'ia') {
       const c = num(aiCoef);
       if (!(c && c > 0)) {
-        alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+        dialog.alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
         return null;
       }
       factor = c;
@@ -301,7 +303,7 @@ export function PlanWidget({
     } else if (recipe.measure_type === 'dimensions') {
       const c = num(aiCoef);
       if (aiPrompt.trim() && !(c && c > 0)) {
-        alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
+        dialog.alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
         return null;
       }
       if (c && c > 0) {
@@ -317,11 +319,11 @@ export function PlanWidget({
   async function validate() {
     if (!writeGuard('Planification d’une recette')) return;
     if (!date) {
-      alert('Choisissez une date.');
+      dialog.alert('Choisissez une date.');
       return;
     }
     if (date < today) {
-      alert("La date doit être aujourd'hui ou dans le futur.");
+      dialog.alert("La date doit être aujourd'hui ou dans le futur.");
       return;
     }
     const res = compute();
@@ -336,7 +338,7 @@ export function PlanWidget({
     if (res.label) lines.push(res.label);
     if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
     if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
-    if (!confirm(lines.join('\n'))) return;
+    if (!(await dialog.confirm(lines.join('\n')))) return;
 
     setBusy(true);
     const supabase = createClient();
@@ -347,7 +349,7 @@ export function PlanWidget({
         .update({ planned_date: date, ...(adjustmentChanged ? { factor: res.factor, adjust_label: res.label } : {}) })
         .eq('id', existingPlan.id);
       if (error) {
-        alert('Erreur : ' + error.message);
+        dialog.alert('Erreur : ' + error.message);
         setBusy(false);
         return;
       }
@@ -355,7 +357,7 @@ export function PlanWidget({
         try {
           await rescalePlanIngredients(supabase, existingPlan, res.factor, res.moldCoefs);
         } catch (e) {
-          alert('La date a été mise à jour, mais le nouvel ajustement des quantités a échoué : ' + (e as Error).message);
+          dialog.alert('La date a été mise à jour, mais le nouvel ajustement des quantités a échoué : ' + (e as Error).message);
           setBusy(false);
           return;
         }
@@ -378,7 +380,7 @@ export function PlanWidget({
       .select('id')
       .single();
     if (error || !planRow) {
-      alert('Erreur : ' + (error?.message || 'création refusée'));
+      dialog.alert('Erreur : ' + (error?.message || 'création refusée'));
       setBusy(false);
       return;
     }
@@ -386,7 +388,7 @@ export function PlanWidget({
       await insertMaterializedPlan(supabase, planRow.id, recipe, res.factor, res.moldCoefs);
     } catch (e) {
       await supabase.from('planning').delete().eq('id', planRow.id);
-      alert('Erreur lors de la création du plan : ' + (e as Error).message);
+      dialog.alert('Erreur lors de la création du plan : ' + (e as Error).message);
       setBusy(false);
       return;
     }

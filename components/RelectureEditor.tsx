@@ -18,6 +18,7 @@ import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { useDialog } from '@/components/Dialog';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -228,6 +229,7 @@ export function RelectureEditor({
   ingredientRefIds: IngredientRefOption[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
@@ -435,7 +437,7 @@ export function RelectureEditor({
     setRefBusy(`utensils:${clean.toLowerCase()}`);
     const { error } = await createClient().from('utensils').insert({ name: clean });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
     refreshRefs();
   }
@@ -452,7 +454,7 @@ export function RelectureEditor({
     const allergenCsv = list.length ? list.join(', ') : null;
     const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen: allergenCsv });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
     refreshRefs();
@@ -483,7 +485,7 @@ export function RelectureEditor({
       .select('id, name, slug')
       .single();
     setRefBusy(null);
-    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    if (error || !data) return void dialog.alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
     setExtraTags((p) => [...p, data]);
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
@@ -590,8 +592,8 @@ export function RelectureEditor({
     setSps((prev) => [...prev.slice(0, si), sp, ...prev.slice(si)]);
     setJustAddedSpKey(sp.key);
   };
-  const delSp = (si: number) => {
-    if (!confirm('Supprimer cette étape ?')) return;
+  const delSp = async (si: number) => {
+    if (!(await dialog.confirm('Supprimer cette étape ?'))) return;
     setSps((prev) => prev.filter((_, k) => k !== si));
   };
   // Repli / dépli d'une étape (comme l'éditeur de recette).
@@ -748,7 +750,7 @@ export function RelectureEditor({
       setSaveStatus('Corrections enregistrées ✓');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (e) {
-      alert('Erreur : ' + (e as Error).message);
+      dialog.alert('Erreur : ' + (e as Error).message);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -766,12 +768,12 @@ export function RelectureEditor({
     for (const sp of sps) {
       for (const g of sp.ings) {
         if (g.nom.trim() && String(g.qte).trim() && !validUnitNames.has(g.unite)) {
-          alert(`Choisissez une unité pour « ${g.nom.trim()} » avant de créer la recette.`);
+          dialog.alert(`Choisissez une unité pour « ${g.nom.trim()} » avant de créer la recette.`);
           return;
         }
       }
     }
-    if (!confirm('Créer cette recette dans votre carnet (brouillon privé) ?')) return;
+    if (!(await dialog.confirm('Créer cette recette dans votre carnet (brouillon privé) ?'))) return;
     busyRef.current = true;
     setBusy(true);
     const supabase = createClient();
@@ -959,7 +961,7 @@ export function RelectureEditor({
     } catch (e) {
       // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
       // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.
-      alert('Erreur à la création : ' + (e as Error).message);
+      dialog.alert('Erreur à la création : ' + (e as Error).message);
       busyRef.current = false;
       setBusy(false);
     }
@@ -969,13 +971,13 @@ export function RelectureEditor({
   // depuis la relecture (déplacée dans la liste des imports, cf.
   // ImporterList `supprimer`) — ce bouton ne fait que quitter, avec
   // confirmation si des corrections n'ont pas été enregistrées.
-  const handleLeave = useCallback(() => {
-    if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+  const handleLeave = useCallback(async () => {
+    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
     // Pas de reset à false ensuite : on quitte la page, autant garder le
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
     setLeaving(true);
     router.push('/importer');
-  }, [router]);
+  }, [router, dialog]);
 
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
 

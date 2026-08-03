@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageToDataUrl } from '@/lib/images';
+import { useDialog } from '@/components/Dialog';
 
 type Device = 'web' | 'tablette' | 'mobile';
 
@@ -35,6 +36,7 @@ function BannerCard({
   initialUrl: string | null;
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [url, setUrl] = useState<string | null>(initialUrl);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -56,7 +58,7 @@ function BannerCard({
       setStatus('Bannière enregistrée ✓');
     } catch (e) {
       setStatus('');
-      alert('Erreur lors de l’enregistrement : ' + (e as Error).message);
+      dialog.alert('Erreur lors de l’enregistrement : ' + (e as Error).message);
     } finally {
       setBusy(false);
     }

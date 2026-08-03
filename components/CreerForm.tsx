@@ -21,6 +21,7 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -205,6 +206,7 @@ export function CreerForm({
   ingredientRefIds: IngredientRefOption[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
 
   const [title, setTitle] = useState(editRecipe?.title || '');
@@ -347,7 +349,7 @@ export function CreerForm({
     setRefBusy(`utensils:${clean.toLowerCase()}`);
     const { error } = await createClient().from('utensils').insert({ name: clean });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
     refreshRefs();
   }
@@ -364,7 +366,7 @@ export function CreerForm({
     const allergenCsv = list.length ? list.join(', ') : null;
     const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen: allergenCsv });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
     refreshRefs();
@@ -397,7 +399,7 @@ export function CreerForm({
       .select('id, name, slug')
       .single();
     setRefBusy(null);
-    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    if (error || !data) return void dialog.alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
     setExtraTags((p) => [...p, data]);
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
@@ -434,11 +436,11 @@ export function CreerForm({
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? url : p)) } : st)));
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
-  const delStep = (i: number) => {
+  const delStep = async (i: number) => {
     if (steps.length <= 1) return;
     const label = steps[i]?.title.trim();
     const msg = label ? `Supprimer l'étape « ${label} » ?` : 'Supprimer cette étape ?';
-    if (!confirm(msg)) return;
+    if (!(await dialog.confirm(msg))) return;
     setSteps((s) => (s.length > 1 ? s.filter((_, k) => k !== i) : s));
   };
   // Réordonne une étape de l'index `from` vers `to` (glisser-déposer).
@@ -535,7 +537,7 @@ export function CreerForm({
     // pas ouvrir deux enregistrements concurrents.
     if (busyRef.current) return;
     if (!title.trim()) {
-      alert('Donnez un titre à votre recette.');
+      dialog.alert('Donnez un titre à votre recette.');
       return;
     }
     // Unité obligatoire dès qu'une quantité est saisie : une valeur qui ne
@@ -545,7 +547,7 @@ export function CreerForm({
     for (const st of steps) {
       for (const l of st.ings) {
         if (l.name.trim() && l.qty.trim() && !validUnitNames.has(l.unit)) {
-          alert(`Choisissez une unité pour « ${l.name.trim()} ».`);
+          dialog.alert(`Choisissez une unité pour « ${l.name.trim()} ».`);
           return;
         }
       }
@@ -554,7 +556,7 @@ export function CreerForm({
       const msg = isPublic
         ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'
         : 'Cette recette est publiée. La repasser en brouillon la retirera de votre carnet publié. Continuer ?';
-      if (!confirm(msg)) return;
+      if (!(await dialog.confirm(msg))) return;
     }
     busyRef.current = true;
     setBusy(true);
@@ -760,7 +762,7 @@ export function CreerForm({
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
       // sont écrits ensuite) : `createdIdRef` fait qu'une nouvelle tentative la
       // met à jour au lieu d'en créer une seconde.
-      alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
+      dialog.alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
       busyRef.current = false;
       setBusy(false);
     }
@@ -772,14 +774,14 @@ export function CreerForm({
   // brouillon dans cette session) ; à défaut de recette existante, retour au
   // profil — contrairement au lien « Annuler » ci-dessous, qui revient
   // toujours au profil.
-  const handleLeave = useCallback(() => {
-    if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+  const handleLeave = useCallback(async () => {
+    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
     // Pas de reset à false ensuite : on quitte la page, autant garder le
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
     setLeaving(true);
     const recipeId = editingId ?? createdIdRef.current;
     router.push(recipeId ? `/recette/${recipeId}` : '/profil');
-  }, [router, editingId]);
+  }, [router, editingId, dialog]);
 
   const scalingOptions =
     measure === 'mold'

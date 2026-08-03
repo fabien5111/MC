@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
@@ -31,6 +32,7 @@ export function ShoppingItems({
   ingredientRefs: IngredientRefOption[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const { mutate } = useMutation();
   const [items, setItems] = useState(() => [...initialItems].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -84,7 +86,7 @@ export function ShoppingItems({
 
   async function applyEdit(id: number, name: string, quantity: string, unit: string) {
     if (!name.trim()) {
-      alert('Indiquez un libellé.');
+      dialog.alert('Indiquez un libellé.');
       return;
     }
     const ref_id = resolveIngredientRefId(name, ingredientRefs);
@@ -106,7 +108,7 @@ export function ShoppingItems({
   // compléter l'état local sans attendre la resynchronisation.
   async function addItem(name: string, quantity: string, unit: string) {
     if (!name.trim()) {
-      alert('Indiquez un libellé.');
+      dialog.alert('Indiquez un libellé.');
       return;
     }
     const supabase = createClient();
@@ -116,7 +118,7 @@ export function ShoppingItems({
       .select()
       .single();
     if (error) {
-      alert('Erreur : ' + error.message);
+      dialog.alert('Erreur : ' + error.message);
       return;
     }
     setItems((prev) => [...prev, data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));

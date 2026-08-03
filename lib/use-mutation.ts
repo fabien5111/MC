@@ -25,6 +25,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 
 // Forme minimale d'un retour supabase-js. `null` permet d'abandonner sans
 // alerte (ex. redirection vers /connexion faute de session active).
@@ -46,6 +47,7 @@ export type MutateOptions = {
 export function useMutation() {
   const router = useRouter();
   const impersonation = useImpersonation();
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
 
   // Renvoie true si l'écriture a réussi — permet à l'appelant d'annuler une
@@ -55,19 +57,19 @@ export function useMutation() {
       // Session d'impersonation en lecture seule : rien n'est envoyé.
       if (impersonation?.mode === 'read_only') {
         logImpersonationAction('write_blocked', options.errorLabel ?? options.confirm ?? 'Écriture');
-        alert(
+        dialog.alert(
           'Session de consultation : vous êtes connecté en tant que ' +
             `${impersonation.targetName} en lecture seule. Aucune modification n'est possible.`,
         );
         return false;
       }
-      if (options.confirm && !confirm(options.confirm)) return false;
+      if (options.confirm && !(await dialog.confirm(options.confirm))) return false;
       setBusy(true);
       try {
         const res = await write();
         if (!res) return false; // abandon volontaire
         if (res.error) {
-          alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
+          dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
           return false;
         }
         if (impersonation) {
@@ -76,13 +78,13 @@ export function useMutation() {
         if (options.refresh !== false) router.refresh();
         return true;
       } catch (e) {
-        alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
+        dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [router, impersonation],
+    [router, impersonation, dialog],
   );
 
   return { busy, mutate };

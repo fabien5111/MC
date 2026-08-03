@@ -10,6 +10,7 @@ import { Fragment, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import type { Unit } from '@/lib/profile';
 import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
@@ -34,6 +35,7 @@ export function PlanIngredientsEditor({
   conversions: ConversionRef[];
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
 
@@ -64,7 +66,7 @@ export function PlanIngredientsEditor({
 
   function applyEditAdded(row: PlanIngredientRow, name: string, qtyStr: string, unit: string) {
     if (!name.trim()) {
-      alert("Indiquez un nom d'ingrédient.");
+      dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
     const n = numify(qtyStr);
@@ -81,7 +83,7 @@ export function PlanIngredientsEditor({
 
   async function addIng(stepId: number, name: string, qtyStr: string, unit: string) {
     if (!name.trim()) {
-      alert("Indiquez un nom d'ingrédient.");
+      dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
     const n = numify(qtyStr);

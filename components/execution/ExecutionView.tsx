@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
@@ -78,6 +79,7 @@ export function ExecutionView({
   units: UnitRef[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [exec, setExec] = useState(initialExec);
   // Une impersonation en lecture seule rend l'écran d'exécution consultatif,
   // exactement comme une exécution terminée (aucune écriture émise).
@@ -122,7 +124,7 @@ export function ExecutionView({
     if (readOnly) return;
     setExec((prev) => ({ ...prev, execution_steps: prev.execution_steps.map((s) => (s.id !== id ? s : { ...s, ...patch })) }));
     const { error } = await createClient().from('execution_steps').update(patch).eq('id', id);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   function toggleStep(id: number, checked: boolean) {
@@ -137,7 +139,7 @@ export function ExecutionView({
     clearTimeout(commentTimers.current[id]);
     commentTimers.current[id] = setTimeout(async () => {
       const { error } = await createClient().from('execution_steps').update({ commentaire: value }).eq('id', id);
-      if (error) alert('Sauvegarde impossible : ' + error.message);
+      if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
 
@@ -148,14 +150,14 @@ export function ExecutionView({
       execution_steps: prev.execution_steps.map((s) => ({ ...s, execution_substeps: s.execution_substeps.map((su) => (su.id !== id ? su : { ...su, done: checked })) })),
     }));
     const { error } = await createClient().from('execution_substeps').update({ done: checked }).eq('id', id);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   async function updateIngredient(id: number, patch: Partial<Pick<ExecutionIngredientRow, 'done' | 'real_quantity' | 'commentaire'>>) {
     if (readOnly) return;
     setExec((prev) => ({ ...prev, execution_ingredients: prev.execution_ingredients.map((it) => (it.id !== id ? it : { ...it, ...patch })) }));
     const { error } = await createClient().from('execution_ingredients').update(patch).eq('id', id);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   function onIngComment(id: number, value: string) {
@@ -164,7 +166,7 @@ export function ExecutionView({
     clearTimeout(commentTimers.current[key]);
     commentTimers.current[key] = setTimeout(async () => {
       const { error } = await createClient().from('execution_ingredients').update({ commentaire: value }).eq('id', id);
-      if (error) alert('Sauvegarde impossible : ' + error.message);
+      if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
 
@@ -174,21 +176,21 @@ export function ExecutionView({
     if (readOnly) return;
     setExec((prev) => ({ ...prev, execution_ingredients: prev.execution_ingredients.map((it) => (ids.includes(it.id) ? { ...it, mep_done: checked } : it)) }));
     const { error } = await createClient().from('execution_ingredients').update({ mep_done: checked }).in('id', ids);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   async function toggleMepUtensil(id: number, checked: boolean) {
     if (readOnly) return;
     setExec((prev) => ({ ...prev, execution_utensils: prev.execution_utensils.map((u) => (u.id !== id ? u : { ...u, mep_done: checked })) }));
     const { error } = await createClient().from('execution_utensils').update({ mep_done: checked }).eq('id', id);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   async function mepDone() {
     setExec((prev) => ({ ...prev, mep_done: true }));
     window.scrollTo(0, 0);
     const { error } = await createClient().from('executions').update({ mep_done: true }).eq('id', exec.id);
-    if (error) alert('Sauvegarde impossible : ' + error.message);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
   function onGlobalComment(value: string) {
@@ -196,17 +198,17 @@ export function ExecutionView({
     clearTimeout(globalTimer.current ?? undefined);
     globalTimer.current = setTimeout(async () => {
       const { error } = await createClient().from('executions').update({ commentaire_global: value }).eq('id', exec.id);
-      if (error) alert('Sauvegarde impossible : ' + error.message);
+      if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
 
   async function endSession(status: 'terminee' | 'abandonnee', message: string) {
     if (readOnly) return;
-    if (!confirm(message)) return;
+    if (!(await dialog.confirm(message))) return;
     const fin = new Date().toISOString();
     const { error } = await createClient().from('executions').update({ status, date_fin: fin }).eq('id', exec.id);
     if (error) {
-      alert('Erreur : ' + error.message);
+      dialog.alert('Erreur : ' + error.message);
       return;
     }
     setExec((prev) => ({ ...prev, status, date_fin: fin }));

@@ -8,14 +8,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import { modeLabel, type ImpersonationMode } from '@/lib/impersonation-types';
 
 export function ImpersonationBanner({ targetName, mode }: { targetName: string; mode: ImpersonationMode }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
 
   async function quitter() {
-    if (!confirm('Quitter la session « connecté en tant que » ? Vous serez déconnecté de ce compte.')) return;
+    if (!(await dialog.confirm('Quitter la session « connecté en tant que » ? Vous serez déconnecté de ce compte.'))) return;
     setBusy(true);
     try {
       // Clôture la ligne d'audit et invalide la session côté serveur…

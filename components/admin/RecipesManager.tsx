@@ -6,12 +6,14 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import type { AdminRecipeRow } from '@/lib/admin';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
 export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]; managed: AdminRecipeRow[] }) {
   const { mutate } = useMutation();
+  const dialog = useDialog();
 
   async function setStatus(id: string, status: string) {
     await mutate(() => createClient().from('recipes').update({ status }).eq('id', id));
@@ -68,13 +70,14 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
               <span className="material-symbols-outlined text-[16px]">edit_note</span> Modifier
             </Link>
             <button
-              onClick={() =>
-                confirm(
+              onClick={async () => {
+                const ok = await dialog.confirm(
                   isPending
                     ? 'Refuser cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.'
                     : 'Retirer cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.',
-                ) && setStatus(r.id, 'rejected')
-              }
+                );
+                if (ok) setStatus(r.id, 'rejected');
+              }}
               title={isPending ? 'Refuser (renvoyer en brouillon)' : 'Retirer (repasser en brouillon)'}
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"
             >

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
@@ -27,6 +28,7 @@ export function ShoppingWidget({
   units: UnitRef[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const [picked, setPicked] = useState<boolean[]>(() => ingredients.map(() => true));
   const [choice, setChoice] = useState<string>('__new__');
@@ -41,7 +43,7 @@ export function ShoppingWidget({
     if (!writeGuard('Ajout à une liste de courses')) return;
     const items = ingredients.filter((_, k) => picked[k]);
     if (!items.length) {
-      alert('Sélectionnez au moins un ingrédient.');
+      dialog.alert('Sélectionnez au moins un ingrédient.');
       return;
     }
     setBusy(true);
@@ -58,7 +60,7 @@ export function ShoppingWidget({
       if (choice === '__new__') {
         const listName = name.trim();
         if (!listName) {
-          alert('Donnez un nom à la liste.');
+          dialog.alert('Donnez un nom à la liste.');
           setBusy(false);
           return;
         }
@@ -87,7 +89,7 @@ export function ShoppingWidget({
       router.refresh();
       router.push(`/courses/${listId}`);
     } catch (e) {
-      alert('Erreur : ' + (e as Error).message);
+      dialog.alert('Erreur : ' + (e as Error).message);
       setBusy(false);
     }
   }
