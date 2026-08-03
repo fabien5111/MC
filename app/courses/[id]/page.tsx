@@ -29,18 +29,19 @@ export default async function CoursesPage({ params }: Params) {
     <>
       <Header current="/profil#courses" />
       <main className="max-w-[800px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
-        <nav className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-8">
-          <Link className="hover:text-primary" href="/profil#courses">
-            Mes listes de courses
-          </Link>
-          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className="text-primary">{list?.name ?? 'Liste de courses'}</span>
-        </nav>
-
         {!list ? (
-          <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
-            Liste introuvable
-          </h1>
+          <>
+            <nav className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-8">
+              <Link className="hover:text-primary" href="/profil#courses">
+                Mes listes de courses
+              </Link>
+              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+              <span className="text-primary">Liste de courses</span>
+            </nav>
+            <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
+              Liste introuvable
+            </h1>
+          </>
         ) : (
           <ShoppingItems
             listId={list.id}

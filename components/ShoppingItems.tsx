@@ -4,7 +4,8 @@
 // « courses-detail » — plus complet que courses.html qui n'a que la coche).
 // La coche est optimiste puis persistée via le client Supabase navigateur
 // (RLS appliquée par la session partagée en cookies).
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -15,6 +16,11 @@ import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, t
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
 const REFRESH_DELAY = 2000;
+
+// Garde-fou : si la resynchronisation flushée au clic sur le fil d'Ariane ne
+// retombe jamais à `isPending = false` (cas limite non prévu), on ne laisse
+// pas l'utilisateur bloqué sur la page — on navigue quand même.
+const LEAVE_SAFETY_DELAY = 3000;
 
 const sameUnit = (a: string | null, b: string | null) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
 
@@ -74,6 +80,42 @@ export function ShoppingItems({
     },
     [router],
   );
+
+  // Fil d'Ariane : un clic normal (rien en attente) navigue tel quel. S'il
+  // reste des coches non resynchronisées, on flush le refresh et on retarde la
+  // navigation jusqu'à sa fin — le fouet de NavigationSpinner, déjà armé au
+  // clic, reste alors affiché tout du long, sans overlay superposé. Garde-fou
+  // (LEAVE_SAFETY_DELAY) : on ne laisse jamais l'utilisateur bloqué si le
+  // passage de isRefreshPending à false devait tarder.
+  const [isRefreshPending, startTransition] = useTransition();
+  const leaving = useRef(false);
+
+  function goToList(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (leaving.current) {
+      e.preventDefault();
+      return;
+    }
+    if (!pending.current) return;
+    e.preventDefault();
+    if (timer.current) clearTimeout(timer.current);
+    pending.current = false;
+    leaving.current = true;
+    startTransition(() => router.refresh());
+  }
+
+  useEffect(() => {
+    if (!leaving.current) return;
+    if (!isRefreshPending) {
+      leaving.current = false;
+      router.push('/profil#courses');
+      return;
+    }
+    const safety = setTimeout(() => {
+      leaving.current = false;
+      router.push('/profil#courses');
+    }, LEAVE_SAFETY_DELAY);
+    return () => clearTimeout(safety);
+  }, [isRefreshPending, router]);
 
   async function toggle(id: number, checked: boolean) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked } : i))); // optimiste
@@ -158,6 +200,14 @@ export function ShoppingItems({
 
   return (
     <>
+      <nav className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-8">
+        <Link className="hover:text-primary" href="/profil#courses" onClick={goToList}>
+          Mes listes de courses
+        </Link>
+        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span className="text-primary">{listName}</span>
+      </nav>
+
       <div className="flex items-baseline justify-between flex-wrap gap-4 mb-8 border-b border-outline-variant pb-4">
         <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary flex items-center gap-3">
           <span className="material-symbols-outlined text-[32px]">shopping_bag</span>
