@@ -3,7 +3,7 @@
 // Onglets du profil (porté de profil.html) : carnet, import, favoris, planning,
 // listes de courses. Bascule d'onglet synchronisée avec le hash.
 // Suppressions via useMutation (écriture navigateur + resynchro du serveur).
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -62,6 +62,7 @@ export function ProfileTabs({
   useEffect(() => setPlanningList(planning), [planning]);
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
+  const [mergingListId, setMergingListId] = useState<number | null>(null);
 
   useEffect(() => {
     const fromHash = () => {
@@ -87,6 +88,47 @@ export function ProfileTabs({
       { confirm: `Supprimer la liste « ${name} » ?` },
     );
     if (ok) setShoppingList((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  // Fusion de deux listes entières : les articles de même libellé et même
+  // unité voient leurs quantités additionnées (comme dans une liste, voir
+  // ShoppingItems), les autres articles sont simplement rattachés à la liste
+  // cible — puis la liste source, vidée, est supprimée.
+  async function mergeShoppingLists(targetId: number, sourceId: number, targetName: string, sourceName: string) {
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        const { data: rows, error: fetchErr } = await supabase
+          .from('shopping_list_items')
+          .select('id, list_id, name, quantity, unit')
+          .in('list_id', [targetId, sourceId]);
+        if (fetchErr) return { error: fetchErr };
+        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
+        const targetItems = (rows || []).filter((r) => r.list_id === targetId);
+        const byKey = new Map(targetItems.map((r) => [key(r.name, r.unit), r]));
+        for (const s of (rows || []).filter((r) => r.list_id === sourceId)) {
+          const match = byKey.get(key(s.name, s.unit));
+          if (match) {
+            const a = parseFloat(String(match.quantity || '').replace(',', '.'));
+            const b = parseFloat(String(s.quantity || '').replace(',', '.'));
+            const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [match.quantity, s.quantity].filter(Boolean).join(' + ');
+            const { error } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', match.id);
+            if (error) return { error };
+            const { error: delErr } = await supabase.from('shopping_list_items').delete().eq('id', s.id);
+            if (delErr) return { error: delErr };
+          } else {
+            const { error } = await supabase.from('shopping_list_items').update({ list_id: targetId }).eq('id', s.id);
+            if (error) return { error };
+          }
+        }
+        return supabase.from('shopping_lists').delete().eq('id', sourceId);
+      },
+      { errorLabel: 'Fusion impossible', confirm: `Fusionner « ${sourceName} » dans « ${targetName} » ?` },
+    );
+    if (ok) {
+      setShoppingList((prev) => prev.filter((l) => l.id !== sourceId));
+      setMergingListId(null);
+    }
   }
 
   async function delRecipe(id: string, title: string) {
@@ -118,7 +160,7 @@ export function ProfileTabs({
 
   return (
     <section className="mt-16">
-      <LoadingOverlay visible={busy} label="Suppression en cours…" />
+      <LoadingOverlay visible={busy} label="Traitement en cours…" />
       <div className="flex border-b border-outline-variant overflow-x-auto scrollbar-hide">
         {TABS.map((t) => {
           const cls = `px-6 py-4 font-label-md whitespace-nowrap ${
@@ -376,32 +418,53 @@ export function ProfileTabs({
                     const items = l.shopping_list_items || [];
                     const done = items.filter((i) => i.checked).length;
                     return (
-                      <tr key={l.id} className="hover:bg-surface-container-low transition-colors">
-                        <td className="px-6 py-4">
-                          <Link
-                            href={`/courses/${l.id}`}
-                            className="font-label-md text-primary hover:underline flex items-center gap-2 text-left"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
-                            {l.name}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4 text-center text-on-surface-variant">{items.length}</td>
-                        <td className="px-6 py-4 text-center text-on-surface-variant">{done}</td>
-                        <td className="px-6 py-4 text-on-surface-variant">
-                          {l.created_at ? formatDate(l.created_at) : '—'}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            type="button"
-                            title="Supprimer la liste"
-                            onClick={() => delShoppingList(l.id, l.name)}
-                            className="p-1.5 rounded text-error hover:bg-error/10 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </td>
-                      </tr>
+                      <Fragment key={l.id}>
+                        <tr className="hover:bg-surface-container-low transition-colors">
+                          <td className="px-6 py-4">
+                            <Link
+                              href={`/courses/${l.id}`}
+                              className="font-label-md text-primary hover:underline flex items-center gap-2 text-left"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
+                              {l.name}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 text-center text-on-surface-variant">{items.length}</td>
+                          <td className="px-6 py-4 text-center text-on-surface-variant">{done}</td>
+                          <td className="px-6 py-4 text-on-surface-variant">
+                            {l.created_at ? formatDate(l.created_at) : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              title="Fusionner avec une autre liste"
+                              onClick={() => setMergingListId(mergingListId === l.id ? null : l.id)}
+                              className="p-1.5 rounded text-primary hover:bg-primary/10 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">call_merge</span>
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer la liste"
+                              onClick={() => delShoppingList(l.id, l.name)}
+                              className="p-1.5 rounded text-error hover:bg-error/10 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                        {mergingListId === l.id && (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 bg-surface-container-low">
+                              <MergeListRow
+                                candidates={shoppingList.filter((o) => o.id !== l.id)}
+                                onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
+                                onCancel={() => setMergingListId(null)}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -417,5 +480,59 @@ export function ProfileTabs({
       )}
 
     </section>
+  );
+}
+
+function MergeListRow({
+  candidates,
+  onMerge,
+  onCancel,
+}: {
+  candidates: ShoppingListSummary[];
+  onMerge: (sourceId: number, sourceName: string) => void;
+  onCancel: () => void;
+}) {
+  const [sourceId, setSourceId] = useState(candidates[0]?.id ?? -1);
+  if (candidates.length === 0) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-on-surface-variant italic">Aucune autre liste à fusionner.</p>
+        <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
+          Fermer
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <label className="flex flex-col gap-1">
+        <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Fusionner avec</span>
+        <select
+          value={sourceId}
+          onChange={(e) => setSourceId(Number(e.target.value))}
+          className="border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm bg-white"
+          style={{ minWidth: '16rem' }}
+        >
+          {candidates.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({(c.shopping_list_items || []).length} article{(c.shopping_list_items || []).length > 1 ? 's' : ''})
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        onClick={() => {
+          const source = candidates.find((c) => c.id === sourceId);
+          if (source) onMerge(source.id, source.name);
+        }}
+        className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]"
+      >
+        Fusionner
+      </button>
+      <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
+        Annuler
+      </button>
+    </div>
   );
 }
