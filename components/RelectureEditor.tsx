@@ -18,10 +18,9 @@ import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { useDialog } from '@/components/Dialog';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
-
-const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
 
 // Jusqu'à 3 allergènes par ingrédient, choisis uniquement dans la table de
 // référence (plus de saisie libre). Persistés en une chaîne « a, b, c ».
@@ -176,7 +175,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const noteRaw = ligatureOeuf(String(g.note || '')).trim();
       const note = noteRaw && noteRaw.toLowerCase() === nom.toLowerCase() ? '' : noteRaw;
       const refKey = nom.toLowerCase();
-      const imported = g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' ') || null;
+      const imported = g.texte_original || [g.quantite, g.unite, g.nom].filter(Boolean).join(' ') || null;
       return {
         key: nextKey(),
         imported: imported ? ligatureOeuf(imported) : null,
@@ -230,6 +229,7 @@ export function RelectureEditor({
   ingredientRefIds: IngredientRefOption[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
@@ -437,7 +437,7 @@ export function RelectureEditor({
     setRefBusy(`utensils:${clean.toLowerCase()}`);
     const { error } = await createClient().from('utensils').insert({ name: clean });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
     refreshRefs();
   }
@@ -454,7 +454,7 @@ export function RelectureEditor({
     const allergenCsv = list.length ? list.join(', ') : null;
     const { error } = await supabase.from('ingredient_refs').insert({ name: clean, allergen: allergenCsv });
     setRefBusy(null);
-    if (error) return void alert('Erreur : ' + error.message);
+    if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
     refreshRefs();
@@ -485,7 +485,7 @@ export function RelectureEditor({
       .select('id, name, slug')
       .single();
     setRefBusy(null);
-    if (error || !data) return void alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    if (error || !data) return void dialog.alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
     setExtraTags((p) => [...p, data]);
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
@@ -592,8 +592,8 @@ export function RelectureEditor({
     setSps((prev) => [...prev.slice(0, si), sp, ...prev.slice(si)]);
     setJustAddedSpKey(sp.key);
   };
-  const delSp = (si: number) => {
-    if (!confirm('Supprimer cette étape ?')) return;
+  const delSp = async (si: number) => {
+    if (!(await dialog.confirm('Supprimer cette étape ?'))) return;
     setSps((prev) => prev.filter((_, k) => k !== si));
   };
   // Repli / dépli d'une étape (comme l'éditeur de recette).
@@ -750,7 +750,7 @@ export function RelectureEditor({
       setSaveStatus('Corrections enregistrées ✓');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (e) {
-      alert('Erreur : ' + (e as Error).message);
+      dialog.alert('Erreur : ' + (e as Error).message);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -761,7 +761,19 @@ export function RelectureEditor({
     // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
     // pas ouvrir deux créations concurrentes.
     if (busyRef.current) return;
-    if (!confirm('Créer cette recette dans votre carnet (brouillon privé) ?')) return;
+    // Unité obligatoire dès qu'une quantité est saisie : une unité importée
+    // non reconnue (absente du référentiel) ne doit jamais atteindre la table
+    // `ingredients` telle quelle (cf. normaliseUnite côté import).
+    const validUnitNames = new Set(unitOptions);
+    for (const sp of sps) {
+      for (const g of sp.ings) {
+        if (g.nom.trim() && String(g.qte).trim() && !validUnitNames.has(g.unite)) {
+          dialog.alert(`Choisissez une unité pour « ${g.nom.trim()} » avant de créer la recette.`);
+          return;
+        }
+      }
+    }
+    if (!(await dialog.confirm('Créer cette recette dans votre carnet (brouillon privé) ?'))) return;
     busyRef.current = true;
     setBusy(true);
     const supabase = createClient();
@@ -909,7 +921,7 @@ export function RelectureEditor({
           .map((g: any, k: number) => ({
             name: g.nom,
             quantity: g.quantite != null ? String(g.quantite) : null,
-            unit: UNITE_LBL[g.unite] || g.unite || null,
+            unit: g.unite || null,
             comment: g.note || null,
             allergen: g.allergene || null,
             order_index: k,
@@ -949,7 +961,7 @@ export function RelectureEditor({
     } catch (e) {
       // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
       // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.
-      alert('Erreur à la création : ' + (e as Error).message);
+      dialog.alert('Erreur à la création : ' + (e as Error).message);
       busyRef.current = false;
       setBusy(false);
     }
@@ -959,13 +971,13 @@ export function RelectureEditor({
   // depuis la relecture (déplacée dans la liste des imports, cf.
   // ImporterList `supprimer`) — ce bouton ne fait que quitter, avec
   // confirmation si des corrections n'ont pas été enregistrées.
-  const handleLeave = useCallback(() => {
-    if (dirtyRef.current && !confirm('Quitter sans enregistrer les modifications en cours ?')) return;
+  const handleLeave = useCallback(async () => {
+    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
     // Pas de reset à false ensuite : on quitte la page, autant garder le
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
     setLeaving(true);
     router.push('/importer');
-  }, [router]);
+  }, [router, dialog]);
 
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
 
@@ -1539,10 +1551,10 @@ export function RelectureEditor({
                           />
                           <input type="number" min={0} step="any" value={g.qte} onChange={(e) => patchIng(si, ii, { qte: e.target.value })} className={`${champ} text-center`} />
                           <select value={g.unite} onChange={(e) => patchIng(si, ii, { unite: e.target.value })} className={champ}>
-                            <option value="">—</option>
-                            {Array.from(new Set([...unitOptions, g.unite].filter(Boolean))).map((u) => (
+                            <option value="">— unité —</option>
+                            {unitOptions.map((u) => (
                               <option key={u} value={u}>
-                                {UNITE_LBL[u] || u}
+                                {u}
                               </option>
                             ))}
                           </select>
@@ -1818,7 +1830,7 @@ export function RelectureEditor({
                 <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                   <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
-                    {[m.qty, UNITE_LBL[m.unit] || m.unit].filter(Boolean).join(' ')}
+                    {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
                   </span>
                 </div>

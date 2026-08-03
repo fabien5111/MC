@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -414,13 +415,14 @@ function EntryForm({
     return v;
   });
   const [busy, setBusy] = useState(false);
+  const dialog = useDialog();
 
   async function save() {
     if (isMolds && !values.name.trim()) return;
     if (!isMolds) {
       const required = section.fields.find((f) => f.required && !values[f.key].trim());
       if (required) {
-        alert(`Champ obligatoire : ${required.label}`);
+        dialog.alert(`Champ obligatoire : ${required.label}`);
         return;
       }
     }
@@ -461,7 +463,7 @@ function EntryForm({
     };
     const { error } = entry?.id != null ? await q.update(payload).eq('id', entry.id) : await q.insert(payload);
     if (error) {
-      alert('Erreur : ' + error.message);
+      dialog.alert('Erreur : ' + error.message);
       setBusy(false);
       return;
     }

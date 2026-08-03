@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { RecipeToc, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 
 export function RecetteToc({
   recipeId,
@@ -24,6 +25,7 @@ export function RecetteToc({
   steps: TocStep[];
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const { open, editMode, openCreate, close } = usePlanCtx();
   // Distingue Éditer (navigation) de Dupliquer (écriture puis navigation) :
   // chacun a son propre libellé de spinner.
@@ -37,13 +39,13 @@ export function RecetteToc({
 
   async function duplicate() {
     if (pending) return;
-    if (!confirm('Dupliquer cette recette ? Une copie en brouillon sera créée.')) return;
+    if (!(await dialog.confirm('Dupliquer cette recette ? Une copie en brouillon sera créée.'))) return;
     setPending('duplicate');
     try {
       const supabase = createClient();
       const { data, error } = await supabase.rpc('duplicate_recipe' as never, { p_recipe_id: recipeId } as never);
       if (error) {
-        alert(`Duplication impossible : ${error.message}`);
+        dialog.alert(`Duplication impossible : ${error.message}`);
         setPending(null);
         return;
       }
@@ -51,7 +53,7 @@ export function RecetteToc({
       // affiché jusqu'à la navigation (cf. l'ancien DuplicateButton).
       router.push(`/creer?id=${data as unknown as string}`);
     } catch (e) {
-      alert(`Duplication impossible : ${(e as Error).message || 'erreur inattendue'}`);
+      dialog.alert(`Duplication impossible : ${(e as Error).message || 'erreur inattendue'}`);
       setPending(null);
     }
   }

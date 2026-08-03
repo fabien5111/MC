@@ -30,6 +30,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
 import { resizePhotoForAi } from '@/lib/images';
 import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
+import { useDialog } from '@/components/Dialog';
 
 type Result = {
   id: number;
@@ -54,6 +55,7 @@ const tailleLisible = (octets: number): string =>
 
 export function ImporterForm() {
   const router = useRouter();
+  const dialog = useDialog();
   const [onglet, setOnglet] = useState<Onglet>('texte');
   const [texte, setTexte] = useState('');
   const [busy, setBusy] = useState(false);
@@ -171,7 +173,7 @@ export function ImporterForm() {
 
   function submitText() {
     if (texte.trim().length < 80) {
-      alert('Collez la recette complète (titre, ingrédients, étapes).');
+      dialog.alert('Collez la recette complète (titre, ingrédients, étapes).');
       return;
     }
     setBusy(true);
@@ -185,11 +187,11 @@ export function ImporterForm() {
   // sur un fichier déposé par erreur.
   function choisirPdf(f: File) {
     if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-      alert('Choisissez un fichier PDF.');
+      dialog.alert('Choisissez un fichier PDF.');
       return;
     }
     if (f.size > MAX_PDF_OCTETS) {
-      alert('Ce PDF dépasse 30 Mo. Réduisez-le ou extrayez-en les pages de la recette.');
+      dialog.alert('Ce PDF dépasse 30 Mo. Réduisez-le ou extrayez-en les pages de la recette.');
       return;
     }
     setError(null);
@@ -238,12 +240,12 @@ export function ImporterForm() {
       .filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|hei[cf])$/i.test(f.name))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
     if (!images.length) {
-      alert('Choisissez des photos (JPEG, PNG ou WebP).');
+      dialog.alert('Choisissez des photos (JPEG, PNG ou WebP).');
       return;
     }
     const libres = MAX_PHOTOS - photos.length;
     if (libres <= 0) {
-      alert(`${MAX_PHOTOS} photos au maximum par import.`);
+      dialog.alert(`${MAX_PHOTOS} photos au maximum par import.`);
       return;
     }
     const aTraiter = images.slice(0, libres);

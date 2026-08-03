@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 import { materializeExecution, type PlanFull } from '@/lib/recipe-plan';
 import { PlanEditButton } from '@/components/recipe/PlanEditButton';
 
@@ -56,6 +57,7 @@ async function insertMaterializedExecution(supabase: Supabase, executionId: numb
 
 export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull }) {
   const router = useRouter();
+  const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const [starting, setStarting] = useState(false);
   const [time, setTime] = useState('12:00');
@@ -74,7 +76,7 @@ export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull 
       .limit(1);
     if (running && running[0]) {
       const d = new Date(running[0].date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-      if (confirm(`Une session démarrée le ${d} est déjà en cours pour cette recette.\n\nOK : reprendre cette session.\nAnnuler : en démarrer une nouvelle.`)) {
+      if (await dialog.confirm(`Une session démarrée le ${d} est déjà en cours pour cette recette.\n\nOK : reprendre cette session.\nAnnuler : en démarrer une nouvelle.`)) {
         router.push(`/execution/${running[0].id}`);
         return;
       }
@@ -93,7 +95,7 @@ export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull 
       .select('id')
       .single();
     if (error || !execRow) {
-      alert('Erreur au démarrage de la session : ' + (error?.message || 'création refusée'));
+      dialog.alert('Erreur au démarrage de la session : ' + (error?.message || 'création refusée'));
       setBusy(false);
       return;
     }
@@ -101,7 +103,7 @@ export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull 
       await insertMaterializedExecution(supabase, execRow.id, plan);
     } catch (e) {
       await supabase.from('executions').delete().eq('id', execRow.id);
-      alert('Erreur au démarrage de la session : ' + (e as Error).message);
+      dialog.alert('Erreur au démarrage de la session : ' + (e as Error).message);
       setBusy(false);
       return;
     }

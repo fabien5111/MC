@@ -10,6 +10,7 @@ import { useMutation } from '@/lib/use-mutation';
 import type { Member } from '@/lib/admin';
 import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import { modeLabel, withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
 
 type Filter = 'all' | 'active' | 'pending' | 'disabled' | 'demo';
@@ -20,6 +21,7 @@ function inviteLinkFor(email: string): string {
 
 export function MembersManager({ members }: { members: Member[] }) {
   const router = useRouter();
+  const dialog = useDialog();
   const { mutate } = useMutation();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
@@ -36,7 +38,7 @@ export function MembersManager({ members }: { members: Member[] }) {
   // la route serveur.
   async function connecterEnTantQue(m: Member) {
     if (!m.profileId) {
-      alert("Ce membre n'a pas encore de compte : impossible d'ouvrir une session.");
+      dialog.alert("Ce membre n'a pas encore de compte : impossible d'ouvrir une session.");
       return;
     }
     setImpBusy(true);
@@ -48,7 +50,7 @@ export function MembersManager({ members }: { members: Member[] }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.erreur || 'Impossible de générer le lien de connexion.');
+        dialog.alert(data?.erreur || 'Impossible de générer le lien de connexion.');
         return;
       }
       setImpersonation({
@@ -59,7 +61,7 @@ export function MembersManager({ members }: { members: Member[] }) {
       });
       router.refresh(); // le journal d'audit ci-dessous se met à jour
     } catch (e) {
-      alert('Erreur réseau : ' + ((e as Error).message || 'lien non généré'));
+      dialog.alert('Erreur réseau : ' + ((e as Error).message || 'lien non généré'));
     } finally {
       setImpBusy(false);
     }
@@ -115,7 +117,7 @@ export function MembersManager({ members }: { members: Member[] }) {
   }
 
   function copyInviteLinkFor(email: string) {
-    navigator.clipboard.writeText(inviteLinkFor(email)).then(() => alert(`Lien d'invitation copié pour ${email}`));
+    navigator.clipboard.writeText(inviteLinkFor(email)).then(() => dialog.alert(`Lien d'invitation copié pour ${email}`));
   }
 
   const chip = (f: Filter, label: string) => (
@@ -525,6 +527,7 @@ function EditPanel({
   const [notes, setNotes] = useState(member.notes || '');
   const [impAccess, setImpAccess] = useState<ImpersonationMode>(member.impersonationAccess);
   const [busy, setBusy] = useState(false);
+  const dialog = useDialog();
 
   async function save() {
     setBusy(true);
@@ -541,7 +544,7 @@ function EditPanel({
             .eq('id', member.profileId)
         : { error: new Error('Membre introuvable') };
     if (error) {
-      alert('Erreur : ' + (error as { message: string }).message);
+      dialog.alert('Erreur : ' + (error as { message: string }).message);
       setBusy(false);
       return;
     }
@@ -634,7 +637,7 @@ function EditPanel({
             <input readOnly value={inviteLinkFor(member.email)} className="flex-1 border-b border-outline-variant bg-transparent py-1.5 text-xs text-on-surface-variant focus:outline-none" type="text" />
             <button
               type="button"
-              onClick={() => navigator.clipboard.writeText(inviteLinkFor(member.email)).then(() => alert('Lien copié dans le presse-papiers.'))}
+              onClick={() => navigator.clipboard.writeText(inviteLinkFor(member.email)).then(() => dialog.alert('Lien copié dans le presse-papiers.'))}
               className="text-primary hover:opacity-70 text-sm flex items-center gap-1 shrink-0"
             >
               <span className="material-symbols-outlined text-lg">content_copy</span>

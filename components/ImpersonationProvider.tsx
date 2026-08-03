@@ -5,6 +5,7 @@
 // masquent ou désactivent les éléments de modification en lecture seule.
 import { createContext, useContext } from 'react';
 import type { ImpersonationAction, ImpersonationMode } from '@/lib/impersonation-types';
+import { useDialog } from '@/components/Dialog';
 
 export type ImpersonationClientContext = {
   sessionId: string;
@@ -41,10 +42,11 @@ export function useReadOnly(): boolean {
 // seule : l'appelant doit alors interrompre son traitement.
 export function useWriteGuard(): (label?: string) => boolean {
   const impersonation = useImpersonation();
+  const dialog = useDialog();
   return (label?: string) => {
     if (impersonation?.mode !== 'read_only') return true;
     logImpersonationAction('write_blocked', label);
-    alert(
+    dialog.alert(
       `Session de consultation : vous êtes connecté en tant que ${impersonation.targetName} ` +
         "en lecture seule. Aucune modification n'est possible.",
     );

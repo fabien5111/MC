@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import type { Mold, MoldType } from '@/lib/admin';
 
 export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: MoldType[] }) {
@@ -189,6 +190,7 @@ function MoldForm({
   const [typeId, setTypeId] = useState<string>(mold?.type_id ? String(mold.type_id) : '');
   const [tooltip, setTooltip] = useState(mold?.tooltip ?? '');
   const [busy, setBusy] = useState(false);
+  const dialog = useDialog();
 
   async function save() {
     if (!name.trim()) return;
@@ -203,7 +205,7 @@ function MoldForm({
       ? await supabase.from('molds').update(fields).eq('id', mold.id)
       : await supabase.from('molds').insert(fields);
     if (error) {
-      alert('Erreur : ' + error.message);
+      dialog.alert('Erreur : ' + error.message);
       setBusy(false);
       return;
     }

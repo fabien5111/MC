@@ -4,6 +4,7 @@ import { NavigationSpinner } from '@/components/NavigationSpinner';
 import { ServiceWorkerCleanup } from '@/components/ServiceWorkerCleanup';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
+import { DialogProvider } from '@/components/Dialog';
 import { getImpersonationContext } from '@/lib/impersonation';
 import './globals.css';
 
@@ -53,22 +54,27 @@ export default async function RootLayout({
         </Suspense>
         {/* Purge l'ancien service worker de la version vanilla (cf. public/sw.js). */}
         <ServiceWorkerCleanup />
-        <ImpersonationProvider
-          value={
-            impersonation
-              ? {
-                  sessionId: impersonation.sessionId,
-                  mode: impersonation.mode,
-                  targetName: impersonation.targetName,
-                }
-              : null
-          }
-        >
-          {impersonation && (
-            <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
-          )}
-          {children}
-        </ImpersonationProvider>
+        {/* Remplace window.alert()/confirm() par une modale cohérente avec le
+            design du site (cf. components/Dialog.tsx) — englobe tout le reste
+            pour que useWriteGuard/useMutation, montés plus bas, y aient accès. */}
+        <DialogProvider>
+          <ImpersonationProvider
+            value={
+              impersonation
+                ? {
+                    sessionId: impersonation.sessionId,
+                    mode: impersonation.mode,
+                    targetName: impersonation.targetName,
+                  }
+                : null
+            }
+          >
+            {impersonation && (
+              <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
+            )}
+            {children}
+          </ImpersonationProvider>
+        </DialogProvider>
       </body>
     </html>
   );

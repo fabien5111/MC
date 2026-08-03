@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
+import { useDialog } from '@/components/Dialog';
 import { PROFILE_LINKS, activeLinks, normalizeUrl, type ProfileLinkField } from '@/lib/profile-links';
 import type { Profile } from '@/lib/auth';
 
@@ -29,6 +30,7 @@ export function ProfileHeader({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [avatar, setAvatar] = useState<string | null>(
     profile?.avatar_url && !profile.avatar_url.includes('googleusercontent.com')
       ? profile.avatar_url
@@ -60,12 +62,12 @@ export function ProfileHeader({
     const supabase = createClient();
     if (field === 'avatar_url') {
       const { error } = await supabase.from('profiles').upsert({ id: userId, avatar_url: dataUrl });
-      if (error) return void alert('Erreur lors du téléchargement : ' + error.message);
+      if (error) return void dialog.alert('Erreur lors du téléchargement : ' + error.message);
       setAvatar(dataUrl);
       router.refresh(); // met à jour l'avatar de la nav (Header serveur)
     } else {
       const { error } = await supabase.from('profiles').upsert({ id: userId, banner_url: dataUrl });
-      if (error) return void alert('Erreur lors du téléchargement : ' + error.message);
+      if (error) return void dialog.alert('Erreur lors du téléchargement : ' + error.message);
       setBanner(dataUrl);
       router.refresh(); // aligne le rendu serveur du profil sur la nouvelle bannière
     }
@@ -214,6 +216,7 @@ export function ProfileHeader({
 }
 
 function ShareProfileButton() {
+  const dialog = useDialog();
   async function share() {
     const url = window.location.href;
     if (navigator.share) {
@@ -226,7 +229,7 @@ function ShareProfileButton() {
     }
     try {
       await navigator.clipboard.writeText(url);
-      alert('Lien copié dans le presse-papiers.');
+      dialog.alert('Lien copié dans le presse-papiers.');
     } catch {
       // presse-papiers indisponible : rien à faire
     }
@@ -255,6 +258,7 @@ function ProfileEditor({
   onClose: () => void;
   onSaved: (bio: string, links: LinkValues) => void;
 }) {
+  const dialog = useDialog();
   const [bio, setBio] = useState(initialBio);
   const [links, setLinks] = useState<LinkValues>(initialLinks);
   const [busy, setBusy] = useState(false);
@@ -277,7 +281,7 @@ function ProfileEditor({
     const supabase = createClient();
     const { error } = await supabase.from('profiles').upsert(payload);
     if (error) {
-      alert('Erreur lors de l’enregistrement : ' + error.message);
+      dialog.alert('Erreur lors de l’enregistrement : ' + error.message);
       setBusy(false);
       return;
     }
