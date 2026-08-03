@@ -112,7 +112,7 @@ export type RecipeStepView = {
   video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
-  step_photos: { url: string; order_index: number | null }[];
+  step_photos: { url: string; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour
   // sa seule cuisson (cf. lib/recipe-plan.ts). Absente sur une recette.
   already_done?: boolean;

@@ -51,9 +51,11 @@ type StepState = {
   videoUrl: string;
   scaling: string;
   ings: IngLine[];
-  photos: (string | null)[];
+  photos: (StepPhoto | null)[];
   collapsed: boolean;
 };
+
+type StepPhoto = { url: string; ai_retouched: boolean };
 
 const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
   cylindre: [{ key: 'diametre', label: 'Diamètre' }, { key: 'hauteur', label: 'Hauteur' }],
@@ -132,7 +134,9 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
     const subSteps = Array.isArray(s.sous_etapes) && s.sous_etapes.length ? s.sous_etapes.map((t) => String(t)) : null;
     const desc = s.description || '';
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-    const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((p) => p.url);
+    const photos = [...(s.step_photos || [])]
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+      .map((p) => ({ url: p.url, ai_retouched: p.ai_retouched ?? false }));
     return {
       key: key(),
       title: s.title || '',
@@ -433,7 +437,17 @@ export function CreerForm({
   const addIng = (si: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: [...st.ings, emptyIng()] } : st)));
   const delIng = (si: number, ii: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
   const patchPhoto = (si: number, pi: number, url: string | null) =>
-    setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? url : p)) } : st)));
+    setSteps((s) =>
+      s.map((st, k) =>
+        k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? (url ? { url, ai_retouched: false } : null) : p)) } : st,
+      ),
+    );
+  const patchPhotoAi = (si: number, pi: number, aiRetouched: boolean) =>
+    setSteps((s) =>
+      s.map((st, k) =>
+        k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi && p ? { ...p, ai_retouched: aiRetouched } : p)) } : st,
+      ),
+    );
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
   const delStep = async (i: number) => {
@@ -685,8 +699,8 @@ export function CreerForm({
             ref_id: resolveIngredientRefId(l.name, ingredientRefIds),
           }))
           .filter((l) => l.name);
-        const photoUrls = st.photos.filter((p): p is string => !!p);
-        const hasContent = st.title.trim() || desc || subs.length || lines.length || photoUrls.length;
+        const photoRows = st.photos.filter((p): p is StepPhoto => !!p);
+        const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
         if (!hasContent) continue;
 
         const { data: stepRow, error: stepErr } = await supabase
@@ -710,10 +724,10 @@ export function CreerForm({
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
 
-        if (photoUrls.length) {
+        if (photoRows.length) {
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, order_index: pi, ai_retouched: p.ai_retouched })));
           if (error) throw error;
         }
 
@@ -1649,16 +1663,30 @@ export function CreerForm({
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {st.photos.map((p, pi) => (
-                      <div key={pi} className="aspect-square border border-dashed border-outline-variant overflow-hidden">
-                        <ImageSlot
-                          src={p}
-                          onChange={(url) => patchPhoto(si, pi, url)}
-                          onClear={() => patchPhoto(si, pi, null)}
-                          shape="rect"
-                          maxWidth={800}
-                          placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
-                          className="w-full h-full"
-                        />
+                      <div key={pi} className="space-y-1.5">
+                        <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden">
+                          <ImageSlot
+                            src={p?.url ?? null}
+                            aiRetouched={p?.ai_retouched}
+                            onChange={(url) => patchPhoto(si, pi, url)}
+                            onClear={() => patchPhoto(si, pi, null)}
+                            shape="rect"
+                            maxWidth={800}
+                            placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
+                            className="w-full h-full"
+                          />
+                        </div>
+                        {p && (
+                          <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={p.ai_retouched}
+                              onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
+                              className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                            />
+                            Retravaillée avec l&apos;IA
+                          </label>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -7,6 +7,7 @@
 // (profiles.avatar_url, recipes.hero_image_url…).
 import { useCallback, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
+import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
@@ -45,6 +46,8 @@ export type ImageSlotProps = {
   /** Pastille crayon superposée (porté de profil.html : bannière/avatar). */
   editTitle?: string;
   editButtonClassName?: string;
+  /** Affiche le filigrane « Photo retravaillée avec l'IA » (case cochée par l'utilisateur). */
+  aiRetouched?: boolean;
 };
 
 export function ImageSlot({
@@ -61,6 +64,7 @@ export function ImageSlot({
   style,
   editTitle,
   editButtonClassName = 'bottom-3 right-3 w-9 h-9',
+  aiRetouched = false,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -133,7 +137,9 @@ export function ImageSlot({
           className="w-full h-full"
           style={{ objectFit: fit }}
         />
-      ) : (
+      ) : null}
+      {src && aiRetouched && <AiPhotoBadge />}
+      {!src && (
         <div className="w-full h-full flex flex-col items-center justify-center text-center p-2 text-on-surface-variant">
           <span className="material-symbols-outlined text-3xl opacity-60">image</span>
           <span className="text-xs mt-1 opacity-80">{placeholder}</span>
