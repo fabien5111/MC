@@ -16,6 +16,8 @@ import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, t
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
 const REFRESH_DELAY = 2000;
 
+const sameUnit = (a: string | null, b: string | null) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+
 export function ShoppingItems({
   listId,
   listName,
@@ -36,6 +38,7 @@ export function ShoppingItems({
   const { mutate } = useMutation();
   const [items, setItems] = useState(() => [...initialItems].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [mergingId, setMergingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
 
   const total = items.length;
@@ -104,6 +107,32 @@ export function ShoppingItems({
     scheduleRefresh();
   }
 
+  // Fusion manuelle de deux lignes (picto à côté du crayon) : la quantité de
+  // l'article choisi s'ajoute à celle de l'article courant, qui est ensuite
+  // supprimé. Restreint aux articles de même unité — additionner des
+  // quantités d'unités différentes n'aurait pas de sens.
+  async function mergeItems(targetId: number, sourceId: number) {
+    const target = items.find((i) => i.id === targetId);
+    const source = items.find((i) => i.id === sourceId);
+    if (!target || !source) return;
+    const a = parseFloat(String(target.quantity || '').replace(',', '.'));
+    const b = parseFloat(String(source.quantity || '').replace(',', '.'));
+    const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [target.quantity, source.quantity].filter(Boolean).join(' + ');
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        const { error } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', targetId);
+        if (error) return { error };
+        return supabase.from('shopping_list_items').delete().eq('id', sourceId);
+      },
+      { errorLabel: 'Fusion impossible', refresh: false },
+    );
+    if (!ok) return;
+    setItems((prev) => prev.filter((i) => i.id !== sourceId).map((i) => (i.id === targetId ? { ...i, quantity: newQty } : i)));
+    setMergingId(null);
+    scheduleRefresh();
+  }
+
   // Non passé par useMutation : la ligne insérée est nécessaire (son id) pour
   // compléter l'état local sans attendre la resynchronisation.
   async function addItem(name: string, quantity: string, unit: string) {
@@ -169,8 +198,23 @@ export function ShoppingItems({
                   >
                     <span className="material-symbols-outlined text-[18px]">edit</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setMergingId(mergingId === i.id ? null : i.id)}
+                    title="Fusionner avec un autre article"
+                    className="text-primary hover:opacity-70 shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">call_merge</span>
+                  </button>
                 </div>
                 {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u) => applyEdit(i.id, n, q, u)} onCancel={() => setEditingId(null)} />}
+                {mergingId === i.id && (
+                  <MergeItemRow
+                    candidates={items.filter((o) => o.id !== i.id && sameUnit(o.unit, i.unit))}
+                    onMerge={(sourceId) => mergeItems(i.id, sourceId)}
+                    onCancel={() => setMergingId(null)}
+                  />
+                )}
               </li>
             );
           })}
@@ -223,6 +267,49 @@ function EditItemRow({ item, units, onApply, onCancel }: { item: ShoppingItem; u
           Annuler
         </button>
       </div>
+    </div>
+  );
+}
+
+function MergeItemRow({
+  candidates,
+  onMerge,
+  onCancel,
+}: {
+  candidates: ShoppingItem[];
+  onMerge: (sourceId: number) => void;
+  onCancel: () => void;
+}) {
+  const [sourceId, setSourceId] = useState(candidates[0]?.id ?? -1);
+  if (candidates.length === 0) {
+    return (
+      <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-on-surface-variant italic">Aucun autre article avec la même unité à fusionner.</p>
+        <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
+          Fermer
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-end gap-3">
+      <label className="flex flex-col gap-1">
+        <span className={LBL}>Fusionner avec</span>
+        <select value={sourceId} onChange={(e) => setSourceId(Number(e.target.value))} className={`${FIELD} bg-white`} style={{ width: '16rem' }}>
+          {candidates.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.quantity ? ` — ${c.quantity}${c.unit ? ' ' + c.unit : ''}` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" onClick={() => onMerge(sourceId)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+        Fusionner
+      </button>
+      <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
+        Annuler
+      </button>
     </div>
   );
 }
