@@ -30,6 +30,7 @@ import {
   type ExecutionStepRow,
   type ExecutionIngredientRow,
 } from '@/lib/recipe-plan';
+import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
 const MIN = 60000;
 const numify = (v: unknown): number | null => {
@@ -67,10 +68,14 @@ export function ExecutionView({
   exec: initialExec,
   prevComments,
   lecture,
+  conversions,
+  units,
 }: {
   exec: Execution;
   prevComments: Record<number, { date: string; texte: string }[]>;
   lecture: boolean;
+  conversions: ConversionRef[];
+  units: UnitRef[];
 }) {
   const router = useRouter();
   const [exec, setExec] = useState(initialExec);
@@ -249,7 +254,7 @@ export function ExecutionView({
 
       <div className="flex flex-col gap-6">
         {showMep ? (
-          <MiseEnPlace exec={exec} onToggleIngredients={toggleMepIngredients} onToggleUtensil={toggleMepUtensil} onDone={mepDone} />
+          <MiseEnPlace exec={exec} onToggleIngredients={toggleMepIngredients} onToggleUtensil={toggleMepUtensil} onDone={mepDone} conversions={conversions} units={units} />
         ) : (
           <ExecutionBody
             exec={exec}
@@ -257,6 +262,8 @@ export function ExecutionView({
             readOnly={readOnly}
             prevComments={prevComments}
             manuallyOpenedJalons={manuallyOpenedJalons}
+            conversions={conversions}
+            units={units}
             onToggleStep={toggleStep}
             onToggleSub={toggleSub}
             onToggleIng={(id, checked) => updateIngredient(id, { done: checked })}
@@ -300,11 +307,15 @@ function MiseEnPlace({
   onToggleIngredients,
   onToggleUtensil,
   onDone,
+  conversions,
+  units,
 }: {
   exec: Execution;
   onToggleIngredients: (ids: number[], checked: boolean) => void;
   onToggleUtensil: (id: number, checked: boolean) => void;
   onDone: () => void;
+  conversions: ConversionRef[];
+  units: UnitRef[];
 }) {
   const mepIngredients = useMemo(() => mergeExecutionIngredientsForMep(exec.execution_ingredients), [exec.execution_ingredients]);
   return (
@@ -345,6 +356,10 @@ function MiseEnPlace({
                 {(it.quantity != null || it.quantityText) && (
                   <span className={`font-label-md text-label-md text-primary whitespace-nowrap${it.done ? ' line-through opacity-50' : ''}`}>
                     {[it.quantity != null ? fmtNum(it.quantity) : it.quantityText, it.unit].filter(Boolean).join(' ')}
+                    {(() => {
+                      const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantityText);
+                      return conv ? <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span> : null;
+                    })()}
                   </span>
                 )}
               </li>
@@ -370,6 +385,8 @@ function ExecutionBody({
   readOnly,
   prevComments,
   manuallyOpenedJalons,
+  conversions,
+  units,
   onToggleStep,
   onToggleSub,
   onToggleIng,
@@ -382,6 +399,8 @@ function ExecutionBody({
   readOnly: boolean;
   prevComments: Record<number, { date: string; texte: string }[]>;
   manuallyOpenedJalons: Set<number>;
+  conversions: ConversionRef[];
+  units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
   onToggleIng: (id: number, checked: boolean) => void;
@@ -478,6 +497,8 @@ function ExecutionBody({
                     readOnly={readOnly}
                     isPending={isPending}
                     prevComments={(s.plan_step_id != null && prevComments[s.plan_step_id]) || []}
+                    conversions={conversions}
+                    units={units}
                     onToggleStep={onToggleStep}
                     onToggleSub={onToggleSub}
                     onToggleIng={onToggleIng}
@@ -501,6 +522,8 @@ function StepCard({
   readOnly,
   isPending,
   prevComments,
+  conversions,
+  units,
   onToggleStep,
   onToggleSub,
   onToggleIng,
@@ -513,6 +536,8 @@ function StepCard({
   readOnly: boolean;
   isPending: boolean;
   prevComments: { date: string; texte: string }[];
+  conversions: ConversionRef[];
+  units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
   onToggleIng: (id: number, checked: boolean) => void;
@@ -552,6 +577,7 @@ function StepCard({
         <ul className="px-4 pb-2">
           {ingredients.map((ing) => {
             const prevTxt = [ing.planned_quantity != null ? fmtNum(ing.planned_quantity) : ing.planned_text || '', ing.unit].filter(Boolean).join(' ');
+            const conv = ingredientConversionText(conversions, units, ing.plan_ingredients?.ref_id, ing.unit, ing.planned_quantity ?? ing.planned_text);
             const struck = ing.done ? ' line-through opacity-50' : '';
             return (
               <li key={ing.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 flex-wrap">
@@ -563,7 +589,10 @@ function StepCard({
                   className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                 />
                 <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
-                <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>prévu {prevTxt}</span>
+                <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>
+                  prévu {prevTxt}
+                  {conv && <span className="text-[12px]"> ({conv})</span>}
+                </span>
                 <input
                   type="number"
                   min={0}

@@ -9,17 +9,22 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import type { MergedIngredient } from '@/lib/recipe-view';
+import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
 export function ShoppingWidget({
   recipeTitle,
   ingredients,
   lists,
   isLoggedIn,
+  conversions,
+  units,
 }: {
   recipeTitle: string;
   ingredients: MergedIngredient[];
   lists: { id: number; name: string }[];
   isLoggedIn: boolean;
+  conversions: ConversionRef[];
+  units: UnitRef[];
 }) {
   const router = useRouter();
   const writeGuard = useWriteGuard();
@@ -72,6 +77,7 @@ export function ShoppingWidget({
         name: m.name,
         quantity: String(m.qty || '') || null,
         unit: m.unit || null,
+        ref_id: m.ref_id,
       }));
       const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
       if (itemsErr) throw itemsErr;
@@ -117,6 +123,10 @@ export function ShoppingWidget({
                   <span className="font-body-md text-body-md flex-1">{m.name}</span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap">
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
+                    {(() => {
+                      const conv = ingredientConversionText(conversions, units, m.ref_id, m.unit, m.qty);
+                      return conv ? <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span> : null;
+                    })()}
                   </span>
                 </li>
               ))}

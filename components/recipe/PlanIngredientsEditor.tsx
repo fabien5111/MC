@@ -12,6 +12,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { Unit } from '@/lib/profile';
 import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
+import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
 
 type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
@@ -21,7 +22,17 @@ const numify = (v: string): number | null => {
 };
 const round2 = (n: number): number => +n.toFixed(2);
 
-export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFull; units: Unit[]; unitTips: Record<string, string> }) {
+export function PlanIngredientsEditor({
+  plan,
+  units,
+  unitTips,
+  conversions,
+}: {
+  plan: PlanFull;
+  units: Unit[];
+  unitTips: Record<string, string>;
+  conversions: ConversionRef[];
+}) {
   const { mutate, busy } = useMutation();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
@@ -99,8 +110,9 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
   const gridStyle = { display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content max-content', columnGap: 32 } as const;
   const rowStyle = { display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' } as const;
 
-  const withUnit = (text: string, unit: string | null) => {
+  const withUnit = (text: string, unit: string | null, refId?: number | null) => {
     const tip = unit ? unitTips[unit.toLowerCase().trim()] : undefined;
+    const conv = ingredientConversionText(conversions, units, refId, unit, text);
     return (
       <>
         {text}
@@ -114,6 +126,7 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
             unit
           )
         ) : null}
+        {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
   };
@@ -172,8 +185,8 @@ export function PlanIngredientsEditor({ plan, units, unitTips }: { plan: PlanFul
                           {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
                         </span>
                         <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit)}</span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{row.added ? '—' : withUnit(origText, row.unit)}</span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{row.added ? '—' : withUnit(origText, row.unit, row.ref_id)}</span>
                         <span className="no-print flex items-center gap-1 justify-self-center">
                           <button
                             type="button"

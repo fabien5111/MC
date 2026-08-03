@@ -62,7 +62,10 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
 }
 
 // Fusion des ingrédients identiques (nom + unité) pour la liste complète.
-export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null };
+// `ref_id` (rapprochement conversions d'ingrédients) est celui du premier
+// ingrédient fusionné : deux lignes de même nom + unité référencent en
+// pratique toujours le même ingrédient du référentiel.
+export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null; ref_id: number | null };
 export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
@@ -72,7 +75,7 @@ export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
       const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
       const ex = merged.find((m) => m.key === key);
       if (!ex) {
-        merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null });
+        merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null, ref_id: it.ref_id ?? null });
         return;
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
@@ -83,7 +86,7 @@ export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit, comment }) => ({ name, qty, unit, comment }));
+  return merged.map(({ name, qty, unit, comment, ref_id }) => ({ name, qty, unit, comment, ref_id }));
 }
 
 // ── Moules : dimensions par forme + métriques (volume / surface) ──

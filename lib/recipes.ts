@@ -9,6 +9,7 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '@/lib/recipe-view';
+import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
@@ -205,6 +206,36 @@ export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
     return [];
   }
   return (data ?? []).filter((a) => a.name);
+});
+
+// Table de référence des conversions d'ingrédients (ex. 1 œuf = 50 g), gérée
+// dans Admin → Listes. Mémoïsée par requête (React cache), au même titre que
+// getAllergensWithPicto : une seule lecture pour toutes les lignes
+// d'ingrédients affichées sur une page.
+export const getIngredientConversions = cache(async (): Promise<ConversionRef[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('ingredient_conversions')
+    .select('ingredient_ref_id, from_quantity, from_unit_id, to_quantity, to_unit_id');
+  if (error) {
+    console.error('getIngredientConversions:', error.message);
+    return [];
+  }
+  return data ?? [];
+});
+
+// Ingrédients de référence (id + libellé) : sert à rapprocher un article
+// saisi à la main (sans `ref_id` propre) de la table de référence, pour
+// bénéficier des conversions d'ingrédients — cf. ShoppingItems.tsx,
+// CreerForm.tsx.
+export const getIngredientRefsList = cache(async (): Promise<IngredientRefOption[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('ingredient_refs').select('id, name').order('name');
+  if (error) {
+    console.error('getIngredientRefsList:', error.message);
+    return [];
+  }
+  return (data ?? []).filter((r) => r.name);
 });
 
 // Résout les pictos d'allergènes pour un lot de cartes (une seule lecture de

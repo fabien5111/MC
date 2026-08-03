@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getShoppingList } from '@/lib/shopping';
 import { getUnits } from '@/lib/profile';
+import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { Header } from '@/components/Header';
 import { ShoppingItems } from '@/components/ShoppingItems';
 
@@ -17,7 +18,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CoursesPage({ params }: Params) {
   await requireUser();
   const { id } = await params;
-  const [list, units] = await Promise.all([Number.isFinite(Number(id)) ? getShoppingList(Number(id)) : null, getUnits()]);
+  const [list, units, conversions, ingredientRefs] = await Promise.all([
+    Number.isFinite(Number(id)) ? getShoppingList(Number(id)) : null,
+    getUnits(),
+    getIngredientConversions(),
+    getIngredientRefsList(),
+  ]);
 
   return (
     <>
@@ -36,7 +42,14 @@ export default async function CoursesPage({ params }: Params) {
             Liste introuvable
           </h1>
         ) : (
-          <ShoppingItems listId={list.id} listName={list.name} initialItems={list.shopping_list_items} units={units} />
+          <ShoppingItems
+            listId={list.id}
+            listName={list.name}
+            initialItems={list.shopping_list_items}
+            units={units}
+            conversions={conversions}
+            ingredientRefs={ingredientRefs}
+          />
         )}
       </main>
     </>

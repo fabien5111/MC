@@ -144,7 +144,13 @@ export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['
   execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
   plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done'> | null;
 };
-export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'];
+export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'] & {
+  // Rapprochement conversions d'ingrédients : execution_ingredients n'a pas
+  // sa propre colonne ref_id (ligne figée au démarrage, cf. CLAUDE.md), donc
+  // relu en direct sur le plan via `plan_ingredient_id` (ON DELETE SET NULL —
+  // absent si la ligne du plan a été supprimée depuis).
+  plan_ingredients: { ref_id: number | null } | null;
+};
 export type ExecutionUtensilRow = Database['public']['Tables']['execution_utensils']['Row'];
 export type ExecutionFull = ExecutionRow & {
   execution_steps: ExecutionStepRow[];
@@ -158,7 +164,7 @@ export type ExecutionFull = ExecutionRow & {
 export const EXECUTION_FULL_SELECT = `
   *,
   execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done)),
-  execution_ingredients(*),
+  execution_ingredients(*, plan_ingredients(ref_id)),
   execution_utensils(*),
   planning(recipe_title)
 `;
@@ -241,7 +247,7 @@ export function planUtensilsAsRecipeUtensils(utensils: PlanUtensilRow[]): Recipe
 // (nom + unité) additionnés, lignes supprimées exclues. Remplace l'ancien
 // effectiveMergedRows — plus de « groupes déjà en ma possession » : le plan
 // ne suit plus les étapes réalisées (déplacé côté exécution, cf. CLAUDE.md).
-export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null };
+export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
 
 export function mergePlanIngredients(plan: PlanFull): MergedPlanRow[] {
   const rows: (MergedPlanRow & { key: string })[] = [];
@@ -253,7 +259,7 @@ export function mergePlanIngredients(plan: PlanFull): MergedPlanRow[] {
       const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
       let r = rows.find((x) => x.key === key);
       if (!r) {
-        r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null };
+        r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null, ref_id: it.ref_id ?? null };
         rows.push(r);
       }
       if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);
@@ -458,7 +464,7 @@ export function groupExecutionSteps(steps: ExecutionStepRow[]): ExecJalon[] {
 // plan_ingredient) : la mise en place fusionne les occurrences identiques
 // (nom + unité) en une ligne à cocher — `ids` porte toutes les lignes
 // sous-jacentes pour que cocher la ligne fusionnée coche chaque occurrence.
-export type MepIngredientRow = { key: string; ids: number[]; name: string; unit: string | null; quantity: number | null; quantityText: string | null; done: boolean };
+export type MepIngredientRow = { key: string; ids: number[]; name: string; unit: string | null; quantity: number | null; quantityText: string | null; done: boolean; ref_id: number | null };
 
 export function mergeExecutionIngredientsForMep(ingredients: ExecutionIngredientRow[]): MepIngredientRow[] {
   const rows: MepIngredientRow[] = [];
@@ -467,7 +473,7 @@ export function mergeExecutionIngredientsForMep(ingredients: ExecutionIngredient
     const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
-      r = { key, ids: [], name: it.name, unit: it.unit, quantity: null, quantityText: null, done: true };
+      r = { key, ids: [], name: it.name, unit: it.unit, quantity: null, quantityText: null, done: true, ref_id: it.plan_ingredients?.ref_id ?? null };
       rows.push(r);
     }
     r.ids.push(it.id);

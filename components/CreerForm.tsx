@@ -25,6 +25,7 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
+import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -187,6 +188,8 @@ export function CreerForm({
   utensilRefs,
   isAdmin,
   editRecipe,
+  conversions,
+  ingredientRefIds,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -198,6 +201,8 @@ export function CreerForm({
   utensilRefs: string[];
   isAdmin: boolean;
   editRecipe: RecipeFull | null;
+  conversions: ConversionRef[];
+  ingredientRefIds: IngredientRefOption[];
 }) {
   const router = useRouter();
   const editingId = editRecipe?.id ?? null;
@@ -1839,12 +1844,18 @@ export function CreerForm({
               <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-                {ingredientsRecap.map((m, k) => (
-                  <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                    <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
-                    <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">{[m.qty, m.unit].filter(Boolean).join(' ')}</span>
-                  </div>
-                ))}
+                {ingredientsRecap.map((m, k) => {
+                  const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
+                  return (
+                    <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                      <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                      <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
+                        {[m.qty, m.unit].filter(Boolean).join(' ')}
+                        {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
