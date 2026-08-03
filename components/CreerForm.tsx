@@ -538,6 +538,18 @@ export function CreerForm({
       alert('Donnez un titre à votre recette.');
       return;
     }
+    // Unité obligatoire dès qu'une quantité est saisie : une valeur qui ne
+    // figure pas dans le référentiel (ex. reprise d'un ancien import) ne doit
+    // jamais être réenregistrée telle quelle.
+    const validUnitNames = new Set(units.map((u) => u.name));
+    for (const st of steps) {
+      for (const l of st.ings) {
+        if (l.name.trim() && l.qty.trim() && !validUnitNames.has(l.unit)) {
+          alert(`Choisissez une unité pour « ${l.name.trim()} ».`);
+          return;
+        }
+      }
+    }
     if (status === 'draft' && editRecipe?.status === 'published') {
       const msg = isPublic
         ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'

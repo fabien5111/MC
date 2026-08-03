@@ -89,13 +89,19 @@ FIDÉLITÉ. Tu EXTRAIS, tu ne rédiges pas. La recette fait autorité, pas ton i
 
 MISE EN PAGE. Le contenu peut porter des marqueurs « [colonne N] » : ils restituent la composition d'origine de la page. Un titre de section ne possède QUE les lignes qui le suivent DANS SA COLONNE, jusqu'au titre suivant de cette même colonne. Ne fusionne JAMAIS des lignes appartenant à deux colonnes différentes : deux listes d'ingrédients imprimées côte à côte sont deux sous-préparations distinctes, et l'une ne complète pas l'autre.`;
 
-// Unités cibles de la base. L'IA n'étant plus contrainte de convertir, la
-// normalisation est faite ici, de façon déterministe (cf. `normaliseUnite`).
-const UNITES = new Set(['g', 'ml', 'piece']);
+// Unité de référence, telle qu'exposée par la table `units` (nom + abréviation
+// admin-gérées — cf. lib/admin-lists-config.ts). L'IA n'étant plus contrainte
+// de convertir, la normalisation est faite ici, de façon déterministe, contre
+// ce référentiel (cf. `normaliseUnite`) : aucune unité inventée par l'IA ne
+// doit atteindre la base si elle n'y figure pas.
+export type UniteRef = { name: string; abbreviation?: string | null };
 
-// Variantes d'unités rencontrées dans les recettes → unité cible et facteur
-// appliqué à la quantité. Table explicite plutôt que consignes de conversion
-// confiées à l'IA : le résultat est reproductible et ne coûte aucun token.
+// Variantes d'unités rencontrées dans les recettes → unité cible « générique »
+// (g / ml / piece) et facteur appliqué à la quantité. Table explicite plutôt
+// que consignes de conversion confiées à l'IA : le résultat est reproductible
+// et ne coûte aucun token. L'unité cible générique est ensuite rapprochée du
+// référentiel réel via `CANDIDATS` (cf. `trouveUnite`) : elle ne quitte jamais
+// cette fonction telle quelle.
 const CONVERSIONS: Record<string, { unite: string; facteur: number }> = {
   g: { unite: 'g', facteur: 1 },
   gr: { unite: 'g', facteur: 1 },
@@ -133,24 +139,67 @@ const CONVERSIONS: Record<string, { unite: string; facteur: number }> = {
   u: { unite: 'piece', facteur: 1 },
 };
 
-// Unité + quantité ramenées aux unités de la base. Renvoie `reconnue: false`
-// quand l'unité est inconnue : la valeur brute est conservée et signalée en
-// alerte, plutôt que silencieusement écrasée.
+// Noms/abréviations candidats dans le référentiel réel pour chaque unité
+// cible générique de `CONVERSIONS` — sert uniquement à retrouver l'unité
+// telle qu'elle existe en base (ex. la base peut l'appeler « g » ou
+// « grammes »), jamais à choisir l'unité elle-même.
+const CANDIDATS: Record<string, string[]> = {
+  g: ['g', 'gramme', 'grammes'],
+  ml: ['ml', 'millilitre', 'millilitres'],
+  piece: ['pièce', 'pièces', 'piece', 'pieces', 'unité', 'unite', 'unités', 'unites', 'u'],
+};
+
+// Cherche, parmi les unités réellement disponibles (table `units`), celle
+// dont le nom ou l'abréviation correspond (insensible à la casse) à l'un des
+// candidats fournis. Renvoie le nom exact tel qu'il figure en base.
+function trouveUnite(candidats: string[], unitsDisponibles: UniteRef[]): string | null {
+  for (const c of candidats) {
+    const found = unitsDisponibles.find(
+      (u) => u.name.trim().toLowerCase() === c || (u.abbreviation || '').trim().toLowerCase() === c,
+    );
+    if (found) return found.name;
+  }
+  return null;
+}
+
+// Unité + quantité ramenées à une unité RÉELLEMENT disponible dans le
+// référentiel `units`. Ne renvoie jamais une unité qui n'y figure pas :
+// `reconnue: false` signale une unité inconnue OU non disponible en base, et
+// `unite` vaut alors `null` — mieux vaut ne rien renseigner qu'une valeur
+// fausse (« pièce » écrit alors que seule « unité » existe, par exemple).
 export function normaliseUnite(
   quantite: number | null | undefined,
   unite: string | null | undefined,
-): { quantite: number | null; unite: string | null; reconnue: boolean } {
+  unitsDisponibles: UniteRef[],
+): { quantite: number | null; unite: string | null; categorie: 'g' | 'ml' | 'piece' | null; reconnue: boolean } {
   const q = typeof quantite === 'number' && isFinite(quantite) ? quantite : null;
   const brut = String(unite ?? '').trim().toLowerCase();
-  if (!brut) return { quantite: q, unite: null, reconnue: true };
+  if (!brut) return { quantite: q, unite: null, categorie: null, reconnue: true };
+
+  // Alias connu (conversion d'échelle) : la quantité n'a de sens qu'une fois
+  // ramenée à l'unité cible réelle — on ne convertit donc que si cette unité
+  // cible existe effectivement dans le référentiel.
   const conv = CONVERSIONS[brut];
-  if (!conv) return { quantite: q, unite: brut, reconnue: false };
-  return {
-    // Arrondi à 2 décimales : évite les 33.333333 issus des conversions.
-    quantite: q == null ? null : Math.round(q * conv.facteur * 100) / 100,
-    unite: conv.unite,
-    reconnue: true,
-  };
+  if (conv) {
+    const cible = trouveUnite(CANDIDATS[conv.unite] || [conv.unite], unitsDisponibles);
+    if (cible) {
+      return {
+        // Arrondi à 2 décimales : évite les 33.333333 issus des conversions.
+        quantite: q == null ? null : Math.round(q * conv.facteur * 100) / 100,
+        unite: cible,
+        categorie: conv.unite as 'g' | 'ml' | 'piece',
+        reconnue: true,
+      };
+    }
+    return { quantite: q, unite: null, categorie: null, reconnue: false };
+  }
+
+  // Pas d'alias connu : dernier recours, correspondance directe avec une
+  // unité déjà présente telle quelle dans le référentiel (ex. « sachet »).
+  const direct = trouveUnite([brut], unitsDisponibles);
+  if (direct) return { quantite: q, unite: direct, categorie: null, reconnue: true };
+
+  return { quantite: q, unite: null, categorie: null, reconnue: false };
 }
 
 // Comportement d'un ingrédient lors d'un changement de quantités. Déduit du
@@ -216,7 +265,7 @@ type Pivot = Record<string, any>;
 // L'unité inconnue est une alerte et non une erreur : `normaliseUnite` couvre
 // les cas courants, et une unité exotique se corrige en relecture — la refuser
 // ferait perdre toute l'extraction pour un seul ingrédient.
-export function validatePivot(r: RecetteIA): { erreurs: string[]; alertes: string[] } {
+export function validatePivot(r: RecetteIA, unitsDisponibles: UniteRef[]): { erreurs: string[]; alertes: string[] } {
   const erreurs: string[] = [];
   const alertes: string[] = [];
   if (!r || typeof r !== 'object') return { erreurs: ['Objet JSON manquant.'], alertes };
@@ -239,14 +288,15 @@ export function validatePivot(r: RecetteIA): { erreurs: string[]; alertes: strin
     else if (!aInstr) alertes.push(`« ${nom} » : aucune instruction — à vérifier.`);
 
     (e.ingredients || []).forEach((ing) => {
-      const { quantite, unite, reconnue } = normaliseUnite(ing.quantite, ing.unite);
+      const { quantite, unite, categorie, reconnue } = normaliseUnite(ing.quantite, ing.unite, unitsDisponibles);
       if (!reconnue) {
-        alertes.push(`« ${nom} » / ${ing.nom} : unité « ${unite} » non reconnue — à corriger.`);
+        const brut = String(ing.unite ?? '').trim();
+        alertes.push(`« ${nom} » / ${ing.nom} : unité${brut ? ` « ${brut} »` : ''} non reconnue ou absente du référentiel — à choisir en relecture.`);
       }
       if (ing.quantite != null && !(Number(ing.quantite) > 0)) {
         erreurs.push(`« ${nom} » / ${ing.nom} : quantité invalide (${ing.quantite}).`);
       }
-      if (quantite != null && quantite > 2000 && unite && UNITES.has(unite) && unite !== 'piece') {
+      if (quantite != null && quantite > 2000 && (categorie === 'g' || categorie === 'ml')) {
         alertes.push(`Quantité inhabituelle : ${ing.nom} — ${quantite} ${unite}.`);
       }
     });
@@ -270,7 +320,7 @@ export function validatePivot(r: RecetteIA): { erreurs: string[]; alertes: strin
 // catégorie, tags, difficulté, et le moule structuré (forme + dimensions) dont
 // dépend l'ajustement par volume. Le rendement textuel est reporté en mode
 // « description libre » pour ne rien perdre de ce qui a été extrait.
-export function toPivotInterne(r: RecetteIA): Pivot {
+export function toPivotInterne(r: RecetteIA, unitsDisponibles: UniteRef[]): Pivot {
   const etapes: EtapeIA[] = Array.isArray(r.etapes) ? r.etapes : [];
   const somme = (f: (e: EtapeIA) => unknown): number | null => {
     const t = etapes.reduce((n, e) => n + (Number(f(e)) || 0), 0);
@@ -319,7 +369,7 @@ export function toPivotInterne(r: RecetteIA): Pivot {
       },
       temperature_c: Number(e.temperature_cuisson_celsius) || null,
       ingredients: (e.ingredients || []).map((ing) => {
-        const { quantite, unite } = normaliseUnite(ing.quantite, ing.unite);
+        const { quantite, unite } = normaliseUnite(ing.quantite, ing.unite, unitsDisponibles);
         return {
           nom: ing.nom || '',
           quantite,
@@ -375,6 +425,9 @@ function messageAnalyse(contenu: string, consigne?: string): string {
 export async function normalizeRecette(
   apiKey: string,
   contenu: string,
+  // Unités réellement disponibles (table `units`) : seule source de vérité
+  // pour la normalisation des unités extraites par l'IA (cf. `normaliseUnite`).
+  unitsDisponibles: UniteRef[],
   // Budget de temps alloué à cette étape. L'import par photo consomme déjà une
   // part du `maxDuration` de la route pour transcrire les pages : il reste
   // moins que le budget nominal pour structurer.
@@ -415,7 +468,7 @@ export async function normalizeRecette(
   }
 
   cleanPivotRecette(recette);
-  let { erreurs, alertes } = validatePivot(recette);
+  let { erreurs, alertes } = validatePivot(recette, unitsDisponibles);
   if (erreurs.length && !relanceUtilisee) {
     const retry = await callClaude(
       apiKey,
@@ -430,7 +483,7 @@ export async function normalizeRecette(
     try {
       const recette2 = parseStrictJson(retry.text) as RecetteIA;
       cleanPivotRecette(recette2);
-      const v2 = validatePivot(recette2);
+      const v2 = validatePivot(recette2, unitsDisponibles);
       if (!v2.erreurs.length) {
         recette = recette2;
         erreurs = v2.erreurs;
@@ -444,5 +497,5 @@ export async function normalizeRecette(
   }
 
   // Conversion vers la structure attendue par la relecture et la base.
-  return { pivot: toPivotInterne(recette), usage, erreurs, alertes };
+  return { pivot: toPivotInterne(recette, unitsDisponibles), usage, erreurs, alertes };
 }

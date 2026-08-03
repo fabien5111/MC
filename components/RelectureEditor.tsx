@@ -21,8 +21,6 @@ import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, t
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
-const UNITE_LBL: Record<string, string> = { g: 'g', ml: 'ml', piece: 'pièce(s)' };
-
 // Jusqu'à 3 allergènes par ingrédient, choisis uniquement dans la table de
 // référence (plus de saisie libre). Persistés en une chaîne « a, b, c ».
 const MAX_ALLERGENS = 3;
@@ -176,7 +174,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       const noteRaw = ligatureOeuf(String(g.note || '')).trim();
       const note = noteRaw && noteRaw.toLowerCase() === nom.toLowerCase() ? '' : noteRaw;
       const refKey = nom.toLowerCase();
-      const imported = g.texte_original || [g.quantite, UNITE_LBL[g.unite] || g.unite, g.nom].filter(Boolean).join(' ') || null;
+      const imported = g.texte_original || [g.quantite, g.unite, g.nom].filter(Boolean).join(' ') || null;
       return {
         key: nextKey(),
         imported: imported ? ligatureOeuf(imported) : null,
@@ -761,6 +759,18 @@ export function RelectureEditor({
     // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
     // pas ouvrir deux créations concurrentes.
     if (busyRef.current) return;
+    // Unité obligatoire dès qu'une quantité est saisie : une unité importée
+    // non reconnue (absente du référentiel) ne doit jamais atteindre la table
+    // `ingredients` telle quelle (cf. normaliseUnite côté import).
+    const validUnitNames = new Set(unitOptions);
+    for (const sp of sps) {
+      for (const g of sp.ings) {
+        if (g.nom.trim() && String(g.qte).trim() && !validUnitNames.has(g.unite)) {
+          alert(`Choisissez une unité pour « ${g.nom.trim()} » avant de créer la recette.`);
+          return;
+        }
+      }
+    }
     if (!confirm('Créer cette recette dans votre carnet (brouillon privé) ?')) return;
     busyRef.current = true;
     setBusy(true);
@@ -909,7 +919,7 @@ export function RelectureEditor({
           .map((g: any, k: number) => ({
             name: g.nom,
             quantity: g.quantite != null ? String(g.quantite) : null,
-            unit: UNITE_LBL[g.unite] || g.unite || null,
+            unit: g.unite || null,
             comment: g.note || null,
             allergen: g.allergene || null,
             order_index: k,
@@ -1539,10 +1549,10 @@ export function RelectureEditor({
                           />
                           <input type="number" min={0} step="any" value={g.qte} onChange={(e) => patchIng(si, ii, { qte: e.target.value })} className={`${champ} text-center`} />
                           <select value={g.unite} onChange={(e) => patchIng(si, ii, { unite: e.target.value })} className={champ}>
-                            <option value="">—</option>
-                            {Array.from(new Set([...unitOptions, g.unite].filter(Boolean))).map((u) => (
+                            <option value="">— unité —</option>
+                            {unitOptions.map((u) => (
                               <option key={u} value={u}>
-                                {UNITE_LBL[u] || u}
+                                {u}
                               </option>
                             ))}
                           </select>
@@ -1818,7 +1828,7 @@ export function RelectureEditor({
                 <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                   <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
-                    {[m.qty, UNITE_LBL[m.unit] || m.unit].filter(Boolean).join(' ')}
+                    {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
                   </span>
                 </div>

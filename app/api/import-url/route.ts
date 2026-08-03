@@ -130,12 +130,16 @@ export async function POST(req: Request) {
   // limite de la fonction devient trop élevé sur une recette complexe). La
   // transcription ayant lieu dans d'autres requêtes, la structuration dispose
   // ici de la totalité du budget.
+  // Référentiel réel des unités : seule source de vérité pour la normalisation
+  // des unités extraites par l'IA (cf. lib/ai/import-pivot.ts normaliseUnite).
+  const { data: unitsRows } = await supabase.from('units').select('name, abbreviation');
+
   let usageStructuration: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
   let alertes: string[];
   try {
-    const normalise = await normalizeRecette(apiKey, contenu);
+    const normalise = await normalizeRecette(apiKey, contenu, unitsRows ?? []);
     pivot = normalise.pivot;
     usageStructuration = normalise.usage;
     erreurs = normalise.erreurs;
