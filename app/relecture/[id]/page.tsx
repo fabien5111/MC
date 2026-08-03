@@ -10,6 +10,7 @@ import {
   getUtensilRefNames,
 } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
+import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getDifficulties, getTags } from '@/lib/taxonomy';
 import { getMoldTypes } from '@/lib/admin';
 import { Header } from '@/components/Header';
@@ -26,7 +27,7 @@ export default async function RelecturePage({ params }: Params) {
   const { id } = await params;
   const numId = Number(id);
 
-  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin] = await Promise.all([
+  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin, conversions, ingredientRefIds] = await Promise.all([
     Number.isFinite(numId) ? getImport(numId) : Promise.resolve(null),
     getUnits(),
     getIngredientRefNames(),
@@ -37,6 +38,8 @@ export default async function RelecturePage({ params }: Params) {
     getMoldTypes(),
     getTags(),
     isAdmin(user.id),
+    getIngredientConversions(),
+    getIngredientRefsList(),
   ]);
 
   return (
@@ -59,6 +62,7 @@ export default async function RelecturePage({ params }: Params) {
           <RelectureEditor
             importRow={importRow}
             units={units.map((u) => u.name)}
+            unitRefs={units}
             ingredientRefs={refs}
             refAllergens={refAllergens}
             allergens={allergens}
@@ -67,6 +71,8 @@ export default async function RelecturePage({ params }: Params) {
             moldTypes={moldTypes}
             tags={tags}
             isAdmin={admin}
+            conversions={conversions}
+            ingredientRefIds={ingredientRefIds}
           />
         )}
       </main>

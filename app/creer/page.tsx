@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
-import { getRecipeFull } from '@/lib/recipes';
+import { getRecipeFull, getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
@@ -19,7 +19,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   await requireWritableSession();
   const { id } = await searchParams;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe] =
+  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe, conversions, ingredientRefIds] =
     await Promise.all([
       getTags(),
       getUnits(),
@@ -31,6 +31,8 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       getUtensilRefNames(),
       isAdmin(user.id),
       id ? getRecipeFull(id) : Promise.resolve(null),
+      getIngredientConversions(),
+      getIngredientRefsList(),
     ]);
 
   // Édition réservée à l'auteur ; sinon on repart d'un formulaire vierge.
@@ -52,6 +54,8 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           utensilRefs={utensilRefs}
           isAdmin={admin}
           editRecipe={owned}
+          conversions={conversions}
+          ingredientRefIds={ingredientRefIds}
         />
       </main>
       </div>

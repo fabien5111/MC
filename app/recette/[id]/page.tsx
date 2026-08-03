@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getRecipeFull, getAllergensWithPicto, type AllergenRef } from '@/lib/recipes';
+import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
+import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
@@ -65,13 +66,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
     getRecipes({ limit: 4 }),
     getMoldTypes(),
     getAllergensWithPicto(),
+    getIngredientConversions(),
   ]);
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   // Le plan est une copie matérialisée indépendante de la recette (voir
@@ -91,10 +93,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
   });
   const suggestions = suggestionsRaw.filter((r) => r.id !== recipe.id).slice(0, 2);
 
-  // Rendu quantité + unité (unité survolable si infobulle définie).
-  const Qty = ({ quantity, unit }: { quantity: string | number | null; unit: string | null }) => {
+  // Rendu quantité + unité (unité survolable si infobulle définie), suivi
+  // d'une conversion entre parenthèses quand l'ingrédient est référencé dans
+  // la table « Conversions d'ingrédients » (ex. « 2 œufs (≈ 100 g) »).
+  const Qty = ({ quantity, unit, refId }: { quantity: string | number | null; unit: string | null; refId?: number | null }) => {
     const q = quantity != null && String(quantity) !== '' ? String(quantity) : '';
     const tip = unit ? unitTips[unit.toLowerCase().trim()] : undefined;
+    const conv = ingredientConversionText(conversions, units, refId, unit, quantity);
     return (
       <>
         {q}
@@ -108,6 +113,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             unit
           )
         ) : null}
+        {conv && <span className="print-fs-9 text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
   };
@@ -572,7 +578,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   masqué au print, conservé à l'écran (édition du plan incluse). */}
               <div className="no-print">
               {planContext ? (
-                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} />
+                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} />
               ) : (
                 <div className="space-y-10">
                   {groups.map((g) => (
@@ -592,7 +598,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
                               >
                                 <span className="font-label-md text-label-md text-primary">
-                                  <Qty quantity={it.quantity} unit={it.unit} />
+                                  <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                 </span>
                                 <span className="font-body-md text-body-md">
                                   {url ? (
@@ -645,10 +651,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                             </span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
-                              <Qty quantity={r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ')} unit={r.unit} />
+                              <Qty quantity={r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ')} unit={r.unit} refId={r.ref_id} />
                             </span>
                             <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                              {r.orig != null ? <Qty quantity={[fmtNum(r.orig), ...r.origTxt].join(' + ')} unit={r.unit} /> : r.origTxt.length ? <Qty quantity={r.origTxt.join(' + ')} unit={r.unit} /> : '—'}
+                              {r.orig != null ? <Qty quantity={[fmtNum(r.orig), ...r.origTxt].join(' + ')} unit={r.unit} refId={r.ref_id} /> : r.origTxt.length ? <Qty quantity={r.origTxt.join(' + ')} unit={r.unit} refId={r.ref_id} /> : '—'}
                             </span>
                           </li>
                         );
@@ -673,7 +679,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                               {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
                             </span>
                             <span className="font-label-md text-label-md text-primary">
-                              <Qty quantity={m.qty} unit={m.unit} />
+                              <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
                             </span>
                           </li>
                         ))}
@@ -687,9 +693,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
-                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment })) : merged}
+                  ingredients={planMerged ? planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id })) : merged}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
+                  conversions={conversions}
+                  units={units}
                 />
                 </div>
               )}
@@ -853,7 +861,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                   <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                                     <span className="font-label-md text-label-md text-primary">
                                       <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                                      <Qty quantity={it.quantity} unit={it.unit} />
+                                      <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                     </span>
                                     <span className="font-body-md text-body-md">
                                       {it.name}

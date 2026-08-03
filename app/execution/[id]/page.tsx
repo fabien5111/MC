@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { getExecution, getPastStepComments } from '@/lib/executions';
+import { getUnits } from '@/lib/profile';
+import { getIngredientConversions } from '@/lib/recipes';
 import { ExecutionView } from '@/components/execution/ExecutionView';
 
 type Params = {
@@ -22,6 +24,7 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
 
   const execId = Number(id);
   const exec = Number.isFinite(execId) ? await getExecution(execId) : null;
+  const [units, conversions] = await Promise.all([getUnits(), getIngredientConversions()]);
 
   return (
     <>
@@ -45,6 +48,8 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
             exec={exec}
             prevComments={exec.status === 'en_cours' ? await getPastStepComments(exec.planning_id, exec.id) : {}}
             lecture={lecture === '1'}
+            conversions={conversions}
+            units={units}
           />
         )}
       </main>

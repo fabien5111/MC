@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
+import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
 const REFRESH_DELAY = 2000;
@@ -19,11 +20,15 @@ export function ShoppingItems({
   listName,
   initialItems,
   units,
+  conversions,
+  ingredientRefs,
 }: {
   listId: number;
   listName: string;
   initialItems: ShoppingItem[];
   units: Unit[];
+  conversions: ConversionRef[];
+  ingredientRefs: IngredientRefOption[];
 }) {
   const router = useRouter();
   const { mutate } = useMutation();
@@ -82,16 +87,17 @@ export function ShoppingItems({
       alert('Indiquez un libellé.');
       return;
     }
+    const ref_id = resolveIngredientRefId(name, ingredientRefs);
     const ok = await mutate(
       () =>
         createClient()
           .from('shopping_list_items')
-          .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null })
+          .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, ref_id })
           .eq('id', id),
       { refresh: false },
     );
     if (!ok) return;
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null } : i)));
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, ref_id } : i)));
     setEditingId(null);
     scheduleRefresh();
   }
@@ -106,7 +112,7 @@ export function ShoppingItems({
     const supabase = createClient();
     const { data, error } = await supabase
       .from('shopping_list_items')
-      .insert({ list_id: listId, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, checked: false })
+      .insert({ list_id: listId, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, checked: false, ref_id: resolveIngredientRefId(name, ingredientRefs) })
       .select()
       .single();
     if (error) {
@@ -137,6 +143,7 @@ export function ShoppingItems({
         <ul className="flex flex-col max-w-2xl">
           {items.map((i) => {
             const qty = [i.quantity, i.unit].filter(Boolean).join(' ');
+            const conv = ingredientConversionText(conversions, units, i.ref_id, i.unit, i.quantity);
             const struck = i.checked ? 'line-through opacity-50' : '';
             return (
               <li key={i.id}>
@@ -148,7 +155,10 @@ export function ShoppingItems({
                     className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
                   <span className={`font-body-md text-body-md flex-1 ${struck}`}>{i.name}</span>
-                  <span className={`font-label-md text-label-md text-primary whitespace-nowrap ${struck}`}>{qty}</span>
+                  <span className={`font-label-md text-label-md text-primary whitespace-nowrap ${struck}`}>
+                    {qty}
+                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setEditingId(editingId === i.id ? null : i.id)}
@@ -164,6 +174,12 @@ export function ShoppingItems({
           })}
         </ul>
       )}
+
+      <datalist id="dl-shopping-ingredients">
+        {ingredientRefs.map((r) => (
+          <option key={r.id} value={r.name} />
+        ))}
+      </datalist>
 
       {adding ? (
         <AddItemRow units={units} onAdd={addItem} onCancel={() => setAdding(false)} />
@@ -188,7 +204,7 @@ function EditItemRow({ item, units, onApply, onCancel }: { item: ShoppingItem; u
   return (
     <div className="py-3 border-b border-outline-variant/30">
       <div className="flex flex-wrap items-end gap-3">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ingrédient" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ingrédient" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" placeholder="Quantité" className={FIELD} style={{ width: '6rem' }} />
         <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
           <option value="">— Unité —</option>
@@ -217,7 +233,7 @@ function AddItemRow({ units, onAdd, onCancel }: { units: Unit[]; onAdd: (name: s
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
         <span className={LBL}>Ingrédient</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Beurre" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Beurre" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
       </label>
       <label className="flex flex-col gap-1">
         <span className={LBL}>Quantité</span>

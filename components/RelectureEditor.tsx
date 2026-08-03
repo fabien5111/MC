@@ -17,6 +17,7 @@ import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
+import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -202,6 +203,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
 export function RelectureEditor({
   importRow,
   units,
+  unitRefs,
   ingredientRefs,
   refAllergens,
   allergens,
@@ -210,9 +212,12 @@ export function RelectureEditor({
   moldTypes,
   tags,
   isAdmin,
+  conversions,
+  ingredientRefIds,
 }: {
   importRow: ImportFull;
   units: string[];
+  unitRefs: UnitRef[];
   ingredientRefs: string[];
   refAllergens: Record<string, string>;
   allergens: { id: number; name: string }[];
@@ -221,6 +226,8 @@ export function RelectureEditor({
   moldTypes: MoldType[];
   tags: Tag[];
   isAdmin: boolean;
+  conversions: ConversionRef[];
+  ingredientRefIds: IngredientRefOption[];
 }) {
   const router = useRouter();
   const recette = (importRow.recette ?? {}) as any;
@@ -906,6 +913,7 @@ export function RelectureEditor({
             comment: g.note || null,
             allergen: g.allergene || null,
             order_index: k,
+            ref_id: resolveIngredientRefId(g.nom || '', ingredientRefIds),
           }))
           .filter((l: any) => l.name);
         if (lines.length) {
@@ -1804,14 +1812,18 @@ export function RelectureEditor({
           <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
         ) : (
           <div className="max-w-2xl" style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
-            {ingredientsRecap.map((m, k) => (
-              <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
-                <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
-                  {[m.qty, UNITE_LBL[m.unit] || m.unit].filter(Boolean).join(' ')}
-                </span>
-              </div>
-            ))}
+            {ingredientsRecap.map((m, k) => {
+              const conv = ingredientConversionText(conversions, unitRefs, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
+              return (
+                <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                  <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                  <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
+                    {[m.qty, UNITE_LBL[m.unit] || m.unit].filter(Boolean).join(' ')}
+                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
