@@ -40,6 +40,7 @@ export function ShoppingItems({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mergingId, setMergingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [hideChecked, setHideChecked] = useState(false);
 
   const total = items.length;
   const done = items.filter((i) => i.checked).length;
@@ -162,17 +163,30 @@ export function ShoppingItems({
           <span className="material-symbols-outlined text-[32px]">shopping_bag</span>
           <span>{listName}</span>
         </h1>
-        <span className="font-label-md text-label-md text-on-surface-variant">
-          {total} article{total > 1 ? 's' : ''}
-          {done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-label-md text-label-md text-on-surface-variant">
+            {total} article{total > 1 ? 's' : ''}
+            {done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}
+          </span>
+          {done > 0 && (
+            <label className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hideChecked}
+                onChange={(e) => setHideChecked(e.target.checked)}
+                className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+              />
+              Masquer les cochés
+            </label>
+          )}
+        </div>
       </div>
 
       {total === 0 ? (
         <p className="text-on-surface-variant italic">Cette liste est vide.</p>
       ) : (
         <ul className="flex flex-col max-w-2xl">
-          {items.map((i) => {
+          {items.filter((i) => !hideChecked || !i.checked).map((i) => {
             const qty = [i.quantity, i.unit].filter(Boolean).join(' ');
             const conv = ingredientConversionText(conversions, units, i.ref_id, i.unit, i.quantity);
             const struck = i.checked ? 'line-through opacity-50' : '';
