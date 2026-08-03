@@ -1741,6 +1741,7 @@ export type Database = {
       }
       step_photos: {
         Row: {
+          ai_retouched: boolean
           caption: string | null
           id: number
           order_index: number | null
@@ -1748,6 +1749,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          ai_retouched?: boolean
           caption?: string | null
           id?: number
           order_index?: number | null
@@ -1755,6 +1757,7 @@ export type Database = {
           url: string
         }
         Update: {
+          ai_retouched?: boolean
           caption?: string | null
           id?: number
           order_index?: number | null
