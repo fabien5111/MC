@@ -1660,6 +1660,7 @@ export type Database = {
           list_id: number
           name: string
           quantity: string | null
+          ref_id: number | null
           unit: string | null
         }
         Insert: {
@@ -1669,6 +1670,7 @@ export type Database = {
           list_id: number
           name: string
           quantity?: string | null
+          ref_id?: number | null
           unit?: string | null
         }
         Update: {
@@ -1678,6 +1680,7 @@ export type Database = {
           list_id?: number
           name?: string
           quantity?: string | null
+          ref_id?: number | null
           unit?: string | null
         }
         Relationships: [
@@ -1686,6 +1689,13 @@ export type Database = {
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_list_items_ref_id_fkey"
+            columns: ["ref_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_refs"
             referencedColumns: ["id"]
           },
         ]
