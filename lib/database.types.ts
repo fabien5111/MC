@@ -1476,6 +1476,7 @@ export type Database = {
           difficulty_id: number | null
           fts: unknown
           global_tips: string | null
+          hero_image_ai_retouched: boolean
           hero_image_url: string | null
           id: string
           is_public: boolean | null
@@ -1511,6 +1512,7 @@ export type Database = {
           difficulty_id?: number | null
           fts?: unknown
           global_tips?: string | null
+          hero_image_ai_retouched?: boolean
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
@@ -1546,6 +1548,7 @@ export type Database = {
           difficulty_id?: number | null
           fts?: unknown
           global_tips?: string | null
+          hero_image_ai_retouched?: boolean
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null

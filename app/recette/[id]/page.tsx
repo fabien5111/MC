@@ -20,6 +20,7 @@ import {
   planUtensilsAsRecipeUtensils,
   fmtNum,
 } from '@/lib/recipe-plan';
+import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -320,9 +321,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Hero */}
           {recipe.hero_image_url && (
-            <div className="print-hero w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
               {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
               <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
             </div>
           )}
 
@@ -775,9 +777,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {photos.length > 0 && (
                       <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
                         {photos.map((p, k) => (
-                          <div key={k} className="aspect-square bg-surface-container-high border border-outline-variant overflow-hidden">
+                          <div key={k} className="relative aspect-square bg-surface-container-high border border-outline-variant overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
                             <img src={p.url} alt="" className="w-full h-full object-cover" />
+                            {p.ai_retouched && <AiPhotoBadge />}
                           </div>
                         ))}
                       </div>

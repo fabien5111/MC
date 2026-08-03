@@ -51,10 +51,21 @@ type SpState = {
   etapes: EtapeRow[];
   tips: string;
   videoUrl: string;
-  photos: (string | null)[];
+  photos: (StepPhoto | null)[];
   collapsed: boolean;
   ingsCollapsed: boolean;
 };
+
+type StepPhoto = { url: string; ai_retouched: boolean };
+
+// Normalise une photo issue du brouillon JSON : ancien format (chaîne simple)
+// ou nouveau format ({ url, ai_retouched }).
+function normPhoto(v: unknown): StepPhoto | null {
+  if (!v) return null;
+  if (typeof v === 'string') return { url: v, ai_retouched: false };
+  const o = v as { url?: string; ai_retouched?: boolean };
+  return o.url ? { url: o.url, ai_retouched: !!o.ai_retouched } : null;
+}
 
 let uid = 0;
 const nextKey = () => `k${uid++}`;
@@ -193,7 +204,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     }),
     tips: ligatureOeuf(sp.conseils || ''),
     videoUrl: sp.video || '',
-    photos: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => photos[i] || null),
+    photos: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => normPhoto(photos[i])),
     collapsed: false,
     ingsCollapsed: false,
   };
@@ -233,6 +244,7 @@ export function RelectureEditor({
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
+  const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(!!recette.photo_principale_ai_retouched);
   // Photos extraites du PDF qui n'ont pas trouvé d'étape (la page indiquée par
   // l'IA ne correspondait à aucune) : elles restent disponibles au glisser-
   // déposer. Une photo retirée d'un emplacement y revient, ce qui permet de la
@@ -535,15 +547,26 @@ export function RelectureEditor({
   const patchPhoto = (si: number, pi: number, url: string | null) => {
     // La photo évincée de l'emplacement retourne dans la banque (import PDF),
     // pour rester disponible sur une autre étape.
-    const ancienne = sps[si]?.photos[pi] ?? null;
+    const ancienne = sps[si]?.photos[pi]?.url ?? null;
     if (ancienne && ancienne !== url) rendreALaBanque(ancienne);
     retirerDeLaBanque(url);
-    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi ? url : p)) } : sp)));
+    setSps((prev) =>
+      prev.map((sp, k) =>
+        k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi ? (url ? { url, ai_retouched: false } : null) : p)) } : sp,
+      ),
+    );
   };
+  const patchPhotoAi = (si: number, pi: number, aiRetouched: boolean) =>
+    setSps((prev) =>
+      prev.map((sp, k) =>
+        k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi && p ? { ...p, ai_retouched: aiRetouched } : p)) } : sp,
+      ),
+    );
   const patchHero = (url: string | null) => {
     if (hero && hero !== url) rendreALaBanque(hero);
     retirerDeLaBanque(url);
     setHero(url);
+    setHeroAiRetouched(false);
   };
   const addIng = (si: number) =>
     setSps((prev) =>
@@ -661,6 +684,7 @@ export function RelectureEditor({
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
     p.photo_principale = hero;
+    p.photo_principale_ai_retouched = heroAiRetouched;
     // La banque suit le brouillon : un enregistrement intermédiaire ne doit pas
     // faire disparaître les photos du PDF encore non placées.
     p.photos_pdf = banque;
@@ -715,7 +739,7 @@ export function RelectureEditor({
       etapes: sp.etapes.map((e, k) => ({ ordre: k + 1, texte: e.texte.trim() })).filter((e) => e.texte),
       conseils: sp.tips.trim() || null,
       video: sp.videoUrl.trim() || null,
-      photos: sp.photos.filter((p): p is string => !!p),
+      photos: sp.photos.filter((p): p is StepPhoto => !!p),
     }));
     p.materiel = utensils
       .map((m) => ({ nom: m.nom.trim(), commentaire: m.commentaire.trim() || null }))
@@ -842,6 +866,7 @@ export function RelectureEditor({
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
         hero_image_url: p.photo_principale || null,
+        hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,
         prep_time: t.preparation_min ?? null,
         cook_time: t.cuisson_min ?? null,
@@ -909,11 +934,11 @@ export function RelectureEditor({
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
 
-        const photoUrls: string[] = Array.isArray(sp.photos) ? sp.photos.filter((p: any) => !!p) : [];
-        if (photoUrls.length) {
+        const photoRows: StepPhoto[] = Array.isArray(sp.photos) ? sp.photos.filter((p: any) => !!p?.url) : [];
+        if (photoRows.length) {
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoUrls.map((url, pi) => ({ step_id: stepRow.id, url, order_index: pi })));
+            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, order_index: pi, ai_retouched: !!p.ai_retouched })));
           if (error) throw error;
         }
 
@@ -1053,16 +1078,30 @@ export function RelectureEditor({
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
-          <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
-            <ImageSlot
-              src={hero}
-              onChange={patchHero}
-              onClear={() => patchHero(null)}
-              shape="rect"
-              maxWidth={1200}
-              placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
-              className="w-full h-full"
-            />
+          <div className="space-y-1.5">
+            <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
+              <ImageSlot
+                src={hero}
+                aiRetouched={heroAiRetouched}
+                onChange={patchHero}
+                onClear={() => patchHero(null)}
+                shape="rect"
+                maxWidth={1200}
+                placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
+                className="w-full h-full"
+              />
+            </div>
+            {hero && (
+              <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={heroAiRetouched}
+                  onChange={(e) => setHeroAiRetouched(e.target.checked)}
+                  className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                />
+                Retravaillée avec l&apos;IA
+              </label>
+            )}
           </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
@@ -1715,16 +1754,30 @@ export function RelectureEditor({
               {/* Photos de l'étape */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                 {sp.photos.map((p, pi) => (
-                  <div key={pi} className="aspect-square border border-dashed border-outline-variant overflow-hidden rounded-lg">
-                    <ImageSlot
-                      src={p}
-                      onChange={(url) => patchPhoto(si, pi, url)}
-                      onClear={() => patchPhoto(si, pi, null)}
-                      shape="rect"
-                      maxWidth={800}
-                      placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
-                      className="w-full h-full"
-                    />
+                  <div key={pi} className="space-y-1.5">
+                    <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden rounded-lg">
+                      <ImageSlot
+                        src={p?.url ?? null}
+                        aiRetouched={p?.ai_retouched}
+                        onChange={(url) => patchPhoto(si, pi, url)}
+                        onClear={() => patchPhoto(si, pi, null)}
+                        shape="rect"
+                        maxWidth={800}
+                        placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
+                        className="w-full h-full"
+                      />
+                    </div>
+                    {p && (
+                      <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={p.ai_retouched}
+                          onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
+                          className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                        />
+                        Retravaillée avec l&apos;IA
+                      </label>
+                    )}
                   </div>
                 ))}
               </div>
