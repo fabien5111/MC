@@ -321,9 +321,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Hero */}
           {recipe.hero_image_url && (
-            <div className="print-hero w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
               {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
               <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
             </div>
           )}
 

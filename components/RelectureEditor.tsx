@@ -244,6 +244,7 @@ export function RelectureEditor({
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
+  const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(!!recette.photo_principale_ai_retouched);
   // Photos extraites du PDF qui n'ont pas trouvé d'étape (la page indiquée par
   // l'IA ne correspondait à aucune) : elles restent disponibles au glisser-
   // déposer. Une photo retirée d'un emplacement y revient, ce qui permet de la
@@ -565,6 +566,7 @@ export function RelectureEditor({
     if (hero && hero !== url) rendreALaBanque(hero);
     retirerDeLaBanque(url);
     setHero(url);
+    setHeroAiRetouched(false);
   };
   const addIng = (si: number) =>
     setSps((prev) =>
@@ -682,6 +684,7 @@ export function RelectureEditor({
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
     p.photo_principale = hero;
+    p.photo_principale_ai_retouched = heroAiRetouched;
     // La banque suit le brouillon : un enregistrement intermédiaire ne doit pas
     // faire disparaître les photos du PDF encore non placées.
     p.photos_pdf = banque;
@@ -863,6 +866,7 @@ export function RelectureEditor({
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
         hero_image_url: p.photo_principale || null,
+        hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,
         prep_time: t.preparation_min ?? null,
         cook_time: t.cuisson_min ?? null,
@@ -1074,16 +1078,30 @@ export function RelectureEditor({
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
-          <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
-            <ImageSlot
-              src={hero}
-              onChange={patchHero}
-              onClear={() => patchHero(null)}
-              shape="rect"
-              maxWidth={1200}
-              placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
-              className="w-full h-full"
-            />
+          <div className="space-y-1.5">
+            <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
+              <ImageSlot
+                src={hero}
+                aiRetouched={heroAiRetouched}
+                onChange={patchHero}
+                onClear={() => patchHero(null)}
+                shape="rect"
+                maxWidth={1200}
+                placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
+                className="w-full h-full"
+              />
+            </div>
+            {hero && (
+              <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={heroAiRetouched}
+                  onChange={(e) => setHeroAiRetouched(e.target.checked)}
+                  className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                />
+                Retravaillée avec l&apos;IA
+              </label>
+            )}
           </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>

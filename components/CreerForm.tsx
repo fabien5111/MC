@@ -222,6 +222,7 @@ export function CreerForm({
   const [servingAdvice, setServingAdvice] = useState(editRecipe?.serving_advice || '');
   const [isPublic, setIsPublic] = useState(editRecipe?.is_public !== false);
   const [hero, setHero] = useState<string | null>(editRecipe?.hero_image_url ?? null);
+  const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(editRecipe?.hero_image_ai_retouched ?? false);
   const [level, setLevel] = useState<number>(
     editRecipe?.difficulties?.level ?? difficulties.find((d) => d.id === (editRecipe as { difficulty_id?: number } | null)?.difficulty_id)?.level ?? 0,
   );
@@ -645,6 +646,7 @@ export function CreerForm({
         cook_time: gmin(cook),
         total_time: gmin(total),
         hero_image_url: hero,
+        hero_image_ai_retouched: heroAiRetouched,
       };
 
       // Recette à mettre à jour : celle ouverte en édition, ou celle créée
@@ -997,18 +999,36 @@ export function CreerForm({
               />
             </div>
           </div>
-          <div className="lg:col-span-12">
-            <div className="aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
+          <div className="lg:col-span-12 space-y-1.5">
+            <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
               <ImageSlot
                 src={hero}
-                onChange={setHero}
-                onClear={() => setHero(null)}
+                aiRetouched={heroAiRetouched}
+                onChange={(url) => {
+                  setHero(url);
+                  setHeroAiRetouched(false);
+                }}
+                onClear={() => {
+                  setHero(null);
+                  setHeroAiRetouched(false);
+                }}
                 shape="rect"
                 maxWidth={1200}
                 placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
                 className="w-full h-full"
               />
             </div>
+            {hero && (
+              <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={heroAiRetouched}
+                  onChange={(e) => setHeroAiRetouched(e.target.checked)}
+                  className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                />
+                Retravaillée avec l&apos;IA
+              </label>
+            )}
           </div>
         </section>
 

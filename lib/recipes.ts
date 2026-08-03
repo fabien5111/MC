@@ -165,6 +165,7 @@ export type RecipeFull = {
   video_url: string | null;
   serving_advice: string | null;
   hero_image_url: string | null;
+  hero_image_ai_retouched: boolean;
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
