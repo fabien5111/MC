@@ -28,21 +28,37 @@ export function PlanIngredientsEditor({
   units,
   unitTips,
   conversions,
+  runningExecutionIds,
 }: {
   plan: PlanFull;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Sessions `en_cours` du plan, tous pas confondus (calculé par la page) :
+  // une session figée à son démarrage ne reflète aucune de ces modifications
+  // (cf. CLAUDE.md « Recettes planifiées ») — proposée à la suppression après
+  // chaque écriture aboutie, plutôt qu'un avertissement qui se contredirait
+  // silencieusement au fil des modifications suivantes.
+  runningExecutionIds: number[];
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
 
+  async function proposeDeleteRunningSessions() {
+    if (!runningExecutionIds.length) return;
+    const plural = runningExecutionIds.length > 1;
+    await mutate(() => createClient().from('executions').delete().in('id', runningExecutionIds), {
+      confirm: `${plural ? 'Des sessions' : 'Une session'} de préparation en cours ${plural ? 'ont' : 'a'} été figée${plural ? 's' : ''} avant cette modification et ne la reflète${plural ? 'nt' : ''} pas.\n\n${plural ? 'Les supprimer' : 'La supprimer'} ?`,
+      errorLabel: 'Suppression impossible',
+    });
+  }
+
   // Chaque action est une écriture ciblée sur `plan_ingredients` (via
   // useMutation : spinner + confirm optionnel + resynchronisation du Server
   // Component parent — fiche recette, liste de courses, onglet Planning).
-  function applyEdit(row: PlanIngredientRow, qtyStr: string, coefStr: string) {
+  async function applyEdit(row: PlanIngredientRow, qtyStr: string, coefStr: string) {
     const qv = qtyStr.trim() === '' ? null : numify(qtyStr);
     const cv = coefStr.trim() === '' ? null : numify(coefStr);
     let patch: { quantity: number | null; quantity_text: string | null } | null = null;
@@ -53,25 +69,28 @@ export function PlanIngredientsEditor({
     }
     setEditing(null);
     if (!patch) return;
-    mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+    const ok = await mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+    if (ok) await proposeDeleteRunningSessions();
   }
 
-  function toggleRemove(row: PlanIngredientRow) {
-    mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+  async function toggleRemove(row: PlanIngredientRow) {
+    const ok = await mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
+    if (ok) await proposeDeleteRunningSessions();
   }
 
-  function removeAdded(row: PlanIngredientRow) {
-    mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
+  async function removeAdded(row: PlanIngredientRow) {
+    const ok = await mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
+    if (ok) await proposeDeleteRunningSessions();
   }
 
-  function applyEditAdded(row: PlanIngredientRow, name: string, qtyStr: string, unit: string) {
+  async function applyEditAdded(row: PlanIngredientRow, name: string, qtyStr: string, unit: string) {
     if (!name.trim()) {
       dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
     const n = numify(qtyStr);
     setEditing(null);
-    mutate(
+    const ok = await mutate(
       () =>
         createClient()
           .from('plan_ingredients')
@@ -79,6 +98,7 @@ export function PlanIngredientsEditor({
           .eq('id', row.id),
       { errorLabel: 'Modification non enregistrée' },
     );
+    if (ok) await proposeDeleteRunningSessions();
   }
 
   async function addIng(stepId: number, name: string, qtyStr: string, unit: string) {
@@ -90,7 +110,7 @@ export function PlanIngredientsEditor({
     const stepRows = plan.plan_ingredients.filter((it) => it.step_id === stepId);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
     setAddingStep(null);
-    await mutate(
+    const ok = await mutate(
       () =>
         createClient()
           .from('plan_ingredients')
@@ -106,6 +126,7 @@ export function PlanIngredientsEditor({
           }),
       { errorLabel: 'Ajout impossible' },
     );
+    if (ok) await proposeDeleteRunningSessions();
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';

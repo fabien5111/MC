@@ -126,7 +126,24 @@ export function PlanStepDonePanel({
     const ok = await mutate(() => createClient().from('plan_steps').update({ day_offset: next } as never).eq('id', step.id), {
       errorLabel: 'Jour non enregistré',
     });
-    if (ok) setStep((s) => ({ ...s, day_offset: next }));
+    if (ok) {
+      setStep((s) => ({ ...s, day_offset: next }));
+      await proposeDeleteRunningSessions();
+    }
+  }
+
+  // Une session en cours garde le jour figé à son démarrage (cf. dayControl
+  // ci-dessous) — elle ne reflète donc jamais ce déplacement. Proposée à la
+  // suppression plutôt qu'un avertissement muet, sur le même principe que
+  // PlanIngredientsEditor pour une modification d'ingrédient.
+  async function proposeDeleteRunningSessions() {
+    if (!runningExecSteps.length) return;
+    const ids = [...new Set(runningExecSteps.map((r) => r.execution_id))];
+    const plural = ids.length > 1;
+    await mutate(() => createClient().from('executions').delete().in('id', ids), {
+      confirm: `${plural ? 'Des sessions' : 'Une session'} de préparation en cours ${plural ? 'ont' : 'a'} été figée${plural ? 's' : ''} avant ce changement de jour et ne le reflète${plural ? 'nt' : ''} pas.\n\n${plural ? 'Les supprimer' : 'La supprimer'} ?`,
+      errorLabel: 'Suppression impossible',
+    });
   }
 
   async function saveNote() {

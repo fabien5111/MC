@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
@@ -81,6 +82,7 @@ export function ExecutionView({
   const router = useRouter();
   const dialog = useDialog();
   const [exec, setExec] = useState(initialExec);
+  const [deleting, setDeleting] = useState(false);
   // Une impersonation en lecture seule rend l'écran d'exécution consultatif,
   // exactement comme une exécution terminée (aucune écriture émise).
   const impersonationReadOnly = useReadOnly();
@@ -219,6 +221,24 @@ export function ExecutionView({
     router.refresh();
   }
 
+  // Suppression d'une session en cours — démarrée par erreur, ou devenue
+  // caduque après une modification du plan (jour déplacé, ingrédient changé :
+  // cf. PlanStepDonePanel / PlanIngredientsEditor, qui proposent la même
+  // suppression juste après une telle écriture). La page n'a plus de session
+  // à afficher ensuite : retour au planning, seul repère stable après coup.
+  async function deleteSession() {
+    if (readOnly) return;
+    if (!(await dialog.confirm('Supprimer cette session en cours ? Cette action est irréversible.'))) return;
+    setDeleting(true);
+    const { error } = await createClient().from('executions').delete().eq('id', exec.id);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      setDeleting(false);
+      return;
+    }
+    router.push('/profil#planning');
+  }
+
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
   const deg = exec.degustation_at
     ? new Date(exec.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
@@ -247,6 +267,7 @@ export function ExecutionView({
 
   return (
     <>
+      <LoadingOverlay visible={deleting} label="Suppression en cours…" />
       {!showMep && jalons.length > 0 && <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} />}
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{exec.planning?.recipe_title || 'Session de préparation'}</h1>
@@ -306,6 +327,15 @@ export function ExecutionView({
               className="border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
             >
               Abandonner
+            </button>
+            <button
+              type="button"
+              onClick={deleteSession}
+              title="Supprimer cette session"
+              aria-label="Supprimer cette session"
+              className="border border-error text-error px-4 py-3.5 rounded-full font-label-md text-label-md"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
           </div>
         </div>

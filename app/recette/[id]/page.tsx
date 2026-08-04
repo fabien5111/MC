@@ -39,6 +39,7 @@ import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
+import { SessionsList } from '@/components/recipe/SessionsList';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -88,6 +89,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // Étapes des sessions en cours, par `plan_step_id` : une sous-étape ajoutée
   // y est répercutée pour rester cochable (cf. lib/executions.ts).
   const runningExecSteps = planContext ? await getRunningExecutionSteps(planContext.id) : {};
+  // Sessions en cours du plan, tous pas confondus — greffé sur
+  // PlanIngredientsEditor (contrairement à PlanStepDonePanel, une édition
+  // d'ingrédient n'est pas rattachée à une seule étape du déroulé) pour
+  // proposer leur suppression après une modification qu'elles ne reflèteront
+  // pas (figées à leur démarrage, cf. CLAUDE.md « Recettes planifiées »).
+  const runningExecutionIds = [...new Set(Object.values(runningExecSteps).flatMap((rows) => rows.map((r) => r.execution_id)))];
   // Jours proposés au déplacement d'une étape : ceux déjà utilisés par le plan
   // (jour d'origine compris, pour pouvoir revenir en arrière) plus deux
   // d'anticipation, afin de pouvoir sortir une étape du jour J.
@@ -380,32 +387,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Sessions de préparation (historique) — remontées juste sous le bandeau de
               planification, entre le planning et la liste de courses. */}
-          {execHistory.length > 0 && (
-            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
-              <ul className="flex flex-col">
-                {execHistory.map((x) => {
-                  const statusLbl: Record<string, { label: string; cls: string }> = {
-                    en_cours: { label: 'En cours', cls: 'bg-secondary' },
-                    terminee: { label: 'Terminée', cls: 'bg-green-700' },
-                    abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
-                  };
-                  const st = statusLbl[x.status] || { label: x.status, cls: 'bg-secondary' };
-                  return (
-                    <li key={x.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
-                      <span className={`font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${st.cls}`}>{st.label}</span>
-                      <span className="font-body-md text-sm flex-1 min-w-[180px]">
-                        {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <Link href={`/execution/${x.id}${x.status !== 'en_cours' ? '?lecture=1' : ''}`} className="font-label-md text-label-md text-primary hover:underline">
-                        {x.status === 'en_cours' ? 'Reprendre' : 'Voir'}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          <SessionsList execHistory={execHistory} />
 
           {/* Liste de courses — remontée juste sous le bandeau de planification
               en mode planifié (au lieu de fin de section Ingrédients), pour
@@ -624,7 +606,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   masqué au print, conservé à l'écran (édition du plan incluse). */}
               <div className="no-print">
               {planContext ? (
-                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} />
+                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} runningExecutionIds={runningExecutionIds} />
               ) : (
                 <div className="space-y-10">
                   {groups.map((g) => (
