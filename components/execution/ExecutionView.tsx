@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
 import { formatTime } from '@/lib/format';
@@ -81,6 +82,7 @@ export function ExecutionView({
   const router = useRouter();
   const dialog = useDialog();
   const [exec, setExec] = useState(initialExec);
+  const [deleting, setDeleting] = useState(false);
   // Une impersonation en lecture seule rend l'écran d'exécution consultatif,
   // exactement comme une exécution terminée (aucune écriture émise).
   const impersonationReadOnly = useReadOnly();
@@ -219,6 +221,24 @@ export function ExecutionView({
     router.refresh();
   }
 
+  // Suppression d'une session en cours — démarrée par erreur, ou devenue
+  // caduque après une modification du plan (jour déplacé, ingrédient changé :
+  // cf. PlanStepDonePanel / PlanIngredientsEditor, qui proposent la même
+  // suppression juste après une telle écriture). La page n'a plus de session
+  // à afficher ensuite : retour au planning, seul repère stable après coup.
+  async function deleteSession() {
+    if (readOnly) return;
+    if (!(await dialog.confirm('Supprimer cette session en cours ? Cette action est irréversible.'))) return;
+    setDeleting(true);
+    const { error } = await createClient().from('executions').delete().eq('id', exec.id);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      setDeleting(false);
+      return;
+    }
+    router.push('/profil#planning');
+  }
+
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
   const deg = exec.degustation_at
     ? new Date(exec.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
@@ -247,12 +267,23 @@ export function ExecutionView({
 
   return (
     <>
+      <LoadingOverlay visible={deleting} label="Suppression en cours…" />
       {!showMep && jalons.length > 0 && <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} />}
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{exec.planning?.recipe_title || 'Session de préparation'}</h1>
         <span className="font-label-md text-[12px] px-3 py-1 rounded-full bg-secondary/90 text-white">{STATUS_LBL[exec.status] || exec.status}</span>
       </div>
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
+
+      {/* Note globale du plan (planning.notes), relue en direct comme les notes
+          d'étape : elle est écrite pour cette préparation, elle doit être sous
+          les yeux pendant qu'on la mène. */}
+      {exec.planning?.notes && (
+        <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{exec.planning.notes}</div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-6">
         {showMep ? (
@@ -296,6 +327,15 @@ export function ExecutionView({
               className="border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
             >
               Abandonner
+            </button>
+            <button
+              type="button"
+              onClick={deleteSession}
+              title="Supprimer cette session"
+              aria-label="Supprimer cette session"
+              className="border border-error text-error px-4 py-3.5 rounded-full font-label-md text-label-md"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
           </div>
         </div>
@@ -654,6 +694,17 @@ function StepCard({
         </div>
       )}
 
+      {/* Note personnelle portée par le plan : relue en direct (et non figée au
+          démarrage), pour qu'une note écrite la veille apparaisse pendant la
+          cuisson d'une session déjà lancée. À ne pas confondre avec le
+          commentaire de session ci-dessous, qui relate le jour J. */}
+      {plan?.user_note && (
+        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{plan.user_note}</div>
+        </div>
+      )}
+
       {prevComments.length > 0 && (
         <div className="mx-4 mb-3 p-3 bg-surface-container-low border border-outline-variant/60 rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant mb-1">Sessions précédentes</p>
@@ -668,7 +719,7 @@ function StepCard({
       <div className="px-4 pb-4">
         <textarea
           rows={2}
-          placeholder="Commentaire sur cette étape (sauvegardé automatiquement)…"
+          placeholder="Ce qui s'est passé sur cette étape (sauvegardé automatiquement)…"
           disabled={readOnly}
           value={s.commentaire || ''}
           onChange={(ev) => onStepComment(s.id, ev.target.value)}

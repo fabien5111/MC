@@ -53,10 +53,14 @@ async function insertMaterializedPlan(
   for (const step of mat.steps) {
     const { data: stepRow, error: stepErr } = await supabase
       .from('plan_steps')
+      // `base_day_offset` appartient à la migration « ajustements du plan »,
+      // pas encore reflétée dans lib/database.types.ts (jamais éditée à la
+      // main) : cast à retirer au prochain `npm run gen:types`.
       .insert({
         planning_id: planningId,
         order_index: step.order_index,
         day_offset: step.day_offset,
+        base_day_offset: step.base_day_offset,
         title: step.title,
         description: step.description,
         tips: step.tips,
@@ -68,7 +72,7 @@ async function insertMaterializedPlan(
         scaling_mode: step.scaling_mode,
         source_recipe_id: recipe.id,
         source_step_id: step.source_step_id,
-      })
+      } as never)
       .select('id')
       .single();
     if (stepErr || !stepRow) throw stepErr || new Error('Étape non créée');

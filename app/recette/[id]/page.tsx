@@ -7,7 +7,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
-import { getExecutions } from '@/lib/executions';
+import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import {
@@ -32,12 +32,14 @@ import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
+import { PlanNotes } from '@/components/recipe/PlanNotes';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
+import { SessionsList } from '@/components/recipe/SessionsList';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -84,6 +86,24 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
   const planMerged = planContext ? mergePlanIngredients(planContext) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
+  // Étapes des sessions en cours, par `plan_step_id` : une sous-étape ajoutée
+  // y est répercutée pour rester cochable (cf. lib/executions.ts).
+  const runningExecSteps = planContext ? await getRunningExecutionSteps(planContext.id) : {};
+  // Sessions en cours du plan, tous pas confondus — greffé sur
+  // PlanIngredientsEditor (contrairement à PlanStepDonePanel, une édition
+  // d'ingrédient n'est pas rattachée à une seule étape du déroulé) pour
+  // proposer leur suppression après une modification qu'elles ne reflèteront
+  // pas (figées à leur démarrage, cf. CLAUDE.md « Recettes planifiées »).
+  const runningExecutionIds = [...new Set(Object.values(runningExecSteps).flatMap((rows) => rows.map((r) => r.execution_id)))];
+  // Jours proposés au déplacement d'une étape : ceux déjà utilisés par le plan
+  // (jour d'origine compris, pour pouvoir revenir en arrière) plus deux
+  // d'anticipation, afin de pouvoir sortir une étape du jour J.
+  const planDayOptions = (() => {
+    if (!planContext) return [];
+    const used = planContext.plan_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
+    const max = Math.max(0, ...used) + 2;
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  })();
   const isOwner = !!user && recipe.author_id === user.id;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
   const userIsAdmin = user ? await isAdmin(user.id) : false;
@@ -351,6 +371,26 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Sessions de préparation (historique) — juste sous le bandeau de
+              planification, avant la note et la liste de courses : c'est la
+              suite directe de « Démarrer la recette » (ce bandeau), peu importe
+              la largeur d'écran. */}
+          <SessionsList execHistory={execHistory} />
+
+          {/* Note globale du plan + rappel de la convention de lecture. Une
+              seule légende pour toute la fiche : les mêmes couleurs valent
+              pour les ingrédients (PlanIngredientsEditor) et les étapes
+              (PlanStepDonePanel) — en inventer une seconde les opposerait. */}
+          {planContext && (
+            <div className="no-print">
+              <p className="mb-3 font-body-md text-[12px] text-on-surface-variant">
+                Sur cette fiche planifiée : <span className="text-green-700">en vert</span> ce que vous avez ajouté,{' '}
+                <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré, et « recette : … » rappelle la valeur d&apos;origine.
+              </p>
+              <PlanNotes planId={planContext.id} notes={planContext.user_note} />
+            </div>
+          )}
+
           {/* Liste de courses — remontée juste sous le bandeau de planification
               en mode planifié (au lieu de fin de section Ingrédients), pour
               rester visible sans scroller depuis « Démarrer la recette ». */}
@@ -507,34 +547,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Sessions de préparation (historique) */}
-          {execHistory.length > 0 && (
-            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
-              <ul className="flex flex-col">
-                {execHistory.map((x) => {
-                  const statusLbl: Record<string, { label: string; cls: string }> = {
-                    en_cours: { label: 'En cours', cls: 'bg-secondary' },
-                    terminee: { label: 'Terminée', cls: 'bg-green-700' },
-                    abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
-                  };
-                  const st = statusLbl[x.status] || { label: x.status, cls: 'bg-secondary' };
-                  return (
-                    <li key={x.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
-                      <span className={`font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${st.cls}`}>{st.label}</span>
-                      <span className="font-body-md text-sm flex-1 min-w-[180px]">
-                        {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <Link href={`/execution/${x.id}${x.status !== 'en_cours' ? '?lecture=1' : ''}`} className="font-label-md text-label-md text-primary hover:underline">
-                        {x.status === 'en_cours' ? 'Reprendre' : 'Voir'}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
           {/* Planning de préparation — sans intérêt à l'impression quand
               toutes les étapes tombent le même jour (un seul jalon à
               afficher) : masqué dans ce cas, conservé à l'écran. */}
@@ -596,7 +608,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   masqué au print, conservé à l'écran (édition du plan incluse). */}
               <div className="no-print">
               {planContext ? (
-                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} />
+                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} runningExecutionIds={runningExecutionIds} />
               ) : (
                 <div className="space-y-10">
                   {groups.map((g) => (
@@ -752,7 +764,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
-                  dLabel(Math.max(0, s.day_offset || 0)),
+                  // Mode planifié : le jour est porté par le sélecteur de
+                  // PlanStepDonePanel (modifiable, avec rappel du jour de la
+                  // recette) — un badge en plus ferait doublon.
+                  planContext ? '' : dLabel(Math.max(0, s.day_offset || 0)),
                   // Mode planifié : étape conservée pour sa seule cuisson, ses
                   // ingrédients et son temps de préparation ont déjà été retirés.
                   s.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
@@ -787,7 +802,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {stepMeta}
                   </>
                 );
-                const planStepProps = { id: s.id, already_done: s.already_done ?? false };
+                // Ligne brute du plan : `s` (RecipeStepView) ne porte ni le
+                // jour d'origine ni la note personnelle, absents de la vue de
+                // compatibilité recette.
+                const rawStep = planStepsById.get(s.id);
+                const planStepProps = {
+                  id: s.id,
+                  already_done: s.already_done ?? false,
+                  day_offset: rawStep?.day_offset ?? 0,
+                  base_day_offset: rawStep?.base_day_offset ?? null,
+                  user_note: rawStep?.user_note ?? null,
+                };
                 const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
                 // Contenu replié avec le reste quand l'étape est entièrement traitée
                 // (photos, vidéo, astuces…) — inchangé sinon.
@@ -865,6 +890,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         step={planStepProps}
                         ingredients={planIngredientsOfStep}
                         substeps={rawSubsteps}
+                        plannedDate={planContext.planned_date}
+                        dayOptions={planDayOptions}
+                        runningExecSteps={runningExecSteps[s.id] ?? []}
                       >
                         {extra}
                       </PlanStepDonePanel>
