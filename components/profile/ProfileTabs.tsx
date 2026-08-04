@@ -339,6 +339,12 @@ export function ProfileTabs({
           {planningList.length > 0 ? (
             <div className="space-y-4 max-w-3xl">
               {planningList.map((p) => {
+                const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
+                // Nombre de jours du plan matérialisé (day_offset des plan_steps),
+                // pas de la recette d'origine — cf. CLAUDE.md « Recettes planifiées ».
+                const daysCount = new Set([0, ...p.plan_steps.map((s) => Math.max(0, s.day_offset || 0))]).size;
+                const daysTxt = daysCount > 1 ? `${daysCount} jours` : '';
+                const durationTxt = [timeTxt, daysTxt].filter(Boolean).join(' · ');
                 const meta = [
                   p.planned_date
                     ? 'Prévu pour ' +
@@ -348,7 +354,7 @@ export function ProfileTabs({
                         month: 'long',
                       })
                     : '',
-                  p.adjust_label || '',
+                  [p.adjust_label || '', durationTxt].filter(Boolean).join(' — '),
                   p.factor && Number(p.factor) !== 1 ? '× ' + String(Number(p.factor)).replace('.', ',') : '',
                 ]
                   .filter(Boolean)
@@ -373,6 +379,7 @@ export function ProfileTabs({
                       <div>
                         <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
                         <p className="font-body-md text-[12px] text-on-surface-variant">{meta}</p>
+                        {p.notes && <p className="font-body-md text-[12px] text-on-surface-variant italic">{p.notes}</p>}
                       </div>
                     </Link>
                     <button
