@@ -351,6 +351,35 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Sessions de préparation (historique) — remontées juste sous le bandeau de
+              planification, entre le planning et la liste de courses. */}
+          {execHistory.length > 0 && (
+            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
+              <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
+              <ul className="flex flex-col">
+                {execHistory.map((x) => {
+                  const statusLbl: Record<string, { label: string; cls: string }> = {
+                    en_cours: { label: 'En cours', cls: 'bg-secondary' },
+                    terminee: { label: 'Terminée', cls: 'bg-green-700' },
+                    abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
+                  };
+                  const st = statusLbl[x.status] || { label: x.status, cls: 'bg-secondary' };
+                  return (
+                    <li key={x.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
+                      <span className={`font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${st.cls}`}>{st.label}</span>
+                      <span className="font-body-md text-sm flex-1 min-w-[180px]">
+                        {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link href={`/execution/${x.id}${x.status !== 'en_cours' ? '?lecture=1' : ''}`} className="font-label-md text-label-md text-primary hover:underline">
+                        {x.status === 'en_cours' ? 'Reprendre' : 'Voir'}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           {/* Liste de courses — remontée juste sous le bandeau de planification
               en mode planifié (au lieu de fin de section Ingrédients), pour
               rester visible sans scroller depuis « Démarrer la recette ». */}
@@ -504,34 +533,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="material-symbols-outlined text-[18px]">play_circle</span>Vidéo
                 </a>
               )}
-            </div>
-          )}
-
-          {/* Sessions de préparation (historique) */}
-          {execHistory.length > 0 && (
-            <div className="no-print mb-12 border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="font-label-md text-label-md text-primary uppercase tracking-widest mb-3">Sessions de préparation</h3>
-              <ul className="flex flex-col">
-                {execHistory.map((x) => {
-                  const statusLbl: Record<string, { label: string; cls: string }> = {
-                    en_cours: { label: 'En cours', cls: 'bg-secondary' },
-                    terminee: { label: 'Terminée', cls: 'bg-green-700' },
-                    abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
-                  };
-                  const st = statusLbl[x.status] || { label: x.status, cls: 'bg-secondary' };
-                  return (
-                    <li key={x.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap">
-                      <span className={`font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${st.cls}`}>{st.label}</span>
-                      <span className="font-body-md text-sm flex-1 min-w-[180px]">
-                        {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <Link href={`/execution/${x.id}${x.status !== 'en_cours' ? '?lecture=1' : ''}`} className="font-label-md text-label-md text-primary hover:underline">
-                        {x.status === 'en_cours' ? 'Reprendre' : 'Voir'}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
           )}
 
