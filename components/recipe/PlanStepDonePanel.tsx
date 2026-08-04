@@ -309,7 +309,7 @@ export function PlanStepDonePanel({
   // c'est la première chose à relire en abordant l'étape (matériel à
   // sortir, adaptation…), pas une note de fin de liste.
   const noteBlock = (
-    <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
+    <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
         {!editingNote && (
