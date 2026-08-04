@@ -1658,6 +1658,7 @@ export type Database = {
       shopping_list_items: {
         Row: {
           checked: boolean
+          comment: string | null
           created_at: string
           id: number
           list_id: number
@@ -1668,6 +1669,7 @@ export type Database = {
         }
         Insert: {
           checked?: boolean
+          comment?: string | null
           created_at?: string
           id?: number
           list_id: number
@@ -1678,6 +1680,7 @@ export type Database = {
         }
         Update: {
           checked?: boolean
+          comment?: string | null
           created_at?: string
           id?: number
           list_id?: number

@@ -83,7 +83,7 @@ export function ShoppingWidget({
       if (choice !== '__new__') {
         const { data: existing, error: existingErr } = await supabase
           .from('shopping_list_items')
-          .select('id, name, quantity, unit')
+          .select('id, name, quantity, unit, comment')
           .eq('list_id', listId);
         if (existingErr) throw existingErr;
         const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
@@ -98,7 +98,8 @@ export function ShoppingWidget({
           const a = parseFloat(String(match.quantity || '').replace(',', '.'));
           const b = parseFloat(String(m.qty || '').replace(',', '.'));
           const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [match.quantity, m.qty].filter(Boolean).join(' + ');
-          const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', match.id);
+          const newComment = m.comment && m.comment !== match.comment ? [match.comment, m.comment].filter(Boolean).join(' ; ') : match.comment;
+          const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty, comment: newComment }).eq('id', match.id);
           if (updErr) throw updErr;
         }
       }
@@ -109,6 +110,7 @@ export function ShoppingWidget({
           name: m.name,
           quantity: String(m.qty || '') || null,
           unit: m.unit || null,
+          comment: m.comment || null,
           ref_id: m.ref_id,
         }));
         const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
@@ -155,7 +157,10 @@ export function ShoppingWidget({
                     onChange={() => toggle(i)}
                     className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
-                  <span className="font-body-md text-body-md flex-1">{m.name}</span>
+                  <span className="font-body-md text-body-md flex-1">
+                    {m.name}
+                    {m.comment && <span className="text-on-surface-variant italic"> — {m.comment}</span>}
+                  </span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap">
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {(() => {
