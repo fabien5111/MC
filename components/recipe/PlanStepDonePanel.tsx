@@ -274,6 +274,54 @@ export function PlanStepDonePanel({
 
   const lists = (
     <>
+      {/* Note personnelle : bloc distinct du texte de la recette (description,
+          astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
+          session (execution_steps.commentaire), qui relate ce qui s'est
+          réellement passé le jour J. S'imprime. Placée avant les ingrédients :
+          c'est la première chose à relire en abordant l'étape (matériel à
+          sortir, adaptation…), pas une note de fin de liste. */}
+      <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
+          {!editingNote && (
+            <button
+              type="button"
+              onClick={() => {
+                setNoteDraft(step.user_note || '');
+                setEditingNote(true);
+              }}
+              title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
+              className="no-print text-primary hover:opacity-70"
+            >
+              <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
+            </button>
+          )}
+        </div>
+        {editingNote ? (
+          <div className="no-print flex flex-col gap-3">
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="Ce que je veux retenir pour cette étape"
+              className="border border-outline-variant rounded px-3 py-2 font-body-md text-sm w-full bg-white"
+            />
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={saveNote} className="bg-primary text-white font-label-md text-label-md px-4 py-2 rounded hover:opacity-90">
+                Enregistrer
+              </button>
+              <button type="button" onClick={() => setEditingNote(false)} className="font-label-md text-label-md text-on-surface-variant hover:text-primary">
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : step.user_note ? (
+          <p className="font-body-md text-body-md whitespace-pre-line text-on-surface">{step.user_note}</p>
+        ) : (
+          <p className="no-print font-body-md text-sm italic text-on-surface-variant">Aucune note.</p>
+        )}
+      </div>
       {visible.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
@@ -394,52 +442,6 @@ export function PlanStepDonePanel({
           <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter une sous-étape
         </button>
       )}
-      {/* Note personnelle : bloc distinct du texte de la recette (description,
-          astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
-          session (execution_steps.commentaire), qui relate ce qui s'est
-          réellement passé le jour J. S'imprime. */}
-      <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-          {!editingNote && (
-            <button
-              type="button"
-              onClick={() => {
-                setNoteDraft(step.user_note || '');
-                setEditingNote(true);
-              }}
-              title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
-              className="no-print text-primary hover:opacity-70"
-            >
-              <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
-            </button>
-          )}
-        </div>
-        {editingNote ? (
-          <div className="no-print flex flex-col gap-3">
-            <textarea
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              rows={3}
-              autoFocus
-              placeholder="Ce que je veux retenir pour cette étape"
-              className="border border-outline-variant rounded px-3 py-2 font-body-md text-sm w-full bg-white"
-            />
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={saveNote} className="bg-primary text-white font-label-md text-label-md px-4 py-2 rounded hover:opacity-90">
-                Enregistrer
-              </button>
-              <button type="button" onClick={() => setEditingNote(false)} className="font-label-md text-label-md text-on-surface-variant hover:text-primary">
-                Annuler
-              </button>
-            </div>
-          </div>
-        ) : step.user_note ? (
-          <p className="font-body-md text-body-md whitespace-pre-line text-on-surface">{step.user_note}</p>
-        ) : (
-          <p className="no-print font-body-md text-sm italic text-on-surface-variant">Aucune note.</p>
-        )}
-      </div>
     </>
   );
 
