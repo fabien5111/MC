@@ -17,11 +17,11 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { fmtNum, planDayLabel, stepDayMoved, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
+import { fmtNum, planDayLabel, stepDayMoved, type NotePosition, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
 import type { RunningExecStep } from '@/lib/executions';
 
-type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
+type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note' | 'note_position'>;
 type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
 type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
 
@@ -76,6 +76,11 @@ export function PlanStepDonePanel({
   const [noteDraft, setNoteDraft] = useState(initialStep.user_note || '');
   const [addingSubstep, setAddingSubstep] = useState(false);
   const [substepDraft, setSubstepDraft] = useState('');
+  // Position de la note parmi Ingrédients / Sous-étapes, choisie à la
+  // poignée (cf. `lists` plus bas) — pas une place unique : selon l'étape, le
+  // repère utile est avant les ingrédients (matériel à sortir) ou après les
+  // sous-étapes (point de vigilance en cours de préparation).
+  const [draggingNote, setDraggingNote] = useState(false);
   // Repliée par défaut si repliable ; sinon toujours dépliée (étape active).
   const [open, setOpen] = useState(!collapsible);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
@@ -155,6 +160,20 @@ export function PlanStepDonePanel({
       setStep((s) => ({ ...s, user_note: next }));
       setEditingNote(false);
     }
+  }
+
+  // Repositionnement de la note à la poignée. Sans confirmation ni refresh
+  // serveur (contrairement aux autres écritures du panneau) : c'est un
+  // réglage purement cosmétique, sans effet sur les courses, la mise en
+  // place ou une session — l'état local suffit à refléter le résultat, et le
+  // spinner plein écran serait disproportionné pour un simple glisser.
+  async function changeNotePosition(next: NotePosition) {
+    if (next === step.note_position) return;
+    const ok = await mutate(() => createClient().from('plan_steps').update({ note_position: next } as never).eq('id', step.id), {
+      errorLabel: 'Position non enregistrée',
+      refresh: false,
+    });
+    if (ok) setStep((s) => ({ ...s, note_position: next }));
   }
 
   // Ajout d'une sous-étape : à la fin de la liste (pas d'intercalation, qui
@@ -272,99 +291,118 @@ export function PlanStepDonePanel({
     </label>
   );
 
-  const lists = (
-    <>
-      {/* Note personnelle : bloc distinct du texte de la recette (description,
-          astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
-          session (execution_steps.commentaire), qui relate ce qui s'est
-          réellement passé le jour J. S'imprime. Placée avant les ingrédients :
-          c'est la première chose à relire en abordant l'étape (matériel à
-          sortir, adaptation…), pas une note de fin de liste. */}
-      <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
+  // Note personnelle : bloc distinct du texte de la recette (description,
+  // astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
+  // session (execution_steps.commentaire), qui relate ce qui s'est
+  // réellement passé le jour J. S'imprime — seule la poignée est en
+  // `no-print`. Position choisie à la poignée parmi Ingrédients / Sous-étapes
+  // (cf. assemblage de `lists` plus bas), mémorisée dans `step.note_position`.
+  const noteBlock = (
+    <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5">
+          <span
+            draggable
+            onDragStart={(e) => {
+              setDraggingNote(true);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => setDraggingNote(false)}
+            title="Glisser pour repositionner la note"
+            className="no-print material-symbols-outlined text-[16px] text-secondary/60 hover:text-secondary cursor-grab active:cursor-grabbing select-none"
+          >
+            drag_indicator
+          </span>
           <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-          {!editingNote && (
-            <button
-              type="button"
-              onClick={() => {
-                setNoteDraft(step.user_note || '');
-                setEditingNote(true);
-              }}
-              title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
-              className="no-print text-primary hover:opacity-70"
-            >
-              <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
-            </button>
-          )}
-        </div>
-        {editingNote ? (
-          <div className="no-print flex flex-col gap-3">
-            <textarea
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              rows={3}
-              autoFocus
-              placeholder="Ce que je veux retenir pour cette étape"
-              className="border border-outline-variant rounded px-3 py-2 font-body-md text-sm w-full bg-white"
-            />
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={saveNote} className="bg-primary text-white font-label-md text-label-md px-4 py-2 rounded hover:opacity-90">
-                Enregistrer
-              </button>
-              <button type="button" onClick={() => setEditingNote(false)} className="font-label-md text-label-md text-on-surface-variant hover:text-primary">
-                Annuler
-              </button>
-            </div>
-          </div>
-        ) : step.user_note ? (
-          <p className="font-body-md text-body-md whitespace-pre-line text-on-surface">{step.user_note}</p>
-        ) : (
-          <p className="no-print font-body-md text-sm italic text-on-surface-variant">Aucune note.</p>
+        </span>
+        {!editingNote && (
+          <button
+            type="button"
+            onClick={() => {
+              setNoteDraft(step.user_note || '');
+              setEditingNote(true);
+            }}
+            title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
+            className="no-print text-primary hover:opacity-70"
+          >
+            <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
+          </button>
         )}
       </div>
-      {visible.length > 0 && (
-        <details className="group border border-outline-variant mb-2" open>
-          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-            <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
-            <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-          </summary>
-          <div className="p-4 bg-white">
-            <ul style={{ display: 'grid', gridTemplateColumns: step.already_done ? 'max-content max-content max-content' : 'max-content max-content', columnGap: 40 }}>
-              {visible.map((it) => {
-                const excluded = step.already_done && it.excluded_when_done;
-                const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : '';
-                return (
-                  <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
-                    {step.already_done && (
-                      <span className="no-print">
-                        <input
-                          type="checkbox"
-                          checked={it.excluded_when_done}
-                          onChange={() => toggleIngredient(it)}
-                          title={
-                            it.excluded_when_done
-                              ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
-                              : 'Conservé malgré l’étape déjà réalisée'
-                          }
-                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
-                        />
-                      </span>
-                    )}
-                    <span className={`font-label-md text-label-md ${tone || 'text-primary'}`}>
-                      <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                      {qtyText(it)} {it.unit || ''}
-                    </span>
-                    <span className={`font-body-md text-body-md ${tone}`}>
-                      {it.name}
-                      {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+      {editingNote ? (
+        <div className="no-print flex flex-col gap-3">
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="Ce que je veux retenir pour cette étape"
+            className="border border-outline-variant rounded px-3 py-2 font-body-md text-sm w-full bg-white"
+          />
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={saveNote} className="bg-primary text-white font-label-md text-label-md px-4 py-2 rounded hover:opacity-90">
+              Enregistrer
+            </button>
+            <button type="button" onClick={() => setEditingNote(false)} className="font-label-md text-label-md text-on-surface-variant hover:text-primary">
+              Annuler
+            </button>
           </div>
-        </details>
+        </div>
+      ) : step.user_note ? (
+        <p className="font-body-md text-body-md whitespace-pre-line text-on-surface">{step.user_note}</p>
+      ) : (
+        <p className="no-print font-body-md text-sm italic text-on-surface-variant">Aucune note.</p>
       )}
+    </div>
+  );
+
+  const ingredientsBlock =
+    visible.length > 0 ? (
+      <details className="group border border-outline-variant mb-2" open>
+        <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+          <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+          <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+        </summary>
+        <div className="p-4 bg-white">
+          <ul style={{ display: 'grid', gridTemplateColumns: step.already_done ? 'max-content max-content max-content' : 'max-content max-content', columnGap: 40 }}>
+            {visible.map((it) => {
+              const excluded = step.already_done && it.excluded_when_done;
+              const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : '';
+              return (
+                <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
+                  {step.already_done && (
+                    <span className="no-print">
+                      <input
+                        type="checkbox"
+                        checked={it.excluded_when_done}
+                        onChange={() => toggleIngredient(it)}
+                        title={
+                          it.excluded_when_done
+                            ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
+                            : 'Conservé malgré l’étape déjà réalisée'
+                        }
+                        className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                      />
+                    </span>
+                  )}
+                  <span className={`font-label-md text-label-md ${tone || 'text-primary'}`}>
+                    <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                    {qtyText(it)} {it.unit || ''}
+                  </span>
+                  <span className={`font-body-md text-body-md ${tone}`}>
+                    {it.name}
+                    {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </details>
+    ) : null;
+
+  const substepsBlock = (
+    <>
       {substeps.length > 0 && (
         <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
           {[...substeps]
@@ -445,6 +483,29 @@ export function PlanStepDonePanel({
     </>
   );
 
+  // Sans ingrédients affichés, la position « between » (entre Ingrédients et
+  // Sous-étapes) se confondrait visuellement avec « before_ingredients » —
+  // ni zone de dépôt ni rendu séparé pour elle dans ce cas (le réglage reste
+  // mémorisé tel quel, il reprendra effet dès qu'un ingrédient réapparaît).
+  const effectivePosition = step.note_position === 'between' && !ingredientsBlock ? 'before_ingredients' : step.note_position;
+
+  const lists = (
+    <>
+      {effectivePosition === 'before_ingredients' && noteBlock}
+      <NoteDropZone active={draggingNote && effectivePosition !== 'before_ingredients'} onDrop={() => changeNotePosition('before_ingredients')} />
+      {ingredientsBlock}
+      {ingredientsBlock && (
+        <>
+          {effectivePosition === 'between' && noteBlock}
+          <NoteDropZone active={draggingNote && effectivePosition !== 'between'} onDrop={() => changeNotePosition('between')} />
+        </>
+      )}
+      {substepsBlock}
+      {effectivePosition === 'after_substeps' && noteBlock}
+      <NoteDropZone active={draggingNote && effectivePosition !== 'after_substeps'} onDrop={() => changeNotePosition('after_substeps')} />
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
@@ -477,5 +538,26 @@ export function PlanStepDonePanel({
         </div>
       )}
     </div>
+  );
+}
+
+// Zone d'insertion pour la poignée de la note (cf. `lists` ci-dessus) : sans
+// épaisseur ni bordure tant qu'aucun glisser n'est en cours (pas de blanc
+// permanent entre les blocs), visible uniquement le temps du geste — comme
+// une ligne d'insertion, pas une case à viser au pixel près.
+function NoteDropZone({ active, onDrop }: { active: boolean; onDrop: () => void }) {
+  if (!active) return null;
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+      className="no-print h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5"
+    />
   );
 }
