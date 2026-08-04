@@ -371,6 +371,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
+          {/* Sessions de préparation (historique) — juste sous le bandeau de
+              planification, avant la note et la liste de courses : c'est la
+              suite directe de « Démarrer la recette » (ce bandeau), peu importe
+              la largeur d'écran. */}
+          <SessionsList execHistory={execHistory} />
+
           {/* Note globale du plan + rappel de la convention de lecture. Une
               seule légende pour toute la fiche : les mêmes couleurs valent
               pour les ingrédients (PlanIngredientsEditor) et les étapes
@@ -384,10 +390,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <PlanNotes planId={planContext.id} notes={planContext.user_note} />
             </div>
           )}
-
-          {/* Sessions de préparation (historique) — remontées juste sous le bandeau de
-              planification, entre le planning et la liste de courses. */}
-          <SessionsList execHistory={execHistory} />
 
           {/* Liste de courses — remontée juste sous le bandeau de planification
               en mode planifié (au lieu de fin de section Ingrédients), pour
