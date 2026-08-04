@@ -29,6 +29,9 @@ export type PlanningRow = {
   // ON DELETE RESTRICT, donc un plan déjà cuisiné ne peut pas être
   // supprimé — seulement archivé (cf. CLAUDE.md « Recettes planifiées »).
   executions: { count: number }[];
+  // Jours nécessaires : calculé depuis le plan matérialisé (plan_steps),
+  // pas depuis la recette d'origine qui a pu évoluer depuis.
+  plan_steps: { day_offset: number }[];
   recipes: {
     id: string;
     title: string | null;
@@ -60,7 +63,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
-    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time)')
+    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(day_offset)')
     .eq('user_id', userId)
     .eq('status', 'planifie')
     .order('planned_date', { ascending: true });
