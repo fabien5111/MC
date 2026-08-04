@@ -17,11 +17,11 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { fmtNum, planDayLabel, stepDayMoved, type NotePosition, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
+import { fmtNum, planDayLabel, stepDayMoved, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
 import type { RunningExecStep } from '@/lib/executions';
 
-type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note' | 'note_position'>;
+type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
 type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
 type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
 
@@ -76,11 +76,11 @@ export function PlanStepDonePanel({
   const [noteDraft, setNoteDraft] = useState(initialStep.user_note || '');
   const [addingSubstep, setAddingSubstep] = useState(false);
   const [substepDraft, setSubstepDraft] = useState('');
-  // Position de la note parmi Ingrédients / Sous-étapes, choisie à la
-  // poignée (cf. `lists` plus bas) — pas une place unique : selon l'étape, le
-  // repère utile est avant les ingrédients (matériel à sortir) ou après les
-  // sous-étapes (point de vigilance en cours de préparation).
-  const [draggingNote, setDraggingNote] = useState(false);
+  // Sous-étape en cours de glisser (cf. `substepsBlock` plus bas) : permet de
+  // repositionner une sous-étape tout juste ajoutée — toujours créée en fin
+  // de liste (cf. addSubstep) — entre des sous-étapes existantes, sans quoi
+  // elle resterait coincée en dernière position.
+  const [dragSubstep, setDragSubstep] = useState<number | null>(null);
   // Repliée par défaut si repliable ; sinon toujours dépliée (étape active).
   const [open, setOpen] = useState(!collapsible);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
@@ -162,20 +162,6 @@ export function PlanStepDonePanel({
     }
   }
 
-  // Repositionnement de la note à la poignée. Sans confirmation ni refresh
-  // serveur (contrairement aux autres écritures du panneau) : c'est un
-  // réglage purement cosmétique, sans effet sur les courses, la mise en
-  // place ou une session — l'état local suffit à refléter le résultat, et le
-  // spinner plein écran serait disproportionné pour un simple glisser.
-  async function changeNotePosition(next: NotePosition) {
-    if (next === step.note_position) return;
-    const ok = await mutate(() => createClient().from('plan_steps').update({ note_position: next } as never).eq('id', step.id), {
-      errorLabel: 'Position non enregistrée',
-      refresh: false,
-    });
-    if (ok) setStep((s) => ({ ...s, note_position: next }));
-  }
-
   // Ajout d'une sous-étape : à la fin de la liste (pas d'intercalation, qui
   // demanderait un `order_index` fractionnaire), puis répercussion sur les
   // sessions en cours — insertion pure, aucune colonne figée n'est réécrite.
@@ -223,6 +209,31 @@ export function PlanStepDonePanel({
   async function deleteSubstep(sub: SubRow) {
     const ok = await mutate(() => createClient().from('plan_substeps').delete().eq('id', sub.id), { errorLabel: 'Suppression impossible' });
     if (ok) setSubsteps((prev) => prev.filter((s) => s.id !== sub.id));
+  }
+
+  // Réordonne les sous-étapes à la poignée (`from`/`to` : positions dans la
+  // liste triée affichée). `order_index` n'est pas fractionnaire ici (cf.
+  // addSubstep) : on renumérote l'ensemble plutôt que d'intercaler une seule
+  // valeur, ce qui reste bon marché — une étape compte rarement plus d'une
+  // poignée de sous-étapes.
+  async function moveSubstep(from: number, to: number) {
+    if (from === to) return;
+    const sorted = [...substeps].sort((a, b) => a.order_index - b.order_index);
+    const [moved] = sorted.splice(from, 1);
+    sorted.splice(to, 0, moved);
+    const reindexed = sorted.map((s, i) => ({ ...s, order_index: i }));
+    const prev = substeps;
+    setSubsteps(reindexed);
+    const supabase = createClient();
+    const ok = await mutate(
+      async () => {
+        const results = await Promise.all(reindexed.map((s) => supabase.from('plan_substeps').update({ order_index: s.order_index }).eq('id', s.id)));
+        const failed = results.find((r) => r.error);
+        return failed ? { error: failed.error } : { error: null };
+      },
+      { errorLabel: 'Réorganisation impossible' },
+    );
+    if (!ok) setSubsteps(prev);
   }
 
   const dayText = (offset: number) => (plannedDate ? planDayLabel(offset, plannedDate) : dayLabel(offset));
@@ -294,27 +305,13 @@ export function PlanStepDonePanel({
   // Note personnelle : bloc distinct du texte de la recette (description,
   // astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
   // session (execution_steps.commentaire), qui relate ce qui s'est
-  // réellement passé le jour J. S'imprime — seule la poignée est en
-  // `no-print`. Position choisie à la poignée parmi Ingrédients / Sous-étapes
-  // (cf. assemblage de `lists` plus bas), mémorisée dans `step.note_position`.
+  // réellement passé le jour J. S'imprime. Placée avant les ingrédients :
+  // c'est la première chose à relire en abordant l'étape (matériel à
+  // sortir, adaptation…), pas une note de fin de liste.
   const noteBlock = (
     <div className="border-l-4 border-secondary bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5">
-          <span
-            draggable
-            onDragStart={(e) => {
-              setDraggingNote(true);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragEnd={() => setDraggingNote(false)}
-            title="Glisser pour repositionner la note"
-            className="no-print material-symbols-outlined text-[16px] text-secondary/60 hover:text-secondary cursor-grab active:cursor-grabbing select-none"
-          >
-            drag_indicator
-          </span>
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        </span>
+        <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
         {!editingNote && (
           <button
             type="button"
@@ -401,19 +398,45 @@ export function PlanStepDonePanel({
       </details>
     ) : null;
 
+  const sortedSubsteps = [...substeps].sort((a, b) => a.order_index - b.order_index);
+
   const substepsBlock = (
     <>
-      {substeps.length > 0 && (
+      {sortedSubsteps.length > 0 && (
         <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
-          {[...substeps]
-            .sort((a, b) => a.order_index - b.order_index)
-            .map((su) => {
+          {sortedSubsteps.map((su, idx) => {
               const excluded = step.already_done && su.excluded_when_done;
               // Vert = ajoutée par l'utilisateur, comme un ingrédient ajouté
               // dans PlanIngredientsEditor. L'exclusion « déjà fait » prime.
               const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : su.added ? 'text-green-700' : '';
               return (
-                <li key={su.id} className="flex gap-3 items-start">
+                <li
+                  key={su.id}
+                  onDragOver={(e) => {
+                    if (dragSubstep === null) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    if (dragSubstep === null) return;
+                    e.preventDefault();
+                    moveSubstep(dragSubstep, idx);
+                    setDragSubstep(null);
+                  }}
+                  className={`flex gap-3 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
+                >
+                  <span
+                    draggable
+                    onDragStart={(e) => {
+                      setDragSubstep(idx);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragEnd={() => setDragSubstep(null)}
+                    title="Glisser pour réordonner cette sous-étape"
+                    className="no-print material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                  >
+                    drag_indicator
+                  </span>
                   {step.already_done ? (
                     <input
                       type="checkbox"
@@ -483,26 +506,11 @@ export function PlanStepDonePanel({
     </>
   );
 
-  // Sans ingrédients affichés, la position « between » (entre Ingrédients et
-  // Sous-étapes) se confondrait visuellement avec « before_ingredients » —
-  // ni zone de dépôt ni rendu séparé pour elle dans ce cas (le réglage reste
-  // mémorisé tel quel, il reprendra effet dès qu'un ingrédient réapparaît).
-  const effectivePosition = step.note_position === 'between' && !ingredientsBlock ? 'before_ingredients' : step.note_position;
-
   const lists = (
     <>
-      {effectivePosition === 'before_ingredients' && noteBlock}
-      <NoteDropZone active={draggingNote && effectivePosition !== 'before_ingredients'} onDrop={() => changeNotePosition('before_ingredients')} />
+      {noteBlock}
       {ingredientsBlock}
-      {ingredientsBlock && (
-        <>
-          {effectivePosition === 'between' && noteBlock}
-          <NoteDropZone active={draggingNote && effectivePosition !== 'between'} onDrop={() => changeNotePosition('between')} />
-        </>
-      )}
       {substepsBlock}
-      {effectivePosition === 'after_substeps' && noteBlock}
-      <NoteDropZone active={draggingNote && effectivePosition !== 'after_substeps'} onDrop={() => changeNotePosition('after_substeps')} />
     </>
   );
 
@@ -538,26 +546,5 @@ export function PlanStepDonePanel({
         </div>
       )}
     </div>
-  );
-}
-
-// Zone d'insertion pour la poignée de la note (cf. `lists` ci-dessus) : sans
-// épaisseur ni bordure tant qu'aucun glisser n'est en cours (pas de blanc
-// permanent entre les blocs), visible uniquement le temps du geste — comme
-// une ligne d'insertion, pas une case à viser au pixel près.
-function NoteDropZone({ active, onDrop }: { active: boolean; onDrop: () => void }) {
-  if (!active) return null;
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop();
-      }}
-      className="no-print h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5"
-    />
   );
 }

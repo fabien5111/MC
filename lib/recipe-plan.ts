@@ -41,13 +41,7 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
 // pouvoir la rétablir, même rôle que `plan_ingredients.base_quantity`) et la
 // note personnelle de l'utilisateur — distincte de `description`/`tips`, qui
 // sont la copie du texte de la recette et ne doivent jamais être écrasées.
-// `note_position` vient de la migration « note déplaçable » : la note
-// personnelle de l'étape n'a pas une place unique dans le déroulé (matériel à
-// sortir en avance ? repère en cours de préparation ?) — la poignée de
-// PlanStepDonePanel la fait glisser entre Ingrédients et Sous-étapes plutôt
-// que d'imposer une position fixe.
-export type NotePosition = 'before_ingredients' | 'between' | 'after_substeps';
-type PlanStepPending = { already_done: boolean; base_day_offset: number | null; user_note: string | null; note_position: NotePosition };
+type PlanStepPending = { already_done: boolean; base_day_offset: number | null; user_note: string | null };
 export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
 // `excluded_when_done` fait partie de la même migration en attente (cf.
 // PlanStepPending ci-dessus) : mêmes semantique et défaut que sur

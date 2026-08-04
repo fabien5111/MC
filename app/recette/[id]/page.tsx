@@ -810,7 +810,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   day_offset: rawStep?.day_offset ?? 0,
                   base_day_offset: rawStep?.base_day_offset ?? null,
                   user_note: rawStep?.user_note ?? null,
-                  note_position: rawStep?.note_position ?? 'before_ingredients',
                 };
                 const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
                 // Contenu replié avec le reste quand l'étape est entièrement traitée
