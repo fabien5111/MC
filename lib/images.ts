@@ -98,9 +98,15 @@ function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Facteur d'échelle minimal pour qu'un contenu `contentW × contentH` couvre entièrement un cadre `frameW × frameH`. */
-export function coverScale(contentW: number, contentH: number, frameW: number, frameH: number): number {
-  return Math.max(frameW / contentW, frameH / contentH);
+/**
+ * Facteur d'échelle pour qu'un contenu `contentW × contentH` tienne en
+ * entier dans un cadre `frameW × frameH` (l'inverse d'un « cover » qui
+ * remplirait le cadre en rognant l'excédent). C'est l'échelle de départ de
+ * l'éditeur de photo : à zoom 1, la photo entière reste visible dans le
+ * cadre de recadrage — jamais pré-rognée avant que l'utilisateur ait choisi.
+ */
+export function containScale(contentW: number, contentH: number, frameW: number, frameH: number): number {
+  return Math.min(frameW / contentW, frameH / contentH);
 }
 
 /** Dimensions effectives d'une image après rotation par pas de 90° (largeur/hauteur échangées à 90°/270°). */
@@ -134,7 +140,7 @@ export async function cropRotateImageToDataUrl(
   const outHeight = Math.max(1, Math.round(outWidth / aspectRatio));
   const k = outWidth / transform.frameWidth;
   const eff = rotatedDims(img.width, img.height, transform.rotation);
-  const baseScale = coverScale(eff.w, eff.h, transform.frameWidth, transform.frameHeight);
+  const baseScale = containScale(eff.w, eff.h, transform.frameWidth, transform.frameHeight);
   const renderedScale = baseScale * transform.zoom * k;
 
   const canvas = document.createElement('canvas');
@@ -142,6 +148,11 @@ export async function cropRotateImageToDataUrl(
   canvas.height = outHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas indisponible');
+  // À zoom 1, la photo entière est visible dans le cadre : si elle ne le
+  // remplit pas (bords latéraux ou haut/bas), le fond blanc évite des bandes
+  // noires dans le JPEG final (transparence non supportée).
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, outWidth, outHeight);
   ctx.translate(outWidth / 2 + transform.offsetX * k, outHeight / 2 + transform.offsetY * k);
   ctx.rotate((transform.rotation * Math.PI) / 180);
   ctx.scale(renderedScale, renderedScale);

@@ -2,14 +2,16 @@
 
 // Modale d'édition d'une photo déjà déposée dans un `ImageSlot` : zoom,
 // rotation (pas de 90°) et repositionnement dans le cadre cible (16:9 pour la
-// photo principale, carré pour les photos d'étape). L'aperçu interactif se
-// fait en CSS (transform sur l'<img>, pas de canvas) pour rester fluide au
-// doigt ; à la validation, la même transformation est rejouée sur un canvas
-// par `cropRotateImageToDataUrl` (lib/images.ts) pour produire la data-URL
-// finale — les deux calculs partagent `coverScale`/`rotatedDims` pour rester
-// identiques.
+// photo principale, carré pour les photos d'étape). À l'ouverture, la photo
+// entière est visible (échelle « contain ») avec le cadre affiché en simple
+// repère de recadrage — jamais pré-rognée avant que l'utilisateur ait zoomé.
+// L'aperçu interactif se fait en CSS (transform sur l'<img>, pas de canvas)
+// pour rester fluide au doigt ; à la validation, la même transformation est
+// rejouée sur un canvas par `cropRotateImageToDataUrl` (lib/images.ts) pour
+// produire la data-URL finale — les deux calculs partagent
+// `containScale`/`rotatedDims` pour rester identiques.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { coverScale, cropRotateImageToDataUrl, rotatedDims, type Rotation90 } from '@/lib/images';
+import { containScale, cropRotateImageToDataUrl, rotatedDims, type Rotation90 } from '@/lib/images';
 
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.25;
@@ -67,7 +69,7 @@ export function PhotoEditorModal({
   const baseScale = useMemo(() => {
     if (!natural || !frameSize.w || !frameSize.h) return 1;
     const eff = rotatedDims(natural.w, natural.h, rotation);
-    return coverScale(eff.w, eff.h, frameSize.w, frameSize.h);
+    return containScale(eff.w, eff.h, frameSize.w, frameSize.h);
   }, [natural, frameSize, rotation]);
 
   const renderedScale = baseScale * zoom;
@@ -176,7 +178,7 @@ export function PhotoEditorModal({
 
         <div
           ref={frameRef}
-          className="relative mx-auto w-full overflow-hidden rounded-lg bg-black touch-none select-none"
+          className="relative mx-auto w-full overflow-hidden rounded-lg bg-white border border-outline-variant touch-none select-none"
           style={{ aspectRatio: String(aspectRatio), maxWidth: 480 }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

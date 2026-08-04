@@ -93,13 +93,16 @@ export function ImageSlot({
       try {
         const dataUrl = await resizeImageToDataUrl(file, maxWidth, mime);
         onChange?.(dataUrl);
+        // Une photo tout juste chargée n'a pas encore été cadrée : on ouvre
+        // l'édition par défaut plutôt que d'attendre un clic sur le crayon.
+        if (aspectRatio) setEditingPhoto(true);
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setBusy(false);
       }
     },
-    [maxWidth, mime, onChange],
+    [maxWidth, mime, onChange, aspectRatio],
   );
 
   const radius = SHAPE_RADIUS[shape];
@@ -129,6 +132,7 @@ export function ImageSlot({
               const dataUrl = e.dataTransfer.getData(PHOTO_DND_TYPE);
               if (dataUrl) {
                 onChange?.(dataUrl);
+                if (aspectRatio) setEditingPhoto(true);
                 return;
               }
               const file = e.dataTransfer.files?.[0];
@@ -190,7 +194,7 @@ export function ImageSlot({
           title="Ajuster la photo (zoom, rotation, position)"
           className="absolute top-2 right-11 w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors z-20"
         >
-          <span className="material-symbols-outlined text-[18px]">crop_rotate</span>
+          <span className="material-symbols-outlined text-[18px]">edit</span>
         </button>
       )}
 
