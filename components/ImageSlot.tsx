@@ -8,6 +8,7 @@
 import { useCallback, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
+import { PhotoEditorModal } from '@/components/PhotoEditorModal';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
@@ -31,6 +32,20 @@ export type ImageSlotProps = {
   src?: string | null;
   /** Appelée avec la data-URL compressée après un dépôt/choix. Sans onChange, le slot est en lecture seule. */
   onChange?: (dataUrl: string) => void;
+  /**
+   * Photo d'origine (non recadrée) connue pour ce cliché, si le parent la
+   * conserve à part — l'éditeur s'ouvre dessus plutôt que sur `src` (déjà
+   * recadrée), pour permettre d'ajuster à nouveau le cadrage sans repartir
+   * d'une photo déjà rognée. Sans valeur, repli sur `src`.
+   */
+  originalSrc?: string | null;
+  /**
+   * Appelée avec la data-URL brute (avant tout recadrage) quand une photo
+   * *nouvelle* arrive dans l'emplacement (choix de fichier, dépôt, ou
+   * glissement depuis une banque de photos) — jamais quand l'éditeur
+   * réenregistre un recadrage sur la photo déjà en place.
+   */
+  onOriginalChange?: (dataUrl: string) => void;
   /** Si fournie, affiche un bouton de suppression sur l'image ; appelée au clic. */
   onClear?: () => void;
   shape?: Shape;
@@ -48,11 +63,19 @@ export type ImageSlotProps = {
   editButtonClassName?: string;
   /** Affiche le filigrane « Photo retravaillée avec l'IA » (case cochée par l'utilisateur). */
   aiRetouched?: boolean;
+  /**
+   * Rapport largeur/hauteur du cadre cible (16/9 pour le hero, 1 pour une
+   * photo d'étape). Sa présence conditionne l'affichage du bouton d'édition
+   * (zoom/rotation/position) : sans cadre cible connu, rien à ajuster.
+   */
+  aspectRatio?: number;
 };
 
 export function ImageSlot({
   src,
   onChange,
+  originalSrc,
+  onOriginalChange,
   onClear,
   shape = 'rounded',
   fit = 'cover',
@@ -65,12 +88,14 @@ export function ImageSlot({
   editTitle,
   editButtonClassName = 'bottom-3 right-3 w-9 h-9',
   aiRetouched = false,
+  aspectRatio,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false);
   const readOnly = !onChange;
 
   const ingest = useCallback(
@@ -84,13 +109,17 @@ export function ImageSlot({
       try {
         const dataUrl = await resizeImageToDataUrl(file, maxWidth, mime);
         onChange?.(dataUrl);
+        onOriginalChange?.(dataUrl);
+        // Une photo tout juste chargée n'a pas encore été cadrée : on ouvre
+        // l'édition par défaut plutôt que d'attendre un clic sur le crayon.
+        if (aspectRatio) setEditingPhoto(true);
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setBusy(false);
       }
     },
-    [maxWidth, mime, onChange],
+    [maxWidth, mime, onChange, onOriginalChange, aspectRatio],
   );
 
   const radius = SHAPE_RADIUS[shape];
@@ -120,6 +149,8 @@ export function ImageSlot({
               const dataUrl = e.dataTransfer.getData(PHOTO_DND_TYPE);
               if (dataUrl) {
                 onChange?.(dataUrl);
+                onOriginalChange?.(dataUrl);
+                if (aspectRatio) setEditingPhoto(true);
                 return;
               }
               const file = e.dataTransfer.files?.[0];
@@ -171,6 +202,20 @@ export function ImageSlot({
         </button>
       )}
 
+      {!readOnly && aspectRatio && src && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditingPhoto(true);
+          }}
+          title="Ajuster la photo (zoom, rotation, position)"
+          className="absolute top-2 right-11 w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors z-20"
+        >
+          <span className="material-symbols-outlined text-[18px]">edit</span>
+        </button>
+      )}
+
       {!readOnly && onClear && src && (
         <button
           type="button"
@@ -183,6 +228,20 @@ export function ImageSlot({
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
         </button>
+      )}
+
+      {!readOnly && editingPhoto && src && aspectRatio && (
+        <PhotoEditorModal
+          src={originalSrc || src}
+          aspectRatio={aspectRatio}
+          maxWidth={maxWidth}
+          mime={mime}
+          onCancel={() => setEditingPhoto(false)}
+          onSave={(dataUrl) => {
+            onChange?.(dataUrl);
+            setEditingPhoto(false);
+          }}
+        />
       )}
 
       {!readOnly && (

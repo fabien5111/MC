@@ -37,6 +37,7 @@ import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor
 import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
 import { SessionsList } from '@/components/recipe/SessionsList';
@@ -818,17 +819,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 // (photos, vidéo, astuces…) — inchangé sinon.
                 const extra = (
                   <>
-                    {photos.length > 0 && (
-                      <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {photos.map((p, k) => (
-                          <div key={k} className="relative aspect-square bg-surface-container-high border border-outline-variant overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-                            <img src={p.url} alt="" className="w-full h-full object-cover" />
-                            {p.ai_retouched && <AiPhotoBadge />}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <StepPhotoGallery photos={photos} />
                     {s.video_url && <StepVideoPlayer url={s.video_url} />}
                     {/* Mode planifié : la puce/case des sous-étapes est déjà rendue par
                         PlanStepDonePanel ci-dessus ; ici, seul le repli sur la description

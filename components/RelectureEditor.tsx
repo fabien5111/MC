@@ -56,15 +56,15 @@ type SpState = {
   ingsCollapsed: boolean;
 };
 
-type StepPhoto = { url: string; ai_retouched: boolean };
+type StepPhoto = { url: string; original_url: string; ai_retouched: boolean };
 
 // Normalise une photo issue du brouillon JSON : ancien format (chaîne simple)
-// ou nouveau format ({ url, ai_retouched }).
+// ou nouveau format ({ url, ai_retouched }, avec ou sans original_url).
 function normPhoto(v: unknown): StepPhoto | null {
   if (!v) return null;
-  if (typeof v === 'string') return { url: v, ai_retouched: false };
-  const o = v as { url?: string; ai_retouched?: boolean };
-  return o.url ? { url: o.url, ai_retouched: !!o.ai_retouched } : null;
+  if (typeof v === 'string') return { url: v, original_url: v, ai_retouched: false };
+  const o = v as { url?: string; original_url?: string; ai_retouched?: boolean };
+  return o.url ? { url: o.url, original_url: o.original_url || o.url, ai_retouched: !!o.ai_retouched } : null;
 }
 
 let uid = 0;
@@ -244,6 +244,7 @@ export function RelectureEditor({
   const recette = (importRow.recette ?? {}) as any;
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
+  const [heroOriginal, setHeroOriginal] = useState<string | null>(recette.photo_principale_original ?? recette.photo_principale ?? null);
   const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(!!recette.photo_principale_ai_retouched);
   // Photos extraites du PDF qui n'ont pas trouvé d'étape (la page indiquée par
   // l'IA ne correspondait à aucune) : elles restent disponibles au glisser-
@@ -552,10 +553,24 @@ export function RelectureEditor({
     retirerDeLaBanque(url);
     setSps((prev) =>
       prev.map((sp, k) =>
-        k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi ? (url ? { url, ai_retouched: false } : null) : p)) } : sp,
+        k === si
+          ? {
+              ...sp,
+              photos: sp.photos.map((p, j) => (j === pi ? (url ? { url, original_url: p?.original_url ?? url, ai_retouched: false } : null) : p)),
+            }
+          : sp,
       ),
     );
   };
+  // Photo *nouvelle* (choix de fichier, dépôt, glissement depuis la banque) :
+  // sépare la version d'origine (non recadrée) de la version affichée.
+  // Jamais appelée pour un simple recadrage de la photo déjà en place.
+  const patchPhotoOriginal = (si: number, pi: number, url: string) =>
+    setSps((prev) =>
+      prev.map((sp, k) =>
+        k === si ? { ...sp, photos: sp.photos.map((p, j) => (j === pi && p ? { ...p, original_url: url } : p)) } : sp,
+      ),
+    );
   const patchPhotoAi = (si: number, pi: number, aiRetouched: boolean) =>
     setSps((prev) =>
       prev.map((sp, k) =>
@@ -567,6 +582,7 @@ export function RelectureEditor({
     retirerDeLaBanque(url);
     setHero(url);
     setHeroAiRetouched(false);
+    if (!url) setHeroOriginal(null);
   };
   const addIng = (si: number) =>
     setSps((prev) =>
@@ -684,6 +700,7 @@ export function RelectureEditor({
     p.conseils_degustation = servingAdvice.trim() || null;
     p.difficulte = level || null;
     p.photo_principale = hero;
+    p.photo_principale_original = heroOriginal;
     p.photo_principale_ai_retouched = heroAiRetouched;
     // La banque suit le brouillon : un enregistrement intermédiaire ne doit pas
     // faire disparaître les photos du PDF encore non placées.
@@ -866,6 +883,7 @@ export function RelectureEditor({
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
         hero_image_url: p.photo_principale || null,
+        hero_image_original_url: p.photo_principale_original || p.photo_principale || null,
         hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,
         prep_time: t.preparation_min ?? null,
@@ -938,7 +956,7 @@ export function RelectureEditor({
         if (photoRows.length) {
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, order_index: pi, ai_retouched: !!p.ai_retouched })));
+            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url || p.url, order_index: pi, ai_retouched: !!p.ai_retouched })));
           if (error) throw error;
         }
 
@@ -1082,11 +1100,14 @@ export function RelectureEditor({
             <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
               <ImageSlot
                 src={hero}
+                originalSrc={heroOriginal}
                 aiRetouched={heroAiRetouched}
                 onChange={patchHero}
+                onOriginalChange={setHeroOriginal}
                 onClear={() => patchHero(null)}
                 shape="rect"
                 maxWidth={1200}
+                aspectRatio={16 / 9}
                 placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
                 className="w-full h-full"
               />
@@ -1758,11 +1779,14 @@ export function RelectureEditor({
                     <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden rounded-lg">
                       <ImageSlot
                         src={p?.url ?? null}
+                        originalSrc={p?.original_url}
                         aiRetouched={p?.ai_retouched}
                         onChange={(url) => patchPhoto(si, pi, url)}
+                        onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                         onClear={() => patchPhoto(si, pi, null)}
                         shape="rect"
                         maxWidth={800}
+                        aspectRatio={1}
                         placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
                         className="w-full h-full"
                       />

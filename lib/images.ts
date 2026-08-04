@@ -83,3 +83,94 @@ export async function resizePhotoForAi(file: File, maxLongEdge = 1568, quality =
   const scale = Math.min(1, maxLongEdge / Math.max(img.width, img.height));
   return dessiner(img, img.width * scale, img.height * scale, 'image/jpeg', quality);
 }
+
+export type Rotation90 = 0 | 90 | 180 | 270;
+
+// Charge une image déjà en data-URL (contrairement à `chargerImage`, qui part
+// d'un `File` déposé par l'utilisateur). Utilisé par l'édition d'une photo
+// déjà présente dans le formulaire (zoom/rotation/position).
+function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = src;
+  });
+}
+
+/**
+ * Facteur d'échelle pour qu'un contenu `contentW × contentH` tienne en
+ * entier dans un cadre `frameW × frameH` (l'inverse d'un « cover » qui
+ * remplirait le cadre en rognant l'excédent).
+ */
+export function containScale(contentW: number, contentH: number, frameW: number, frameH: number): number {
+  return Math.min(frameW / contentW, frameH / contentH);
+}
+
+/**
+ * Plus grand rectangle de rapport `ratio` (largeur/hauteur) tenant dans une
+ * boîte `boxW × boxH`. Sert à dimensionner la « scène » de l'éditeur de photo
+ * (au ratio de la photo elle-même, pour l'afficher entière sans la
+ * pré-rogner) puis, à l'intérieur, le cadre de recadrage bleu (au ratio
+ * cible 16:9 ou carré).
+ */
+export function fitRect(ratio: number, boxW: number, boxH: number): { w: number; h: number } {
+  const w = Math.min(boxW, boxH * ratio);
+  return { w, h: w / ratio };
+}
+
+/** Dimensions effectives d'une image après rotation par pas de 90° (largeur/hauteur échangées à 90°/270°). */
+export function rotatedDims(w: number, h: number, rotation: Rotation90): { w: number; h: number } {
+  return rotation % 180 === 90 ? { w: h, h: w } : { w, h };
+}
+
+/**
+ * Rejoue sur un canvas la transformation (zoom, rotation, position) réglée
+ * dans l'éditeur de photo — dans le même repère que l'aperçu CSS de
+ * `PhotoEditorModal` : la photo entière est affichée dans une « scène »
+ * (`stageWidth`/`stageHeight`, au ratio de la photo) et seul le cadre de
+ * recadrage bleu (`cropWidth`/`cropHeight`, au ratio cible, centré dans la
+ * scène) définit la zone conservée — et produit la data-URL finale au
+ * gabarit `outWidth × outWidth/aspectRatio`.
+ */
+export async function cropRotateImageToDataUrl(
+  src: string,
+  transform: {
+    rotation: Rotation90;
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+    stageWidth: number;
+    stageHeight: number;
+    cropWidth: number;
+    cropHeight: number;
+  },
+  outWidth: number,
+  aspectRatio: number,
+  mime: 'image/jpeg' | 'image/webp' = 'image/jpeg',
+  quality = 0.85,
+): Promise<string> {
+  const img = await chargerImageDepuisSrc(src);
+  const outHeight = Math.max(1, Math.round(outWidth / aspectRatio));
+  const k = outWidth / transform.cropWidth;
+  const eff = rotatedDims(img.width, img.height, transform.rotation);
+  const baseScale = containScale(eff.w, eff.h, transform.stageWidth, transform.stageHeight);
+  const renderedScale = baseScale * transform.zoom * k;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outWidth;
+  canvas.height = outHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponible');
+  // Le zoom est borné pour que le cadre de recadrage reste toujours
+  // entièrement couvert par la photo (cf. le clamp d'offset de
+  // PhotoEditorModal) ; ce fond blanc n'est qu'un filet de sécurité contre un
+  // écart d'arrondi, jamais la situation normale.
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, outWidth, outHeight);
+  ctx.translate(outWidth / 2 + transform.offsetX * k, outHeight / 2 + transform.offsetY * k);
+  ctx.rotate((transform.rotation * Math.PI) / 180);
+  ctx.scale(renderedScale, renderedScale);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  return canvas.toDataURL(mime, quality);
+}
