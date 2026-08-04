@@ -130,7 +130,7 @@ export function ShoppingItems({
     scheduleRefresh();
   }
 
-  async function applyEdit(id: number, name: string, quantity: string, unit: string) {
+  async function applyEdit(id: number, name: string, quantity: string, unit: string, comment: string) {
     if (!name.trim()) {
       dialog.alert('Indiquez un libellé.');
       return;
@@ -140,12 +140,14 @@ export function ShoppingItems({
       () =>
         createClient()
           .from('shopping_list_items')
-          .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, ref_id })
+          .update({ name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, comment: comment.trim() || null, ref_id })
           .eq('id', id),
       { refresh: false },
     );
     if (!ok) return;
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, ref_id } : i)));
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, comment: comment.trim() || null, ref_id } : i)),
+    );
     setEditingId(null);
     scheduleRefresh();
   }
@@ -161,24 +163,25 @@ export function ShoppingItems({
     const a = parseFloat(String(target.quantity || '').replace(',', '.'));
     const b = parseFloat(String(source.quantity || '').replace(',', '.'));
     const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [target.quantity, source.quantity].filter(Boolean).join(' + ');
+    const newComment = source.comment && source.comment !== target.comment ? [target.comment, source.comment].filter(Boolean).join(' ; ') : target.comment;
     const ok = await mutate(
       async () => {
         const supabase = createClient();
-        const { error } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', targetId);
+        const { error } = await supabase.from('shopping_list_items').update({ quantity: newQty, comment: newComment }).eq('id', targetId);
         if (error) return { error };
         return supabase.from('shopping_list_items').delete().eq('id', sourceId);
       },
       { errorLabel: 'Fusion impossible', refresh: false },
     );
     if (!ok) return;
-    setItems((prev) => prev.filter((i) => i.id !== sourceId).map((i) => (i.id === targetId ? { ...i, quantity: newQty } : i)));
+    setItems((prev) => prev.filter((i) => i.id !== sourceId).map((i) => (i.id === targetId ? { ...i, quantity: newQty, comment: newComment } : i)));
     setMergingId(null);
     scheduleRefresh();
   }
 
   // Non passé par useMutation : la ligne insérée est nécessaire (son id) pour
   // compléter l'état local sans attendre la resynchronisation.
-  async function addItem(name: string, quantity: string, unit: string) {
+  async function addItem(name: string, quantity: string, unit: string, comment: string) {
     if (!name.trim()) {
       dialog.alert('Indiquez un libellé.');
       return;
@@ -186,7 +189,15 @@ export function ShoppingItems({
     const supabase = createClient();
     const { data, error } = await supabase
       .from('shopping_list_items')
-      .insert({ list_id: listId, name: name.trim(), quantity: quantity.trim() || null, unit: unit || null, checked: false, ref_id: resolveIngredientRefId(name, ingredientRefs) })
+      .insert({
+        list_id: listId,
+        name: name.trim(),
+        quantity: quantity.trim() || null,
+        unit: unit || null,
+        comment: comment.trim() || null,
+        checked: false,
+        ref_id: resolveIngredientRefId(name, ingredientRefs),
+      })
       .select()
       .single();
     if (error) {
@@ -249,7 +260,10 @@ export function ShoppingItems({
                     onChange={(e) => toggle(i.id, e.target.checked)}
                     className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
-                  <span className={`font-body-md text-body-md flex-1 ${struck}`}>{i.name}</span>
+                  <span className={`font-body-md text-body-md flex-1 ${struck}`}>
+                    {i.name}
+                    {i.comment && <span className="text-on-surface-variant italic"> — {i.comment}</span>}
+                  </span>
                   <span className={`font-label-md text-label-md text-primary whitespace-nowrap ${struck}`}>
                     {qty}
                     {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
@@ -271,7 +285,7 @@ export function ShoppingItems({
                     <span className="material-symbols-outlined text-[18px]">call_merge</span>
                   </button>
                 </div>
-                {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u) => applyEdit(i.id, n, q, u)} onCancel={() => setEditingId(null)} />}
+                {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u, c) => applyEdit(i.id, n, q, u, c)} onCancel={() => setEditingId(null)} />}
                 {mergingId === i.id && (
                   <MergeItemRow
                     candidates={items.filter((o) => o.id !== i.id && sameUnit(o.unit, i.unit))}
@@ -307,10 +321,21 @@ export function ShoppingItems({
 const FIELD = 'border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm';
 const LBL = 'font-label-md text-[10px] uppercase text-on-surface-variant';
 
-function EditItemRow({ item, units, onApply, onCancel }: { item: ShoppingItem; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
+function EditItemRow({
+  item,
+  units,
+  onApply,
+  onCancel,
+}: {
+  item: ShoppingItem;
+  units: Unit[];
+  onApply: (name: string, qty: string, unit: string, comment: string) => void;
+  onCancel: () => void;
+}) {
   const [name, setName] = useState(item.name || '');
   const [qty, setQty] = useState(item.quantity || '');
   const [unit, setUnit] = useState(item.unit || '');
+  const [comment, setComment] = useState(item.comment || '');
   return (
     <div className="py-3 border-b border-outline-variant/30">
       <div className="flex flex-wrap items-end gap-3">
@@ -324,7 +349,8 @@ function EditItemRow({ item, units, onApply, onCancel }: { item: ShoppingItem; u
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => onApply(name, qty, unit)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+        <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Commentaire" className={FIELD} style={{ width: '13rem' }} />
+        <button type="button" onClick={() => onApply(name, qty, unit, comment)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
           OK
         </button>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
@@ -378,10 +404,19 @@ function MergeItemRow({
   );
 }
 
-function AddItemRow({ units, onAdd, onCancel }: { units: Unit[]; onAdd: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
+function AddItemRow({
+  units,
+  onAdd,
+  onCancel,
+}: {
+  units: Unit[];
+  onAdd: (name: string, qty: string, unit: string, comment: string) => void;
+  onCancel: () => void;
+}) {
   const [name, setName] = useState('');
   const [qty, setQty] = useState('');
   const [unit, setUnit] = useState('');
+  const [comment, setComment] = useState('');
   return (
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
@@ -403,7 +438,11 @@ function AddItemRow({ units, onAdd, onCancel }: { units: Unit[]; onAdd: (name: s
           ))}
         </select>
       </label>
-      <button type="button" onClick={() => onAdd(name, qty, unit)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
+      <label className="flex flex-col gap-1">
+        <span className={LBL}>Commentaire</span>
+        <input value={comment} onChange={(e) => setComment(e.target.value)} className={FIELD} style={{ width: '13rem' }} />
+      </label>
+      <button type="button" onClick={() => onAdd(name, qty, unit, comment)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
         <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter
       </button>
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
