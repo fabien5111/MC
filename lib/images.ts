@@ -83,3 +83,68 @@ export async function resizePhotoForAi(file: File, maxLongEdge = 1568, quality =
   const scale = Math.min(1, maxLongEdge / Math.max(img.width, img.height));
   return dessiner(img, img.width * scale, img.height * scale, 'image/jpeg', quality);
 }
+
+export type Rotation90 = 0 | 90 | 180 | 270;
+
+// Charge une image déjà en data-URL (contrairement à `chargerImage`, qui part
+// d'un `File` déposé par l'utilisateur). Utilisé par l'édition d'une photo
+// déjà présente dans le formulaire (zoom/rotation/position).
+function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = src;
+  });
+}
+
+/** Facteur d'échelle minimal pour qu'un contenu `contentW × contentH` couvre entièrement un cadre `frameW × frameH`. */
+export function coverScale(contentW: number, contentH: number, frameW: number, frameH: number): number {
+  return Math.max(frameW / contentW, frameH / contentH);
+}
+
+/** Dimensions effectives d'une image après rotation par pas de 90° (largeur/hauteur échangées à 90°/270°). */
+export function rotatedDims(w: number, h: number, rotation: Rotation90): { w: number; h: number } {
+  return rotation % 180 === 90 ? { w: h, h: w } : { w, h };
+}
+
+/**
+ * Rejoue sur un canvas la transformation (zoom, rotation, position) réglée
+ * dans l'éditeur de photo — dans le même repère que l'aperçu CSS de
+ * `PhotoEditorModal` (`offsetX`/`offsetY` en pixels du cadre d'aperçu,
+ * `frameWidth`/`frameHeight` sa taille mesurée) — et produit la data-URL
+ * finale au gabarit `outWidth × outWidth/aspectRatio`.
+ */
+export async function cropRotateImageToDataUrl(
+  src: string,
+  transform: {
+    rotation: Rotation90;
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+    frameWidth: number;
+    frameHeight: number;
+  },
+  outWidth: number,
+  aspectRatio: number,
+  mime: 'image/jpeg' | 'image/webp' = 'image/jpeg',
+  quality = 0.85,
+): Promise<string> {
+  const img = await chargerImageDepuisSrc(src);
+  const outHeight = Math.max(1, Math.round(outWidth / aspectRatio));
+  const k = outWidth / transform.frameWidth;
+  const eff = rotatedDims(img.width, img.height, transform.rotation);
+  const baseScale = coverScale(eff.w, eff.h, transform.frameWidth, transform.frameHeight);
+  const renderedScale = baseScale * transform.zoom * k;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outWidth;
+  canvas.height = outHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponible');
+  ctx.translate(outWidth / 2 + transform.offsetX * k, outHeight / 2 + transform.offsetY * k);
+  ctx.rotate((transform.rotation * Math.PI) / 180);
+  ctx.scale(renderedScale, renderedScale);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  return canvas.toDataURL(mime, quality);
+}

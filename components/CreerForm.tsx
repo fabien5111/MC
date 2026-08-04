@@ -1014,6 +1014,7 @@ export function CreerForm({
                 }}
                 shape="rect"
                 maxWidth={1200}
+                aspectRatio={16 / 9}
                 placeholder="Photo principale de la recette (format paysage 16:9) — taille idéale : 1200 × 675 px"
                 className="w-full h-full"
               />
@@ -1692,6 +1693,7 @@ export function CreerForm({
                             onClear={() => patchPhoto(si, pi, null)}
                             shape="rect"
                             maxWidth={800}
+                            aspectRatio={1}
                             placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
                             className="w-full h-full"
                           />

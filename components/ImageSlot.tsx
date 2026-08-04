@@ -8,6 +8,7 @@
 import { useCallback, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
+import { PhotoEditorModal } from '@/components/PhotoEditorModal';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
@@ -48,6 +49,12 @@ export type ImageSlotProps = {
   editButtonClassName?: string;
   /** Affiche le filigrane « Photo retravaillée avec l'IA » (case cochée par l'utilisateur). */
   aiRetouched?: boolean;
+  /**
+   * Rapport largeur/hauteur du cadre cible (16/9 pour le hero, 1 pour une
+   * photo d'étape). Sa présence conditionne l'affichage du bouton d'édition
+   * (zoom/rotation/position) : sans cadre cible connu, rien à ajuster.
+   */
+  aspectRatio?: number;
 };
 
 export function ImageSlot({
@@ -65,12 +72,14 @@ export function ImageSlot({
   editTitle,
   editButtonClassName = 'bottom-3 right-3 w-9 h-9',
   aiRetouched = false,
+  aspectRatio,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false);
   const readOnly = !onChange;
 
   const ingest = useCallback(
@@ -171,6 +180,20 @@ export function ImageSlot({
         </button>
       )}
 
+      {!readOnly && aspectRatio && src && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditingPhoto(true);
+          }}
+          title="Ajuster la photo (zoom, rotation, position)"
+          className="absolute top-2 right-11 w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors z-20"
+        >
+          <span className="material-symbols-outlined text-[18px]">crop_rotate</span>
+        </button>
+      )}
+
       {!readOnly && onClear && src && (
         <button
           type="button"
@@ -183,6 +206,20 @@ export function ImageSlot({
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
         </button>
+      )}
+
+      {!readOnly && editingPhoto && src && aspectRatio && (
+        <PhotoEditorModal
+          src={src}
+          aspectRatio={aspectRatio}
+          maxWidth={maxWidth}
+          mime={mime}
+          onCancel={() => setEditingPhoto(false)}
+          onSave={(dataUrl) => {
+            onChange?.(dataUrl);
+            setEditingPhoto(false);
+          }}
+        />
       )}
 
       {!readOnly && (
