@@ -987,12 +987,14 @@ export type Database = {
       plan_steps: {
         Row: {
           already_done: boolean
+          base_day_offset: number | null
           cook_temp: number | null
           cook_time: number | null
           created_at: string
           day_offset: number
           description: string | null
           id: number
+          note_position: string
           order_index: number
           planning_id: number
           prep_time: number | null
@@ -1002,17 +1004,20 @@ export type Database = {
           source_step_id: number | null
           tips: string | null
           title: string | null
+          user_note: string | null
           video_url: string | null
           wait_time: number | null
         }
         Insert: {
           already_done?: boolean
+          base_day_offset?: number | null
           cook_temp?: number | null
           cook_time?: number | null
           created_at?: string
           day_offset?: number
           description?: string | null
           id?: number
+          note_position?: string
           order_index: number
           planning_id: number
           prep_time?: number | null
@@ -1022,17 +1027,20 @@ export type Database = {
           source_step_id?: number | null
           tips?: string | null
           title?: string | null
+          user_note?: string | null
           video_url?: string | null
           wait_time?: number | null
         }
         Update: {
           already_done?: boolean
+          base_day_offset?: number | null
           cook_temp?: number | null
           cook_time?: number | null
           created_at?: string
           day_offset?: number
           description?: string | null
           id?: number
+          note_position?: string
           order_index?: number
           planning_id?: number
           prep_time?: number | null
@@ -1042,6 +1050,7 @@ export type Database = {
           source_step_id?: number | null
           tips?: string | null
           title?: string | null
+          user_note?: string | null
           video_url?: string | null
           wait_time?: number | null
         }
@@ -1071,6 +1080,7 @@ export type Database = {
       }
       plan_substeps: {
         Row: {
+          added: boolean
           excluded_when_done: boolean
           id: number
           order_index: number
@@ -1078,6 +1088,7 @@ export type Database = {
           texte: string
         }
         Insert: {
+          added?: boolean
           excluded_when_done?: boolean
           id?: number
           order_index: number
@@ -1085,6 +1096,7 @@ export type Database = {
           texte: string
         }
         Update: {
+          added?: boolean
           excluded_when_done?: boolean
           id?: number
           order_index?: number
@@ -1160,6 +1172,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string | null
+          user_note: string | null
         }
         Insert: {
           adjust_label?: string | null
@@ -1174,6 +1187,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          user_note?: string | null
         }
         Update: {
           adjust_label?: string | null
@@ -1188,6 +1202,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          user_note?: string | null
         }
         Relationships: [
           {
@@ -1477,6 +1492,7 @@ export type Database = {
           fts: unknown
           global_tips: string | null
           hero_image_ai_retouched: boolean
+          hero_image_original_url: string | null
           hero_image_url: string | null
           id: string
           is_public: boolean | null
@@ -1513,6 +1529,7 @@ export type Database = {
           fts?: unknown
           global_tips?: string | null
           hero_image_ai_retouched?: boolean
+          hero_image_original_url?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
@@ -1549,6 +1566,7 @@ export type Database = {
           fts?: unknown
           global_tips?: string | null
           hero_image_ai_retouched?: boolean
+          hero_image_original_url?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
@@ -1751,6 +1769,7 @@ export type Database = {
           caption: string | null
           id: number
           order_index: number | null
+          original_url: string | null
           step_id: number | null
           url: string
         }
@@ -1759,6 +1778,7 @@ export type Database = {
           caption?: string | null
           id?: number
           order_index?: number | null
+          original_url?: string | null
           step_id?: number | null
           url: string
         }
@@ -1767,6 +1787,7 @@ export type Database = {
           caption?: string | null
           id?: number
           order_index?: number | null
+          original_url?: string | null
           step_id?: number | null
           url?: string
         }
