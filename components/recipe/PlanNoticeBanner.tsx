@@ -119,19 +119,22 @@ export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull 
 
   return (
     <>
-      <div className="mb-8 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex items-center gap-3 flex-wrap">
-        <span className="material-symbols-outlined text-primary">event_available</span>
-        <span className="font-body-md text-on-surface">{text}</span>
-        {!starting && (
-          <button
-            type="button"
-            onClick={() => setStarting(true)}
-            className="ml-auto flex items-center gap-1 bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] hover:shadow-lg transition-all active:scale-95 shrink-0"
-          >
-            <span className="material-symbols-outlined text-[16px]">play_arrow</span> Démarrer la recette
-          </button>
-        )}
-        <PlanEditButton />
+      <div className="mb-8 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex flex-col gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="material-symbols-outlined text-primary">event_available</span>
+          <span className="font-body-md text-on-surface">{text}</span>
+          {!starting && (
+            <button
+              type="button"
+              onClick={() => setStarting(true)}
+              className="ml-auto flex items-center gap-1 bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] hover:shadow-lg transition-all active:scale-95 shrink-0"
+            >
+              <span className="material-symbols-outlined text-[16px]">play_arrow</span> Démarrer la recette
+            </button>
+          )}
+          <PlanEditButton />
+        </div>
+        {plan.notes && <p className="font-body-md text-body-md text-on-surface-variant whitespace-pre-line pl-9">{plan.notes}</p>}
       </div>
 
       {starting && (

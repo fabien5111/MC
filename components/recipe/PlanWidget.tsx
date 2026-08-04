@@ -150,6 +150,7 @@ export function PlanWidget({
   const moldDims = recipe.mold_dims && typeof recipe.mold_dims === 'object' && !Array.isArray(recipe.mold_dims) ? (recipe.mold_dims as Record<string, number>) : null;
 
   const [date, setDate] = useState(today);
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
   // Le panneau est placé en haut de la fiche (avant la photo) : les
@@ -173,6 +174,7 @@ export function PlanWidget({
     setAiMsg(null);
     if (editMode && existingPlan) {
       setDate(existingPlan.planned_date || today);
+      setNotes(existingPlan.notes || '');
       if (recipe.measure_type === 'units') {
         const y = num(recipe.yield_qty);
         if (y) setQty(String(Math.round(y * (existingPlan.factor || 1) * 100) / 100));
@@ -180,6 +182,7 @@ export function PlanWidget({
     } else if (!editMode) {
       setDate(today);
       setQty(recipe.yield_qty || '');
+      setNotes('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editMode]);
@@ -346,7 +349,7 @@ export function PlanWidget({
     if (editing) {
       const { error } = await supabase
         .from('planning')
-        .update({ planned_date: date, ...(adjustmentChanged ? { factor: res.factor, adjust_label: res.label } : {}) })
+        .update({ planned_date: date, notes: notes.trim() || null, ...(adjustmentChanged ? { factor: res.factor, adjust_label: res.label } : {}) })
         .eq('id', existingPlan.id);
       if (error) {
         dialog.alert('Erreur : ' + error.message);
@@ -376,7 +379,7 @@ export function PlanWidget({
     }
     const { data: planRow, error } = await supabase
       .from('planning')
-      .insert({ user_id: user.id, recipe_id: recipe.id, recipe_title: recipe.title, planned_date: date, factor: res.factor, adjust_label: res.label, status: 'planifie', notes: null })
+      .insert({ user_id: user.id, recipe_id: recipe.id, recipe_title: recipe.title, planned_date: date, factor: res.factor, adjust_label: res.label, status: 'planifie', notes: notes.trim() || null })
       .select('id')
       .single();
     if (error || !planRow) {
@@ -608,6 +611,20 @@ export function PlanWidget({
             {aiBlock}
           </div>
         )}
+
+        <div className="flex flex-col gap-2">
+          <label className={LBL} htmlFor="plan-notes">
+            Commentaire
+          </label>
+          <textarea
+            id="plan-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className={INPUT}
+            placeholder="Une note personnelle sur cette planification…"
+          />
+        </div>
 
         <div className="flex items-center gap-4 flex-wrap pt-2">
           <button
