@@ -101,12 +101,22 @@ function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
 /**
  * Facteur d'échelle pour qu'un contenu `contentW × contentH` tienne en
  * entier dans un cadre `frameW × frameH` (l'inverse d'un « cover » qui
- * remplirait le cadre en rognant l'excédent). C'est l'échelle de départ de
- * l'éditeur de photo : à zoom 1, la photo entière reste visible dans le
- * cadre de recadrage — jamais pré-rognée avant que l'utilisateur ait choisi.
+ * remplirait le cadre en rognant l'excédent).
  */
 export function containScale(contentW: number, contentH: number, frameW: number, frameH: number): number {
   return Math.min(frameW / contentW, frameH / contentH);
+}
+
+/**
+ * Plus grand rectangle de rapport `ratio` (largeur/hauteur) tenant dans une
+ * boîte `boxW × boxH`. Sert à dimensionner la « scène » de l'éditeur de photo
+ * (au ratio de la photo elle-même, pour l'afficher entière sans la
+ * pré-rogner) puis, à l'intérieur, le cadre de recadrage bleu (au ratio
+ * cible 16:9 ou carré).
+ */
+export function fitRect(ratio: number, boxW: number, boxH: number): { w: number; h: number } {
+  const w = Math.min(boxW, boxH * ratio);
+  return { w, h: w / ratio };
 }
 
 /** Dimensions effectives d'une image après rotation par pas de 90° (largeur/hauteur échangées à 90°/270°). */
@@ -117,9 +127,11 @@ export function rotatedDims(w: number, h: number, rotation: Rotation90): { w: nu
 /**
  * Rejoue sur un canvas la transformation (zoom, rotation, position) réglée
  * dans l'éditeur de photo — dans le même repère que l'aperçu CSS de
- * `PhotoEditorModal` (`offsetX`/`offsetY` en pixels du cadre d'aperçu,
- * `frameWidth`/`frameHeight` sa taille mesurée) — et produit la data-URL
- * finale au gabarit `outWidth × outWidth/aspectRatio`.
+ * `PhotoEditorModal` : la photo entière est affichée dans une « scène »
+ * (`stageWidth`/`stageHeight`, au ratio de la photo) et seul le cadre de
+ * recadrage bleu (`cropWidth`/`cropHeight`, au ratio cible, centré dans la
+ * scène) définit la zone conservée — et produit la data-URL finale au
+ * gabarit `outWidth × outWidth/aspectRatio`.
  */
 export async function cropRotateImageToDataUrl(
   src: string,
@@ -128,8 +140,10 @@ export async function cropRotateImageToDataUrl(
     zoom: number;
     offsetX: number;
     offsetY: number;
-    frameWidth: number;
-    frameHeight: number;
+    stageWidth: number;
+    stageHeight: number;
+    cropWidth: number;
+    cropHeight: number;
   },
   outWidth: number,
   aspectRatio: number,
@@ -138,9 +152,9 @@ export async function cropRotateImageToDataUrl(
 ): Promise<string> {
   const img = await chargerImageDepuisSrc(src);
   const outHeight = Math.max(1, Math.round(outWidth / aspectRatio));
-  const k = outWidth / transform.frameWidth;
+  const k = outWidth / transform.cropWidth;
   const eff = rotatedDims(img.width, img.height, transform.rotation);
-  const baseScale = containScale(eff.w, eff.h, transform.frameWidth, transform.frameHeight);
+  const baseScale = containScale(eff.w, eff.h, transform.stageWidth, transform.stageHeight);
   const renderedScale = baseScale * transform.zoom * k;
 
   const canvas = document.createElement('canvas');
@@ -148,9 +162,10 @@ export async function cropRotateImageToDataUrl(
   canvas.height = outHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas indisponible');
-  // À zoom 1, la photo entière est visible dans le cadre : si elle ne le
-  // remplit pas (bords latéraux ou haut/bas), le fond blanc évite des bandes
-  // noires dans le JPEG final (transparence non supportée).
+  // Le zoom est borné pour que le cadre de recadrage reste toujours
+  // entièrement couvert par la photo (cf. le clamp d'offset de
+  // PhotoEditorModal) ; ce fond blanc n'est qu'un filet de sécurité contre un
+  // écart d'arrondi, jamais la situation normale.
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, outWidth, outHeight);
   ctx.translate(outWidth / 2 + transform.offsetX * k, outHeight / 2 + transform.offsetY * k);

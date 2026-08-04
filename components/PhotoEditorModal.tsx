@@ -2,19 +2,24 @@
 
 // Modale d'édition d'une photo déjà déposée dans un `ImageSlot` : zoom,
 // rotation (pas de 90°) et repositionnement dans le cadre cible (16:9 pour la
-// photo principale, carré pour les photos d'étape). À l'ouverture, la photo
-// entière est visible (échelle « contain ») avec le cadre affiché en simple
-// repère de recadrage — jamais pré-rognée avant que l'utilisateur ait zoomé.
-// L'aperçu interactif se fait en CSS (transform sur l'<img>, pas de canvas)
-// pour rester fluide au doigt ; à la validation, la même transformation est
-// rejouée sur un canvas par `cropRotateImageToDataUrl` (lib/images.ts) pour
-// produire la data-URL finale — les deux calculs partagent
-// `containScale`/`rotatedDims` pour rester identiques.
+// photo principale, carré pour les photos d'étape). La « scène » affiche la
+// photo entière à son ratio d'origine (jamais pré-rognée) ; un cadre bleu à
+// bord fin, centré dans la scène et au ratio cible, indique la zone qui sera
+// conservée — la photo pivote/zoome/se déplace derrière ce cadre fixe, comme
+// un outil de recadrage classique. L'aperçu interactif se fait en CSS
+// (transform sur l'<img>, pas de canvas) pour rester fluide au doigt ; à la
+// validation, la même transformation est rejouée sur un canvas par
+// `cropRotateImageToDataUrl` (lib/images.ts) pour produire la data-URL
+// finale — les deux calculs partagent `containScale`/`fitRect`/`rotatedDims`
+// pour rester identiques.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { containScale, cropRotateImageToDataUrl, rotatedDims, type Rotation90 } from '@/lib/images';
+import { containScale, cropRotateImageToDataUrl, fitRect, rotatedDims, type Rotation90 } from '@/lib/images';
 
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.25;
+/** Boîte disponible pour la scène (photo entière) dans la modale. */
+const STAGE_BOX = { w: 480, h: 480 };
+const CROP_BORDER_COLOR = '#2563eb';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -37,7 +42,7 @@ export function PhotoEditorModal({
   onSave: (dataUrl: string) => void;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
-  const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
+  const [availWidth, setAvailWidth] = useState(STAGE_BOX.w);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [rotation, setRotation] = useState<Rotation90>(0);
   const [zoom, setZoom] = useState(1);
@@ -60,29 +65,43 @@ export function PhotoEditorModal({
     const el = frameRef.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
-      setFrameSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+      setAvailWidth(entry.contentRect.width);
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  const baseScale = useMemo(() => {
-    if (!natural || !frameSize.w || !frameSize.h) return 1;
+  // Taille de la scène : le plus grand rectangle au ratio de la photo
+  // (après rotation) tenant dans la largeur disponible × STAGE_BOX.h — la
+  // photo entière y est donc toujours visible, sans bande morte à combler.
+  const stageSize = useMemo(() => {
+    if (!natural) return { w: Math.min(availWidth, STAGE_BOX.w), h: STAGE_BOX.h };
     const eff = rotatedDims(natural.w, natural.h, rotation);
-    return containScale(eff.w, eff.h, frameSize.w, frameSize.h);
-  }, [natural, frameSize, rotation]);
+    return fitRect(eff.w / eff.h, Math.min(availWidth, STAGE_BOX.w), STAGE_BOX.h);
+  }, [natural, rotation, availWidth]);
+
+  // Cadre de recadrage : le plus grand rectangle au ratio cible tenant dans
+  // la scène, centré — fixe à l'écran, c'est la photo qui bouge derrière.
+  const cropSize = useMemo(() => fitRect(aspectRatio, stageSize.w, stageSize.h), [aspectRatio, stageSize]);
+
+  const baseScale = useMemo(() => {
+    if (!natural || !stageSize.w || !stageSize.h) return 1;
+    const eff = rotatedDims(natural.w, natural.h, rotation);
+    return containScale(eff.w, eff.h, stageSize.w, stageSize.h);
+  }, [natural, stageSize, rotation]);
 
   const renderedScale = baseScale * zoom;
 
   // Recadre l'offset dans les bornes valides après un changement de zoom, de
-  // rotation (qui échange largeur/hauteur) ou de mesure du cadre.
+  // rotation (qui échange largeur/hauteur) ou de mesure de la scène : le
+  // cadre de recadrage doit toujours rester entièrement couvert par la photo.
   useEffect(() => {
     if (!natural) return;
     const eff = rotatedDims(natural.w, natural.h, rotation);
-    const maxX = Math.max(0, (eff.w * renderedScale - frameSize.w) / 2);
-    const maxY = Math.max(0, (eff.h * renderedScale - frameSize.h) / 2);
+    const maxX = Math.max(0, (eff.w * renderedScale - cropSize.w) / 2);
+    const maxY = Math.max(0, (eff.h * renderedScale - cropSize.h) / 2);
     setOffset((prev) => ({ x: clamp(prev.x, -maxX, maxX), y: clamp(prev.y, -maxY, maxY) }));
-  }, [natural, renderedScale, rotation, frameSize.w, frameSize.h]);
+  }, [natural, renderedScale, rotation, cropSize.w, cropSize.h]);
 
   // Ref (pas de state) pour le suivi des pointeurs actifs : un doigt = glisser,
   // deux doigts = pincer/zoomer ; pas besoin de déclencher de rendu par frame.
@@ -142,12 +161,21 @@ export function PhotoEditorModal({
   }, []);
 
   const save = useCallback(async () => {
-    if (!natural || !frameSize.w || !frameSize.h) return;
+    if (!natural || !stageSize.w || !stageSize.h) return;
     setSaving(true);
     try {
       const dataUrl = await cropRotateImageToDataUrl(
         src,
-        { rotation, zoom, offsetX: offset.x, offsetY: offset.y, frameWidth: frameSize.w, frameHeight: frameSize.h },
+        {
+          rotation,
+          zoom,
+          offsetX: offset.x,
+          offsetY: offset.y,
+          stageWidth: stageSize.w,
+          stageHeight: stageSize.h,
+          cropWidth: cropSize.w,
+          cropHeight: cropSize.h,
+        },
         maxWidth,
         aspectRatio,
         mime,
@@ -156,7 +184,7 @@ export function PhotoEditorModal({
     } finally {
       setSaving(false);
     }
-  }, [natural, frameSize, src, rotation, zoom, offset, maxWidth, aspectRatio, mime, onSave]);
+  }, [natural, stageSize, cropSize, src, rotation, zoom, offset, maxWidth, aspectRatio, mime, onSave]);
 
   const iconBtn = 'w-10 h-10 rounded-full bg-surface-container text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors';
 
@@ -176,33 +204,49 @@ export function PhotoEditorModal({
       <div className="w-full max-w-lg bg-surface-container-low border border-outline-variant rounded-xl p-5 shadow-lg">
         <p className="font-title-md text-title-md text-on-surface mb-4">Ajuster la photo</p>
 
-        <div
-          ref={frameRef}
-          className="relative mx-auto w-full overflow-hidden rounded-lg bg-white border border-outline-variant touch-none select-none"
-          style={{ aspectRatio: String(aspectRatio), maxWidth: 480 }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onWheel={onWheel}
-        >
-          {natural && (
-            // eslint-disable-next-line @next/next/no-img-element -- data-URL, positionnement piloté par transform CSS
-            <img
-              src={src}
-              alt=""
-              draggable={false}
-              className="absolute top-1/2 left-1/2 max-w-none pointer-events-none"
+        <div ref={frameRef} className="mx-auto w-full" style={{ maxWidth: STAGE_BOX.w }}>
+          <div
+            className="relative mx-auto overflow-hidden rounded-lg bg-surface-container-high touch-none select-none"
+            style={{ width: stageSize.w, height: stageSize.h }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onWheel={onWheel}
+          >
+            {natural && (
+              // eslint-disable-next-line @next/next/no-img-element -- data-URL, positionnement piloté par transform CSS
+              <img
+                src={src}
+                alt=""
+                draggable={false}
+                className="absolute top-1/2 left-1/2 max-w-none pointer-events-none"
+                style={{
+                  width: natural.w,
+                  height: natural.h,
+                  marginLeft: -natural.w / 2,
+                  marginTop: -natural.h / 2,
+                  transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${renderedScale})`,
+                  transformOrigin: 'center center',
+                }}
+              />
+            )}
+            {/* Cadre de recadrage : fixe, centré, au ratio cible — bord fin
+                bleu, contour assombri pour distinguer la zone conservée du
+                reste de la photo (l'un des deux axes colle exactement à la
+                scène quand celle-ci est déjà au ratio cible). */}
+            <div
+              className="absolute top-1/2 left-1/2 pointer-events-none rounded-sm"
               style={{
-                width: natural.w,
-                height: natural.h,
-                marginLeft: -natural.w / 2,
-                marginTop: -natural.h / 2,
-                transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${renderedScale})`,
-                transformOrigin: 'center center',
+                width: cropSize.w,
+                height: cropSize.h,
+                marginLeft: -cropSize.w / 2,
+                marginTop: -cropSize.h / 2,
+                border: `2px solid ${CROP_BORDER_COLOR}`,
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
               }}
             />
-          )}
+          </div>
         </div>
 
         <div className="flex items-center justify-center gap-2 mt-4">
