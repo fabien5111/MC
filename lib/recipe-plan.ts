@@ -62,11 +62,19 @@ export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']
     ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
   };
 export type PlanUtensilRow = Database['public']['Tables']['plan_utensils']['Row'];
-export type PlanFull = Database['public']['Tables']['planning']['Row'] & {
-  plan_steps: (PlanStepRow & { plan_substeps: PlanSubstepRow[] })[];
-  plan_ingredients: PlanIngredientRow[];
-  plan_utensils: PlanUtensilRow[];
-};
+// `user_note` vient de la migration « note déplaçable » : distincte de
+// `notes` (le commentaire saisi dans le dialogue de planification, affiché
+// dans le bandeau de la fiche, l'écran d'exécution et Profil → Planning) —
+// deux notes personnelles bien séparées plutôt qu'un même champ édité depuis
+// deux endroits différents. Modifiable uniquement via PlanNotes, sur la
+// fiche de la recette planifiée.
+type PlanPending = { user_note: string | null };
+export type PlanFull = Database['public']['Tables']['planning']['Row'] &
+  PlanPending & {
+    plan_steps: (PlanStepRow & { plan_substeps: PlanSubstepRow[] })[];
+    plan_ingredients: PlanIngredientRow[];
+    plan_utensils: PlanUtensilRow[];
+  };
 
 // ── Étape « déjà faite » ───────────────────────────────────────────────
 // L'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée

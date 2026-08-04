@@ -1,13 +1,13 @@
 'use client';
 
-// Note globale d'une recette planifiée (`planning.notes`).
+// Note globale d'une recette planifiée (`planning.user_note`), éditable
+// directement sur la fiche de la recette planifiée.
 //
-// La colonne existait déjà — affichée dans Profil → Planning — mais jamais
-// éditable directement sur la fiche de la recette planifiée, là où elle est
-// justement utile. Ce bloc l'affiche et permet de la modifier sans passer
-// par le dialogue de planification (PlanWidget), qui n'a plus son propre
-// champ « Commentaire » : une seule surface d'édition pour cette note, sinon
-// la fiche recette reprendrait silencieusement un texte saisi ailleurs.
+// Distincte de `planning.notes` — le commentaire saisi dans le dialogue de
+// planification (PlanWidget), affiché dans le bandeau de la fiche, l'écran
+// d'exécution et Profil → Planning. Deux colonnes séparées et non deux
+// surfaces d'édition du même champ : modifier l'une ne doit jamais faire
+// apparaître son contenu dans l'autre.
 //
 // Même mise en forme que la note d'étape (PlanStepDonePanel) : les deux sont
 // des notes personnelles au même titre, l'une pour toute la planification,
@@ -35,7 +35,7 @@ export function PlanNotes({ planId, notes: initialNotes }: { planId: number; not
 
   async function save() {
     const next = draft.trim() || null;
-    const ok = await mutate(() => createClient().from('planning').update({ notes: next }).eq('id', planId), {
+    const ok = await mutate(() => createClient().from('planning').update({ user_note: next } as never).eq('id', planId), {
       errorLabel: 'Note non enregistrée',
     });
     if (ok) {

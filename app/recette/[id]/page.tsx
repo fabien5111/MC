@@ -381,7 +381,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 Sur cette fiche planifiée : <span className="text-green-700">en vert</span> ce que vous avez ajouté,{' '}
                 <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré, et « recette : … » rappelle la valeur d&apos;origine.
               </p>
-              <PlanNotes planId={planContext.id} notes={planContext.notes} />
+              <PlanNotes planId={planContext.id} notes={planContext.user_note} />
             </div>
           )}
 
