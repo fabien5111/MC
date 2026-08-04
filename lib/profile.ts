@@ -23,6 +23,7 @@ export type PlanningRow = {
   planned_date: string | null;
   factor: number | null;
   adjust_label: string | null;
+  notes: string | null;
   status: string;
   // Compte des exécutions liées : `executions.planning_id` est en
   // ON DELETE RESTRICT, donc un plan déjà cuisiné ne peut pas être
@@ -33,6 +34,7 @@ export type PlanningRow = {
     title: string | null;
     hero_image_url: string | null;
     prep_time: number | null;
+    total_time: number | null;
   } | null;
 };
 
@@ -58,7 +60,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
-    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time)')
+    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time)')
     .eq('user_id', userId)
     .eq('status', 'planifie')
     .order('planned_date', { ascending: true });
