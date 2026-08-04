@@ -367,6 +367,7 @@ export function PlanWidget({
       }
       close();
       router.refresh();
+      setBusy(false);
       return;
     }
 
