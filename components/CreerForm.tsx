@@ -55,7 +55,7 @@ type StepState = {
   collapsed: boolean;
 };
 
-type StepPhoto = { url: string; ai_retouched: boolean };
+type StepPhoto = { url: string; original_url: string; ai_retouched: boolean };
 
 const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
   cylindre: [{ key: 'diametre', label: 'Diamètre' }, { key: 'hauteur', label: 'Hauteur' }],
@@ -136,7 +136,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
     const ings = [...(grp?.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     const photos = [...(s.step_photos || [])]
       .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-      .map((p) => ({ url: p.url, ai_retouched: p.ai_retouched ?? false }));
+      .map((p) => ({ url: p.url, original_url: p.original_url || p.url, ai_retouched: p.ai_retouched ?? false }));
     return {
       key: key(),
       title: s.title || '',
@@ -222,6 +222,7 @@ export function CreerForm({
   const [servingAdvice, setServingAdvice] = useState(editRecipe?.serving_advice || '');
   const [isPublic, setIsPublic] = useState(editRecipe?.is_public !== false);
   const [hero, setHero] = useState<string | null>(editRecipe?.hero_image_url ?? null);
+  const [heroOriginal, setHeroOriginal] = useState<string | null>(editRecipe?.hero_image_original_url ?? editRecipe?.hero_image_url ?? null);
   const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(editRecipe?.hero_image_ai_retouched ?? false);
   const [level, setLevel] = useState<number>(
     editRecipe?.difficulties?.level ?? difficulties.find((d) => d.id === (editRecipe as { difficulty_id?: number } | null)?.difficulty_id)?.level ?? 0,
@@ -440,7 +441,21 @@ export function CreerForm({
   const patchPhoto = (si: number, pi: number, url: string | null) =>
     setSteps((s) =>
       s.map((st, k) =>
-        k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi ? (url ? { url, ai_retouched: false } : null) : p)) } : st,
+        k === si
+          ? {
+              ...st,
+              photos: st.photos.map((p, j) => (j === pi ? (url ? { url, original_url: p?.original_url ?? url, ai_retouched: false } : null) : p)),
+            }
+          : st,
+      ),
+    );
+  // Photo *nouvelle* (choix de fichier, dépôt, glissement) : sépare la
+  // version d'origine (non recadrée) de la version affichée. Jamais appelée
+  // pour un simple recadrage de la photo déjà en place (cf. ImageSlot).
+  const patchPhotoOriginal = (si: number, pi: number, url: string) =>
+    setSteps((s) =>
+      s.map((st, k) =>
+        k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi && p ? { ...p, original_url: url } : p)) } : st,
       ),
     );
   const patchPhotoAi = (si: number, pi: number, aiRetouched: boolean) =>
@@ -646,6 +661,7 @@ export function CreerForm({
         cook_time: gmin(cook),
         total_time: gmin(total),
         hero_image_url: hero,
+        hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
       };
 
@@ -729,7 +745,7 @@ export function CreerForm({
         if (photoRows.length) {
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, order_index: pi, ai_retouched: p.ai_retouched })));
+            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url, order_index: pi, ai_retouched: p.ai_retouched })));
           if (error) throw error;
         }
 
@@ -1003,13 +1019,16 @@ export function CreerForm({
             <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden">
               <ImageSlot
                 src={hero}
+                originalSrc={heroOriginal}
                 aiRetouched={heroAiRetouched}
                 onChange={(url) => {
                   setHero(url);
                   setHeroAiRetouched(false);
                 }}
+                onOriginalChange={setHeroOriginal}
                 onClear={() => {
                   setHero(null);
+                  setHeroOriginal(null);
                   setHeroAiRetouched(false);
                 }}
                 shape="rect"
@@ -1688,8 +1707,10 @@ export function CreerForm({
                         <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden">
                           <ImageSlot
                             src={p?.url ?? null}
+                            originalSrc={p?.original_url}
                             aiRetouched={p?.ai_retouched}
                             onChange={(url) => patchPhoto(si, pi, url)}
+                            onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                             onClear={() => patchPhoto(si, pi, null)}
                             shape="rect"
                             maxWidth={800}

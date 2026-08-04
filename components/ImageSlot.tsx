@@ -32,6 +32,20 @@ export type ImageSlotProps = {
   src?: string | null;
   /** Appelée avec la data-URL compressée après un dépôt/choix. Sans onChange, le slot est en lecture seule. */
   onChange?: (dataUrl: string) => void;
+  /**
+   * Photo d'origine (non recadrée) connue pour ce cliché, si le parent la
+   * conserve à part — l'éditeur s'ouvre dessus plutôt que sur `src` (déjà
+   * recadrée), pour permettre d'ajuster à nouveau le cadrage sans repartir
+   * d'une photo déjà rognée. Sans valeur, repli sur `src`.
+   */
+  originalSrc?: string | null;
+  /**
+   * Appelée avec la data-URL brute (avant tout recadrage) quand une photo
+   * *nouvelle* arrive dans l'emplacement (choix de fichier, dépôt, ou
+   * glissement depuis une banque de photos) — jamais quand l'éditeur
+   * réenregistre un recadrage sur la photo déjà en place.
+   */
+  onOriginalChange?: (dataUrl: string) => void;
   /** Si fournie, affiche un bouton de suppression sur l'image ; appelée au clic. */
   onClear?: () => void;
   shape?: Shape;
@@ -60,6 +74,8 @@ export type ImageSlotProps = {
 export function ImageSlot({
   src,
   onChange,
+  originalSrc,
+  onOriginalChange,
   onClear,
   shape = 'rounded',
   fit = 'cover',
@@ -93,6 +109,7 @@ export function ImageSlot({
       try {
         const dataUrl = await resizeImageToDataUrl(file, maxWidth, mime);
         onChange?.(dataUrl);
+        onOriginalChange?.(dataUrl);
         // Une photo tout juste chargée n'a pas encore été cadrée : on ouvre
         // l'édition par défaut plutôt que d'attendre un clic sur le crayon.
         if (aspectRatio) setEditingPhoto(true);
@@ -102,7 +119,7 @@ export function ImageSlot({
         setBusy(false);
       }
     },
-    [maxWidth, mime, onChange, aspectRatio],
+    [maxWidth, mime, onChange, onOriginalChange, aspectRatio],
   );
 
   const radius = SHAPE_RADIUS[shape];
@@ -132,6 +149,7 @@ export function ImageSlot({
               const dataUrl = e.dataTransfer.getData(PHOTO_DND_TYPE);
               if (dataUrl) {
                 onChange?.(dataUrl);
+                onOriginalChange?.(dataUrl);
                 if (aspectRatio) setEditingPhoto(true);
                 return;
               }
@@ -214,7 +232,7 @@ export function ImageSlot({
 
       {!readOnly && editingPhoto && src && aspectRatio && (
         <PhotoEditorModal
-          src={src}
+          src={originalSrc || src}
           aspectRatio={aspectRatio}
           maxWidth={maxWidth}
           mime={mime}
