@@ -254,6 +254,16 @@ export function ExecutionView({
       </div>
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
 
+      {/* Note globale du plan (planning.notes), relue en direct comme les notes
+          d'étape : elle est écrite pour cette préparation, elle doit être sous
+          les yeux pendant qu'on la mène. */}
+      {exec.planning?.notes && (
+        <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{exec.planning.notes}</div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-6">
         {showMep ? (
           <MiseEnPlace exec={exec} onToggleIngredients={toggleMepIngredients} onToggleUtensil={toggleMepUtensil} onDone={mepDone} conversions={conversions} units={units} />
@@ -654,6 +664,17 @@ function StepCard({
         </div>
       )}
 
+      {/* Note personnelle portée par le plan : relue en direct (et non figée au
+          démarrage), pour qu'une note écrite la veille apparaisse pendant la
+          cuisson d'une session déjà lancée. À ne pas confondre avec le
+          commentaire de session ci-dessous, qui relate le jour J. */}
+      {plan?.user_note && (
+        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{plan.user_note}</div>
+        </div>
+      )}
+
       {prevComments.length > 0 && (
         <div className="mx-4 mb-3 p-3 bg-surface-container-low border border-outline-variant/60 rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant mb-1">Sessions précédentes</p>
@@ -668,7 +689,7 @@ function StepCard({
       <div className="px-4 pb-4">
         <textarea
           rows={2}
-          placeholder="Commentaire sur cette étape (sauvegardé automatiquement)…"
+          placeholder="Ce qui s'est passé sur cette étape (sauvegardé automatiquement)…"
           disabled={readOnly}
           value={s.commentaire || ''}
           onChange={(ev) => onStepComment(s.id, ev.target.value)}

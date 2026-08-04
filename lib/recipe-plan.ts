@@ -36,12 +36,19 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
 // `npm run gen:types` soit rejoué sur la base migrée — retirer cette
 // intersection à ce moment-là, `lib/database.types.ts` étant la source de
 // vérité (jamais éditée à la main).
-type PlanStepPending = { already_done: boolean };
+// `base_day_offset` et `user_note` viennent de la migration « ajustements du
+// plan » : le jour d'origine de l'étape (pour distinguer une étape déplacée et
+// pouvoir la rétablir, même rôle que `plan_ingredients.base_quantity`) et la
+// note personnelle de l'utilisateur — distincte de `description`/`tips`, qui
+// sont la copie du texte de la recette et ne doivent jamais être écrasées.
+type PlanStepPending = { already_done: boolean; base_day_offset: number | null; user_note: string | null };
 export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
 // `excluded_when_done` fait partie de la même migration en attente (cf.
 // PlanStepPending ci-dessus) : mêmes semantique et défaut que sur
-// plan_ingredients, appliqués aux sous-étapes.
-type PlanSubstepPending = { excluded_when_done: boolean };
+// plan_ingredients, appliqués aux sous-étapes. `added` reprend le marqueur de
+// `plan_ingredients.added` : une sous-étape ajoutée par l'utilisateur, absente
+// de la recette d'origine.
+type PlanSubstepPending = { excluded_when_done: boolean; added: boolean };
 export type PlanSubstepRow = Database['public']['Tables']['plan_substeps']['Row'] & PlanSubstepPending;
 type PlanIngredientPending = { excluded_when_done: boolean };
 export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']['Row'] &
@@ -125,6 +132,16 @@ export function remainingStepTimes(s: StepDoneFlags & Pick<PlanStepRow, 'prep_ti
   return { prep_time: null, wait_time: null, cook_time: null };
 }
 
+// ── Étape déplacée ─────────────────────────────────────────────────────
+// Le plan porte le jour choisi (`day_offset`) et le jour d'origine de la
+// recette (`base_day_offset`, figé à la matérialisation) : afficher les deux
+// est ce qui permet de distinguer la recette initiale de l'ajustement, comme
+// « Quantité d'origine » le fait pour les ingrédients. `base_day_offset` nul
+// (plan matérialisé avant la migration) vaut « jamais déplacée ».
+export function stepDayMoved(s: Pick<PlanStepRow, 'day_offset' | 'base_day_offset'>): boolean {
+  return s.base_day_offset != null && s.base_day_offset !== s.day_offset;
+}
+
 // Sélection complète d'un plan, à utiliser par lib/profile.ts (getPlan).
 export const PLAN_FULL_SELECT = `
   *,
@@ -140,9 +157,14 @@ export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // `plan_step_id` : sans conséquence tant que le plan n'a pas d'édition de
 // ses étapes ; se dégrade proprement (absent) si l'étape a été retirée du
 // plan depuis (FK à null).
+// `user_note` rejoint les colonnes relues en direct (et non figées) : une note
+// écrite la veille (« prévoir la plaque du bas ») doit apparaître pendant la
+// cuisson, y compris dans une session déjà démarrée. Elle ne se confond pas
+// avec `execution_steps.commentaire`, qui est le constat du jour J propre à
+// une session — l'une est l'intention, l'autre la réalisation.
 export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
   execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
-  plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done'> | null;
+  plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'user_note'> | null;
 };
 export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'] & {
   // Rapprochement conversions d'ingrédients : execution_ingredients n'a pas
@@ -157,16 +179,18 @@ export type ExecutionFull = ExecutionRow & {
   execution_ingredients: ExecutionIngredientRow[];
   execution_utensils: ExecutionUtensilRow[];
   // Titre de la recette planifiée — pas de colonne dédiée sur `executions`,
-  // relu via la FK planning_id (recipe_title y est déjà dénormalisé).
-  planning: { recipe_title: string | null } | null;
+  // relu via la FK planning_id (recipe_title y est déjà dénormalisé). `notes`
+  // (note globale du plan) suit le même chemin, et pour la même raison que
+  // `user_note` sur les étapes : relue en direct plutôt que figée.
+  planning: { recipe_title: string | null; notes: string | null } | null;
 };
 
 export const EXECUTION_FULL_SELECT = `
   *,
-  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done)),
+  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done, user_note)),
   execution_ingredients(*, plan_ingredients(ref_id)),
   execution_utensils(*),
-  planning(recipe_title)
+  planning(recipe_title, notes)
 `;
 
 // ── Vues de compatibilité recette ──────────────────────────────────────
@@ -321,6 +345,9 @@ export type MatIngredient = {
 export type MatStep = {
   order_index: number;
   day_offset: number;
+  // Jour de la recette d'origine, figé ici une fois pour toutes : c'est lui
+  // qui restera affiché en regard du jour choisi si l'étape est déplacée.
+  base_day_offset: number;
   title: string | null;
   description: string | null;
   tips: string | null;
@@ -367,6 +394,7 @@ export function materializePlan(recipe: RecipeFull, opts: { factor: number; mold
       return {
         order_index: order,
         day_offset: s.day_offset || 0,
+        base_day_offset: s.day_offset || 0,
         title: s.title,
         description: s.description,
         tips: s.tips,

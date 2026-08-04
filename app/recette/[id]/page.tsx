@@ -7,7 +7,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
-import { getExecutions } from '@/lib/executions';
+import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import {
@@ -32,6 +32,7 @@ import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
+import { PlanNotes } from '@/components/recipe/PlanNotes';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
@@ -84,6 +85,18 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
   const planMerged = planContext ? mergePlanIngredients(planContext) : null;
   const execHistory = planContext ? await getExecutions(planContext.id) : [];
+  // Étapes des sessions en cours, par `plan_step_id` : une sous-étape ajoutée
+  // y est répercutée pour rester cochable (cf. lib/executions.ts).
+  const runningExecSteps = planContext ? await getRunningExecutionSteps(planContext.id) : {};
+  // Jours proposés au déplacement d'une étape : ceux déjà utilisés par le plan
+  // (jour d'origine compris, pour pouvoir revenir en arrière) plus deux
+  // d'anticipation, afin de pouvoir sortir une étape du jour J.
+  const planDayOptions = (() => {
+    if (!planContext) return [];
+    const used = planContext.plan_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
+    const max = Math.max(0, ...used) + 2;
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  })();
   const isOwner = !!user && recipe.author_id === user.id;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
   const userIsAdmin = user ? await isAdmin(user.id) : false;
@@ -348,6 +361,20 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     : '')
               }
             />
+            </div>
+          )}
+
+          {/* Note globale du plan + rappel de la convention de lecture. Une
+              seule légende pour toute la fiche : les mêmes couleurs valent
+              pour les ingrédients (PlanIngredientsEditor) et les étapes
+              (PlanStepDonePanel) — en inventer une seconde les opposerait. */}
+          {planContext && (
+            <div className="no-print">
+              <p className="mb-3 font-body-md text-[12px] text-on-surface-variant">
+                Sur cette fiche planifiée : <span className="text-green-700">en vert</span> ce que vous avez ajouté,{' '}
+                <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré, et « recette : … » rappelle la valeur d&apos;origine.
+              </p>
+              <PlanNotes planId={planContext.id} notes={planContext.notes} />
             </div>
           )}
 
@@ -753,7 +780,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
-                  dLabel(Math.max(0, s.day_offset || 0)),
+                  // Mode planifié : le jour est porté par le sélecteur de
+                  // PlanStepDonePanel (modifiable, avec rappel du jour de la
+                  // recette) — un badge en plus ferait doublon.
+                  planContext ? '' : dLabel(Math.max(0, s.day_offset || 0)),
                   // Mode planifié : étape conservée pour sa seule cuisson, ses
                   // ingrédients et son temps de préparation ont déjà été retirés.
                   s.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
@@ -788,7 +818,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {stepMeta}
                   </>
                 );
-                const planStepProps = { id: s.id, already_done: s.already_done ?? false };
+                // Ligne brute du plan : `s` (RecipeStepView) ne porte ni le
+                // jour d'origine ni la note personnelle, absents de la vue de
+                // compatibilité recette.
+                const rawStep = planStepsById.get(s.id);
+                const planStepProps = {
+                  id: s.id,
+                  already_done: s.already_done ?? false,
+                  day_offset: rawStep?.day_offset ?? 0,
+                  base_day_offset: rawStep?.base_day_offset ?? null,
+                  user_note: rawStep?.user_note ?? null,
+                };
                 const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
                 // Contenu replié avec le reste quand l'étape est entièrement traitée
                 // (photos, vidéo, astuces…) — inchangé sinon.
@@ -866,6 +906,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         step={planStepProps}
                         ingredients={planIngredientsOfStep}
                         substeps={rawSubsteps}
+                        plannedDate={planContext.planned_date}
+                        dayOptions={planDayOptions}
+                        runningExecSteps={runningExecSteps[s.id] ?? []}
                       >
                         {extra}
                       </PlanStepDonePanel>

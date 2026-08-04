@@ -27,6 +27,36 @@ export async function getExecutions(planningId: number): Promise<ExecutionSummar
   return data ?? [];
 }
 
+// Étapes des sessions **en cours** d'un plan, indexées par `plan_step_id`.
+//
+// Sert à répercuter une sous-étape ajoutée après le démarrage d'une session :
+// sans ligne `execution_substeps`, la puce n'apparaîtrait pas dans l'écran
+// d'exécution et surtout ne pourrait pas être cochée — l'utilisateur ajoute
+// pourtant une sous-étape précisément parce qu'il compte la faire.
+//
+// Ce n'est pas une resynchronisation des colonnes figées (interdite, cf.
+// CLAUDE.md : elle détruirait la trace de ce qui a réellement été fait) :
+// c'est une insertion, rien n'est écrasé. Réservé aux sessions `en_cours` —
+// compléter une session terminée reviendrait à réécrire son histoire.
+export type RunningExecStep = { execution_id: number; execution_step_id: number };
+
+export async function getRunningExecutionSteps(planningId: number): Promise<Record<number, RunningExecStep[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('execution_steps')
+    .select('id, plan_step_id, execution_id, executions!inner(id, status, planning_id)')
+    .eq('executions.planning_id', planningId)
+    .eq('executions.status', 'en_cours')
+    .not('plan_step_id', 'is', null);
+  if (error) console.error('getRunningExecutionSteps:', error.message);
+  const rows = (data as unknown as { id: number; plan_step_id: number; execution_id: number }[]) ?? [];
+  const map: Record<number, RunningExecStep[]> = {};
+  rows.forEach((r) => {
+    (map[r.plan_step_id] = map[r.plan_step_id] || []).push({ execution_id: r.execution_id, execution_step_id: r.id });
+  });
+  return map;
+}
+
 // Commentaires d'étape laissés lors de précédentes sessions du même plan,
 // pour rappel dans l'écran d'exécution en cours (« Sessions précédentes »).
 // Clé : `plan_step_id` (stable entre sessions d'un même plan, contrairement
