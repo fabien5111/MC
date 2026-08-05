@@ -3,8 +3,9 @@
 // Onglets du profil (porté de profil.html) : carnet, import, favoris, planning,
 // listes de courses. Bascule d'onglet synchronisée avec le hash.
 // Suppressions via useMutation (écriture navigateur + resynchro du serveur).
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -21,6 +22,12 @@ import type { UserRecipeCard } from '@/lib/recipes';
 import type { ActiveExecutionRow, RunningExecStep } from '@/lib/executions';
 
 export type UserRecipe = UserRecipeCard;
+
+// useLayoutEffect ne fait rien côté serveur (avertissement React) : on bascule
+// sur useEffect au SSR, et sur useLayoutEffect côté client pour appliquer
+// l'onglet issu du hash avant la peinture du navigateur — sinon l'onglet par
+// défaut ('recipes') s'affiche une frame avant d'être remplacé par le bon.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'sessions' | 'courses';
 
@@ -60,6 +67,16 @@ export function ProfileTabs({
   favIds: string[];
 }) {
   const { mutate, busy } = useMutation();
+  const router = useRouter();
+  // Le cache client du routeur peut resservir un rendu obsolète de /profil
+  // (ex. retour au planning après avoir démarré une session ailleurs) alors
+  // même que la page est en `force-dynamic` côté serveur — ce dernier ne joue
+  // que sur le rendu initial d'une requête, pas sur ce cache. On force donc
+  // une resynchronisation à chaque montage (ex. retour sur la page).
+  useEffect(() => {
+    router.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [tab, setTab] = useState<TabKey>('recipes');
   // Suppression optimiste locale : le spinner reste affiché jusqu'à ce que la
   // recette disparaisse effectivement de la liste, sans attendre le
@@ -76,7 +93,7 @@ export function ProfileTabs({
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   const [mergingListId, setMergingListId] = useState<number | null>(null);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const fromHash = () => {
       const h = location.hash;
       if (h === '#planning-jours') {
@@ -445,7 +462,7 @@ export function ProfileTabs({
                         </Link>
                       ) : (
                         <Link
-                          href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`}
+                          href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}&demarrer=1`}
                           className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-full font-label-md text-[11px] whitespace-nowrap hover:bg-primary hover:text-white transition-colors"
                         >
                           <span className="material-symbols-outlined text-[14px]">play_arrow</span> Démarrer une session

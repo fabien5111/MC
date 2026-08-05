@@ -44,7 +44,7 @@ import { SessionsList } from '@/components/recipe/SessionsList';
 
 type Params = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ plan?: string; planifier?: string }>;
+  searchParams: Promise<{ plan?: string; planifier?: string; demarrer?: string }>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { plan: planParam, planifier } = await searchParams;
+  const { plan: planParam, planifier, demarrer } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -354,6 +354,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="no-print">
             <PlanNoticeBanner
               plan={planContext}
+              autoStart={demarrer === '1'}
               text={
                 `Recette planifiée pour le ` +
                 new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {

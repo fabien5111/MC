@@ -55,11 +55,14 @@ async function insertMaterializedExecution(supabase: Supabase, executionId: numb
   }
 }
 
-export function PlanNoticeBanner({ text, plan }: { text: string; plan: PlanFull }) {
+export function PlanNoticeBanner({ text, plan, autoStart = false }: { text: string; plan: PlanFull; autoStart?: boolean }) {
   const router = useRouter();
   const dialog = useDialog();
   const writeGuard = useWriteGuard();
-  const [starting, setStarting] = useState(false);
+  // Arrivée depuis le bouton « Démarrer une session » du planning (lien
+  // ?demarrer=1) : le formulaire s'ouvre directement, sans clic intermédiaire
+  // sur « Démarrer la recette ».
+  const [starting, setStarting] = useState(autoStart);
   const [time, setTime] = useState('12:00');
   const [busy, setBusy] = useState(false);
 
