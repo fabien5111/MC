@@ -15,6 +15,7 @@ import { RecipeCardClient } from '@/components/RecipeCardClient';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
+import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { UserRecipeCard } from '@/lib/recipes';
 import type { ActiveExecutionRow } from '@/lib/executions';
@@ -65,6 +66,10 @@ export function ProfileTabs({
   useEffect(() => setRecipeList(recipes), [recipes]);
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
+  // Vue par jour de l'onglet Planning : les cartes actuelles restent
+  // inchangées (une recette à la fois), la vue par jour combine les étapes de
+  // toutes les recettes planifiées (voir PlanningDayView).
+  const [planningView, setPlanningView] = useState<'recettes' | 'jours'>('recettes');
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   const [mergingListId, setMergingListId] = useState<number | null>(null);
@@ -339,10 +344,32 @@ export function ProfileTabs({
       {/* Planning */}
       {tab === 'planning' && (
         <div className="py-10">
-          <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined">calendar_month</span> Recettes planifiées
-          </h2>
-          {planningList.length > 0 ? (
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+            <h2 className="font-headline-md text-primary flex items-center gap-3">
+              <span className="material-symbols-outlined">calendar_month</span> Recettes planifiées
+            </h2>
+            {planningList.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlanningView('recettes')}
+                  className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'recettes' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+                >
+                  Vue par recette
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanningView('jours')}
+                  className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'jours' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+                >
+                  Vue par jour
+                </button>
+              </div>
+            )}
+          </div>
+          {planningView === 'jours' ? (
+            <PlanningDayView plans={planningList} />
+          ) : planningList.length > 0 ? (
             <div className="space-y-4 max-w-3xl">
               {planningList.map((p) => {
                 const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';

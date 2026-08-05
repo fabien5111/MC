@@ -1,0 +1,144 @@
+'use client';
+
+// Vue par jour de l'onglet Planning (Profil) : les étapes de TOUTES les
+// recettes planifiées de l'utilisateur, regroupées par date réelle (pas par
+// day_offset, relatif à chaque recette) — cf. `groupPlanningStepsByDate`.
+//
+// Le glisser-déposer ne réordonne qu'au sein d'un même jour, entre étapes de
+// recettes potentiellement différentes : il n'existe aucun ordre partagé
+// entre plans avant ce geste (`plan_steps.order_index` n'ordonne qu'à
+// l'intérieur d'un seul plan), d'où `day_order_index`, une colonne dédiée à
+// cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce jour-là.
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useMutation } from '@/lib/use-mutation';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { formatTime } from '@/lib/format';
+import { groupPlanningStepsByDate } from '@/lib/recipe-plan';
+import type { PlanningRow } from '@/lib/profile';
+
+const dateLabel = (iso: string): string =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+export function PlanningDayView({ plans }: { plans: PlanningRow[] }) {
+  const { mutate, busy } = useMutation();
+  const [list, setList] = useState(plans);
+  useEffect(() => setList(plans), [plans]);
+  const [dragId, setDragId] = useState<number | null>(null);
+
+  const groups = groupPlanningStepsByDate(list);
+
+  // Réordonne les étapes d'UN jour (entre recettes potentiellement
+  // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
+  // d'intercaler une seule valeur (même principe que `moveSubstep` dans
+  // PlanStepDonePanel), pour que `day_order_index` reste toujours défini pour
+  // tout le monde une fois qu'on a touché à ce jour.
+  async function moveStep(date: string, fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return;
+    const group = groups.find((g) => g.date === date);
+    if (!group) return;
+    const sorted = [...group.items];
+    const [moved] = sorted.splice(fromIdx, 1);
+    sorted.splice(toIdx, 0, moved);
+    const reassigned = sorted.map((it, i) => ({ stepId: it.stepId, day_order_index: i }));
+    const prev = list;
+    setList((all) =>
+      all.map((p) => ({
+        ...p,
+        plan_steps: p.plan_steps.map((s) => {
+          const r = reassigned.find((it) => it.stepId === s.id);
+          return r ? { ...s, day_order_index: r.day_order_index } : s;
+        }),
+      })),
+    );
+    const supabase = createClient();
+    const ok = await mutate(
+      async () => {
+        const results = await Promise.all(
+          reassigned.map((it) => supabase.from('plan_steps').update({ day_order_index: it.day_order_index }).eq('id', it.stepId)),
+        );
+        const failed = results.find((r) => r.error);
+        return failed ? { error: failed.error } : { error: null };
+      },
+      { errorLabel: 'Réorganisation impossible' },
+    );
+    if (!ok) setList(prev);
+  }
+
+  if (groups.length === 0) {
+    return (
+      <p className="text-on-surface-variant italic">
+        Aucune étape à afficher — seules les recettes planifiées avec une date de dégustation apparaissent ici.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
+      {groups.map((g) => (
+        <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
+          <h3 className="font-headline-md text-headline-md text-primary mb-4 capitalize">{dateLabel(g.date)}</h3>
+          <ul className="flex flex-col">
+            {g.items.map((it, idx) => {
+              const stepTotal = (it.prep_time || 0) + (it.wait_time || 0) + (it.cook_time || 0);
+              const badges = [
+                it.prep_time ? `PRÉP ${formatTime(it.prep_time).toUpperCase()}` : '',
+                it.wait_time ? `ATTENTE ${formatTime(it.wait_time).toUpperCase()}` : '',
+                it.cook_time
+                  ? `CUISSON ${formatTime(it.cook_time).toUpperCase()}${it.cook_temp ? ' · ' + it.cook_temp + ' °C' : ''}`
+                  : it.cook_temp
+                    ? `CUISSON ${it.cook_temp} °C`
+                    : '',
+              ].filter(Boolean);
+              return (
+                <li
+                  key={it.stepId}
+                  onDragOver={(e) => {
+                    if (dragId === null) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    if (dragId === null) return;
+                    e.preventDefault();
+                    const fromIdx = g.items.findIndex((x) => x.stepId === dragId);
+                    moveStep(g.date, fromIdx, idx);
+                    setDragId(null);
+                  }}
+                  className={`flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap${dragId === it.stepId ? ' opacity-50' : ''}`}
+                >
+                  <span
+                    draggable
+                    onDragStart={(e) => {
+                      setDragId(it.stepId);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragEnd={() => setDragId(null)}
+                    title="Glisser pour réordonner cette étape dans sa journée"
+                    className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                  >
+                    drag_indicator
+                  </span>
+                  <span className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0">{it.recipeTitle}</span>
+                  <span className="font-label-md text-label-md text-primary shrink-0">{it.number}.</span>
+                  <span className="font-body-md flex-1 min-w-[160px]">{it.title || 'Étape ' + it.number}</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {badges.map((b, k) => (
+                      <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">
+                        {b}
+                      </span>
+                    ))}
+                    {stepTotal > 0 && (
+                      <span className="font-label-md text-[11px] bg-primary text-white px-2.5 py-1 whitespace-nowrap">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}

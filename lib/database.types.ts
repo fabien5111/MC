@@ -995,6 +995,7 @@ export type Database = {
           cook_time: number | null
           created_at: string
           day_offset: number
+          day_order_index: number | null
           description: string | null
           id: number
           note_position: string
@@ -1018,6 +1019,7 @@ export type Database = {
           cook_time?: number | null
           created_at?: string
           day_offset?: number
+          day_order_index?: number | null
           description?: string | null
           id?: number
           note_position?: string
@@ -1041,6 +1043,7 @@ export type Database = {
           cook_time?: number | null
           created_at?: string
           day_offset?: number
+          day_order_index?: number | null
           description?: string | null
           id?: number
           note_position?: string

@@ -30,8 +30,21 @@ export type PlanningRow = {
   // supprimé — seulement archivé (cf. CLAUDE.md « Recettes planifiées »).
   executions: { count: number }[];
   // Jours nécessaires : calculé depuis le plan matérialisé (plan_steps),
-  // pas depuis la recette d'origine qui a pu évoluer depuis.
-  plan_steps: { day_offset: number }[];
+  // pas depuis la recette d'origine qui a pu évoluer depuis. Le reste des
+  // colonnes (titre, ordre, durées) sert à la vue par jour transverse à
+  // plusieurs recettes (PlanningDayView) — day_order_index n'est renseignée
+  // qu'après un premier glisser-déposer dans cette vue, cf. CLAUDE.md.
+  plan_steps: {
+    id: number;
+    title: string | null;
+    day_offset: number;
+    day_order_index: number | null;
+    order_index: number;
+    prep_time: number | null;
+    wait_time: number | null;
+    cook_time: number | null;
+    cook_temp: number | null;
+  }[];
   recipes: {
     id: string;
     title: string | null;
@@ -63,7 +76,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
-    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(day_offset)')
+    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, prep_time, wait_time, cook_time, cook_temp)')
     .eq('user_id', userId)
     .eq('status', 'planifie')
     .order('planned_date', { ascending: true });

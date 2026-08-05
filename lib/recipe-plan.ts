@@ -10,7 +10,7 @@
 // plan_ingredients → ...), une table dépendant de l'id de la précédente.
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
-import type { PlanningEntry } from '@/lib/profile';
+import type { PlanningEntry, PlanningRow } from '@/lib/profile';
 
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -28,6 +28,77 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
   const d = new Date(plannedDate + 'T00:00:00');
   d.setDate(d.getDate() - Math.max(0, offset || 0));
   return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+}
+
+export type PlanningDayItem = {
+  stepId: number;
+  planId: number;
+  recipeTitle: string;
+  recipeId: string | null;
+  // Numéro d'étape au sein de sa propre recette (pas un numéro transverse au
+  // jour) : c'est le même numéro que sur la fiche recette planifiée.
+  number: number;
+  title: string | null;
+  order_index: number;
+  day_order_index: number | null;
+  prep_time: number | null;
+  wait_time: number | null;
+  cook_time: number | null;
+  cook_temp: number | null;
+};
+export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
+
+// Regroupe les étapes de TOUTES les recettes planifiées de l'utilisateur par
+// date réelle — vue par jour transverse de l'onglet Planning
+// (PlanningDayView). `day_offset` n'est relatif qu'à la date de dégustation
+// de sa propre recette : deux recettes planifiées le même jour calendaire
+// doivent d'abord être ramenées à cette date commune avant de pouvoir
+// regrouper leurs étapes ensemble (cf. `planDayLabel`, même calcul).
+//
+// Tri par défaut tant qu'aucune étape du jour n'a été réordonnée
+// manuellement (`day_order_index` toutes nulles) : `plans` doit déjà être
+// trié par `planned_date` (comme le renvoie `getPlanning`) — combiné à
+// `order_index` au sein de chaque plan, cet ordre d'insertion sert de tri
+// stable par défaut.
+export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup[] {
+  const withDate: (PlanningDayItem & { date: string })[] = [];
+  plans.forEach((p) => {
+    if (!p.planned_date) return;
+    const recipeTitle = p.recipe_title || p.recipes?.title || '';
+    [...p.plan_steps]
+      .sort((a, b) => a.order_index - b.order_index)
+      .forEach((s, i) => {
+        const d = new Date(p.planned_date + 'T00:00:00');
+        d.setDate(d.getDate() - Math.max(0, s.day_offset || 0));
+        withDate.push({
+          stepId: s.id,
+          planId: p.id,
+          recipeTitle,
+          recipeId: p.recipes?.id ?? p.recipe_id,
+          number: i + 1,
+          title: s.title,
+          order_index: s.order_index,
+          day_order_index: s.day_order_index,
+          prep_time: s.prep_time,
+          wait_time: s.wait_time,
+          cook_time: s.cook_time,
+          cook_temp: s.cook_temp,
+          date: d.toISOString().slice(0, 10),
+        });
+      });
+  });
+  const map = new Map<string, PlanningDayItem[]>();
+  withDate.forEach(({ date, ...item }) => {
+    const arr = map.get(date);
+    if (arr) arr.push(item);
+    else map.set(date, [item]);
+  });
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({
+      date,
+      items: [...items].sort((a, b) => (a.day_order_index ?? Infinity) - (b.day_order_index ?? Infinity)),
+    }));
 }
 
 // ── Lignes des tables plan_* / execution_* ────────────────────────────
