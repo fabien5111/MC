@@ -10,6 +10,7 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
+import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
@@ -88,54 +89,53 @@ export default async function HomePage() {
         {featured && (
           <section className="mb-20">
             <div className="luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
-              <div className="grid md:grid-cols-2 gap-0 relative">
-                <Link
-                  href={`/recette/${featured.id}`}
-                  className="relative h-[400px] md:h-auto overflow-hidden block group"
-                >
-                  <div className="w-full h-full bg-surface-container">
-                    {featured.hero_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                      <img
-                        src={featured.hero_image_url}
-                        alt={featured.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                        <span className="material-symbols-outlined text-6xl">cake</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="absolute top-6 left-6">
-                    <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
-                      Recette du Mois
-                    </span>
-                  </div>
-                </Link>
-                <FavoriteHeart
-                  recipeId={featured.id}
-                  initialFav={favIds.has(featured.id)}
-                  className="top-6 right-6"
-                />
-                {featuredIsOwner && (
-                  <Link
-                    href={`/creer?id=${featured.id}`}
-                    title="Éditer cette recette"
-                    prefetch={false}
-                    className="absolute top-6 right-[4.25rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
-                  >
-                    <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+              <div className="grid md:grid-cols-2 gap-0">
+                <div className="relative h-[400px] md:h-auto overflow-hidden">
+                  <Link href={`/recette/${featured.id}`} className="block group h-full">
+                    <div className="w-full h-full bg-surface-container">
+                      {featured.hero_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                        <img
+                          src={featured.hero_image_url}
+                          alt={featured.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+                          <span className="material-symbols-outlined text-6xl">cake</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute top-6 left-6">
+                      <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
+                        Recette du Mois
+                      </span>
+                    </div>
                   </Link>
-                )}
-                <Link
-                  href={`/recette/${featured.id}?planifier=1`}
-                  title="Planifier cette recette"
-                  prefetch={false}
-                  className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
-                >
-                  <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
-                </Link>
+                  <FavoriteHeart
+                    recipeId={featured.id}
+                    initialFav={favIds.has(featured.id)}
+                    className="top-6 right-6"
+                  />
+                  {featuredIsOwner && (
+                    <Link
+                      href={`/creer?id=${featured.id}`}
+                      title="Éditer cette recette"
+                      prefetch={false}
+                      className="absolute top-6 right-[4.25rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+                    </Link>
+                  )}
+                  <Link
+                    href={`/recette/${featured.id}?planifier=1`}
+                    title="Planifier cette recette"
+                    prefetch={false}
+                    className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+                  >
+                    <PlanBadgeIcon />
+                  </Link>
+                </div>
 
                 <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
                   <span className="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">
