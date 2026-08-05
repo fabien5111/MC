@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
@@ -36,7 +35,6 @@ import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanNotes } from '@/components/recipe/PlanNotes';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
 import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
-import { PlanStepsDayView, type DayViewStep } from '@/components/recipe/PlanStepsDayView';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
@@ -48,29 +46,6 @@ type Params = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ plan?: string; planifier?: string }>;
 };
-
-// Bascule vue séquentielle / vue par jour : uniquement en mode planifié (la
-// notion de jour éditable n'existe que sur un plan, cf. PlanStepDonePanel).
-// Composant serveur trivial (pas de 'use client') : il ne fait que choisir
-// d'envelopper ou non les enfants déjà rendus dans PlanStepsDayView.
-function MaybePlanStepsDayView({
-  planContext,
-  dayViewSteps,
-  plannedDate,
-  children,
-}: {
-  planContext: boolean;
-  dayViewSteps: DayViewStep[];
-  plannedDate: string | null;
-  children: ReactNode;
-}) {
-  if (!planContext) return <>{children}</>;
-  return (
-    <PlanStepsDayView steps={dayViewSteps} plannedDate={plannedDate}>
-      {children}
-    </PlanStepsDayView>
-  );
-}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
@@ -229,23 +204,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
   const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  // Données de la « vue par jour » (PlanStepsDayView) : numéro d'étape global
-  // (même numérotation que la vue séquentielle, position dans `steps` déjà
-  // triée par order_index), sans le détail (ingrédients/sous-étapes/photos).
-  const dayViewSteps: DayViewStep[] = planContext
-    ? steps.map((s, i) => ({
-        id: s.id,
-        number: i + 1,
-        title: s.title,
-        day_offset: Math.max(0, s.day_offset || 0),
-        order_index: s.order_index || 0,
-        prep_time: s.prep_time,
-        wait_time: s.wait_time,
-        cook_time: s.cook_time,
-        cook_temp: s.cook_temp,
-        fully_done: !!s.fully_done,
-      }))
-    : [];
   // Étape brute (plan_steps) par id, pour les sous-étapes brutes du mode
   // planifié (voir rawSubsteps ci-dessous).
   const planStepsById = new Map((planContext?.plan_steps ?? []).map((ps) => [ps.id, ps]));
@@ -796,7 +754,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Étapes */}
           {steps.length > 0 && (
-            <MaybePlanStepsDayView planContext={!!planContext} dayViewSteps={dayViewSteps} plannedDate={planContext?.planned_date ?? null}>
             <div id="sec-etapes" className="scroll-mt-28 space-y-16">
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
@@ -964,7 +921,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 );
               })}
             </div>
-            </MaybePlanStepsDayView>
           )}
 
           {/* Conseils de la recette */}
