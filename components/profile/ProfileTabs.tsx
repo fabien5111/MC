@@ -47,6 +47,7 @@ export function ProfileTabs({
   favorites,
   planning,
   activeSessions,
+  runningExecSteps,
   shoppingLists,
   favIds,
 }: {
@@ -54,6 +55,7 @@ export function ProfileTabs({
   favorites: FavoriteRow[];
   planning: PlanningRow[];
   activeSessions: ActiveExecutionRow[];
+  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]>;
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
@@ -368,7 +370,7 @@ export function ProfileTabs({
             )}
           </div>
           {planningView === 'jours' ? (
-            <PlanningDayView plans={planningList} />
+            <PlanningDayView plans={planningList} runningExecSteps={runningExecSteps} />
           ) : planningList.length > 0 ? (
             <div className="space-y-4 max-w-3xl">
               {planningList.map((p) => {

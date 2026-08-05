@@ -46,6 +46,11 @@ export type PlanningDayItem = {
   wait_time: number | null;
   cook_time: number | null;
   cook_temp: number | null;
+  // Session de préparation en cours pour cette étape, s'il y en a une — pour
+  // pointer le lien de PlanningDayView directement dessus plutôt que sur la
+  // fiche recette planifiée (cf. `getActiveExecutionStepsForUser`).
+  executionId: number | null;
+  executionStepId: number | null;
 };
 export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 
@@ -61,7 +66,15 @@ export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 // trié par `planned_date` (comme le renvoie `getPlanning`) — combiné à
 // `order_index` au sein de chaque plan, cet ordre d'insertion sert de tri
 // stable par défaut.
-export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup[] {
+//
+// `runningExecSteps` : sessions en cours de l'utilisateur, indexées par
+// `plan_step_id` (cf. `getActiveExecutionStepsForUser`) — un plan_step_id
+// n'a normalement qu'une seule session active à la fois, on prend la
+// première si plusieurs.
+export function groupPlanningStepsByDate(
+  plans: PlanningRow[],
+  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]> = {},
+): PlanningDayGroup[] {
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
     if (!p.planned_date) return;
@@ -71,6 +84,7 @@ export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup
       .forEach((s, i) => {
         const d = new Date(p.planned_date + 'T00:00:00');
         d.setDate(d.getDate() - Math.max(0, s.day_offset || 0));
+        const running = runningExecSteps[s.id]?.[0] ?? null;
         withDate.push({
           stepId: s.id,
           planId: p.id,
@@ -85,6 +99,8 @@ export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup
           wait_time: s.wait_time,
           cook_time: s.cook_time,
           cook_temp: s.cook_temp,
+          executionId: running?.execution_id ?? null,
+          executionStepId: running?.execution_step_id ?? null,
           date: d.toISOString().slice(0, 10),
         });
       });

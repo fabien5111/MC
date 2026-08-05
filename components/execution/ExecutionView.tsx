@@ -249,6 +249,24 @@ export function ExecutionView({
   }
 
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
+
+  // Lien direct vers une étape (ex. depuis la vue par jour de Profil >
+  // Planning, cf. PlanningDayView) : `#etape-<id>` déplie le jalon qui la
+  // contient (replié par défaut s'il n'est ni courant ni en retard) puis
+  // scrolle jusqu'à elle. Une seule fois au montage — pas à chaque évolution
+  // de `jalons`, sinon une simple coche ailleurs sur la page reviendrait
+  // recentrer l'écran sur cette étape.
+  useEffect(() => {
+    const m = /^#etape-(\d+)$/.exec(location.hash);
+    if (!m) return;
+    const stepId = Number(m[1]);
+    const ji = jalons.findIndex((j) => j.steps.some((s) => s.id === stepId));
+    if (ji === -1) return;
+    expandJalon(ji);
+    setTimeout(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deg = exec.degustation_at
     ? new Date(exec.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : null;
@@ -615,7 +633,11 @@ function StepCard({
   const substeps = [...s.execution_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
   return (
-    <div className={`border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div
+      id={`etape-${s.id}`}
+      className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`}
+      data-step-pending={isPending ? '' : undefined}
+    >
       <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
         <input
           type="checkbox"

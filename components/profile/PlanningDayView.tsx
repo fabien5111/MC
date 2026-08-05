@@ -21,13 +21,22 @@ import type { PlanningRow } from '@/lib/profile';
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-export function PlanningDayView({ plans }: { plans: PlanningRow[] }) {
+export function PlanningDayView({
+  plans,
+  runningExecSteps,
+}: {
+  plans: PlanningRow[];
+  // Sessions en cours de l'utilisateur, indexées par plan_step_id — pour
+  // faire pointer le lien de chaque étape vers sa session active plutôt que
+  // vers la fiche recette planifiée, quand une session est en cours.
+  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]>;
+}) {
   const { mutate, busy } = useMutation();
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
 
-  const groups = groupPlanningStepsByDate(list);
+  const groups = groupPlanningStepsByDate(list, runningExecSteps);
 
   // Réordonne les étapes d'UN jour (entre recettes potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
@@ -122,20 +131,35 @@ export function PlanningDayView({ plans }: { plans: PlanningRow[] }) {
                     drag_indicator
                   </span>
                   <span className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0">{it.recipeTitle}</span>
-                  {/* Pas de lien si la recette a été supprimée depuis (recipeId
-                      absent, recipeTitle dénormalisé prend le relais pour
-                      l'affichage — cf. CLAUDE.md). */}
-                  {it.recipeId ? (
-                    <Link href={`/recette/${it.recipeId}?plan=${it.planId}#sec-etape-${it.number}`} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
+                  {/* Priorité à la session active si elle existe (l'étape s'y
+                      exécute réellement) ; sinon la fiche recette planifiée ;
+                      pas de lien si la recette a été supprimée depuis
+                      (recipeId absent, recipeTitle dénormalisé prend le
+                      relais pour l'affichage — cf. CLAUDE.md). */}
+                  {(() => {
+                    const href = it.executionId
+                      ? `/execution/${it.executionId}#etape-${it.executionStepId}`
+                      : it.recipeId
+                        ? `/recette/${it.recipeId}?plan=${it.planId}#sec-etape-${it.number}`
+                        : null;
+                    const numberSpan = (
                       <span className={`font-label-md text-label-md shrink-0 ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>
+                    );
+                    const titleSpan = (
                       <span className={`font-body-md ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>
-                    </Link>
-                  ) : (
-                    <span className="flex items-baseline gap-1.5 flex-1 min-w-[160px]">
-                      <span className={`font-label-md text-label-md shrink-0 ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>
-                      <span className={`font-body-md ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>
-                    </span>
-                  )}
+                    );
+                    return href ? (
+                      <Link href={href} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
+                        {numberSpan}
+                        {titleSpan}
+                      </Link>
+                    ) : (
+                      <span className="flex items-baseline gap-1.5 flex-1 min-w-[160px]">
+                        {numberSpan}
+                        {titleSpan}
+                      </span>
+                    );
+                  })()}
                   <div className="flex gap-2 flex-wrap">
                     {badges.map((b, k) => (
                       <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">

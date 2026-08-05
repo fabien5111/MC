@@ -75,6 +75,28 @@ export async function getRunningExecutionSteps(planningId: number): Promise<Reco
   return map;
 }
 
+// Même chose que `getRunningExecutionSteps`, mais transverse à tous les plans
+// de l'utilisateur (au lieu d'un seul `planning_id`) — pour faire pointer un
+// lien depuis la vue par jour du Planning (PlanningDayView) directement vers
+// l'étape correspondante dans sa session active, plutôt que vers la fiche
+// recette planifiée, quand une session est en cours pour ce plan.
+export async function getActiveExecutionStepsForUser(userId: string): Promise<Record<number, RunningExecStep[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('execution_steps')
+    .select('id, plan_step_id, execution_id, executions!inner(id, status, user_id)')
+    .eq('executions.user_id', userId)
+    .eq('executions.status', 'en_cours')
+    .not('plan_step_id', 'is', null);
+  if (error) console.error('getActiveExecutionStepsForUser:', error.message);
+  const rows = (data as unknown as { id: number; plan_step_id: number; execution_id: number }[]) ?? [];
+  const map: Record<number, RunningExecStep[]> = {};
+  rows.forEach((r) => {
+    (map[r.plan_step_id] = map[r.plan_step_id] || []).push({ execution_id: r.execution_id, execution_step_id: r.id });
+  });
+  return map;
+}
+
 // Commentaires d'étape laissés lors de précédentes sessions du même plan,
 // pour rappel dans l'écran d'exécution en cours (« Sessions précédentes »).
 // Clé : `plan_step_id` (stable entre sessions d'un même plan, contrairement
