@@ -41,6 +41,7 @@ export type PlanningDayItem = {
   title: string | null;
   order_index: number;
   day_order_index: number | null;
+  already_done: boolean;
   prep_time: number | null;
   wait_time: number | null;
   cook_time: number | null;
@@ -79,6 +80,7 @@ export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup
           title: s.title,
           order_index: s.order_index,
           day_order_index: s.day_order_index,
+          already_done: s.already_done,
           prep_time: s.prep_time,
           wait_time: s.wait_time,
           cook_time: s.cook_time,

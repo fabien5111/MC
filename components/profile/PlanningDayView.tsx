@@ -10,6 +10,7 @@
 // l'intérieur d'un seul plan), d'où `day_order_index`, une colonne dédiée à
 // cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce jour-là.
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -121,8 +122,20 @@ export function PlanningDayView({ plans }: { plans: PlanningRow[] }) {
                     drag_indicator
                   </span>
                   <span className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0">{it.recipeTitle}</span>
-                  <span className="font-label-md text-label-md text-primary shrink-0">{it.number}.</span>
-                  <span className="font-body-md flex-1 min-w-[160px]">{it.title || 'Étape ' + it.number}</span>
+                  {/* Pas de lien si la recette a été supprimée depuis (recipeId
+                      absent, recipeTitle dénormalisé prend le relais pour
+                      l'affichage — cf. CLAUDE.md). */}
+                  {it.recipeId ? (
+                    <Link href={`/recette/${it.recipeId}?plan=${it.planId}#sec-etape-${it.number}`} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
+                      <span className={`font-label-md text-label-md shrink-0 ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>
+                      <span className={`font-body-md ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>
+                    </Link>
+                  ) : (
+                    <span className="flex items-baseline gap-1.5 flex-1 min-w-[160px]">
+                      <span className={`font-label-md text-label-md shrink-0 ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>
+                      <span className={`font-body-md ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>
+                    </span>
+                  )}
                   <div className="flex gap-2 flex-wrap">
                     {badges.map((b, k) => (
                       <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">

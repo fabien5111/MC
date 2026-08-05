@@ -40,6 +40,7 @@ export type PlanningRow = {
     day_offset: number;
     day_order_index: number | null;
     order_index: number;
+    already_done: boolean;
     prep_time: number | null;
     wait_time: number | null;
     cook_time: number | null;
@@ -76,7 +77,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
-    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, prep_time, wait_time, cook_time, cook_temp)')
+    .select('*, executions(count), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, already_done, prep_time, wait_time, cook_time, cook_temp)')
     .eq('user_id', userId)
     .eq('status', 'planifie')
     .order('planned_date', { ascending: true });
