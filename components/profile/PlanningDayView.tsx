@@ -11,6 +11,7 @@
 // cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce jour-là.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -22,6 +23,13 @@ import type { RunningExecStep } from '@/lib/executions';
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
+// Date du jour au format YYYY-MM-DD en heure locale (pas `toISOString()`,
+// qui bascule en UTC et décalerait la comparaison près de minuit).
+const todayIso = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export function PlanningDayView({
   plans,
   runningExecSteps,
@@ -32,12 +40,30 @@ export function PlanningDayView({
   // vers la fiche recette planifiée, quand une session est en cours.
   runningExecSteps: Record<number, RunningExecStep[]>;
 }) {
+  const router = useRouter();
   const { mutate, busy } = useMutation();
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
+  const [showPast, setShowPast] = useState(false);
+
+  // Une étape cochée depuis l'écran d'exécution (autre page) n'a aucune
+  // raison d'invalidater le cache de navigation client de cette page-ci —
+  // resynchronisation explicite à chaque arrivée sur cette vue, quel que
+  // soit le chemin (chargement direct, bascule d'onglet, retour arrière).
+  useEffect(() => {
+    router.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const groups = groupPlanningStepsByDate(list, runningExecSteps);
+  const today = todayIso();
+  // Jour passé et entièrement traité : replié par défaut derrière le bandeau
+  // ci-dessous, pour ne pas noyer les jours à venir sous un historique qui
+  // grossit sans fin.
+  const isPastDone = (g: (typeof groups)[number]) => g.date < today && g.items.every((it) => it.already_done || it.sessionDone);
+  const visibleGroups = groups.filter((g) => showPast || !isPastDone(g));
+  const hiddenCount = groups.length - visibleGroups.length;
 
   // Réordonne les étapes d'UN jour (entre recettes potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
@@ -87,7 +113,22 @@ export function PlanningDayView({
   return (
     <div className="flex flex-col gap-8">
       <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
-      {groups.map((g) => (
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPast((v) => !v)}
+          className="self-start flex items-center gap-2 font-label-md text-label-md text-on-surface-variant hover:text-primary"
+        >
+          <span className="material-symbols-outlined text-[18px]">{showPast ? 'expand_less' : 'expand_more'}</span>
+          {showPast
+            ? 'Masquer les journées passées terminées'
+            : `Afficher ${hiddenCount} journée${hiddenCount > 1 ? 's' : ''} passée${hiddenCount > 1 ? 's' : ''} terminée${hiddenCount > 1 ? 's' : ''}`}
+        </button>
+      )}
+      {visibleGroups.length === 0 && (
+        <p className="text-on-surface-variant italic">Toutes vos journées planifiées sont terminées.</p>
+      )}
+      {visibleGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
           <h3 className="font-headline-md text-headline-md text-primary mb-4 capitalize">{dateLabel(g.date)}</h3>
           <ul className="flex flex-col">

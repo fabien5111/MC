@@ -79,8 +79,13 @@ export function ProfileTabs({
   useEffect(() => {
     const fromHash = () => {
       const h = location.hash;
-      if (h === '#planning') setTab('planning');
-      else if (h === '#sessions') setTab('sessions');
+      if (h === '#planning-jours') {
+        setTab('planning');
+        setPlanningView('jours');
+      } else if (h === '#planning') {
+        setTab('planning');
+        setPlanningView('recettes');
+      } else if (h === '#sessions') setTab('sessions');
       else if (h.startsWith('#courses')) setTab('courses');
       else if (h === '' || h === '#') setTab('recipes');
     };
@@ -91,8 +96,21 @@ export function ProfileTabs({
 
   function switchTab(k: TabKey) {
     setTab(k);
+    // Un clic direct sur l'onglet Planning revient toujours à la vue par
+    // recette par défaut, pour que le hash (#planning) et l'état affiché
+    // restent cohérents.
+    if (k === 'planning') setPlanningView('recettes');
     const hash = k === 'planning' ? '#planning' : k === 'sessions' ? '#sessions' : k === 'courses' ? '#courses' : ' ';
     history.replaceState(null, '', hash === ' ' ? location.pathname : hash);
+  }
+
+  // Bascule vue par recette / vue par jour de l'onglet Planning, tracée dans
+  // le hash (comme `switchTab`) : sans ça, un retour arrière du navigateur
+  // depuis une session de préparation ne rétablit jamais la vue par jour,
+  // toujours réinitialisée à « recettes ».
+  function switchPlanningView(v: 'recettes' | 'jours') {
+    setPlanningView(v);
+    history.replaceState(null, '', v === 'jours' ? '#planning-jours' : '#planning');
   }
 
   async function delShoppingList(id: number, name: string) {
@@ -354,14 +372,14 @@ export function ProfileTabs({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setPlanningView('recettes')}
+                  onClick={() => switchPlanningView('recettes')}
                   className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'recettes' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
                 >
                   Vue par recette
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPlanningView('jours')}
+                  onClick={() => switchPlanningView('jours')}
                   className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'jours' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
                 >
                   Vue par jour
