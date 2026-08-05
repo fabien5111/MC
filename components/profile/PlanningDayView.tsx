@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
-import { groupPlanningStepsByDate } from '@/lib/recipe-plan';
+import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
 import type { PlanningRow } from '@/lib/profile';
 import type { RunningExecStep } from '@/lib/executions';
 
@@ -99,28 +99,18 @@ export function PlanningDayView({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy || refreshing} label={refreshing ? 'Actualisation…' : 'Réorganisation en cours…'} />
-      {groups.map((g) => {
-        // Journée entièrement traitée (peu importe la date, passée ou non) :
-        // repliée par défaut derrière son en-tête, comme les autres volets
-        // dépliables de l'appli (ingrédients, jalons d'exécution…) — pour ne
-        // pas noyer les jours restants sous un historique qui grossit.
-        const allDone = g.items.every((it) => it.already_done || it.sessionDone);
-        return (
-          <details key={g.date} open={!allDone} className="group border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
-            <summary className="flex items-center justify-between gap-3 p-6 cursor-pointer list-none">
-              <h3 className="font-headline-md text-headline-md text-primary capitalize">{dateLabel(g.date)}</h3>
-              <span className="flex items-center gap-3 shrink-0">
-                {allDone && (
-                  <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full whitespace-nowrap">Terminée</span>
-                )}
-                <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
-              </span>
-            </summary>
-          <ul className="flex flex-col px-6 pb-6">
-            {g.items.map((it, idx) => {
+  // Une journée est « terminée » dès que toutes ses étapes sont déjà
+  // réalisées (plan) ou cochées (session active) — peu importe sa date,
+  // passée ou non. Regroupées à part, repliées par défaut : pas noyer les
+  // jours restants sous un historique qui grossit sans fin.
+  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.already_done || it.sessionDone);
+  const pendingGroups = groups.filter((g) => !isDone(g));
+  const doneGroups = groups.filter(isDone);
+
+  function renderSteps(g: PlanningDayGroup) {
+    return (
+      <ul className="flex flex-col px-6 pb-6">
+        {g.items.map((it, idx) => {
               const stepTotal = (it.prep_time || 0) + (it.wait_time || 0) + (it.cook_time || 0);
               const badges = [
                 it.prep_time ? `PRÉP ${formatTime(it.prep_time).toUpperCase()}` : '',
@@ -203,10 +193,38 @@ export function PlanningDayView({
                 </li>
               );
             })}
-          </ul>
-          </details>
-        );
-      })}
+      </ul>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <LoadingOverlay visible={busy || refreshing} label={refreshing ? 'Actualisation…' : 'Réorganisation en cours…'} />
+      {pendingGroups.map((g) => (
+        <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
+          <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>
+          {renderSteps(g)}
+        </div>
+      ))}
+      {doneGroups.length > 0 && (
+        <details className="group border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
+          <summary className="flex items-center justify-between gap-3 p-6 cursor-pointer list-none">
+            <span className="font-headline-md text-headline-md text-primary flex items-center gap-3">
+              Journées terminées
+              <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full">{doneGroups.length}</span>
+            </span>
+            <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+          </summary>
+          <div className="flex flex-col gap-6 pb-2">
+            {doneGroups.map((g) => (
+              <div key={g.date} className="border-t border-outline-variant/50 first:border-t-0">
+                <h4 className="font-headline-md text-[18px] text-primary capitalize px-6 pt-4 pb-2">{dateLabel(g.date)}</h4>
+                {renderSteps(g)}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
