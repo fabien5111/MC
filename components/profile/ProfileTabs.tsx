@@ -435,14 +435,31 @@ export function ProfileTabs({
                         {p.notes && <p className="font-body-md text-[12px] text-on-surface-variant italic">{p.notes}</p>}
                       </div>
                     </Link>
-                    <button
-                      type="button"
-                      title="Retirer du planning"
-                      onClick={() => delPlan(p)}
-                      className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {p.active_execution.length > 0 ? (
+                        <Link
+                          href={`/execution/${p.active_execution[0].id}`}
+                          className="flex items-center gap-1.5 bg-secondary/90 text-white px-3 py-1.5 rounded-full font-label-md text-[11px] whitespace-nowrap hover:opacity-90"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">play_circle</span> Session en cours
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`}
+                          className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-full font-label-md text-[11px] whitespace-nowrap hover:bg-primary hover:text-white transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">play_arrow</span> Démarrer une session
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        title="Retirer du planning"
+                        onClick={() => delPlan(p)}
+                        className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}

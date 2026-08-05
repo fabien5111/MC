@@ -23,13 +23,6 @@ import type { RunningExecStep } from '@/lib/executions';
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-// Date du jour au format YYYY-MM-DD en heure locale (pas `toISOString()`,
-// qui bascule en UTC et décalerait la comparaison près de minuit).
-const todayIso = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
 export function PlanningDayView({
   plans,
   runningExecSteps,
@@ -45,7 +38,6 @@ export function PlanningDayView({
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
-  const [showPast, setShowPast] = useState(false);
 
   // Une étape cochée depuis l'écran d'exécution (autre page) n'a aucune
   // raison d'invalidater le cache de navigation client de cette page-ci —
@@ -61,13 +53,6 @@ export function PlanningDayView({
   }, []);
 
   const groups = groupPlanningStepsByDate(list, runningExecSteps);
-  const today = todayIso();
-  // Jour passé et entièrement traité : replié par défaut derrière le bandeau
-  // ci-dessous, pour ne pas noyer les jours à venir sous un historique qui
-  // grossit sans fin.
-  const isPastDone = (g: (typeof groups)[number]) => g.date < today && g.items.every((it) => it.already_done || it.sessionDone);
-  const visibleGroups = groups.filter((g) => showPast || !isPastDone(g));
-  const hiddenCount = groups.length - visibleGroups.length;
 
   // Réordonne les étapes d'UN jour (entre recettes potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
@@ -117,25 +102,24 @@ export function PlanningDayView({
   return (
     <div className="flex flex-col gap-8">
       <LoadingOverlay visible={busy || refreshing} label={refreshing ? 'Actualisation…' : 'Réorganisation en cours…'} />
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowPast((v) => !v)}
-          className="self-start flex items-center gap-2 font-label-md text-label-md text-on-surface-variant hover:text-primary"
-        >
-          <span className="material-symbols-outlined text-[18px]">{showPast ? 'expand_less' : 'expand_more'}</span>
-          {showPast
-            ? 'Masquer les journées passées terminées'
-            : `Afficher ${hiddenCount} journée${hiddenCount > 1 ? 's' : ''} passée${hiddenCount > 1 ? 's' : ''} terminée${hiddenCount > 1 ? 's' : ''}`}
-        </button>
-      )}
-      {visibleGroups.length === 0 && (
-        <p className="text-on-surface-variant italic">Toutes vos journées planifiées sont terminées.</p>
-      )}
-      {visibleGroups.map((g) => (
-        <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
-          <h3 className="font-headline-md text-headline-md text-primary mb-4 capitalize">{dateLabel(g.date)}</h3>
-          <ul className="flex flex-col">
+      {groups.map((g) => {
+        // Journée entièrement traitée (peu importe la date, passée ou non) :
+        // repliée par défaut derrière son en-tête, comme les autres volets
+        // dépliables de l'appli (ingrédients, jalons d'exécution…) — pour ne
+        // pas noyer les jours restants sous un historique qui grossit.
+        const allDone = g.items.every((it) => it.already_done || it.sessionDone);
+        return (
+          <details key={g.date} open={!allDone} className="group border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
+            <summary className="flex items-center justify-between gap-3 p-6 cursor-pointer list-none">
+              <h3 className="font-headline-md text-headline-md text-primary capitalize">{dateLabel(g.date)}</h3>
+              <span className="flex items-center gap-3 shrink-0">
+                {allDone && (
+                  <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full whitespace-nowrap">Terminée</span>
+                )}
+                <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+              </span>
+            </summary>
+          <ul className="flex flex-col px-6 pb-6">
             {g.items.map((it, idx) => {
               const stepTotal = (it.prep_time || 0) + (it.wait_time || 0) + (it.cook_time || 0);
               const badges = [
@@ -220,8 +204,9 @@ export function PlanningDayView({
               );
             })}
           </ul>
-        </div>
-      ))}
+          </details>
+        );
+      })}
     </div>
   );
 }
