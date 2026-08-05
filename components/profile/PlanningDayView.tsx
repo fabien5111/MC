@@ -9,7 +9,7 @@
 // entre plans avant ce geste (`plan_steps.order_index` n'ordonne qu'à
 // l'intérieur d'un seul plan), d'où `day_order_index`, une colonne dédiée à
 // cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce jour-là.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -51,8 +51,12 @@ export function PlanningDayView({
   // raison d'invalidater le cache de navigation client de cette page-ci —
   // resynchronisation explicite à chaque arrivée sur cette vue, quel que
   // soit le chemin (chargement direct, bascule d'onglet, retour arrière).
+  // `useTransition` permet d'afficher le spinner pendant l'attente : sans
+  // lui, l'écran affiche d'abord les données encore en cache puis se corrige
+  // silencieusement à l'arrivée de la réponse, ce qui se voit comme un saut.
+  const [refreshing, startRefresh] = useTransition();
   useEffect(() => {
-    router.refresh();
+    startRefresh(() => router.refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -112,7 +116,7 @@ export function PlanningDayView({
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
+      <LoadingOverlay visible={busy || refreshing} label={refreshing ? 'Actualisation…' : 'Réorganisation en cours…'} />
       {hiddenCount > 0 && (
         <button
           type="button"
