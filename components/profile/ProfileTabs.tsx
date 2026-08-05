@@ -17,10 +17,11 @@ import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { UserRecipeCard } from '@/lib/recipes';
+import type { ActiveExecutionRow } from '@/lib/executions';
 
 export type UserRecipe = UserRecipeCard;
 
-type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'courses';
+type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'sessions' | 'courses';
 
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
@@ -36,6 +37,7 @@ const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: 'imports', label: 'Import de recettes', href: '/importer' },
   { key: 'favorites', label: 'Mes Favoris' },
   { key: 'planning', label: 'Planning' },
+  { key: 'sessions', label: 'Sessions actives' },
   { key: 'courses', label: 'Listes de courses' },
 ];
 
@@ -43,12 +45,14 @@ export function ProfileTabs({
   recipes,
   favorites,
   planning,
+  activeSessions,
   shoppingLists,
   favIds,
 }: {
   recipes: UserRecipe[];
   favorites: FavoriteRow[];
   planning: PlanningRow[];
+  activeSessions: ActiveExecutionRow[];
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
@@ -69,6 +73,7 @@ export function ProfileTabs({
     const fromHash = () => {
       const h = location.hash;
       if (h === '#planning') setTab('planning');
+      else if (h === '#sessions') setTab('sessions');
       else if (h.startsWith('#courses')) setTab('courses');
       else if (h === '' || h === '#') setTab('recipes');
     };
@@ -79,7 +84,7 @@ export function ProfileTabs({
 
   function switchTab(k: TabKey) {
     setTab(k);
-    const hash = k === 'planning' ? '#planning' : k === 'courses' ? '#courses' : ' ';
+    const hash = k === 'planning' ? '#planning' : k === 'sessions' ? '#sessions' : k === 'courses' ? '#courses' : ' ';
     history.replaceState(null, '', hash === ' ' ? location.pathname : hash);
   }
 
@@ -398,6 +403,39 @@ export function ProfileTabs({
           ) : (
             <p className="text-on-surface-variant italic">
               Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Sessions actives */}
+      {tab === 'sessions' && (
+        <div className="py-10">
+          <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
+            <span className="material-symbols-outlined">play_circle</span> Sessions actives
+          </h2>
+          {activeSessions.length > 0 ? (
+            <div className="space-y-4 max-w-3xl">
+              {activeSessions.map((x) => (
+                <Link
+                  key={x.id}
+                  href={`/execution/${x.id}`}
+                  className="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center gap-4 hover:bg-surface-container transition-colors"
+                >
+                  <div>
+                    <p className="font-label-md text-primary">{x.planning?.recipe_title || 'Session de préparation'}</p>
+                    <p className="font-body-md text-[12px] text-on-surface-variant">
+                      Démarrée le{' '}
+                      {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <span className="font-label-md text-label-md text-primary whitespace-nowrap">Reprendre</span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-on-surface-variant italic">
+              Aucune session de préparation en cours. Démarrez-en une depuis une recette planifiée.
             </p>
           )}
         </div>

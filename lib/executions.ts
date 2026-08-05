@@ -7,6 +7,9 @@ import { EXECUTION_FULL_SELECT, type ExecutionFull } from '@/lib/recipe-plan';
 
 export type Execution = ExecutionFull;
 export type ExecutionSummary = Pick<Execution, 'id' | 'status' | 'date_debut' | 'date_fin' | 'degustation_at' | 'commentaire_global'>;
+export type ActiveExecutionRow = Pick<Execution, 'id' | 'date_debut' | 'degustation_at'> & {
+  planning: { recipe_title: string | null } | null;
+};
 
 export async function getExecution(id: number): Promise<Execution | null> {
   const supabase = await createClient();
@@ -25,6 +28,21 @@ export async function getExecutions(planningId: number): Promise<ExecutionSummar
     .order('date_debut', { ascending: false });
   if (error) console.error('getExecutions:', error.message);
   return data ?? [];
+}
+
+// Sessions en cours de l'utilisateur, tous plans confondus (onglet « Sessions
+// actives » du profil) — `executions.user_id` évite un détour par `planning`
+// pour filtrer par propriétaire.
+export async function getActiveExecutions(userId: string): Promise<ActiveExecutionRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('executions')
+    .select('id, date_debut, degustation_at, planning(recipe_title)')
+    .eq('user_id', userId)
+    .eq('status', 'en_cours')
+    .order('date_debut', { ascending: false });
+  if (error) console.error('getActiveExecutions:', error.message);
+  return (data as unknown as ActiveExecutionRow[]) ?? [];
 }
 
 // Étapes des sessions **en cours** d'un plan, indexées par `plan_step_id`.
