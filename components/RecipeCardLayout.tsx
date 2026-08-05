@@ -8,6 +8,7 @@ import { formatTime } from '@/lib/format';
 import { effectiveTimes } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function RecipeCardLayout({
@@ -106,7 +107,7 @@ export function RecipeCardLayout({
         prefetch={false}
         className={`absolute top-3 ${planPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
       >
-        <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+        <PlanBadgeIcon />
       </Link>
     </article>
   );

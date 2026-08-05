@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
+import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 import { cardAllergenNames } from '@/lib/recipe-view';
 
@@ -52,7 +53,7 @@ export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFa
         prefetch={false}
         className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
       >
-        <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+        <PlanBadgeIcon />
       </Link>
     </div>
   );
