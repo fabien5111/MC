@@ -41,6 +41,8 @@ export type PlanningDayItem = {
   title: string | null;
   order_index: number;
   day_order_index: number | null;
+  // « Déjà réalisé » côté plan (case cochée sur la fiche recette avant même
+  // de démarrer une session), distinct de `sessionDone` ci-dessous.
   already_done: boolean;
   prep_time: number | null;
   wait_time: number | null;
@@ -51,6 +53,10 @@ export type PlanningDayItem = {
   // fiche recette planifiée (cf. `getActiveExecutionStepsForUser`).
   executionId: number | null;
   executionStepId: number | null;
+  // Étape cochée dans cette session active (execution_steps.done) — distinct
+  // de `already_done` (une session peut cocher une étape sans que le plan
+  // ait jamais été marqué « Déjà réalisé », et inversement).
+  sessionDone: boolean;
 };
 export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 
@@ -73,7 +79,7 @@ export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 // première si plusieurs.
 export function groupPlanningStepsByDate(
   plans: PlanningRow[],
-  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]> = {},
+  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number; done?: boolean }[]> = {},
 ): PlanningDayGroup[] {
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
@@ -101,6 +107,7 @@ export function groupPlanningStepsByDate(
           cook_temp: s.cook_temp,
           executionId: running?.execution_id ?? null,
           executionStepId: running?.execution_step_id ?? null,
+          sessionDone: !!running?.done,
           date: d.toISOString().slice(0, 10),
         });
       });

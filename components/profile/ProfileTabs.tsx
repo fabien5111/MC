@@ -18,7 +18,7 @@ import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { UserRecipeCard } from '@/lib/recipes';
-import type { ActiveExecutionRow } from '@/lib/executions';
+import type { ActiveExecutionRow, RunningExecStep } from '@/lib/executions';
 
 export type UserRecipe = UserRecipeCard;
 
@@ -55,7 +55,7 @@ export function ProfileTabs({
   favorites: FavoriteRow[];
   planning: PlanningRow[];
   activeSessions: ActiveExecutionRow[];
-  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]>;
+  runningExecSteps: Record<number, RunningExecStep[]>;
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {

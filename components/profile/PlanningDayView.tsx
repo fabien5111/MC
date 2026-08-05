@@ -17,6 +17,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate } from '@/lib/recipe-plan';
 import type { PlanningRow } from '@/lib/profile';
+import type { RunningExecStep } from '@/lib/executions';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -29,7 +30,7 @@ export function PlanningDayView({
   // Sessions en cours de l'utilisateur, indexées par plan_step_id — pour
   // faire pointer le lien de chaque étape vers sa session active plutôt que
   // vers la fiche recette planifiée, quand une session est en cours.
-  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number }[]>;
+  runningExecSteps: Record<number, RunningExecStep[]>;
 }) {
   const { mutate, busy } = useMutation();
   const [list, setList] = useState(plans);
@@ -142,12 +143,12 @@ export function PlanningDayView({
                       : it.recipeId
                         ? `/recette/${it.recipeId}?plan=${it.planId}#sec-etape-${it.number}`
                         : null;
-                    const numberSpan = (
-                      <span className={`font-label-md text-label-md shrink-0 ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>
-                    );
-                    const titleSpan = (
-                      <span className={`font-body-md ${it.already_done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>
-                    );
+                    // Barrée si déjà marquée « Déjà réalisé » sur le plan, ou
+                    // si cochée dans sa session de préparation active — deux
+                    // façons distinctes d'arriver au même constat.
+                    const done = it.already_done || it.sessionDone;
+                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
+                    const titleSpan = <span className={`font-body-md ${done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return href ? (
                       <Link href={href} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
                         {numberSpan}

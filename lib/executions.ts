@@ -56,7 +56,7 @@ export async function getActiveExecutions(userId: string): Promise<ActiveExecuti
 // CLAUDE.md : elle détruirait la trace de ce qui a réellement été fait) :
 // c'est une insertion, rien n'est écrasé. Réservé aux sessions `en_cours` —
 // compléter une session terminée reviendrait à réécrire son histoire.
-export type RunningExecStep = { execution_id: number; execution_step_id: number };
+export type RunningExecStep = { execution_id: number; execution_step_id: number; done?: boolean };
 
 export async function getRunningExecutionSteps(planningId: number): Promise<Record<number, RunningExecStep[]>> {
   const supabase = await createClient();
@@ -84,15 +84,15 @@ export async function getActiveExecutionStepsForUser(userId: string): Promise<Re
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('execution_steps')
-    .select('id, plan_step_id, execution_id, executions!inner(id, status, user_id)')
+    .select('id, plan_step_id, execution_id, done, executions!inner(id, status, user_id)')
     .eq('executions.user_id', userId)
     .eq('executions.status', 'en_cours')
     .not('plan_step_id', 'is', null);
   if (error) console.error('getActiveExecutionStepsForUser:', error.message);
-  const rows = (data as unknown as { id: number; plan_step_id: number; execution_id: number }[]) ?? [];
+  const rows = (data as unknown as { id: number; plan_step_id: number; execution_id: number; done: boolean }[]) ?? [];
   const map: Record<number, RunningExecStep[]> = {};
   rows.forEach((r) => {
-    (map[r.plan_step_id] = map[r.plan_step_id] || []).push({ execution_id: r.execution_id, execution_step_id: r.id });
+    (map[r.plan_step_id] = map[r.plan_step_id] || []).push({ execution_id: r.execution_id, execution_step_id: r.id, done: r.done });
   });
   return map;
 }
