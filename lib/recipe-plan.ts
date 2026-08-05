@@ -496,6 +496,23 @@ export function groupExecutionSteps(steps: ExecutionStepRow[]): ExecJalon[] {
     .map(([offset, jSteps]) => ({ offset, steps: [...jSteps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) }));
 }
 
+// Même regroupement par jour, générique — pour la « vue par jour » de la
+// fiche recette planifiée (à ne pas confondre avec `groupExecutionSteps`
+// ci-dessus, qui opère sur les `execution_steps` figées d'une session).
+export type PlanDayGroup<T> = { offset: number; steps: T[] };
+export function groupStepsByDay<T extends { day_offset?: number | null; order_index?: number | null }>(steps: T[]): PlanDayGroup<T>[] {
+  const map = new Map<number, T[]>();
+  steps.forEach((s) => {
+    const o = Math.max(0, s.day_offset ?? 0);
+    const arr = map.get(o);
+    if (arr) arr.push(s);
+    else map.set(o, [s]);
+  });
+  return [...map.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([offset, group]) => ({ offset, steps: [...group].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) }));
+}
+
 // ── Mise en place (écran de démarrage d'une exécution) ─────────────────
 // Les lignes execution_ingredients sont par étape (une occurrence par
 // plan_ingredient) : la mise en place fusionne les occurrences identiques

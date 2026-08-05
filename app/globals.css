@@ -523,6 +523,15 @@ body {
   .sticky {
     position: static !important;
   }
+  /* Fiche imprimée : toujours la vue séquentielle complète (PlanStepsDayView),
+     quel que soit l'onglet affiché à l'écran — la vue par jour est un résumé
+     sans ingrédients/sous-étapes, impropre à l'impression. */
+  .plan-view-jours {
+    display: none !important;
+  }
+  .plan-view-sequentielle {
+    display: block !important;
+  }
   body[data-impersonation] {
     padding-top: 0 !important;
   }
