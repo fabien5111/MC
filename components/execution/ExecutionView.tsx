@@ -31,6 +31,7 @@ import {
   type ExecJalon,
   type ExecutionStepRow,
   type ExecutionIngredientRow,
+  type ExecutionSubstepRow,
 } from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
@@ -145,14 +146,22 @@ export function ExecutionView({
     }, 800);
   }
 
-  async function toggleSub(id: number, checked: boolean) {
+  async function updateSubstep(id: number, patch: Partial<Pick<ExecutionSubstepRow, 'done' | 'commentaire'>>) {
     if (readOnly) return;
     setExec((prev) => ({
       ...prev,
-      execution_steps: prev.execution_steps.map((s) => ({ ...s, execution_substeps: s.execution_substeps.map((su) => (su.id !== id ? su : { ...su, done: checked })) })),
+      execution_steps: prev.execution_steps.map((s) => ({ ...s, execution_substeps: s.execution_substeps.map((su) => (su.id !== id ? su : { ...su, ...patch })) })),
     }));
-    const { error } = await createClient().from('execution_substeps').update({ done: checked }).eq('id', id);
+    const { error } = await createClient().from('execution_substeps').update(patch).eq('id', id);
     if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
+  }
+
+  function toggleSub(id: number, checked: boolean) {
+    updateSubstep(id, { done: checked });
+  }
+
+  function onSubComment(id: number, value: string) {
+    updateSubstep(id, { commentaire: value });
   }
 
   async function updateIngredient(id: number, patch: Partial<Pick<ExecutionIngredientRow, 'done' | 'real_quantity' | 'commentaire'>>) {
@@ -240,6 +249,24 @@ export function ExecutionView({
   }
 
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
+
+  // Lien direct vers une étape (ex. depuis la vue par jour de Profil >
+  // Planning, cf. PlanningDayView) : `#etape-<id>` déplie le jalon qui la
+  // contient (replié par défaut s'il n'est ni courant ni en retard) puis
+  // scrolle jusqu'à elle. Une seule fois au montage — pas à chaque évolution
+  // de `jalons`, sinon une simple coche ailleurs sur la page reviendrait
+  // recentrer l'écran sur cette étape.
+  useEffect(() => {
+    const m = /^#etape-(\d+)$/.exec(location.hash);
+    if (!m) return;
+    const stepId = Number(m[1]);
+    const ji = jalons.findIndex((j) => j.steps.some((s) => s.id === stepId));
+    if (ji === -1) return;
+    expandJalon(ji);
+    setTimeout(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deg = exec.degustation_at
     ? new Date(exec.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : null;
@@ -299,6 +326,7 @@ export function ExecutionView({
             units={units}
             onToggleStep={toggleStep}
             onToggleSub={toggleSub}
+            onSubComment={onSubComment}
             onToggleIng={(id, checked) => updateIngredient(id, { done: checked })}
             onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
             onIngComment={onIngComment}
@@ -431,6 +459,7 @@ function ExecutionBody({
   units,
   onToggleStep,
   onToggleSub,
+  onSubComment,
   onToggleIng,
   onIngReal,
   onIngComment,
@@ -445,6 +474,7 @@ function ExecutionBody({
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
+  onSubComment: (id: number, value: string) => void;
   onToggleIng: (id: number, checked: boolean) => void;
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
@@ -543,6 +573,7 @@ function ExecutionBody({
                     units={units}
                     onToggleStep={onToggleStep}
                     onToggleSub={onToggleSub}
+                    onSubComment={onSubComment}
                     onToggleIng={onToggleIng}
                     onIngReal={onIngReal}
                     onIngComment={onIngComment}
@@ -568,6 +599,7 @@ function StepCard({
   units,
   onToggleStep,
   onToggleSub,
+  onSubComment,
   onToggleIng,
   onIngReal,
   onIngComment,
@@ -582,6 +614,7 @@ function StepCard({
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
+  onSubComment: (id: number, value: string) => void;
   onToggleIng: (id: number, checked: boolean) => void;
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
@@ -600,7 +633,11 @@ function StepCard({
   const substeps = [...s.execution_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
   return (
-    <div className={`border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div
+      id={`etape-${s.id}`}
+      className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`}
+      data-step-pending={isPending ? '' : undefined}
+    >
       <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -621,41 +658,69 @@ function StepCard({
             const prevTxt = [ing.planned_quantity != null ? fmtNum(ing.planned_quantity) : ing.planned_text || '', ing.unit].filter(Boolean).join(' ');
             const conv = ingredientConversionText(conversions, units, ing.plan_ingredients?.ref_id, ing.unit, ing.planned_quantity ?? ing.planned_text);
             const struck = ing.done ? ' line-through opacity-50' : '';
+            const checkbox = (
+              <input
+                type="checkbox"
+                checked={ing.done}
+                disabled={readOnly}
+                onChange={(ev) => onToggleIng(ing.id, ev.target.checked)}
+                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+              />
+            );
+            const realInput = (
+              <input
+                type="number"
+                min={0}
+                step="any"
+                inputMode="decimal"
+                placeholder="réel"
+                disabled={readOnly}
+                defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
+                onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
+                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center"
+                style={{ width: '5rem' }}
+              />
+            );
+            const commentInput = (
+              <input
+                type="text"
+                placeholder="note (ex : trop sec, viser +10 g)"
+                disabled={readOnly}
+                defaultValue={ing.commentaire || ''}
+                onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
+                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-[10rem]"
+              />
+            );
+            // Avec conversion, la ligne condensée devient illisible (nom,
+            // quantité prévue, équivalence, quantité réelle et note sur une
+            // seule ligne qui se replie n'importe où) : on l'étale sur 3
+            // lignes — nom ; prévu + équivalence ; réel + note.
+            if (conv) {
+              return (
+                <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
+                  <label className="flex items-center gap-3">
+                    {checkbox}
+                    <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
+                  </label>
+                  <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
+                    prévu {prevTxt} <span className="text-[12px]">({conv})</span>
+                  </span>
+                  <div className="flex items-center gap-3 ml-9 flex-wrap">
+                    {realInput}
+                    <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
+                    {commentInput}
+                  </div>
+                </li>
+              );
+            }
             return (
               <li key={ing.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 flex-wrap">
-                <input
-                  type="checkbox"
-                  checked={ing.done}
-                  disabled={readOnly}
-                  onChange={(ev) => onToggleIng(ing.id, ev.target.checked)}
-                  className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
-                />
+                {checkbox}
                 <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
-                <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>
-                  prévu {prevTxt}
-                  {conv && <span className="text-[12px]"> ({conv})</span>}
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  step="any"
-                  inputMode="decimal"
-                  placeholder="réel"
-                  disabled={readOnly}
-                  defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
-                  onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
-                  className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center"
-                  style={{ width: '5rem' }}
-                />
+                <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>prévu {prevTxt}</span>
+                {realInput}
                 <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
-                <input
-                  type="text"
-                  placeholder="note (ex : trop sec, viser +10 g)"
-                  disabled={readOnly}
-                  defaultValue={ing.commentaire || ''}
-                  onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
-                  className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-[10rem]"
-                />
+                {commentInput}
               </li>
             );
           })}
@@ -665,15 +730,25 @@ function StepCard({
       {substeps.length > 0 ? (
         <ul className="px-4 pb-3 flex flex-col gap-4">
           {substeps.map((su) => (
-            <li key={su.id} className="flex items-start gap-3">
+            <li key={su.id} className="flex flex-col gap-1.5">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={su.done}
+                  disabled={readOnly}
+                  onChange={(ev) => onToggleSub(su.id, ev.target.checked)}
+                  className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+                />
+                <span className={`font-body-md text-body-md leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+              </label>
               <input
-                type="checkbox"
-                checked={su.done}
+                type="text"
+                placeholder="note sur cette sous-étape"
                 disabled={readOnly}
-                onChange={(ev) => onToggleSub(su.id, ev.target.checked)}
-                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+                defaultValue={su.commentaire || ''}
+                onBlur={(ev) => onSubComment(su.id, ev.target.value)}
+                className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm"
               />
-              <span className={`font-body-md text-body-md leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
             </li>
           ))}
         </ul>

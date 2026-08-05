@@ -3,6 +3,7 @@ import { requireUser, getProfile, isAdmin } from '@/lib/auth';
 import { getUserRecipes } from '@/lib/recipes';
 import { getFavorites, getPlanning, getShoppingLists } from '@/lib/profile';
 import { getFavoriteIds } from '@/lib/favorites';
+import { getActiveExecutions, getActiveExecutionStepsForUser } from '@/lib/executions';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -42,10 +43,12 @@ export default async function ProfilPage({ searchParams }: SearchParams) {
     profile = await getProfile(user.id);
   }
 
-  const [recipes, favorites, planning, shoppingLists, admin, favIds] = await Promise.all([
+  const [recipes, favorites, planning, activeSessions, runningExecSteps, shoppingLists, admin, favIds] = await Promise.all([
     getUserRecipes(user.id),
     getFavorites(user.id),
     getPlanning(user.id),
+    getActiveExecutions(user.id),
+    getActiveExecutionStepsForUser(user.id),
     getShoppingLists(user.id),
     isAdmin(user.id),
     getFavoriteIds(),
@@ -74,6 +77,8 @@ export default async function ProfilPage({ searchParams }: SearchParams) {
           recipes={recipes}
           favorites={favorites}
           planning={planning}
+          activeSessions={activeSessions}
+          runningExecSteps={runningExecSteps}
           shoppingLists={shoppingLists}
           favIds={[...favIds]}
         />

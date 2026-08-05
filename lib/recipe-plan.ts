@@ -10,7 +10,7 @@
 // plan_ingredients → ...), une table dépendant de l'id de la précédente.
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
-import type { PlanningEntry } from '@/lib/profile';
+import type { PlanningEntry, PlanningRow } from '@/lib/profile';
 
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -28,6 +28,102 @@ export function planDayLabel(offset: number | null | undefined, plannedDate: str
   const d = new Date(plannedDate + 'T00:00:00');
   d.setDate(d.getDate() - Math.max(0, offset || 0));
   return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+}
+
+export type PlanningDayItem = {
+  stepId: number;
+  planId: number;
+  recipeTitle: string;
+  recipeId: string | null;
+  // Numéro d'étape au sein de sa propre recette (pas un numéro transverse au
+  // jour) : c'est le même numéro que sur la fiche recette planifiée.
+  number: number;
+  title: string | null;
+  order_index: number;
+  day_order_index: number | null;
+  // « Déjà réalisé » côté plan (case cochée sur la fiche recette avant même
+  // de démarrer une session), distinct de `sessionDone` ci-dessous.
+  already_done: boolean;
+  prep_time: number | null;
+  wait_time: number | null;
+  cook_time: number | null;
+  cook_temp: number | null;
+  // Session de préparation en cours pour cette étape, s'il y en a une — pour
+  // pointer le lien de PlanningDayView directement dessus plutôt que sur la
+  // fiche recette planifiée (cf. `getActiveExecutionStepsForUser`).
+  executionId: number | null;
+  executionStepId: number | null;
+  // Étape cochée dans cette session active (execution_steps.done) — distinct
+  // de `already_done` (une session peut cocher une étape sans que le plan
+  // ait jamais été marqué « Déjà réalisé », et inversement).
+  sessionDone: boolean;
+};
+export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
+
+// Regroupe les étapes de TOUTES les recettes planifiées de l'utilisateur par
+// date réelle — vue par jour transverse de l'onglet Planning
+// (PlanningDayView). `day_offset` n'est relatif qu'à la date de dégustation
+// de sa propre recette : deux recettes planifiées le même jour calendaire
+// doivent d'abord être ramenées à cette date commune avant de pouvoir
+// regrouper leurs étapes ensemble (cf. `planDayLabel`, même calcul).
+//
+// Tri par défaut tant qu'aucune étape du jour n'a été réordonnée
+// manuellement (`day_order_index` toutes nulles) : `plans` doit déjà être
+// trié par `planned_date` (comme le renvoie `getPlanning`) — combiné à
+// `order_index` au sein de chaque plan, cet ordre d'insertion sert de tri
+// stable par défaut.
+//
+// `runningExecSteps` : sessions en cours de l'utilisateur, indexées par
+// `plan_step_id` (cf. `getActiveExecutionStepsForUser`) — un plan_step_id
+// n'a normalement qu'une seule session active à la fois, on prend la
+// première si plusieurs.
+export function groupPlanningStepsByDate(
+  plans: PlanningRow[],
+  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number; done?: boolean }[]> = {},
+): PlanningDayGroup[] {
+  const withDate: (PlanningDayItem & { date: string })[] = [];
+  plans.forEach((p) => {
+    if (!p.planned_date) return;
+    const recipeTitle = p.recipe_title || p.recipes?.title || '';
+    [...p.plan_steps]
+      .sort((a, b) => a.order_index - b.order_index)
+      .forEach((s, i) => {
+        const d = new Date(p.planned_date + 'T00:00:00');
+        d.setDate(d.getDate() - Math.max(0, s.day_offset || 0));
+        const running = runningExecSteps[s.id]?.[0] ?? null;
+        withDate.push({
+          stepId: s.id,
+          planId: p.id,
+          recipeTitle,
+          recipeId: p.recipes?.id ?? p.recipe_id,
+          number: i + 1,
+          title: s.title,
+          order_index: s.order_index,
+          day_order_index: s.day_order_index,
+          already_done: s.already_done,
+          prep_time: s.prep_time,
+          wait_time: s.wait_time,
+          cook_time: s.cook_time,
+          cook_temp: s.cook_temp,
+          executionId: running?.execution_id ?? null,
+          executionStepId: running?.execution_step_id ?? null,
+          sessionDone: !!running?.done,
+          date: d.toISOString().slice(0, 10),
+        });
+      });
+  });
+  const map = new Map<string, PlanningDayItem[]>();
+  withDate.forEach(({ date, ...item }) => {
+    const arr = map.get(date);
+    if (arr) arr.push(item);
+    else map.set(date, [item]);
+  });
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({
+      date,
+      items: [...items].sort((a, b) => (a.day_order_index ?? Infinity) - (b.day_order_index ?? Infinity)),
+    }));
 }
 
 // ── Lignes des tables plan_* / execution_* ────────────────────────────
@@ -170,8 +266,9 @@ export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // cuisson, y compris dans une session déjà démarrée. Elle ne se confond pas
 // avec `execution_steps.commentaire`, qui est le constat du jour J propre à
 // une session — l'une est l'intention, l'autre la réalisation.
+export type ExecutionSubstepRow = Database['public']['Tables']['execution_substeps']['Row'];
 export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
-  execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
+  execution_substeps: ExecutionSubstepRow[];
   plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'user_note'> | null;
 };
 export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'] & {

@@ -15,12 +15,14 @@ import { RecipeCardClient } from '@/components/RecipeCardClient';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
+import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { UserRecipeCard } from '@/lib/recipes';
+import type { ActiveExecutionRow, RunningExecStep } from '@/lib/executions';
 
 export type UserRecipe = UserRecipeCard;
 
-type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'courses';
+type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'sessions' | 'courses';
 
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
@@ -36,6 +38,7 @@ const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: 'imports', label: 'Import de recettes', href: '/importer' },
   { key: 'favorites', label: 'Mes Favoris' },
   { key: 'planning', label: 'Planning' },
+  { key: 'sessions', label: 'Sessions actives' },
   { key: 'courses', label: 'Listes de courses' },
 ];
 
@@ -43,12 +46,16 @@ export function ProfileTabs({
   recipes,
   favorites,
   planning,
+  activeSessions,
+  runningExecSteps,
   shoppingLists,
   favIds,
 }: {
   recipes: UserRecipe[];
   favorites: FavoriteRow[];
   planning: PlanningRow[];
+  activeSessions: ActiveExecutionRow[];
+  runningExecSteps: Record<number, RunningExecStep[]>;
   shoppingLists: ShoppingListSummary[];
   favIds: string[];
 }) {
@@ -61,6 +68,10 @@ export function ProfileTabs({
   useEffect(() => setRecipeList(recipes), [recipes]);
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
+  // Vue par jour de l'onglet Planning : les cartes actuelles restent
+  // inchangées (une recette à la fois), la vue par jour combine les étapes de
+  // toutes les recettes planifiées (voir PlanningDayView).
+  const [planningView, setPlanningView] = useState<'recettes' | 'jours'>('recettes');
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   const [mergingListId, setMergingListId] = useState<number | null>(null);
@@ -68,7 +79,13 @@ export function ProfileTabs({
   useEffect(() => {
     const fromHash = () => {
       const h = location.hash;
-      if (h === '#planning') setTab('planning');
+      if (h === '#planning-jours') {
+        setTab('planning');
+        setPlanningView('jours');
+      } else if (h === '#planning') {
+        setTab('planning');
+        setPlanningView('recettes');
+      } else if (h === '#sessions') setTab('sessions');
       else if (h.startsWith('#courses')) setTab('courses');
       else if (h === '' || h === '#') setTab('recipes');
     };
@@ -79,8 +96,21 @@ export function ProfileTabs({
 
   function switchTab(k: TabKey) {
     setTab(k);
-    const hash = k === 'planning' ? '#planning' : k === 'courses' ? '#courses' : ' ';
+    // Un clic direct sur l'onglet Planning revient toujours à la vue par
+    // recette par défaut, pour que le hash (#planning) et l'état affiché
+    // restent cohérents.
+    if (k === 'planning') setPlanningView('recettes');
+    const hash = k === 'planning' ? '#planning' : k === 'sessions' ? '#sessions' : k === 'courses' ? '#courses' : ' ';
     history.replaceState(null, '', hash === ' ' ? location.pathname : hash);
+  }
+
+  // Bascule vue par recette / vue par jour de l'onglet Planning, tracée dans
+  // le hash (comme `switchTab`) : sans ça, un retour arrière du navigateur
+  // depuis une session de préparation ne rétablit jamais la vue par jour,
+  // toujours réinitialisée à « recettes ».
+  function switchPlanningView(v: 'recettes' | 'jours') {
+    setPlanningView(v);
+    history.replaceState(null, '', v === 'jours' ? '#planning-jours' : '#planning');
   }
 
   async function delShoppingList(id: number, name: string) {
@@ -334,10 +364,32 @@ export function ProfileTabs({
       {/* Planning */}
       {tab === 'planning' && (
         <div className="py-10">
-          <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined">calendar_month</span> Recettes planifiées
-          </h2>
-          {planningList.length > 0 ? (
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+            <h2 className="font-headline-md text-primary flex items-center gap-3">
+              <span className="material-symbols-outlined">calendar_month</span> Recettes planifiées
+            </h2>
+            {planningList.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => switchPlanningView('recettes')}
+                  className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'recettes' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+                >
+                  Vue par recette
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchPlanningView('jours')}
+                  className={`px-4 py-2 rounded-full font-label-md text-label-md border ${planningView === 'jours' ? 'bg-primary text-white border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+                >
+                  Vue par jour
+                </button>
+              </div>
+            )}
+          </div>
+          {planningView === 'jours' ? (
+            <PlanningDayView plans={planningList} runningExecSteps={runningExecSteps} />
+          ) : planningList.length > 0 ? (
             <div className="space-y-4 max-w-3xl">
               {planningList.map((p) => {
                 const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
@@ -383,14 +435,31 @@ export function ProfileTabs({
                         {p.notes && <p className="font-body-md text-[12px] text-on-surface-variant italic">{p.notes}</p>}
                       </div>
                     </Link>
-                    <button
-                      type="button"
-                      title="Retirer du planning"
-                      onClick={() => delPlan(p)}
-                      className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {p.active_execution.length > 0 ? (
+                        <Link
+                          href={`/execution/${p.active_execution[0].id}`}
+                          className="flex items-center gap-1.5 bg-secondary/90 text-white px-3 py-1.5 rounded-full font-label-md text-[11px] whitespace-nowrap hover:opacity-90"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">play_circle</span> Session en cours
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`}
+                          className="flex items-center gap-1.5 border border-primary text-primary px-3 py-1.5 rounded-full font-label-md text-[11px] whitespace-nowrap hover:bg-primary hover:text-white transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">play_arrow</span> Démarrer une session
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        title="Retirer du planning"
+                        onClick={() => delPlan(p)}
+                        className="text-error opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-error/10"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -398,6 +467,39 @@ export function ProfileTabs({
           ) : (
             <p className="text-on-surface-variant italic">
               Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Sessions actives */}
+      {tab === 'sessions' && (
+        <div className="py-10">
+          <h2 className="font-headline-md text-primary mb-6 flex items-center gap-3">
+            <span className="material-symbols-outlined">play_circle</span> Sessions actives
+          </h2>
+          {activeSessions.length > 0 ? (
+            <div className="space-y-4 max-w-3xl">
+              {activeSessions.map((x) => (
+                <Link
+                  key={x.id}
+                  href={`/execution/${x.id}`}
+                  className="p-6 border border-outline-variant rounded-lg bg-white flex justify-between items-center gap-4 hover:bg-surface-container transition-colors"
+                >
+                  <div>
+                    <p className="font-label-md text-primary">{x.planning?.recipe_title || 'Session de préparation'}</p>
+                    <p className="font-body-md text-[12px] text-on-surface-variant">
+                      Démarrée le{' '}
+                      {new Date(x.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <span className="font-label-md text-label-md text-primary whitespace-nowrap">Reprendre</span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-on-surface-variant italic">
+              Aucune session de préparation en cours. Démarrez-en une depuis une recette planifiée.
             </p>
           )}
         </div>
