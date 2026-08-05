@@ -14,6 +14,7 @@ import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { RecipeCardClient } from '@/components/RecipeCardClient';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
+import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { FavoriteRow, PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { UserRecipeCard } from '@/lib/recipes';
 
@@ -221,7 +222,7 @@ export function ProfileTabs({
                   prefetch={false}
                   className="absolute top-3 right-[9rem] z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
                 >
-                  <span className="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+                  <PlanBadgeIcon />
                 </Link>
                 <Link
                   href={`/creer?id=${r.id}`}
