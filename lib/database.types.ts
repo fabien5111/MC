@@ -269,6 +269,7 @@ export type Database = {
       }
       execution_substeps: {
         Row: {
+          commentaire: string | null
           done: boolean
           execution_id: number
           execution_step_id: number | null
@@ -278,6 +279,7 @@ export type Database = {
           texte: string | null
         }
         Insert: {
+          commentaire?: string | null
           done?: boolean
           execution_id: number
           execution_step_id?: number | null
@@ -287,6 +289,7 @@ export type Database = {
           texte?: string | null
         }
         Update: {
+          commentaire?: string | null
           done?: boolean
           execution_id?: number
           execution_step_id?: number | null

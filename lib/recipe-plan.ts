@@ -170,8 +170,9 @@ export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // cuisson, y compris dans une session déjà démarrée. Elle ne se confond pas
 // avec `execution_steps.commentaire`, qui est le constat du jour J propre à
 // une session — l'une est l'intention, l'autre la réalisation.
+export type ExecutionSubstepRow = Database['public']['Tables']['execution_substeps']['Row'];
 export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
-  execution_substeps: Database['public']['Tables']['execution_substeps']['Row'][];
+  execution_substeps: ExecutionSubstepRow[];
   plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'user_note'> | null;
 };
 export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'] & {
