@@ -13,6 +13,7 @@
 // — la case « Déjà réalisé » reste néanmoins visible hors du volet replié,
 // pour pouvoir revenir dessus sans déplier.
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -22,7 +23,10 @@ import { dayLabel } from '@/lib/recipe-view';
 import type { RunningExecStep } from '@/lib/executions';
 
 type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
-type IngRow = Pick<PlanIngredientRow, 'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done'>;
+type IngRow = Pick<
+  PlanIngredientRow,
+  'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
+> & { expanded_recipe?: { id: string; title: string } | null };
 type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
 
 function qtyText(it: Pick<IngRow, 'quantity' | 'quantity_text'>): string {
@@ -363,12 +367,18 @@ export function PlanStepDonePanel({
         <div className="p-4 bg-white">
           <ul style={{ display: 'grid', gridTemplateColumns: step.already_done ? 'max-content max-content max-content' : 'max-content max-content', columnGap: 40 }}>
             {visible.map((it) => {
-              const excluded = step.already_done && it.excluded_when_done;
-              const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : '';
+              // Ingrédient remplacé par une sous-recette : il reste listé,
+              // barré, avec le renvoi — le faire disparaître laisserait
+              // croire à un oubli. Rien à cocher dessus : il ne rentre plus
+              // dans le parcours quel que soit l'état de l'étape.
+              const replaced = it.expanded_into_recipe_id != null;
+              const excluded = !replaced && step.already_done && it.excluded_when_done;
+              const tone = replaced ? 'text-on-surface-variant line-through' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
               return (
                 <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
                   {step.already_done && (
                     <span className="no-print">
+                      {replaced ? null : (
                       <input
                         type="checkbox"
                         checked={it.excluded_when_done}
@@ -380,6 +390,7 @@ export function PlanStepDonePanel({
                         }
                         className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
                       />
+                      )}
                     </span>
                   )}
                   <span className={`font-label-md text-label-md ${tone || 'text-primary'}`}>
@@ -390,6 +401,18 @@ export function PlanStepDonePanel({
                     {it.name}
                     {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                   </span>
+                  {replaced && (
+                    <span className="font-body-md text-[12px] text-green-700" style={{ gridColumn: '1/-1' }}>
+                      Fabriqué à partir de{' '}
+                      {it.expanded_recipe ? (
+                        <Link href={`/recette/${it.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                          {it.expanded_recipe.title}
+                        </Link>
+                      ) : (
+                        <span className="italic">une recette qui n’est plus accessible</span>
+                      )}
+                    </span>
+                  )}
                 </li>
               );
             })}

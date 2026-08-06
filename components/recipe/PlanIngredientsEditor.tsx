@@ -7,13 +7,15 @@
 // ingrédients — voir CLAUDE.md « Recettes planifiées ») : chaque action est
 // une écriture ciblée sur la ligne concernée, plus de blob JSON à réécrire.
 import { Fragment, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import type { Unit } from '@/lib/profile';
-import { fmtNum, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
+import { fmtNum, planIngredientExpanded, planStepIsExpansion, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
+import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 
 type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
@@ -45,6 +47,8 @@ export function PlanIngredientsEditor({
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
+  // Ligne en cours de remplacement par une sous-recette (fenêtre ouverte).
+  const [expanding, setExpanding] = useState<PlanIngredientRow | null>(null);
 
   async function proposeDeleteRunningSessions() {
     if (!runningExecutionIds.length) return;
@@ -80,6 +84,49 @@ export function PlanIngredientsEditor({
 
   async function removeAdded(row: PlanIngredientRow) {
     const ok = await mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
+    if (ok) await proposeDeleteRunningSessions();
+  }
+
+  // Défait un remplacement : les étapes insérées (et tout ce qu'elles
+  // portent) sont retirées, puis la ligne d'ingrédient reprend sa place —
+  // elle n'a jamais été modifiée entre-temps, seulement marquée.
+  //
+  // Les ustensiles venus de la sous-recette ne sont retirés que s'ils ne
+  // servent plus : `plan_utensils` ne porte pas de lien vers la ligne
+  // remplacée (une seule colonne `source_recipe_id`), donc un second
+  // éclatement de la même recette ailleurs dans le plan doit les conserver.
+  // Et jamais quand la sous-recette est la recette du plan elle-même : on
+  // supprimerait ses propres ustensiles.
+  async function cancelExpansion(row: PlanIngredientRow) {
+    const subRecipeId = row.expanded_into_recipe_id;
+    const stepIds = plan.plan_steps.filter((s) => s.source_ingredient_id === row.id).map((s) => s.id);
+    const stillUsed = plan.plan_ingredients.some((it) => it.id !== row.id && it.expanded_into_recipe_id === subRecipeId);
+    const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== plan.recipe_id;
+    const supabase = createClient();
+    const ok = await mutate(
+      async () => {
+        if (stepIds.length) {
+          const ing = await supabase.from('plan_ingredients').delete().in('step_id', stepIds);
+          if (ing.error) return ing;
+          const sub = await supabase.from('plan_substeps').delete().in('step_id', stepIds);
+          if (sub.error) return sub;
+          const steps = await supabase.from('plan_steps').delete().in('id', stepIds);
+          if (steps.error) return steps;
+        }
+        if (dropUtensils) {
+          const ust = await supabase.from('plan_utensils').delete().eq('planning_id', plan.id).eq('source_recipe_id', subRecipeId);
+          if (ust.error) return ust;
+        }
+        return supabase.from('plan_ingredients').update({ expanded_into_recipe_id: null }).eq('id', row.id);
+      },
+      {
+        confirm:
+          `Annuler le remplacement de « ${row.name} » ?\n\n` +
+          (stepIds.length ? `${stepIds.length} étape${stepIds.length > 1 ? 's' : ''} seront retirées du déroulé. ` : '') +
+          "L'ingrédient revient dans la liste de courses et la mise en place.",
+        errorLabel: 'Annulation impossible',
+      },
+    );
     if (ok) await proposeDeleteRunningSessions();
   }
 
@@ -159,6 +206,14 @@ export function PlanIngredientsEditor({
   return (
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
+      {expanding && (
+        <IngredientExpandDialog
+          plan={plan}
+          row={expanding}
+          onClose={() => setExpanding(null)}
+          onDone={proposeDeleteRunningSessions}
+        />
+      )}
       {sortedSteps.map((step) => {
         const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
@@ -168,7 +223,11 @@ export function PlanIngredientsEditor({
                 dans le déroulé de la recette (PlanStepDonePanel), pas ici —
                 cette section ne fait plus qu'informer (titre barré, lignes
                 grisées) de l'état déjà réglé là-bas. */}
-            <h4 className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${step.already_done ? 'text-on-surface-variant line-through' : 'text-secondary'}`}>
+            <h4
+              className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${
+                step.already_done ? 'text-on-surface-variant line-through' : planStepIsExpansion(step) ? 'text-green-700' : 'text-secondary'
+              }`}
+            >
               {step.title || ''}
             </h4>
             {rows.length > 0 && (
@@ -185,15 +244,26 @@ export function PlanIngredientsEditor({
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
                   // `removed` prime toujours sur l'exclusion « déjà fait ».
                   const excludedByStep = step.already_done && row.excluded_when_done;
+                  // Ligne remplacée par une sous-recette : barrée comme une
+                  // suppression, mais en gris et non en rouge — elle n'est pas
+                  // retirée, elle est fabriquée plus haut dans le déroulé.
+                  const expanded = planIngredientExpanded(row);
                   const tone = row.removed
                     ? 'text-error line-through'
-                    : excludedByStep
-                      ? 'text-on-surface-variant line-through opacity-60'
-                      : row.added
-                        ? 'text-green-700'
-                        : '';
+                    : expanded
+                      ? 'text-on-surface-variant line-through'
+                      : excludedByStep
+                        ? 'text-on-surface-variant line-through opacity-60'
+                        : row.added
+                          ? 'text-green-700'
+                          : '';
                   const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
-                  const origText = row.added ? '—' : row.base_quantity != null ? fmtNum(row.base_quantity) : row.quantity_text || '—';
+                  // Une ligne venue d'une sous-recette est `added` mais garde
+                  // une quantité d'origine (celle de sa propre recette) : la
+                  // montrer plutôt qu'un tiret, c'est ce qui rend son
+                  // coefficient lisible.
+                  const origText =
+                    row.base_quantity != null ? fmtNum(row.base_quantity) : row.added ? '—' : row.quantity_text || '—';
                   return (
                     <Fragment key={row.id}>
                       <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
@@ -209,32 +279,76 @@ export function PlanIngredientsEditor({
                         </span>
                         <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
                         <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{row.added ? '—' : withUnit(origText, row.unit, row.ref_id)}</span>
+                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                          {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
+                        </span>
                         <span className="no-print flex items-center gap-1 justify-self-center">
-                          <button
-                            type="button"
-                            onClick={() => setEditing(editing === key ? null : key)}
-                            title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
-                            className="text-primary hover:opacity-70"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                          </button>
-                          {row.added ? (
-                            <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          ) : (
+                          {expanded ? (
+                            // Une ligne remplacée ne se modifie plus : elle
+                            // n'entre nulle part tant que le remplacement
+                            // tient. Seul retour possible, l'annuler.
                             <button
                               type="button"
-                              onClick={() => toggleRemove(row)}
-                              title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
-                              className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                              onClick={() => cancelExpansion(row)}
+                              title="Annuler le remplacement et retirer les étapes ajoutées"
+                              className="text-primary hover:opacity-70"
                             >
-                              <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                              <span className="material-symbols-outlined text-[18px]">undo</span>
                             </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setEditing(editing === key ? null : key)}
+                                title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
+                                className="text-primary hover:opacity-70"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                              </button>
+                              {!row.removed && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpanding(row)}
+                                  title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                                  className="text-primary hover:opacity-70"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                </button>
+                              )}
+                              {row.added ? (
+                                <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRemove(row)}
+                                  title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
+                                  className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                                </button>
+                              )}
+                            </>
                           )}
                         </span>
                       </li>
+                      {expanded && (
+                        <li className="pb-2 -mt-1" style={{ gridColumn: '1/-1' }}>
+                          <span className="font-body-md text-[12px] text-green-700 flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                            Fabriqué à partir de{' '}
+                            {row.expanded_recipe ? (
+                              <Link href={`/recette/${row.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                                {row.expanded_recipe.title}
+                              </Link>
+                            ) : (
+                              <span className="italic">une recette qui n’est plus accessible</span>
+                            )}
+                            {' — étapes ajoutées au déroulé.'}
+                          </span>
+                        </li>
+                      )}
                       {editing === key &&
                         (row.added ? (
                           <AddedEditForm key={key + '-form'} row={row} units={units} onApply={(n, q, u) => applyEditAdded(row, n, q, u)} onCancel={() => setEditing(null)} />
