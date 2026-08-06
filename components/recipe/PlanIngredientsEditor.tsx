@@ -43,7 +43,7 @@ export function PlanIngredientsEditor({
   // silencieusement au fil des modifications suivantes.
   runningExecutionIds: number[];
 }) {
-  const { mutate, busy } = useMutation();
+  const { mutate, busy, refresh } = useMutation();
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
@@ -57,6 +57,16 @@ export function PlanIngredientsEditor({
       confirm: `${plural ? 'Des sessions' : 'Une session'} de préparation en cours ${plural ? 'ont' : 'a'} été figée${plural ? 's' : ''} avant cette modification et ne la reflète${plural ? 'nt' : ''} pas.\n\n${plural ? 'Les supprimer' : 'La supprimer'} ?`,
       errorLabel: 'Suppression impossible',
     });
+  }
+
+  // Remplacement inséré depuis la fenêtre modale : c'est ici qu'est déclenchée
+  // la resynchronisation, et non dans la fenêtre — celle-ci se ferme aussitôt,
+  // emportant sa transition et donc son spinner avant le retour du rendu
+  // serveur. Émise en tout premier, de façon synchrone, pour que le voile de
+  // cet éditeur soit déjà en place au rendu qui démonte la fenêtre.
+  async function onExpansionDone() {
+    refresh();
+    await proposeDeleteRunningSessions();
   }
 
   // Chaque action est une écriture ciblée sur `plan_ingredients` (via
@@ -219,7 +229,7 @@ export function PlanIngredientsEditor({
           plan={plan}
           row={expanding}
           onClose={() => setExpanding(null)}
-          onDone={proposeDeleteRunningSessions}
+          onDone={onExpansionDone}
         />
       )}
       {sortedSteps.map((step) => {

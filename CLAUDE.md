@@ -107,6 +107,15 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   reste affiché plus longtemps qu'avant, et d'autant plus que la page à
   re-rendre est lourde (la fiche recette planifiée, par exemple) — c'est le
   temps réel de l'opération, pas une régression.
+- **Une fenêtre modale ne porte jamais sa propre resynchronisation.** Une
+  transition meurt avec le composant qui la porte : si la modale se ferme
+  aussitôt l'écriture faite, son `pending` disparaît, le spinner s'éteint et
+  les modifications n'apparaissent qu'une seconde plus tard. Écrire avec
+  `refresh: false`, puis laisser le **parent** — qui reste monté — appeler le
+  `refresh()` rendu par `useMutation`, émis de façon synchrone avant la
+  fermeture pour que son voile soit déjà en place au rendu qui démonte la
+  modale (cf. `IngredientExpandDialog` / `PlanIngredientsEditor`
+  `onExpansionDone`).
 - **Suppression optimiste dans une liste.** Doubler malgré tout `useMutation`
   d'un état local initialisé depuis les props (`useState` + `useEffect` de
   resynchronisation) et filtrer l'élément supprimé au succès de la mutation :

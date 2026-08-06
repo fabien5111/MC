@@ -355,12 +355,19 @@ export function IngredientExpandDialog({
           return { error: { message: (e as Error).message || 'insertion impossible' } };
         }
       },
-      { errorLabel: 'Remplacement impossible' },
+      // La resynchronisation n'est pas faite ici : cette fenêtre se ferme dans
+      // la foulée, et une transition meurt avec le composant qui la porte — le
+      // spinner s'éteindrait avant le retour du rendu serveur. C'est le parent,
+      // qui reste monté, qui la déclenche (`onDone`).
+      { errorLabel: 'Remplacement impossible', refresh: false },
     );
 
     if (ok) {
+      // `onDone` avant `onClose`, et sans `await` : son rafraîchissement part
+      // dans le même bloc synchrone que la fermeture, donc dans le même rendu
+      // — le voile du parent prend le relais sans laisser d'interstice.
+      void onDone();
       onClose();
-      await onDone();
     }
   }
 

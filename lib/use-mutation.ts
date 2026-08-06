@@ -100,5 +100,13 @@ export function useMutation() {
     [router, impersonation, dialog],
   );
 
-  return { busy: writing || pending, mutate };
+  // Resynchronisation seule, sans écriture. Sert quand l'écriture a eu lieu
+  // dans un composant qui se démonte juste après (une fenêtre modale qui se
+  // ferme) : la transition de ce composant disparaît avec lui, le spinner
+  // s'éteint et les modifications n'apparaissent qu'une seconde plus tard.
+  // Le parent, lui, reste monté — c'est donc à lui de porter le
+  // rafraîchissement, et le `busy` qui va avec.
+  const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
+
+  return { busy: writing || pending, mutate, refresh };
 }
