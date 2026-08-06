@@ -246,19 +246,23 @@ export function IngredientExpandDialog({
     const ok = await mutate(
       async () => {
         try {
-          for (let i = 0; i < mat.steps.length; i++) {
-            const st = mat.steps[i];
-            const place = placements[i];
-            const { data: stepRow, error: stepErr } = await supabase
-              .from('plan_steps')
-              .insert({
+          // Toutes les étapes en une seule requête : contrairement à la
+          // matérialisation d'un plan entier (PlanWidget), elles ne dépendent
+          // pas les unes des autres — seules leurs sous-étapes et leurs
+          // ingrédients ont besoin des `id` générés. Une insertion par étape
+          // coûtait trois allers-retours réseau par étape ; le tout tient
+          // désormais en cinq requêtes, quel que soit le nombre d'étapes.
+          const { data: stepRows, error: stepErr } = await supabase
+            .from('plan_steps')
+            .insert(
+              mat.steps.map((st, i) => ({
                 planning_id: plan.id,
                 order_index: orders[i],
-                day_offset: place.day,
+                day_offset: placements[i].day,
                 // Le « jour d'origine » d'une étape insérée est le jour
                 // proposé par la sous-recette, pas celui de la recette du
                 // plan : c'est lui qu'on pourra rétablir depuis la fiche.
-                base_day_offset: place.suggested,
+                base_day_offset: placements[i].suggested,
                 title: st.title,
                 description: st.description,
                 tips: st.tips,
@@ -271,42 +275,55 @@ export function IngredientExpandDialog({
                 source_recipe_id: source.id,
                 source_step_id: st.source_step_id,
                 source_ingredient_id: row.id,
-              })
-              .select('id')
-              .single();
-            if (stepErr || !stepRow) throw stepErr || new Error('Étape non créée');
-            createdSteps.push(stepRow.id);
+              })),
+            )
+            .select('id, source_step_id');
+          if (stepErr || !stepRows) throw stepErr || new Error('Étapes non créées');
+          stepRows.forEach((s) => createdSteps.push(s.id));
 
-            if (st.substeps.length) {
-              const { error } = await supabase
-                .from('plan_substeps')
-                .insert(st.substeps.map((texte, k) => ({ step_id: stepRow.id, order_index: k, texte })));
-              if (error) throw error;
-            }
-            if (st.ingredients.length) {
-              const { error } = await supabase.from('plan_ingredients').insert(
-                st.ingredients.map((it) => ({
-                  planning_id: plan.id,
-                  step_id: stepRow.id,
-                  order_index: it.order_index,
-                  ref_id: it.ref_id,
-                  name: it.name,
-                  base_quantity: it.base_quantity,
-                  quantity: it.quantity,
-                  quantity_text: it.quantity_text,
-                  unit: it.unit,
-                  comment: it.comment,
-                  url: it.url,
-                  allergen: it.allergen,
-                  source_recipe_id: source.id,
-                  // Ligne absente de la recette du plan : vert à l'affichage,
-                  // et surtout jamais reprise par un réajustement global du
-                  // facteur (cf. lib/recipe-plan.ts).
-                  added: true,
-                })),
-              );
-              if (error) throw error;
-            }
+          // Le rapprochement se fait par `source_step_id` (l'étape de la
+          // sous-recette dont chaque ligne provient, unique dans ce lot) et
+          // non par la position dans le tableau renvoyé : PostgREST ne
+          // garantit pas l'ordre des lignes insérées.
+          const idBySourceStep = new Map(stepRows.map((s) => [s.source_step_id, s.id]));
+          const stepIdOf = (sourceStepId: number): number => {
+            const id = idBySourceStep.get(sourceStepId);
+            if (id == null) throw new Error('Étape insérée introuvable');
+            return id;
+          };
+
+          const substeps = mat.steps.flatMap((st) =>
+            st.substeps.map((texte, k) => ({ step_id: stepIdOf(st.source_step_id), order_index: k, texte })),
+          );
+          if (substeps.length) {
+            const { error } = await supabase.from('plan_substeps').insert(substeps);
+            if (error) throw error;
+          }
+
+          const ingredients = mat.steps.flatMap((st) =>
+            st.ingredients.map((it) => ({
+              planning_id: plan.id,
+              step_id: stepIdOf(st.source_step_id),
+              order_index: it.order_index,
+              ref_id: it.ref_id,
+              name: it.name,
+              base_quantity: it.base_quantity,
+              quantity: it.quantity,
+              quantity_text: it.quantity_text,
+              unit: it.unit,
+              comment: it.comment,
+              url: it.url,
+              allergen: it.allergen,
+              source_recipe_id: source.id,
+              // Ligne absente de la recette du plan : vert à l'affichage, et
+              // surtout jamais reprise par un réajustement global du facteur
+              // (cf. lib/recipe-plan.ts).
+              added: true,
+            })),
+          );
+          if (ingredients.length) {
+            const { error } = await supabase.from('plan_ingredients').insert(ingredients);
+            if (error) throw error;
           }
 
           if (utensilsToAdd.length) {

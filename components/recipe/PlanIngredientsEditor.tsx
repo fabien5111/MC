@@ -105,17 +105,25 @@ export function PlanIngredientsEditor({
     const supabase = createClient();
     const ok = await mutate(
       async () => {
+        // Le contenu des étapes et les ustensiles ne dépendent pas les uns des
+        // autres : une seule salve. Seule la suppression des étapes doit
+        // attendre (leurs lignes filles d'abord), et le démarquage de
+        // l'ingrédient vient en dernier — si une suppression échoue, la ligne
+        // reste marquée « remplacée », donc cohérente avec ce qui subsiste
+        // dans le déroulé, et l'annulation reste rejouable.
+        if (stepIds.length || dropUtensils) {
+          const results = await Promise.all([
+            ...(stepIds.length
+              ? [supabase.from('plan_ingredients').delete().in('step_id', stepIds), supabase.from('plan_substeps').delete().in('step_id', stepIds)]
+              : []),
+            ...(dropUtensils ? [supabase.from('plan_utensils').delete().eq('planning_id', plan.id).eq('source_recipe_id', subRecipeId)] : []),
+          ]);
+          const failed = results.find((r) => r.error);
+          if (failed) return failed;
+        }
         if (stepIds.length) {
-          const ing = await supabase.from('plan_ingredients').delete().in('step_id', stepIds);
-          if (ing.error) return ing;
-          const sub = await supabase.from('plan_substeps').delete().in('step_id', stepIds);
-          if (sub.error) return sub;
           const steps = await supabase.from('plan_steps').delete().in('id', stepIds);
           if (steps.error) return steps;
-        }
-        if (dropUtensils) {
-          const ust = await supabase.from('plan_utensils').delete().eq('planning_id', plan.id).eq('source_recipe_id', subRecipeId);
-          if (ust.error) return ust;
         }
         return supabase.from('plan_ingredients').update({ expanded_into_recipe_id: null }).eq('id', row.id);
       },

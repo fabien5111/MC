@@ -97,15 +97,21 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   code (mutation suivie d'un `router.push`, appel IA...), afficher
   `<LoadingOverlay visible={busy} />` explicitement le temps de l'opération
   (cf. `components/recipe/DuplicateButton.tsx`).
-- **Suppression optimiste dans une liste.** `useMutation` repasse `busy` à
-  `false` dès que l'écriture réseau aboutit — avant que `router.refresh()`
-  n'ait fini de resynchroniser le rendu serveur. Si la liste vient de props
-  serveur affichées telles quelles, l'élément supprimé reste visible pendant
-  cette fenêtre alors que le spinner a déjà disparu. Toujours doubler
-  `useMutation` d'un état local initialisé depuis les props (`useState` +
-  `useEffect` de resynchronisation) et filtrer l'élément supprimé au succès
-  de la mutation, pour que sa disparition soit synchrone avec l'arrêt du
-  spinner (cf. `ProfileTabs.tsx` `delRecipe` / `components/ImporterList.tsx`
+- **`busy` couvre aussi la resynchronisation.** `router.refresh()` ne rend pas
+  de promesse : émis tel quel, il laissait `useMutation` éteindre le spinner
+  dès l'écriture réseau aboutie, alors que le rendu serveur n'était pas encore
+  revenu — les modifications apparaissaient une seconde plus tard, sur une
+  interface redevenue active. `useMutation` l'enveloppe donc dans une
+  transition (`useTransition`) et garde `busy` vrai jusqu'à ce que le nouveau
+  rendu soit appliqué. Conséquence à connaître : le spinner d'une écriture
+  reste affiché plus longtemps qu'avant, et d'autant plus que la page à
+  re-rendre est lourde (la fiche recette planifiée, par exemple) — c'est le
+  temps réel de l'opération, pas une régression.
+- **Suppression optimiste dans une liste.** Doubler malgré tout `useMutation`
+  d'un état local initialisé depuis les props (`useState` + `useEffect` de
+  resynchronisation) et filtrer l'élément supprimé au succès de la mutation :
+  la liste se met à jour dès la fin de l'écriture, sans attendre le rendu
+  serveur (cf. `ProfileTabs.tsx` `delRecipe` / `components/ImporterList.tsx`
   `supprimer`).
 
 ## Authentification
