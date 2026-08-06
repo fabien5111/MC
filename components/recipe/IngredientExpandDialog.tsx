@@ -17,7 +17,7 @@
 // inséré est une copie, comme le reste du plan — la sous-recette peut évoluer
 // ou disparaître ensuite sans rien changer ici (cf. CLAUDE.md « Recettes
 // planifiées »).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -112,28 +112,59 @@ export function IngredientExpandDialog({
   // chaque lettre — la liste se met simplement à jour sous les yeux, sans
   // voile, comme la recherche avancée du site.
   const [searching, setSearching] = useState(false);
+  // Vrai dès qu'une recherche a abouti (résultats ou erreur) une première
+  // fois. Sert à ne couvrir que le chargement initial de la fenêtre — le
+  // temps, sinon silencieux, avant que la première liste n'apparaisse — sans
+  // reproduire ce voile à chaque frappe suivante. Doublé d'un ref : lu au
+  // déclenchement de l'effet pour choisir le délai (voir plus bas) sans en
+  // faire une dépendance, ce qui redéclencherait inutilement une recherche
+  // juste après que la première ait abouti.
+  const [hasSearchedOnce, setHasSearchedOnce] = useState(false);
+  const hasSearchedOnceRef = useRef(false);
 
   useEffect(() => {
     if (stage !== 'search') return;
     const params = new URLSearchParams({ scopes: [...scopes].join(','), q: term.trim() });
+    const controller = new AbortController();
     // Débounce : la frappe ne déclenche pas une requête par caractère (même
-    // réglage que la réécriture d'URL de la recherche avancée).
-    const t = setTimeout(async () => {
-      setSearching(true);
-      setSearchError(null);
-      try {
-        const resp = await fetch(`/api/recipes/picker?${params.toString()}`);
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.erreur || `Erreur ${resp.status}`);
-        setItems(data.items as PickerItem[]);
-      } catch (e) {
-        setItems([]);
-        setSearchError((e as Error).message);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
+    // réglage que la réécriture d'URL de la recherche avancée) — sauf pour la
+    // toute première recherche à l'ouverture de la fenêtre, qui part sans
+    // attendre : personne ne « tape » encore, différer ne ferait qu'allonger
+    // l'attente avant la première liste.
+    const t = setTimeout(
+      async () => {
+        setSearching(true);
+        setSearchError(null);
+        try {
+          const resp = await fetch(`/api/recipes/picker?${params.toString()}`, { signal: controller.signal });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.erreur || `Erreur ${resp.status}`);
+          setItems(data.items as PickerItem[]);
+          setSearching(false);
+          hasSearchedOnceRef.current = true;
+          setHasSearchedOnce(true);
+        } catch (e) {
+          // Une frappe suivante annule la requête en vol (ci-dessous) : ce
+          // n'est pas un échec de recherche, `searching` reste porté par la
+          // requête qui la remplace — sans ce filtre, la réponse annulée
+          // éteignait quand même `searching` juste avant que la nouvelle ne le
+          // rallume, provoquant un clignotement, et pouvait recevoir sa propre
+          // réponse tardive après celle-ci et écraser des résultats plus
+          // récents.
+          if ((e as Error).name === 'AbortError') return;
+          setItems([]);
+          setSearchError((e as Error).message);
+          setSearching(false);
+          hasSearchedOnceRef.current = true;
+          setHasSearchedOnce(true);
+        }
+      },
+      hasSearchedOnceRef.current ? 300 : 0,
+    );
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [term, scopes, stage]);
 
   function toggleScope(s: Scope) {
@@ -388,10 +419,11 @@ export function IngredientExpandDialog({
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
       onClick={onClose}
     >
-      {/* Le spinner « Le Fouet » est monté au-dessus (z-100) : il couvre bien
-          la fenêtre pendant la recherche, la lecture de la recette choisie et
-          l'insertion. */}
-      <LoadingOverlay visible={loading || busy} label={busy ? 'Insertion des étapes…' : 'Chargement…'} />
+      {/* Le spinner « Le Fouet » est monté au-dessus (z-100) : il couvre le
+          chargement initial de la liste (avant la première recherche
+          aboutie), la lecture de la recette choisie et l'insertion — jamais
+          les recherches suivantes, déclenchées à chaque frappe. */}
+      <LoadingOverlay visible={(searching && !hasSearchedOnce) || loading || busy} label={busy ? 'Insertion des étapes…' : 'Chargement…'} />
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-3xl my-8 bg-surface-container-low border border-outline-variant rounded-xl shadow-lg flex flex-col"
@@ -453,7 +485,10 @@ export function IngredientExpandDialog({
             {!searchError && !scopes.size && (
               <p className="font-body-md text-sm text-on-surface-variant italic">Cochez au moins une portée de recherche.</p>
             )}
-            {!searchError && scopes.size > 0 && !items.length && !searching && (
+            {/* `hasSearchedOnce` évite un « Aucune recette » affiché une
+                fraction de seconde avant même que la première recherche
+                n'ait démarré. */}
+            {!searchError && scopes.size > 0 && !items.length && !searching && hasSearchedOnce && (
               <p className="font-body-md text-sm text-on-surface-variant italic">Aucune recette ne correspond.</p>
             )}
 
