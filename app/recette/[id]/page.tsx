@@ -388,9 +388,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <p className="mb-3 font-body-md text-[12px] text-on-surface-variant">
                 Sur cette fiche planifiée : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes
                 venues d&apos;un ingrédient que vous fabriquez vous-même),{' '}
-                <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré,{' '}
-                <span className="text-on-surface-variant line-through">barré en gris</span> ce qui sort du parcours (déjà réalisé, ou
-                remplacé par une recette), et « recette : … » rappelle la valeur d&apos;origine.
+                <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré ou remplacé par une recette,{' '}
+                <span className="text-on-surface-variant line-through">barré en gris</span> ce que vous avez déjà réalisé, et
+                « recette : … » rappelle la valeur d&apos;origine.
               </p>
               <PlanNotes planId={planContext.id} notes={planContext.user_note} />
             </div>
@@ -569,7 +569,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {d.items.map((it, k) => (
                       <p
                         key={k}
-                        className={`font-body-md text-body-md font-semibold${it.fully_done ? ' text-on-surface-variant line-through' : ''}`}
+                        // Même convention que le déroulé : barré si l'étape est
+                        // entièrement traitée, vert si elle vient d'un
+                        // ingrédient que l'utilisateur fabrique lui-même.
+                        className={`font-body-md text-body-md font-semibold${
+                          it.fully_done ? ' text-on-surface-variant line-through' : it.added ? ' text-green-700' : ''
+                        }`}
                       >
                         {it.title}
                       </p>

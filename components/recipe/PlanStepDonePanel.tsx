@@ -373,7 +373,10 @@ export function PlanStepDonePanel({
               // dans le parcours quel que soit l'état de l'étape.
               const replaced = it.expanded_into_recipe_id != null;
               const excluded = !replaced && step.already_done && it.excluded_when_done;
-              const tone = replaced ? 'text-on-surface-variant line-through' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
+              // Barré en rouge comme une suppression : l'ingrédient ne
+              // s'achète plus. La mention verte en dessous dit où il est
+              // fabriqué à la place.
+              const tone = replaced ? 'text-error line-through' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
               return (
                 <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
                   {step.already_done && (

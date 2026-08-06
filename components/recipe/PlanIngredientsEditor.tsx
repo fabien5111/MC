@@ -244,15 +244,13 @@ export function PlanIngredientsEditor({
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
                   // `removed` prime toujours sur l'exclusion « déjà fait ».
                   const excludedByStep = step.already_done && row.excluded_when_done;
-                  // Ligne remplacée par une sous-recette : barrée comme une
-                  // suppression, mais en gris et non en rouge — elle n'est pas
-                  // retirée, elle est fabriquée plus haut dans le déroulé.
+                  // Ligne remplacée par une sous-recette : barrée en rouge,
+                  // comme une suppression — elle ne s'achète plus, la mention
+                  // verte en dessous dit où elle est fabriquée à la place.
                   const expanded = planIngredientExpanded(row);
-                  const tone = row.removed
+                  const tone = row.removed || expanded
                     ? 'text-error line-through'
-                    : expanded
-                      ? 'text-on-surface-variant line-through'
-                      : excludedByStep
+                    : excludedByStep
                         ? 'text-on-surface-variant line-through opacity-60'
                         : row.added
                           ? 'text-green-700'

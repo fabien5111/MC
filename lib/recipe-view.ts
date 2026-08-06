@@ -169,11 +169,16 @@ export function dayLabel(offset: number | null | undefined): string {
 }
 
 // Regroupe les étapes par jour pour le planning de préparation. `fully_done`
-// (mode planifié seulement, cf. lib/recipe-plan.ts) barre l'intitulé quand
-// l'étape est entièrement traitée — absent sur une recette, jamais vrai pour
-// la « Dégustation » de synthèse.
-type PlanningStep = Pick<RecipeFull['recipe_steps'][number], 'title' | 'day_offset' | 'order_index'> & { fully_done?: boolean };
-export type PlanningDayItem = { title: string; fully_done: boolean };
+// et `added` (mode planifié seulement, cf. lib/recipe-plan.ts) reprennent la
+// convention de couleurs de la fiche : intitulé barré quand l'étape est
+// entièrement traitée, vert quand elle vient du remplacement d'un ingrédient
+// par une sous-recette. Absents sur une recette, jamais vrais pour la
+// « Dégustation » de synthèse.
+type PlanningStep = Pick<RecipeFull['recipe_steps'][number], 'title' | 'day_offset' | 'order_index'> & {
+  fully_done?: boolean;
+  added?: boolean;
+};
+export type PlanningDayItem = { title: string; fully_done: boolean; added: boolean };
 
 export function planningDays(steps: PlanningStep[]): { offset: number; items: PlanningDayItem[] }[] {
   const days: { offset: number; items: PlanningDayItem[] }[] = [];
@@ -187,7 +192,7 @@ export function planningDays(steps: PlanningStep[]): { offset: number; items: Pl
         d = { offset: o, items: [] };
         days.push(d);
       }
-      d.items.push({ title: s.title || '', fully_done: s.fully_done ?? false });
+      d.items.push({ title: s.title || '', fully_done: s.fully_done ?? false, added: s.added ?? false });
     });
   return days;
 }
