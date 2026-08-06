@@ -98,6 +98,8 @@ export function IngredientExpandDialog({
   const dialog = useDialog();
 
   const [stage, setStage] = useState<'search' | 'setup'>('search');
+  // Chargement de la recette choisie (étape 2) : seul cas couvert par le
+  // spinner plein écran, cf. plus bas.
   const [loading, setLoading] = useState(false);
 
   // ── Étape 1 : recherche ────────────────────────────────────────────────
@@ -105,6 +107,11 @@ export function IngredientExpandDialog({
   const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'fav']));
   const [items, setItems] = useState<PickerItem[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // État distinct de `loading` : la frappe déclenche une requête à chaque
+  // caractère (après débounce), et le spinner plein écran clignoterait sur
+  // chaque lettre — la liste se met simplement à jour sous les yeux, sans
+  // voile, comme la recherche avancée du site.
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (stage !== 'search') return;
@@ -112,7 +119,7 @@ export function IngredientExpandDialog({
     // Débounce : la frappe ne déclenche pas une requête par caractère (même
     // réglage que la réécriture d'URL de la recherche avancée).
     const t = setTimeout(async () => {
-      setLoading(true);
+      setSearching(true);
       setSearchError(null);
       try {
         const resp = await fetch(`/api/recipes/picker?${params.toString()}`);
@@ -123,7 +130,7 @@ export function IngredientExpandDialog({
         setItems([]);
         setSearchError((e as Error).message);
       } finally {
-        setLoading(false);
+        setSearching(false);
       }
     }, 300);
     return () => clearTimeout(t);
@@ -446,7 +453,7 @@ export function IngredientExpandDialog({
             {!searchError && !scopes.size && (
               <p className="font-body-md text-sm text-on-surface-variant italic">Cochez au moins une portée de recherche.</p>
             )}
-            {!searchError && scopes.size > 0 && !items.length && !loading && (
+            {!searchError && scopes.size > 0 && !items.length && !searching && (
               <p className="font-body-md text-sm text-on-surface-variant italic">Aucune recette ne correspond.</p>
             )}
 
