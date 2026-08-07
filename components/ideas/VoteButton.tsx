@@ -12,10 +12,13 @@ export function VoteButton({
   ideaId,
   initialVotes,
   initialHasVoted,
+  size = 'md',
 }: {
   ideaId: string;
   initialVotes: number;
   initialHasVoted: boolean;
+  // 'sm' : suggestions anti-doublons (vue création), à côté d'un champ.
+  size?: 'md' | 'sm';
 }) {
   const router = useRouter();
   const { busy, mutate } = useMutation();
@@ -57,14 +60,18 @@ export function VoteButton({
       onClick={toggle}
       disabled={busy}
       title={hasVoted ? 'Retirer mon vote' : 'Voter pour cette idée'}
-      className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl border shrink-0 transition-colors disabled:opacity-60 ${
+      className={`flex flex-col items-center justify-center rounded-xl border shrink-0 transition-colors disabled:opacity-60 ${
+        size === 'sm' ? 'w-11 h-11' : 'w-14 h-14'
+      } ${
         hasVoted
           ? 'bg-primary text-on-primary border-primary'
           : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
       }`}
     >
-      <span className="material-symbols-outlined text-[20px] leading-none">arrow_upward</span>
-      <span className="text-xs font-bold mt-0.5">{votes}</span>
+      <span className={`material-symbols-outlined leading-none ${size === 'sm' ? 'text-[16px]' : 'text-[20px]'}`}>
+        arrow_upward
+      </span>
+      <span className={`font-bold mt-0.5 ${size === 'sm' ? 'text-[10px]' : 'text-xs'}`}>{votes}</span>
     </button>
   );
 }

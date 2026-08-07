@@ -10,7 +10,9 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { IdeaCard } from '@/components/ideas/IdeaCard';
-import { IDEA_SORT_KEYS, IDEA_SORT_LABELS, IDEAS_PAGE_SIZE, listIdeas, parseIdeaSort } from '@/lib/ideas';
+import { isReadOnlySession } from '@/lib/impersonation';
+import { IDEA_SORT_KEYS, IDEA_SORT_LABELS, IDEAS_PAGE_SIZE, parseIdeaSort } from '@/lib/ideas';
+import { listIdeas } from '@/lib/ideas-data';
 
 export default async function IdeesPage({
   searchParams,
@@ -22,20 +24,31 @@ export default async function IdeesPage({
   const nRaw = Array.isArray(sp.n) ? sp.n[0] : sp.n;
   const shown = Math.max(IDEAS_PAGE_SIZE, Math.round(Number(nRaw)) || IDEAS_PAGE_SIZE);
 
-  const result = await listIdeas({ sort, limit: shown });
+  const [result, readOnly] = await Promise.all([listIdeas({ sort, limit: shown }), isReadOnlySession()]);
 
   return (
     <>
       <Header current="/idees" />
 
       <main className="max-w-[900px] mx-auto pb-24 px-margin-mobile md:px-margin-desktop">
-        <section className="pt-12 pb-8">
-          <h1 className="font-headline-lg text-headline-lg text-primary">Boîte à idées</h1>
-          <div className="h-1 w-12 bg-secondary mt-1 mb-4" />
-          <p className="text-on-surface-variant max-w-xl">
-            Proposez une fonctionnalité, votez pour celles qui comptent pour vous : c&apos;est ce qui
-            guide les prochains développements du site.
-          </p>
+        <section className="pt-12 pb-8 flex items-start justify-between gap-6 flex-wrap">
+          <div>
+            <h1 className="font-headline-lg text-headline-lg text-primary">Boîte à idées</h1>
+            <div className="h-1 w-12 bg-secondary mt-1 mb-4" />
+            <p className="text-on-surface-variant max-w-xl">
+              Proposez une fonctionnalité, votez pour celles qui comptent pour vous : c&apos;est ce qui
+              guide les prochains développements du site.
+            </p>
+          </div>
+          {!readOnly && (
+            <Link
+              href="/idees/nouvelle"
+              prefetch={false}
+              className="shrink-0 flex items-center gap-1.5 bg-primary text-on-primary pl-4 pr-5 py-2.5 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span> Proposer une idée
+            </Link>
+          )}
         </section>
 
         <div className="flex items-center gap-2 mb-6">

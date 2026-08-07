@@ -1,7 +1,7 @@
-// Boîte à idées — accès données (RPC `list_ideas`) et logique d'affichage.
-// À utiliser dans les Server Components (page /idees) et la route de
-// pagination (/api/idees).
-import { createClient } from '@/lib/supabase/server';
+// Boîte à idées — types et logique d'affichage, pures (aucun accès Supabase).
+// Utilisable côté serveur (page /idees) comme côté client (IdeaForm) — le
+// data-fetching (RPC) vit dans lib/ideas-data.ts, motif search-params.ts /
+// search.ts.
 
 export const IDEAS_PAGE_SIZE = 12;
 
@@ -52,51 +52,18 @@ export type IdeaCardData = {
 
 export type ListIdeasResult = { total: number; ideas: IdeaCardData[]; error: string | null };
 
-// Page d'idées + total, en un seul aller-retour (motif `search_advanced_recipes` :
-// tri, pagination, compteur de votes et "ai-je voté" résolus côté SQL).
-export async function listIdeas(opts: {
-  sort?: IdeaSort;
-  offset?: number;
-  limit?: number;
-  search?: string | null;
-}): Promise<ListIdeasResult> {
-  const { sort = 'votes', offset = 0, limit = IDEAS_PAGE_SIZE, search = null } = opts;
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('list_ideas' as never, {
-    search_term: search || null,
-    sort_by: sort,
-    offset_val: offset,
-    limit_val: limit,
-    count_only: false,
-  } as never);
-  if (error) {
-    console.error('listIdeas:', error.message);
-    return { total: 0, ideas: [], error: error.message };
-  }
-  const res = data as unknown as { total?: number; ideas?: IdeaCardData[] } | null;
-  return { total: res?.total ?? 0, ideas: res?.ideas ?? [], error: null };
-}
-
 export type SimilarIdea = {
   id: string;
   title: string;
   status: string;
   votes_count: number;
+  has_voted: boolean;
   rank: number;
 };
 
-// Suggestions anti-doublons pendant la frappe du titre (vue création).
-export async function suggestSimilarIdeas(term: string, max = 5): Promise<SimilarIdea[]> {
-  const t = term.trim();
-  if (t.length < 3) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('suggest_similar_ideas' as never, {
-    term: t,
-    max_results: max,
-  } as never);
-  if (error) {
-    console.error('suggestSimilarIdeas:', error.message);
-    return [];
-  }
-  return (data as unknown as SimilarIdea[]) ?? [];
-}
+// Contraintes de saisie du formulaire (motif titre "Recherche dynamique" de
+// la vue création). Le titre reprend la contrainte SQL (5..60) ; la
+// description reste volontairement plus courte que la limite SQL (1000) —
+// "une description courte" du spec, pas un roman.
+export const IDEA_TITLE_MAX = 60;
+export const IDEA_DESCRIPTION_MAX = 300;
