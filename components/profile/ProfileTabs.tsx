@@ -29,7 +29,7 @@ export type UserRecipe = UserRecipeCard;
 // défaut ('recipes') s'affiche une frame avant d'être remplacé par le bon.
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'sessions' | 'courses';
+type TabKey = 'recipes' | 'imports' | 'favorites' | 'planning' | 'sessions' | 'courses' | 'idees';
 
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
@@ -47,6 +47,7 @@ const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: 'planning', label: 'Planning' },
   { key: 'sessions', label: 'Sessions actives' },
   { key: 'courses', label: 'Listes de courses' },
+  { key: 'idees', label: 'Boîte à idées', href: '/idees' },
 ];
 
 export function ProfileTabs({
