@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
+  { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
   { href: '/admin/moules', label: 'Moules', icon: 'cake' },
   { href: '/admin/photos', label: 'Photos du site', icon: 'photo_library' },
 ];
