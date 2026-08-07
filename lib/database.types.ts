@@ -448,6 +448,38 @@ export type Database = {
           },
         ]
       }
+      featured_recipes: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: number
+          recipe_id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: number
+          recipe_id: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: number
+          recipe_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "featured_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string | null
@@ -477,6 +509,90 @@ export type Database = {
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_votes: {
+        Row: {
+          created_at: string
+          idea_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          idea_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          idea_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_votes_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ideas: {
+        Row: {
+          admin_note: string | null
+          author_id: string | null
+          created_at: string
+          description: string | null
+          fts: unknown
+          id: string
+          merged_into_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          admin_note?: string | null
+          author_id?: string | null
+          created_at?: string
+          description?: string | null
+          fts?: unknown
+          id?: string
+          merged_into_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          admin_note?: string | null
+          author_id?: string | null
+          created_at?: string
+          description?: string | null
+          fts?: unknown
+          id?: string
+          merged_into_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ideas_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ideas_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
             referencedColumns: ["id"]
           },
         ]
@@ -1917,6 +2033,16 @@ export type Database = {
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
       is_admin_user: { Args: never; Returns: boolean }
       is_read_only_session: { Args: never; Returns: boolean }
+      list_ideas: {
+        Args: {
+          count_only?: boolean
+          limit_val?: number
+          offset_val?: number
+          search_term?: string
+          sort_by?: string
+        }
+        Returns: Json
+      }
       mc_norm: { Args: { txt: string }; Returns: string }
       owns_execution: { Args: { p_execution_id: number }; Returns: boolean }
       owns_plan: { Args: { p_planning_id: number }; Returns: boolean }
@@ -1944,6 +2070,16 @@ export type Database = {
         Returns: {
           id: number
           name: string
+        }[]
+      }
+      suggest_similar_ideas: {
+        Args: { max_results?: number; term: string }
+        Returns: {
+          id: string
+          rank: number
+          status: string
+          title: string
+          votes_count: number
         }[]
       }
     }
