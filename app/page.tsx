@@ -8,6 +8,7 @@ import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { getActiveFeaturedRecipe } from '@/lib/featured';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -40,14 +41,18 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, favIds, banners, homeCategories, user] = await Promise.all([
+  const [recipes, activeFeatured, favIds, banners, homeCategories, user] = await Promise.all([
     getRecipes({ limit: 6 }),
+    getActiveFeaturedRecipe(),
     getFavoriteIds(),
     getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
     getHomeCategories(),
     getCurrentUser(),
   ]);
-  const featured = recipes[0] ?? null;
+  // Repli sur la recette la plus récente si aucune plage de mise en avant ne
+  // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
+  // la section ne disparaît jamais de l'accueil.
+  const featured = activeFeatured ?? recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
   // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
@@ -85,7 +90,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Recette du mois */}
+        {/* Recette de la semaine */}
         {featured && (
           <section className="mb-20">
             <div className="luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
@@ -108,7 +113,7 @@ export default async function HomePage() {
                     </div>
                     <div className="absolute top-6 left-6">
                       <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
-                        Recette du Mois
+                        Recette de la Semaine
                       </span>
                     </div>
                   </Link>
