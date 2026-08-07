@@ -61,6 +61,11 @@ export type SimilarIdea = {
   rank: number;
 };
 
+// Sous-ensemble de SimilarIdea sans le score de pertinence — résultat de
+// `ideas_summaries` (idées désignées par id, motif détection IA de doublons :
+// suggestion à la création comme balayage admin).
+export type IdeaSummary = Omit<SimilarIdea, 'rank'>;
+
 // Contraintes de saisie du formulaire (motif titre "Recherche dynamique" de
 // la vue création). Le titre reprend la contrainte SQL (5..60) ; la
 // description reste volontairement plus courte que la limite SQL (1000) —

@@ -1,23 +1,33 @@
 'use client';
 
-// Formulaire de création d'idée + prévention des doublons.
+// Formulaire de création d'idée + prévention des doublons, à deux niveaux :
 //
-// Le champ titre agit lui-même comme barre de recherche (motif
-// IngredientPicker : debounce 300 ms, requête annulée à chaque frappe pour
-// que seule la dernière réponse s'applique). Le bouton de soumission reste
-// actif même quand des suggestions apparaissent — "forçage de création" du
-// spec : l'utilisateur reste seul juge que son idée est vraiment nouvelle.
-import { useEffect, useRef, useState } from 'react';
+//  - lexicale et instantanée pendant la frappe (le champ titre agit comme
+//    barre de recherche, motif IngredientPicker : debounce 300 ms, requête
+//    annulée à chaque frappe) ;
+//  - sémantique à la validation (`/api/idees/verifier-doublon`) : un appel IA
+//    par frappe serait lent et coûteux, donc déclenché seulement au moment de
+//    publier, et repère les reformulations sans mot commun que le trigramme
+//    rate ("minuteur qui se lance tout seul" ↔ "chronomètre automatique").
+//
+// Dans tous les cas, la publication reste possible — "forçage de création"
+// du spec : l'utilisateur reste seul juge que son idée est vraiment nouvelle.
+// Un premier clic sur "Publier" lance la vérification IA ; si elle remonte
+// des correspondances, le même bouton devient "Publier quand même" et un
+// second clic publie sans revérifier (la vérification n'a lieu qu'une fois
+// par saisie, invalidée dès que le titre ou la description change).
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { StatusBadge } from '@/components/ideas/StatusBadge';
-import { VoteButton } from '@/components/ideas/VoteButton';
+import { SimilarIdeaRow } from '@/components/ideas/SimilarIdeaRow';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX, type SimilarIdea } from '@/lib/ideas';
+import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX, type IdeaSummary, type SimilarIdea } from '@/lib/ideas';
 
 const SUGGEST_DEBOUNCE_MS = 300;
 const TITLE_MIN = 5;
+
+type AiMatch = IdeaSummary & { reason: string };
 
 export function IdeaForm() {
   const router = useRouter();
@@ -27,6 +37,11 @@ export function IdeaForm() {
   const [submitting, setSubmitting] = useState(false);
   const [suggestions, setSuggestions] = useState<SimilarIdea[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // null = pas encore vérifié pour la saisie actuelle ; [] = vérifié, aucune
+  // correspondance ; non vide = correspondances à confirmer avant publication.
+  const [aiMatches, setAiMatches] = useState<AiMatch[] | null>(null);
+  const [aiChecking, setAiChecking] = useState(false);
 
   useEffect(() => {
     const t = title.trim();
@@ -57,11 +72,19 @@ export function IdeaForm() {
     };
   }, [title]);
 
+  // Toute modification du texte invalide la vérification IA précédente.
+  function changeTitle(v: string) {
+    setTitle(v.slice(0, IDEA_TITLE_MAX));
+    setAiMatches(null);
+  }
+  function changeDescription(v: string) {
+    setDescription(v.slice(0, IDEA_DESCRIPTION_MAX));
+    setAiMatches(null);
+  }
+
   const titleValid = title.trim().length >= TITLE_MIN && title.trim().length <= IDEA_TITLE_MAX;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (submitting || !titleValid) return;
+  async function actuallySubmit() {
     setSubmitting(true);
     let newId: string | null = null;
     const ok = await mutate(
@@ -91,9 +114,41 @@ export function IdeaForm() {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!titleValid || submitting || aiChecking) return;
+
+    if (aiMatches === null) {
+      setAiChecking(true);
+      let matches: AiMatch[] = [];
+      try {
+        const res = await fetch('/api/idees/verifier-doublon', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title, description }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { matches?: AiMatch[] };
+          matches = data.matches ?? [];
+        }
+      } catch {
+        // Échec de la vérification IA : traité comme "rien trouvé", ne
+        // bloque pas la publication.
+      }
+      setAiChecking(false);
+      setAiMatches(matches);
+      if (matches.length) return; // affiche les correspondances, attend confirmation
+    }
+
+    await actuallySubmit();
+  }
+
   return (
     <>
-      <LoadingOverlay visible={submitting} label="Enregistrement de l'idée…" />
+      <LoadingOverlay
+        visible={submitting || aiChecking}
+        label={aiChecking ? 'Vérification des doublons…' : "Enregistrement de l'idée…"}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div>
@@ -105,7 +160,7 @@ export function IdeaForm() {
               id="idea-title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value.slice(0, IDEA_TITLE_MAX))}
+              onChange={(e) => changeTitle(e.target.value)}
               placeholder="En une phrase courte : quelle fonctionnalité manque ?"
               autoComplete="off"
               className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 pr-9 text-[15px] text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none"
@@ -128,14 +183,7 @@ export function IdeaForm() {
             </p>
             <div className="flex flex-col gap-2">
               {suggestions.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest"
-                >
-                  <VoteButton ideaId={s.id} initialVotes={s.votes_count} initialHasVoted={s.has_voted} size="sm" />
-                  <p className="flex-1 min-w-0 text-[13.5px] text-on-surface truncate">{s.title}</p>
-                  <StatusBadge status={s.status} />
-                </div>
+                <SimilarIdeaRow key={s.id} id={s.id} title={s.title} status={s.status} votesCount={s.votes_count} hasVoted={s.has_voted} />
               ))}
             </div>
           </div>
@@ -148,7 +196,7 @@ export function IdeaForm() {
           <textarea
             id="idea-description"
             value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, IDEA_DESCRIPTION_MAX))}
+            onChange={(e) => changeDescription(e.target.value)}
             placeholder="Quelques phrases pour préciser le besoin."
             rows={4}
             className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-[14px] text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none resize-none"
@@ -158,13 +206,35 @@ export function IdeaForm() {
           </p>
         </div>
 
+        {aiMatches !== null && aiMatches.length > 0 && (
+          <div className="border border-secondary/40 rounded-lg p-4 bg-secondary-container/20">
+            <p className="text-[12.5px] text-on-surface-variant mb-3">
+              <span className="material-symbols-outlined text-[16px] align-text-bottom mr-1">auto_awesome</span>
+              L&apos;IA a repéré des idées au sens proche, même formulées autrement — un vote suffit peut-être :
+            </p>
+            <div className="flex flex-col gap-2">
+              {aiMatches.map((m) => (
+                <SimilarIdeaRow
+                  key={m.id}
+                  id={m.id}
+                  title={m.title}
+                  status={m.status}
+                  votesCount={m.votes_count}
+                  hasVoted={m.has_voted}
+                  reason={m.reason}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-3">
           <button
             type="submit"
-            disabled={!titleValid || submitting}
+            disabled={!titleValid || submitting || aiChecking}
             className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
           >
-            Publier l&apos;idée
+            {aiMatches && aiMatches.length > 0 ? 'Publier quand même' : "Publier l'idée"}
           </button>
         </div>
       </form>

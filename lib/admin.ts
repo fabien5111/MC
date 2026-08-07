@@ -89,6 +89,43 @@ export async function getPendingComments(): Promise<PendingComment[]> {
   return (data as unknown as PendingComment[]) ?? [];
 }
 
+// ── Boîte à idées (modération) ─────────────────────────────────────────
+// Contrairement à `listIdeas` (vue publique, RPC `list_ideas`), on veut ici
+// TOUTES les idées y compris fusionnées/refusées — visibilité complète pour
+// la modération, là où la vue publique les exclut délibérément.
+export type AdminIdeaRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+  author_id: string | null;
+  merged_into_id: string | null;
+  profiles: { full_name: string | null } | null;
+  merged_into: { title: string } | null;
+  votes_count: number;
+};
+
+export async function getAdminIdeas(): Promise<AdminIdeaRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('ideas')
+    .select(
+      'id, title, description, status, admin_note, created_at, author_id, merged_into_id, ' +
+        'profiles!ideas_author_id_fkey(full_name), merged_into:ideas!ideas_merged_into_id_fkey(title), idea_votes(count)',
+    )
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getAdminIdeas:', error.message);
+    return [];
+  }
+  return ((data ?? []) as unknown as (AdminIdeaRow & { idea_votes: { count: number }[] })[]).map((row) => ({
+    ...row,
+    votes_count: row.idea_votes?.[0]?.count ?? 0,
+  }));
+}
+
 // ── Membres / allowlist (fusion profils + invitations) ───────
 export type Member = {
   id: string;
