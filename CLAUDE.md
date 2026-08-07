@@ -58,6 +58,7 @@ app/                    Pages et routes (App Router)
 │   ├── recherche/compte/ GET  — compte seul des résultats (tiroir mobile)
 │   ├── ingredients/      GET  — autocomplétion des ingrédients
 │   ├── recipes/          GET  — pagination de l'accueil
+│   ├── recipes/picker/   GET  — recherche de recettes (remplacement d'un ingrédient)
 │   ├── admin/impersonate/ POST — lien de connexion « en tant que »
 │   └── impersonation/    POST — fin de session / journal d'audit
 ├── auth/callback/      Callback OAuth / confirmation e-mail
@@ -96,15 +97,30 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   code (mutation suivie d'un `router.push`, appel IA...), afficher
   `<LoadingOverlay visible={busy} />` explicitement le temps de l'opération
   (cf. `components/recipe/DuplicateButton.tsx`).
-- **Suppression optimiste dans une liste.** `useMutation` repasse `busy` à
-  `false` dès que l'écriture réseau aboutit — avant que `router.refresh()`
-  n'ait fini de resynchroniser le rendu serveur. Si la liste vient de props
-  serveur affichées telles quelles, l'élément supprimé reste visible pendant
-  cette fenêtre alors que le spinner a déjà disparu. Toujours doubler
-  `useMutation` d'un état local initialisé depuis les props (`useState` +
-  `useEffect` de resynchronisation) et filtrer l'élément supprimé au succès
-  de la mutation, pour que sa disparition soit synchrone avec l'arrêt du
-  spinner (cf. `ProfileTabs.tsx` `delRecipe` / `components/ImporterList.tsx`
+- **`busy` couvre aussi la resynchronisation.** `router.refresh()` ne rend pas
+  de promesse : émis tel quel, il laissait `useMutation` éteindre le spinner
+  dès l'écriture réseau aboutie, alors que le rendu serveur n'était pas encore
+  revenu — les modifications apparaissaient une seconde plus tard, sur une
+  interface redevenue active. `useMutation` l'enveloppe donc dans une
+  transition (`useTransition`) et garde `busy` vrai jusqu'à ce que le nouveau
+  rendu soit appliqué. Conséquence à connaître : le spinner d'une écriture
+  reste affiché plus longtemps qu'avant, et d'autant plus que la page à
+  re-rendre est lourde (la fiche recette planifiée, par exemple) — c'est le
+  temps réel de l'opération, pas une régression.
+- **Une fenêtre modale ne porte jamais sa propre resynchronisation.** Une
+  transition meurt avec le composant qui la porte : si la modale se ferme
+  aussitôt l'écriture faite, son `pending` disparaît, le spinner s'éteint et
+  les modifications n'apparaissent qu'une seconde plus tard. Écrire avec
+  `refresh: false`, puis laisser le **parent** — qui reste monté — appeler le
+  `refresh()` rendu par `useMutation`, émis de façon synchrone avant la
+  fermeture pour que son voile soit déjà en place au rendu qui démonte la
+  modale (cf. `IngredientExpandDialog` / `PlanIngredientsEditor`
+  `onExpansionDone`).
+- **Suppression optimiste dans une liste.** Doubler malgré tout `useMutation`
+  d'un état local initialisé depuis les props (`useState` + `useEffect` de
+  resynchronisation) et filtrer l'élément supprimé au succès de la mutation :
+  la liste se met à jour dès la fin de l'écriture, sans attendre le rendu
+  serveur (cf. `ProfileTabs.tsx` `delRecipe` / `components/ImporterList.tsx`
   `supprimer`).
 
 ## Authentification
@@ -199,8 +215,8 @@ devient indépendant de la recette d'origine.
 
 - **`planning`** (+ `plan_steps`, `plan_substeps`, `plan_ingredients`,
   `plan_utensils`) porte l'**intention** : une copie de la recette propre à
-  l'utilisateur, modifiable (quantités, ingrédients ajoutés/supprimés, et à
-  terme remplacement d'un ingrédient par une sous-recette) sans dépendre de
+  l'utilisateur, modifiable (quantités, ingrédients ajoutés/supprimés,
+  remplacement d'un ingrédient par une sous-recette) sans dépendre de
   l'évolution de la recette d'origine. `planning.recipe_id` est en
   `ON DELETE SET NULL` (`recipe_title` dénormalisé prend le relais pour
   l'affichage si la recette est supprimée). `plan_ingredients.step_id` est une
@@ -258,6 +274,34 @@ devient indépendant de la recette d'origine.
   tempo d'exécution) en découle. Conséquences assumées, cohérentes avec le
   modèle : une session déjà démarrée n'est pas retouchée, et une liste de
   courses déjà générée non plus (les deux sont des instantanés).
+- **Remplacer un ingrédient par une recette** (`plan_ingredients.expanded_into_recipe_id`,
+  `plan_steps.source_ingredient_id`) : « j'ai du praliné dans ma recette, mais
+  je le fais moi-même ». Les étapes de la sous-recette sont **copiées** dans le
+  plan (comme le reste du plan : la sous-recette peut évoluer ou disparaître
+  ensuite sans rien changer), à la position et au jour choisis étape par étape
+  dans `IngredientExpandDialog`. La ligne d'ingrédient n'est ni supprimée ni
+  modifiée, seulement **marquée** : `planIngredientExcluded` la sort des
+  courses, de la mise en place et de l'exécution (on ne l'achète plus, on la
+  fabrique), et elle reste affichée barrée avec le renvoi vers la recette —
+  annuler le remplacement la rétablit intacte. Deux choix structurants :
+  - Les ingrédients insérés portent **`added = true`**. Même sens que pour un
+    ingrédient ajouté à la main (« absent de la recette d'origine »), même
+    couleur verte, et surtout même conséquence : `rescalePlanIngredients` ne
+    touche jamais une ligne `added`. Sans ça, un changement d'ajustement global
+    du plan recalculerait `quantité = base × facteur du plan` et **écraserait le
+    coefficient propre à la sous-recette** — exactement la corruption
+    silencieuse que le plan matérialisé a corrigée.
+  - Le jour proposé pour une étape insérée est
+    `jour de l'étape consommatrice + day_offset de l'étape dans sa recette`
+    (`suggestedExpansionDay`) : le `day_offset` d'une recette compte à rebours
+    depuis **sa propre** dégustation, ici le moment où la préparation doit être
+    prête. Une nuit de repos recule donc l'étape d'un jour, toute seule. Ce jour
+    proposé est figé dans `base_day_offset`, ce qui permet de le rétablir depuis
+    la fiche comme pour n'importe quelle étape déplacée.
+  L'intercalation utilise `computeInsertOrderIndexes` : `plan_steps.order_index`
+  étant `numeric`, on calcule des valeurs intermédiaires plutôt que de
+  renuméroter le plan (ce qui invaliderait les positions retenues ailleurs).
+  Un ingrédient déjà remplacé ne propose plus le picto : il faut d'abord annuler.
 - **Replanifier** une recette à partir d'un plan existant = dupliquer les
   lignes `plan_*` d'un `planning.id` vers un nouveau, avec une nouvelle
   `planned_date` (`planning.source_plan_id` trace la filiation). Ça ne
@@ -470,6 +514,9 @@ Ajustement de la recette par quantité à produire ou par type de moule
 Ajustement de la recette en fonction de la quantité d'un ingrédient disponible
 Planification de l'execution des recettes
 Gestion de la liste des courses
+Remplacement d'un ingrédient d'une recette planifiée par une autre recette
+(le praliné acheté devient le praliné fabriqué : ses étapes s'insèrent dans le
+déroulé, ses ingrédients rejoignent les courses)
 
 
 
@@ -484,8 +531,6 @@ Import de recette par copier/coller (l'import depuis une URL a été retiré : l
 ## Fonctionnalités à venir (Plan gratuit) - Liste non exhaustive
 
 Communauté de patissier, personnes suivies, like sur les profils et sur les recettes
-
-Éclatement d'un ingrédient spécifique en sous-étapes de préparation détaillées.
 
 Marquage d'une étape déjà réalisée dans une recette planifiée (retire ses
 ingrédients des courses et de la mise en place, cuisson conservable).

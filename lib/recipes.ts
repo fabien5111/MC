@@ -120,6 +120,12 @@ export type RecipeStepView = {
   // aucun ingrédient/sous-étape gardé — l'étape reste affichée, mais barrée
   // (cf. stepFullyDone). Absente sur une recette.
   fully_done?: boolean;
+  // Mode planifié seulement : étape insérée par le remplacement d'un
+  // ingrédient par une sous-recette (« je fais moi-même mon praliné »), avec
+  // la recette dont elle provient quand celle-ci est encore lisible — cf.
+  // lib/recipe-plan.ts. Absentes sur une recette.
+  added?: boolean;
+  from_recipe?: { id: string; title: string } | null;
 };
 export type IngredientView = {
   id: number;

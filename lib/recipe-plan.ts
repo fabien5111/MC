@@ -150,6 +150,13 @@ type PlanIngredientPending = { excluded_when_done: boolean };
 export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']['Row'] &
   PlanIngredientPending & {
     ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
+    // Sous-recette qui remplace cet ingrédient (« je fais moi-même mon
+    // praliné ») — cf. « Ingrédient remplacé par une sous-recette » plus bas.
+    // Renseignée après coup par `getPlan` (et non par une jointure imbriquée,
+    // cf. PLAN_FULL_SELECT). `null` si la ligne n'est pas remplacée, ou si la
+    // recette n'est plus lisible (dépubliée, supprimée) : le plan reste
+    // autonome, seul le lien vers la fiche se dégrade.
+    expanded_recipe?: { id: string; title: string } | null;
   };
 export type PlanUtensilRow = Database['public']['Tables']['plan_utensils']['Row'];
 // `user_note` vient de la migration « note déplaçable » : distincte de
@@ -186,14 +193,16 @@ export type PlanFull = Database['public']['Tables']['planning']['Row'] &
 // utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
 // déjà fait).
 type StepDoneFlags = Pick<PlanStepRow, 'already_done'>;
-type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_done'>;
+type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'>;
 type SubstepDoneFlags = Pick<PlanSubstepRow, 'excluded_when_done'>;
 
 // Un ingrédient sort du parcours (courses, mise en place, exécution) s'il a
-// été retiré à la main, ou si son étape est déjà faite et qu'il n'a pas été
-// explicitement conservé.
+// été retiré à la main, s'il a été remplacé par une sous-recette (on ne
+// l'achète plus : on le fabrique, cf. plus bas), ou si son étape est déjà
+// faite et qu'il n'a pas été explicitement conservé.
 export function planIngredientExcluded(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
   if (ing.removed) return true;
+  if (ing.expanded_into_recipe_id != null) return true;
   return step.already_done && ing.excluded_when_done;
 }
 
@@ -246,13 +255,131 @@ export function stepDayMoved(s: Pick<PlanStepRow, 'day_offset' | 'base_day_offse
   return s.base_day_offset != null && s.base_day_offset !== s.day_offset;
 }
 
+// ── Ingrédient remplacé par une sous-recette ───────────────────────────
+// « J'ai du praliné dans ma recette, mais je veux le faire moi-même » :
+// l'ingrédient est remplacé par les étapes d'une autre recette de
+// l'application, insérées dans le déroulé du plan.
+//
+// Trois colonnes, prévues dès la création des tables `plan_*`, portent le
+// lien — aucune n'est un diff sur la recette vivante, le plan reste la copie
+// autonome décrite dans CLAUDE.md :
+//   • `plan_ingredients.expanded_into_recipe_id` : la ligne remplacée pointe
+//     la sous-recette. Elle reste affichée (barrée, avec le lien) mais sort
+//     des courses, de la mise en place et de l'exécution — cf.
+//     `planIngredientExcluded` : on ne l'achète plus, on la fabrique.
+//   • `plan_steps.source_ingredient_id` : les étapes insérées pointent la
+//     ligne remplacée. C'est ce lien qui permet de tout défaire d'un bloc,
+//     et de reconnaître une étape ajoutée pour la teinter en vert.
+//   • `source_recipe_id` (étapes, ingrédients, ustensiles) : la sous-recette
+//     d'origine, déjà renseignée à la matérialisation pour la recette du plan.
+//
+// Les ingrédients insérés portent `added = true`, comme un ingrédient ajouté
+// à la main dans l'éditeur. Ce n'est pas un abus de marqueur mais la même
+// signification (« absent de la recette d'origine »), et surtout la même
+// conséquence attendue : `rescalePlanIngredients` ne touche jamais une ligne
+// `added`. Sans ça, un changement d'ajustement global du plan recalculerait
+// `quantité = base × facteur du plan` sur des lignes dont la quantité vient
+// du coefficient propre à la sous-recette — le coefficient serait écrasé
+// silencieusement, exactement la corruption que le plan matérialisé a
+// corrigée en remplaçant `planning.overrides`.
+export function planIngredientExpanded(ing: Pick<PlanIngredientRow, 'expanded_into_recipe_id'>): boolean {
+  return ing.expanded_into_recipe_id != null;
+}
+
+// Étape issue de l'éclatement d'un ingrédient (et non de la recette du plan).
+export function planStepIsExpansion(s: Pick<PlanStepRow, 'source_ingredient_id'>): boolean {
+  return s.source_ingredient_id != null;
+}
+
+// Sous-recette dont provient une étape insérée, retrouvée via la ligne
+// d'ingrédient remplacée (`plan_steps.source_ingredient_id`). Le titre n'est
+// pas dupliqué sur `plan_steps` : une seule jointure, sur `plan_ingredients`,
+// suffit à nommer toutes les étapes d'un même éclatement.
+export function expansionSource(plan: PlanFull, step: Pick<PlanStepRow, 'source_ingredient_id'>): { id: string; title: string } | null {
+  if (step.source_ingredient_id == null) return null;
+  const row = plan.plan_ingredients.find((it) => it.id === step.source_ingredient_id);
+  return row?.expanded_recipe ?? null;
+}
+
+// Position d'insertion des étapes d'une sous-recette dans le déroulé du plan.
+// `plan_steps.order_index` est `numeric` (et non `integer`) précisément pour
+// permettre cette intercalation : on calcule des valeurs intermédiaires entre
+// l'étape choisie comme point d'ancrage et la suivante, plutôt que de
+// renuméroter tout le plan — ce qui invaliderait les positions retenues par
+// l'utilisateur sur les autres étapes.
+//
+// `anchors[i]` = `order_index` de l'étape du plan après laquelle insérer la
+// i-ème sous-étape, ou `null` pour la placer en tête. Plusieurs sous-étapes
+// partageant la même ancre gardent leur ordre d'arrivée.
+export function computeInsertOrderIndexes(planOrders: number[], anchors: (number | null)[]): number[] {
+  const sorted = [...planOrders].sort((a, b) => a - b);
+  const first = sorted.length ? sorted[0] : 0;
+  const byAnchor = new Map<number | null, number[]>();
+  anchors.forEach((a, i) => {
+    const arr = byAnchor.get(a);
+    if (arr) arr.push(i);
+    else byAnchor.set(a, [i]);
+  });
+  const out = new Array<number>(anchors.length).fill(0);
+  byAnchor.forEach((idxs, anchor) => {
+    const lower = anchor == null ? first - 1 : anchor;
+    const next = sorted.find((o) => o > lower);
+    // Aucune étape après l'ancre : on prolonge simplement la suite.
+    const upper = next != null ? next : lower + 1;
+    idxs.forEach((idx, k) => {
+      out[idx] = +(lower + ((upper - lower) * (k + 1)) / (idxs.length + 1)).toFixed(6);
+    });
+  });
+  return out;
+}
+
+// Jour proposé pour une étape de sous-recette. Le `day_offset` d'une recette
+// compte à rebours depuis SA propre dégustation — ici, le moment où la
+// préparation doit être prête, c'est-à-dire l'étape qui la consomme. Un
+// praliné demandant une nuit de repos (J−1 dans sa recette) inséré avant une
+// étape placée à J−2 se pose donc tout seul à J−3. Modifiable ensuite étape
+// par étape.
+export function suggestedExpansionDay(consumingDayOffset: number, subStepDayOffset: number): number {
+  return Math.max(0, consumingDayOffset) + Math.max(0, subStepDayOffset);
+}
+
 // Sélection complète d'un plan, à utiliser par lib/profile.ts (getPlan).
+//
+// `expanded_recipe` (titre de la sous-recette qui remplace un ingrédient)
+// n'est volontairement PAS une jointure imbriquée ici : `plan_ingredients`
+// ayant deux clés étrangères vers `recipes`, PostgREST exigerait de nommer la
+// contrainte dans le select — une chaîne à tenir à jour à la main dont une
+// erreur ferait échouer toute la requête, donc perdre le mode planifié en
+// entier pour un simple libellé. `getPlan` complète ces titres après coup, et
+// seulement si le plan comporte au moins un remplacement.
 export const PLAN_FULL_SELECT = `
   *,
   plan_steps(*, plan_substeps(*)),
   plan_ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip))),
   plan_utensils(*)
 `;
+
+// Contenu d'une recette candidate à l'éclatement, lu depuis le navigateur
+// (RLS via la session) : strictement ce dont `materializePlan` a besoin, plus
+// le rendement pour proposer un coefficient. Volontairement plus étroit que
+// le `FULL_SELECT` de lib/recipes.ts — pas de photos d'étapes ni d'image
+// d'en-tête, stockées en data-URL et sans usage ici.
+export const PLAN_SOURCE_SELECT = `
+  id, title, measure_type, yield_qty, yield_unit, yield_desc, yield_notes,
+  recipe_utensils(*, utensils(url)),
+  ingredient_groups(*, ingredients(*)),
+  recipe_steps(*)
+`;
+
+export type PlanSourceRecipe = MaterializableRecipe & {
+  id: string;
+  title: string;
+  measure_type: string | null;
+  yield_qty: string | null;
+  yield_unit: string | null;
+  yield_desc: string | null;
+  yield_notes: string | null;
+};
 
 export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
 // Le déroulé (description, astuces, vidéo, temps, température) n'est pas
@@ -329,6 +456,11 @@ export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
         video_url: s.video_url,
         already_done: s.already_done,
         fully_done: stepFullyDone(s, ingredientsOfStep, s.plan_substeps),
+        // Étape issue de l'éclatement d'un ingrédient en sous-recette : rendue
+        // en vert, comme un ingrédient ajouté (une seule convention de couleur
+        // pour toute la fiche planifiée).
+        added: planStepIsExpansion(s),
+        from_recipe: expansionSource(plan, s),
         sous_etapes: visibleSubsteps.length ? visibleSubsteps.map((su) => su.texte) : null,
         order_index: s.order_index,
         step_photos: [], // non dupliquées dans le plan : restent liées à la recette d'origine
@@ -469,7 +601,12 @@ export type MatStep = {
 export type MatUtensil = { order_index: number; name: string; comment: string | null; url: string | null };
 export type MaterializedPlan = { steps: MatStep[]; utensils: MatUtensil[] };
 
-export function materializePlan(recipe: RecipeFull, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedPlan {
+// Seules ces trois collections sont matérialisées : la recette du plan comme
+// une sous-recette éclatée passent par la même fonction, la seconde n'étant
+// lue qu'avec `PLAN_SOURCE_SELECT` (bien plus étroit qu'un `RecipeFull`).
+export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_steps' | 'recipe_utensils'>;
+
+export function materializePlan(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedPlan {
   const groupsByOrder = new Map<number, RecipeFull['ingredient_groups'][number]>();
   (recipe.ingredient_groups || []).forEach((g) => groupsByOrder.set(g.order_index ?? 0, g));
 

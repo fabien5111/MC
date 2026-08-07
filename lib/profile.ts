@@ -116,7 +116,24 @@ export async function getPlan(id: number): Promise<PlanFull | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from('planning').select(PLAN_FULL_SELECT).eq('id', id).maybeSingle();
   if (error) console.error('getPlan:', error.message);
-  return (data as unknown as PlanFull | null) ?? null;
+  const plan = (data as unknown as PlanFull | null) ?? null;
+  if (!plan) return null;
+
+  // Titres des sous-recettes qui remplacent un ingrédient (cf. CLAUDE.md
+  // « Recettes planifiées »). Requête séparée plutôt que jointure imbriquée :
+  // elle n'a lieu que si le plan comporte au moins un remplacement, et son
+  // échec ne coûte que le libellé du lien — le plan reste affichable, il est
+  // autonome. Une recette devenue illisible (dépubliée, supprimée) laisse
+  // simplement `expanded_recipe` à null.
+  const ids = [...new Set(plan.plan_ingredients.map((it) => it.expanded_into_recipe_id).filter((v): v is string => !!v))];
+  if (!ids.length) return plan;
+  const { data: recipes, error: recipesError } = await supabase.from('recipes').select('id, title').in('id', ids);
+  if (recipesError) console.error('getPlan (sous-recettes):', recipesError.message);
+  const byId = new Map((recipes ?? []).map((r) => [r.id, { id: r.id, title: r.title }]));
+  plan.plan_ingredients.forEach((it) => {
+    it.expanded_recipe = it.expanded_into_recipe_id ? (byId.get(it.expanded_into_recipe_id) ?? null) : null;
+  });
+  return plan;
 }
 
 export async function getUnits(): Promise<Unit[]> {

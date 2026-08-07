@@ -10,6 +10,10 @@
 // courses, compteurs du profil…) restent figées jusqu'à un rechargement
 // complet de la page.
 //
+// `busy` couvre l'opération complète — écriture réseau ET retour du rendu
+// serveur (cf. la transition plus bas) : le spinner ne s'éteint qu'une fois
+// les modifications réellement visibles.
+//
 // À utiliser pour toute nouvelle mutation : le router.refresh() n'est plus à
 // retenir composant par composant.
 //
@@ -22,7 +26,7 @@
 // en lecture seule, aucune écriture n'est émise (message explicite + trace
 // dans le journal d'audit). Les écritures abouties d'une session en mode
 // « modification » sont, elles, tracées.
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
@@ -48,7 +52,14 @@ export function useMutation() {
   const router = useRouter();
   const impersonation = useImpersonation();
   const dialog = useDialog();
-  const [busy, setBusy] = useState(false);
+  const [writing, setWriting] = useState(false);
+  // `router.refresh()` ne rend pas de promesse : émis tel quel, l'écriture
+  // paraissait finie (spinner éteint) alors que le rendu serveur n'était pas
+  // encore revenu — les modifications apparaissaient une seconde plus tard,
+  // sur une interface redevenue active. Enveloppé dans une transition,
+  // `pending` reste vrai jusqu'à ce que le nouveau rendu soit appliqué : le
+  // spinner couvre enfin toute l'opération, écriture ET resynchronisation.
+  const [pending, startTransition] = useTransition();
 
   // Renvoie true si l'écriture a réussi — permet à l'appelant d'annuler une
   // mise à jour optimiste en cas d'échec.
@@ -64,7 +75,7 @@ export function useMutation() {
         return false;
       }
       if (options.confirm && !(await dialog.confirm(options.confirm))) return false;
-      setBusy(true);
+      setWriting(true);
       try {
         const res = await write();
         if (!res) return false; // abandon volontaire
@@ -75,17 +86,27 @@ export function useMutation() {
         if (impersonation) {
           logImpersonationAction('write', options.errorLabel ?? options.confirm ?? 'Écriture');
         }
-        if (options.refresh !== false) router.refresh();
+        if (options.refresh !== false) startTransition(() => router.refresh());
         return true;
       } catch (e) {
         dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
         return false;
       } finally {
-        setBusy(false);
+        // Groupé avec le passage à `pending` par React : `busy` ne retombe pas
+        // entre les deux, le spinner ne clignote pas.
+        setWriting(false);
       }
     },
     [router, impersonation, dialog],
   );
 
-  return { busy, mutate };
+  // Resynchronisation seule, sans écriture. Sert quand l'écriture a eu lieu
+  // dans un composant qui se démonte juste après (une fenêtre modale qui se
+  // ferme) : la transition de ce composant disparaît avec lui, le spinner
+  // s'éteint et les modifications n'apparaissent qu'une seconde plus tard.
+  // Le parent, lui, reste monté — c'est donc à lui de porter le
+  // rafraîchissement, et le `busy` qui va avec.
+  const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
+
+  return { busy: writing || pending, mutate, refresh };
 }
