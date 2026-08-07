@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
   { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book' },
   { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
+  { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
   { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
