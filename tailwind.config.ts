@@ -11,6 +11,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Point de bascule du sommaire de recette : au-dessus, le rail latéral
+      // (`.recipe-toc`) ; en dessous, le bouton flottant et son tiroir. La
+      // valeur était jusqu'ici écrite trois fois en dur dans app/globals.css ;
+      // elle est déclarée ici pour que le CSS et les composants la citent au
+      // lieu de la recopier. `701px` et non `700px` : la borne du rail est
+      // `max-width: 700px`, celle-ci est son complément exact.
+      screens: { rail: '701px' },
       colors: {
         'on-tertiary-fixed-variant': '#584044',
         'on-secondary-fixed': '#311118',

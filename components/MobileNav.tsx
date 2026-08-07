@@ -12,7 +12,14 @@ export async function MobileNav({ current = '/' }: { current?: string }) {
     `flex flex-col items-center ${current === href ? 'text-primary' : 'text-on-surface-variant'}`;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50">
+    // Réserve d'encoche : sans elle, l'indicateur d'accueil des iPhone se pose
+    // sur les libellés. La hauteur rendue qui en découle est déclarée une fois
+    // dans `--mobile-nav-h` (app/globals.css) — tout ce qui se pose au-dessus
+    // de cette barre s'y réfère.
+    <nav
+      className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex justify-around items-center py-3">
         <Link href="/" className={cls('/')}>
           <span className="material-symbols-outlined">home</span>

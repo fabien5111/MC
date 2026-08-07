@@ -77,7 +77,12 @@ export function RecetteToc({
 
   return (
     <>
-      <RecipeToc sections={sections} steps={steps} actions={actions} />
+      {/* `mobile="drawer"` : sous 700 px le rail disparaît, et avec lui la
+          seule voie d'accès à Planifier / Éditer / Dupliquer — `PlanWidget`
+          n'a pas de déclencheur propre. Le tiroir reprend les sections *et*
+          ces actions. `mobileInset="nav"` pour la barre de navigation basse,
+          que la fiche recette monte. */}
+      <RecipeToc sections={sections} steps={steps} actions={actions} mobile="drawer" mobileInset="nav" />
       <LoadingOverlay visible={pending !== null} label={pending === 'duplicate' ? 'Duplication de la recette…' : 'Ouverture de l’éditeur…'} />
     </>
   );
