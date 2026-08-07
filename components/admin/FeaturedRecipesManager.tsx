@@ -44,7 +44,7 @@ export function FeaturedRecipesManager({ items }: { items: FeaturedRecipeRow[] }
     });
   }
 
-  const sorted = useMemo(() => [...items].sort((a, b) => b.start_date.localeCompare(a.start_date)), [items]);
+  const sorted = useMemo(() => [...items].sort((a, b) => a.start_date.localeCompare(b.start_date)), [items]);
 
   return (
     <div className="p-margin-desktop flex flex-col gap-gutter">

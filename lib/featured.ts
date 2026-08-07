@@ -64,7 +64,7 @@ export async function getFeaturedRecipesAdmin(): Promise<FeaturedRecipeRow[]> {
   const table = supabase.from('featured_recipes' as never) as unknown as FeaturedTable;
   const { data, error } = await table
     .select('id, recipe_id, start_date, end_date, recipes(title, hero_image_url, status, is_public)')
-    .order('start_date', { ascending: false });
+    .order('start_date', { ascending: true });
   if (error) console.error('getFeaturedRecipesAdmin:', error.message);
   return (data as unknown as FeaturedRecipeRow[]) ?? [];
 }
