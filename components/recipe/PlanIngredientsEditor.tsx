@@ -195,7 +195,13 @@ export function PlanIngredientsEditor({
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
-  const gridStyle = { display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content max-content', columnGap: 32 } as const;
+  // Le nom prend la place restante (`minmax(0,1fr)`) et se replie ; les
+  // colonnes chiffrées gardent leur largeur naturelle sans que leurs en-têtes
+  // (« Quantité ajustée ») imposent la leur. Une grille tout en `max-content`
+  // ne rétrécit jamais : sur mobile elle débordait du viewport et mettait la
+  // page entière en défilement horizontal.
+  const GRID_CLASS =
+    'grid grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)_max-content] gap-x-3 sm:gap-x-8 print:gap-x-8';
   const rowStyle = { display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' } as const;
 
   const withUnit = (text: string, unit: string | null, refId?: number | null) => {
@@ -203,17 +209,22 @@ export function PlanIngredientsEditor({
     const conv = ingredientConversionText(conversions, units, refId, unit, text);
     return (
       <>
-        {text}
-        {text && unit ? ' ' : ''}
-        {unit ? (
-          tip ? (
-            <span className="unit-tip" title={tip}>
-              {unit}
-            </span>
-          ) : (
-            unit
-          )
-        ) : null}
+        {/* Nombre et unité insécables : sur une colonne étroite, « 1650 » ne
+            doit pas se retrouver sans son « ml ». La conversion reste en
+            dehors pour laisser la colonne se réduire. */}
+        <span className="whitespace-nowrap">
+          {text}
+          {text && unit ? ' ' : ''}
+          {unit ? (
+            tip ? (
+              <span className="unit-tip" title={tip}>
+                {unit}
+              </span>
+            ) : (
+              unit
+            )
+          ) : null}
+        </span>
         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
@@ -249,7 +260,7 @@ export function PlanIngredientsEditor({
               {step.title || ''}
             </h4>
             {rows.length > 0 && (
-              <ul style={gridStyle}>
+              <ul className={GRID_CLASS}>
                 <li className="pb-1" style={rowStyle}>
                   <span />
                   <span className={LBL}>Coef.</span>
@@ -283,7 +294,7 @@ export function PlanIngredientsEditor({
                   return (
                     <Fragment key={row.id}>
                       <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
-                        <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                        <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                           {row.url ? (
                             <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
                               {row.name}

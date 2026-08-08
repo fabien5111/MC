@@ -124,17 +124,23 @@ export default async function RecettePage({ params, searchParams }: Params) {
     const conv = ingredientConversionText(conversions, units, refId, unit, quantity);
     return (
       <>
-        {q}
-        {q && unit ? ' ' : ''}
-        {unit ? (
-          tip ? (
-            <span className="unit-tip" title={tip}>
-              {unit}
-            </span>
-          ) : (
-            unit
-          )
-        ) : null}
+        {/* Le nombre et son unité forment un tout : sur une colonne étroite
+            (mobile), sans `nowrap`, « 1650 » se retrouve séparé de « ml ». La
+            conversion reste hors du groupe — l'inclure rigidifierait la
+            colonne à la largeur de « 1 unité(s) (≈ 20 g) ». */}
+        <span className="whitespace-nowrap">
+          {q}
+          {q && unit ? ' ' : ''}
+          {unit ? (
+            tip ? (
+              <span className="unit-tip" title={tip}>
+                {unit}
+              </span>
+            ) : (
+              unit
+            )
+          ) : null}
+        </span>
         {conv && <span className="print-fs-9 text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
@@ -626,7 +632,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">
                         {g.name || ''}
                       </h4>
-                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                      {/* La colonne du nom est en `minmax(0,1fr)`, jamais en
+                          `max-content` : une colonne `max-content` ne peut pas
+                          rétrécir, donc un nom long (« Levure sèche de
+                          boulanger — ou levure fraîche ») élargissait la grille
+                          au-delà du viewport et mettait toute la page en
+                          défilement horizontal sur mobile. */}
+                      <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
                         {[...(g.ingredients || [])]
                           .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                           .map((it) => {
@@ -640,7 +652,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 <span className="font-label-md text-label-md text-primary">
                                   <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                 </span>
-                                <span className="font-body-md text-body-md">
+                                <span className="font-body-md text-body-md break-words">
                                   {url ? (
                                     <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
                                       {it.name}
@@ -670,7 +682,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                   </summary>
                   <div className="p-4 bg-white">
-                    <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', columnGap: 40 }}>
+                    {/* Colonnes chiffrées en `minmax(min-content,max-content)` :
+                        elles gardent leur largeur naturelle, mais leurs
+                        en-têtes (« Quantité ajustée ») peuvent se replier sur
+                        deux lignes au lieu d'imposer leur largeur pleine — sur
+                        mobile, trois en-têtes en `max-content` ne laissaient
+                        plus rien au nom de l'ingrédient. */}
+                    <ul className="grid grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)] gap-x-3 sm:gap-x-10 print:gap-x-10">
                       <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                         <span />
                         <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
@@ -682,7 +700,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         const tone = r.added ? 'text-green-700' : '';
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                            <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                               {/* Case à cocher au stylo — uniquement à l'impression, cochée
                                   à la main pendant les courses ou la préparation. */}
                               <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
@@ -710,10 +728,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                     </summary>
                     <div className="p-4 bg-white">
-                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                      <ul className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
                         {merged.map((m, k) => (
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className="font-body-md text-body-md">
+                            <span className="font-body-md text-body-md break-words">
                               <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {m.name}
                               {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
@@ -925,14 +943,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                               <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                             </summary>
                             <div className="p-4 bg-white">
-                              <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                              <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
                                 {ings.map((it) => (
                                   <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                                     <span className="font-label-md text-label-md text-primary">
                                       <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                       <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                     </span>
-                                    <span className="font-body-md text-body-md">
+                                    <span className="font-body-md text-body-md break-words">
                                       {it.name}
                                       {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                     </span>
