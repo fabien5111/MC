@@ -13,8 +13,14 @@ import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conver
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
+// `has_hero_image` remplace `hero_image_url` : la vignette d'une carte est
+// servie par `/api/image/recipe/[id]/hero` (cf. `cardHeroSrc`), plus inlinée
+// en data-URL. C'est une colonne **générée** (`hero_image_url is not null`),
+// pas encore reflétée dans lib/database.types.ts — jamais éditée à la main :
+// à retirer de la déclaration ci-dessous au prochain `npm run gen:types`.
+// `updated_at` sert de version d'URL, pour pouvoir cacher indéfiniment.
 export const CARD_SELECT =
-  'id, title, description, hero_image_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
+  'id, title, description, has_hero_image, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, updated_at, ' +
   'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
@@ -23,7 +29,6 @@ export type RecipeCard = Pick<
   | 'id'
   | 'title'
   | 'description'
-  | 'hero_image_url'
   | 'author_id'
   | 'prep_time'
   | 'cook_time'
@@ -32,14 +37,32 @@ export type RecipeCard = Pick<
   | 'rating_avg'
   | 'rating_count'
   | 'created_at'
-> & {
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
-  recipe_types: { name: string } | null;
-  difficulties: { name: string; level: number } | null;
-  ingredient_groups: { ingredients: { allergen: string | null }[] }[];
-  recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
-};
+  | 'updated_at'
+> &
+  CardHero & {
+    profiles: { full_name: string | null; avatar_url: string | null } | null;
+    recipe_types: { name: string } | null;
+    difficulties: { name: string; level: number } | null;
+    ingredient_groups: { ingredients: { allergen: string | null }[] }[];
+    recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
+  };
 
+// Ce qu'il faut pour afficher la vignette d'une recette, quelle que soit la
+// lecture d'origine. Les deux champs sont optionnels parce que deux
+// producteurs coexistent :
+//  - les lectures PostgREST du dépôt, converties, renvoient `has_hero_image`
+//    (+ `updated_at`) et aucune data-URL ;
+//  - la RPC `search_advanced_recipes` construit son JSON en SQL et renvoie
+//    encore `hero_image_url` : sa définition vit en base, pas dans le dépôt.
+//    `cardHeroSrc` la sert donc toujours en data-URL, sans rien casser, en
+//    attendant que la fonction soit mise à jour.
+export type CardHero = {
+  id: string;
+  has_hero_image?: boolean;
+  updated_at?: string | null;
+  created_at?: string | null;
+  hero_image_url?: string | null;
+};
 
 export async function getRecipes(opts: {
   limit?: number;
@@ -97,6 +120,13 @@ export async function getRecipe(id: string) {
   return data;
 }
 
+// Photo d'étape en consultation : de quoi construire son URL
+// (`/api/image/step-photo/[id]`), l'ordonner et signaler la retouche IA —
+// jamais la data-URL, qui n'a pas à traverser le HTML.
+export type StepPhotoMeta = { id: number; order_index: number | null; ai_retouched: boolean };
+// Photo d'étape complète : réservée aux éditeurs.
+export type StepPhotoRow = StepPhotoMeta & { url: string; original_url: string | null };
+
 // Recette complète avec toutes ses jointures (porté de getRecipe du db.js).
 // Typée souplement : les jointures profondes ne s'infèrent pas proprement.
 export type RecipeStepView = {
@@ -112,7 +142,11 @@ export type RecipeStepView = {
   video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
-  step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[];
+  // Photos avec leurs data-URL : c'est la forme lue par les éditeurs
+  // (`/creer`, `/relecture`), qui ont besoin des octets pour recadrer et
+  // réenregistrer. La consultation, elle, n'a besoin que des métadonnées
+  // (cf. `StepPhotoMeta` / `RecipeStepViewLight`).
+  step_photos: StepPhotoRow[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour
   // sa seule cuisson (cf. lib/recipe-plan.ts). Absente sur une recette.
   already_done?: boolean;
@@ -127,6 +161,12 @@ export type RecipeStepView = {
   added?: boolean;
   from_recipe?: { id: string; title: string } | null;
 };
+
+// Étape en consultation : mêmes champs, photos réduites à leurs métadonnées.
+// `step_photos` y est optionnel car deux producteurs n'en fournissent aucune —
+// `PLAN_SOURCE_SELECT` (sous-recette éclatée) ne les lit pas du tout, et une
+// projection allégée les écarte volontairement (cf. `PlanWidgetRecipe`).
+export type RecipeStepViewLight = Omit<RecipeStepView, 'step_photos'> & { step_photos?: StepPhotoMeta[] };
 export type IngredientView = {
   id: number;
   name: string;
@@ -201,6 +241,73 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   if (error) console.error('getRecipeFull:', error.message);
   return (data as unknown as RecipeFull | null) ?? null;
 }
+
+// Recette telle que la lit la fiche de consultation : aucune data-URL
+// d'image. Les visuels sont servis par `/api/image/…`, l'`<img>` ne portant
+// plus qu'une URL courte — ni le HTML ni le flux RSC ne transportent donc les
+// octets des photos, qui deviennent cachables par le navigateur et
+// téléchargeables en parallèle du document.
+//
+// Les deux colonnes d'image sont marquées `never` plutôt que retirées : toute
+// tentative de les relire sur la fiche devient une erreur de typage, avec la
+// raison sous les yeux, au lieu d'un `undefined` silencieux qui ferait
+// disparaître l'image.
+export type RecipeView = Omit<RecipeFull, 'recipe_steps' | 'hero_image_url' | 'hero_image_original_url'> & {
+  recipe_steps: RecipeStepViewLight[];
+  hero_image_url?: never;
+  hero_image_original_url?: never;
+  // Colonne générée (`hero_image_url is not null`) : dit s'il y a un visuel
+  // sans en transporter les octets. À retirer de cette déclaration au prochain
+  // `npm run gen:types`, qui la fera descendre dans lib/database.types.ts.
+  has_hero_image: boolean;
+  // Version de l'URL du visuel d'en-tête (`?v=`) : l'`id` de la recette ne
+  // change pas quand son image change, contrairement aux photos d'étape qui
+  // sont réinsérées à chaque enregistrement. `CreerForm` écrit `updated_at`
+  // à chaque sauvegarde pour que cette version bouge.
+  updated_at: string | null;
+};
+
+// Sélection de **consultation** (fiche recette) : les mêmes champs que
+// `FULL_SELECT` moins ce que la fiche n'affiche jamais et ce qui pèse le plus
+// lourd. Même motif que `PLAN_SOURCE_SELECT` (lib/recipe-plan.ts), pour les
+// mêmes raisons :
+//  - aucune data-URL d'image : ni `hero_image_url` ni `step_photos.url` (les
+//    routes `/api/image/…` les lisent, une par requête HTTP cachable), ni les
+//    originaux non recadrés `hero_image_original_url` /
+//    `step_photos.original_url`, produits au même `maxWidth` que la version
+//    affichée (`ImageSlot`) et lus par les seuls éditeurs ;
+//  - `*` ramenait aussi la colonne générée `fts` (vecteur de recherche :
+//    lexèmes et positions de toute la recette), que rien ne lit ici.
+// Le prix de l'abandon de `*` : une colonne ajoutée plus tard à `recipes` et
+// utilisée sur la fiche doit être ajoutée ici en même temps que dans
+// `RecipeFull` — elle ne remontera plus toute seule.
+const VIEW_SELECT = `
+  id, title, description, author_id, is_public, status, created_at, updated_at,
+  rating_avg, rating_count, measure_type, yield_qty, yield_unit, yield_desc,
+  yield_notes, mold_type_id, mold_dims, prep_time, cook_time, wait_time,
+  total_time, tips, source, source_url, video_url, serving_advice,
+  has_hero_image, hero_image_ai_retouched,
+  profiles!recipes_author_id_fkey(full_name, avatar_url, username),
+  recipe_types(name),
+  difficulties(name, level),
+  mold_types(name, forme),
+  recipe_tags(tags(id, name, slug)),
+  recipe_utensils(*, utensils(url)),
+  ingredient_groups(*, ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip)))),
+  recipe_steps(*, step_photos(id, order_index, ai_retouched))
+`;
+
+// Recette pour la fiche de consultation. Mémoïsée par requête (React cache) :
+// `generateMetadata` n'a besoin que du titre mais lit la recette entière, et
+// il s'exécute en parallèle du rendu de la page — sans mémoïsation, la
+// jointure la plus lourde du site partait **deux fois** par ouverture (une
+// requête Supabase authentifiée n'est pas dédoublonnée par Next).
+export const getRecipeView = cache(async (id: string): Promise<RecipeView | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('recipes').select(VIEW_SELECT).eq('id', id).maybeSingle();
+  if (error) console.error('getRecipeView:', error.message);
+  return (data as unknown as RecipeView | null) ?? null;
+});
 
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
 // visuel d'un allergène saisi en texte libre dans une recette (rapprochement

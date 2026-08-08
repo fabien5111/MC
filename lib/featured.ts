@@ -55,7 +55,16 @@ export type FeaturedRecipeRow = {
   recipe_id: string;
   start_date: string;
   end_date: string;
-  recipes: { title: string; hero_image_url: string | null; status: string; is_public: boolean | null } | null;
+  recipes: {
+    id: string;
+    title: string;
+    // Vignette servie par la route image (cf. `cardHeroSrc`), plus de data-URL.
+    has_hero_image: boolean;
+    updated_at: string | null;
+    created_at: string | null;
+    status: string;
+    is_public: boolean | null;
+  } | null;
 };
 
 // Toutes les plages programmées (admin), passées, en cours et à venir.
@@ -63,7 +72,7 @@ export async function getFeaturedRecipesAdmin(): Promise<FeaturedRecipeRow[]> {
   const supabase = await createClient();
   const table = supabase.from('featured_recipes' as never) as unknown as FeaturedTable;
   const { data, error } = await table
-    .select('id, recipe_id, start_date, end_date, recipes(title, hero_image_url, status, is_public)')
+    .select('id, recipe_id, start_date, end_date, recipes(id, title, has_hero_image, updated_at, created_at, status, is_public)')
     .order('start_date', { ascending: true });
   if (error) console.error('getFeaturedRecipesAdmin:', error.message);
   return (data as unknown as FeaturedRecipeRow[]) ?? [];

@@ -663,6 +663,12 @@ export function CreerForm({
         hero_image_url: hero,
         hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
+        // La fiche recette sert le visuel d'en-tête par une route cachable
+        // indéfiniment, dont l'URL porte `?v=updated_at` (cf. heroImageSrc) :
+        // sans cette date, remplacer la photo laisserait l'ancienne dans les
+        // caches. Les photos d'étape n'en ont pas besoin — elles changent d'id
+        // à chaque enregistrement (delete + insert des étapes, plus bas).
+        updated_at: new Date().toISOString(),
       };
 
       // Recette à mettre à jour : celle ouverte en édition, ou celle créée

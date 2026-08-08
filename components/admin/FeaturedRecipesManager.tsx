@@ -12,8 +12,11 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { formatDate } from '@/lib/format';
 import type { FeaturedRecipeRow } from '@/lib/featured';
+import { cardHeroSrc } from '@/lib/recipe-view';
 
-type RecipeOption = { id: string; title: string; hero_image_url: string | null };
+// Vignette servie par la route image (cf. `cardHeroSrc`) : la data-URL n'est
+// plus lue, seuls le drapeau et la version de l'URL le sont.
+type RecipeOption = { id: string; title: string; has_hero_image: boolean; updated_at: string | null; created_at: string | null };
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
@@ -91,9 +94,9 @@ export function FeaturedRecipesManager({ items }: { items: FeaturedRecipeRow[] }
                     <tr key={row.id} className="hover:bg-surface-container-low transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          {row.recipes?.hero_image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                            <img src={row.recipes.hero_image_url} alt="" className="w-9 h-9 rounded object-cover bg-surface-container" />
+                          {row.recipes && cardHeroSrc(row.recipes) ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- route image
+                            <img src={cardHeroSrc(row.recipes)!} alt="" className="w-9 h-9 rounded object-cover bg-surface-container" />
                           ) : (
                             <div className="w-9 h-9 rounded bg-surface-container" />
                           )}
@@ -165,7 +168,15 @@ function FeaturedForm({
   const dialog = useDialog();
 
   const [selected, setSelected] = useState<RecipeOption | null>(
-    entry?.recipes ? { id: entry.recipe_id, title: entry.recipes.title, hero_image_url: entry.recipes.hero_image_url } : null,
+    entry?.recipes
+      ? {
+          id: entry.recipe_id,
+          title: entry.recipes.title,
+          has_hero_image: entry.recipes.has_hero_image,
+          updated_at: entry.recipes.updated_at,
+          created_at: entry.recipes.created_at,
+        }
+      : null,
   );
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<RecipeOption[]>([]);
@@ -182,14 +193,17 @@ function FeaturedForm({
     const timer = setTimeout(async () => {
       const { data, error } = await createClient()
         .from('recipes')
-        .select('id, title, hero_image_url')
+        .select('id, title, has_hero_image, updated_at, created_at')
         .eq('status', 'published')
         .eq('is_public', true)
         .ilike('title', `%${term.trim()}%`)
         .order('title', { ascending: true })
         .limit(20);
       if (!cancelled) {
-        setResults(error ? [] : ((data as RecipeOption[] | null) ?? []));
+        // `has_hero_image` est une colonne générée pas encore reflétée dans
+        // lib/database.types.ts (jamais éditée à la main) : le double cast
+        // saute au prochain `npm run gen:types`.
+        setResults(error ? [] : ((data as unknown as RecipeOption[] | null) ?? []));
         setSearching(false);
       }
     }, 300);
@@ -245,9 +259,9 @@ function FeaturedForm({
             <label className={LABEL}>Recette *</label>
             {selected ? (
               <div className="flex items-center gap-3 border border-outline-variant rounded px-3 py-2">
-                {selected.hero_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                  <img src={selected.hero_image_url} alt="" className="w-9 h-9 rounded object-cover bg-surface-container" />
+                {cardHeroSrc(selected) ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- route image
+                  <img src={cardHeroSrc(selected)!} alt="" className="w-9 h-9 rounded object-cover bg-surface-container" />
                 ) : (
                   <div className="w-9 h-9 rounded bg-surface-container" />
                 )}
@@ -278,9 +292,9 @@ function FeaturedForm({
                         onClick={() => setSelected(r)}
                         className="w-full flex items-center gap-3 px-3 py-2 hover:bg-surface-container-low text-left"
                       >
-                        {r.hero_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                          <img src={r.hero_image_url} alt="" className="w-8 h-8 rounded object-cover bg-surface-container" />
+                        {cardHeroSrc(r) ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- route image
+                          <img src={cardHeroSrc(r)!} alt="" className="w-8 h-8 rounded object-cover bg-surface-container" />
                         ) : (
                           <div className="w-8 h-8 rounded bg-surface-container" />
                         )}

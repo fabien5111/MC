@@ -8,7 +8,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 
-type StepPhoto = { url: string; ai_retouched: boolean };
+// `src` est l'URL de la route qui sert la photo (/api/image/step-photo/[id]),
+// plus la data-URL elle-même : ce composant est un Client Component, ses
+// props traversent le flux RSC — y faire passer les octets des photos les
+// dupliquait avec le HTML qui les affiche déjà.
+type StepPhoto = { src: string; ai_retouched: boolean };
 
 const overlayIconBtn =
   'w-11 h-11 rounded-full bg-surface-container/90 text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors';
@@ -57,7 +61,7 @@ export function StepPhotoGallery({ photos }: { photos: StepPhoto[] }) {
             className="relative aspect-square bg-surface-container-high border border-outline-variant overflow-hidden cursor-zoom-in"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-            <img src={p.url} alt="" className="w-full h-full object-cover" />
+            <img src={p.src} alt="" className="w-full h-full object-cover" />
             {p.ai_retouched && <AiPhotoBadge />}
           </div>
         ))}
@@ -90,7 +94,7 @@ export function StepPhotoGallery({ photos }: { photos: StepPhoto[] }) {
 
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-            <img src={photos[openIndex].url} alt="" className="max-w-full max-h-[85vh] object-contain" />
+            <img src={photos[openIndex].src} alt="" className="max-w-full max-h-[85vh] object-contain" />
             {photos[openIndex].ai_retouched && <AiPhotoBadge />}
           </div>
 

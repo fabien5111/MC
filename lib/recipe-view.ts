@@ -1,7 +1,7 @@
 // Helpers d'affichage d'une recette (porté de recette.html). Fonctions pures
 // — pas d'accès Supabase, utilisables aussi bien côté serveur que dans les
 // Client Components (ex. RecipeCard rendu dans une grille avec pagination).
-import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
+import type { AllergenRef, CardHero, RecipeCard, RecipeFull, StepPhotoMeta } from '@/lib/recipes';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -38,15 +38,49 @@ export function matchAllergenPictos(names: string[], refs: AllergenRef[]): Aller
   });
 }
 
+// ── URL des images servies par les routes /api/image/… ────────────────
+// Ces trois fonctions vivent ici, et non dans lib/recipes.ts : elles sont
+// pures, et les composants de carte qui les appellent sont des Client
+// Components — importer lib/recipes.ts y ferait entrer le client Supabase
+// serveur (next/headers), que le bundle navigateur ne peut pas contenir.
+
+// URL d'une photo d'étape. Pas de version : la photo change d'`id` à chaque
+// enregistrement de la recette (delete + insert des étapes).
+export function stepPhotoSrc(photo: Pick<StepPhotoMeta, 'id'>): string {
+  return `/api/image/step-photo/${photo.id}`;
+}
+
+// URL du visuel d'en-tête servi par la route image, versionnée pour pouvoir
+// être mise en cache indéfiniment (cf. `imageResponse`).
+export function heroImageSrc(recipe: { id: string; updated_at?: string | null; created_at?: string | null }): string {
+  const version = recipe.updated_at || recipe.created_at || '';
+  return `/api/image/recipe/${recipe.id}/hero?v=${encodeURIComponent(version)}`;
+}
+
+// Source de la vignette : la route quand la ligne porte le drapeau, la
+// data-URL en repli pour une source pas encore convertie, `null` s'il n'y a
+// pas d'image (l'appelant affiche alors son propre visuel de remplacement).
+export function cardHeroSrc(recipe: CardHero): string | null {
+  if (recipe.has_hero_image === true) return heroImageSrc(recipe);
+  if (recipe.has_hero_image === false) return null;
+  return recipe.hero_image_url ?? null;
+}
+
 export const UNITS_LBL: Record<string, string> = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
 const MOLDS_LBL: Record<string, string> = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
 
-export function moldLbl(rec: RecipeFull): string {
+// Ces deux fonctions ne lisent que le bloc « quantité produite » de la
+// recette : leur paramètre est réduit d'autant, pour qu'une projection
+// allégée (cf. `PlanWidgetRecipe`, qui ne transporte ni image d'en-tête ni
+// photos d'étape) puisse les appeler. Un `RecipeFull` complet reste accepté.
+export type YieldSource = Pick<RecipeFull, 'measure_type' | 'yield_qty' | 'yield_unit' | 'yield_desc' | 'mold_types'>;
+
+export function moldLbl(rec: Pick<YieldSource, 'mold_types' | 'yield_unit'>): string {
   return (rec && (rec.mold_types?.name || MOLDS_LBL[rec.yield_unit || ''] || rec.yield_unit)) || '';
 }
 
 // Rendement affiché (libellé + valeur), ou null si non renseigné.
-export function yieldInfo(rec: RecipeFull): { label: string; value: string } | null {
+export function yieldInfo(rec: YieldSource): { label: string; value: string } | null {
   if (rec.measure_type === 'units' && rec.yield_qty) {
     const u = UNITS_LBL[rec.yield_unit || ''] || rec.yield_unit || '';
     return { label: 'Quantité produite', value: `${rec.yield_qty} ${u}`.trim() };
@@ -66,7 +100,7 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
 // ingrédient fusionné : deux lignes de même nom + unité référencent en
 // pratique toujours le même ingrédient du référentiel.
 export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null; ref_id: number | null };
-export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
+export function mergeIngredients(recipe: Pick<RecipeFull, 'ingredient_groups'>): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
     (g.ingredients || []).forEach((it) => {

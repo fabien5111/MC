@@ -7,19 +7,20 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
-import { cardAllergenNames } from '@/lib/recipe-view';
+import { cardAllergenNames, cardHeroSrc } from '@/lib/recipe-view';
 
 export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
   const r = recipe;
+  const heroSrc = cardHeroSrc(r);
   const level = (r.difficulties?.name || r.recipe_types?.name || 'Recette').toUpperCase();
   const diffLevel = r.difficulties?.level || 0;
   return (
     <div className="relative group">
       <Link href={`/recette/${r.id}`} className="cursor-pointer block">
         <div className="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant relative">
-          {r.hero_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-            <img src={r.hero_image_url} alt={r.title} className="w-full h-full object-cover" />
+          {heroSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element -- route image / cross-origin
+            <img src={heroSrc} alt={r.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-on-surface-variant bg-surface-container">
               <span className="material-symbols-outlined text-4xl">cake</span>

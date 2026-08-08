@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { formatTime } from '@/lib/format';
-import { effectiveTimes } from '@/lib/recipe-view';
+import { effectiveTimes, cardHeroSrc } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -27,6 +27,7 @@ export function RecipeCardLayout({
 }) {
   const r = recipe;
   const times = effectiveTimes(r);
+  const heroSrc = cardHeroSrc(r);
   // Planifier se décale d'un cran quand Éditer s'intercale entre Favori et
   // lui — même incrément que celui qui sépare déjà Favori (right-3) de
   // Planifier (right-14).
@@ -35,10 +36,10 @@ export function RecipeCardLayout({
     <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
-          {r.hero_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+          {heroSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element -- route image / cross-origin
             <img
-              src={r.hero_image_url}
+              src={heroSrc}
               alt={r.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />

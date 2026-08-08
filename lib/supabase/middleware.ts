@@ -43,15 +43,27 @@ export async function updateSession(request: NextRequest) {
   });
 
   try {
-    // IMPORTANT : ne rien exécuter entre createServerClient et getUser (rafraîchit le token).
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     const { pathname } = request.nextUrl;
     const isProtected = PROTECTED_PREFIXES.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`),
     );
+
+    // IMPORTANT : ne rien exécuter entre createServerClient et cet appel (il
+    // rafraîchit le token et repose les cookies — un Server Component, lui, ne
+    // peut pas écrire de cookie : c'est toute la raison de ce middleware).
+    //
+    // `getUser()` appelle le serveur Auth à **chaque** requête, y compris pour
+    // une page publique qui n'a aucune décision à en tirer : c'était un
+    // aller-retour réseau ajouté devant chaque ouverture de fiche recette, en
+    // série avec tout le reste. Hors routes protégées, `getSession()` suffit —
+    // il lit la session des cookies et ne va sur le réseau que si le token est
+    // expiré, ce qui préserve le rafraîchissement. La vérification côté serveur
+    // reste faite là où elle décide de quelque chose : `getUser()` ci-dessous
+    // pour la redirection, et `requireUser` / `requireAdmin` dans les pages.
+    const user = isProtected
+      ? (await supabase.auth.getUser()).data.user
+      : (await supabase.auth.getSession()).data.session?.user ?? null;
+
     // Les prefetch automatiques de <Link> (survol, apparition dans le
     // viewport) déclenchent le middleware au même titre qu'une navigation
     // réelle. S'ils arrivent juste après une connexion (avant propagation

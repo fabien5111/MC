@@ -9,7 +9,7 @@ import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
-import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
+import { cardAllergenNames, effectiveTimes, cardHeroSrc } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -54,6 +54,7 @@ export default async function HomePage() {
   // la section ne disparaît jamais de l'accueil.
   const featured = activeFeatured ?? recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
+  const featuredHeroSrc = featured ? cardHeroSrc(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
   // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
   // s'intercale entre Favori (right-6) et lui — même principe que sur les
@@ -106,10 +107,10 @@ export default async function HomePage() {
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
                   <Link href={`/recette/${featured.id}`} className="block group h-full">
                     <div className="w-full h-full bg-surface-container">
-                      {featured.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                      {featuredHeroSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- route image / cross-origin
                         <img
-                          src={featured.hero_image_url}
+                          src={featuredHeroSrc}
                           alt={featured.title}
                           className="w-full h-full object-cover"
                         />

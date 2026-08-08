@@ -9,7 +9,7 @@
 // pour obtenir les id générés (planning → plan_steps → plan_substeps /
 // plan_ingredients → ...), une table dépendant de l'id de la précédente.
 import type { Database } from '@/lib/database.types';
-import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
+import type { RecipeFull, RecipeStepViewLight, AllergenRef } from '@/lib/recipes';
 import type { PlanningEntry, PlanningRow } from '@/lib/profile';
 
 const numify = (v: unknown): number | null => {
@@ -436,7 +436,7 @@ function qtyDisplay(it: Pick<PlanIngredientRow, 'quantity' | 'quantity_text'>): 
   return it.quantity_text;
 }
 
-export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
+export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepViewLight[] {
   return [...plan.plan_steps]
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => {
@@ -604,7 +604,28 @@ export type MaterializedPlan = { steps: MatStep[]; utensils: MatUtensil[] };
 // Seules ces trois collections sont matérialisées : la recette du plan comme
 // une sous-recette éclatée passent par la même fonction, la seconde n'étant
 // lue qu'avec `PLAN_SOURCE_SELECT` (bien plus étroit qu'un `RecipeFull`).
-export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_steps' | 'recipe_utensils'>;
+// `recipe_steps` en forme allégée : la matérialisation ne lit aucune photo,
+// et deux de ses appelants n'en fournissent pas (PLAN_SOURCE_SELECT, fiche de
+// consultation).
+export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_utensils'> & {
+  recipe_steps: RecipeStepViewLight[];
+};
+
+// Recette telle que la reçoit le panneau « Planifier » : tout ce qu'il lui
+// faut pour calculer l'ajustement (bloc « quantité produite » + moule) et
+// matérialiser le plan (les trois collections ci-dessus), et rien de plus.
+//
+// `PlanWidget` est un Client Component : ses props sont sérialisées dans le
+// flux RSC envoyé au navigateur. Recevoir le `RecipeFull` entier y ajoutait
+// donc une **copie complète** de l'image d'en-tête et des photos de chaque
+// étape (data-URL), en plus du HTML qui les affiche déjà — pour un panneau qui
+// n'en lit aucune. La fiche construit désormais cette projection, photos
+// d'étape écartées.
+export type PlanWidgetRecipe = MaterializableRecipe &
+  Pick<
+    RecipeFull,
+    'id' | 'title' | 'measure_type' | 'yield_qty' | 'yield_unit' | 'yield_desc' | 'yield_notes' | 'mold_dims' | 'mold_types'
+  >;
 
 export function materializePlan(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedPlan {
   const groupsByOrder = new Map<number, RecipeFull['ingredient_groups'][number]>();

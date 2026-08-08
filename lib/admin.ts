@@ -33,7 +33,9 @@ export async function getMolds(): Promise<Mold[]> {
 export type AdminRecipeRow = {
   id: string;
   title: string;
-  hero_image_url: string | null;
+  // Vignette servie par la route image (cf. `cardHeroSrc`), plus de data-URL.
+  has_hero_image: boolean;
+  updated_at: string | null;
   measure_type: string | null;
   is_public: boolean | null;
   status: string | null;
@@ -63,7 +65,7 @@ export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
+    .select('id, title, has_hero_image, updated_at, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -73,7 +75,7 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
+    .select('id, title, has_hero_image, updated_at, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
