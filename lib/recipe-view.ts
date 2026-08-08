@@ -72,7 +72,7 @@ export function yieldInfo(rec: YieldSource): { label: string; value: string } | 
 // ingrédient fusionné : deux lignes de même nom + unité référencent en
 // pratique toujours le même ingrédient du référentiel.
 export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null; ref_id: number | null };
-export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
+export function mergeIngredients(recipe: Pick<RecipeFull, 'ingredient_groups'>): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
     (g.ingredients || []).forEach((it) => {

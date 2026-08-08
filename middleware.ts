@@ -13,6 +13,11 @@ export const config = {
   runtime: 'nodejs',
   matcher: [
     // Toutes les routes sauf assets statiques et fichiers d'image.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // `api/image` en fait partie : ces routes servent les visuels d'une fiche
+    // (une requête par image, cf. app/api/image/…) et lisent elles-mêmes la
+    // session dans les cookies pour la RLS. Les faire passer par le
+    // rafraîchissement de session n'ajouterait qu'un traitement par image,
+    // alors que la requête de la page l'a déjà fait juste avant.
+    '/((?!_next/static|_next/image|api/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getRecipeView, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
+import {
+  getRecipeView,
+  recipeHasHeroImage,
+  heroImageSrc,
+  stepPhotoSrc,
+  getAllergensWithPicto,
+  getIngredientConversions,
+  type AllergenRef,
+} from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -68,9 +76,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // (bloc parallèle) → isAdmin → listes de courses, plus — en mode planifié —
   // plan → sessions → étapes des sessions en cours : jusqu'à huit
   // allers-retours Vercel↔Supabase en série pour des lectures indépendantes.
-  const [recipe, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, planEntry, userIsAdmin, shoppingListsRaw] =
+  const [recipe, hasHero, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, planEntry, userIsAdmin, shoppingListsRaw] =
     await Promise.all([
       getRecipeView(id),
+      // Présence du visuel d'en-tête : un filtre, pas une lecture de la
+      // data-URL (cf. recipeHasHeroImage) — l'image est servie par sa route.
+      recipeHasHeroImage(id),
       getFavoriteIds(),
       getUnits(),
       // Deux suggestions sont affichées ; la troisième ne sert qu'au cas où la
@@ -389,11 +400,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
           <PlanWidget recipe={planWidgetRecipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
           </div>
 
-          {/* Hero */}
-          {recipe.hero_image_url && (
+          {/* Hero — servi par /api/image/recipe/[id]/hero (cf. heroImageSrc) :
+              l'image n'est plus inlinée en data-URL dans ce HTML. */}
+          {hasHero && (
             <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
-              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- route image, pas de layout shift (conteneur en aspect fixe) */}
+              <img src={heroImageSrc(recipe)} alt={recipe.title} className="w-full h-full object-cover" />
               {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
             </div>
           )}
@@ -832,7 +844,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 // (RecipeStepView) est déjà filtré des sous-étapes exclues, donc
                 // inutilisable pour proposer la case « conserver » sur ces lignes-là.
                 const rawSubsteps = planStepsById.get(s.id)?.plan_substeps ?? [];
-                const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+                // Chaque photo est servie par sa route, identifiée par son `id` :
+                // aucune data-URL ne traverse ce rendu (cf. stepPhotoSrc).
+                const photos = [...(s.step_photos || [])]
+                  .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                  .map((p) => ({ src: stepPhotoSrc(p), ai_retouched: p.ai_retouched }));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
                   // Mode planifié : le jour est porté par le sélecteur de
