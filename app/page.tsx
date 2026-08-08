@@ -93,6 +93,14 @@ export default async function HomePage() {
         {/* Recette de la semaine */}
         {featured && (
           <section className="mb-20">
+            {/* Sur mobile, le libellé sort de la photo et se place au-dessus
+                du bloc : posé en surimpression, il masquait le sujet de
+                l'image sur une largeur d'écran étroite. */}
+            <div className="md:hidden mb-3">
+              <span className="inline-block bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
+                Recette de la Semaine
+              </span>
+            </div>
             <div className="luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
@@ -111,7 +119,7 @@ export default async function HomePage() {
                         </div>
                       )}
                     </div>
-                    <div className="absolute top-6 left-6">
+                    <div className="absolute top-6 left-6 hidden md:block">
                       <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
                         Recette de la Semaine
                       </span>
