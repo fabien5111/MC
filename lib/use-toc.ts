@@ -27,6 +27,13 @@ export type UseTocResult = {
   typing: boolean;
   togglePin: () => void;
   navigate: (id: string) => void;
+  // Recalcule la section courante à la demande et la renvoie *tout de suite*,
+  // sans attendre le rendu qui suit la mise à jour d'état. Le tiroir mobile en
+  // a besoin à l'ouverture : il doit poser le `scrollTop` de sa liste sur
+  // l'entrée active dans la foulée, or `activeId` ne serait à jour qu'au rendu
+  // suivant. Le spy tourne en permanence pour le rail, c'est donc une lecture
+  // ponctuelle, pas un second scroll-spy.
+  refresh: () => string | null;
 };
 
 // `targetIds` : les ancres dans l'ordre du DOM. `onBeforeNavigate` permet à
@@ -45,6 +52,25 @@ export function useToc(targetIds: string[], onBeforeNavigate?: (id: string) => v
   const beforeRef = useRef(onBeforeNavigate);
   beforeRef.current = onBeforeNavigate;
 
+  // Dernière section franchie, mesurée à l'instant. Isolée du scroll-spy pour
+  // pouvoir être appelée hors défilement (ouverture du tiroir mobile).
+  const computeActive = useCallback(() => {
+    const limit = window.scrollY + SPY_THRESHOLD;
+    let current: string | null = null;
+    for (const id of idsRef.current) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (el.getBoundingClientRect().top + window.scrollY <= limit) current = id;
+    }
+    return current;
+  }, []);
+
+  const refresh = useCallback(() => {
+    const current = computeActive();
+    setActiveId(current);
+    return current;
+  }, [computeActive]);
+
   // Scroll-spy. On relit les positions à chaque frame plutôt que de les mettre
   // en cache : dans l'éditeur, les hauteurs changent en permanence (étapes
   // repliées/dépliées, ingrédients ajoutés, images chargées en data-URL), donc
@@ -60,14 +86,7 @@ export function useToc(targetIds: string[], onBeforeNavigate?: (id: string) => v
     let frame = 0;
     const spy = () => {
       frame = 0;
-      const limit = window.scrollY + SPY_THRESHOLD;
-      let current: string | null = null;
-      for (const id of idsRef.current) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top + window.scrollY <= limit) current = id;
-      }
-      setActiveId(current);
+      setActiveId(computeActive());
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(spy);
@@ -80,7 +99,7 @@ export function useToc(targetIds: string[], onBeforeNavigate?: (id: string) => v
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
     };
-  }, [idsKey]);
+  }, [idsKey, computeActive]);
 
   // Lecture différée de localStorage : au premier rendu, le serveur ne connaît
   // pas l'épinglage, le lire directement provoquerait un écart d'hydratation.
@@ -149,5 +168,5 @@ export function useToc(targetIds: string[], onBeforeNavigate?: (id: string) => v
     );
   }, []);
 
-  return { activeId, pinned, typing, togglePin, navigate };
+  return { activeId, pinned, typing, togglePin, navigate, refresh };
 }

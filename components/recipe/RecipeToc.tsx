@@ -8,10 +8,19 @@
 // saisie pour ne pas gêner la rédaction — c'est la contrainte produit centrale.
 //
 // C'est un calque (`position: fixed`) : il ne modifie ni le flux ni la largeur
-// du formulaire. Masqué sous 700 px, l'équivalent mobile restant à concevoir.
-import { useCallback, useMemo } from 'react';
+// du formulaire.
+//
+// Sous 700 px le rail est masqué (il n'a pas la place de coexister avec le
+// contenu) et un bouton flottant ouvre un tiroir remontant portant les mêmes
+// entrées — même liste, même scroll-spy, même `navigate`. Ce rendu mobile est
+// **choisi par l'écran hôte** (prop `mobile`) et non automatique : /creer et
+// /relecture ont déjà une barre d'actions fixe en bas d'écran
+// (`.recipe-toc-fallback-bar`), sur laquelle un bouton flottant viendrait se
+// poser.
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useToc } from '@/lib/use-toc';
 import { useRailTooltip } from '@/lib/use-rail-tooltip';
+import { BottomSheet } from '@/components/BottomSheet';
 
 // Titre d'étape tel qu'affiché dans le sommaire. Volontairement réduit au
 // minimum : le sommaire dérive du modèle de recette, il ne le duplique pas.
@@ -104,9 +113,25 @@ type Props = {
   // créer/enregistrer/supprimer côté relecture). Absent : le pied du rail ne
   // garde que le bouton d'épinglage, comme avant leur introduction.
   actions?: TocAction[];
+  // Rendu sous 700 px. `'none'` (défaut) : le sommaire disparaît, l'écran se
+  // débrouille autrement. `'drawer'` : bouton flottant + tiroir remontant.
+  mobile?: 'none' | 'drawer';
+  // Ce que le bouton flottant doit dégager en bas d'écran. `'nav'` : la barre
+  // de navigation basse du site. `'action-bar'` : une barre d'actions fixe
+  // propre à l'écran (session d'exécution). Les hauteurs sont dans
+  // `.recipe-toc-fab[data-inset]` — l'appelant nomme ce qu'il a en bas de
+  // page, il n'a pas à en connaître les pixels.
+  mobileInset?: 'none' | 'nav' | 'action-bar';
 };
 
-export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props) {
+export function RecipeToc({
+  sections,
+  steps,
+  onNavigateToStep,
+  actions,
+  mobile = 'none',
+  mobileInset = 'none',
+}: Props) {
   const items = useMemo<TocItem[]>(
     () => [
       ...sections.before,
@@ -132,14 +157,52 @@ export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props)
     [items, onNavigateToStep],
   );
 
-  const { activeId, pinned, typing, togglePin, navigate } = useToc(ids, onBeforeNavigate);
+  const { activeId, pinned, typing, togglePin, navigate, refresh } = useToc(ids, onBeforeNavigate);
   const { show: showTip, hide: hideTip, node: tooltipNode } = useRailTooltip();
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Identifiant généré : rien n'interdit à un écran de monter deux sommaires,
+  // et un `aria-controls` en double ne désignerait plus rien.
+  const sheetId = useId();
+
+  // À l'ouverture, la section courante doit être visible sans avoir à défiler
+  // dans la liste : sur une recette à huit étapes elle dépasse largement les
+  // 70 vh du tiroir. On ajuste le `scrollTop` du conteneur plutôt que
+  // d'appeler `scrollIntoView`, qui remonterait aussi la page derrière la
+  // feuille. `refresh()` rend la section à l'instant même — `activeId` ne
+  // serait à jour qu'au rendu suivant, soit trop tard pour ce calcul.
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const current = refresh();
+    const list = listRef.current;
+    if (!list) return;
+    const el = current ? list.querySelector<HTMLElement>(`[data-toc-id="${current}"]`) : null;
+    // Aucune section franchie (haut de page) : la liste reste à son début.
+    list.scrollTop = el ? Math.max(0, el.offsetTop - (list.clientHeight - el.offsetHeight) / 2) : 0;
+  }, [sheetOpen, refresh]);
+
+  // Fermer *puis* défiler, jamais l'inverse : `navigate` diffère sa mesure de
+  // deux frames, ce qui laisse à <BottomSheet> le temps de lever son verrou de
+  // défilement au commit. Émis dans l'autre ordre, le défilement partirait sur
+  // un `document.body` encore en `overflow: hidden` et serait perdu.
+  const goTo = useCallback(
+    (id: string) => {
+      setSheetOpen(false);
+      navigate(id);
+    },
+    [navigate],
+  );
 
   const classes = ['recipe-toc'];
   if (pinned) classes.push('is-pinned');
   if (typing) classes.push('is-typing');
 
+  const actionList = actions ?? [];
+  const hasActions = actionList.length > 0;
+
   return (
+    <>
     <nav className={classes.join(' ')} aria-label="Sommaire de la recette">
       <ul>
         {items.map((it) => (
@@ -163,9 +226,9 @@ export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props)
           </li>
         ))}
       </ul>
-      {actions && actions.length > 0 && (
+      {hasActions && (
         <div className="actions">
-          {actions.map((a) => (
+          {actionList.map((a) => (
             <button
               key={a.id}
               type="button"
@@ -200,5 +263,94 @@ export function RecipeToc({ sections, steps, onNavigateToStep, actions }: Props)
       </div>
       {tooltipNode}
     </nav>
+
+    {mobile === 'drawer' && (
+      <>
+        <button
+          type="button"
+          className="recipe-toc-fab rail:hidden"
+          data-inset={mobileInset}
+          // Le bouton s'efface quand le tiroir est ouvert : le tiroir porte
+          // déjà tout ce qu'il propose, et le laisser flotter au-dessus du
+          // voile le ferait passer pour une commande encore active.
+          data-hidden={sheetOpen}
+          aria-label={hasActions ? 'Sommaire et actions de la recette' : 'Aller à une section'}
+          aria-expanded={sheetOpen}
+          aria-controls={sheetId}
+          onClick={() => setSheetOpen(true)}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            format_list_bulleted
+          </span>
+        </button>
+        <BottomSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          breakpoint="rail"
+          id={sheetId}
+          label={hasActions ? 'Sommaire et actions de la recette' : 'Sommaire de la recette'}
+          sheetClassName="recipe-toc-sheet"
+        >
+          <h2 className="shrink-0">Aller à…</h2>
+          {/* `relative` : c'est ce qui fait du conteneur l'`offsetParent` des
+              entrées, donc ce qui rend `offsetTop` directement comparable à
+              son `scrollTop` (cf. le centrage de l'entrée active).
+              Pas de `flex-1` ici, contrairement au tiroir de filtres : sa
+              base nulle ne contribuerait pas à la hauteur d'une feuille qui
+              n'en a pas de fixée, et la feuille se réduirait à son titre. La
+              liste garde donc sa base `auto` — elle donne sa hauteur à la
+              feuille jusqu'aux 70 vh, puis se comprime et défile. */}
+          <div ref={listRef} className="relative min-h-0 overflow-y-auto">
+            <ul>
+              {items.map((it) => (
+                <li key={it.id} className={it.level === 2 ? 'sub' : undefined}>
+                  <a
+                    href={`#${it.id}`}
+                    data-toc-id={it.id}
+                    className={activeId === it.id ? 'item on' : 'item'}
+                    aria-current={activeId === it.id ? 'true' : undefined}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goTo(it.id);
+                    }}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {it.icon}
+                    </span>
+                    <span className="lbl">{it.label}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* Les actions de l'écran hôte vivent autrement dans le pied du rail,
+              inatteignable sous 700 px : sans ce bloc, la fiche recette
+              perdrait Planifier, Éditer et Dupliquer sur téléphone. Elles sont
+              en bas de la feuille, là où le pouce tombe. */}
+          {hasActions && (
+            <div className="actions shrink-0" role="group" aria-label="Actions sur la recette">
+              {actionList.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="item"
+                  onClick={() => {
+                    setSheetOpen(false);
+                    a.onClick();
+                  }}
+                  disabled={a.disabled}
+                >
+                  <span className={`badge variant-${a.variant} material-symbols-outlined`} aria-hidden="true">
+                    {a.icon}
+                  </span>
+                  <span className="lbl">{a.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </BottomSheet>
+      </>
+    )}
+    </>
   );
 }
