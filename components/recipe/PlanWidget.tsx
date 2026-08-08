@@ -25,8 +25,7 @@ import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
-import type { RecipeFull } from '@/lib/recipes';
-import { materializePlan, scalingCoef, scaleFromBase, type PlanFull } from '@/lib/recipe-plan';
+import { materializePlan, scalingCoef, scaleFromBase, type PlanFull, type PlanWidgetRecipe } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 
@@ -45,7 +44,7 @@ type Supabase = ReturnType<typeof createClient>;
 async function insertMaterializedPlan(
   supabase: Supabase,
   planningId: number,
-  recipe: RecipeFull,
+  recipe: PlanWidgetRecipe,
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
 ) {
@@ -131,7 +130,9 @@ export function PlanWidget({
   existingPlan,
   isAdmin = false,
 }: {
-  recipe: RecipeFull;
+  // Projection allégée, pas le `RecipeFull` : ni image d'en-tête ni photos
+  // d'étape n'ont à traverser le flux RSC pour ce panneau (cf. PlanWidgetRecipe).
+  recipe: PlanWidgetRecipe;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
   existingPlan?: PlanFull | null;

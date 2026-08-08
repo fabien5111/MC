@@ -41,12 +41,18 @@ export function matchAllergenPictos(names: string[], refs: AllergenRef[]): Aller
 export const UNITS_LBL: Record<string, string> = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
 const MOLDS_LBL: Record<string, string> = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
 
-export function moldLbl(rec: RecipeFull): string {
+// Ces deux fonctions ne lisent que le bloc « quantité produite » de la
+// recette : leur paramètre est réduit d'autant, pour qu'une projection
+// allégée (cf. `PlanWidgetRecipe`, qui ne transporte ni image d'en-tête ni
+// photos d'étape) puisse les appeler. Un `RecipeFull` complet reste accepté.
+export type YieldSource = Pick<RecipeFull, 'measure_type' | 'yield_qty' | 'yield_unit' | 'yield_desc' | 'mold_types'>;
+
+export function moldLbl(rec: Pick<YieldSource, 'mold_types' | 'yield_unit'>): string {
   return (rec && (rec.mold_types?.name || MOLDS_LBL[rec.yield_unit || ''] || rec.yield_unit)) || '';
 }
 
 // Rendement affiché (libellé + valeur), ou null si non renseigné.
-export function yieldInfo(rec: RecipeFull): { label: string; value: string } | null {
+export function yieldInfo(rec: YieldSource): { label: string; value: string } | null {
   if (rec.measure_type === 'units' && rec.yield_qty) {
     const u = UNITS_LBL[rec.yield_unit || ''] || rec.yield_unit || '';
     return { label: 'Quantité produite', value: `${rec.yield_qty} ${u}`.trim() };

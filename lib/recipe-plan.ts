@@ -606,6 +606,22 @@ export type MaterializedPlan = { steps: MatStep[]; utensils: MatUtensil[] };
 // lue qu'avec `PLAN_SOURCE_SELECT` (bien plus étroit qu'un `RecipeFull`).
 export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_steps' | 'recipe_utensils'>;
 
+// Recette telle que la reçoit le panneau « Planifier » : tout ce qu'il lui
+// faut pour calculer l'ajustement (bloc « quantité produite » + moule) et
+// matérialiser le plan (les trois collections ci-dessus), et rien de plus.
+//
+// `PlanWidget` est un Client Component : ses props sont sérialisées dans le
+// flux RSC envoyé au navigateur. Recevoir le `RecipeFull` entier y ajoutait
+// donc une **copie complète** de l'image d'en-tête et des photos de chaque
+// étape (data-URL), en plus du HTML qui les affiche déjà — pour un panneau qui
+// n'en lit aucune. La fiche construit désormais cette projection, photos
+// d'étape écartées.
+export type PlanWidgetRecipe = MaterializableRecipe &
+  Pick<
+    RecipeFull,
+    'id' | 'title' | 'measure_type' | 'yield_qty' | 'yield_unit' | 'yield_desc' | 'yield_notes' | 'mold_dims' | 'mold_types'
+  >;
+
 export function materializePlan(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedPlan {
   const groupsByOrder = new Map<number, RecipeFull['ingredient_groups'][number]>();
   (recipe.ingredient_groups || []).forEach((g) => groupsByOrder.set(g.order_index ?? 0, g));

@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
+import { getRecipeView, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
-import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
+import { getExecutions, getRunningExecutionSteps, type ExecutionSummary, type RunningExecStep } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import {
@@ -19,6 +19,7 @@ import {
   planStepsAsRecipeSteps,
   planUtensilsAsRecipeUtensils,
   fmtNum,
+  type PlanWidgetRecipe,
 } from '@/lib/recipe-plan';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
@@ -49,14 +50,44 @@ type Params = {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const r = await getRecipeFull(id);
+  // `getRecipeView` est mémoïsée par requête : ce titre ne coûte pas une
+  // seconde lecture de la recette, il partage celle du rendu ci-dessous.
+  const r = await getRecipeView(id);
   return { title: r ? `${r.title} | Maryse Club` : 'Recette | Maryse Club' };
 }
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
   const { plan: planParam, planifier, demarrer } = await searchParams;
-  const recipe = await getRecipeFull(id);
+  const planId = planParam && Number.isFinite(Number(planParam)) ? Number(planParam) : null;
+  // `getCurrentUser` est mémoïsé (React cache) et déjà appelé par le Header :
+  // l'attendre ici ne coûte rien de plus et débloque en une fois tout ce qui
+  // dépend de `user.id`.
+  const user = await getCurrentUser();
+  // Une seule vague de lectures. La page enchaînait auparavant recette →
+  // (bloc parallèle) → isAdmin → listes de courses, plus — en mode planifié —
+  // plan → sessions → étapes des sessions en cours : jusqu'à huit
+  // allers-retours Vercel↔Supabase en série pour des lectures indépendantes.
+  const [recipe, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, planEntry, userIsAdmin, shoppingListsRaw] =
+    await Promise.all([
+      getRecipeView(id),
+      getFavoriteIds(),
+      getUnits(),
+      // Deux suggestions sont affichées ; la troisième ne sert qu'au cas où la
+      // recette courante figure elle-même parmi les plus récentes. En lire
+      // quatre revenait à transporter deux images de carte (data-URL) pour rien.
+      getRecipes({ limit: 3 }),
+      getMoldTypes(),
+      getAllergensWithPicto(),
+      getIngredientConversions(),
+      // Contexte planifié (arrivée depuis l'onglet Planning) : le plan est lu
+      // dans la même vague que la recette, son appartenance étant vérifiée
+      // juste après.
+      planId != null ? getPlan(planId) : null,
+      // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
+      user ? isAdmin(user.id) : false,
+      user ? getShoppingLists(user.id) : [],
+    ]);
 
   if (!recipe) {
     return (
@@ -70,26 +101,20 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions] = await Promise.all([
-    getCurrentUser(),
-    getFavoriteIds(),
-    getUnits(),
-    getRecipes({ limit: 4 }),
-    getMoldTypes(),
-    getAllergensWithPicto(),
-    getIngredientConversions(),
-  ]);
-  // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   // Le plan est une copie matérialisée indépendante de la recette (voir
   // CLAUDE.md « Recettes planifiées ») : ingrédients/étapes/ustensiles du
   // mode planifié viennent de ses propres tables, pas de `recipe`.
-  const planEntry = planParam && Number.isFinite(Number(planParam)) ? await getPlan(Number(planParam)) : null;
   const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
   const planMerged = planContext ? mergePlanIngredients(planContext) : null;
-  const execHistory = planContext ? await getExecutions(planContext.id) : [];
-  // Étapes des sessions en cours, par `plan_step_id` : une sous-étape ajoutée
-  // y est répercutée pour rester cochable (cf. lib/executions.ts).
-  const runningExecSteps = planContext ? await getRunningExecutionSteps(planContext.id) : {};
+  // Historique des sessions et étapes des sessions en cours (ces dernières par
+  // `plan_step_id` : une sous-étape ajoutée y est répercutée pour rester
+  // cochable, cf. lib/executions.ts). Les deux dépendent d'un plan dont
+  // l'appartenance à cette recette est vérifiée ci-dessus — les lancer sur le
+  // `?plan=` brut lirait les sessions d'un plan qui n'est pas le sien — mais
+  // elles ne dépendent pas l'une de l'autre.
+  const [execHistory, runningExecSteps] = planContext
+    ? await Promise.all([getExecutions(planContext.id), getRunningExecutionSteps(planContext.id)])
+    : [[] as ExecutionSummary[], {} as Record<number, RunningExecStep[]>];
   // Sessions en cours du plan, tous pas confondus — greffé sur
   // PlanIngredientsEditor (contrairement à PlanStepDonePanel, une édition
   // d'ingrédient n'est pas rattachée à une seule étape du déroulé) pour
@@ -106,14 +131,32 @@ export default async function RecettePage({ params, searchParams }: Params) {
     return Array.from({ length: max + 1 }, (_, i) => i);
   })();
   const isOwner = !!user && recipe.author_id === user.id;
-  // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
-  const userIsAdmin = user ? await isAdmin(user.id) : false;
-  const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
+  const shoppingLists = shoppingListsRaw.map((l) => ({ id: l.id, name: l.name }));
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
   });
   const suggestions = suggestionsRaw.filter((r) => r.id !== recipe.id).slice(0, 2);
+
+  // Recette envoyée au panneau « Planifier » (Client Component) : seulement ce
+  // qu'il lit. Lui passer l'objet entier ajoutait au flux RSC une copie de
+  // l'image d'en-tête et des photos de chaque étape — des data-URL déjà
+  // présentes dans le HTML qui les affiche (cf. PlanWidgetRecipe).
+  const planWidgetRecipe: PlanWidgetRecipe = {
+    id: recipe.id,
+    title: recipe.title,
+    measure_type: recipe.measure_type,
+    yield_qty: recipe.yield_qty,
+    yield_unit: recipe.yield_unit,
+    yield_desc: recipe.yield_desc,
+    yield_notes: recipe.yield_notes,
+    mold_dims: recipe.mold_dims,
+    mold_types: recipe.mold_types,
+    ingredient_groups: recipe.ingredient_groups,
+    recipe_utensils: recipe.recipe_utensils,
+    // `step_photos` volontairement retiré de chaque étape (déstructuration).
+    recipe_steps: (recipe.recipe_steps || []).map(({ step_photos, ...rest }) => rest),
+  };
 
   // Rendu quantité + unité (unité survolable si infobulle définie), suivi
   // d'une conversion entre parenthèses quand l'ingrédient est référencé dans
@@ -343,7 +386,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
               clic sur « Planifier », qui doit rester visible sans scroller. */}
           <div className="no-print">
-          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
+          <PlanWidget recipe={planWidgetRecipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
           </div>
 
           {/* Hero */}

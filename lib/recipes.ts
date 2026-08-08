@@ -112,7 +112,12 @@ export type RecipeStepView = {
   video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
-  step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[];
+  // `original_url` (photo non recadrée) n'est lue que par les éditeurs
+  // (`/creer`, `/relecture`) : elle est absente de la sélection de
+  // consultation (VIEW_SELECT), qui n'a pas à transporter deux fois le poids
+  // des photos. `step_photos` lui-même est absent des projections allégées
+  // (cf. PlanWidgetRecipe) — les lecteurs font déjà `s.step_photos || []`.
+  step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour
   // sa seule cuisson (cf. lib/recipe-plan.ts). Absente sur une recette.
   already_done?: boolean;
@@ -171,7 +176,9 @@ export type RecipeFull = {
   video_url: string | null;
   serving_advice: string | null;
   hero_image_url: string | null;
-  hero_image_original_url: string | null;
+  // Même raison que `step_photos.original_url` ci-dessus : réservée aux
+  // éditeurs, donc absente de la sélection de consultation.
+  hero_image_original_url?: string | null;
   hero_image_ai_retouched: boolean;
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
@@ -201,6 +208,47 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   if (error) console.error('getRecipeFull:', error.message);
   return (data as unknown as RecipeFull | null) ?? null;
 }
+
+// Sélection de **consultation** (fiche recette) : les mêmes champs que
+// `FULL_SELECT` moins ce que la fiche n'affiche jamais et qui pèse le plus
+// lourd. Même motif que `PLAN_SOURCE_SELECT` (lib/recipe-plan.ts), pour les
+// mêmes raisons :
+//  - `hero_image_original_url` et `step_photos.original_url` sont les images
+//    non recadrées, produites au même `maxWidth` que la version affichée
+//    (`ImageSlot`) : elles doublaient donc à peu près le volume d'images lu à
+//    chaque ouverture, pour des data-URL que seuls les éditeurs exploitent ;
+//  - `*` ramenait aussi la colonne générée `fts` (vecteur de recherche :
+//    lexèmes et positions de toute la recette), que rien ne lit ici.
+// Le prix de l'abandon de `*` : une colonne ajoutée plus tard à `recipes` et
+// utilisée sur la fiche doit être ajoutée ici en même temps que dans
+// `RecipeFull` — elle ne remontera plus toute seule.
+const VIEW_SELECT = `
+  id, title, description, author_id, is_public, status, created_at,
+  rating_avg, rating_count, measure_type, yield_qty, yield_unit, yield_desc,
+  yield_notes, mold_type_id, mold_dims, prep_time, cook_time, wait_time,
+  total_time, tips, source, source_url, video_url, serving_advice,
+  hero_image_url, hero_image_ai_retouched,
+  profiles!recipes_author_id_fkey(full_name, avatar_url, username),
+  recipe_types(name),
+  difficulties(name, level),
+  mold_types(name, forme),
+  recipe_tags(tags(id, name, slug)),
+  recipe_utensils(*, utensils(url)),
+  ingredient_groups(*, ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip)))),
+  recipe_steps(*, step_photos(url, order_index, ai_retouched))
+`;
+
+// Recette pour la fiche de consultation. Mémoïsée par requête (React cache) :
+// `generateMetadata` n'a besoin que du titre mais lit la recette entière, et
+// il s'exécute en parallèle du rendu de la page — sans mémoïsation, la
+// jointure la plus lourde du site partait **deux fois** par ouverture (une
+// requête Supabase authentifiée n'est pas dédoublonnée par Next).
+export const getRecipeView = cache(async (id: string): Promise<RecipeFull | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('recipes').select(VIEW_SELECT).eq('id', id).maybeSingle();
+  if (error) console.error('getRecipeView:', error.message);
+  return (data as unknown as RecipeFull | null) ?? null;
+});
 
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
 // visuel d'un allergène saisi en texte libre dans une recette (rapprochement
