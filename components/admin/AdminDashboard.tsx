@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { AdminRecipeRow, PendingComment, AiCosts } from '@/lib/admin';
+import { cardHeroSrc } from '@/lib/recipe-view';
 
 // Montants déjà convertis côté serveur (le taux €/$ est une variable
 // d'environnement serveur) : ici, formatage seul.
@@ -123,9 +124,9 @@ export function AdminDashboard({
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded bg-surface-container overflow-hidden flex items-center justify-center shrink-0">
-                          {r.hero_image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- data-URL
-                            <img src={r.hero_image_url} alt="" className="w-full h-full object-cover" />
+                          {cardHeroSrc(r) ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- route image
+                            <img src={cardHeroSrc(r)!} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <span className="material-symbols-outlined text-on-surface-variant">image</span>
                           )}

@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatTime } from '@/lib/format';
-import { effectiveTimes } from '@/lib/recipe-view';
+import { effectiveTimes, cardHeroSrc } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { RecipeCardClient } from '@/components/RecipeCardClient';
 import { MaryseIcon } from '@/components/MaryseIcon';
@@ -241,10 +241,10 @@ export function ProfileTabs({
               >
                 <Link href={`/recette/${r.id}`} className="block">
                   <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
-                    {r.hero_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                    {cardHeroSrc(r) ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- route image / cross-origin
                       <img
-                        src={r.hero_image_url}
+                        src={cardHeroSrc(r)!}
                         alt={r.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
@@ -439,9 +439,9 @@ export function ProfileTabs({
                       className="flex gap-4 items-center"
                     >
                       <div className="w-16 h-16 rounded bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0">
-                        {p.recipes?.hero_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                          <img src={p.recipes.hero_image_url} alt="" className="w-full h-full object-cover" />
+                        {p.recipes && cardHeroSrc(p.recipes) ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- route image / cross-origin
+                          <img src={cardHeroSrc(p.recipes)!} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                         )}

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import type { AdminRecipeRow } from '@/lib/admin';
+import { cardHeroSrc } from '@/lib/recipe-view';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -25,9 +26,9 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
         <td className="px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded bg-surface-container overflow-hidden flex items-center justify-center shrink-0">
-              {r.hero_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data-URL
-                <img src={r.hero_image_url} alt="" className="w-full h-full object-cover" />
+              {cardHeroSrc(r) ? (
+                // eslint-disable-next-line @next/next/no-img-element -- route image
+                <img src={cardHeroSrc(r)!} alt="" className="w-full h-full object-cover" />
               ) : (
                 <span className="material-symbols-outlined text-on-surface-variant">image</span>
               )}

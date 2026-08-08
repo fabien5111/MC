@@ -1,14 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  getRecipeView,
-  recipeHasHeroImage,
-  heroImageSrc,
-  stepPhotoSrc,
-  getAllergensWithPicto,
-  getIngredientConversions,
-  type AllergenRef,
-} from '@/lib/recipes';
+import { getRecipeView, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -17,7 +9,16 @@ import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions, getRunningExecutionSteps, type ExecutionSummary, type RunningExecStep } from '@/lib/executions';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import {
+  UNITS_LBL,
+  yieldInfo,
+  mergeIngredients,
+  dayLabel,
+  planningDays,
+  effectiveTimes,
+  heroImageSrc,
+  stepPhotoSrc,
+} from '@/lib/recipe-view';
 import {
   mergePlanIngredients,
   mergedRowQtyText,
@@ -76,12 +77,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // (bloc parallèle) → isAdmin → listes de courses, plus — en mode planifié —
   // plan → sessions → étapes des sessions en cours : jusqu'à huit
   // allers-retours Vercel↔Supabase en série pour des lectures indépendantes.
-  const [recipe, hasHero, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, planEntry, userIsAdmin, shoppingListsRaw] =
+  const [recipe, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, planEntry, userIsAdmin, shoppingListsRaw] =
     await Promise.all([
       getRecipeView(id),
-      // Présence du visuel d'en-tête : un filtre, pas une lecture de la
-      // data-URL (cf. recipeHasHeroImage) — l'image est servie par sa route.
-      recipeHasHeroImage(id),
       getFavoriteIds(),
       getUnits(),
       // Deux suggestions sont affichées ; la troisième ne sert qu'au cas où la
@@ -402,7 +400,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
           {/* Hero — servi par /api/image/recipe/[id]/hero (cf. heroImageSrc) :
               l'image n'est plus inlinée en data-URL dans ce HTML. */}
-          {hasHero && (
+          {recipe.has_hero_image && (
             <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
               {/* eslint-disable-next-line @next/next/no-img-element -- route image, pas de layout shift (conteneur en aspect fixe) */}
               <img src={heroImageSrc(recipe)} alt={recipe.title} className="w-full h-full object-cover" />

@@ -54,7 +54,10 @@ export type PlanningRow = {
   recipes: {
     id: string;
     title: string | null;
-    hero_image_url: string | null;
+    // Vignette servie par la route image (cf. `cardHeroSrc`), plus de data-URL.
+    has_hero_image: boolean;
+    updated_at: string | null;
+    created_at: string | null;
     prep_time: number | null;
     total_time: number | null;
   } | null;
@@ -83,7 +86,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
   const { data, error } = await supabase
     .from('planning')
     .select(
-      '*, executions(count), active_execution:executions(id, date_debut), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, already_done, prep_time, wait_time, cook_time, cook_temp)',
+      '*, executions(count), active_execution:executions(id, date_debut), recipes(id, title, has_hero_image, updated_at, created_at, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, already_done, prep_time, wait_time, cook_time, cook_temp)',
     )
     .eq('user_id', userId)
     .eq('status', 'planifie')
