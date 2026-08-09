@@ -1,4 +1,4 @@
-# Je Pâtisse — Documentation technique
+# Je pâtisse — Documentation technique
 
 Site de partage de recettes de pâtisserie. Application web full-stack
 TypeScript, déployée sur Vercel, avec Supabase comme backend (base de
