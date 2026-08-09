@@ -22,7 +22,9 @@ import { SearchSummary } from '@/components/search/SearchSummary';
 import { SearchResults } from '@/components/search/SearchResults';
 import { SearchEmptyState } from '@/components/search/SearchEmptyState';
 import { LoadMore } from '@/components/search/LoadMore';
+import { PartnerSlot } from '@/components/PartnerSlot';
 import type { FacetRefs } from '@/components/search/SearchFacets';
+import { getActiveAds } from '@/lib/ads';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getAllergensWithPicto } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
@@ -39,23 +41,6 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-function AdBanner() {
-  return (
-    <div className="ad-banner-placeholder w-full min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 rounded-xl overflow-hidden px-8 py-6">
-      <div className="flex flex-col gap-1 text-center md:text-left">
-        <span className="font-label-md text-on-tertiary-container uppercase tracking-[0.2em] text-[10px] opacity-60">
-          Publicité
-        </span>
-        <h3 className="font-headline-md text-headline-md text-primary">Coffrets &amp; ustensiles signés Maryse</h3>
-        <p className="text-secondary italic">Le matériel des chefs, livré chez vous pour réussir vos entremets.</p>
-      </div>
-      <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
-        Découvrir
-      </button>
-    </div>
-  );
-}
-
 export default async function RecherchePage({
   searchParams,
 }: {
@@ -68,7 +53,7 @@ export default async function RecherchePage({
   // colonne est déjà là).
   const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  const [result, favIds, types, difficulties, tags, allergens, user] = await Promise.all([
+  const [result, favIds, types, difficulties, tags, allergens, user, ads] = await Promise.all([
     searchAdvanced(criteria),
     getFavoriteIds(),
     getRecipeTypes(),
@@ -76,6 +61,7 @@ export default async function RecherchePage({
     getTags(),
     getAllergensWithPicto(),
     getCurrentUser(),
+    getActiveAds(['search_list']),
   ]);
 
   const refs: FacetRefs = {
@@ -152,11 +138,11 @@ export default async function RecherchePage({
                           <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
                         ))}
                       </div>
-                      {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le dernier. */}
+                      {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le
+                          dernier. `index` fait défiler les campagnes en cours
+                          d'un bandeau à l'autre plutôt que de répéter la même. */}
                       {i < blocks.length - 1 && (
-                        <div className="mt-12">
-                          <AdBanner />
-                        </div>
+                        <PartnerSlot slot="search_list" ads={ads} index={i} className="mt-12" />
                       )}
                     </section>
                   ))

@@ -7,7 +7,9 @@ import { HomeRecipeGrid } from '@/components/HomeRecipeGrid';
 import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { PartnerSlot } from '@/components/PartnerSlot';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
@@ -41,13 +43,14 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, activeFeatured, favIds, banners, homeCategories, user] = await Promise.all([
+  const [recipes, activeFeatured, favIds, banners, homeCategories, user, ads] = await Promise.all([
     getRecipes({ limit: 6 }),
     getActiveFeaturedRecipe(),
     getFavoriteIds(),
     getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
     getHomeCategories(),
     getCurrentUser(),
+    getActiveAds(['home_top', 'home_mid']),
   ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
@@ -76,19 +79,9 @@ export default async function HomePage() {
       />
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
-        {/* Publicité */}
-        <section className="mb-16">
-          <div className="ad-banner-placeholder w-full h-[120px] flex items-center justify-center rounded-xl overflow-hidden">
-            <div className="text-center">
-              <span className="block font-label-md text-on-tertiary-container uppercase tracking-[0.2em] mb-1 opacity-60">
-                Partenaire Gastronomique
-              </span>
-              <p className="text-secondary italic">
-                Découvrez la nouvelle collection d&apos;ustensiles Maryse
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Publicité — l'encart disparaît entièrement si aucune campagne n'est
+            programmée (repère visible des seuls administrateurs). */}
+        <PartnerSlot slot="home_top" ads={ads} className="mb-16" />
 
         {/* Recette de la semaine */}
         {featured && (
@@ -257,20 +250,7 @@ export default async function HomePage() {
         </section>
 
         {/* Publicité (entre Catégories et Dernières Créations) */}
-        <section className="mb-20">
-          <div className="ad-banner-placeholder w-full min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 rounded-xl overflow-hidden px-8 py-6">
-            <div className="flex flex-col gap-1 text-center md:text-left">
-              <span className="font-label-md text-on-tertiary-container uppercase tracking-[0.2em] text-[10px] opacity-60">
-                Publicité
-              </span>
-              <h3 className="font-headline-md text-headline-md text-primary">Coffrets &amp; ustensiles signés Maryse</h3>
-              <p className="text-secondary italic">Le matériel des chefs, livré chez vous pour réussir vos entremets.</p>
-            </div>
-            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
-              Découvrir
-            </button>
-          </div>
-        </section>
+        <PartnerSlot slot="home_mid" ads={ads} className="mb-20" />
 
         {/* Dernières créations */}
         <section className="mb-16">

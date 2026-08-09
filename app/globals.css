@@ -37,7 +37,16 @@ img {
 .maryse-logo-font {
   font-family: 'Parisienne', cursive;
 }
-.ad-banner-placeholder {
+/* Encart partenaire (cf. components/PartnerSlot.tsx). Nom de classe neutre :
+   un sélecteur contenant « ad » ou « pub » est filtré par les bloqueurs de
+   publicité, qui masqueraient aussi la régie maison. */
+.encart-partenaire {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* Fond décoratif des encarts sans visuel et des emplacements libres. */
+.encart-partenaire--decor {
   background: linear-gradient(135deg, #fbeae9 0%, #efdfde 100%);
   border: 1px dashed #d6c2c3;
 }
