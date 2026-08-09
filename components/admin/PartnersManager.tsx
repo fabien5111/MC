@@ -82,7 +82,7 @@ export function PartnersManager({ items }: { items: AdRow[] }) {
               <option value="all">Tous les emplacements</option>
               {AD_SLOTS.map((s) => (
                 <option key={s.key} value={s.key}>
-                  {s.label}
+                  {s.label} ({s.hint})
                 </option>
               ))}
             </select>
@@ -310,7 +310,7 @@ function AdForm({
             <select value={slot} onChange={(e) => setSlot(e.target.value as AdSlotKey)} className={FIELD}>
               {AD_SLOTS.map((s) => (
                 <option key={s.key} value={s.key}>
-                  {s.label}
+                  {s.label} ({s.hint})
                 </option>
               ))}
             </select>
