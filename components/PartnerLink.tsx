@@ -17,12 +17,18 @@ import { createClient } from '@/lib/supabase/client';
 type AdEventType = 'impression' | 'click';
 
 type AdEventsTable = {
-  insert: (values: { ad_id: number; event_type: AdEventType }) => PromiseLike<{ error: unknown }>;
+  insert: (values: { ad_id: number; event_type: AdEventType }) => PromiseLike<{ error: { message: string } | null }>;
 };
 
 function recordAdEvent(adId: number, eventType: AdEventType) {
   const table = createClient().from('ad_events' as never) as unknown as AdEventsTable;
-  void table.insert({ ad_id: adId, event_type: eventType });
+  // Fire-and-forget : jamais d'alerte utilisateur pour un compteur de
+  // statistiques. L'erreur part quand même en console — sans ça, une
+  // politique RLS manquante ou une migration incomplète échoue en silence
+  // total, sans aucun moyen de la repérer.
+  table.insert({ ad_id: adId, event_type: eventType }).then(({ error }) => {
+    if (error) console.error(`Suivi publicité (${eventType}) :`, error.message);
+  });
 }
 
 export function PartnerLink({
