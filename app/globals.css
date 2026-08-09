@@ -34,15 +34,8 @@ img {
 .luxury-shadow {
   box-shadow: 0px 4px 20px rgba(48, 10, 18, 0.06);
 }
-@font-face {
-  font-family: 'Magnolia Sky';
-  src: url('/fonts/magnolia-sky.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
 .maryse-logo-font {
-  font-family: 'Magnolia Sky', cursive;
+  font-family: 'Parisienne', cursive;
 }
 .ad-banner-placeholder {
   background: linear-gradient(135deg, #fbeae9 0%, #efdfde 100%);
