@@ -100,7 +100,7 @@ const config: Config = {
         'display-lg': ['Playfair Display', 'serif'],
         'label-md': ['Work Sans', 'sans-serif'],
         'headline-lg-mobile': ['Playfair Display', 'serif'],
-        logo: ['Great Vibes', 'cursive'],
+        logo: ['Parisienne', 'cursive'],
       },
       fontSize: {
         'headline-lg': ['40px', { lineHeight: '48px', fontWeight: '600' }],

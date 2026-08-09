@@ -35,7 +35,7 @@ export async function Header({ current = '/' }: { current?: string }) {
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
         <div className="flex items-center gap-10">
           <Link className="maryse-logo-font text-4xl text-primary leading-none" href="/">
-            maryse club
+            Je pâtisse !
           </Link>
           <nav className="hidden md:flex gap-8 items-center">
             {NAV.map((item) => {

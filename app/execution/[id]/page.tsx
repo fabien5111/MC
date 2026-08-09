@@ -31,7 +31,7 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
       <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
         <div className="max-w-[900px] mx-auto flex justify-between items-center px-margin-mobile py-3">
           <Link className="maryse-logo-font text-3xl text-primary leading-none" href="/">
-            maryse club
+            Je pâtisse !
           </Link>
           <Link href="/profil#planning" className="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span> Planning
