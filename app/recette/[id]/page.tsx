@@ -5,6 +5,7 @@ import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
@@ -25,6 +26,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { PartnerSlot } from '@/components/PartnerSlot';
 import { SuggestionsSidebar } from '@/components/recipe/SuggestionsSidebar';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
@@ -70,7 +72,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
@@ -78,6 +80,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getMoldTypes(),
     getAllergensWithPicto(),
     getIngredientConversions(),
+    getActiveAds(['recipe_inline', 'sidebar']),
   ]);
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   // Le plan est une copie matérialisée indépendante de la recette (voir
@@ -766,18 +769,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           {/* Publicité */}
-          <div className="no-print mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-col gap-1">
-              <span className="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
-              <h4 className="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Tout le nécessaire pour réussir vos entremets à la maison.
-              </p>
-            </div>
-            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all uppercase tracking-widest">
-              En savoir plus
-            </button>
-          </div>
+          <PartnerSlot slot="recipe_inline" ads={ads} className="mb-12" />
 
           {/* Étapes */}
           {steps.length > 0 && (
@@ -1000,7 +992,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
         </PlanProvider>
 
-        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} />
+        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} />
       </main>
       </div>
 

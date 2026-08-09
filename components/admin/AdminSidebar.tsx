@@ -15,6 +15,7 @@ const NAV = [
   { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
   { href: '/admin/moules', label: 'Moules', icon: 'cake' },
   { href: '/admin/photos', label: 'Photos du site', icon: 'photo_library' },
+  { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
 ];
 
 export function AdminSidebar() {
@@ -46,16 +47,6 @@ export function AdminSidebar() {
             </Link>
           );
         })}
-        <span
-          className="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant/40 cursor-not-allowed select-none"
-          title="Disponible en v2"
-        >
-          <span className="material-symbols-outlined text-xl">campaign</span>
-          <span className="text-sm font-medium">Publicités</span>
-          <span className="ml-auto text-[10px] font-bold uppercase tracking-wider bg-outline-variant/50 text-on-surface-variant px-1.5 py-0.5 rounded">
-            v2
-          </span>
-        </span>
       </nav>
       <div className="p-4 border-t border-outline-variant flex flex-col gap-3">
         <Link
