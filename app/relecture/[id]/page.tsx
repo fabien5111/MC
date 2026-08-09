@@ -46,7 +46,9 @@ export default async function RelecturePage({ params }: Params) {
     <>
       <Header current="/profil" />
       <div className="relecture-page">
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-32">
+      {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
+          la barre d'actions fixe qu'il remplace a disparu. */}
+      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24">
         <Link
           href="/importer"
           className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-6 w-fit"

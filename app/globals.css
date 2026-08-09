@@ -339,15 +339,11 @@ body {
     display: none !important;
   }
 }
-/* Barre d'actions de secours (CreerForm, RelectureEditor) : les boutons du
-   rail la rendent redondante dès que celui-ci est visible. Seuil identique à
-   `.recipe-toc` ci-dessus — sinon une bande de largeur existerait sans aucun
-   moyen d'enregistrer, publier ou supprimer. */
-@media (min-width: 701px) {
-  .recipe-toc-fallback-bar {
-    display: none !important;
-  }
-}
+/* Il exista ici une « barre d'actions de secours » (`.recipe-toc-fallback-bar`,
+   CreerForm et RelectureEditor) montrée sous 701 px pour rattraper les boutons
+   du rail devenus inatteignables. Elle n'est plus : ces deux écrans passent
+   maintenant `mobile="drawer"`, et le tiroir porte les mêmes actions — plus le
+   sommaire, que la barre n'offrait pas. */
 @media (prefers-reduced-motion: reduce) {
   .recipe-toc,
   .recipe-toc a,

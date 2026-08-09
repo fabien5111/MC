@@ -13,10 +13,9 @@
 // Sous 700 px le rail est masqué (il n'a pas la place de coexister avec le
 // contenu) et un bouton flottant ouvre un tiroir remontant portant les mêmes
 // entrées — même liste, même scroll-spy, même `navigate`. Ce rendu mobile est
-// **choisi par l'écran hôte** (prop `mobile`) et non automatique : /creer et
-// /relecture ont déjà une barre d'actions fixe en bas d'écran
-// (`.recipe-toc-fallback-bar`), sur laquelle un bouton flottant viendrait se
-// poser.
+// **choisi par l'écran hôte** (prop `mobile`) et non automatique : un écran qui
+// a déjà quelque chose de fixe en bas doit dire quoi dégager (`mobileInset`),
+// sans quoi le bouton flottant vient se poser dessus.
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useToc } from '@/lib/use-toc';
 import { useRailTooltip } from '@/lib/use-rail-tooltip';
