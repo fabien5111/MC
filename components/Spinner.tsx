@@ -60,7 +60,7 @@ export function Spinner({
     <div
       className={`flex min-h-[60vh] w-full flex-col items-center justify-center gap-5 ${className}`}
     >
-      <span className="maryse-logo-font text-4xl text-primary">Maryse Club</span>
+      <span className="maryse-logo-font text-4xl text-primary">Je pâtisse !</span>
       {whisk}
       <p className="text-body-md text-secondary">
         {label ?? 'On prépare la recette…'}

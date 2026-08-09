@@ -35,7 +35,7 @@ export default async function ConnexionPage({
       <header className="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-md">
         <nav className="flex justify-center items-center w-full px-margin-mobile md:px-margin-desktop py-6 max-w-container-max mx-auto">
           <Link className="maryse-logo-font text-4xl text-primary leading-none" href="/">
-            maryse club
+            Je pâtisse !
           </Link>
         </nav>
       </header>
@@ -60,7 +60,7 @@ export default async function ConnexionPage({
         <div className="flex flex-col md:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-8 max-w-container-max mx-auto gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <Link className="maryse-logo-font text-3xl text-primary" href="/">
-              maryse club
+              Je pâtisse !
             </Link>
             <p className="font-body-md text-body-md text-secondary">© 2024 Maryse-Club. Tous droits réservés.</p>
           </div>

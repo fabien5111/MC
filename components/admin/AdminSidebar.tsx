@@ -23,7 +23,7 @@ export function AdminSidebar() {
   return (
     <aside className="flex flex-col h-screen w-64 border-r border-outline-variant bg-surface-container-low z-30 shrink-0 sticky top-0">
       <Link className="p-8 border-b border-outline-variant block" href="/">
-        <span className="maryse-logo-font text-3xl text-primary leading-none block">maryse club</span>
+        <span className="maryse-logo-font text-3xl text-primary leading-none block">Je pâtisse !</span>
         <p className="text-xs font-medium text-on-surface-variant uppercase tracking-widest mt-1">
           Édition Premium · Admin
         </p>

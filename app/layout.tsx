@@ -35,7 +35,7 @@ export default async function RootLayout({
     <html lang="fr">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
         <link
