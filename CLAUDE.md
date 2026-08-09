@@ -1,4 +1,4 @@
-# Maryse Club — Documentation technique
+# Je Pâtisse — Documentation technique
 
 Site de partage de recettes de pâtisserie. Application web full-stack
 TypeScript, déployée sur Vercel, avec Supabase comme backend (base de
