@@ -6,9 +6,18 @@
 // absente, les requêtes échouent proprement et les emplacements restent vides —
 // le site n'est jamais cassé par une migration pas encore passée.
 import { createClient } from '@/lib/supabase/server';
-import { todayStr, type Ad, type AdRow, type AdSlotKey, type AdsBySlot } from '@/lib/ads-config';
+import {
+  EMPTY_AD_STATS,
+  todayStr,
+  type Ad,
+  type AdEventType,
+  type AdRow,
+  type AdSlotKey,
+  type AdsBySlot,
+  type AdStats,
+} from '@/lib/ads-config';
 
-export type { Ad, AdRow, AdsBySlot } from '@/lib/ads-config';
+export type { Ad, AdRow, AdsBySlot, AdStats } from '@/lib/ads-config';
 
 // Constructeur de requête PostgREST réduit à ce qu'on utilise ici. Il se
 // renvoie lui-même (chaînage) et s'attend comme une promesse.
@@ -85,4 +94,77 @@ export async function getAdsAdmin(): Promise<AdRow[]> {
     return [];
   }
   return (data as unknown as AdRow[]) ?? [];
+}
+
+/** Une campagne (administration — en-tête de la page de statistiques). */
+export async function getAdAdmin(id: number): Promise<AdRow | null> {
+  const supabase = await createClient();
+  const table = supabase.from('ads' as never) as unknown as {
+    select: (cols: string) => {
+      eq: (col: string, value: unknown) => {
+        maybeSingle: () => Promise<{ data: unknown | null; error: { message: string } | null }>;
+      };
+    };
+  };
+  const { data, error } = await table.select(ADMIN_COLS).eq('id', id).maybeSingle();
+  if (error) {
+    console.error('getAdAdmin:', error.message);
+    return null;
+  }
+  return (data as AdRow | null) ?? null;
+}
+
+type AdEventRow = { event_type: AdEventType; user_id: string | null };
+
+// Constructeur de requête réduit à ce qu'utilise getAdStats.
+type AdEventsQuery = PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> & {
+  select: (cols: string) => AdEventsQuery;
+  eq: (col: string, value: unknown) => AdEventsQuery;
+  gte: (col: string, value: unknown) => AdEventsQuery;
+  lt: (col: string, value: unknown) => AdEventsQuery;
+};
+
+function adEventsTable(supabase: Awaited<ReturnType<typeof createClient>>): AdEventsQuery {
+  return supabase.from('ad_events' as never) as unknown as AdEventsQuery;
+}
+
+/**
+ * Affichages/clics d'une campagne sur une période (dates incluses), répartis
+ * connecté / non connecté. Agrégation faite ici plutôt qu'en SQL : suffisant
+ * tant que le volume par campagne reste modeste — à basculer vers une
+ * fonction SQL d'agrégat si une campagne dépasse plusieurs dizaines de
+ * milliers d'événements sur la période demandée.
+ */
+export async function getAdStats(adId: number, from: string, to: string): Promise<AdStats> {
+  const supabase = await createClient();
+  // `to` est une date (jour inclus) : borne exclusive au lendemain minuit UTC
+  // pour couvrir toute la journée de fin.
+  const toExclusive = new Date(`${to}T00:00:00.000Z`);
+  toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+
+  const { data, error } = await adEventsTable(supabase)
+    .select('event_type, user_id')
+    .eq('ad_id', adId)
+    .gte('created_at', `${from}T00:00:00.000Z`)
+    .lt('created_at', toExclusive.toISOString());
+
+  if (error) {
+    console.error('getAdStats:', error.message);
+    return EMPTY_AD_STATS;
+  }
+
+  const stats = { ...EMPTY_AD_STATS };
+  for (const row of (data as unknown as AdEventRow[]) ?? []) {
+    const loggedIn = row.user_id != null;
+    if (row.event_type === 'impression') {
+      stats.impressions++;
+      if (loggedIn) stats.impressionsLoggedIn++;
+      else stats.impressionsAnonymous++;
+    } else {
+      stats.clicks++;
+      if (loggedIn) stats.clicksLoggedIn++;
+      else stats.clicksAnonymous++;
+    }
+  }
+  return stats;
 }

@@ -10,6 +10,7 @@
 // et isAdmin sont mémoïsés par requête (React cache).
 import Link from 'next/link';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { PartnerLink } from '@/components/PartnerLink';
 import { adSlotConfig, type AdSlotConfig, type Ad, type AdSlotKey, type AdsBySlot } from '@/lib/ads-config';
 
 export async function PartnerSlot({
@@ -44,14 +45,9 @@ export async function PartnerSlot({
   return (
     <div className={`no-print ${className ?? ''}`}>
       <Mention />
-      {ad.link_url ? (
-        // `sponsored` : lien commercial, à ne pas transmettre en réputation.
-        <a href={ad.link_url} target="_blank" rel="sponsored noopener noreferrer" className={`${box} group`}>
-          {inner}
-        </a>
-      ) : (
-        <div className={box}>{inner}</div>
-      )}
+      <PartnerLink adId={ad.id} href={ad.link_url} className={`${box} group`}>
+        {inner}
+      </PartnerLink>
     </div>
   );
 }

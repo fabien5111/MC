@@ -11,6 +11,7 @@
 // `ads` n'étant pas encore dans lib/database.types.ts, les écritures passent
 // par un cast local — même motif que FeaturedRecipesManager.
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -150,6 +151,13 @@ export function PartnersManager({ items }: { items: AdRow[] }) {
                               {row.active ? 'pause_circle' : 'play_circle'}
                             </span>
                           </button>
+                          <Link
+                            href={`/admin/partenaires/${row.id}/statistiques`}
+                            className="p-2 hover:bg-surface-container-high rounded text-on-surface-variant inline-flex"
+                            title="Statistiques"
+                          >
+                            <span className="material-symbols-outlined text-xl">bar_chart</span>
+                          </Link>
                           <button
                             onClick={() => setEditing(row)}
                             className="p-2 hover:bg-surface-container-high rounded text-on-surface-variant"

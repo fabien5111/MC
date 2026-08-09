@@ -118,6 +118,38 @@ export function todayStr(): string {
 
 export type AdStatus = { label: string; cls: string };
 
+// Statistiques (table `ad_events`) — cf. lib/ads.ts pour la lecture agrégée.
+export type AdEventType = 'impression' | 'click';
+
+export type AdStats = {
+  impressions: number;
+  clicks: number;
+  // Séparés dès la lecture : le taux de clic par segment (clics ÷ affichages
+  // du même segment) est le repère qui a du sens, une répartition brute des
+  // clics serait trompeuse si les deux publics n'ont pas le même volume
+  // d'affichages.
+  impressionsLoggedIn: number;
+  impressionsAnonymous: number;
+  clicksLoggedIn: number;
+  clicksAnonymous: number;
+};
+
+export const EMPTY_AD_STATS: AdStats = {
+  impressions: 0,
+  clicks: 0,
+  impressionsLoggedIn: 0,
+  impressionsAnonymous: 0,
+  clicksLoggedIn: 0,
+  clicksAnonymous: 0,
+};
+
+// Taux de clic affiché ; `—` plutôt que 0 % quand il n'y a pas eu d'affichage
+// (un taux de 0 % laisserait croire à une mesure, pas à une absence de donnée).
+export function ctrLabel(clicks: number, impressions: number): string {
+  if (impressions === 0) return '—';
+  return `${((clicks / impressions) * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+}
+
 // Statut affiché dans le tableau d'administration. `active = false` prime sur
 // les dates : c'est la coupure immédiate, qui ne doit pas se confondre avec
 // une campagne simplement terminée.
