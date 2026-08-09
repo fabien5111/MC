@@ -836,10 +836,17 @@ export function CreerForm({
 
   return (
     <>
+      {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
+          flottant reprend le sommaire *et* ces actions — c'est ce qui a
+          remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
+          navigation entre sections et mangeait trois rangées de boutons sur un
+          téléphone. `mobileInset` reste à sa valeur par défaut : /creer ne
+          monte pas la barre de navigation basse. */}
       <RecipeToc
         sections={CREER_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandStep}
+        mobile="drawer"
         actions={[
           { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           {
@@ -848,6 +855,18 @@ export function CreerForm({
             label: 'Enregistrer en brouillon',
             variant: 'outline-strong',
             onClick: () => submit('draft', true),
+            disabled: busy || leaving,
+          },
+          // Sauver *et* quitter : cette action n'existait que dans la barre de
+          // bas d'écran. Elle est montée dans la liste commune pour que sa
+          // suppression ne la fasse pas disparaître du produit — le rail de
+          // bureau y gagne aussi le raccourci.
+          {
+            id: 'save-leave',
+            icon: 'exit_to_app',
+            label: 'Enregistrer en brouillon et quitter',
+            variant: 'outline-strong',
+            onClick: () => submit('draft', false),
             disabled: busy || leaving,
           },
           {
@@ -1952,39 +1971,6 @@ export function CreerForm({
         <section className="pt-10 border-t-2 border-primary">
           <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
         </section>
-      </div>
-
-      <div
-        className="recipe-toc-fallback-bar fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-      >
-        <div className="max-w-[1200px] mx-auto flex flex-wrap justify-center gap-3 px-margin-mobile md:px-margin-desktop">
-          <button
-            type="button"
-            onClick={() => submit('pending')}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
-          >
-            {isPublic ? 'Publier la recette' : 'Enregistrer'}
-            <span className="material-symbols-outlined text-[18px]">send</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => submit('draft', true)}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
-          >
-            Enregistrer en brouillon
-          </button>
-          <button
-            type="button"
-            onClick={() => submit('draft', false)}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
-          >
-            Enregistrer en brouillon et quitter
-          </button>
-        </div>
       </div>
 
       <datalist id="dl-ingredients">
