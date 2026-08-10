@@ -92,7 +92,7 @@ type PublicSchema = Database['public'];
 
 // `Database` augmenté des objets créés par la migration du blog.
 export type BlogDatabase = Omit<Database, 'public'> & {
-  public: Omit<PublicSchema, 'Tables'> & {
+  public: Omit<PublicSchema, 'Tables' | 'Functions'> & {
     Tables: PublicSchema['Tables'] & {
       articles: Table<ArticleRow, ArticleInsert, Partial<ArticleInsert>>;
       article_categories: Table<
@@ -100,6 +100,12 @@ export type BlogDatabase = Omit<Database, 'public'> & {
         ArticleCategoryInsert,
         Partial<ArticleCategoryInsert>
       >;
+    };
+    Functions: PublicSchema['Functions'] & {
+      // Slugs d'articles ayant déjà été publiés (`published_at` non nul) mais
+      // dont le statut n'est plus `publie` — voir `getGoneSlugs` (lib/blog.ts)
+      // et `lib/blog-gone.ts` (410 côté middleware).
+      gone_article_slugs: { Args: Record<string, never>; Returns: { slug: string }[] };
     };
   };
 };

@@ -18,11 +18,31 @@ import {
   formatArticleDate,
   getArticle,
   getArticleCategories,
+  getPublishedSlugs,
   getRelatedArticles,
   seoDescription,
   seoTitle,
 } from '@/lib/blog';
 import { getArticlePreview } from '@/lib/admin-blog';
+import { siteUrl } from '@/lib/site-url';
+
+// Pré-génération des slugs publiés au build ; Next bascule au rendu dynamique
+// par requête si besoin (le reste de la page dépend de la session, via
+// `Header`) — cette liste sert avant tout à `next build` et au cache.
+//
+// `generateStaticParams` s'exécute inconditionnellement au build, contexte où
+// les variables Supabase peuvent ne pas être posées (poste sans `.env.local`,
+// CI sans secrets). Un build qui échouerait pour ça casserait la vérification
+// `npm run build` demandée avant tout push, pour un simple hint
+// d'optimisation — la page reste de toute façon rendue à la demande.
+export async function generateStaticParams() {
+  try {
+    const slugs = await getPublishedSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -51,6 +71,13 @@ export async function generateMetadata({
       description,
       publishedTime: article.published_at ?? undefined,
       modifiedTime: article.updated_at,
+      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
     },
   };
 }
@@ -81,10 +108,30 @@ export default async function ArticlePage({
   const names = new Map(categories.map((c) => [c.slug, c.name]));
   const categoryName = article.category ? (names.get(article.category) ?? article.category) : null;
 
+  // JSON-LD `Article` : lu depuis les données déjà chargées ci-dessus, pas de
+  // requête supplémentaire. `dangerouslySetInnerHTML` est sûr ici — le contenu
+  // vient de `JSON.stringify`, pas d'un fragment HTML.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    ...(article.cover_image_url ? { image: [article.cover_image_url] } : {}),
+    datePublished: article.published_at ?? article.created_at,
+    dateModified: article.updated_at,
+    ...(article.author_name ? { author: { '@type': 'Person', name: article.author_name } } : {}),
+  };
+
   return (
     <>
       <Header current="/blog" />
       <ReadingProgress />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- JSON.stringify, pas du HTML.
+        // `<` échappé : un titre contenant littéralement "</script>" (saisi
+        // par un rédacteur) ne doit pas pouvoir sortir de la balise.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+      />
       {preview && (
         <div className="bg-secondary text-white text-center text-[13px] font-semibold py-2 px-4">
           Aperçu · {article.status === 'publie' ? 'article publié' : 'brouillon non publié'} — non indexé

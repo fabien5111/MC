@@ -201,6 +201,49 @@ export const getPublishedSlugs = (): Promise<string[]> =>
     tags: [BLOG_TAG],
   })();
 
+// Articles publiés avec leur date de mise à jour — plan du site et flux RSS,
+// qui ont besoin de plus que le seul slug (`getPublishedSlugs`).
+export type SitemapArticle = { slug: string; published_at: string | null; updated_at: string };
+
+async function fetchSitemapArticles(): Promise<SitemapArticle[]> {
+  const supabase = withBlogSchema(createPublicClient());
+  const { data, error } = await supabase
+    .from('articles')
+    .select('slug, published_at, updated_at')
+    .eq('status', 'publie')
+    .order('published_at', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export const getSitemapArticles = (): Promise<SitemapArticle[]> =>
+  unstable_cache(fetchSitemapArticles, ['blog-sitemap'], {
+    revalidate: REVALIDATE,
+    tags: [BLOG_TAG],
+  })();
+
+// Slugs d'articles DÉPUBLIÉS (ils ont été publiés — `published_at` posé une
+// fois pour toutes — mais ne le sont plus) : c'est ce qui distingue un 410
+// (« ça a existé, ça a disparu ») d'un 404 (« jamais rien eu ce nom »).
+//
+// La RLS bloque un visiteur anonyme sur ces lignes (`articles_select_public`
+// n'ouvre que `status = 'publie'`) : il faut donc une fonction SQL
+// `SECURITY DEFINER` (`gone_article_slugs`, migration du lot 4) plutôt qu'une
+// lecture directe de la table. Elle ne renvoie que des slugs, jamais un
+// titre ni un contenu — le strict nécessaire pour ce contrôle.
+async function fetchGoneSlugs(): Promise<string[]> {
+  const supabase = withBlogSchema(createPublicClient());
+  const { data, error } = await supabase.rpc('gone_article_slugs');
+  if (error) return [];
+  return (data ?? []).map((r) => r.slug);
+}
+
+export const getGoneSlugs = (): Promise<string[]> =>
+  unstable_cache(fetchGoneSlugs, ['blog-gone-slugs'], {
+    revalidate: REVALIDATE,
+    tags: [BLOG_TAG],
+  })();
+
 // ---------------------------------------------------------------------------
 // À lire ensuite
 // ---------------------------------------------------------------------------
