@@ -22,14 +22,18 @@ import {
   seoDescription,
   seoTitle,
 } from '@/lib/blog';
+import { getArticlePreview } from '@/lib/admin-blog';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = await getArticle(slug);
+  const { preview } = await searchParams;
+  const article = preview ? await getArticlePreview(slug) : await getArticle(slug);
   if (!article) return { title: 'Article introuvable — Je pâtisse !' };
 
   const title = seoTitle(article);
@@ -39,6 +43,8 @@ export async function generateMetadata({
     title: `${title} — Je pâtisse !`,
     description,
     alternates: { canonical: `/blog/${article.slug}` },
+    // Un aperçu de brouillon ne doit jamais être indexé.
+    ...(preview ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: 'article',
       title,
@@ -49,9 +55,21 @@ export async function generateMetadata({
   };
 }
 
-export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ArticlePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
+}) {
   const { slug } = await params;
-  const article = await getArticle(slug);
+  const { preview } = await searchParams;
+  // La prévisualisation lit par la session authentifiée, sans cache ni filtre
+  // de statut : la RLS décide seule qui a le droit de voir quoi (son propre
+  // travail, ou l'admin). Un visiteur ordinaire qui ajoute `?preview=1` à
+  // l'URL d'un brouillon retombe donc sur la lecture publique, qui ne le voit
+  // pas plus qu'avant.
+  const article = preview ? await getArticlePreview(slug) : await getArticle(slug);
   // Un article dépublié devra renvoyer 410 plutôt que 404 (il a existé) : cela
   // demande un traitement hors page, prévu avec le référencement.
   if (!article) notFound();
@@ -67,6 +85,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <>
       <Header current="/blog" />
       <ReadingProgress />
+      {preview && (
+        <div className="bg-secondary text-white text-center text-[13px] font-semibold py-2 px-4">
+          Aperçu · {article.status === 'publie' ? 'article publié' : 'brouillon non publié'} — non indexé
+        </div>
+      )}
 
       <main className="pb-32">
         <div className="max-w-[760px] mx-auto px-margin-mobile md:px-8 pt-10 md:pt-14">

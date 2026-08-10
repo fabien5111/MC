@@ -139,24 +139,17 @@ export const getArticleCategories = (): Promise<CategoryWithCount[]> =>
 // Article
 // ---------------------------------------------------------------------------
 
-async function fetchArticle(slug: string): Promise<ArticleDetail | null> {
-  const supabase = withBlogSchema(createPublicClient());
-
-  const { data, error } = await supabase
-    .from('articles')
-    .select('*')
-    .eq('slug', slug)
-    .eq('status', 'publie')
-    .maybeSingle();
-
-  if (error || !data) return null;
-
+// Complète une ligne `articles` en `ArticleDetail` (document décodé, sommaire,
+// temps de lecture, photo d'auteur). Partagé par la lecture publique cachée
+// ci-dessous et par la prévisualisation (`getArticlePreview`, session
+// authentifiée, non cachée) : les deux doivent produire un rendu identique.
+export async function toArticleDetail(data: ArticleRow, client: ReturnType<typeof withBlogSchema>): Promise<ArticleDetail> {
   // Photo de l'auteur : lecture séparée (pas de jointure) — `profiles` a ses
   // propres policies et l'article doit rester lisible même si le profil ne
   // l'est pas, ou n'existe plus (`author_id` est en ON DELETE SET NULL).
   let authorAvatarUrl: string | null = null;
   if (data.author_id) {
-    const { data: profile } = await supabase
+    const { data: profile } = await client
       .from('profiles')
       .select('avatar_url')
       .eq('id', data.author_id)
@@ -172,6 +165,20 @@ async function fetchArticle(slug: string): Promise<ArticleDetail | null> {
     readingMinutes: readingMinutes(doc),
     authorAvatarUrl,
   };
+}
+
+async function fetchArticle(slug: string): Promise<ArticleDetail | null> {
+  const supabase = withBlogSchema(createPublicClient());
+
+  const { data, error } = await supabase
+    .from('articles')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'publie')
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return toArticleDetail(data, supabase);
 }
 
 export const getArticle = (slug: string): Promise<ArticleDetail | null> =>

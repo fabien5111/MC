@@ -26,6 +26,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
   { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book', manager: true },
+  { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
   { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
