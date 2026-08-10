@@ -1,12 +1,26 @@
 'use client';
 
-// Barre de filtres du carnet — même doctrine que la recherche avancée
-// (components/search/SearchProvider.tsx) : l'URL est le seul état de l'écran,
-// les pastilles et les contrôles réécrivent l'URL (`router.replace`), le
-// Server Component (app/carnet/page.tsx) refait le rendu. Un état local sert
-// d'affichage optimiste, en particulier pour la saisie (débouncée) — sans
-// quoi chaque frappe déclencherait une navigation.
-import { useCallback, useEffect, useRef, useState } from 'react';
+// Barre de filtres du carnet.
+//
+// L'URL est le seul état de l'écran (`lib/carnet-params.ts`), comme sur la
+// recherche avancée : rechargement, partage de lien et retour arrière
+// restituent le même filtrage.
+//
+// Les pastilles sont de **vrais liens** (`<Link>`), pas des boutons pilotés
+// par `router.replace()`. Trois tentatives successives de faire commiter la
+// navigation par `router.replace()` depuis un `onClick` ont échoué sur ce
+// composant (la requête RSC partait bien avec les bons paramètres, répondait
+// 200, mais le routeur n'appliquait jamais le résultat : l'URL ne changeait
+// pas et la grille restait figée). Un lien n'a pas ce problème — c'est le
+// primitif de navigation du framework — et il rend en prime le clic-milieu,
+// l'ouverture dans un nouvel onglet et le survol/prefetch gratuits. Filtrer,
+// ici, *est* une navigation : autant l'écrire comme telle.
+//
+// Restent en `router.replace()` les deux contrôles qui ne peuvent pas être des
+// liens : la saisie libre (débouncée, une frappe n'est pas un clic) et le
+// menu de tri.
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   SCOPES,
@@ -22,7 +36,7 @@ import {
 const DEBOUNCE_MS = 300;
 
 export function CarnetToolbar({
-  params: serverParams,
+  params,
   counts,
   statusCounts,
 }: {
@@ -32,39 +46,28 @@ export function CarnetToolbar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [params, setParams] = useState(serverParams);
+  const [, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const serverKey = carnetParamsToQueryString(serverParams);
-  useEffect(() => {
-    setParams(serverParams);
-    // serverKey résume serverParams ; le suivre évite une boucle de rendu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverKey]);
+  // Saisie : seul contrôle à garder un état local, parce qu'il doit réagir à
+  // chaque frappe alors que la navigation, elle, est débouncée.
+  const [q, setQ] = useState(params.q);
+  useEffect(() => setQ(params.q), [params.q]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const hrefFor = useCallback(
+    (next: CarnetParams) => {
+      const qs = carnetParamsToQueryString(next);
+      return qs ? `${pathname}?${qs}` : pathname;
+    },
+    [pathname],
+  );
 
   const navigate = useCallback(
     (next: CarnetParams) => {
-      const qs = carnetParamsToQueryString(next);
-      // `router.refresh()` appelé juste derrière un `router.replace()` a été
-      // essayé puis retiré : les deux dispatchés dans le même tick semblent
-      // interrompre la navigation avant qu'elle ne pose la nouvelle URL (le
-      // symptôme constaté : la barre d'adresse ne change plus du tout). Même
-      // ligne, sans le `refresh()`, que `SearchProvider.navigate` (recherche
-      // avancée) — seule référence du produit où ce motif est éprouvé.
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      startTransition(() => router.replace(hrefFor(next), { scroll: false }));
     },
-    [pathname, router],
-  );
-
-  const update = useCallback(
-    (next: CarnetParams, opts?: { debounce?: boolean }) => {
-      setParams(next);
-      if (timer.current) clearTimeout(timer.current);
-      if (opts?.debounce) timer.current = setTimeout(() => navigate(next), DEBOUNCE_MS);
-      else navigate(next);
-    },
-    [navigate],
+    [hrefFor, router],
   );
 
   // La barre de statut n'a de sens que sur mes propres recettes : elle
@@ -78,10 +81,18 @@ export function CarnetToolbar({
           {SCOPES.map((s) => {
             const active = params.scope === s;
             return (
-              <button
+              <Link
                 key={s}
-                type="button"
-                onClick={() => update({ ...params, scope: s, statut: s === 'fav' || s === 'sub' ? 'all' : params.statut })}
+                href={hrefFor({
+                  ...params,
+                  scope: s,
+                  // Le statut n'existe pas sur les recettes des autres : on le
+                  // remet à « Tous » en y entrant, sinon un filtre invisible
+                  // resterait actif (même règle que `parseCarnetParams`).
+                  statut: s === 'fav' || s === 'sub' ? 'all' : params.statut,
+                })}
+                scroll={false}
+                aria-current={active ? 'true' : undefined}
                 className={`whitespace-nowrap rounded-pill px-4 py-1.5 font-label-md text-[12.5px] transition-all ${
                   active
                     ? 'bg-primary text-on-primary'
@@ -89,7 +100,7 @@ export function CarnetToolbar({
                 }`}
               >
                 {SCOPE_LABELS[s]} <span className="opacity-60">{counts[s] ?? 0}</span>
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -98,8 +109,12 @@ export function CarnetToolbar({
           <div className="relative">
             <input
               type="text"
-              value={params.q}
-              onChange={(e) => update({ ...params, q: e.target.value }, { debounce: true })}
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                if (timer.current) clearTimeout(timer.current);
+                timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
+              }}
               placeholder="Chercher dans mon carnet…"
               className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
             />
@@ -109,7 +124,7 @@ export function CarnetToolbar({
           </div>
           <select
             value={params.tri}
-            onChange={(e) => update({ ...params, tri: e.target.value as CarnetParams['tri'] })}
+            onChange={(e) => navigate({ ...params, tri: e.target.value as CarnetParams['tri'] })}
             className="cursor-pointer border-none bg-transparent text-[13px] font-semibold text-on-surface-variant focus:ring-0"
           >
             {SORT_KEYS.map((k) => (
@@ -129,17 +144,18 @@ export function CarnetToolbar({
           {STATUSES.map((s) => {
             const active = params.statut === s;
             return (
-              <button
+              <Link
                 key={s}
-                type="button"
-                onClick={() => update({ ...params, statut: s })}
+                href={hrefFor({ ...params, statut: s })}
+                scroll={false}
+                aria-current={active ? 'true' : undefined}
                 className={`whitespace-nowrap rounded-pill px-3 py-1 font-label-md text-[12px] transition-all ${
                   active ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:bg-surface-container'
                 }`}
               >
                 {STATUS_LABELS[s]}
                 {s !== 'all' && <span className="opacity-60"> {statusCounts[s] ?? 0}</span>}
-              </button>
+              </Link>
             );
           })}
         </div>
