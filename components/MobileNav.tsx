@@ -25,6 +25,10 @@ export async function MobileNav({ current = '/' }: { current?: string }) {
           <span className="material-symbols-outlined">home</span>
           <span className="text-[10px] mt-1 font-label-md">Accueil</span>
         </Link>
+        <Link href="/blog" className={cls('/blog')}>
+          <span className="material-symbols-outlined">article</span>
+          <span className="text-[10px] mt-1 font-label-md">Blog</span>
+        </Link>
         {user && !readOnly && (
           <Link href="/creer" prefetch={false} className={cls('/creer')}>
             <span className="material-symbols-outlined">add_circle</span>

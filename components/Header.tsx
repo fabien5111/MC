@@ -11,6 +11,7 @@ import { getHomeCategories } from '@/lib/taxonomy';
 
 const NAV = [
   { href: '/', label: 'Accueil' },
+  { href: '/blog', label: 'Le blog' },
   { href: '/profil', label: 'Mes recettes' },
   { href: '/profil#planning', label: 'Planning' },
   { href: '/profil#courses', label: 'Listes de courses' },
