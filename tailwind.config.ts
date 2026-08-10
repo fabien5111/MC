@@ -17,7 +17,10 @@ const config: Config = {
       // elle est déclarée ici pour que le CSS et les composants la citent au
       // lieu de la recopier. `701px` et non `700px` : la borne du rail est
       // `max-width: 700px`, celle-ci est son complément exact.
-      screens: { rail: '701px' },
+      // `row` : point de bascule des rangées défilantes de l'accueil — trois
+      // cartes visibles au-dessus, deux en dessous (et une seule sous `sm`,
+      // à 85 % de large pour laisser deviner la suivante).
+      screens: { rail: '701px', row: '900px' },
       colors: {
         'on-tertiary-fixed-variant': '#584044',
         'on-secondary-fixed': '#311118',
