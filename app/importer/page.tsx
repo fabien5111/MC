@@ -3,10 +3,11 @@ import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getImports } from '@/lib/imports';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 
-export const metadata: Metadata = { title: 'Importer une recette | Maryse Club' };
+export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
 const QUOTA_JOUR = 20;
 
@@ -23,8 +24,8 @@ export default async function ImporterPage() {
 
   return (
     <>
-      <Header current="/profil" />
-      <main className="max-w-[900px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+      <Header current="carnet" />
+      <main className="max-w-[900px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-28 lg:pb-12">
         <div className="flex items-baseline justify-between flex-wrap gap-4 mb-2">
           <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
             Importer une recette
@@ -34,7 +35,7 @@ export default async function ImporterPage() {
           </span>
         </div>
         <p className="text-on-surface-variant mb-8">
-          Collez le texte complet d&apos;une recette : elle est analysée, convertie au format Maryse Club
+          Collez le texte complet d&apos;une recette : elle est analysée, convertie au format du site
           et enregistrée en brouillon privé, que vous pourrez relire et corriger.
         </p>
 
@@ -43,6 +44,7 @@ export default async function ImporterPage() {
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>
         <ImporterList imports={imports} isAdmin={admin} />
       </main>
+      <MobileNav current="carnet" />
     </>
   );
 }

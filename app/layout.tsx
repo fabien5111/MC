@@ -9,7 +9,7 @@ import { getImpersonationContext } from '@/lib/impersonation';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Maryse Club',
+  title: 'Je pâtisse !',
   description:
     'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
   manifest: '/manifest.json',

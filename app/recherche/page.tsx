@@ -86,7 +86,7 @@ export default async function RecherchePage({
 
   return (
     <>
-      <Header />
+      <Header current="explorer" />
 
       <SearchProvider criteria={criteria} initialPanelOpen={panelOpen}>
         <main className="max-w-[1400px] mx-auto pb-24">
@@ -156,7 +156,7 @@ export default async function RecherchePage({
       </SearchProvider>
 
       <Footer />
-      <MobileNav />
+      <MobileNav current="explorer" />
     </>
   );
 }

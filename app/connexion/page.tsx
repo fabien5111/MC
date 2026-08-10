@@ -12,9 +12,9 @@ function safeNext(next: string | undefined): string {
 export default async function ConnexionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; inscription?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, inscription } = await searchParams;
   const dest = safeNext(next);
 
   // Motifs d'échec renvoyés par les routes d'authentification.
@@ -52,7 +52,7 @@ export default async function ConnexionPage({
               {messageErreur}
             </p>
           )}
-          <LoginForm next={dest} />
+          <LoginForm next={dest} initialMode={inscription ? 'signup' : 'signin'} />
         </div>
       </main>
 

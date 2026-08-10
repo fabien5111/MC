@@ -69,7 +69,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <Header current="/" />
+      <Header current="accueil" />
 
       <HomeBanner
         web={banners.banner_home_web}
@@ -271,7 +271,7 @@ export default async function HomePage() {
       </main>
 
       <Footer />
-      <MobileNav current="/" />
+      <MobileNav current="accueil" />
     </>
   );
 }

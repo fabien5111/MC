@@ -6,7 +6,7 @@ import { getAdAdmin, getAdStats } from '@/lib/ads';
 import { adSlotConfig, ctrLabel } from '@/lib/ads-config';
 import { AdStatsDateRange } from '@/components/admin/AdStatsDateRange';
 
-export const metadata: Metadata = { title: 'Statistiques publicité | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Statistiques publicité | Admin — Je pâtisse !' };
 
 function isoDaysAgo(days: number): string {
   const d = new Date();

@@ -6,7 +6,29 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Routes nécessitant une session. Le gating fin (payant/gratuit, admin) se fait
 // ensuite dans chaque page/route ; ici on ne bloque que l'accès non authentifié.
-const PROTECTED_PREFIXES = ['/profil', '/creer', '/admin', '/execution', '/courses', '/importer', '/relecture'];
+//
+// `/carnet` et `/en-cuisine` y figurent **à titre provisoire**. La navigation
+// cible montre ces deux entrées au visiteur, sans cadenas, et les fait aboutir
+// à un écran d'invitation qui donne à voir ce qu'il y a derrière — jamais à un
+// renvoi sec vers la connexion. Le jour où cet écran existe, les deux préfixes
+// sortent d'ici **et** le `requireUser` de leur page cède la place au rendu à
+// deux états. Les retirer d'ici seul ne ferait que remplacer la redirection par
+// une erreur.
+//
+// `/profil` reste protégé bien qu'il ne soit plus qu'une redirection : il
+// dispatche vers des écrans privés, autant refuser tôt.
+const PROTECTED_PREFIXES = [
+  '/profil',
+  '/reglages',
+  '/carnet',
+  '/en-cuisine',
+  '/creer',
+  '/admin',
+  '/execution',
+  '/courses',
+  '/importer',
+  '/relecture',
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

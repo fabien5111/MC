@@ -402,17 +402,17 @@ export function PlanWidget({
     }
     close();
     // `busy` reste vrai jusqu'au démontage par la navigation : le spinner doit
-    // rester affiché pendant la transition vers /profil#planning.
+    // rester affiché pendant la transition vers /en-cuisine.
     // router.refresh() APRÈS le push (et non avant) : appelé avant, il ne
-    // rafraîchit que la route qu'on quitte (la fiche recette) — l'onglet
-    // Planning du profil, déjà visité dans la session, resservait alors une
+    // rafraîchit que la route qu'on quitte (la fiche recette) — le planning
+    // d'« En cuisine », déjà visité dans la session, resservait alors une
     // entrée du cache client antérieure à la création du plan.
-    router.push('/profil#planning');
+    router.push('/en-cuisine');
     router.refresh();
   }
 
   // Rendu même panneau fermé (après `close()` en fin de validation) : la
-  // navigation vers /profil#planning reste à couvrir par le spinner jusqu'à
+  // navigation vers /en-cuisine reste à couvrir par le spinner jusqu'à
   // ce qu'elle prenne effet.
   if (!open) return <LoadingOverlay visible={busy} label="Enregistrement du plan…" />;
 

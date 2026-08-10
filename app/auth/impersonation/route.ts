@@ -79,5 +79,7 @@ export async function GET(request: Request) {
     )}`,
   });
 
-  return NextResponse.redirect(`${origin}/profil`);
+  // Atterrissage sur le carnet du membre : c'est de là que l'on voit ce
+  // qu'il a, ce pour quoi une session « en tant que » est ouverte.
+  return NextResponse.redirect(`${origin}/carnet`);
 }

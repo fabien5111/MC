@@ -4,7 +4,7 @@ import { getAllowlistMembers } from '@/lib/admin';
 import { MembersManager } from '@/components/admin/MembersManager';
 import { ImpersonationAudit } from '@/components/admin/ImpersonationAudit';
 
-export const metadata: Metadata = { title: 'Membres | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Membres | Admin — Je pâtisse !' };
 
 export default async function AdminMembresPage() {
   const members = await getAllowlistMembers();
