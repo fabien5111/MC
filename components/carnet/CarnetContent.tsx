@@ -7,9 +7,8 @@
 // différent selon la provenance de chaque élément (README « Mon carnet » —
 // mes recettes portent statut/actions, les recettes des autres portent
 // auteur/note, jamais les deux).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -40,25 +39,21 @@ export function CarnetContent({
   emptyMessage: string;
 }) {
   const { mutate, busy } = useMutation();
-  const router = useRouter();
-  // Le cache client du routeur peut resservir un rendu obsolète du carnet
-  // (ex. retour après avoir créé une recette ailleurs) alors même que la page
-  // est en `force-dynamic` côté serveur.
-  useEffect(() => {
-    router.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  // Suppression optimiste locale, comme partout ailleurs dans le carnet
-  // (cf. CLAUDE.md) — resynchronisée à chaque nouveau filtrage serveur.
-  const [list, setList] = useState(items);
-  useEffect(() => setList(items), [items]);
+  // Suppression optimiste : un simple ensemble d'ids retirés cette session,
+  // superposé au rendu — jamais une copie de `items` en état local. Une copie
+  // (`useState(items)` + resynchro par effet) peut masquer des props pourtant
+  // à jour si un rendu intermédiaire est manqué ; un filtre posé sur les
+  // props reçues ne peut, par construction, jamais afficher autre chose que
+  // ce que le serveur vient d'envoyer.
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const list = items.filter((i) => !removedIds.has(i.recipe.id));
 
   async function delRecipe(id: string, title: string) {
     const ok = await mutate(() => createClient().from('recipes').delete().eq('id', id), {
       confirm: `Supprimer « ${title} » ?\nCette action est définitive.`,
     });
-    if (ok) setList((prev) => prev.filter((i) => !(i.kind === 'mine' && i.recipe.id === id)));
+    if (ok) setRemovedIds((prev) => new Set(prev).add(id));
   }
 
   return (

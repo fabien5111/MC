@@ -47,6 +47,12 @@ export function CarnetToolbar({
     (next: CarnetParams) => {
       const qs = carnetParamsToQueryString(next);
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      // `router.replace` seul peut resservir un rendu du cache client du
+      // routeur pour une URL déjà visitée dans la session (le carnet est une
+      // poignée de combinaisons de filtres, vite épuisée) — la page reste en
+      // apparence figée sur l'ancien filtrage. `refresh()` invalide ce cache
+      // et force un nouveau rendu serveur pour l'URL qu'on vient de poser.
+      router.refresh();
     },
     [pathname, router],
   );
