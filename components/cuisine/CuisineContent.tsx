@@ -63,12 +63,13 @@ export function CuisineContent({
 
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
+  const [archivedPlanningList, setArchivedPlanningList] = useState(archivedPlanning);
+  useEffect(() => setArchivedPlanningList(archivedPlanning), [archivedPlanning]);
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
-  // Archivée = tous les articles cochés. Aucune colonne dédiée en base (cf.
-  // app/en-cuisine/archives) : la distinction est purement une lecture, ici
-  // comme là-bas. Une liste sans article n'est jamais « archivée » — elle n'a
-  // simplement encore rien à cocher.
+  // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
+  // distinction est purement une lecture. Une liste sans article n'est jamais
+  // « archivée » — elle n'a simplement encore rien à cocher.
   const activeShoppingLists = shoppingList.filter((l) => {
     const items = l.shopping_list_items || [];
     return items.length === 0 || items.some((i) => !i.checked);
@@ -150,6 +151,35 @@ export function CuisineContent({
     }
   }
 
+  // Purge complète d'un plan et de l'historique de ses sessions : les quatre
+  // tables filles d'une exécution (sans cascade connue depuis ce dépôt, le
+  // schéma SQL n'y étant pas versionné, cf. CLAUDE.md), puis `executions`
+  // elle-même, puis `planning`. `executions.planning_id` est en
+  // ON DELETE RESTRICT — sans cette purge préalable, la suppression du plan
+  // échouerait dès qu'une exécution existe. Partagée par `delPlan` (session
+  // en cours, retirée du planning actif) et `delArchivedPlan` (recette déjà
+  // archivée : plus d'étape intermédiaire possible, la suppression est là la
+  // seule issue).
+  async function purgePlanAndExecutions(planId: number) {
+    const supabase = createClient();
+    const { data: execs, error: execsErr } = await supabase.from('executions').select('id').eq('planning_id', planId);
+    if (execsErr) return { error: execsErr };
+    const execIds = (execs ?? []).map((e) => e.id);
+    if (execIds.length > 0) {
+      const { error: e1 } = await supabase.from('execution_ingredients').delete().in('execution_id', execIds);
+      if (e1) return { error: e1 };
+      const { error: e2 } = await supabase.from('execution_substeps').delete().in('execution_id', execIds);
+      if (e2) return { error: e2 };
+      const { error: e3 } = await supabase.from('execution_steps').delete().in('execution_id', execIds);
+      if (e3) return { error: e3 };
+      const { error: e4 } = await supabase.from('execution_utensils').delete().in('execution_id', execIds);
+      if (e4) return { error: e4 };
+      const { error: e5 } = await supabase.from('executions').delete().in('id', execIds);
+      if (e5) return { error: e5 };
+    }
+    return supabase.from('planning').delete().eq('id', planId);
+  }
+
   async function delPlan(plan: PlanningRow) {
     // Un plan déjà cuisiné (au moins une exécution) ne peut pas être supprimé
     // tel quel — `executions.planning_id` est en ON DELETE RESTRICT pour
@@ -164,37 +194,12 @@ export function CuisineContent({
     const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
     const hasActiveSession = plan.active_execution.length > 0;
     const ok = await mutate(
-      async () => {
-        const supabase = createClient();
-        if (hasActiveSession) {
-          const { data: execs, error: execsErr } = await supabase
-            .from('executions')
-            .select('id')
-            .eq('planning_id', plan.id);
-          if (execsErr) return { error: execsErr };
-          const execIds = (execs ?? []).map((e) => e.id);
-          if (execIds.length > 0) {
-            // Tables filles d'une exécution, sans cascade connue depuis ce
-            // dépôt (le schéma SQL n'y est pas versionné, cf. CLAUDE.md) —
-            // supprimées explicitement avant `executions` elle-même pour ne
-            // pas se heurter à une contrainte de clé étrangère.
-            const { error: e1 } = await supabase.from('execution_ingredients').delete().in('execution_id', execIds);
-            if (e1) return { error: e1 };
-            const { error: e2 } = await supabase.from('execution_substeps').delete().in('execution_id', execIds);
-            if (e2) return { error: e2 };
-            const { error: e3 } = await supabase.from('execution_steps').delete().in('execution_id', execIds);
-            if (e3) return { error: e3 };
-            const { error: e4 } = await supabase.from('execution_utensils').delete().in('execution_id', execIds);
-            if (e4) return { error: e4 };
-            const { error: e5 } = await supabase.from('executions').delete().in('id', execIds);
-            if (e5) return { error: e5 };
-          }
-          return supabase.from('planning').delete().eq('id', plan.id);
-        }
-        return hasExecutions
-          ? supabase.from('planning').update({ status: 'archive' }).eq('id', plan.id)
-          : supabase.from('planning').delete().eq('id', plan.id);
-      },
+      () =>
+        hasActiveSession
+          ? purgePlanAndExecutions(plan.id)
+          : hasExecutions
+            ? createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id)
+            : createClient().from('planning').delete().eq('id', plan.id),
       {
         confirm: hasActiveSession
           ? 'Une session est en cours pour cette recette. La supprimer maintenant arrêtera cette session et effacera l’historique de ses préparations, en plus de retirer la recette du planning. Continuer ?'
@@ -205,6 +210,17 @@ export function CuisineContent({
       },
     );
     if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
+  }
+
+  async function delArchivedPlan(plan: PlanningRow) {
+    const hasActiveSession = plan.active_execution.length > 0;
+    const ok = await mutate(() => purgePlanAndExecutions(plan.id), {
+      confirm: hasActiveSession
+        ? 'Une session est en cours pour cette recette. La supprimer définitivement arrêtera cette session et effacera l’historique de ses préparations. Cette action est irréversible. Continuer ?'
+        : 'Supprimer définitivement cette recette et l’historique de ses sessions ? Cette action est irréversible.',
+      errorLabel: 'Suppression impossible',
+    });
+    if (ok) setArchivedPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
   }
 
   return (
@@ -351,44 +367,56 @@ export function CuisineContent({
             Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
           </p>
         )}
-        {archivedPlanning.length > 0 && (
-          <div className="mt-10 border-t border-outline-variant/60 pt-8">
-            <p className="mb-4 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Archivées
-            </p>
-            <div className="max-w-3xl space-y-4">
-              {archivedPlanning.map((p) => {
+        {archivedPlanningList.length > 0 && (
+          <details className="group mt-10 border-t border-outline-variant/60 pt-8">
+            <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+              Archivées ({archivedPlanningList.length})
+              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">
+                expand_more
+              </span>
+            </summary>
+            <div className="mt-4 max-w-3xl space-y-4">
+              {archivedPlanningList.map((p) => {
                 const timeTxt =
                   p.recipes?.total_time || p.recipes?.prep_time
                     ? formatTime(p.recipes.total_time || p.recipes.prep_time)
                     : '';
                 return (
-                  <Link
+                  <div
                     key={p.id}
-                    href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`}
                     className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100"
                   >
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                      {p.recipes?.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
-                      <p className="font-body-md text-[12px] text-on-surface-variant">
-                        {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
-                    </div>
-                  </Link>
+                    <Link href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`} className="flex flex-1 items-center gap-4 min-w-0">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                        {p.recipes?.hero_image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                          <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
+                        <p className="font-body-md text-[12px] text-on-surface-variant">
+                          {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      title="Supprimer définitivement"
+                      onClick={() => delArchivedPlan(p)}
+                      className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
                 );
               })}
             </div>
-          </div>
+          </details>
         )}
       </section>
 
@@ -459,12 +487,17 @@ export function CuisineContent({
           </p>
         )}
         {archivedShoppingLists.length > 0 && (
-          <div className="mt-10 border-t border-outline-variant/60 pt-8">
-            <p className="mb-4 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Archivées
-            </p>
-            <ArchivedShoppingLists lists={archivedShoppingLists} />
-          </div>
+          <details className="group mt-10 border-t border-outline-variant/60 pt-8">
+            <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+              Archivées ({archivedShoppingLists.length})
+              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">
+                expand_more
+              </span>
+            </summary>
+            <div className="mt-4">
+              <ArchivedShoppingLists lists={archivedShoppingLists} />
+            </div>
+          </details>
         )}
       </section>
       </div>
