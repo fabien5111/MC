@@ -16,7 +16,7 @@
 //  - « Retirer du planning » **archive** dès qu'une session existe : les
 //    exécutions sont en `ON DELETE RESTRICT` pour garantir la trace de ce qui a
 //    réellement été cuisiné (cf. CLAUDE.md), un `delete` sec échouerait.
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -132,15 +132,26 @@ export function CuisineContent({
     // — `executions.planning_id` est en ON DELETE RESTRICT pour garantir la
     // trace des recettes réalisées (cf. CLAUDE.md). On l'archive à la place.
     const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
+    // Une session *en cours* (par opposition à une exécution passée) n'est
+    // jamais arrêtée par cette action : archiver le plan ne fait que le
+    // sortir du planning à venir, ce n'est pas un renoncement à la
+    // préparation déjà commencée. Elle continue donc d'apparaître dans
+    // « Sessions en cours » — ce n'est pas un oubli, retoucher une exécution
+    // depuis ici détruirait la trace de ce qui a réellement été fait
+    // (cf. CLAUDE.md « Recettes planifiées »). Le message doit le dire :
+    // « déjà cuisinée » (au passé) serait faux pour une session toujours active.
+    const hasActiveSession = plan.active_execution.length > 0;
     const ok = await mutate(
       () =>
         hasExecutions
           ? createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id)
           : createClient().from('planning').delete().eq('id', plan.id),
       {
-        confirm: hasExecutions
-          ? 'Cette recette a déjà été cuisinée : elle sera archivée (conservée dans l’historique) plutôt que supprimée. Continuer ?'
-          : 'Retirer cette recette du planning ?',
+        confirm: hasActiveSession
+          ? 'Une session est en cours pour cette recette : elle continuera d’apparaître dans « Sessions en cours » et n’est pas affectée. La recette sera seulement archivée (retirée du planning à venir). Continuer ?'
+          : hasExecutions
+            ? 'Cette recette a déjà été cuisinée : elle sera archivée (conservée dans l’historique) plutôt que supprimée. Continuer ?'
+            : 'Retirer cette recette du planning ?',
       },
     );
     if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
@@ -176,8 +187,13 @@ export function CuisineContent({
         </section>
       )}
 
+      {/* ── Planning + Listes de courses ─────────────────────────────────
+          Côte à côte au bureau (grille 12 colonnes, 7/5), empilées sur
+          mobile : la liste de courses ne vit jamais sur un autre écran,
+          elle naît de ce qui est planifié juste à côté (cf. CLAUDE.md). */}
+      <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-16">
       {/* ── Planning ───────────────────────────────────────────────────── */}
-      <section className="mt-12">
+      <section className="lg:col-span-7">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
             <PlanningIcon size={24} discFill={DISC.surface} /> Planning
@@ -288,80 +304,64 @@ export function CuisineContent({
       </section>
 
       {/* ── Listes de courses ──────────────────────────────────────────── */}
-      <section className="mt-14 border-t border-outline-variant pt-10">
+      <section className="mt-14 lg:col-span-5 lg:mt-0">
         <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
           <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
         </h2>
         {shoppingList.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse overflow-hidden rounded-lg border border-outline-variant bg-white text-left">
-              <thead className="border-b border-outline-variant bg-surface-container font-label-md text-on-surface-variant">
-                <tr>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Nom</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">Articles</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">Cochés</th>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Créée le</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
-                {shoppingList.map((l) => {
-                  const items = l.shopping_list_items || [];
-                  const done = items.filter((i) => i.checked).length;
-                  const allDone = items.length > 0 && done === items.length;
-                  const struck = allDone ? 'line-through opacity-50' : '';
-                  return (
-                    <Fragment key={l.id}>
-                      <tr className="transition-colors hover:bg-surface-container-low">
-                        <td className="px-6 py-4">
-                          <Link
-                            href={`/courses/${l.id}`}
-                            className={`flex items-center gap-2 text-left font-label-md text-primary hover:underline ${struck}`}
-                          >
-                            <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
-                            {l.name}
-                          </Link>
-                        </td>
-                        <td className={`px-6 py-4 text-center text-on-surface-variant ${struck}`}>{items.length}</td>
-                        <td className={`px-6 py-4 text-center text-on-surface-variant ${struck}`}>{done}</td>
-                        <td className={`px-6 py-4 text-on-surface-variant ${struck}`}>
-                          {l.created_at ? formatDate(l.created_at) : '—'}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-right">
-                          <button
-                            type="button"
-                            title="Fusionner avec une autre liste"
-                            onClick={() => setMergingListId(mergingListId === l.id ? null : l.id)}
-                            className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">call_merge</span>
-                          </button>
-                          <button
-                            type="button"
-                            title="Supprimer la liste"
-                            onClick={() => delShoppingList(l.id, l.name)}
-                            className="rounded p-1.5 text-error transition-colors hover:bg-error/10"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                      {mergingListId === l.id && (
-                        <tr>
-                          <td colSpan={5} className="bg-surface-container-low px-6 py-4">
-                            <MergeListRow
-                              candidates={shoppingList.filter((o) => o.id !== l.id)}
-                              onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
-                              onCancel={() => setMergingListId(null)}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-4">
+            {shoppingList.map((l) => {
+              const items = l.shopping_list_items || [];
+              const done = items.filter((i) => i.checked).length;
+              const pct = items.length > 0 ? Math.round((done / items.length) * 100) : 0;
+              return (
+                <div key={l.id} className="rounded-lg border border-outline-variant p-5 transition-colors hover:bg-surface-container-low">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <Link href={`/courses/${l.id}`} className="font-label-md text-[15px] text-primary hover:text-secondary">
+                      {l.name}
+                    </Link>
+                    <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
+                      {done} / {items.length}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="mt-3 flex items-end justify-between gap-3">
+                    <p className="text-[12px] text-on-surface-variant">
+                      {l.created_at ? 'Créée le ' + formatDate(l.created_at) : ''}
+                    </p>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        title="Fusionner avec une autre liste"
+                        onClick={() => setMergingListId(mergingListId === l.id ? null : l.id)}
+                        className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">call_merge</span>
+                      </button>
+                      <button
+                        type="button"
+                        title="Supprimer la liste"
+                        onClick={() => delShoppingList(l.id, l.name)}
+                        className="rounded p-1.5 text-error transition-colors hover:bg-error/10"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                  {mergingListId === l.id && (
+                    <div className="mt-4 border-t border-outline-variant/60 pt-4">
+                      <MergeListRow
+                        candidates={shoppingList.filter((o) => o.id !== l.id)}
+                        onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
+                        onCancel={() => setMergingListId(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm italic text-on-surface-variant">
@@ -370,6 +370,7 @@ export function CuisineContent({
           </p>
         )}
       </section>
+      </div>
     </>
   );
 }
