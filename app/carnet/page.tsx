@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { requireUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
@@ -9,6 +9,7 @@ import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
+import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -26,14 +27,24 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
 type SearchParams = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function CarnetPage({ searchParams }: SearchParams) {
-  // `requireUser` reste ici le temps que l'écran d'invitation existe : la
-  // décision arrêtée est qu'un visiteur voie ce qu'il y a derrière plutôt
-  // qu'un renvoi sec vers la connexion. Le jour où cet écran existe, cette
-  // garde tombe **et** `/carnet` sort de PROTECTED_PREFIXES (lib/supabase/
-  // middleware.ts) — les deux vont ensemble.
-  const user = await requireUser('/carnet');
-  const params = parseCarnetParams(await searchParams);
+  const user = await getCurrentUser();
 
+  // Visiteur : ni renvoi sec vers la connexion, ni cadenas — on montre ce
+  // qu'il y a derrière (README « Écran 4 — Invitation »). `/carnet` est donc
+  // hors de PROTECTED_PREFIXES (lib/supabase/middleware.ts) : les deux vont
+  // ensemble, l'un sans l'autre ne change rien.
+  if (!user) {
+    return (
+      <>
+        <Header current="carnet" />
+        <InvitationScreen destination="carnet" />
+        <Footer />
+        <MobileNav current="carnet" />
+      </>
+    );
+  }
+
+  const params = parseCarnetParams(await searchParams);
   const [{ items, counts, statusCounts }, favIds, importsEnAttente] = await Promise.all([
     getCarnetData(user.id),
     getFavoriteIds(),

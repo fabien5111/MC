@@ -1,19 +1,33 @@
 import type { Metadata } from 'next';
-import { requireUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { getPlanning, getShoppingLists } from '@/lib/profile';
 import { getActiveExecutions, getActiveExecutionStepsForUser } from '@/lib/executions';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { CuisineContent } from '@/components/cuisine/CuisineContent';
+import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 
 export const metadata: Metadata = { title: 'En cuisine | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
 
 export default async function EnCuisinePage() {
-  // Même remarque que pour /carnet : garde provisoire, à lever en même temps
-  // que la sortie de PROTECTED_PREFIXES le jour de l'écran d'invitation.
-  const user = await requireUser('/en-cuisine');
+  const user = await getCurrentUser();
+
+  // Visiteur : ni renvoi sec vers la connexion, ni cadenas — on montre ce
+  // qu'il y a derrière (README « Écran 4 — Invitation »). `/en-cuisine` est
+  // donc hors de PROTECTED_PREFIXES (lib/supabase/middleware.ts) : les deux
+  // vont ensemble, l'un sans l'autre ne change rien.
+  if (!user) {
+    return (
+      <>
+        <Header current="cuisine" />
+        <InvitationScreen destination="cuisine" />
+        <Footer />
+        <MobileNav current="cuisine" />
+      </>
+    );
+  }
 
   const [planning, archivedPlanning, activeSessions, runningExecSteps, shoppingLists] = await Promise.all([
     getPlanning(user.id),

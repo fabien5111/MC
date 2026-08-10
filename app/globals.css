@@ -1016,3 +1016,25 @@ body[data-impersonation] {
     overscroll-behavior: contain;
   }
 }
+
+/* Aperçu de l'écran d'invitation (README « Écran 4 ») : un vrai écran,
+   estompé vers le bas et inerte — on comprend l'intérêt sans pouvoir s'en
+   servir. `pointer-events: none` sur le contenu, pas sur le conteneur : le
+   dégradé lui-même ne doit pas capter les clics au-delà de sa hauteur. */
+.invitation-peek {
+  position: relative;
+  max-height: 520px;
+  overflow: hidden;
+}
+.invitation-peek::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 260px;
+  background: linear-gradient(to bottom, rgba(255, 248, 247, 0) 0%, #fff8f7 82%);
+  pointer-events: none;
+}
+.invitation-peek > * {
+  pointer-events: none;
+  user-select: none;
+}
