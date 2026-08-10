@@ -15,8 +15,9 @@ export default async function EnCuisinePage() {
   // que la sortie de PROTECTED_PREFIXES le jour de l'écran d'invitation.
   const user = await requireUser('/en-cuisine');
 
-  const [planning, activeSessions, runningExecSteps, shoppingLists] = await Promise.all([
+  const [planning, archivedPlanning, activeSessions, runningExecSteps, shoppingLists] = await Promise.all([
     getPlanning(user.id),
+    getPlanning(user.id, 'archive'),
     getActiveExecutions(user.id),
     getActiveExecutionStepsForUser(user.id),
     getShoppingLists(user.id),
@@ -36,6 +37,7 @@ export default async function EnCuisinePage() {
         </div>
         <CuisineContent
           planning={planning}
+          archivedPlanning={archivedPlanning}
           activeSessions={activeSessions}
           runningExecSteps={runningExecSteps}
           shoppingLists={shoppingLists}

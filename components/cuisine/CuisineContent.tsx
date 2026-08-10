@@ -29,6 +29,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
+import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
 import type { PlanningRow, ShoppingListSummary } from '@/lib/profile';
 import type { ActiveExecutionRow, RunningExecStep } from '@/lib/executions';
 
@@ -36,11 +37,17 @@ type PlanningView = 'jours' | 'recettes';
 
 export function CuisineContent({
   planning,
+  archivedPlanning,
   activeSessions,
   runningExecSteps,
   shoppingLists,
 }: {
   planning: PlanningRow[];
+  // Recettes retirées du planning alors qu'une session leur était déjà liée
+  // (`planning.status = 'archive'`) — affichées sous le planning actif plutôt
+  // que sur un écran séparé : rien d'autre ne les relit, les reléguer hors de
+  // vue les rendait de fait introuvables.
+  archivedPlanning: PlanningRow[];
   activeSessions: ActiveExecutionRow[];
   runningExecSteps: Record<number, RunningExecStep[]>;
   shoppingLists: ShoppingListSummary[];
@@ -145,29 +152,56 @@ export function CuisineContent({
 
   async function delPlan(plan: PlanningRow) {
     // Un plan déjà cuisiné (au moins une exécution) ne peut pas être supprimé
-    // — `executions.planning_id` est en ON DELETE RESTRICT pour garantir la
-    // trace des recettes réalisées (cf. CLAUDE.md). On l'archive à la place.
+    // tel quel — `executions.planning_id` est en ON DELETE RESTRICT pour
+    // garantir la trace des recettes réalisées (cf. CLAUDE.md). Deux issues
+    // selon ce que porte cette trace :
+    //  - une exécution passée, close : on archive, l'historique reste
+    //    consultable ci-dessous ;
+    //  - une session *en cours* : l'utilisateur est prévenu explicitement
+    //    (elle ne s'arrêterait pas d'elle-même sinon) et, s'il confirme, la
+    //    suppression efface le plan et l'historique de ses sessions — un
+    //    choix délibéré de sa part, pas une perte accidentelle.
     const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
-    // Une session *en cours* (par opposition à une exécution passée) n'est
-    // jamais arrêtée par cette action : archiver le plan ne fait que le
-    // sortir du planning à venir, ce n'est pas un renoncement à la
-    // préparation déjà commencée. Elle continue donc d'apparaître dans
-    // « Sessions en cours » — ce n'est pas un oubli, retoucher une exécution
-    // depuis ici détruirait la trace de ce qui a réellement été fait
-    // (cf. CLAUDE.md « Recettes planifiées »). Le message doit le dire :
-    // « déjà cuisinée » (au passé) serait faux pour une session toujours active.
     const hasActiveSession = plan.active_execution.length > 0;
     const ok = await mutate(
-      () =>
-        hasExecutions
-          ? createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id)
-          : createClient().from('planning').delete().eq('id', plan.id),
+      async () => {
+        const supabase = createClient();
+        if (hasActiveSession) {
+          const { data: execs, error: execsErr } = await supabase
+            .from('executions')
+            .select('id')
+            .eq('planning_id', plan.id);
+          if (execsErr) return { error: execsErr };
+          const execIds = (execs ?? []).map((e) => e.id);
+          if (execIds.length > 0) {
+            // Tables filles d'une exécution, sans cascade connue depuis ce
+            // dépôt (le schéma SQL n'y est pas versionné, cf. CLAUDE.md) —
+            // supprimées explicitement avant `executions` elle-même pour ne
+            // pas se heurter à une contrainte de clé étrangère.
+            const { error: e1 } = await supabase.from('execution_ingredients').delete().in('execution_id', execIds);
+            if (e1) return { error: e1 };
+            const { error: e2 } = await supabase.from('execution_substeps').delete().in('execution_id', execIds);
+            if (e2) return { error: e2 };
+            const { error: e3 } = await supabase.from('execution_steps').delete().in('execution_id', execIds);
+            if (e3) return { error: e3 };
+            const { error: e4 } = await supabase.from('execution_utensils').delete().in('execution_id', execIds);
+            if (e4) return { error: e4 };
+            const { error: e5 } = await supabase.from('executions').delete().in('id', execIds);
+            if (e5) return { error: e5 };
+          }
+          return supabase.from('planning').delete().eq('id', plan.id);
+        }
+        return hasExecutions
+          ? supabase.from('planning').update({ status: 'archive' }).eq('id', plan.id)
+          : supabase.from('planning').delete().eq('id', plan.id);
+      },
       {
         confirm: hasActiveSession
-          ? 'Une session est en cours pour cette recette : elle continuera d’apparaître dans « Sessions en cours » et n’est pas affectée. La recette sera seulement archivée (retirée du planning à venir). Continuer ?'
+          ? 'Une session est en cours pour cette recette. La supprimer maintenant arrêtera cette session et effacera l’historique de ses préparations, en plus de retirer la recette du planning. Continuer ?'
           : hasExecutions
             ? 'Cette recette a déjà été cuisinée : elle sera archivée (conservée dans l’historique) plutôt que supprimée. Continuer ?'
             : 'Retirer cette recette du planning ?',
+        errorLabel: 'Suppression impossible',
       },
     );
     if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
@@ -317,13 +351,45 @@ export function CuisineContent({
             Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
           </p>
         )}
-        <Link
-          href="/en-cuisine/archives#planning"
-          className="mt-6 inline-flex items-center gap-1.5 font-label-md text-label-md text-secondary hover:text-primary"
-        >
-          Voir les recettes planifiées archivées
-          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-        </Link>
+        {archivedPlanning.length > 0 && (
+          <div className="mt-10 border-t border-outline-variant/60 pt-8">
+            <p className="mb-4 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+              Archivées
+            </p>
+            <div className="max-w-3xl space-y-4">
+              {archivedPlanning.map((p) => {
+                const timeTxt =
+                  p.recipes?.total_time || p.recipes?.prep_time
+                    ? formatTime(p.recipes.total_time || p.recipes.prep_time)
+                    : '';
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`}
+                    className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                      {p.recipes?.hero_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                        <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
+                      <p className="font-body-md text-[12px] text-on-surface-variant">
+                        {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Listes de courses ──────────────────────────────────────────── */}
@@ -393,13 +459,12 @@ export function CuisineContent({
           </p>
         )}
         {archivedShoppingLists.length > 0 && (
-          <Link
-            href="/en-cuisine/archives#courses"
-            className="mt-6 inline-flex items-center gap-1.5 font-label-md text-label-md text-secondary hover:text-primary"
-          >
-            Voir les listes de courses archivées ({archivedShoppingLists.length})
-            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-          </Link>
+          <div className="mt-10 border-t border-outline-variant/60 pt-8">
+            <p className="mb-4 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+              Archivées
+            </p>
+            <ArchivedShoppingLists lists={archivedShoppingLists} />
+          </div>
         )}
       </section>
       </div>
