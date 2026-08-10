@@ -51,6 +51,15 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             Tout ce qui est une recette à moi
           </h1>
         </div>
+        {/* Bandeau de diagnostic temporaire — à retirer une fois le bug de
+            filtrage identifié. Affiche ce que le serveur a réellement calculé,
+            pour trancher entre « le filtre ne s'applique jamais » et
+            « le filtre s'applique mais sur les mauvaises données ». */}
+        <p className="mt-4 rounded bg-yellow-100 px-3 py-2 font-mono text-[11px] text-black">
+          DEBUG scope={params.scope} statut={params.statut} q=&quot;{params.q}&quot; tri={params.tri} · items
+          totaux={items.length} · après filtre={filtered.length} · counts=
+          {JSON.stringify(counts)}
+        </p>
         <CarnetToolbar params={params} counts={counts} statusCounts={statusCounts} />
         <CarnetContent
           items={filtered}

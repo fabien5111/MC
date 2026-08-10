@@ -52,12 +52,21 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   // Favoris et abonnements se recoupent parfois (un pâtissier suivi dont une
   // recette est aussi mise en favori) : une seule carte, avec les deux
   // marques, plutôt qu'un doublon dans la grille.
+  //
+  // Une recette dont je suis l'auteur est exclue de ce bucket même si je l'ai
+  // mise en favori ou si elle apparaît dans le fil des abonnements (jamais le
+  // cas normalement, mais pas garanti côté données) : elle est déjà présente
+  // comme carte « mienne », avec ses vraies actions (modifier/supprimer) — la
+  // montrer aussi comme carte « d'un autre » la comptait deux fois dans
+  // « Tout » et pouvait faire gonfler « Favoris »/« Abonnements » sans raison.
+  const mineIds = new Set(recipes.map((r) => r.id));
   const othersById = new Map<string, { recipe: RecipeCardWithAllergens; favorite: boolean; subscription: boolean; publishedAt: string | null }>();
   for (const f of favorites) {
-    if (!f.recipes) continue;
+    if (!f.recipes || mineIds.has(f.recipes.id)) continue;
     othersById.set(f.recipes.id, { recipe: f.recipes, favorite: true, subscription: false, publishedAt: null });
   }
   for (const r of followed) {
+    if (mineIds.has(r.id)) continue;
     const existing = othersById.get(r.id);
     if (existing) existing.subscription = true;
     else othersById.set(r.id, { recipe: r, favorite: false, subscription: true, publishedAt: r.created_at });
