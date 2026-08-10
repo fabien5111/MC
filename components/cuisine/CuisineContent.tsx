@@ -10,12 +10,16 @@
 // question unique (« qu'est-ce que je fais aujourd'hui, et qu'est-ce qu'il me
 // manque ? »).
 //
-// Deux points de conduite hérités du modèle de données, à ne pas défaire :
-//  - le planning s'ouvre sur la **vue par jour** — c'est la question qu'on se
-//    pose le matin, pas « quelles recettes ai-je planifiées » ;
+// Un point de conduite hérité du modèle de données, à ne pas défaire :
 //  - « Retirer du planning » **archive** dès qu'une session existe : les
 //    exécutions sont en `ON DELETE RESTRICT` pour garantir la trace de ce qui a
-//    réellement été cuisiné (cf. CLAUDE.md), un `delete` sec échouerait.
+//    réellement été cuisiné (cf. CLAUDE.md), un `delete` sec échouerait. Le
+//    plan archivé n'est pas perdu : il reste consultable sur
+//    /en-cuisine/archives, seul écran qui relit `planning.status = 'archive'`.
+//
+// Le planning s'ouvre désormais sur la **vue par recette** (repli initial de
+// `planningView` ci-dessous) — la vue par jour reste accessible en un clic et
+// par son ancre (`#planning-jours`), inchangée.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -54,8 +58,20 @@ export function CuisineContent({
   useEffect(() => setPlanningList(planning), [planning]);
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
+  // Archivée = tous les articles cochés. Aucune colonne dédiée en base (cf.
+  // app/en-cuisine/archives) : la distinction est purement une lecture, ici
+  // comme là-bas. Une liste sans article n'est jamais « archivée » — elle n'a
+  // simplement encore rien à cocher.
+  const activeShoppingLists = shoppingList.filter((l) => {
+    const items = l.shopping_list_items || [];
+    return items.length === 0 || items.some((i) => !i.checked);
+  });
+  const archivedShoppingLists = shoppingList.filter((l) => {
+    const items = l.shopping_list_items || [];
+    return items.length > 0 && items.every((i) => i.checked);
+  });
   const [mergingListId, setMergingListId] = useState<number | null>(null);
-  const [planningView, setPlanningView] = useState<PlanningView>('jours');
+  const [planningView, setPlanningView] = useState<PlanningView>('recettes');
 
   // La vue du planning reste tracée dans le hash : sans ça, un retour arrière
   // du navigateur depuis une session de préparation ne rétablit jamais la vue
@@ -301,6 +317,13 @@ export function CuisineContent({
             Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
           </p>
         )}
+        <Link
+          href="/en-cuisine/archives#planning"
+          className="mt-6 inline-flex items-center gap-1.5 font-label-md text-label-md text-secondary hover:text-primary"
+        >
+          Voir les recettes planifiées archivées
+          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+        </Link>
       </section>
 
       {/* ── Listes de courses ──────────────────────────────────────────── */}
@@ -308,9 +331,9 @@ export function CuisineContent({
         <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
           <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
         </h2>
-        {shoppingList.length > 0 ? (
+        {activeShoppingLists.length > 0 ? (
           <div className="space-y-4">
-            {shoppingList.map((l) => {
+            {activeShoppingLists.map((l) => {
               const items = l.shopping_list_items || [];
               const done = items.filter((i) => i.checked).length;
               const pct = items.length > 0 ? Math.round((done / items.length) * 100) : 0;
@@ -353,7 +376,7 @@ export function CuisineContent({
                   {mergingListId === l.id && (
                     <div className="mt-4 border-t border-outline-variant/60 pt-4">
                       <MergeListRow
-                        candidates={shoppingList.filter((o) => o.id !== l.id)}
+                        candidates={activeShoppingLists.filter((o) => o.id !== l.id)}
                         onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
                         onCancel={() => setMergingListId(null)}
                       />
@@ -365,9 +388,18 @@ export function CuisineContent({
           </div>
         ) : (
           <p className="text-sm italic text-on-surface-variant">
-            Aucune liste de courses. Depuis une recette, cliquez sur « Liste de courses » dans la liste complète des
-            ingrédients.
+            Aucune liste de courses active. Depuis une recette, cliquez sur « Liste de courses » dans la liste
+            complète des ingrédients.
           </p>
+        )}
+        {archivedShoppingLists.length > 0 && (
+          <Link
+            href="/en-cuisine/archives#courses"
+            className="mt-6 inline-flex items-center gap-1.5 font-label-md text-label-md text-secondary hover:text-primary"
+          >
+            Voir les listes de courses archivées ({archivedShoppingLists.length})
+            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+          </Link>
         )}
       </section>
       </div>
