@@ -97,7 +97,12 @@ export async function Header({ current }: { current?: NavKey }) {
               )}
               <AccountMenuButton
                 className="hidden lg:block"
-                data={{ name: profile?.full_name || user.email || 'Mon compte', avatarUrl, isAdmin: admin }}
+                data={{
+                  name: profile?.full_name || user.email || 'Mon compte',
+                  avatarUrl,
+                  isAdmin: admin,
+                  handle: profile?.username || user.id,
+                }}
               />
             </>
           ) : (

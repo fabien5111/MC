@@ -72,7 +72,12 @@ export async function MobileNav({ current }: { current?: NavKey }) {
         {user ? (
           <AccountSheetButton
             className={`${SLOT} text-on-surface-variant`}
-            data={{ name: profile?.full_name || user.email || 'Mon compte', avatarUrl: resolveAvatarUrl(user, profile), isAdmin: admin }}
+            data={{
+              name: profile?.full_name || user.email || 'Mon compte',
+              avatarUrl: resolveAvatarUrl(user, profile),
+              isAdmin: admin,
+              handle: profile?.username || user.id,
+            }}
           />
         ) : (
           // Visiteur : la fente garde sa place plutôt que de laisser un trou

@@ -18,6 +18,11 @@ export type AccountMenuData = {
   name: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  // Nom d'utilisateur choisi, ou identifiant de compte à défaut — c'est ce qui
+  // rend l'en-tête du tiroir cliquable vers `/u/[handle]`. `null` seulement si
+  // aucun des deux n'est disponible, ce qui ne devrait pas arriver pour un
+  // utilisateur connecté (repli sur l'id dans les deux chromes).
+  handle: string | null;
 };
 
 // Classe commune des entrées, pour que le clavier et la souris parcourent
@@ -44,27 +49,48 @@ export function AccountMenuItems({
 
   return (
     <>
-      {/* En-tête : avatar + nom. Les maquettes en font un lien « Voir mon
-          profil public » — la route n'existe pas encore (elle arrive avec les
-          abonnements, dont elle est le prérequis). En attendant, c'est un bloc
-          d'identité inerte plutôt qu'un lien détourné vers les réglages, qui
-          apprendrait le mauvais geste et serait à désapprendre ensuite. */}
-      <div className="flex items-center gap-3 border-b border-outline-variant/60 px-4 py-3.5">
-        <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-pill bg-surface-container">
-          {data.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-            <img src={data.avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-[22px] text-on-surface-variant">
-              person
-            </span>
-          )}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate font-label-md text-sm text-primary">{data.name}</span>
-          <span className="block font-body-md text-xs text-on-surface-variant">Mon compte</span>
-        </span>
-      </div>
+      {/* En-tête : avatar + nom, désormais un lien vers le profil public
+          (`/u/[handle]`) — la route existe depuis le lot « abonnements ». */}
+      {data.handle ? (
+        <Link
+          href={`/u/${data.handle}`}
+          role="menuitem"
+          onClick={onNavigate}
+          className="flex items-center gap-3 border-b border-outline-variant/60 px-4 py-3.5 hover:bg-surface-container-low transition-colors"
+        >
+          <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-pill bg-surface-container">
+            {data.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+              <img src={data.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-[22px] text-on-surface-variant">
+                person
+              </span>
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-label-md text-sm text-primary">{data.name}</span>
+            <span className="block font-body-md text-xs text-on-surface-variant">Voir mon profil public</span>
+          </span>
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 border-b border-outline-variant/60 px-4 py-3.5">
+          <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-pill bg-surface-container">
+            {data.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+              <img src={data.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-[22px] text-on-surface-variant">
+                person
+              </span>
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-label-md text-sm text-primary">{data.name}</span>
+            <span className="block font-body-md text-xs text-on-surface-variant">Mon compte</span>
+          </span>
+        </div>
+      )}
 
       <div className="py-1.5">
         <Link href="/carnet" role="menuitem" onClick={onNavigate} className={ITEM}>

@@ -303,12 +303,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
                 Par{' '}
-                {/* Signature de l'auteur. Elle menait jusqu'ici à `/profil` —
-                    c'est-à-dire au profil du *lecteur*, pas à celui de l'auteur
-                    affiché : un lien qui ne tenait pas sa promesse. En attendant
-                    le profil public (qui arrive avec les abonnements, dont il
-                    est le prérequis), c'est une signature et non un lien. */}
-                <span className="no-print flex items-center gap-2">
+                {/* Signature de l'auteur : lien vers son profil public.
+                    Repli sur `author_id` si l'auteur n'a pas encore choisi de
+                    nom d'utilisateur — `getPublicProfile` accepte les deux. */}
+                <Link
+                  className="no-print flex items-center gap-2 hover:text-primary transition-colors"
+                  href={`/u/${recipe.profiles?.username || recipe.author_id}`}
+                >
                   <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -319,8 +320,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </span>
                     )}
                   </span>
-                  <span>{recipe.profiles?.full_name || 'Auteur'}</span>
-                </span>
+                  <span className="border-b border-primary">{recipe.profiles?.full_name || 'Auteur'}</span>
+                </Link>
                 {/* Version imprimée : le nom de l'auteur reste, sans avatar ni lien. */}
                 <span className="hidden print:inline">{recipe.profiles?.full_name || 'Auteur'}</span>
               </span>

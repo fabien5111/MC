@@ -420,9 +420,12 @@ function SessionCard({ session }: { session: ActiveExecutionRow }) {
         )}
       </div>
 
+      {/* Pleine largeur sur mobile (README « En cuisine » mobile) : le bouton
+          est la seule action de la carte, autant lui laisser toute la ligne
+          plutôt qu'un bouton étriqué à côté d'un espace vide. */}
       <Link
         href={`/execution/${session.id}`}
-        className="flex shrink-0 items-center justify-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95"
+        className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:w-auto"
       >
         <span className="material-symbols-outlined text-[18px]">play_arrow</span> Reprendre
       </Link>
