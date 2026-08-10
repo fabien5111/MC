@@ -46,13 +46,13 @@ export function CarnetToolbar({
   const navigate = useCallback(
     (next: CarnetParams) => {
       const qs = carnetParamsToQueryString(next);
+      // `router.refresh()` appelé juste derrière un `router.replace()` a été
+      // essayé puis retiré : les deux dispatchés dans le même tick semblent
+      // interrompre la navigation avant qu'elle ne pose la nouvelle URL (le
+      // symptôme constaté : la barre d'adresse ne change plus du tout). Même
+      // ligne, sans le `refresh()`, que `SearchProvider.navigate` (recherche
+      // avancée) — seule référence du produit où ce motif est éprouvé.
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      // `router.replace` seul peut resservir un rendu du cache client du
-      // routeur pour une URL déjà visitée dans la session (le carnet est une
-      // poignée de combinaisons de filtres, vite épuisée) — la page reste en
-      // apparence figée sur l'ancien filtrage. `refresh()` invalide ce cache
-      // et force un nouveau rendu serveur pour l'URL qu'on vient de poser.
-      router.refresh();
     },
     [pathname, router],
   );
