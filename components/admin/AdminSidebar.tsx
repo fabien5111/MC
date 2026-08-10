@@ -2,24 +2,19 @@
 
 // Barre latérale partagée de la console admin (portée de admin-*.html).
 // L'entrée active est déduite du chemin courant.
+//
+// Un gestionnaire ne voit que les entrées de son périmètre. Ce filtrage est
+// un confort d'affichage, pas une sécurité : l'accès réel est refermé côté
+// serveur par `requireFullAdmin()` dans chaque page concernée.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SignOutButton } from '@/components/SignOutButton';
+import { ADMIN_NAV } from '@/lib/admin-access';
+import type { AppRole } from '@/lib/auth';
 
-const NAV = [
-  { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
-  { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book' },
-  { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
-  { href: '/admin/membres', label: 'Membres', icon: 'group' },
-  { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
-  { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
-  { href: '/admin/moules', label: 'Moules', icon: 'cake' },
-  { href: '/admin/photos', label: 'Photos du site', icon: 'photo_library' },
-  { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
-];
-
-export function AdminSidebar() {
+export function AdminSidebar({ role = 'admin' }: { role?: AppRole }) {
   const pathname = usePathname();
+  const nav = role === 'admin' ? ADMIN_NAV : ADMIN_NAV.filter((item) => item.manager);
 
   return (
     <aside className="flex flex-col h-screen w-64 border-r border-outline-variant bg-surface-container-low z-30 shrink-0 sticky top-0">
@@ -30,7 +25,7 @@ export function AdminSidebar() {
         </p>
       </Link>
       <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
           return (
             <Link

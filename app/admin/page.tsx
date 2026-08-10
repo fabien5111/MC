@@ -1,11 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getAdminStats, getPendingRecipes, getPendingComments, getAiCosts } from '@/lib/admin';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 export const metadata: Metadata = { title: 'Tableau de bord | Admin — Maryse Club' };
 
 export default async function AdminHomePage() {
+  // Tableau de bord et commentaires : admin complet. Un gestionnaire est
+  // redirigé vers son point d'entrée plutôt que sorti de la console.
+  await requireFullAdmin();
+
   const [stats, pending, comments, aiCosts] = await Promise.all([
     getAdminStats(),
     getPendingRecipes(),

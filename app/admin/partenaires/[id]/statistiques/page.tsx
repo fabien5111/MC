@@ -2,6 +2,7 @@
 // segment (connecté / non connecté) sur une période choisie.
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getAdAdmin, getAdStats } from '@/lib/ads';
 import { adSlotConfig, ctrLabel } from '@/lib/ads-config';
 import { AdStatsDateRange } from '@/components/admin/AdStatsDateRange';
@@ -21,6 +22,7 @@ export default async function AdStatsPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  await requireFullAdmin(); // régie publicitaire : admin complet
   const { id } = await params;
   const sp = await searchParams;
   const from = sp.from || isoDaysAgo(29);

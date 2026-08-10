@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getAllowlistMembers } from '@/lib/admin';
 import { MembersManager } from '@/components/admin/MembersManager';
 import { ImpersonationAudit } from '@/components/admin/ImpersonationAudit';
@@ -7,6 +8,7 @@ import { ImpersonationAudit } from '@/components/admin/ImpersonationAudit';
 export const metadata: Metadata = { title: 'Membres | Admin — Maryse Club' };
 
 export default async function AdminMembresPage() {
+  await requireFullAdmin(); // comptes, rôles et impersonation : admin complet
   const members = await getAllowlistMembers();
   return (
     <>

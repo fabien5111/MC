@@ -3,7 +3,7 @@
 // résolu côté serveur (session cookie) — plus de pré-masquage CSS
 // `data-auth="logged-in"` ni de flash au chargement.
 import Link from 'next/link';
-import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/auth';
+import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { SignOutButton } from '@/components/SignOutButton';
 import { HeaderSearch } from '@/components/HeaderSearch';
@@ -19,7 +19,9 @@ const NAV = [
 export async function Header({ current = '/' }: { current?: string }) {
   const user = await getCurrentUser();
   const profile = user ? await getProfile(user.id) : null;
-  const admin = user ? await isAdmin(user.id) : false;
+  // Accès au back-office : admin complet ou gestionnaire. `/admin` redirige
+  // un gestionnaire vers son point d'entrée (il n'a pas le tableau de bord).
+  const backOffice = user ? await isManager(user.id) : false;
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
   // Impersonation en lecture seule : les entrées de création sont masquées.
   const readOnly = await isReadOnlySession();
@@ -71,7 +73,7 @@ export async function Header({ current = '/' }: { current?: string }) {
                   <span className="material-symbols-outlined text-[18px]">add</span> Créer
                 </Link>
               )}
-              {admin && (
+              {backOffice && (
                 <Link
                   href="/admin"
                   title="Administration"

@@ -133,7 +133,32 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   vers `/connexion?next=…` si non connecté. Tolérant aux pannes : une erreur
   Supabase transitoire ne bloque pas le site, le contrôle fin restant assuré
   dans chaque page (`requireUser`, `requireAdmin`).
-- Rôles applicatifs dans `profiles.role` (`admin` pour le back-office).
+- Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
+  `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
+  (`member`, `null`…) vaut membre ordinaire.
+
+### Rôles du back-office
+
+| Rôle | Périmètre |
+|---|---|
+| `admin` | Tout : back-office complet, plus les privilèges d'édition disséminés dans le site (publication directe d'une recette, création de référentiels depuis l'éditeur, « connexion en tant que »). |
+| `gestionnaire` | Back-office restreint : modération des recettes (`/admin/recettes`) et rédaction du blog (`/admin/blog`). Ni membres, ni référentiels, ni paramètres du site, ni impersonation. |
+
+- `isAdmin()` garde **exactement** son ancien sens (`role === 'admin'`) : tous
+  les appels existants hors `/admin` (publication directe, création de tags,
+  régie publicitaire…) restent réservés à l'admin complet.
+- `isManager()` / `requireManager()` = admin **ou** gestionnaire — c'est la
+  garde du layout `/admin`.
+- **Le layout `/admin` est volontairement ouvert aux deux rôles ; chaque écran
+  réservé à l'admin complet se referme lui-même** par `requireFullAdmin()` en
+  première ligne. Conséquence à connaître : **une page ajoutée sous
+  `app/admin/` sans cette garde est ouverte au gestionnaire.** Le périmètre
+  autorisé est déclaré au même endroit que la barre latérale, dans
+  `lib/admin-access.ts` (`ADMIN_NAV`, champ `manager`).
+- Le filtrage des entrées de `AdminSidebar` est un confort d'affichage, jamais
+  la sécurité : celle-ci est côté serveur (gardes de page + RLS).
+- Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
+  restent fermées au gestionnaire.
 
 ### Connexion « en tant que » (impersonation)
 
