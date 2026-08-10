@@ -10,12 +10,15 @@
 // question unique (« qu'est-ce que je fais aujourd'hui, et qu'est-ce qu'il me
 // manque ? »).
 //
-// Un point de conduite hérité du modèle de données, à ne pas défaire :
-//  - « Retirer du planning » **archive** dès qu'une session existe : les
-//    exécutions sont en `ON DELETE RESTRICT` pour garantir la trace de ce qui a
-//    réellement été cuisiné (cf. CLAUDE.md), un `delete` sec échouerait. Le
-//    plan archivé n'est pas perdu : il reste consultable sur
-//    /en-cuisine/archives, seul écran qui relit `planning.status = 'archive'`.
+// Deux actions distinctes sur une recette planifiée, à ne pas confondre :
+//  - **Archiver** ne touche jamais aux exécutions — la recette sort du
+//    planning actif, rien n'est perdu, consultable dans « Archivées » juste
+//    en dessous. Disponible à tout moment, pas seulement en repli.
+//  - **Supprimer** efface pour de bon. Un plan qui a une trace d'exécution
+//    (`executions.planning_id` est en `ON DELETE RESTRICT`, cf. CLAUDE.md)
+//    ne peut pas être supprimé tel quel : sa suppression purge d'abord
+//    l'historique de ses sessions, après avertissement — plus jamais
+//    d'archivage silencieux à la place d'une suppression demandée.
 //
 // Le planning s'ouvre désormais sur la **vue par recette** (repli initial de
 // `planningView` ci-dessous) — la vue par jour reste accessible en un clic et
@@ -180,31 +183,38 @@ export function CuisineContent({
     return supabase.from('planning').delete().eq('id', planId);
   }
 
+  // Archiver ne touche jamais aux exécutions — contrairement à « Supprimer »
+  // ci-dessous, rien n'est perdu, donc rien à distinguer selon qu'une session
+  // ait tourné ou non. Disponible sur n'importe quel plan actif, pas
+  // seulement ceux qu'on ne peut pas supprimer proprement : mettre de côté
+  // une recette est une décision en soi, pas seulement un repli.
+  async function archivePlan(plan: PlanningRow) {
+    const ok = await mutate(() => createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id), {
+      confirm: 'Archiver cette recette ? Elle sortira du planning actif et restera consultable dans les recettes archivées.',
+    });
+    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
+  }
+
   async function delPlan(plan: PlanningRow) {
-    // Un plan déjà cuisiné (au moins une exécution) ne peut pas être supprimé
-    // tel quel — `executions.planning_id` est en ON DELETE RESTRICT pour
-    // garantir la trace des recettes réalisées (cf. CLAUDE.md). Deux issues
-    // selon ce que porte cette trace :
-    //  - une exécution passée, close : on archive, l'historique reste
-    //    consultable ci-dessous ;
-    //  - une session *en cours* : l'utilisateur est prévenu explicitement
-    //    (elle ne s'arrêterait pas d'elle-même sinon) et, s'il confirme, la
-    //    suppression efface le plan et l'historique de ses sessions — un
-    //    choix délibéré de sa part, pas une perte accidentelle.
+    // Suppression réelle, toujours — contrairement à avant, elle ne bascule
+    // plus silencieusement vers un archivage quand une exécution existe :
+    // « Archiver » est maintenant sa propre action, explicite, disponible à
+    // côté. Un plan qui a une trace d'exécution (active ou passée) ne peut
+    // pas être supprimé tel quel — `executions.planning_id` est en
+    // ON DELETE RESTRICT (cf. CLAUDE.md) — donc la purge de son historique
+    // est nécessaire ; l'utilisateur en est prévenu avant de confirmer.
     const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
     const hasActiveSession = plan.active_execution.length > 0;
     const ok = await mutate(
       () =>
-        hasActiveSession
+        hasExecutions
           ? purgePlanAndExecutions(plan.id)
-          : hasExecutions
-            ? createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id)
-            : createClient().from('planning').delete().eq('id', plan.id),
+          : createClient().from('planning').delete().eq('id', plan.id),
       {
         confirm: hasActiveSession
-          ? 'Une session est en cours pour cette recette. La supprimer maintenant arrêtera cette session et effacera l’historique de ses préparations, en plus de retirer la recette du planning. Continuer ?'
+          ? 'Une session est en cours pour cette recette. La supprimer maintenant arrêtera cette session et effacera définitivement l’historique de ses préparations, en plus de retirer la recette du planning. Pour la garder sans la supprimer, utilisez plutôt « Archiver ». Continuer ?'
           : hasExecutions
-            ? 'Cette recette a déjà été cuisinée : elle sera archivée (conservée dans l’historique) plutôt que supprimée. Continuer ?'
+            ? 'Cette recette a déjà été cuisinée. La supprimer effacera définitivement l’historique de ses sessions. Pour la garder, utilisez plutôt « Archiver ». Continuer ?'
             : 'Retirer cette recette du planning ?',
         errorLabel: 'Suppression impossible',
       },
@@ -351,7 +361,15 @@ export function CuisineContent({
                     )}
                     <button
                       type="button"
-                      title="Retirer du planning"
+                      title="Archiver"
+                      onClick={() => archivePlan(p)}
+                      className="rounded p-1.5 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      <span className="material-symbols-outlined">archive</span>
+                    </button>
+                    <button
+                      type="button"
+                      title="Supprimer"
                       onClick={() => delPlan(p)}
                       className="rounded p-1.5 text-error opacity-0 transition-opacity hover:bg-error/10 focus-visible:opacity-100 group-hover:opacity-100"
                     >
