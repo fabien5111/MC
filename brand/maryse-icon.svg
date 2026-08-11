@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g transform="rotate(45 50 50)">
+    <path fill="#fff8f7" fill-rule="evenodd" clip-rule="evenodd"
+      d="M44 5 H56 A12 12 0 0 1 68 17 V33 A12 12 0 0 1 56 45 H54 V93
+         A4 4 0 0 1 46 93 V45 H44 A12 12 0 0 1 32 33 V17 A12 12 0 0 1 44 5 Z
+         M42 40 V23 A8 8 0 0 1 58 23 V40 H54 V25 A4 4 0 0 1 46 25 V40 H42 Z"/>
+  </g>
+</svg>

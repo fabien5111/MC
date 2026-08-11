@@ -1,6 +1,6 @@
 {
   "name": "Je pâtisse !",
-  "short_name": "Je pâtisse !",
+  "short_name": "Je pâtisse",
   "description": "La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.",
   "start_url": "/",
   "display": "standalone",
@@ -8,12 +8,9 @@
   "theme_color": "#300a12",
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23300a12'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-size='220' fill='%23ffd9dd'>M</text></svg>",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/mask-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
@@ -23,9 +20,9 @@
       "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23300a12' d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/></svg>", "sizes": "96x96" }]
     },
     {
-      "name": "Mon Profil",
-      "short_name": "Profil",
-      "url": "/profil",
+      "name": "Réglages du compte",
+      "short_name": "Réglages",
+      "url": "/reglages",
       "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23300a12' d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>", "sizes": "96x96" }]
     }
   ],
