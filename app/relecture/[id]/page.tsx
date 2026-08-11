@@ -14,9 +14,10 @@ import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getDifficulties, getTags } from '@/lib/taxonomy';
 import { getMoldTypes } from '@/lib/admin';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { RelectureEditor } from '@/components/RelectureEditor';
 
-export const metadata: Metadata = { title: "Relecture d'un import | Maryse Club" };
+export const metadata: Metadata = { title: "Relecture d'un import | Je pâtisse !" };
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -44,7 +45,7 @@ export default async function RelecturePage({ params }: Params) {
 
   return (
     <>
-      <Header current="/profil" />
+      <Header current="carnet" />
       <div className="relecture-page">
       {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
           la barre d'actions fixe qu'il remplace a disparu. */}
@@ -79,6 +80,7 @@ export default async function RelecturePage({ params }: Params) {
         )}
       </main>
       </div>
+      <MobileNav current="carnet" />
     </>
   );
 }

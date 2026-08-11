@@ -10,10 +10,12 @@ export function SuggestionsSidebar({
   suggestions,
   favIds,
   ads,
+  showPlan = true,
 }: {
   suggestions: RecipeCardData[];
   favIds: Set<string>;
   ads: AdsBySlot;
+  showPlan?: boolean;
 }) {
   return (
     <aside className="no-print lg:col-span-4 flex flex-col gap-12">
@@ -28,9 +30,11 @@ export function SuggestionsSidebar({
       {suggestions.length > 0 && (
         <div className="flex flex-col gap-8">
           <h3 className="font-label-md text-label-md uppercase tracking-widest text-secondary">Recettes suggérées</h3>
-          <SuggestionCard recipe={suggestions[0]} isFav={favIds.has(suggestions[0].id)} />
+          <SuggestionCard recipe={suggestions[0]} isFav={favIds.has(suggestions[0].id)} showPlan={showPlan} />
           <PartnerSlot slot="sidebar" ads={ads} />
-          {suggestions[1] && <SuggestionCard recipe={suggestions[1]} isFav={favIds.has(suggestions[1].id)} />}
+          {suggestions[1] && (
+            <SuggestionCard recipe={suggestions[1]} isFav={favIds.has(suggestions[1].id)} showPlan={showPlan} />
+          )}
         </div>
       )}
     </aside>

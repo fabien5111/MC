@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getAdsAdmin } from '@/lib/ads';
 import { PartnersManager } from '@/components/admin/PartnersManager';
 
-export const metadata: Metadata = { title: 'Publicités | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Publicités | Admin — Je pâtisse !' };
 
 export default async function AdminPartnersPage() {
   const items = await getAdsAdmin();

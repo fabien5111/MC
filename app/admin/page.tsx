@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getAdminStats, getPendingRecipes, getPendingComments, getAiCosts } from '@/lib/admin';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
-export const metadata: Metadata = { title: 'Tableau de bord | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Tableau de bord | Admin — Je pâtisse !' };
 
 export default async function AdminHomePage() {
   const [stats, pending, comments, aiCosts] = await Promise.all([
@@ -45,7 +45,7 @@ export default async function AdminHomePage() {
               <span className="material-symbols-outlined">help_outline</span>
             </button>
             <Link
-              href="/profil"
+              href="/reglages"
               className="ml-4 w-10 h-10 rounded-full border border-outline-variant overflow-hidden bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed font-bold text-sm"
             >
               A

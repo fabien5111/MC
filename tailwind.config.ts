@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 // Design tokens transposés depuis le site vanilla (index.html > tailwind-config).
-// Thème Material-3 « Maryse Club ». Toute évolution du DA se fait ici.
+// Thème Material-3 « Je pâtisse ! ». Toute évolution du DA se fait ici.
 const config: Config = {
   darkMode: 'class',
   content: [
@@ -17,7 +17,10 @@ const config: Config = {
       // elle est déclarée ici pour que le CSS et les composants la citent au
       // lieu de la recopier. `701px` et non `700px` : la borne du rail est
       // `max-width: 700px`, celle-ci est son complément exact.
-      screens: { rail: '701px' },
+      // `row` : point de bascule des rangées défilantes de l'accueil — trois
+      // cartes visibles au-dessus, deux en dessous (et une seule sous `sm`,
+      // à 85 % de large pour laisser deviner la suivante).
+      screens: { rail: '701px', row: '900px' },
       colors: {
         'on-tertiary-fixed-variant': '#584044',
         'on-secondary-fixed': '#311118',
@@ -83,7 +86,17 @@ const config: Config = {
         DEFAULT: '0.125rem',
         lg: '0.25rem',
         xl: '0.5rem',
+        // Attention : `full` est volontairement surchargé (12 px, pas 9999 px).
+        // C'est le rayon des surfaces du thème — cartes, encarts, gros boutons.
+        // Les maquettes de design, elles, tournent sur un Tailwind par défaut
+        // où `rounded-full` vaut 9999 px : recopier leurs classes telles quelles
+        // donne des pilules là où le site veut des angles doux, et inversement.
         full: '0.75rem',
+        // Vraie pilule. Réservée aux éléments dont la forme *est* la
+        // signification : pastilles de filtre, badges de comptage, petits
+        // boutons d'action ronds. Un chip à angles droits ne se lit pas comme
+        // un chip. Ne pas l'étendre aux cartes ni aux blocs.
+        pill: '999px',
       },
       spacing: {
         unit: '8px',

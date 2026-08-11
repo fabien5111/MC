@@ -12,16 +12,19 @@ export function RecipeCardClient({
   recipe,
   isFav,
   isOwner,
+  showPlan,
 }: {
   recipe: RecipeCardWithAllergens;
   isFav: boolean;
   isOwner?: boolean;
+  showPlan?: boolean;
 }) {
   return (
     <RecipeCardLayout
       recipe={recipe}
       isFav={isFav}
       isOwner={isOwner}
+      showPlan={showPlan}
       allergens={<AllergenPictosView items={recipe.allergenItems} className="mb-4" iconClassName="w-6 h-6" />}
     />
   );

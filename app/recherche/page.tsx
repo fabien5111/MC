@@ -86,7 +86,7 @@ export default async function RecherchePage({
 
   return (
     <>
-      <Header />
+      <Header current="explorer" />
 
       <SearchProvider criteria={criteria} initialPanelOpen={panelOpen}>
         <main className="max-w-[1400px] mx-auto pb-24">
@@ -135,7 +135,13 @@ export default async function RecherchePage({
                     <section key={i} className="mb-12">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {block.map((r) => (
-                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
+                          <RecipeCard
+                            key={r.id}
+                            recipe={r}
+                            isFav={favIds.has(r.id)}
+                            isOwner={!!user && r.author_id === user.id}
+                            showPlan={!!user}
+                          />
                         ))}
                       </div>
                       {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le
@@ -156,7 +162,7 @@ export default async function RecherchePage({
       </SearchProvider>
 
       <Footer />
-      <MobileNav />
+      <MobileNav current="explorer" />
     </>
   );
 }

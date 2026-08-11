@@ -4,7 +4,7 @@ import { getListEntries, getMolds, getMoldTypes } from '@/lib/admin';
 import { SECTIONS } from '@/lib/admin-lists-config';
 import { ListsManager } from '@/components/admin/ListsManager';
 
-export const metadata: Metadata = { title: 'Listes | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Listes | Admin — Je pâtisse !' };
 
 const ORDER: Record<string, string> = { recipe_types: 'id', difficulties: 'level', ingredient_conversions: 'id' };
 const REGULAR_SECTIONS = SECTIONS.filter((s) => s.table !== 'molds');

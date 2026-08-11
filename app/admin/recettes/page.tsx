@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getPendingRecipes, getManagedRecipes } from '@/lib/admin';
 import { RecipesManager } from '@/components/admin/RecipesManager';
 
-export const metadata: Metadata = { title: 'Recettes | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Recettes | Admin — Je pâtisse !' };
 
 export default async function AdminRecettesPage() {
   const [pending, managed] = await Promise.all([getPendingRecipes(), getManagedRecipes()]);

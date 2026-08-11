@@ -3,14 +3,20 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { HomeBanner } from '@/components/HomeBanner';
-import { HomeRecipeGrid } from '@/components/HomeRecipeGrid';
 import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PartnerSlot } from '@/components/PartnerSlot';
+import { RecipeCardClient } from '@/components/RecipeCardClient';
+import { RailSection, ROW_CARD } from '@/components/home/RailSection';
+import { SessionsCarousel } from '@/components/home/SessionsCarousel';
+import { GuestIntro } from '@/components/home/GuestIntro';
+import { GuestCta } from '@/components/home/GuestCta';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
+import { getActiveExecutions } from '@/lib/executions';
+import { getFollowedRecipes } from '@/lib/follows';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -43,15 +49,19 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, activeFeatured, favIds, banners, homeCategories, user, ads] = await Promise.all([
-    getRecipes({ limit: 6 }),
-    getActiveFeaturedRecipe(),
-    getFavoriteIds(),
-    getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
-    getHomeCategories(),
-    getCurrentUser(),
-    getActiveAds(['home_top', 'home_mid']),
-  ]);
+  const user = await getCurrentUser();
+  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes] =
+    await Promise.all([
+      getRecipes({ limit: 12 }),
+      getActiveFeaturedRecipe(),
+      getFavoriteIds(),
+      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
+      getHomeCategories(),
+      getActiveAds(['home_top', 'home_mid']),
+      // Réservées au membre — inutile de les demander à un visiteur.
+      user ? getActiveExecutions(user.id) : Promise.resolve([]),
+      user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
+    ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
   // la section ne disparaît jamais de l'accueil.
@@ -66,10 +76,11 @@ export default async function HomePage() {
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
       : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
+  const latest = await withAllergenPictos(recipes);
 
   return (
     <>
-      <Header current="/" />
+      <Header current="accueil" />
 
       <HomeBanner
         web={banners.banner_home_web}
@@ -79,6 +90,16 @@ export default async function HomePage() {
       />
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+        {/* Reprendre là où j'en suis (membre) / présentation du produit
+            (visiteur) — les deux occupent le même emplacement, jamais
+            ensemble. Un membre sans session en cours n'a rien ici : la page
+            commence directement à la recette de la semaine. */}
+        {user ? (
+          activeSessions.length > 0 && <SessionsCarousel sessions={activeSessions} />
+        ) : (
+          <GuestIntro />
+        )}
+
         {/* Publicité — l'encart disparaît entièrement si aucune campagne n'est
             programmée (repère visible des seuls administrateurs). */}
         <PartnerSlot slot="home_top" ads={ads} className="mb-16" />
@@ -133,14 +154,16 @@ export default async function HomePage() {
                       <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
                     </Link>
                   )}
-                  <Link
-                    href={`/recette/${featured.id}?planifier=1`}
-                    title="Planifier cette recette"
-                    prefetch={false}
-                    className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
-                  >
-                    <PlanBadgeIcon />
-                  </Link>
+                  {user && (
+                    <Link
+                      href={`/recette/${featured.id}?planifier=1`}
+                      title="Planifier cette recette"
+                      prefetch={false}
+                      className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+                    >
+                      <PlanBadgeIcon />
+                    </Link>
+                  )}
                 </div>
 
                 <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
@@ -211,7 +234,7 @@ export default async function HomePage() {
               <h2 className="font-headline-lg text-headline-lg text-primary">Explorer par Catégorie</h2>
               <div className="h-1 w-12 bg-secondary mt-1" />
             </div>
-            <Link href="/" className="font-label-md text-label-md text-secondary hover:text-primary transition-colors">
+            <Link href="/recherche" className="font-label-md text-label-md text-secondary hover:text-primary transition-colors">
               Voir tout
             </Link>
           </div>
@@ -249,29 +272,43 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Publicité (entre Catégories et Dernières Créations) */}
+        {/* Publicité (entre Catégories et le fil des abonnements / dernières créations) */}
         <PartnerSlot slot="home_mid" ads={ads} className="mb-20" />
 
+        {/* Chez les pâtissiers que vous suivez (membre, seulement s'il y a
+            quelque chose à y montrer — pas de section vide). */}
+        {user && followedRecipes.length > 0 && (
+          <RailSection title="Chez les pâtissiers que vous suivez" viewAllHref="/carnet?scope=sub" viewAllLabel="Tout voir">
+            {followedRecipes.map((r) => (
+              <div key={r.id} data-row-card className={ROW_CARD}>
+                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} />
+              </div>
+            ))}
+          </RailSection>
+        )}
+
         {/* Dernières créations */}
-        <section className="mb-16">
-          <div className="flex justify-between items-end mb-10">
-            <div>
-              <h2 className="font-headline-lg text-headline-lg text-primary">Dernières Créations</h2>
-              <div className="h-1 w-12 bg-secondary mt-1" />
-            </div>
-          </div>
-          {recipes.length > 0 ? (
-            <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} currentUserId={user?.id} />
-          ) : (
-            <p className="text-on-surface-variant italic">
-              Aucune recette publiée pour le moment.
-            </p>
-          )}
-        </section>
+        {latest.length > 0 && (
+          <RailSection title="Dernières Créations" viewAllHref="/recherche" viewAllLabel="Explorer">
+            {latest.map((r) => (
+              <div key={r.id} data-row-card className={ROW_CARD}>
+                <RecipeCardClient
+                  recipe={r}
+                  isFav={favIds.has(r.id)}
+                  isOwner={!!user && r.author_id === user.id}
+                  showPlan={!!user}
+                />
+              </div>
+            ))}
+          </RailSection>
+        )}
+
+        {/* Invitation finale (visiteur) */}
+        {!user && <GuestCta />}
       </main>
 
       <Footer />
-      <MobileNav current="/" />
+      <MobileNav current="accueil" />
     </>
   );
 }
