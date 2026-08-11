@@ -154,14 +154,16 @@ export default async function HomePage() {
                       <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
                     </Link>
                   )}
-                  <Link
-                    href={`/recette/${featured.id}?planifier=1`}
-                    title="Planifier cette recette"
-                    prefetch={false}
-                    className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
-                  >
-                    <PlanBadgeIcon />
-                  </Link>
+                  {user && (
+                    <Link
+                      href={`/recette/${featured.id}?planifier=1`}
+                      title="Planifier cette recette"
+                      prefetch={false}
+                      className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+                    >
+                      <PlanBadgeIcon />
+                    </Link>
+                  )}
                 </div>
 
                 <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
@@ -290,7 +292,12 @@ export default async function HomePage() {
           <RailSection title="Dernières Créations" viewAllHref="/recherche" viewAllLabel="Explorer">
             {latest.map((r) => (
               <div key={r.id} data-row-card className={ROW_CARD}>
-                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
+                <RecipeCardClient
+                  recipe={r}
+                  isFav={favIds.has(r.id)}
+                  isOwner={!!user && r.author_id === user.id}
+                  showPlan={!!user}
+                />
               </div>
             ))}
           </RailSection>

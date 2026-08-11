@@ -1000,7 +1000,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
         </PlanProvider>
 
-        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} />
+        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} showPlan={!!user} />
       </main>
       </div>
 

@@ -168,7 +168,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
           {recipes.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
               {recipes.map((r) => (
-                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} />
+                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} showPlan={!!user} />
               ))}
             </div>
           ) : (
