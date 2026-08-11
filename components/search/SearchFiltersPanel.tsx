@@ -34,7 +34,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
   // Brouillon du tiroir : initialisé depuis les critères appliqués, et
   // resynchronisé à chaque ouverture.
   const [draft, setDraft] = useState<SearchCriteria>(criteria);
-  const [draftTotal, setDraftTotal] = useState<number | null>(null);
+  const [draftCounts, setDraftCounts] = useState<{ total: number; authorTotal: number } | null>(null);
   // `panelOpen` peut être vrai sur desktop (arrivée par `?panel=1` depuis
   // l'en-tête), où aucun tiroir n'est visible. <BottomSheet> se referme de
   // lui-même au-dessus de son point de bascule — c'est là qu'est gardé le
@@ -68,12 +68,12 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       try {
         const res = await fetch(`/api/recherche/compte?${draftKey}`, { signal: controller.signal });
         if (!res.ok) return;
-        const { total } = (await res.json()) as { total: number };
-        setDraftTotal(total);
+        const counts = (await res.json()) as { total: number; authorTotal: number };
+        setDraftCounts(counts);
       } catch {
         // Requête annulée ou réseau indisponible : le bouton garde son
         // libellé générique plutôt qu'un nombre faux.
-        setDraftTotal(null);
+        setDraftCounts(null);
       }
     }, COUNT_DEBOUNCE_MS);
     return () => {
@@ -149,14 +149,32 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
               }}
               className="w-full bg-primary text-on-primary py-3.5 rounded-full font-label-md text-[12.5px] uppercase tracking-[0.18em] active:scale-[0.98] transition-transform"
             >
-              {draftTotal === null
-                ? 'Voir les résultats'
-                : `Voir ${draftTotal === 0 ? 'les résultats' : `les ${draftTotal} recette${draftTotal > 1 ? 's' : ''}`}`}
+              {resultsButtonLabel(draftCounts, draft)}
             </button>
           </div>
       </BottomSheet>
     </>
   );
+}
+
+// Libellé du bouton de validation — reflète la portée choisie dans le
+// brouillon (Recettes / Pâtissiers / les deux), pas seulement les recettes.
+function resultsButtonLabel(
+  counts: { total: number; authorTotal: number } | null,
+  draft: SearchCriteria,
+): string {
+  if (counts === null) return 'Voir les résultats';
+  const { total, authorTotal } = counts;
+  if (draft.includeRecipes && draft.includeAuthors) {
+    const sum = total + authorTotal;
+    return sum === 0 ? 'Voir les résultats' : `Voir les ${sum} résultat${sum > 1 ? 's' : ''}`;
+  }
+  if (draft.includeAuthors) {
+    return authorTotal === 0
+      ? 'Voir les résultats'
+      : `Voir les ${authorTotal} pâtissier${authorTotal > 1 ? 's' : ''}`;
+  }
+  return total === 0 ? 'Voir les résultats' : `Voir les ${total} recette${total > 1 ? 's' : ''}`;
 }
 
 function CountBadge({ value, className = '' }: { value: number; className?: string }) {

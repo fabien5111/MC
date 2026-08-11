@@ -25,7 +25,23 @@ import {
 // n'a pas abouti ». Sans cette distinction, une RPC absente ou en erreur
 // s'affichait exactement comme une recherche sans résultat — le pire des
 // symptômes, puisqu'il ressemble à un fonctionnement normal.
-export type SearchResult = { total: number; recipes: RecipeCard[]; error: string | null };
+export type AuthorResult = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  recipe_count: number;
+  rating_avg: number | null;
+};
+
+export type SearchResult = {
+  total: number;
+  recipes: RecipeCard[];
+  authorTotal: number;
+  authors: AuthorResult[];
+  error: string | null;
+};
 
 type RpcArgs = {
   search_term: string | null;
@@ -42,6 +58,8 @@ type RpcArgs = {
   offset_val: number;
   limit_val: number;
   count_only: boolean;
+  include_recipes: boolean;
+  include_authors: boolean;
 };
 
 // Traduction critères → arguments SQL. Centralisée ici pour que la page, la
@@ -71,6 +89,8 @@ function toRpcArgs(
     offset_val: opts.offset,
     limit_val: opts.limit,
     count_only: opts.countOnly,
+    include_recipes: c.includeRecipes,
+    include_authors: c.includeAuthors,
   };
 }
 
@@ -79,10 +99,21 @@ async function callRpc(args: RpcArgs): Promise<SearchResult> {
   const { data, error } = await supabase.rpc('search_advanced_recipes' as never, args as never);
   if (error) {
     console.error('searchAdvanced:', error.message);
-    return { total: 0, recipes: [], error: error.message };
+    return { total: 0, recipes: [], authorTotal: 0, authors: [], error: error.message };
   }
-  const res = data as unknown as { total?: number; recipes?: RecipeCard[] } | null;
-  return { total: res?.total ?? 0, recipes: res?.recipes ?? [], error: null };
+  const res = data as unknown as {
+    total?: number;
+    recipes?: RecipeCard[];
+    author_total?: number;
+    authors?: AuthorResult[];
+  } | null;
+  return {
+    total: res?.total ?? 0,
+    recipes: res?.recipes ?? [],
+    authorTotal: res?.author_total ?? 0,
+    authors: res?.authors ?? [],
+    error: null,
+  };
 }
 
 // Page de résultats + total. `shown` (paramètre `n` de l'URL) est le nombre
@@ -93,11 +124,19 @@ export async function searchAdvanced(c: SearchCriteria): Promise<SearchResult> {
   return callRpc(toRpcArgs(c, { limit: c.shown, offset: 0, countOnly: false }));
 }
 
-// Compte seul — bouton de validation du tiroir mobile (le nombre se met à
-// jour avant application) et suggestions de l'état vide.
+// Compte seul (recettes) — suggestions de l'état vide (`relaxationSuggestions`
+// ne raisonne que sur des recettes, jamais sur des pâtissiers).
 export async function countAdvanced(c: SearchCriteria): Promise<number> {
   const { total } = await callRpc(toRpcArgs(c, { limit: 0, offset: 0, countOnly: true }));
   return total;
+}
+
+// Compte seul (recettes + pâtissiers) — bouton de validation du tiroir
+// mobile : son libellé doit refléter la portée choisie (Recettes / Pâtissiers
+// / les deux), pas seulement les recettes.
+export async function countAdvancedAll(c: SearchCriteria): Promise<{ total: number; authorTotal: number }> {
+  const { total, authorTotal } = await callRpc(toRpcArgs(c, { limit: 0, offset: 0, countOnly: true }));
+  return { total, authorTotal };
 }
 
 // Autocomplétion des ingrédients (facette signature), insensible à la casse

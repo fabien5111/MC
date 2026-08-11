@@ -42,6 +42,12 @@ export type SearchCriteria = {
   minAuthorRating: number | null;
   sort: SortKey;
   shown: number; // nombre de cartes affichées (pagination « Charger plus »)
+  // Sur quoi porte la recherche — recettes, pâtissiers, ou les deux (cochés
+  // par défaut). Ce n'est pas une facette de recette comme les autres (pas de
+  // puce retirable, pas compté dans countActiveCriteria) : ça change la
+  // *nature* des résultats, pas les recettes qui les composent.
+  includeRecipes: boolean;
+  includeAuthors: boolean;
 };
 
 export const EMPTY_CRITERIA: SearchCriteria = {
@@ -57,6 +63,8 @@ export const EMPTY_CRITERIA: SearchCriteria = {
   minAuthorRating: null,
   sort: 'relevance',
   shown: PAGE_SIZE,
+  includeRecipes: true,
+  includeAuthors: true,
 };
 
 // Normalisation souple (casse + accents + espaces), même règle que
@@ -128,6 +136,18 @@ export function parseSearchCriteria(sp: RawParams): SearchCriteria {
   const shownRaw = asNumber(sp.n);
   const shown = shownRaw === null ? PAGE_SIZE : clamp(Math.round(shownRaw), PAGE_SIZE, 240);
 
+  // `ir=0` / `ia=0` décochent respectivement Recettes / Pâtissiers ; absent =
+  // coché (comportement par défaut). Les deux décochés à la fois ne mènent à
+  // aucun résultat possible — une URL trafiquée (`?ir=0&ia=0`) retombe donc
+  // sur les deux cochés, même règle que le statut du carnet sur une URL
+  // incohérente (cf. lib/carnet-params.ts).
+  let includeRecipes = first(sp.ir) !== '0';
+  let includeAuthors = first(sp.ia) !== '0';
+  if (!includeRecipes && !includeAuthors) {
+    includeRecipes = true;
+    includeAuthors = true;
+  }
+
   return {
     q: first(sp.q).trim(),
     inc: dedupeLoose(asList(sp.inc)),
@@ -143,6 +163,8 @@ export function parseSearchCriteria(sp: RawParams): SearchCriteria {
     minAuthorRating: ar === null || ar <= 0 ? null : clamp(Math.round(ar), 1, 5),
     sort,
     shown,
+    includeRecipes,
+    includeAuthors,
   };
 }
 
@@ -162,6 +184,8 @@ export function criteriaToParams(c: SearchCriteria): URLSearchParams {
   if (c.minAuthorRating !== null) p.set('min_ar', String(c.minAuthorRating));
   if (c.sort !== 'relevance') p.set('sort', c.sort);
   if (c.shown > PAGE_SIZE) p.set('n', String(c.shown));
+  if (!c.includeRecipes) p.set('ir', '0');
+  if (!c.includeAuthors) p.set('ia', '0');
   return p;
 }
 
@@ -193,11 +217,18 @@ export function hasAnySearch(c: SearchCriteria): boolean {
   return !!c.q || countActiveCriteria(c) > 0;
 }
 
-// « Réinitialiser » : on ne remet à zéro que les facettes. Le terme saisi et
-// le tri restent — les effacer aussi ferait disparaître les résultats sous
-// les doigts de l'utilisateur.
+// « Réinitialiser » : on ne remet à zéro que les facettes. Le terme saisi, le
+// tri et la portée recettes/pâtissiers restent — les effacer aussi ferait
+// disparaître les résultats, ou le choix de portée, sous les doigts de
+// l'utilisateur.
 export function resetFacets(c: SearchCriteria): SearchCriteria {
-  return { ...EMPTY_CRITERIA, q: c.q, sort: c.sort };
+  return {
+    ...EMPTY_CRITERIA,
+    q: c.q,
+    sort: c.sort,
+    includeRecipes: c.includeRecipes,
+    includeAuthors: c.includeAuthors,
+  };
 }
 
 // Ajout d'un ingrédient dans l'un des deux modes. Un même ingrédient ne peut
