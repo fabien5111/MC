@@ -111,33 +111,6 @@ export default async function RecherchePage({
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
               <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />
 
-              {/* Pâtissiers — séparés des recettes, masqués sur la portée
-                  Recettes seule et sur la page vierge (pas de recherche
-                  formulée) tant qu'il n'y a rien à annoncer. */}
-              {criteria.includeAuthors && (result.authors.length > 0 || hasAnySearch(criteria)) && (
-                <section className="mb-12">
-                  <h2 className="font-headline-md text-[19px] text-primary mb-5">
-                    Pâtissiers
-                    {result.authorTotal > 0 && (
-                      <span className="ml-2 text-[14px] font-normal text-on-surface-variant">
-                        ({result.authorTotal})
-                      </span>
-                    )}
-                  </h2>
-                  {result.authors.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-                      {result.authors.map((a) => (
-                        <AuthorCard key={a.id} author={a} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[13.5px] italic text-on-surface-variant">
-                      Aucun pâtissier ne correspond à cette recherche.
-                    </p>
-                  )}
-                </section>
-              )}
-
               {criteria.includeRecipes && (
                 <>
                   <SearchResults>
@@ -192,6 +165,33 @@ export default async function RecherchePage({
 
                   <LoadMore shown={result.recipes.length} total={result.total} />
                 </>
+              )}
+
+              {/* Pâtissiers — séparés des recettes, sous la grille. Masqués
+                  sur la portée Recettes seule et sur la page vierge (pas de
+                  recherche formulée) tant qu'il n'y a rien à annoncer. */}
+              {criteria.includeAuthors && (result.authors.length > 0 || hasAnySearch(criteria)) && (
+                <section className="mt-12">
+                  <h2 className="font-headline-md text-[19px] text-primary mb-5">
+                    Pâtissiers
+                    {result.authorTotal > 0 && (
+                      <span className="ml-2 text-[14px] font-normal text-on-surface-variant">
+                        ({result.authorTotal})
+                      </span>
+                    )}
+                  </h2>
+                  {result.authors.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                      {result.authors.map((a) => (
+                        <AuthorCard key={a.id} author={a} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[13.5px] italic text-on-surface-variant">
+                      Aucun pâtissier ne correspond à cette recherche.
+                    </p>
+                  )}
+                </section>
               )}
             </div>
           </div>
