@@ -1,31 +1,35 @@
 // En-tête + navigation partagés (Server Component).
-// Déduplique le header répété sur ~15 pages vanilla. L'état de connexion est
-// résolu côté serveur (session cookie) — plus de pré-masquage CSS
-// `data-auth="logged-in"` ni de flash au chargement.
+//
+// Quatre destinations, les mêmes que la barre basse (`lib/nav.ts`). Ce qui
+// n'est pas une destination n'est pas dans la liste :
+//  - **Créer** n'a plus de bouton ici — il ferait doublon avec celui d'en-tête
+//    de `/carnet`, sa vraie maison (on crée une recette pour l'ajouter à son
+//    carnet). Atteignable via Mon carnet, dans les deux chromes.
+//  - **Compte** est un tiroir, ouvert par l'avatar (`AccountMenuButton`). Sur
+//    mobile il est ouvert par la cinquième fente de la barre basse, d'où
+//    l'avatar masqué ici en dessous du seuil.
+//
+// L'état de connexion est résolu côté serveur (session cookie) — pas de
+// pré-masquage CSS ni de flash au chargement.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
-import { isReadOnlySession } from '@/lib/impersonation';
-import { SignOutButton } from '@/components/SignOutButton';
+import { hasActiveExecutions } from '@/lib/executions';
 import { HeaderSearch } from '@/components/HeaderSearch';
+import { AccountMenuButton } from '@/components/account/AccountMenuButton';
 import { getHomeCategories } from '@/lib/taxonomy';
+import { DESTINATIONS, type NavKey } from '@/lib/nav';
 
-const NAV = [
-  { href: '/', label: 'Accueil' },
-  { href: '/blog', label: 'Le blog' },
-  { href: '/profil', label: 'Mes recettes' },
-  { href: '/profil#planning', label: 'Planning' },
-  { href: '/profil#courses', label: 'Listes de courses' },
-];
-
-export async function Header({ current = '/' }: { current?: string }) {
+export async function Header({ current }: { current?: NavKey }) {
   const user = await getCurrentUser();
   const profile = user ? await getProfile(user.id) : null;
-  // Accès au back-office : admin complet ou gestionnaire. `/admin` redirige
-  // un gestionnaire vers son point d'entrée (il n'a pas le tableau de bord).
+  // Accès au back-office (lien « Administration » du tiroir Compte) : admin
+  // complet ou gestionnaire. `/admin` redirige lui-même un gestionnaire vers
+  // son point d'entrée (il n'a pas le tableau de bord).
   const backOffice = user ? await isManager(user.id) : false;
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
-  // Impersonation en lecture seule : les entrées de création sont masquées.
-  const readOnly = await isReadOnlySession();
+  // Pastille d'« En cuisine » : présente dès qu'une session tourne, **sans
+  // chiffre** — le compte se lit dans l'écran, pas dans le menu.
+  const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
   // Suggestions du panneau de recherche : les catégories promues par l'admin
   // sur l'accueil, jamais une liste codée en dur. Limitées à quatre pour que
   // le panneau reste une ligne.
@@ -36,80 +40,78 @@ export async function Header({ current = '/' }: { current?: string }) {
   return (
     <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
-        <div className="flex items-center gap-10">
-          <Link className="maryse-logo-font text-4xl text-primary leading-none" href="/">
+        <div className="flex items-center gap-6 xl:gap-10 min-w-0">
+          <Link className="maryse-logo-font text-4xl text-primary leading-none whitespace-nowrap shrink-0" href="/">
             Je pâtisse !
           </Link>
-          <nav className="hidden md:flex gap-8 items-center">
-            {NAV.map((item) => {
-              const active = item.href === current;
+          <nav className="hidden lg:flex gap-6 xl:gap-8 items-center whitespace-nowrap">
+            {DESTINATIONS.map((d) => {
+              const active = d.key === current;
               return (
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={item.href.startsWith('/profil') ? false : undefined}
-                  className={
+                  key={d.key}
+                  href={d.href}
+                  prefetch={d.key === 'carnet' || d.key === 'cuisine' ? false : undefined}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative font-label-md text-label-md transition-colors ${
                     active
-                      ? 'font-label-md text-label-md text-primary border-b-2 border-primary pb-0.5'
-                      : 'font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors'
-                  }
+                      ? 'font-bold text-primary border-b-2 border-primary pb-0.5'
+                      : 'text-on-surface-variant hover:text-primary'
+                  }`}
                 >
-                  {item.label}
+                  {d.label}
+                  {d.key === 'cuisine' && sessionEnCours && <SessionDot />}
                 </Link>
               );
             })}
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <HeaderSearch suggestions={suggestions} />
           {user ? (
-            <>
-              {!readOnly && (
-                <Link
-                  href="/creer"
-                  prefetch={false}
-                  className="hidden sm:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span> Créer
-                </Link>
-              )}
-              {backOffice && (
-                <Link
-                  href="/admin"
-                  title="Administration"
-                  className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
-                >
-                  admin_panel_settings
-                </Link>
-              )}
-              <Link
-                href="/profil"
-                title="Mon profil"
-                prefetch={false}
-                className="w-9 h-9 rounded-full overflow-hidden border border-outline-variant block bg-surface-container"
-              >
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                  <img src={avatarUrl} alt="Mon profil" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="material-symbols-outlined text-[20px] text-on-surface-variant flex items-center justify-center w-full h-full">
-                    person
-                  </span>
-                )}
-              </Link>
-              <SignOutButton />
-            </>
+            <AccountMenuButton
+              className="hidden lg:block"
+              data={{
+                name: profile?.full_name || user.email || 'Mon compte',
+                avatarUrl,
+                isManager: backOffice,
+                handle: profile?.username || user.id,
+              }}
+            />
           ) : (
-            <Link
-              href="/connexion"
-              className="font-label-md bg-primary text-on-primary px-4 py-2 rounded-full text-sm hover:opacity-90 transition-all active:scale-95"
-            >
-              Connexion
-            </Link>
+            <>
+              {/* Visiteur : les quatre destinations restent visibles et sans
+                  cadenas (« Mon carnet » et « En cuisine » mèneront à un écran
+                  d'invitation). Seules les actions changent. */}
+              <Link
+                href="/connexion"
+                className="hidden sm:block font-label-md text-label-md text-primary px-3 whitespace-nowrap hover:text-secondary transition-colors"
+              >
+                Se connecter
+              </Link>
+              <Link
+                href="/connexion?inscription=1"
+                className="font-label-md bg-primary text-on-primary px-4 py-2 rounded-pill text-sm whitespace-nowrap hover:shadow-lg transition-all active:scale-95"
+              >
+                Créer un compte
+              </Link>
+            </>
           )}
         </div>
       </div>
     </header>
+  );
+}
+
+// Pastille de session : disque de 9 px, halo de 2,5 px couleur de fond pour la
+// détacher du libellé. Pas de chiffre — cf. commentaire en tête de fichier.
+function SessionDot() {
+  return (
+    <span
+      aria-label="Une préparation est en cours"
+      role="img"
+      className="absolute -top-1 -right-3 h-[9px] w-[9px] rounded-pill bg-primary ring-[2.5px] ring-surface"
+    />
   );
 }

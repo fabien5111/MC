@@ -3,7 +3,7 @@ import { requireFullAdmin } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 
-export const metadata: Metadata = { title: 'Photos du site | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Photos du site | Admin — Je pâtisse !' };
 
 export default async function AdminPhotosPage() {
   await requireFullAdmin(); // paramètres du site : admin complet

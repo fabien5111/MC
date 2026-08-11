@@ -28,9 +28,12 @@ function translateAuthError(message: string): string {
   return AUTH_ERRORS[message] ?? message;
 }
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, initialMode = 'signin' }: { next: string; initialMode?: 'signin' | 'signup' }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  // Le panneau s'ouvre sur la connexion, sauf arrivée par « Créer un compte »
+  // (`/connexion?inscription=1`) : l'en-tête visiteur propose les deux gestes
+  // séparément, chacun doit tomber sur le bon formulaire.
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

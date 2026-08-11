@@ -123,7 +123,7 @@ export default async function ArticlePage({
 
   return (
     <>
-      <Header current="/blog" />
+      <Header current="blog" />
       <ReadingProgress />
       <script
         type="application/ld+json"
@@ -223,7 +223,7 @@ export default async function ArticlePage({
       </main>
 
       <Footer />
-      <MobileNav current="/blog" />
+      <MobileNav current="blog" />
     </>
   );
 }

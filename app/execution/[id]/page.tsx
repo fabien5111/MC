@@ -33,8 +33,8 @@ export default async function ExecutionPage({ params, searchParams }: Params) {
           <Link className="maryse-logo-font text-3xl text-primary leading-none" href="/">
             Je pâtisse !
           </Link>
-          <Link href="/profil#planning" className="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1">
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span> Planning
+          <Link href="/en-cuisine" className="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1">
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span> En cuisine
           </Link>
         </div>
       </header>

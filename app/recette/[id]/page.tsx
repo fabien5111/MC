@@ -52,7 +52,7 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const r = await getRecipeFull(id);
-  return { title: r ? `${r.title} | Maryse Club` : 'Recette | Maryse Club' };
+  return { title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !' };
 }
 
 export default async function RecettePage({ params, searchParams }: Params) {
@@ -303,7 +303,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
                 Par{' '}
-                <Link className="no-print flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
+                {/* Signature de l'auteur : lien vers son profil public.
+                    Repli sur `author_id` si l'auteur n'a pas encore choisi de
+                    nom d'utilisateur — `getPublicProfile` accepte les deux. */}
+                <Link
+                  className="no-print flex items-center gap-2 hover:text-primary transition-colors"
+                  href={`/u/${recipe.profiles?.username || recipe.author_id}`}
+                >
                   <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -343,22 +349,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             )}
           </div>
 
-          {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
-              clic sur « Planifier », qui doit rester visible sans scroller. */}
-          <div className="no-print">
-          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
-          </div>
-
-          {/* Hero */}
-          {recipe.hero_image_url && (
-            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
-              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
-              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
-            </div>
-          )}
-
-          {/* Contexte planifié (bannière + démarrage d'exécution) */}
+          {/* Contexte planifié (bannière + démarrage d'exécution) — juste sous
+              l'en-tête (qui porte le lien « Recette d'origine »), avant même le
+              panneau « Planifier » et la photo : sur une fiche planifiée, c'est
+              l'information la plus immédiatement utile, pas quelque chose sur
+              lequel on doit d'abord faire défiler la page. */}
           {planContext && planContext.planned_date && (
             <div className="no-print">
             <PlanNoticeBanner
@@ -383,10 +378,23 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           {/* Sessions de préparation (historique) — juste sous le bandeau de
-              planification, avant la note et la liste de courses : c'est la
-              suite directe de « Démarrer la recette » (ce bandeau), peu importe
-              la largeur d'écran. */}
+              planification : c'est la suite directe de « Démarrer la
+              recette » (ce bandeau), peu importe la largeur d'écran. */}
           <SessionsList execHistory={execHistory} />
+
+          {/* Planifier — le panneau s'ouvre au clic sur « Planifier ». */}
+          <div className="no-print">
+          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
+          </div>
+
+          {/* Hero */}
+          {recipe.hero_image_url && (
+            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
+            </div>
+          )}
 
           {/* Note globale du plan + rappel de la convention de lecture. Une
               seule légende pour toute la fiche : les mêmes couleurs valent
@@ -992,7 +1000,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
         </PlanProvider>
 
-        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} />
+        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} showPlan={!!user} />
       </main>
       </div>
 

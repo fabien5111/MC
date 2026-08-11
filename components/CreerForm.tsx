@@ -764,7 +764,7 @@ export function CreerForm({
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,
-        // pour éviter qu'une visite ultérieure de /profil ou de la fiche
+        // pour éviter qu'une visite ultérieure du carnet ou de la fiche
         // recette ne réutilise un segment mis en cache avant cette écriture.
         router.refresh();
         router.push(`/recette/${recipeId}`);
@@ -788,7 +788,7 @@ export function CreerForm({
         // router.refresh() invalide le Router Cache client avant de naviguer
         // (cf. commentaire ci-dessus).
         router.refresh();
-        router.push('/profil');
+        router.push('/carnet');
       }
     } catch (e) {
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
@@ -812,7 +812,7 @@ export function CreerForm({
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
     setLeaving(true);
     const recipeId = editingId ?? createdIdRef.current;
-    router.push(recipeId ? `/recette/${recipeId}` : '/profil');
+    router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
   }, [router, editingId, dialog]);
 
   const scalingOptions =
@@ -887,7 +887,7 @@ export function CreerForm({
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant">L&apos;excellence de la pâtisserie, rédigée par vos soins.</p>
         </div>
-        <Link href="/profil" className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md">
+        <Link href="/carnet" className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md">
           <span className="material-symbols-outlined">close</span> Annuler
         </Link>
       </div>

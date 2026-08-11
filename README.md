@@ -1,4 +1,4 @@
-# Maryse Club
+# Je pâtisse !
 
 Site de partage de recettes de pâtisserie. **Next.js App Router + TypeScript +
 Tailwind CSS**, avec Supabase (auth, base de données).

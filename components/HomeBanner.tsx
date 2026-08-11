@@ -25,7 +25,7 @@ export function HomeBanner({
           {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
           <img
             src={mobile || web || fallback}
-            alt="Bannière Maryse Club"
+            alt="Bannière Je pâtisse !"
             className="w-full h-full object-cover"
           />
         </picture>

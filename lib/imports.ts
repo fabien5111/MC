@@ -72,6 +72,27 @@ export async function getUtensilRefNames(): Promise<string[]> {
   return (data ?? []).map((r) => r.name).filter(Boolean);
 }
 
+// Imports pas encore relus, pour le renvoi affiché en tête du carnet.
+//
+// Un import n'est pas encore une recette : tant qu'il n'est pas relu, il vit
+// dans `imports` et n'a aucune ligne dans `recipes`. Le carnet ne peut donc pas
+// l'afficher dans sa grille — il le signale et renvoie vers `/importer`, qui
+// reste le tunnel d'entrée. C'est aussi ce qui évite de faire croire qu'une
+// recette existe alors qu'elle n'a pas encore été vérifiée.
+export async function countImportsEnAttente(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from('imports')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('recipe_id', null);
+  if (error) {
+    console.error('countImportsEnAttente:', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
 export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -7,7 +7,7 @@ import { requireFullAdmin } from '@/lib/auth';
 import { getAdsAdmin } from '@/lib/ads';
 import { PartnersManager } from '@/components/admin/PartnersManager';
 
-export const metadata: Metadata = { title: 'Publicités | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Publicités | Admin — Je pâtisse !' };
 
 export default async function AdminPartnersPage() {
   await requireFullAdmin(); // régie publicitaire : admin complet

@@ -78,7 +78,7 @@ export async function getFavorites(userId: string): Promise<FavoriteRow[]> {
   return rows.map((r) => ({ ...r, recipes: r.recipes ? (byId.get(r.recipes.id) ?? null) : null }));
 }
 
-export async function getPlanning(userId: string): Promise<PlanningRow[]> {
+export async function getPlanning(userId: string, status: 'planifie' | 'archive' = 'planifie'): Promise<PlanningRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('planning')
@@ -86,7 +86,7 @@ export async function getPlanning(userId: string): Promise<PlanningRow[]> {
       '*, executions(count), active_execution:executions(id, date_debut), recipes(id, title, hero_image_url, prep_time, total_time), plan_steps(id, title, day_offset, day_order_index, order_index, already_done, prep_time, wait_time, cook_time, cook_temp)',
     )
     .eq('user_id', userId)
-    .eq('status', 'planifie')
+    .eq('status', status)
     .eq('active_execution.status', 'en_cours')
     .order('planned_date', { ascending: true });
   if (error) console.error('getPlanning:', error.message);

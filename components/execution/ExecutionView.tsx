@@ -245,7 +245,7 @@ export function ExecutionView({
       setDeleting(false);
       return;
     }
-    router.push('/profil#planning');
+    router.push('/en-cuisine');
   }
 
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);

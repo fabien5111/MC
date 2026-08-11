@@ -32,7 +32,7 @@ export default async function BlogPage({
 
   return (
     <>
-      <Header current="/blog" />
+      <Header current="blog" />
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pb-32">
         <div className="pt-12 pb-9 max-w-[62ch]">
           <h1 className="font-headline-lg text-[30px] md:text-[42px] font-bold leading-tight text-primary">
@@ -53,7 +53,7 @@ export default async function BlogPage({
         />
       </main>
       <Footer />
-      <MobileNav current="/blog" />
+      <MobileNav current="blog" />
     </>
   );
 }

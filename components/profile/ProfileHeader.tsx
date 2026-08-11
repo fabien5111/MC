@@ -38,6 +38,7 @@ export function ProfileHeader({
   );
   const [banner, setBanner] = useState<string | null>(profile?.banner_url ?? null);
   const [bio, setBio] = useState(profile?.bio ?? '');
+  const [username, setUsername] = useState(profile?.username ?? '');
   const [links, setLinks] = useState<LinkValues>(() => {
     const v: LinkValues = {};
     for (const l of PROFILE_LINKS) v[l.field] = profile?.[l.field] ?? '';
@@ -132,6 +133,12 @@ export function ProfileHeader({
           <h1 className="font-headline-lg text-headline-lg text-primary text-center md:text-left">
             {name}
           </h1>
+          <Link
+            href={`/u/${username || userId}`}
+            className="block text-center md:text-left font-label-md text-label-md text-secondary hover:text-primary transition-colors mb-1"
+          >
+            Voir mon profil public →
+          </Link>
           <p
             ref={bioRef}
             className={`font-body-md text-on-surface-variant text-justify ${
@@ -201,10 +208,12 @@ export function ProfileHeader({
         <ProfileEditor
           userId={userId}
           initialBio={bio}
+          initialUsername={username}
           initialLinks={links}
           onClose={() => setEditorOpen(false)}
-          onSaved={(newBio, newLinks) => {
+          onSaved={(newBio, newUsername, newLinks) => {
             setBio(newBio);
+            setUsername(newUsername);
             setLinks(newLinks);
             setEditorOpen(false);
             router.refresh(); // bio et liens viennent des props serveur
@@ -245,21 +254,39 @@ function ShareProfileButton() {
   );
 }
 
+// Nom d'utilisateur : minuscules, chiffres et tirets, 3 à 30 caractères — la
+// forme la plus permissive qui reste sûre dans une URL sans encodage
+// (`/u/[handle]`). Normalisé à la frappe plutôt que rejeté à l'enregistrement :
+// une erreur de format est plus frustrante qu'une correction silencieuse.
+function normalizeUsername(v: string): string {
+  return v
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // marques diacritiques isolées par NFD (accents)
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+}
+
 function ProfileEditor({
   userId,
   initialBio,
+  initialUsername,
   initialLinks,
   onClose,
   onSaved,
 }: {
   userId: string;
   initialBio: string;
+  initialUsername: string;
   initialLinks: LinkValues;
   onClose: () => void;
-  onSaved: (bio: string, links: LinkValues) => void;
+  onSaved: (bio: string, username: string, links: LinkValues) => void;
 }) {
   const dialog = useDialog();
   const [bio, setBio] = useState(initialBio);
+  const [username, setUsername] = useState(initialUsername);
   const [links, setLinks] = useState<LinkValues>(initialLinks);
   const [busy, setBusy] = useState(false);
   const IN = 'border border-outline-variant rounded px-3 py-2 font-body-md text-sm';
@@ -268,9 +295,11 @@ function ProfileEditor({
   async function save() {
     setBusy(true);
     const clean = (f: ProfileLinkField) => (links[f] || '').trim() || null;
+    const cleanUsername = username.trim() || null;
     const payload = {
       id: userId,
       bio: bio.trim() || null,
+      username: cleanUsername,
       website_url: clean('website_url'),
       instagram_url: clean('instagram_url'),
       facebook_url: clean('facebook_url'),
@@ -281,11 +310,17 @@ function ProfileEditor({
     const supabase = createClient();
     const { error } = await supabase.from('profiles').upsert(payload);
     if (error) {
-      dialog.alert('Erreur lors de l’enregistrement : ' + error.message);
+      // Contrainte d'unicité sur `username` (cf. SQL fourni séparément) :
+      // message clair plutôt que le texte brut de Postgres.
+      dialog.alert(
+        error.code === '23505'
+          ? `Le nom d'utilisateur « ${cleanUsername} » est déjà pris.`
+          : 'Erreur lors de l’enregistrement : ' + error.message,
+      );
       setBusy(false);
       return;
     }
-    onSaved(bio.trim(), links);
+    onSaved(bio.trim(), cleanUsername ?? '', links);
   }
 
   return (
@@ -294,6 +329,22 @@ function ProfileEditor({
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
         <h3 className="font-headline-md text-primary mb-6">Modifier le profil</h3>
         <div className="flex flex-col gap-5">
+          <label className="flex flex-col gap-1">
+            <span className={LBL}>Nom d&apos;utilisateur</span>
+            <div className="flex items-center gap-1">
+              <span className="text-on-surface-variant text-sm">je-patisse.fr/u/</span>
+              <input
+                type="text"
+                className={`${IN} flex-1`}
+                placeholder="votre-nom"
+                value={username}
+                onChange={(e) => setUsername(normalizeUsername(e.target.value))}
+              />
+            </div>
+            <span className="font-body-md text-xs text-on-surface-variant">
+              Détermine l&apos;adresse de votre profil public. Laissez vide pour ne pas en choisir.
+            </span>
+          </label>
           <label className="flex flex-col gap-1">
             <span className={LBL}>Bio</span>
             <textarea

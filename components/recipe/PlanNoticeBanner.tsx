@@ -65,6 +65,27 @@ export function PlanNoticeBanner({ text, plan, autoStart = false }: { text: stri
   const [starting, setStarting] = useState(autoStart);
   const [time, setTime] = useState('12:00');
   const [busy, setBusy] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  // Simple mise de côté — contrairement à la suppression (En cuisine), on ne
+  // touche jamais aux exécutions : archiver ne perd aucune donnée, c'est ce
+  // qui le distingue de « Supprimer » et le rend disponible sans avertissement
+  // particulier, qu'une session ait déjà tourné ou non.
+  async function archive() {
+    if (!writeGuard('Archivage de la recette planifiée')) return;
+    if (!(await dialog.confirm('Archiver cette recette planifiée ? Elle sortira du planning actif et restera consultable dans les recettes archivées, en cuisine.'))) {
+      return;
+    }
+    setArchiving(true);
+    const { error } = await createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id);
+    if (error) {
+      dialog.alert('Erreur lors de l’archivage : ' + error.message);
+      setArchiving(false);
+      return;
+    }
+    router.push('/en-cuisine');
+    router.refresh();
+  }
 
   async function start() {
     if (!writeGuard('Démarrage d’une exécution')) return;
@@ -123,10 +144,19 @@ export function PlanNoticeBanner({ text, plan, autoStart = false }: { text: stri
   return (
     <>
       <div className="relative mb-8 border border-primary/30 bg-surface-container-low rounded-xl px-6 py-4 flex flex-col gap-2">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={archive}
+            disabled={archiving}
+            title="Archiver cette recette planifiée"
+            className="flex items-center justify-center w-8 h-8 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors disabled:opacity-60"
+          >
+            <span className="material-symbols-outlined text-[19px]">archive</span>
+          </button>
           <PlanEditButton />
         </div>
-        <div className="flex items-start gap-3 flex-wrap pr-8">
+        <div className="flex items-start gap-3 flex-wrap pr-16">
           <span className="material-symbols-outlined text-primary">event_available</span>
           <div className="flex flex-col gap-1">
             <span className="font-body-md text-on-surface">{text}</span>

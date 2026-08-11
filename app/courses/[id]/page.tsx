@@ -5,6 +5,7 @@ import { getShoppingList } from '@/lib/shopping';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { ShoppingItems } from '@/components/ShoppingItems';
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const list = Number.isFinite(Number(id)) ? await getShoppingList(Number(id)) : null;
-  return { title: `${list?.name ?? 'Liste de courses'} | Maryse Club` };
+  return { title: `${list?.name ?? 'Liste de courses'} | Je pâtisse !` };
 }
 
 export default async function CoursesPage({ params }: Params) {
@@ -27,12 +28,12 @@ export default async function CoursesPage({ params }: Params) {
 
   return (
     <>
-      <Header current="/profil#courses" />
-      <main className="max-w-[800px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+      <Header current="cuisine" />
+      <main className="max-w-[800px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-28 lg:pb-12">
         {!list ? (
           <>
             <nav className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-8">
-              <Link className="hover:text-primary" href="/profil#courses">
+              <Link className="hover:text-primary" href="/en-cuisine">
                 Mes listes de courses
               </Link>
               <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -53,6 +54,7 @@ export default async function CoursesPage({ params }: Params) {
           />
         )}
       </main>
+      <MobileNav current="cuisine" />
     </>
   );
 }

@@ -107,12 +107,12 @@ export function ShoppingItems({
     if (!leaving.current) return;
     if (!isRefreshPending) {
       leaving.current = false;
-      router.push('/profil#courses');
+      router.push('/en-cuisine');
       return;
     }
     const safety = setTimeout(() => {
       leaving.current = false;
-      router.push('/profil#courses');
+      router.push('/en-cuisine');
     }, LEAVE_SAFETY_DELAY);
     return () => clearTimeout(safety);
   }, [isRefreshPending, router]);
@@ -212,7 +212,7 @@ export function ShoppingItems({
   return (
     <>
       <nav className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-8">
-        <Link className="hover:text-primary" href="/profil#courses" onClick={goToList}>
+        <Link className="hover:text-primary" href="/en-cuisine" onClick={goToList}>
           Mes listes de courses
         </Link>
         <span className="material-symbols-outlined text-[14px]">chevron_right</span>

@@ -135,7 +135,13 @@ export default async function RecherchePage({
                     <section key={i} className="mb-12">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {block.map((r) => (
-                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
+                          <RecipeCard
+                            key={r.id}
+                            recipe={r}
+                            isFav={favIds.has(r.id)}
+                            isOwner={!!user && r.author_id === user.id}
+                            showPlan={!!user}
+                          />
                         ))}
                       </div>
                       {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le
