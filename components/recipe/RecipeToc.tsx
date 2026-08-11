@@ -16,7 +16,7 @@
 // **choisi par l'écran hôte** (prop `mobile`) et non automatique : un écran qui
 // a déjà quelque chose de fixe en bas doit dire quoi dégager (`mobileInset`),
 // sans quoi le bouton flottant vient se poser dessus.
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useToc } from '@/lib/use-toc';
 import { useRailTooltip } from '@/lib/use-rail-tooltip';
 import { BottomSheet } from '@/components/BottomSheet';
@@ -91,7 +91,11 @@ export type TocActionVariant = 'outline' | 'outline-strong' | 'filled' | 'outlin
 
 export type TocAction = {
   id: string;
-  icon: string;
+  // Nom d'icône Material Symbols (ligature), ou un glyphe posé tel quel
+  // (ex. PlanningIcon, pour rester visuellement identique au picto de
+  // planification utilisé ailleurs) — dans ce second cas la police
+  // material-symbols-outlined ne doit pas s'appliquer au badge, cf. rendu.
+  icon: string | ReactNode;
   // Sert à la fois d'aria-label et de texte du tooltip : les deux doivent
   // rester identiques pour un lecteur d'écran comme à la souris.
   label: string;
@@ -239,7 +243,10 @@ export function RecipeToc({
               onFocus={(e) => showTip(e.currentTarget, a.label)}
               onBlur={hideTip}
             >
-              <span className={`badge variant-${a.variant} material-symbols-outlined`} aria-hidden="true">
+              <span
+                className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
+                aria-hidden="true"
+              >
                 {a.icon}
               </span>
               <span className="lbl">{a.label}</span>
@@ -339,7 +346,10 @@ export function RecipeToc({
                   }}
                   disabled={a.disabled}
                 >
-                  <span className={`badge variant-${a.variant} material-symbols-outlined`} aria-hidden="true">
+                  <span
+                    className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
+                    aria-hidden="true"
+                  >
                     {a.icon}
                   </span>
                   <span className="lbl">{a.label}</span>

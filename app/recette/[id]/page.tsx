@@ -33,7 +33,6 @@ import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { PlanWidget } from '@/components/recipe/PlanWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
-import { PlanTimeBadge } from '@/components/recipe/PlanTimeBadge';
 import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
 import { PlanNotes } from '@/components/recipe/PlanNotes';
 import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
@@ -495,10 +494,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="print-fs-11 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {label}
                   </span>
-                  <span className="print-fs-11 font-body-lg text-body-lg font-bold text-primary flex items-center gap-2">
-                    {v ? formatTime(v) : '—'}
-                    {label === 'Durée totale' && <PlanTimeBadge />}
-                  </span>
+                  <span className="print-fs-11 font-body-lg text-body-lg font-bold text-primary">{v ? formatTime(v) : '—'}</span>
                 </div>
               ))}
             </div>
