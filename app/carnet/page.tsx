@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
@@ -46,7 +47,8 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [{ items, counts, statusCounts }, favIds, importsEnAttente] = await Promise.all([
+  const [readOnly, { items, counts, statusCounts }, favIds, importsEnAttente] = await Promise.all([
+    isReadOnlySession(),
     getCarnetData(user.id),
     getFavoriteIds(),
     countImportsEnAttente(user.id),
@@ -57,33 +59,33 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
     <>
       <Header current="carnet" />
       <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
-        {/* Importer avant Créer : l'import est le geste d'entrée dominant pour
-            un carnet neuf. Le bouton Créer de l'en-tête global reste par
-            ailleurs en place, il sert depuis les autres pages — celui-ci est
-            propre au carnet. */}
         <div className="flex flex-wrap items-end justify-between gap-5 pb-9 pt-12">
-          <div>
-            <p className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">Mon carnet</p>
-            <h1 className="font-headline-lg text-[30px] leading-tight text-primary md:text-[42px]">
-              Tout ce qui est une recette à moi
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/importer"
-              prefetch={false}
-              className="flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container"
-            >
-              <span className="material-symbols-outlined text-[18px]">upload_file</span> Importer
-            </Link>
-            <Link
-              href="/creer"
-              prefetch={false}
-              className="flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span> Créer
-            </Link>
-          </div>
+          <h1 className="font-headline-lg text-[30px] leading-tight text-primary md:text-[42px]">
+            Mon carnet de recettes
+          </h1>
+          {/* Masqués en session « en tant que » lecture seule — même garde que
+              l'ancien bouton Créer de l'en-tête, dont c'est maintenant la
+              seule maison (README « en-tête » : « les entrées de création
+              sont masquées »). Importer avant Créer : l'import est le geste
+              d'entrée dominant pour un carnet neuf. */}
+          {!readOnly && (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/importer"
+                prefetch={false}
+                className="flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container"
+              >
+                <span className="material-symbols-outlined text-[18px]">upload_file</span> Importer
+              </Link>
+              <Link
+                href="/creer"
+                prefetch={false}
+                className="flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span> Créer
+              </Link>
+            </div>
+          )}
         </div>
         <CarnetToolbar params={params} counts={counts} statusCounts={statusCounts} />
         <CarnetContent

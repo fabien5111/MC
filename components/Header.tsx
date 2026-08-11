@@ -2,9 +2,9 @@
 //
 // Quatre destinations, les mêmes que la barre basse (`lib/nav.ts`). Ce qui
 // n'est pas une destination n'est pas dans la liste :
-//  - **Créer** est une action — bouton plein au bureau, bouton rond de 32 px
-//    sur mobile. Pas de bouton flottant : il entrerait en collision avec celui
-//    du sommaire des fiches recette, posé au même coin.
+//  - **Créer** n'a plus de bouton ici — il ferait doublon avec celui d'en-tête
+//    de `/carnet`, sa vraie maison (on crée une recette pour l'ajouter à son
+//    carnet). Atteignable via Mon carnet, dans les deux chromes.
 //  - **Compte** est un tiroir, ouvert par l'avatar (`AccountMenuButton`). Sur
 //    mobile il est ouvert par la cinquième fente de la barre basse, d'où
 //    l'avatar masqué ici en dessous du seuil.
@@ -13,7 +13,6 @@
 // pré-masquage CSS ni de flash au chargement.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/auth';
-import { isReadOnlySession } from '@/lib/impersonation';
 import { hasActiveExecutions } from '@/lib/executions';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
@@ -25,8 +24,6 @@ export async function Header({ current }: { current?: NavKey }) {
   const profile = user ? await getProfile(user.id) : null;
   const admin = user ? await isAdmin(user.id) : false;
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
-  // Impersonation en lecture seule : les entrées de création sont masquées.
-  const readOnly = await isReadOnlySession();
   // Pastille d'« En cuisine » : présente dès qu'une session tourne, **sans
   // chiffre** — le compte se lit dans l'écran, pas dans le menu.
   const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
@@ -71,30 +68,6 @@ export async function Header({ current }: { current?: NavKey }) {
           <HeaderSearch suggestions={suggestions} />
           {user ? (
             <>
-              {!readOnly && (
-                <>
-                  {/* Bureau : bouton plein libellé. */}
-                  <Link
-                    href="/creer"
-                    prefetch={false}
-                    className="hidden lg:flex items-center gap-1 bg-primary text-on-primary pl-3 pr-4 py-2 rounded-pill font-label-md text-label-md whitespace-nowrap hover:shadow-lg transition-all active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">add</span> Créer
-                  </Link>
-                  {/* Mobile : le même geste, réduit au signe. Il était jusqu'ici
-                      masqué sous 640 px (`hidden sm:flex`), ce qui privait de
-                      création tous les téléphones — la barre basse, elle, est
-                      pleine à cinq fentes. */}
-                  <Link
-                    href="/creer"
-                    prefetch={false}
-                    aria-label="Créer une recette"
-                    className="lg:hidden flex h-8 w-8 items-center justify-center rounded-pill bg-primary text-on-primary transition-all active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-[19px]">add</span>
-                  </Link>
-                </>
-              )}
               <AccountMenuButton
                 className="hidden lg:block"
                 data={{

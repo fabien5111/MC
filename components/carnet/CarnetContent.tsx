@@ -129,9 +129,6 @@ function MineCard({
             <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">
               {r.is_public === false ? 'Privée' : 'Publique'}
             </span>
-            {item.imported && (
-              <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-secondary">Importée</span>
-            )}
           </div>
         </div>
       </Link>
