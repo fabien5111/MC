@@ -24,11 +24,21 @@ async function fetchGoneSlugs(): Promise<Set<string>> {
   return new Set(data.map((r) => r.slug));
 }
 
+// Tolérant aux pannes, comme `getImpersonationContext` : tant que la
+// migration du 410 (fonction `gone_article_slugs`) n'est pas passée en base,
+// ou en cas d'incident réseau, le middleware ne doit jamais faire tomber
+// TOUTES les pages d'article — au pire, un article dépublié réapparaît en 404
+// au lieu de 410 le temps de la corriger.
 export async function isGoneSlug(slug: string): Promise<boolean> {
-  if (!cache || cache.expiresAt <= Date.now()) {
-    cache = { slugs: await fetchGoneSlugs(), expiresAt: Date.now() + TTL_MS };
+  try {
+    if (!cache || cache.expiresAt <= Date.now()) {
+      cache = { slugs: await fetchGoneSlugs(), expiresAt: Date.now() + TTL_MS };
+    }
+    return cache.slugs.has(slug);
+  } catch (err) {
+    console.error('Middleware blog : échec de la détection des articles dépubliés', err);
+    return false;
   }
-  return cache.slugs.has(slug);
 }
 
 // Route `/blog/<slug>` uniquement — jamais `/blog`, `/blog/rss.xml`, ni les
