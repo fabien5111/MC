@@ -3,13 +3,12 @@
 // partage de lien et retour arrière restituent le même filtrage. Pas de
 // filtrage client sur une grille entièrement rendue.
 
-export const SCOPES = ['all', 'mine', 'import', 'fav', 'sub'] as const;
+export const SCOPES = ['all', 'mine', 'fav', 'sub'] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const SCOPE_LABELS: Record<Scope, string> = {
   all: 'Tout',
-  mine: 'Mes créations',
-  import: 'Importées',
+  mine: 'Mes recettes',
   fav: 'Favoris',
   sub: 'Mes abonnements',
 };
@@ -36,9 +35,9 @@ export const SORT_LABELS: Record<CarnetSortKey, string> = {
 
 export type CarnetParams = {
   scope: Scope;
-  // Le statut n'a de sens que sur mes propres recettes (mine/import/all) —
-  // ce sont les recettes des autres sur favoris/abonnements, leur statut ne
-  // me regarde pas (cf. CLAUDE.md « Mon carnet »).
+  // Le statut n'a de sens que sur mes propres recettes (mine/all) — ce sont
+  // les recettes des autres sur favoris/abonnements, leur statut ne me
+  // regarde pas (cf. CLAUDE.md « Mon carnet »).
   statut: Status;
   q: string;
   tri: CarnetSortKey;

@@ -20,8 +20,7 @@ export const dynamic = 'force-dynamic';
 
 const EMPTY_MESSAGES: Record<Scope, string> = {
   all: 'Votre carnet est vide. Créez votre première recette ou importez-en une.',
-  mine: "Aucune création pour l'instant. Ouvrez « Créer » pour commencer.",
-  import: 'Aucune recette importée pour le moment.',
+  mine: 'Aucune recette pour l’instant. Créez-en une ou importez-en une.',
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
 };
