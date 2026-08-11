@@ -1017,6 +1017,75 @@ body[data-impersonation] {
   }
 }
 
+/* ---- Corps de l'éditeur du blog (components/admin/BlogEditor.tsx) --------
+   Reprend la typographie du rendu public (components/blog/ArticleBody.tsx) à
+   l'identique : c'est ce que l'auteur doit voir en écrivant, pas une
+   approximation qui changerait de taille à la publication. */
+.blog-ed .ProseMirror {
+  outline: none;
+}
+.blog-ed .ProseMirror p {
+  font-size: 16.5px;
+  line-height: 1.75;
+  color: #3a2f30;
+  margin-bottom: 18px;
+}
+.blog-ed .ProseMirror h2 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 27px;
+  color: #300a12;
+  margin: 40px 0 12px;
+}
+.blog-ed .ProseMirror h3 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  font-size: 20px;
+  color: #300a12;
+  margin: 28px 0 8px;
+}
+.blog-ed .ProseMirror ul,
+.blog-ed .ProseMirror ol {
+  margin: 0 0 18px 0;
+  padding-left: 20px;
+}
+.blog-ed .ProseMirror li {
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: #3a2f30;
+  margin-bottom: 9px;
+}
+.blog-ed .ProseMirror blockquote {
+  border-left: 2px solid #300a12;
+  padding-left: 20px;
+  margin: 28px 0;
+  color: #514345;
+  font-style: italic;
+}
+.blog-ed .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 24px 0;
+}
+.blog-ed .ProseMirror td,
+.blog-ed .ProseMirror th {
+  border: 1px solid #d6c2c3;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.blog-ed .ProseMirror th {
+  background: #fbeae9;
+  text-align: left;
+}
+/* Placeholder du premier paragraphe vide (@tiptap/extension-placeholder). */
+.blog-ed .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #847374;
+  pointer-events: none;
+  height: 0;
+}
+
 /* Aperçu de l'écran d'invitation (README « Écran 4 ») : un vrai écran,
    estompé vers le bas et inerte — on comprend l'intérêt sans pouvoir s'en
    servir. `pointer-events: none` sur le contenu, pas sur le conteneur : le

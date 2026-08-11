@@ -60,7 +60,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
 
   return (
     <>
-      <Header current="explorer" />
+      <Header />
       <main className="mb-24 pb-8">
         {/* ── Bannière + identité ─────────────────────────────────────── */}
         <section className="relative">

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getListEntries, getMolds, getMoldTypes } from '@/lib/admin';
 import { SECTIONS } from '@/lib/admin-lists-config';
 import { ListsManager } from '@/components/admin/ListsManager';
@@ -10,6 +11,7 @@ const ORDER: Record<string, string> = { recipe_types: 'id', difficulties: 'level
 const REGULAR_SECTIONS = SECTIONS.filter((s) => s.table !== 'molds');
 
 export default async function AdminListesPage() {
+  await requireFullAdmin(); // référentiels du site : admin complet
   const [entries, molds, moldTypes] = await Promise.all([
     Promise.all(REGULAR_SECTIONS.map((s) => getListEntries(s.table, ORDER[s.table] || 'name'))),
     getMolds(),

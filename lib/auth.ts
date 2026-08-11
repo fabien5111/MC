@@ -4,6 +4,7 @@
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { MANAGER_LANDING } from '@/lib/admin-access';
 import type { Database } from '@/lib/database.types';
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -40,12 +41,45 @@ export const getProfile = cache(async (userId: string): Promise<Profile | null> 
   return data ?? null;
 });
 
-// Admin = profiles.role === 'admin' (la base live utilise `role`).
-// Mémoïsé par requête (React cache), même raison que getProfile ci-dessus.
-export const isAdmin = cache(async (userId: string): Promise<boolean> => {
+// Rôles applicatifs, portés par `profiles.role` (colonne texte de la base
+// live — pas d'enum PostgreSQL, comme `recipes.status`) :
+//
+// - `admin`        — accès complet : tout le back-office, plus les privilèges
+//                    d'édition disséminés dans le site (publication directe
+//                    d'une recette, création de référentiels depuis l'éditeur,
+//                    « connexion en tant que »…).
+// - `gestionnaire` — back-office restreint : modération des recettes et
+//                    rédaction du blog. Ni membres, ni référentiels, ni
+//                    paramètres du site, ni impersonation.
+// - toute autre valeur (`member`, null…) — membre ordinaire.
+//
+// Une valeur inconnue est traitée comme la plus restrictive.
+export type AppRole = 'admin' | 'gestionnaire' | 'membre';
+
+// Rôle de l'utilisateur donné. Mémoïsé par requête (React cache) : les gardes
+// de page, le Header et la barre latérale d'admin partagent un seul appel.
+export const getRole = cache(async (userId: string): Promise<AppRole> => {
   const supabase = await createClient();
   const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
-  return data?.role === 'admin';
+  if (data?.role === 'admin') return 'admin';
+  if (data?.role === 'gestionnaire') return 'gestionnaire';
+  return 'membre';
+});
+
+// Admin complet. Ne couvre PAS le gestionnaire : tous les appels existants
+// (publication directe, création de tags/ingrédients, régie publicitaire…)
+// gardent donc exactement le sens qu'ils avaient avant l'ajout du rôle.
+export const isAdmin = cache(async (userId: string): Promise<boolean> => {
+  return (await getRole(userId)) === 'admin';
+});
+
+// Accès au back-office : admin complet ou gestionnaire. C'est la garde du
+// layout `/admin` ; le périmètre réellement ouvert au gestionnaire est
+// déclaré dans `lib/admin-access.ts` et refermé page par page par
+// `requireAdmin()`.
+export const isManager = cache(async (userId: string): Promise<boolean> => {
+  const role = await getRole(userId);
+  return role === 'admin' || role === 'gestionnaire';
 });
 
 // Exige un admin ; redirige sinon. Renvoie l'utilisateur.
@@ -53,6 +87,23 @@ export async function requireAdmin(): Promise<User> {
   const user = await requireUser();
   if (!(await isAdmin(user.id))) redirect('/');
   return user;
+}
+
+// Exige un accès au back-office (admin ou gestionnaire) ; redirige sinon.
+export async function requireManager(): Promise<User> {
+  const user = await requireUser();
+  if (!(await isManager(user.id))) redirect('/');
+  return user;
+}
+
+// Garde des écrans du back-office réservés à l'admin complet. Un gestionnaire
+// n'est pas renvoyé à l'accueil mais à son propre point d'entrée : il a bien
+// accès à la console, simplement pas à cet écran-là.
+export async function requireFullAdmin(): Promise<User> {
+  const user = await requireUser();
+  const role = await getRole(user.id);
+  if (role === 'admin') return user;
+  redirect(role === 'gestionnaire' ? MANAGER_LANDING : '/');
 }
 
 // Photo à afficher : photo « site » (data-URL dans profiles.avatar_url) en

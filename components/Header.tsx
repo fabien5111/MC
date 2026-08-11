@@ -12,7 +12,7 @@
 // L'état de connexion est résolu côté serveur (session cookie) — pas de
 // pré-masquage CSS ni de flash au chargement.
 import Link from 'next/link';
-import { getCurrentUser, getProfile, isAdmin, resolveAvatarUrl } from '@/lib/auth';
+import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
 import { hasActiveExecutions } from '@/lib/executions';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
@@ -22,7 +22,10 @@ import { DESTINATIONS, type NavKey } from '@/lib/nav';
 export async function Header({ current }: { current?: NavKey }) {
   const user = await getCurrentUser();
   const profile = user ? await getProfile(user.id) : null;
-  const admin = user ? await isAdmin(user.id) : false;
+  // Accès au back-office (lien « Administration » du tiroir Compte) : admin
+  // complet ou gestionnaire. `/admin` redirige lui-même un gestionnaire vers
+  // son point d'entrée (il n'a pas le tableau de bord).
+  const backOffice = user ? await isManager(user.id) : false;
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
   // Pastille d'« En cuisine » : présente dès qu'une session tourne, **sans
   // chiffre** — le compte se lit dans l'écran, pas dans le menu.
@@ -67,17 +70,15 @@ export async function Header({ current }: { current?: NavKey }) {
         <div className="flex items-center gap-3 shrink-0">
           <HeaderSearch suggestions={suggestions} />
           {user ? (
-            <>
-              <AccountMenuButton
-                className="hidden lg:block"
-                data={{
-                  name: profile?.full_name || user.email || 'Mon compte',
-                  avatarUrl,
-                  isAdmin: admin,
-                  handle: profile?.username || user.id,
-                }}
-              />
-            </>
+            <AccountMenuButton
+              className="hidden lg:block"
+              data={{
+                name: profile?.full_name || user.email || 'Mon compte',
+                avatarUrl,
+                isManager: backOffice,
+                handle: profile?.username || user.id,
+              }}
+            />
           ) : (
             <>
               {/* Visiteur : les quatre destinations restent visibles et sans

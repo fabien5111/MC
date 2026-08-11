@@ -251,7 +251,11 @@ export function MembersManager({ members }: { members: Member[] }) {
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 items-start">
                         {m.plan === 'paid' ? badge('bg-secondary-container text-on-secondary-container', 'Payant') : badge('bg-outline-variant text-on-surface-variant', 'Free')}
-                        {m.role === 'admin' ? badge('bg-primary-fixed text-on-primary-fixed', 'Admin') : badge('bg-surface-container text-on-surface-variant', 'Membre')}
+                        {m.role === 'admin'
+                          ? badge('bg-primary-fixed text-on-primary-fixed', 'Admin')
+                          : m.role === 'gestionnaire'
+                            ? badge('bg-secondary-container text-on-secondary-container', 'Gestionnaire')
+                            : badge('bg-surface-container text-on-surface-variant', 'Membre')}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center text-sm font-medium text-on-surface">{m.profileId ? m.recipeCount : '—'}</td>
@@ -463,6 +467,7 @@ function InviteCard({ members, onInvited }: { members: Member[]; onInvited: () =
             <label className={LABEL}>Rôle</label>
             <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full border-b border-outline-variant bg-transparent py-2 text-sm focus:outline-none focus:border-primary">
               <option value="member">Membre</option>
+              <option value="gestionnaire">Gestionnaire</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -533,18 +538,26 @@ function EditPanel({
     setBusy(true);
     const supabase = createClient();
     const fields = { status, role, plan, is_demo: isDemo, notes: notes.trim() || null };
+    // Les deux lignes sont mises à jour quand elles existent toutes les deux.
+    // La fiche affiche en priorité le rôle de l'allowlist (`getAllowlistMembers`)
+    // alors que les droits réels se lisent dans `profiles.role` (`lib/auth.ts`) :
+    // n'écrire que dans l'allowlist changeait le badge d'un membre déjà inscrit
+    // sans rien changer à ses droits.
     // `impersonation_access` n'existe que sur les profils (pas sur l'allowlist) :
     // il ne se règle donc que pour un membre déjà inscrit.
-    const { error } = member.allowlistId
-      ? await supabase.from('allowlist').update(fields).eq('id', member.allowlistId)
-      : member.profileId
-        ? await withImpersonationSchema(supabase)
-            .from('profiles')
-            .update({ ...fields, impersonation_access: impAccess })
-            .eq('id', member.profileId)
-        : { error: new Error('Membre introuvable') };
+    let error: { message: string } | null = null;
+    if (member.allowlistId) {
+      ({ error } = await supabase.from('allowlist').update(fields).eq('id', member.allowlistId));
+    }
+    if (!error && member.profileId) {
+      ({ error } = await withImpersonationSchema(supabase)
+        .from('profiles')
+        .update({ ...fields, impersonation_access: impAccess })
+        .eq('id', member.profileId));
+    }
+    if (!member.allowlistId && !member.profileId) error = { message: 'Membre introuvable' };
     if (error) {
-      dialog.alert('Erreur : ' + (error as { message: string }).message);
+      dialog.alert('Erreur : ' + error.message);
       setBusy(false);
       return;
     }
@@ -595,8 +608,15 @@ function EditPanel({
       <Row label="Rôle">
         <select value={role} onChange={(e) => setRole(e.target.value)} className={FIELD}>
           <option value="member">Membre</option>
+          <option value="gestionnaire">Gestionnaire</option>
           <option value="admin">Admin</option>
         </select>
+        {role === 'gestionnaire' && (
+          <span className="text-[11px] text-on-surface-variant mt-1 block">
+            Accès restreint au back-office : modération des recettes et rédaction du blog.
+            Ni membres, ni référentiels, ni paramètres du site.
+          </span>
+        )}
       </Row>
       <Row label="Plan">
         <select value={plan} onChange={(e) => setPlan(e.target.value)} className={FIELD}>

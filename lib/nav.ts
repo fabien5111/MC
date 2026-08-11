@@ -24,7 +24,7 @@ export const CHROME = {
   query: '(min-width: 1024px)',
 } as const;
 
-export type NavKey = 'accueil' | 'explorer' | 'carnet' | 'cuisine';
+export type NavKey = 'accueil' | 'blog' | 'carnet' | 'cuisine';
 
 export type Destination = {
   key: NavKey;
@@ -40,7 +40,7 @@ export type Destination = {
 
 export const DESTINATIONS: readonly Destination[] = [
   { key: 'accueil', href: '/', label: 'Accueil', shortLabel: 'Accueil', icon: 'home' },
-  { key: 'explorer', href: '/recherche', label: 'Explorer', shortLabel: 'Explorer', icon: 'travel_explore' },
+  { key: 'blog', href: '/blog', label: 'Le blog', shortLabel: 'Le blog', icon: 'article' },
   { key: 'carnet', href: '/carnet', label: 'Mon carnet', shortLabel: 'Carnet', icon: 'menu_book' },
   { key: 'cuisine', href: '/en-cuisine', label: 'En cuisine', shortLabel: 'En cuisine', icon: null },
 ];
@@ -50,12 +50,13 @@ export const DESTINATIONS: readonly Destination[] = [
 // Sert de repli aux pages qui ne passent pas `current` explicitement, et
 // rattache les écrans satellites à la destination dont ils dépendent : une
 // liste de courses appartient à « En cuisine », une relecture d'import au
-// « Carnet ». Les écrans sans destination (fiche recette, éditeur, réglages)
-// renvoient `undefined` — aucune entrée n'est alors soulignée, ce qui est la
-// bonne réponse : ils ne sont dans aucune des quatre.
+// « Carnet ». Les écrans sans destination (fiche recette, éditeur, réglages,
+// recherche avancée — la loupe de l'en-tête y mène sans passer par une des
+// quatre destinations) renvoient `undefined` — aucune entrée n'est alors
+// soulignée, ce qui est la bonne réponse : ils ne sont dans aucune des quatre.
 export function navKeyForPath(pathname: string): NavKey | undefined {
   if (pathname === '/') return 'accueil';
-  if (pathname.startsWith('/recherche')) return 'explorer';
+  if (pathname.startsWith('/blog')) return 'blog';
   if (pathname.startsWith('/carnet') || pathname.startsWith('/importer') || pathname.startsWith('/relecture'))
     return 'carnet';
   if (

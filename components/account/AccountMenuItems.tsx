@@ -17,7 +17,10 @@ import { createClient } from '@/lib/supabase/client';
 export type AccountMenuData = {
   name: string;
   avatarUrl: string | null;
-  isAdmin: boolean;
+  // Admin complet OU gestionnaire (cf. lib/auth.ts `isManager()`) : les deux
+  // ont un lien « Administration », vers un `/admin` dont le périmètre réel
+  // se referme lui-même par écran (lib/admin-access.ts).
+  isManager: boolean;
   // Nom d'utilisateur choisi, ou identifiant de compte à défaut — c'est ce qui
   // rend l'en-tête du tiroir cliquable vers `/u/[handle]`. `null` seulement si
   // aucun des deux n'est disponible, ce qui ne devrait pas arriver pour un
@@ -99,7 +102,7 @@ export function AccountMenuItems({
         <Link href="/reglages" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
           <span className="material-symbols-outlined text-[20px] text-outline">settings</span> Réglages du compte
         </Link>
-        {data.isAdmin && (
+        {data.isManager && (
           <Link href="/admin" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
             <span className="material-symbols-outlined text-[20px] text-outline">admin_panel_settings</span>{' '}
             Administration

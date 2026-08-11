@@ -3,12 +3,14 @@
 // les chemins d'URL et rendraient l'écran inaccessible — cf. lib/ads-config.ts.
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getAdsAdmin } from '@/lib/ads';
 import { PartnersManager } from '@/components/admin/PartnersManager';
 
 export const metadata: Metadata = { title: 'Publicités | Admin — Je pâtisse !' };
 
 export default async function AdminPartnersPage() {
+  await requireFullAdmin(); // régie publicitaire : admin complet
   const items = await getAdsAdmin();
 
   return (

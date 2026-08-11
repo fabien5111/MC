@@ -7,9 +7,13 @@ import { ImpersonationProvider } from '@/components/ImpersonationProvider';
 import { DialogProvider } from '@/components/Dialog';
 import { getImpersonationContext } from '@/lib/impersonation';
 import { APPLE_SPLASH_SCREENS } from '@/lib/apple-splash-screens';
+import { siteUrl } from '@/lib/site-url';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // Résout les URL relatives des pages (canonique, OpenGraph…) en URL
+  // absolues — sans ça, Next les résout sur `localhost:3000` au build.
+  metadataBase: new URL(siteUrl()),
   title: 'Je pâtisse !',
   description:
     'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',

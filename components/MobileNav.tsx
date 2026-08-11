@@ -13,7 +13,7 @@
 // à 768 px : entre les deux, un utilisateur voyait la barre basse **et**
 // l'en-tête bureau complet selon les pages.
 import Link from 'next/link';
-import { getCurrentUser, getProfile, resolveAvatarUrl, isAdmin } from '@/lib/auth';
+import { getCurrentUser, getProfile, resolveAvatarUrl, isManager } from '@/lib/auth';
 import { hasActiveExecutions } from '@/lib/executions';
 import { AccountSheetButton } from '@/components/account/AccountSheetButton';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
@@ -24,7 +24,9 @@ const SLOT = 'flex flex-col items-center justify-center';
 export async function MobileNav({ current }: { current?: NavKey }) {
   const user = await getCurrentUser();
   const profile = user ? await getProfile(user.id) : null;
-  const admin = user ? await isAdmin(user.id) : false;
+  // Lien « Administration » du tiroir Compte : admin complet ou gestionnaire
+  // (même garde que le lien équivalent de Header.tsx).
+  const backOffice = user ? await isManager(user.id) : false;
   const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
 
   return (
@@ -75,7 +77,7 @@ export async function MobileNav({ current }: { current?: NavKey }) {
             data={{
               name: profile?.full_name || user.email || 'Mon compte',
               avatarUrl: resolveAvatarUrl(user, profile),
-              isAdmin: admin,
+              isManager: backOffice,
               handle: profile?.username || user.id,
             }}
           />

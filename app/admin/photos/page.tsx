@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import { requireFullAdmin } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 
 export const metadata: Metadata = { title: 'Photos du site | Admin — Je pâtisse !' };
 
 export default async function AdminPhotosPage() {
+  await requireFullAdmin(); // paramètres du site : admin complet
   const banners = await getSiteSettings([
     'banner_home_web',
     'banner_home_tablette',
