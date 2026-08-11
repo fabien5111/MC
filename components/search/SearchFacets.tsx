@@ -51,6 +51,36 @@ export function SearchFacets({
   const set = (patch: Partial<SearchCriteria>, opts?: { debounce?: boolean }) =>
     onChange({ ...value, ...patch }, opts);
 
+  // ── Portée : recettes / pâtissiers ──────────────────────────────────────
+  // Décide *quoi* chercher, pas *comment* — passe donc avant les facettes de
+  // recette, qui ne s'appliquent pas à un pâtissier. Les deux cases sont
+  // cochées par défaut ; la dernière case cochée est désactivée plutôt que de
+  // permettre les deux décochées, un état sans résultat possible.
+  const scope = (
+    <div className="flex flex-col gap-1.5">
+      <label className="flex items-center gap-2.5 py-1 cursor-pointer group">
+        <input
+          type="checkbox"
+          checked={value.includeRecipes}
+          disabled={value.includeRecipes && !value.includeAuthors}
+          onChange={() => set({ includeRecipes: !value.includeRecipes })}
+          className="w-4 h-4 accent-primary disabled:opacity-40"
+        />
+        <span className="text-[14px] group-hover:text-primary transition-colors">Recettes</span>
+      </label>
+      <label className="flex items-center gap-2.5 py-1 cursor-pointer group">
+        <input
+          type="checkbox"
+          checked={value.includeAuthors}
+          disabled={value.includeAuthors && !value.includeRecipes}
+          onChange={() => set({ includeAuthors: !value.includeAuthors })}
+          className="w-4 h-4 accent-primary disabled:opacity-40"
+        />
+        <span className="text-[14px] group-hover:text-primary transition-colors">Pâtissiers</span>
+      </label>
+    </div>
+  );
+
   // ── Ingrédients ────────────────────────────────────────────────────────
   const ingredients = (
     <IngredientPicker value={value} onChange={onChange} compact={sheet} showLegend={!sheet} />
@@ -189,6 +219,7 @@ export function SearchFacets({
   if (!sheet) {
     return (
       <div className="divide-y divide-outline-variant/50">
+        <Block title="Rechercher parmi">{scope}</Block>
         <Block>{ingredients}</Block>
         <Block>{categories}</Block>
         <Block title="Type de recette">{type}</Block>
@@ -208,6 +239,10 @@ export function SearchFacets({
 
   return (
     <div className="divide-y divide-outline-variant/50">
+      <div className="py-5">
+        <p className="facet-h mb-3">Rechercher parmi</p>
+        {scope}
+      </div>
       <div className="py-5">{ingredients}</div>
       <div className="py-5">
         <div className="flex items-baseline justify-between mb-4">

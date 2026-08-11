@@ -9,11 +9,11 @@
 // Lecture seule, RLS appliquée via la session (mêmes policies que la page).
 import { NextResponse } from 'next/server';
 import { parseSearchCriteria } from '@/lib/search-params';
-import { countAdvanced } from '@/lib/search';
+import { countAdvancedAll } from '@/lib/search';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const raw = Object.fromEntries(searchParams.entries());
-  const total = await countAdvanced(parseSearchCriteria(raw));
-  return NextResponse.json({ total });
+  const { total, authorTotal } = await countAdvancedAll(parseSearchCriteria(raw));
+  return NextResponse.json({ total, authorTotal });
 }

@@ -12,6 +12,7 @@ import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { RecipeToc, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 
 export function RecetteToc({
   recipeId,
@@ -64,7 +65,11 @@ export function RecetteToc({
       : []),
     {
       id: 'plan',
-      icon: 'calendar_today',
+      // Même picto que la planification ailleurs sur le site (cartes recette,
+      // carnet) — pas l'icône Material générique `calendar_today` que
+      // portaient les autres entrées de ce rail, pour que ce déclencheur se
+      // reconnaisse au premier coup d'œil comme le même geste.
+      icon: <PlanningIcon size={20} discFill={DISC.surface} />,
       label: 'Planifier',
       variant: 'outline' as const,
       onClick: () => (open && !editMode ? close() : openCreate()),

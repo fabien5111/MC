@@ -115,30 +115,28 @@ export default async function HomePage() {
                 Recette de la Semaine
               </span>
             </div>
-            <div className="luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
+            <div className="relative luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
-                  <Link href={`/recette/${featured.id}`} className="block group h-full">
-                    <div className="w-full h-full bg-surface-container">
-                      {featured.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img
-                          src={featured.hero_image_url}
-                          alt={featured.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                          <span className="material-symbols-outlined text-6xl">cake</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute top-6 left-6 hidden md:block">
-                      <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
-                        Recette de la Semaine
-                      </span>
-                    </div>
-                  </Link>
+                  <div className="w-full h-full bg-surface-container">
+                    {featured.hero_image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                      <img
+                        src={featured.hero_image_url}
+                        alt={featured.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-6xl">cake</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute top-6 left-6 hidden md:block">
+                    <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
+                      Recette de la Semaine
+                    </span>
+                  </div>
                   <FavoriteHeart
                     recipeId={featured.id}
                     initialFav={favIds.has(featured.id)}
@@ -205,14 +203,13 @@ export default async function HomePage() {
                     )}
                   </div>
                   <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
-                  <Link
-                    href={`/recette/${featured.id}`}
-                    className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start"
-                  >
-                    Voir la recette
-                  </Link>
                 </div>
               </div>
+              <Link
+                href={`/recette/${featured.id}`}
+                className="absolute inset-0 z-0"
+                aria-label={featured.title}
+              />
             </div>
           </section>
         )}

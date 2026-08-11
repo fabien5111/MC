@@ -25,7 +25,25 @@ import {
 } from '@/lib/search-params';
 import type { FacetRefs } from '@/components/search/SearchFacets';
 
-export function SearchSummary({ total, refs }: { total: number; refs: FacetRefs }) {
+// Reflète la portée choisie (Recettes / Pâtissiers / les deux) — jamais
+// « X recettes » quand l'utilisateur a décoché les recettes pour ne chercher
+// que des pâtissiers.
+function summaryLabel(criteria: SearchCriteria, total: number, authorTotal: number): string {
+  const recipesLabel = `${total} recette${total > 1 ? 's' : ''}`;
+  const authorsLabel = `${authorTotal} pâtissier${authorTotal > 1 ? 's' : ''}`;
+  if (criteria.includeRecipes && criteria.includeAuthors) return `${recipesLabel} · ${authorsLabel}`;
+  return criteria.includeAuthors ? authorsLabel : recipesLabel;
+}
+
+export function SearchSummary({
+  total,
+  authorTotal,
+  refs,
+}: {
+  total: number;
+  authorTotal: number;
+  refs: FacetRefs;
+}) {
   const { criteria, update } = useSearch();
   const activeCount = countActiveCriteria(criteria);
   const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || criteria.q);
@@ -92,7 +110,7 @@ export function SearchSummary({ total, refs }: { total: number; refs: FacetRefs 
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <p className="text-[15px] text-on-surface-variant">
           <strong className="font-headline-md text-[19px] text-primary">
-            {total} recette{total > 1 ? 's' : ''}
+            {summaryLabel(criteria, total, authorTotal)}
           </strong>
           {criteria.q && <> pour «&nbsp;{criteria.q}&nbsp;»</>}
         </p>
