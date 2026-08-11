@@ -205,12 +205,6 @@ export default async function HomePage() {
                     )}
                   </div>
                   <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
-                  <Link
-                    href={`/recette/${featured.id}`}
-                    className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start"
-                  >
-                    Voir la recette
-                  </Link>
                 </div>
               </div>
             </div>
