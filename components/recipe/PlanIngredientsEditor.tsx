@@ -326,7 +326,7 @@ export function PlanIngredientsEditor({
                             <span className={MOBILE_LBL}>Orig.</span>
                             {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
                           </span>
-                          <span className="no-print flex items-center gap-1 sm:justify-self-center">
+                          <span className="no-print flex items-center gap-1 ml-auto sm:ml-0 sm:justify-self-end">
                             {expanded ? (
                               // Une ligne remplacée ne se modifie plus : elle
                               // n'entre nulle part tant que le remplacement
