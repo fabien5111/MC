@@ -60,7 +60,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       <Header current="carnet" />
       <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
         <div className="flex flex-wrap items-end justify-between gap-5 pb-9 pt-12">
-          <h1 className="font-headline-lg text-[30px] leading-tight text-primary md:text-[42px]">
+          <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[38px]">
             Mon carnet de recettes
           </h1>
           {/* Masqués en session « en tant que » lecture seule — même garde que
