@@ -35,11 +35,8 @@ export default async function BlogPage({
       <Header current="/blog" />
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pb-32">
         <div className="pt-12 pb-9 max-w-[62ch]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-outline mb-3">
-            Le blog
-          </p>
           <h1 className="font-headline-lg text-[30px] md:text-[42px] font-bold leading-tight text-primary">
-            Comprendre ce qu&apos;on fait, et pourquoi ça rate
+            Le blog
           </h1>
           <p className="text-[15px] leading-relaxed text-on-surface-variant mt-4">
             Des articles de fond sur la technique et les ingrédients, et les modes d&apos;emploi du
