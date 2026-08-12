@@ -371,7 +371,12 @@ export async function POST(req: Request) {
             buildExternalSearchUserContent(phrases),
             buildExternalSearchSystemPrompt(),
             1500,
-            25_000,
+            // Jusqu'à 3 recherches + lecture des résultats, en non-streaming
+            // (rien ne revient tant que tout n'est pas fini) : 25 s s'est
+            // révélé trop juste en pratique. La modération prend en général
+            // 5-10 s, ce qui laisse de la marge dans le maxDuration = 60 de
+            // la route pour un délai plus généreux ici.
+            40_000,
             undefined,
             [own],
           );
