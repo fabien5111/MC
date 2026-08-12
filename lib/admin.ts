@@ -97,6 +97,8 @@ export type RecipeAnalysisSummary = {
   overall_flag: 'vert' | 'orange' | 'rouge' | null;
   moderation_verdict: 'clean' | 'attention' | 'bloquant' | null;
   moderation_details: { categories: RecipeAnalysisCategory[] } | null;
+  editorial_similarity_max: number | null;
+  structural_similarity_max: number | null;
   error_message: string | null;
   created_at: string;
 };
@@ -109,7 +111,10 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
   const supabase = await createClient();
   const { data, error } = await (supabase as any)
     .from('recipe_analysis')
-    .select('id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, error_message, created_at')
+    .select(
+      'id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, ' +
+        'editorial_similarity_max, structural_similarity_max, error_message, created_at',
+    )
     .in('recipe_id', recipeIds)
     .order('created_at', { ascending: false });
   if (error) {
@@ -121,6 +126,44 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
     if (!byRecipe[row.recipe_id]) byRecipe[row.recipe_id] = row;
   }
   return byRecipe;
+}
+
+export type RecipeSimilarityMatchSummary = {
+  id: number;
+  analysis_id: number;
+  source_type: 'interne' | 'externe';
+  source_recipe_id: string | null;
+  source_url: string | null;
+  source_title: string | null;
+  editorial_score: number;
+  structural_score: number;
+  longest_common_sequence: number | null;
+  matched_excerpts: { extrait_soumis: string; extrait_source: string }[] | null;
+};
+
+// Correspondances de similarité (§6.3) pour un ensemble d'analyses, groupées
+// par `analysis_id` et triées par score rédactionnel décroissant (§7 : « les
+// correspondances sont triées par editorial_score décroissant »).
+export async function getMatchesForAnalyses(analysisIds: number[]): Promise<Record<number, RecipeSimilarityMatchSummary[]>> {
+  if (!analysisIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_similarity_match')
+    .select(
+      'id, analysis_id, source_type, source_recipe_id, source_url, source_title, ' +
+        'editorial_score, structural_score, longest_common_sequence, matched_excerpts',
+    )
+    .in('analysis_id', analysisIds)
+    .order('editorial_score', { ascending: false });
+  if (error) {
+    console.error('getMatchesForAnalyses:', error.message);
+    return {};
+  }
+  const byAnalysis: Record<number, RecipeSimilarityMatchSummary[]> = {};
+  for (const row of (data ?? []) as RecipeSimilarityMatchSummary[]) {
+    (byAnalysis[row.analysis_id] ??= []).push(row);
+  }
+  return byAnalysis;
 }
 
 export async function getPendingComments(): Promise<PendingComment[]> {

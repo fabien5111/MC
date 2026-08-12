@@ -202,6 +202,21 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   return (data as unknown as RecipeFull | null) ?? null;
 }
 
+// Corpus des recettes déjà publiées, pour la similarité interne (contrôle IA
+// à la validation, §6.3 couche A/C) — jointures complètes (mêmes que
+// getRecipeFull) car ingrédients et étapes sont nécessaires à la
+// normalisation. Balayage complet du corpus à chaque analyse, sans index
+// persistant : voir la limite documentée dans lib/ai/similarity.ts.
+export async function getPublishedRecipesCorpus(excludeId: string): Promise<RecipeFull[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('recipes').select(FULL_SELECT).eq('status', 'published').neq('id', excludeId);
+  if (error) {
+    console.error('getPublishedRecipesCorpus:', error.message);
+    return [];
+  }
+  return (data as unknown as RecipeFull[]) ?? [];
+}
+
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
 // visuel d'un allergène saisi en texte libre dans une recette (rapprochement
 // par nom). Mémoïsé par requête (React cache) : plusieurs cartes sur une même

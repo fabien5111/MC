@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
-import type { AdminRecipeRow, RecipeAnalysisSummary } from '@/lib/admin';
+import type { AdminRecipeRow, RecipeAnalysisSummary, RecipeSimilarityMatchSummary } from '@/lib/admin';
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
@@ -21,10 +21,59 @@ const FLAG_STYLE: Record<string, string> = {
   rouge: 'bg-error-container text-on-error-container',
 };
 
+// Une carte de correspondance (§9) : deux jauges distinctes et libellées —
+// « le texte rédigé est l'indicateur de copie, les ingrédients/structure
+// sont informatifs » (§4.1/§4.2, vocabulaire « similarité rédactionnelle
+// élevée » plutôt que « plagiat »). La plus longue séquence commune est
+// affichée telle quelle : c'est la preuve la plus lisible pour trancher en
+// quelques secondes (§9 : « l'élément le plus important de l'écran »).
+function MatchCard({ match }: { match: RecipeSimilarityMatchSummary }) {
+  const excerpt = match.matched_excerpts?.[0]?.extrait_soumis;
+  return (
+    <div className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        {match.source_recipe_id ? (
+          <Link href={`/recette/${match.source_recipe_id}`} target="_blank" className="text-xs font-semibold text-primary hover:underline">
+            {match.source_title || 'Recette du site'}
+          </Link>
+        ) : (
+          <a href={match.source_url ?? undefined} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">
+            {match.source_title || match.source_url}
+          </a>
+        )}
+        {(match.longest_common_sequence ?? 0) > 0 && (
+          <span className="text-[11px] text-on-surface-variant">{match.longest_common_sequence} mots consécutifs identiques</span>
+        )}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Texte rédigé — indicateur de copie</p>
+          <p className="text-sm font-semibold text-on-surface">{match.editorial_score.toFixed(0)} %</p>
+        </div>
+        <div>
+          <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Ingrédients et structure</p>
+          <p className="text-sm font-semibold text-on-surface-variant">{match.structural_score.toFixed(0)} % — normal pour une recette classique</p>
+        </div>
+      </div>
+      {excerpt && (
+        <p className="mt-2 text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">« {excerpt} »</p>
+      )}
+    </div>
+  );
+}
+
 // Panneau « Analyse automatique » (§9) — verdict de modération, catégories
-// signalées avec extrait verbatim, et relance manuelle (§10). Similarité
-// rédactionnelle/structurelle hors périmètre de ce lot (étapes 2-3).
-function AnalysisPanel({ recipeId, analysis }: { recipeId: string; analysis: RecipeAnalysisSummary | undefined }) {
+// signalées avec extrait verbatim, correspondances de similarité (couche A),
+// et relance manuelle (§10).
+function AnalysisPanel({
+  recipeId,
+  analysis,
+  matches,
+}: {
+  recipeId: string;
+  analysis: RecipeAnalysisSummary | undefined;
+  matches: RecipeSimilarityMatchSummary[];
+}) {
   const { refresh } = useMutation();
   const [relancing, setRelancing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -74,6 +123,16 @@ function AnalysisPanel({ recipeId, analysis }: { recipeId: string; analysis: Rec
           {analysis?.status === 'termine' && categories.length === 0 && (
             <p className="text-on-surface-variant text-xs italic">Aucun signalement de modération.</p>
           )}
+          {matches.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wider text-on-surface-variant">
+                {matches.length} correspondance{matches.length > 1 ? 's' : ''} sur le site
+              </p>
+              {matches.map((m) => (
+                <MatchCard key={m.id} match={m} />
+              ))}
+            </div>
+          )}
           {categories.map((c, i) => (
             <div key={i} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
               <div className="flex items-center justify-between gap-2">
@@ -110,10 +169,12 @@ export function RecipesManager({
   pending,
   managed,
   analyses,
+  matches,
 }: {
   pending: AdminRecipeRow[];
   managed: AdminRecipeRow[];
   analyses: Record<string, RecipeAnalysisSummary>;
+  matches: Record<number, RecipeSimilarityMatchSummary[]>;
 }) {
   const { mutate } = useMutation();
   const dialog = useDialog();
@@ -193,7 +254,7 @@ export function RecipesManager({
       {isPending && (
         <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">
-            <AnalysisPanel recipeId={r.id} analysis={analyses[r.id]} />
+            <AnalysisPanel recipeId={r.id} analysis={analyses[r.id]} matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []} />
           </td>
         </tr>
       )}
