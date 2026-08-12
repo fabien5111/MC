@@ -28,7 +28,9 @@ const FLAG_STYLE: Record<string, string> = {
 // affichée telle quelle : c'est la preuve la plus lisible pour trancher en
 // quelques secondes (§9 : « l'élément le plus important de l'écran »).
 function MatchCard({ match }: { match: RecipeSimilarityMatchSummary }) {
+  const isExterne = match.source_type === 'externe';
   const excerpt = match.matched_excerpts?.[0]?.extrait_soumis;
+  const pageExcerpt = match.matched_excerpts?.[0]?.extrait_source;
   return (
     <div className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -45,18 +47,24 @@ function MatchCard({ match }: { match: RecipeSimilarityMatchSummary }) {
           <span className="text-[11px] text-on-surface-variant">{match.longest_common_sequence} mots consécutifs identiques</span>
         )}
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-3">
+      <div className={`mt-2 grid ${isExterne ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
         <div>
           <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Texte rédigé — indicateur de copie</p>
-          <p className="text-sm font-semibold text-on-surface">{match.editorial_score.toFixed(0)} %</p>
+          <p className="text-sm font-semibold text-on-surface">
+            {match.editorial_score.toFixed(0)} % {isExterne && <span className="font-normal text-on-surface-variant">(estimation IA, hors site)</span>}
+          </p>
         </div>
-        <div>
-          <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Ingrédients et structure</p>
-          <p className="text-sm font-semibold text-on-surface-variant">{match.structural_score.toFixed(0)} % — normal pour une recette classique</p>
-        </div>
+        {!isExterne && (
+          <div>
+            <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Ingrédients et structure</p>
+            <p className="text-sm font-semibold text-on-surface-variant">{match.structural_score.toFixed(0)} % — normal pour une recette classique</p>
+          </div>
+        )}
       </div>
       {excerpt && (
-        <p className="mt-2 text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">« {excerpt} »</p>
+        <p className="mt-2 text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">
+          « {excerpt} »{isExterne && pageExcerpt && pageExcerpt !== excerpt ? ` — page trouvée : « ${pageExcerpt} »` : ''}
+        </p>
       )}
     </div>
   );
@@ -126,12 +134,15 @@ function AnalysisPanel({
           {matches.length > 0 && (
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-wider text-on-surface-variant">
-                {matches.length} correspondance{matches.length > 1 ? 's' : ''} sur le site
+                {matches.length} correspondance{matches.length > 1 ? 's' : ''} trouvée{matches.length > 1 ? 's' : ''}
               </p>
               {matches.map((m) => (
                 <MatchCard key={m.id} match={m} />
               ))}
             </div>
+          )}
+          {analysis?.moderation_details?.external_note && (
+            <p className="text-[11px] text-on-surface-variant italic">{analysis.moderation_details.external_note}</p>
           )}
           {categories.map((c, i) => (
             <div key={i} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">

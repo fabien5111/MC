@@ -96,7 +96,9 @@ export type RecipeAnalysisSummary = {
   status: 'en_cours' | 'termine' | 'echec';
   overall_flag: 'vert' | 'orange' | 'rouge' | null;
   moderation_verdict: 'clean' | 'attention' | 'bloquant' | null;
-  moderation_details: { categories: RecipeAnalysisCategory[] } | null;
+  // `external_note` : mention explicite quand la recherche externe (§6.4)
+  // n'a pas pu être lancée ou tentée (texte trop générique, échec réseau).
+  moderation_details: { categories: RecipeAnalysisCategory[]; external_note?: string } | null;
   editorial_similarity_max: number | null;
   structural_similarity_max: number | null;
   error_message: string | null;

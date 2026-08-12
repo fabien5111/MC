@@ -1,16 +1,18 @@
 // Route Handler — contrôle IA à la validation d'une recette : modération de
-// contenu (étape 1, §6.2, annexe A) puis similarité interne (étape 2, §6.3
-// couche A + proxy couche C). Appelée automatiquement à la soumission pour
-// publication publique (CreerForm, en tâche de fond) et manuellement depuis
-// l'admin (bouton « Relancer l'analyse »). N'attend jamais la fin de
-// l'analyse pour bloquer la soumission de l'utilisateur (§5).
+// contenu (étape 1, §6.2, annexe A), similarité interne (étape 2, §6.3
+// couche A + proxy couche C) puis recherche externe (étape 3, §6.4 — sauf
+// correspondance interne déjà forte). Appelée automatiquement à la
+// soumission pour publication publique (CreerForm, en tâche de fond) et
+// manuellement depuis l'admin (bouton « Relancer l'analyse »). N'attend
+// jamais la fin de l'analyse pour bloquer la soumission de l'utilisateur (§5).
 import { NextResponse } from 'next/server';
 import { getCurrentUser, isManager } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRecipeFull, getPublishedRecipesCorpus } from '@/lib/recipes';
+import { siteUrl } from '@/lib/site-url';
 import { buildEditorialText, buildStructuralSignature, recipeContentFingerprint } from '@/lib/recipe-analysis';
-import { callClaude, MODERATION_MODEL } from '@/lib/ai/claude';
+import { callClaude, callClaudeWithWebSearch, MODERATION_MODEL } from '@/lib/ai/claude';
 import {
   MODERATION_PROMPT_VERSION,
   MODERATION_SYSTEM_PROMPT,
@@ -30,8 +32,21 @@ import {
   similarityFlag,
   combineFlags,
 } from '@/lib/ai/similarity';
+import {
+  extractSignaturePhrases,
+  buildExternalSearchSystemPrompt,
+  buildExternalSearchUserContent,
+  parseExternalMatches,
+  confidenceScore,
+} from '@/lib/ai/external-search';
 
-export const maxDuration = 30;
+// Deux appels IA séquentiels (modération puis, souvent, recherche externe) :
+// aligné sur /api/import-url, la route la plus longue existante.
+export const maxDuration = 60;
+
+// §6.4 : la recherche externe est coûteuse, on l'évite si l'étape 2 a déjà
+// trouvé une correspondance rédactionnelle forte sur le site.
+const EXTERNAL_SEARCH_SKIP_THRESHOLD = 70;
 
 // `recipe_analysis` / `recipe_similarity_match` sont absentes de
 // lib/database.types.ts tant que la migration du lot 1 n'a pas été
@@ -207,23 +222,80 @@ export async function POST(req: Request) {
     }
 
     const longestSequence = matches.reduce((max, m) => Math.max(max, m.longest_common_sequence), 0);
+
+    // --- Étape 3 (§6.4) : recherche externe, sauf correspondance interne
+    // déjà forte. Best-effort — un incident réseau ne doit pas invalider la
+    // modération et la similarité interne déjà obtenues.
+    let externalNote: string | undefined;
+    let searchesUsed = 0;
+    let externalMatchCount = 0;
+    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD) {
+      try {
+        const phrases = extractSignaturePhrases(recipe);
+        if (!phrases.length) {
+          externalNote = 'Texte trop générique pour une recherche externe fiable.';
+        } else {
+          const own = new URL(siteUrl()).hostname;
+          const webCall = await callClaudeWithWebSearch(
+            apiKey,
+            buildExternalSearchUserContent(phrases),
+            buildExternalSearchSystemPrompt(),
+            1500,
+            25_000,
+            undefined,
+            [own],
+          );
+          searchesUsed = webCall.searches;
+          call.usage.inputTokens += webCall.usage.inputTokens;
+          call.usage.outputTokens += webCall.usage.outputTokens;
+          call.usage.cacheReadTokens += webCall.usage.cacheReadTokens;
+          call.usage.cacheWriteTokens += webCall.usage.cacheWriteTokens;
+
+          const externalMatches = parseExternalMatches(webCall.text);
+          if (externalMatches.length) {
+            const rows = externalMatches.map((m) => ({
+              analysis_id: analysisId,
+              source_type: 'externe',
+              source_url: m.url,
+              source_title: m.titre,
+              // Estimation par jugement du modèle (pas de calcul déterministe
+              // faute de couche B — voir lib/ai/external-search.ts), affichée
+              // comme telle dans l'admin plutôt que comme un pourcentage mesuré.
+              editorial_score: confidenceScore(m.confiance),
+              structural_score: 0,
+              longest_common_sequence: null,
+              matched_excerpts: [{ extrait_soumis: m.phrase, extrait_source: m.extrait }],
+              detection_method: null,
+            }));
+            await matchTable(admin).insert(rows);
+            editorialMax = Math.max(editorialMax, ...rows.map((r) => r.editorial_score));
+            externalMatchCount = rows.length;
+          }
+        }
+      } catch (extError) {
+        externalNote = 'Vérification externe non effectuée.';
+        console.error('moderation-recette (recherche externe):', (extError as Error).message);
+      }
+    }
+
     const flag = combineFlags(moderationFlag(verified.verdict), similarityFlag(editorialMax, longestSequence));
 
     await analysisTable(admin)
       .update({
         status: 'termine',
         moderation_verdict: verified.verdict,
-        moderation_details: { categories: verified.categories },
+        moderation_details: { categories: verified.categories, ...(externalNote ? { external_note: externalNote } : {}) },
         moderation_prompt_version: MODERATION_PROMPT_VERSION,
         editorial_similarity_max: editorialMax,
         structural_similarity_max: structuralMax,
         overall_flag: flag,
         cost_tokens: call.usage.inputTokens + call.usage.outputTokens,
+        cost_searches: searchesUsed,
         completed_at: nowIso(),
       })
       .eq('id', analysisId);
 
-    return NextResponse.json({ analysisId, verdict: verified.verdict, flag, matches: matches.length });
+    return NextResponse.json({ analysisId, verdict: verified.verdict, flag, matches: matches.length + externalMatchCount });
   } catch (e) {
     await analysisTable(admin)
       .update({ status: 'echec', error_message: (e as Error).message, completed_at: nowIso() })

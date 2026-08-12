@@ -198,3 +198,93 @@ export async function callClaude(
     clearTimeout(timer);
   }
 }
+
+// Modèle de la recherche EXTERNE (étape 3, §6.4) — même modèle que la
+// modération : c'est la même tâche de jugement (une phrase trouvée sur une
+// page est-elle une correspondance sérieuse ?) qui bénéficie de la même
+// qualité.
+export const EXTERNAL_SEARCH_MODEL = process.env.EXTERNAL_SEARCH_MODEL || MODERATION_MODEL;
+
+export type WebSearchCall = { text: string; usage: ClaudeUsage; searches: number };
+
+// Appel avec l'outil serveur `web_search` (§6.4) : la recherche ET la
+// récupération des résultats s'exécutent côté Anthropic à l'intérieur de cet
+// unique appel HTTP — aucune file d'attente ni worker séparé n'est
+// nécessaire (jusqu'à 10 itérations d'outil serveur par défaut ; largement
+// suffisant pour 3 recherches). Non-streaming : la sortie attendue est un
+// petit JSON, pas un texte long — pas de risque de dépasser le temps imparti
+// sans rien observer, contrairement à callClaude.
+export async function callClaudeWithWebSearch(
+  apiKey: string,
+  userContent: string,
+  system: string,
+  maxTokens: number,
+  timeoutMs: number,
+  model: string = EXTERNAL_SEARCH_MODEL,
+  // Domaines à exclure des résultats (le site lui-même, §6.4 : « en
+  // excluant le domaine de "Je pâtisse !" lui-même »).
+  blockedDomains: string[] = [],
+): Promise<WebSearchCall> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: ctl.signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system,
+        tools: [
+          {
+            type: 'web_search_20260209',
+            name: 'web_search',
+            // Garde-fou §6.4 : maximum 3 requêtes de recherche par recette.
+            max_uses: 3,
+            ...(blockedDomains.length ? { blocked_domains: blockedDomains } : {}),
+          },
+        ],
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    });
+    if (!r.ok) {
+      throw new Error(`API Claude (recherche web) : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
+    }
+    const data = (await r.json()) as {
+      content?: { type: string; text?: string }[];
+      usage?: Record<string, number>;
+    };
+    const content = data.content ?? [];
+    const text = content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text ?? '')
+      .join('\n');
+    const searches = content.filter((b) => b.type === 'server_tool_use').length;
+    const u = data.usage ?? {};
+    return {
+      text,
+      usage: {
+        inputTokens: u.input_tokens ?? 0,
+        outputTokens: u.output_tokens ?? 0,
+        cacheReadTokens: u.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
+      },
+      searches,
+    };
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      throw Object.assign(
+        new Error(`API Claude (recherche web) : aucune réponse au bout de ${Math.round(timeoutMs / 1000)} s.`),
+        { code: 'TIMEOUT' },
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
