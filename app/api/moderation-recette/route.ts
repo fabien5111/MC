@@ -39,14 +39,28 @@ import {
   parseExternalMatches,
   confidenceScore,
 } from '@/lib/ai/external-search';
+import {
+  buildReformulationSystemPrompt,
+  buildReformulationUserContent,
+  parseReformulationResult,
+  reformulationScore,
+} from '@/lib/ai/reformulation';
 
-// Deux appels IA séquentiels (modération puis, souvent, recherche externe) :
-// aligné sur /api/import-url, la route la plus longue existante.
+// Jusqu'à trois appels IA supplémentaires possibles (couche B) en plus de la
+// modération et de la recherche externe : aligné sur /api/import-url pour la
+// marge, largement suffisant en pratique (couche B s'arrête dès qu'une
+// correspondance interne forte existe déjà).
 export const maxDuration = 60;
 
 // §6.4 : la recherche externe est coûteuse, on l'évite si l'étape 2 a déjà
-// trouvé une correspondance rédactionnelle forte sur le site.
+// trouvé une correspondance rédactionnelle forte sur le site — même logique
+// reprise pour la couche B ci-dessous.
 const EXTERNAL_SEARCH_SKIP_THRESHOLD = 70;
+
+// Seuil de présélection des candidats couche B (Jaccard sur les ingrédients
+// canoniques, couche C) : volontairement bas — c'est le jugement Claude qui
+// tranche ensuite entre reformulation réelle et simple parenté de plat.
+const STRUCTURAL_CANDIDATE_THRESHOLD = 0.4;
 
 // `recipe_analysis` / `recipe_similarity_match` sont absentes de
 // lib/database.types.ts tant que la migration du lot 1 n'a pas été
@@ -179,14 +193,16 @@ export async function POST(req: Request) {
       source_title: string | null;
       editorial_score: number;
       structural_score: number;
-      longest_common_sequence: number;
-      matched_excerpts: { extrait_soumis: string; extrait_source: string; commun: string }[];
-      detection_method: string;
+      longest_common_sequence: number | null;
+      matched_excerpts: { extrait_soumis: string; extrait_source: string; commun?: string }[];
+      detection_method: string | null;
     }[] = [];
 
+    // Réutilisés par la couche A ci-dessous et la couche B plus loin (§6.3).
+    const candidateEditorial = buildEditorialText(recipe);
+    const candidateStructuralKeys = buildStructuralSignature(recipe).ingredients.map((i) => i.canonicalKey);
+
     try {
-      const candidateEditorial = buildEditorialText(recipe);
-      const candidateStructuralKeys = buildStructuralSignature(recipe).ingredients.map((i) => i.canonicalKey);
       const candidateShingles = buildShingles(candidateEditorial);
 
       // Index inversé (§6.3) : `overlaps` (opérateur `&&`, servi par le GIN
@@ -261,7 +277,81 @@ export async function POST(req: Request) {
       console.error('moderation-recette (similarité):', (simError as Error).message);
     }
 
-    const longestSequence = matches.reduce((max, m) => Math.max(max, m.longest_common_sequence), 0);
+    // --- Couche B (approximation, arbitrage produit — pas de fournisseur
+    // d'embeddings) : jugement Claude ciblé sur les candidats structurellement
+    // proches (couche C) que la couche A n'a pas déjà détectés comme copie
+    // littérale — détecte une recette recopiée puis reformulée. Sautée si la
+    // couche A a déjà trouvé une correspondance forte (même logique que la
+    // recherche externe, §6.4). Best-effort.
+    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD) {
+      try {
+        const { data: structRows } = await shingleIndexTable(admin)
+          .select('recipe_id, editorial_text, structural_keys')
+          .neq('recipe_id', recipeId);
+
+        const alreadyMatched = new Set(matches.map((m) => m.source_recipe_id));
+        const structCandidates = ((structRows ?? []) as { recipe_id: string; editorial_text: string; structural_keys: string[] }[])
+          .filter((r) => !alreadyMatched.has(r.recipe_id))
+          .map((r) => ({ r, structScore: jaccardIndex(new Set(candidateStructuralKeys), new Set(r.structural_keys)) }))
+          .filter((s) => s.structScore >= STRUCTURAL_CANDIDATE_THRESHOLD)
+          .sort((a, b) => b.structScore - a.structScore)
+          .slice(0, 3); // coût maîtrisé : jamais plus de 3 jugements Claude par analyse
+
+        if (structCandidates.length) {
+          const { data: titles } = await admin
+            .from('recipes')
+            .select('id, title')
+            .in('id', structCandidates.map((s) => s.r.recipe_id));
+          const titleById = new Map(((titles ?? []) as { id: string; title: string }[]).map((t) => [t.id, t.title]));
+
+          const reformulationMatches: typeof matches = [];
+          for (const cand of structCandidates) {
+            const judged = await callClaude(
+              apiKey,
+              buildReformulationUserContent(candidateEditorial, cand.r.editorial_text),
+              500,
+              15_000,
+              MODERATION_MODEL,
+              'disabled',
+              buildReformulationSystemPrompt(),
+            );
+            call.usage.inputTokens += judged.usage.inputTokens;
+            call.usage.outputTokens += judged.usage.outputTokens;
+            call.usage.cacheReadTokens += judged.usage.cacheReadTokens;
+            call.usage.cacheWriteTokens += judged.usage.cacheWriteTokens;
+
+            const parsed2 = parseReformulationResult(judged.text);
+            if (parsed2?.reformulation) {
+              reformulationMatches.push({
+                source_type: 'interne',
+                source_recipe_id: cand.r.recipe_id,
+                source_title: titleById.get(cand.r.recipe_id) ?? null,
+                // Score par jugement du modèle, pas mesuré comme la couche A
+                // — même logique que les correspondances externes (lot 4).
+                editorial_score: reformulationScore(parsed2.confiance),
+                structural_score: pct(cand.structScore),
+                longest_common_sequence: null,
+                matched_excerpts: parsed2.extraitA
+                  ? [{ extrait_soumis: parsed2.extraitA, extrait_source: parsed2.extraitB }]
+                  : [],
+                detection_method: 'embedding', // couche du §6.3, approximée par jugement plutôt que par cosinus
+              });
+            }
+          }
+
+          if (reformulationMatches.length) {
+            await matchTable(admin).insert(reformulationMatches.map((m) => ({ ...m, analysis_id: analysisId })));
+            matches.push(...reformulationMatches);
+          }
+        }
+      } catch (reformError) {
+        console.error('moderation-recette (couche B):', (reformError as Error).message);
+      }
+    }
+
+    editorialMax = matches.reduce((max, m) => Math.max(max, m.editorial_score), 0);
+    structuralMax = matches.reduce((max, m) => Math.max(max, m.structural_score), 0);
+    const longestSequence = matches.reduce((max, m) => Math.max(max, m.longest_common_sequence ?? 0), 0);
 
     // --- Étape 3 (§6.4) : recherche externe, sauf correspondance interne
     // déjà forte. Best-effort — un incident réseau ne doit pas invalider la

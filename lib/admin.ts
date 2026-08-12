@@ -141,6 +141,10 @@ export type RecipeSimilarityMatchSummary = {
   structural_score: number;
   longest_common_sequence: number | null;
   matched_excerpts: { extrait_soumis: string; extrait_source: string; commun?: string }[] | null;
+  // 'embedding' sert de marqueur pour la couche B approximée par jugement
+  // Claude (pas un vrai calcul cosinus, cf. lib/ai/reformulation.ts) —
+  // distingue une reformulation détectée d'une copie littérale ('shingles').
+  detection_method: 'shingles' | 'embedding' | 'les_deux' | null;
 };
 
 // Correspondances de similarité (§6.3) pour un ensemble d'analyses, groupées
@@ -153,7 +157,7 @@ export async function getMatchesForAnalyses(analysisIds: number[]): Promise<Reco
     .from('recipe_similarity_match')
     .select(
       'id, analysis_id, source_type, source_recipe_id, source_url, source_title, ' +
-        'editorial_score, structural_score, longest_common_sequence, matched_excerpts',
+        'editorial_score, structural_score, longest_common_sequence, matched_excerpts, detection_method',
     )
     .in('analysis_id', analysisIds)
     .order('editorial_score', { ascending: false });

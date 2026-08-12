@@ -95,6 +95,11 @@ function Highlighted({ text, mark }: { text: string; mark?: string }) {
 // "Copie confirmée" qui alimentent recipe_analysis_feedback »).
 function MatchCard({ match, initialFeedback }: { match: RecipeSimilarityMatchSummary; initialFeedback?: MatchFeedbackVerdict }) {
   const isExterne = match.source_type === 'externe';
+  // Couche B approximée par jugement Claude (lib/ai/reformulation.ts) : pas
+  // de séquence commune littérale par construction (c'est une reformulation,
+  // pas une copie), score rédactionnel jugé plutôt que mesuré — comme les
+  // correspondances externes, annoncé comme une estimation.
+  const isReformulation = match.detection_method === 'embedding';
   const ex = match.matched_excerpts?.[0];
   const [voting, setVoting] = useState(false);
   const [voted, setVoted] = useState<MatchFeedbackVerdict | undefined>(initialFeedback);
@@ -134,12 +139,18 @@ function MatchCard({ match, initialFeedback }: { match: RecipeSimilarityMatchSum
         {(match.longest_common_sequence ?? 0) > 0 && (
           <span className="text-[11px] text-on-surface-variant">{match.longest_common_sequence} mots consécutifs identiques</span>
         )}
+        {isReformulation && <span className="text-[11px] text-on-surface-variant italic">reformulation détectée, jugement IA</span>}
       </div>
       <div className={`mt-2 grid ${isExterne ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
         <div>
           <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Texte rédigé — indicateur de copie</p>
           <p className="text-sm font-semibold text-on-surface">
-            {match.editorial_score.toFixed(0)} % {isExterne && <span className="font-normal text-on-surface-variant">(estimation IA, hors site)</span>}
+            {match.editorial_score.toFixed(0)} %{' '}
+            {(isExterne || isReformulation) && (
+              <span className="font-normal text-on-surface-variant">
+                ({isExterne ? 'estimation IA, hors site' : 'estimation IA, reformulation'})
+              </span>
+            )}
           </p>
         </div>
         {!isExterne && (
