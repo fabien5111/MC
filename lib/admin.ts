@@ -79,6 +79,50 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   return (data as unknown as AdminRecipeRow[]) ?? [];
 }
 
+// ── Contrôle IA à la validation des recettes (modération, §6.2) ───────────
+// `recipe_analysis` est absente de lib/database.types.ts tant que la
+// migration du lot 1 n'a pas été appliquée puis régénérée
+// (`npm run gen:types`) — jamais éditée à la main (CLAUDE.md). Accès non
+// typé sur cette seule table en attendant, comme ailleurs dans ce fichier
+// pour des jointures non régénérées.
+export type RecipeAnalysisCategory = {
+  code: string;
+  score: number;
+  extraits: string[];
+  explication: string;
+};
+export type RecipeAnalysisSummary = {
+  id: number;
+  status: 'en_cours' | 'termine' | 'echec';
+  overall_flag: 'vert' | 'orange' | 'rouge' | null;
+  moderation_verdict: 'clean' | 'attention' | 'bloquant' | null;
+  moderation_details: { categories: RecipeAnalysisCategory[] } | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+// La plus récente analyse de chaque recette d'une liste, indexée par
+// `recipe_id`. Une recette peut avoir plusieurs lignes d'historique (relance
+// manuelle) : on ne garde que la plus fraîche pour l'affichage admin.
+export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<string, RecipeAnalysisSummary>> {
+  if (!recipeIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_analysis')
+    .select('id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, error_message, created_at')
+    .in('recipe_id', recipeIds)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getLatestAnalyses:', error.message);
+    return {};
+  }
+  const byRecipe: Record<string, RecipeAnalysisSummary> = {};
+  for (const row of (data ?? []) as (RecipeAnalysisSummary & { recipe_id: string })[]) {
+    if (!byRecipe[row.recipe_id]) byRecipe[row.recipe_id] = row;
+  }
+  return byRecipe;
+}
+
 export async function getPendingComments(): Promise<PendingComment[]> {
   const supabase = await createClient();
   const { data } = await supabase

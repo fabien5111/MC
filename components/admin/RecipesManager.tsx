@@ -3,15 +3,118 @@
 // Gestion des recettes (porté de admin-recettes.html) : table « à valider »
 // (valider / modifier / refuser) et table « validées & privées » (modifier /
 // refuser). Mutations via useMutation (écriture navigateur + resynchro serveur).
+import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
-import type { AdminRecipeRow } from '@/lib/admin';
+import type { AdminRecipeRow, RecipeAnalysisSummary } from '@/lib/admin';
+import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
-export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]; managed: AdminRecipeRow[] }) {
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(MODERATION_CATEGORIES.map((c) => [c.code, c.label]));
+
+const FLAG_STYLE: Record<string, string> = {
+  vert: 'bg-primary-fixed text-on-primary-fixed',
+  orange: 'bg-tertiary-container text-on-tertiary-container',
+  rouge: 'bg-error-container text-on-error-container',
+};
+
+// Panneau « Analyse automatique » (§9) — verdict de modération, catégories
+// signalées avec extrait verbatim, et relance manuelle (§10). Similarité
+// rédactionnelle/structurelle hors périmètre de ce lot (étapes 2-3).
+function AnalysisPanel({ recipeId, analysis }: { recipeId: string; analysis: RecipeAnalysisSummary | undefined }) {
+  const { refresh } = useMutation();
+  const [relancing, setRelancing] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function relancer() {
+    setRelancing(true);
+    try {
+      await fetch('/api/moderation-recette', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ recipeId }),
+      });
+      refresh();
+    } finally {
+      setRelancing(false);
+    }
+  }
+
+  const categories = analysis?.moderation_details?.categories ?? [];
+
+  return (
+    <div className="text-sm">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 text-on-surface hover:text-primary transition-colors">
+        <span className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
+        <span
+          className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+            analysis?.overall_flag ? FLAG_STYLE[analysis.overall_flag] : 'bg-surface-container-highest text-on-surface-variant'
+          }`}
+        >
+          {!analysis
+            ? 'Non analysée'
+            : analysis.status === 'en_cours'
+              ? 'Analyse en cours…'
+              : analysis.status === 'echec'
+                ? 'Analyse indisponible'
+                : `Modération : ${analysis.moderation_verdict ?? '—'}`}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-3 pl-6 space-y-3">
+          {analysis?.status === 'echec' && (
+            <p className="text-error text-xs">
+              {analysis.error_message || 'Analyse indisponible.'} — vérification manuelle requise.
+            </p>
+          )}
+          {analysis?.status === 'termine' && categories.length === 0 && (
+            <p className="text-on-surface-variant text-xs italic">Aucun signalement de modération.</p>
+          )}
+          {categories.map((c, i) => (
+            <div key={i} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-label-md text-xs font-semibold text-on-surface">{CATEGORY_LABEL[c.code] || c.code}</span>
+                <span className="text-[11px] text-on-surface-variant">score {c.score.toFixed(2)}</span>
+              </div>
+              <p className="text-[12.5px] text-on-surface-variant mt-1">{c.explication}</p>
+              {c.extraits.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {c.extraits.map((e, ei) => (
+                    <li key={ei} className="text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">
+                      « {e} »
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={relancer}
+            disabled={relancing}
+            className="px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors disabled:opacity-50"
+          >
+            {relancing ? 'Analyse…' : "Relancer l'analyse"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function RecipesManager({
+  pending,
+  managed,
+  analyses,
+}: {
+  pending: AdminRecipeRow[];
+  managed: AdminRecipeRow[];
+  analyses: Record<string, RecipeAnalysisSummary>;
+}) {
   const { mutate } = useMutation();
   const dialog = useDialog();
 
@@ -21,6 +124,7 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
 
   function Row({ r, isPending }: { r: AdminRecipeRow; isPending: boolean }) {
     return (
+      <>
       <tr className="hover:bg-surface-container-low transition-colors">
         <td className="px-6 py-4">
           <div className="flex items-center gap-4">
@@ -86,6 +190,14 @@ export function RecipesManager({ pending, managed }: { pending: AdminRecipeRow[]
           </div>
         </td>
       </tr>
+      {isPending && (
+        <tr className="border-b border-outline-variant last:border-0">
+          <td colSpan={6} className="px-6 pb-4 -mt-2">
+            <AnalysisPanel recipeId={r.id} analysis={analyses[r.id]} />
+          </td>
+        </tr>
+      )}
+      </>
     );
   }
 

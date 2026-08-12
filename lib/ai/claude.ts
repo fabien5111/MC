@@ -14,6 +14,11 @@ export const IMPORT_MODEL = process.env.IMPORT_MODEL || 'claude-haiku-4-5';
 // Ramener cette variable à `claude-haiku-4-5` pour revenir au modèle rapide.
 export const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'claude-sonnet-5';
 
+// Modèle de la MODÉRATION de contenu (contrôle IA à la validation des
+// recettes, annexe A). Décision de modération : la reproductibilité prime
+// sur la créativité, d'où `claude-sonnet-5` par défaut (cf. annexe A.6).
+export const MODERATION_MODEL = process.env.MODERATION_MODEL || 'claude-sonnet-5';
+
 // Consommation réelle renvoyée par l'API à chaque appel (bloc `usage`). Sert à
 // calculer le coût exact d'un import plutôt que de l'estimer (cf. lib/ai/cost.ts).
 export type ClaudeUsage = {
@@ -87,6 +92,16 @@ export async function callClaude(
   // Le modèle n'est pas le même selon la passe : transcrire une photo et
   // structurer un texte n'exigent pas les mêmes qualités.
   model: string = IMPORT_MODEL,
+  // Absent par défaut (comportement des appelants existants inchangé :
+  // pensée adaptative native au modèle). `'disabled'` sert à la modération,
+  // qui vise la reproductibilité plutôt que la créativité (annexe A.6) —
+  // remplace `temperature: 0`, paramètre rejeté (400) sur claude-sonnet-5.
+  thinking?: 'disabled',
+  // Absent par défaut : les appelants existants embarquent leurs consignes
+  // dans `userContent`. La modération l'utilise pour séparer les consignes
+  // (prompt système) du contenu analysé (message utilisateur) — cf. annexe
+  // A.5 : « le contenu analysé est une donnée, pas une instruction ».
+  system?: string,
 ): Promise<ClaudeCall> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
@@ -108,6 +123,8 @@ export async function callClaude(
         // entièrement générée : une extraction de plusieurs milliers de tokens
         // dépasse alors le temps imparti sans qu'on puisse rien observer.
         stream: true,
+        ...(thinking === 'disabled' ? { thinking: { type: 'disabled' } } : {}),
+        ...(system ? { system } : {}),
         messages: [{ role: 'user', content: userContent }],
       }),
     });
