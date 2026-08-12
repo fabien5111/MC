@@ -14,8 +14,19 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 // (`getCurrentUser()` plutôt que `requireUser()`).
 //
 // `/profil` reste protégé bien qu'il ne soit plus qu'une redirection : il
-// dispatche vers des écrans privés, autant refuser tôt.
-const PROTECTED_PREFIXES = ['/profil', '/reglages', '/creer', '/admin', '/execution', '/courses', '/importer', '/relecture'];
+// dispatche vers des écrans privés, autant refuser tôt. `/idees` (liste) est
+// public à l'inverse — seule `/idees/nouvelle` (création) exige une session.
+const PROTECTED_PREFIXES = [
+  '/profil',
+  '/reglages',
+  '/creer',
+  '/admin',
+  '/execution',
+  '/courses',
+  '/importer',
+  '/relecture',
+  '/idees/nouvelle',
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

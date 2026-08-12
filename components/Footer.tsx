@@ -22,6 +22,7 @@ export function Footer() {
               </h4>
               <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
                 <li><a className="hover:text-primary transition-colors" href="#">Notre Histoire</a></li>
+                <li><Link className="hover:text-primary transition-colors" href="/idees">Boîte à idées</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/connexion">Connexion</Link></li>
                 <li><a className="hover:text-primary transition-colors" href="#">Contact</a></li>
               </ul>

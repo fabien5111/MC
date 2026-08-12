@@ -48,6 +48,8 @@ app/                    Pages et routes (App Router)
 ├── courses/[id]/       Liste de courses
 ├── profil/             Profil (recettes, favoris, planning, listes)
 ├── recherche/          Recherche avancée (facettes + résultats)
+├── idees/              Boîte à idées (liste + tri + votes)
+├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
@@ -57,6 +59,7 @@ app/                    Pages et routes (App Router)
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
 │   ├── recherche/compte/ GET  — compte seul des résultats (tiroir mobile)
 │   ├── ingredients/      GET  — autocomplétion des ingrédients
+│   ├── idees/similaires/ GET  — suggestions anti-doublons (titre en cours de saisie)
 │   ├── recipes/          GET  — pagination de l'accueil
 │   ├── recipes/picker/   GET  — recherche de recettes (remplacement d'un ingrédient)
 │   ├── admin/impersonate/ POST — lien de connexion « en tant que »
@@ -69,6 +72,7 @@ lib/                    Accès données typés + logique métier pure
 ├── supabase/           Clients navigateur / serveur / middleware
 ├── database.types.ts   Types générés depuis la base Supabase
 └── *.ts                recipes, profile, executions, admin, recipe-plan…
+                        (ideas.ts / ideas-data.ts : logique pure vs RPC serveur)
 middleware.ts           Auth : protège les routes privées (runtime Node)
 ```
 
@@ -337,6 +341,92 @@ devient indépendant de la recette d'origine.
   (`RESTRICTIVE`, rôle `authenticated`) qui bloquent toute écriture en
   session « en tant que » lecture seule, quel que soit le propriétaire.
 
+## Boîte à idées
+
+Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
+(formulaire de création, protégée par `middleware.ts` et
+`requireWritableSession()` — même garde que `/creer`, `/importer`,
+`/relecture`).
+
+- **`ideas`** (titre 5-60 caractères, description ≤ 1000, statut) +
+  **`idea_votes`** (clé primaire composite `(idea_id, user_id)`, qui porte à
+  elle seule la contrainte « un vote par membre et par idée » — pas de colonne
+  `id` ni d'index supplémentaire). Nommée `idea_votes` et non `votes` : la
+  base doit encore accueillir les likes sur les recettes et les profils
+  annoncés au produit, un `votes` générique deviendrait vite fourre-tout.
+- **Pas de compteur dénormalisé** (même doctrine que `author_ratings`) : le
+  nombre de votes est recompté à la volée par les RPC ci-dessous.
+- **Statuts** : `new` (défaut), `reviewing`, `in_progress`, `done`,
+  `declined` (avec `admin_note` publique), `merged` (fusionnée dans une
+  autre idée via `merged_into_id`, RPC `merge_ideas`). Une idée `merged`
+  n'apparaît jamais dans `list_ideas` ni dans `suggest_similar_ideas`.
+- **Seul un admin modifie `status` / `admin_note` / `merged_into_id`** : la
+  RLS ne sachant pas distinguer les colonnes changées dans une même ligne
+  (`USING`/`WITH CHECK` ne voient jamais l'ancienne ET la nouvelle valeur
+  dans la même expression), la règle est portée par un trigger
+  (`ideas_guard_admin_fields`), pas par une policy.
+- **`/admin/idees`** (modération, `IdeasManager`) : statut, note admin
+  publique, suppression, fusion manuelle d'un doublon. Réservé à l'admin
+  complet — `requireFullAdmin()` en tête de page, comme `/admin/membres` ou
+  `/admin/moules` (cf. « Rôles du back-office » ci-dessus) : un gestionnaire
+  n'a pas à modérer la boîte à idées.
+- **RPC `merge_ideas(source_id, target_id)`** : transfère les votes de
+  l'idée absorbée vers la cible (`on conflict do nothing`, pas de doublon de
+  vote) puis marque la source `merged`. `SECURITY DEFINER` — transférer un
+  vote au nom d'un AUTRE utilisateur que l'appelant exige de contourner la
+  RLS de `idea_votes` (`user_id = auth.uid()`), même nécessité que le trigger
+  `ideas_auto_vote_author` ; la fonction vérifie `is_admin_user()`
+  elle-même, pas seulement l'écran qui l'appelle.
+- **Détection de doublons par IA** (Claude, `lib/ai/idea-duplicates.ts`),
+  en complément du trigramme/FTS ci-dessous qui ne repère qu'une proximité
+  lexicale : deux idées peuvent décrire le même besoin sans un seul mot
+  commun (« minuteur qui se lance tout seul » ↔ « chronomètre automatique »).
+  Deux usages, un seul jeu de prompts/parsing :
+  - à la création (`POST /api/idees/verifier-doublon`) : déclenchée à la
+    validation du formulaire, pas à la frappe (coût et latence d'un appel
+    IA par lettre tapée) — compare l'idée saisie à tout le fonds ouvert, y
+    compris les idées `declined` (savoir qu'une idée proche a déjà été
+    refusée, et pourquoi via `admin_note`, évite de la reproposer à
+    l'identique). Best-effort : clé API absente ou appel en échec →
+    `{ matches: [] }`, ne bloque jamais la publication ;
+  - côté admin (`POST /api/admin/idees/detecter-doublons`,
+    `IdeaDuplicateScanner`) : balaie les idées encore ouvertes deux par
+    deux, propose des paires à fusionner en un clic (RPC `merge_ideas`).
+  **RPC `ideas_summaries(idea_ids)`** : ré-hydrate les id renvoyés par l'IA
+  en objets affichables (titre, statut, votes, « ai-je voté ») avec les
+  mêmes composants que le reste du module (`StatusBadge`, `VoteButton`),
+  même motif que `list_ideas` / `suggest_similar_ideas`.
+- **Quota anti-spam** (trigger `ideas_check_quota`, 5 idées / 24 h / membre) :
+  table publique en écriture ouverte à tout membre authentifié, sans lui un
+  compte compromis la noierait en quelques secondes.
+- **L'auteur vote automatiquement** pour sa propre idée à la création
+  (trigger `ideas_auto_vote_author`), sinon elle naît à 0 vote.
+- **RPC `list_ideas`** (motif `search_advanced_recipes`) : page + total +
+  décompte des votes + « ai-je voté » en une seule requête, `SECURITY
+  INVOKER`. **RPC `suggest_similar_ideas`** : prévention des doublons pendant
+  la frappe du titre — le plein texte seul échoue sur un mot partiel
+  (« chrono » ne matche pas « chronomètre », quasi toujours le cas en cours
+  de saisie), d'où un repli trigramme (`pg_trgm`, extension installée hors du
+  schéma `public` sur ce projet — d'où `set search_path = public, extensions`
+  sur cette fonction). Renvoie aussi `has_voted` par suggestion, pour que son
+  bouton de vote direct ne tente pas un second vote (violation de contrainte
+  d'unicité sinon).
+- **`lib/ideas.ts` (pur) / `lib/ideas-data.ts` (RPC, server-only)** : les
+  constantes et types sont utilisés à la fois par la page serveur et par le
+  formulaire client (`IdeaForm`) ; regrouper le data-fetching (qui importe
+  `next/headers` via `lib/supabase/server`) dans le même fichier faisait
+  échouer le build du bundle client. Motif déjà en place pour la recherche
+  (`search-params.ts` pur / `search.ts` RPC).
+- **Vote optimiste sans resynchronisation bloquante** (`VoteButton`, motif
+  `FavoriteHeart`) : état local + rollback en cas d'échec, pas de spinner
+  plein écran — c'est une action trop fréquente pour ça. En tri « plus
+  votées », la liste ne se réordonne donc pas sous le doigt au moment du
+  clic ; elle prend le nouvel ordre à la prochaine navigation.
+- **Pas de mécanisme de facettes façon `/recherche`** : le tri (`?tri=`) et
+  la pagination (`?n=`) vivent dans l'URL, mais via de simples liens
+  (`<Link>`), sans le `SearchProvider` (debounce, panneau mobile) construit
+  pour la recherche avancée — un tri à deux valeurs ne le justifie pas.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
@@ -348,6 +438,7 @@ principales :
 | Recettes | `recipes`, `recipe_steps`, `step_photos`, `ingredient_groups`, `ingredients`, `recipe_utensils`, `recipe_tags`, `tags`, `difficulties` |
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
+| Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |
@@ -542,6 +633,8 @@ Gestion de la liste des courses
 Remplacement d'un ingrédient d'une recette planifiée par une autre recette
 (le praliné acheté devient le praliné fabriqué : ses étapes s'insèrent dans le
 déroulé, ses ingrédients rejoignent les courses)
+Boîte à idées communautaire pour le développement du site (liste triable,
+votes, proposition d'idée avec prévention des doublons)
 
 
 
@@ -563,8 +656,6 @@ ingrédients des courses et de la mise en place, cuisson conservable).
 Déclenchement automatique du chronomètre du téléphone selon le timing des étapes.
 
 Identification et gestion des allergènes.
-
-Boîte à idées communautaire pour le développement du site.
 
 Versioning de recettes (système de fork) pour créer et visualiser l'évolution d'une recette.
 
