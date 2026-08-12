@@ -1,8 +1,20 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 import { matchBlogArticleSlug, isGoneSlug, goneArticleResponse } from './lib/blog-gone';
 
 export async function middleware(request: NextRequest) {
+  // Domaine de production en attente de lancement : `COMING_SOON` n'est posée
+  // que sur l'environnement Production Vercel (jepatisse.com), jamais sur
+  // Preview (dev.jepatisse.com) — inutile donc de distinguer par `Host` ici.
+  // Bascule avant le rafraîchissement de session : la page d'attente n'a rien
+  // à faire dépendre d'une session Supabase.
+  if (process.env.COMING_SOON === 'true') {
+    const { pathname } = request.nextUrl;
+    if (pathname !== '/bientot-disponible' && !pathname.startsWith('/api')) {
+      return NextResponse.rewrite(new URL('/bientot-disponible', request.url));
+    }
+  }
+
   // Toujours d'abord : rafraîchit la session, la protège dessus. Un article
   // dépublié n'a pas de raison de sauter ce rafraîchissement.
   const response = await updateSession(request);
