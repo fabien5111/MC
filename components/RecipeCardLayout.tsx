@@ -81,10 +81,10 @@ export function RecipeCardLayout({
               {formatTime(times.total || times.prep)}
             </span>
           </div>
-          <h3 className="font-headline-md text-xl text-on-surface mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-headline-md text-xl text-on-surface mb-2 line-clamp-2 min-h-[3.5rem] group-hover:text-primary transition-colors">
             {r.title}
           </h3>
-          <p className="text-sm text-on-surface-variant line-clamp-2 mb-4">{r.description || ''}</p>
+          <p className="text-sm text-on-surface-variant line-clamp-2 min-h-[2.5rem] mb-4">{r.description || ''}</p>
           {allergens}
           <div className="flex items-center justify-between">
             <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
