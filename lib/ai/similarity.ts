@@ -42,14 +42,21 @@ export function jaccardIndex(a: Set<string>, b: Set<string>): number {
 // identiques »). Les textes de recette restent courts (quelques centaines de
 // mots) : le coût O(n·m) en temps est négligeable pour une paire, mais reste
 // borné à un petit nombre de paires par l'appelant (cf. route).
-export function longestCommonWordRun(textA: string, textB: string): { length: number; words: string[] } {
+// Renvoie aussi les positions de la suite dans chaque texte (`startA`,
+// `startB`, en index de mot) — nécessaire pour extraire un contexte autour
+// du passage commun (vue comparative, §9), pas seulement le passage lui-même.
+export function longestCommonWordRun(
+  textA: string,
+  textB: string,
+): { length: number; words: string[]; startA: number; startB: number } {
   const wordsA = textA.split(/\s+/).filter(Boolean);
   const wordsB = textB.split(/\s+/).filter(Boolean);
-  if (!wordsA.length || !wordsB.length) return { length: 0, words: [] };
+  if (!wordsA.length || !wordsB.length) return { length: 0, words: [], startA: 0, startB: 0 };
 
   let prev = new Array<number>(wordsB.length + 1).fill(0);
   let best = 0;
   let bestEndA = 0;
+  let bestEndB = 0;
   for (let i = 1; i <= wordsA.length; i++) {
     const curr = new Array<number>(wordsB.length + 1).fill(0);
     for (let j = 1; j <= wordsB.length; j++) {
@@ -58,12 +65,23 @@ export function longestCommonWordRun(textA: string, textB: string): { length: nu
         if (curr[j] > best) {
           best = curr[j];
           bestEndA = i;
+          bestEndB = j;
         }
       }
     }
     prev = curr;
   }
-  return { length: best, words: wordsA.slice(bestEndA - best, bestEndA) };
+  return { length: best, words: wordsA.slice(bestEndA - best, bestEndA), startA: bestEndA - best, startB: bestEndB - best };
+}
+
+// Fenêtre de contexte autour d'une suite commune (mots avant/après, `pad`
+// de chaque côté) : la vue comparative montre le passage dans son contexte
+// naturel plutôt que le fragment nu, plus lisible pour trancher (§9).
+export function contextWindow(text: string, start: number, length: number, pad = 8): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  const from = Math.max(0, start - pad);
+  const to = Math.min(words.length, start + length + pad);
+  return words.slice(from, to).join(' ');
 }
 
 // --- Couche C (proxy) : Jaccard sur les ingrédients canoniques -------------

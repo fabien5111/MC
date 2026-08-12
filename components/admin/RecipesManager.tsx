@@ -8,8 +8,15 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
-import type { AdminRecipeRow, RecipeAnalysisSummary, RecipeSimilarityMatchSummary } from '@/lib/admin';
+import type {
+  AdminRecipeRow,
+  RecipeAnalysisSummary,
+  RecipeSimilarityMatchSummary,
+  MatchFeedbackVerdict,
+  CalibrationBucket,
+} from '@/lib/admin';
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
+import { buildAnalysisSummary } from '@/lib/ai/analysis-summary';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -62,16 +69,56 @@ function ReindexBar() {
   );
 }
 
+// Surligne l'occurrence de `mark` dans `text` (recherche par sous-chaîne
+// exacte — le serveur fournit `commun`, garanti présent dans le texte qui
+// l'a produit ; absent ou introuvable, le texte s'affiche simplement sans
+// surlignage plutôt que de faire planter l'affichage).
+function Highlighted({ text, mark }: { text: string; mark?: string }) {
+  if (!mark) return <>{text}</>;
+  const idx = text.indexOf(mark);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-tertiary-container text-on-tertiary-container rounded px-0.5">{text.slice(idx, idx + mark.length)}</mark>
+      {text.slice(idx + mark.length)}
+    </>
+  );
+}
+
 // Une carte de correspondance (§9) : deux jauges distinctes et libellées —
 // « le texte rédigé est l'indicateur de copie, les ingrédients/structure
 // sont informatifs » (§4.1/§4.2, vocabulaire « similarité rédactionnelle
-// élevée » plutôt que « plagiat »). La plus longue séquence commune est
-// affichée telle quelle : c'est la preuve la plus lisible pour trancher en
-// quelques secondes (§9 : « l'élément le plus important de l'écran »).
-function MatchCard({ match }: { match: RecipeSimilarityMatchSummary }) {
+// élevée » plutôt que « plagiat »). Vue comparative côte à côte avec
+// surlignage du passage commun (§9 : « l'élément le plus important de
+// l'écran »), et retour de calibration (§9 : « deux boutons "Faux positif" /
+// "Copie confirmée" qui alimentent recipe_analysis_feedback »).
+function MatchCard({ match, initialFeedback }: { match: RecipeSimilarityMatchSummary; initialFeedback?: MatchFeedbackVerdict }) {
   const isExterne = match.source_type === 'externe';
-  const excerpt = match.matched_excerpts?.[0]?.extrait_soumis;
-  const pageExcerpt = match.matched_excerpts?.[0]?.extrait_source;
+  const ex = match.matched_excerpts?.[0];
+  const [voting, setVoting] = useState(false);
+  const [voted, setVoted] = useState<MatchFeedbackVerdict | undefined>(initialFeedback);
+
+  async function vote(verdict: 'faux_positif' | 'confirme') {
+    setVoting(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      // `recipe_analysis_feedback` absente des types générés tant que la
+      // migration du lot 1 n'a pas été régénérée — accès non typé, comme le
+      // reste du contrôle IA.
+      const { error } = await (supabase as any)
+        .from('recipe_analysis_feedback')
+        .insert({ analysis_id: match.analysis_id, match_id: match.id, admin_id: user.id, verdict });
+      if (!error) setVoted(verdict);
+    } finally {
+      setVoting(false);
+    }
+  }
+
   return (
     <div className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -102,26 +149,97 @@ function MatchCard({ match }: { match: RecipeSimilarityMatchSummary }) {
           </div>
         )}
       </div>
-      {excerpt && (
-        <p className="mt-2 text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">
-          « {excerpt} »{isExterne && pageExcerpt && pageExcerpt !== excerpt ? ` — page trouvée : « ${pageExcerpt} »` : ''}
-        </p>
+      {ex && (ex.extrait_soumis || ex.extrait_source) && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">Recette soumise</p>
+            <p className="text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">
+              « <Highlighted text={ex.extrait_soumis} mark={ex.commun} /> »
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">{isExterne ? 'Page trouvée' : 'Recette source'}</p>
+            <p className="text-[12px] italic text-on-surface bg-tertiary-container/40 rounded px-2 py-1">
+              « <Highlighted text={ex.extrait_source} mark={ex.commun} /> »
+            </p>
+          </div>
+        </div>
       )}
+      <div className="mt-2 flex items-center gap-2">
+        {voted ? (
+          <span className="text-[11px] text-on-surface-variant italic">
+            Retour enregistré : {voted === 'faux_positif' ? 'faux positif' : voted === 'confirme' ? 'copie confirmée' : 'incertain'}
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => vote('faux_positif')}
+              disabled={voting}
+              className="px-2 py-1 rounded border border-outline-variant text-[11px] text-on-surface-variant hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+            >
+              Faux positif
+            </button>
+            <button
+              type="button"
+              onClick={() => vote('confirme')}
+              disabled={voting}
+              className="px-2 py-1 rounded border border-error text-[11px] text-error hover:bg-error-container transition-colors disabled:opacity-50"
+            >
+              Copie confirmée
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-// Panneau « Analyse automatique » (§9) — verdict de modération, catégories
-// signalées avec extrait verbatim, correspondances de similarité (couche A),
-// et relance manuelle (§10).
+// Écran de statistiques simple (§9 : « taux de faux positifs par tranche de
+// score »), calculé depuis les retours de calibration ci-dessus — tranches
+// reprenant les seuils de drapeau du §8, précisément ce que ce retour doit
+// aider à ajuster.
+function CalibrationStats({ buckets }: { buckets: CalibrationBucket[] }) {
+  const hasData = buckets.some((b) => b.total > 0);
+  return (
+    <section className="border border-outline-variant rounded-xl p-5 bg-surface-container-low">
+      <h2 className="font-headline-md text-base text-primary">Calibration de l&apos;analyse IA</h2>
+      <p className="text-[12.5px] text-on-surface-variant mt-1">
+        Taux de faux positifs par tranche de similarité rédactionnelle, à partir des retours « Faux positif » / « Copie confirmée ».
+      </p>
+      {!hasData ? (
+        <p className="text-on-surface-variant text-sm italic mt-3">Aucun retour enregistré pour le moment.</p>
+      ) : (
+        <div className="mt-4 grid grid-cols-3 gap-4">
+          {buckets.map((b) => (
+            <div key={b.label} className="text-center">
+              <p className="text-[11px] uppercase tracking-wider text-on-surface-variant">{b.label}</p>
+              <p className="text-2xl font-semibold text-on-surface">{b.total ? `${b.tauxFauxPositifs} %` : '—'}</p>
+              <p className="text-[11px] text-on-surface-variant">
+                {b.fauxPositifs}/{b.total} faux positif{b.fauxPositifs > 1 ? 's' : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Panneau « Analyse automatique » (§9) — drapeau + phrase de synthèse en
+// en-tête (toujours visible, pas besoin de déplier pour l'essentiel),
+// catégories de modération avec extrait verbatim, correspondances de
+// similarité avec retour de calibration, et relance manuelle (§10).
 function AnalysisPanel({
   recipeId,
   analysis,
   matches,
+  feedback,
 }: {
   recipeId: string;
   analysis: RecipeAnalysisSummary | undefined;
   matches: RecipeSimilarityMatchSummary[];
+  feedback: Record<number, MatchFeedbackVerdict>;
 }) {
   const { refresh } = useMutation();
   const [relancing, setRelancing] = useState(false);
@@ -142,25 +260,44 @@ function AnalysisPanel({
   }
 
   const categories = analysis?.moderation_details?.categories ?? [];
+  const topMatch = matches[0];
+  const summary =
+    analysis?.status === 'termine'
+      ? buildAnalysisSummary({
+          moderationVerdict: analysis.moderation_verdict,
+          moderationCategories: categories,
+          editorialMax: analysis.editorial_similarity_max ?? 0,
+          longestSequence: topMatch?.longest_common_sequence ?? 0,
+          topMatchTitle: topMatch?.source_title ?? null,
+          topMatchIsExternal: topMatch?.source_type === 'externe',
+        })
+      : null;
 
   return (
     <div className="text-sm">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 text-on-surface hover:text-primary transition-colors">
-        <span className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
-        <span
-          className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-            analysis?.overall_flag ? FLAG_STYLE[analysis.overall_flag] : 'bg-surface-container-highest text-on-surface-variant'
-          }`}
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 text-on-surface hover:text-primary transition-colors shrink-0"
         >
-          {!analysis
-            ? 'Non analysée'
-            : analysis.status === 'en_cours'
-              ? 'Analyse en cours…'
-              : analysis.status === 'echec'
-                ? 'Analyse indisponible'
-                : `Modération : ${analysis.moderation_verdict ?? '—'}`}
-        </span>
-      </button>
+          <span className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
+          <span
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+              analysis?.overall_flag ? FLAG_STYLE[analysis.overall_flag] : 'bg-surface-container-highest text-on-surface-variant'
+            }`}
+          >
+            {!analysis
+              ? 'Non analysée'
+              : analysis.status === 'en_cours'
+                ? 'Analyse en cours…'
+                : analysis.status === 'echec'
+                  ? 'Analyse indisponible'
+                  : (analysis.overall_flag ?? '—')}
+          </span>
+        </button>
+        {summary && <p className="text-xs text-on-surface-variant pt-1">{summary}</p>}
+      </div>
 
       {open && (
         <div className="mt-3 pl-6 space-y-3">
@@ -178,7 +315,7 @@ function AnalysisPanel({
                 {matches.length} correspondance{matches.length > 1 ? 's' : ''} trouvée{matches.length > 1 ? 's' : ''}
               </p>
               {matches.map((m) => (
-                <MatchCard key={m.id} match={m} />
+                <MatchCard key={m.id} match={m} initialFeedback={feedback[m.id]} />
               ))}
             </div>
           )}
@@ -222,17 +359,26 @@ export function RecipesManager({
   managed,
   analyses,
   matches,
+  feedback,
+  calibration,
 }: {
   pending: AdminRecipeRow[];
   managed: AdminRecipeRow[];
   analyses: Record<string, RecipeAnalysisSummary>;
   matches: Record<number, RecipeSimilarityMatchSummary[]>;
+  feedback: Record<number, MatchFeedbackVerdict>;
+  calibration: CalibrationBucket[];
 }) {
   const { mutate } = useMutation();
   const dialog = useDialog();
 
-  async function setStatus(id: string, status: string) {
-    const ok = await mutate(() => createClient().from('recipes').update({ status }).eq('id', id));
+  async function setStatus(id: string, status: string, moderationNote?: string) {
+    // `moderation_note` absente des types générés tant que cette migration
+    // n'a pas été régénérée (`npm run gen:types`) — payload non typé pour ce
+    // seul appel, comme le reste du contrôle IA en attendant.
+    const payload: Record<string, unknown> = { status };
+    if (moderationNote !== undefined) payload.moderation_note = moderationNote;
+    const ok = await mutate(() => createClient().from('recipes').update(payload as never).eq('id', id));
     if (ok) {
       // Maintenance de l'index de similarité (§6.3) : « Valider » publie
       // (entrée à ajouter), « Refuser » dépublie (entrée à retirer) — la
@@ -298,12 +444,17 @@ export function RecipesManager({
             </Link>
             <button
               onClick={async () => {
-                const ok = await dialog.confirm(
+                // « Rejeter avec motif » (§9) : le motif remplace le simple
+                // confirm() — sans messagerie interne pour le transmettre à
+                // l'auteur (fonctionnalité distincte, pas encore construite),
+                // il est au moins enregistré sur la recette plutôt que perdu.
+                const motif = await dialog.prompt(
                   isPending
-                    ? 'Refuser cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.'
-                    : 'Retirer cette recette ? Elle sera marquée « publication refusée » et renvoyée à son auteur.',
+                    ? 'Motif du refus (la recette sera renvoyée en brouillon) :'
+                    : 'Motif du retrait (la recette sera renvoyée en brouillon) :',
+                  { required: true, placeholder: 'Ex. : recette déjà publiée par un autre membre, contenu inapproprié…' },
                 );
-                if (ok) setStatus(r.id, 'rejected');
+                if (motif !== null) setStatus(r.id, 'rejected', motif.trim());
               }}
               title={isPending ? 'Refuser (renvoyer en brouillon)' : 'Retirer (repasser en brouillon)'}
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"
@@ -316,7 +467,12 @@ export function RecipesManager({
       {isPending && (
         <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">
-            <AnalysisPanel recipeId={r.id} analysis={analyses[r.id]} matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []} />
+            <AnalysisPanel
+              recipeId={r.id}
+              analysis={analyses[r.id]}
+              matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []}
+              feedback={feedback}
+            />
           </td>
         </tr>
       )}
@@ -371,6 +527,7 @@ export function RecipesManager({
         </div>
         <Table rows={managed} isPending={false} />
       </section>
+      <CalibrationStats buckets={calibration} />
     </main>
   );
 }

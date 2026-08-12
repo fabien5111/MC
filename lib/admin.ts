@@ -140,7 +140,7 @@ export type RecipeSimilarityMatchSummary = {
   editorial_score: number;
   structural_score: number;
   longest_common_sequence: number | null;
-  matched_excerpts: { extrait_soumis: string; extrait_source: string }[] | null;
+  matched_excerpts: { extrait_soumis: string; extrait_source: string; commun?: string }[] | null;
 };
 
 // Correspondances de similarité (§6.3) pour un ensemble d'analyses, groupées
@@ -166,6 +166,80 @@ export async function getMatchesForAnalyses(analysisIds: number[]): Promise<Reco
     (byAnalysis[row.analysis_id] ??= []).push(row);
   }
   return byAnalysis;
+}
+
+// ── Retour de calibration (§9 : « sur chaque correspondance, deux boutons
+// "Faux positif" / "Copie confirmée" ») ────────────────────────────────────
+
+export type MatchFeedbackVerdict = 'faux_positif' | 'confirme' | 'incertain';
+
+// Un seul retour affiché par correspondance (le plus récent), pour éviter
+// qu'un admin revote sur une correspondance déjà tranchée par un collègue —
+// la table accepte plusieurs lignes par match (plusieurs admins), l'écran
+// n'en affiche qu'une synthèse.
+export async function getFeedbackForMatches(matchIds: number[]): Promise<Record<number, MatchFeedbackVerdict>> {
+  if (!matchIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_analysis_feedback')
+    .select('match_id, verdict, created_at')
+    .in('match_id', matchIds)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getFeedbackForMatches:', error.message);
+    return {};
+  }
+  const byMatch: Record<number, MatchFeedbackVerdict> = {};
+  for (const row of (data ?? []) as { match_id: number; verdict: MatchFeedbackVerdict }[]) {
+    if (!(row.match_id in byMatch)) byMatch[row.match_id] = row.verdict;
+  }
+  return byMatch;
+}
+
+export type CalibrationBucket = { label: string; total: number; fauxPositifs: number; tauxFauxPositifs: number };
+
+// Tranches reprenant les seuils de drapeau du §8 (lib/ai/similarity.ts) :
+// c'est précisément la frontière que le retour de calibration doit aider à
+// ajuster.
+const CALIBRATION_BUCKETS: { label: string; min: number; max: number }[] = [
+  { label: '30–49 %', min: 30, max: 50 },
+  { label: '50–69 %', min: 50, max: 70 },
+  { label: '70–100 %', min: 70, max: 101 },
+];
+
+// Taux de faux positifs par tranche de score rédactionnel (§9 : « écran de
+// statistiques simple : taux de faux positifs par tranche de score »).
+export async function getCalibrationStats(): Promise<CalibrationBucket[]> {
+  const empty = () => CALIBRATION_BUCKETS.map((b) => ({ label: b.label, total: 0, fauxPositifs: 0, tauxFauxPositifs: 0 }));
+  const supabase = await createClient();
+  const { data: feedback, error } = await (supabase as any)
+    .from('recipe_analysis_feedback')
+    .select('match_id, verdict')
+    .not('match_id', 'is', null);
+  if (error) {
+    console.error('getCalibrationStats:', error.message);
+    return empty();
+  }
+  const rows = (feedback ?? []) as { match_id: number; verdict: MatchFeedbackVerdict }[];
+  if (!rows.length) return empty();
+
+  const matchIds = [...new Set(rows.map((r) => r.match_id))];
+  const { data: matches } = await (supabase as any).from('recipe_similarity_match').select('id, editorial_score').in('id', matchIds);
+  const scoreById = new Map(((matches ?? []) as { id: number; editorial_score: number }[]).map((m) => [m.id, m.editorial_score]));
+
+  return CALIBRATION_BUCKETS.map((b) => {
+    const inBucket = rows.filter((r) => {
+      const score = scoreById.get(r.match_id);
+      return score != null && score >= b.min && score < b.max;
+    });
+    const fauxPositifs = inBucket.filter((r) => r.verdict === 'faux_positif').length;
+    return {
+      label: b.label,
+      total: inBucket.length,
+      fauxPositifs,
+      tauxFauxPositifs: inBucket.length ? Math.round((fauxPositifs / inBucket.length) * 100) : 0,
+    };
+  });
 }
 
 export async function getPendingComments(): Promise<PendingComment[]> {

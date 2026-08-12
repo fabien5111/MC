@@ -24,7 +24,14 @@ import {
   moderationFlag,
   type ModerationResult,
 } from '@/lib/ai/moderation';
-import { buildShingles, jaccardIndex, longestCommonWordRun, similarityFlag, combineFlags } from '@/lib/ai/similarity';
+import {
+  buildShingles,
+  jaccardIndex,
+  longestCommonWordRun,
+  contextWindow,
+  similarityFlag,
+  combineFlags,
+} from '@/lib/ai/similarity';
 import {
   extractSignaturePhrases,
   buildExternalSearchSystemPrompt,
@@ -173,7 +180,7 @@ export async function POST(req: Request) {
       editorial_score: number;
       structural_score: number;
       longest_common_sequence: number;
-      matched_excerpts: { extrait_soumis: string; extrait_source: string }[];
+      matched_excerpts: { extrait_soumis: string; extrait_source: string; commun: string }[];
       detection_method: string;
     }[] = [];
 
@@ -218,7 +225,20 @@ export async function POST(req: Request) {
       matches = scored.map((s) => {
         const seq = longestCommonWordRun(candidateEditorial, s.c.editorial_text);
         const structScore = jaccardIndex(new Set(candidateStructuralKeys), new Set(s.c.structural_keys));
-        const excerpt = seq.words.join(' ');
+        // Vue comparative (§9) : un contexte de part et d'autre du passage
+        // commun, pas seulement le fragment nu — les deux textes diffèrent
+        // hors du passage identique, contrairement à un simple extrait
+        // dupliqué des deux côtés.
+        const excerpts =
+          seq.length > 0
+            ? [
+                {
+                  extrait_soumis: contextWindow(candidateEditorial, seq.startA, seq.length),
+                  extrait_source: contextWindow(s.c.editorial_text, seq.startB, seq.length),
+                  commun: seq.words.join(' '),
+                },
+              ]
+            : [];
         return {
           source_type: 'interne',
           source_recipe_id: s.c.recipe_id,
@@ -226,7 +246,7 @@ export async function POST(req: Request) {
           editorial_score: pct(s.jaccard),
           structural_score: pct(structScore),
           longest_common_sequence: seq.length,
-          matched_excerpts: excerpt ? [{ extrait_soumis: excerpt, extrait_source: excerpt }] : [],
+          matched_excerpts: excerpts,
           detection_method: 'shingles',
         };
       });
@@ -284,7 +304,7 @@ export async function POST(req: Request) {
               editorial_score: confidenceScore(m.confiance),
               structural_score: 0,
               longest_common_sequence: null,
-              matched_excerpts: [{ extrait_soumis: m.phrase, extrait_source: m.extrait }],
+              matched_excerpts: [{ extrait_soumis: m.phrase, extrait_source: m.extrait, commun: m.phrase }],
               detection_method: null,
             }));
             await matchTable(admin).insert(rows);
