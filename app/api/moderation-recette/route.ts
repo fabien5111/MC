@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, isManager } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getRecipeFull, getPublishedRecipesCorpus } from '@/lib/recipes';
+import { getRecipeFull } from '@/lib/recipes';
 import { siteUrl } from '@/lib/site-url';
 import { buildEditorialText, buildStructuralSignature, recipeContentFingerprint } from '@/lib/recipe-analysis';
 import { callClaude, callClaudeWithWebSearch, MODERATION_MODEL } from '@/lib/ai/claude';
@@ -24,14 +24,7 @@ import {
   moderationFlag,
   type ModerationResult,
 } from '@/lib/ai/moderation';
-import {
-  buildShingles,
-  jaccardIndex,
-  longestCommonWordRun,
-  structuralJaccard,
-  similarityFlag,
-  combineFlags,
-} from '@/lib/ai/similarity';
+import { buildShingles, jaccardIndex, longestCommonWordRun, similarityFlag, combineFlags } from '@/lib/ai/similarity';
 import {
   extractSignaturePhrases,
   buildExternalSearchSystemPrompt,
@@ -61,6 +54,9 @@ function analysisTable(client: any) {
 }
 function matchTable(client: any) {
   return client.from('recipe_similarity_match');
+}
+function shingleIndexTable(client: any) {
+  return client.from('recipe_shingle_index');
 }
 
 const nowIso = () => new Date().toISOString();
@@ -164,9 +160,10 @@ export async function POST(req: Request) {
 
     const verified: ModerationResult = verifyExtraits(parsed.result, sourceText);
 
-    // --- Étape 2 (§6.3) : similarité interne contre le corpus publié.
-    // Best-effort — une erreur ici ne doit pas invalider la modération déjà
-    // obtenue (le rapport reste utile sans le volet similarité).
+    // --- Étape 2 (§6.3) : similarité interne, via l'index persisté plutôt
+    // qu'un balayage du corpus (recipe_shingle_index, maintenu à la
+    // publication/dépublication — voir /api/reindex-recette). Best-effort —
+    // une erreur ici ne doit pas invalider la modération déjà obtenue.
     let editorialMax = 0;
     let structuralMax = 0;
     let matches: {
@@ -182,27 +179,50 @@ export async function POST(req: Request) {
 
     try {
       const candidateEditorial = buildEditorialText(recipe);
-      const candidateStructural = buildStructuralSignature(recipe).ingredients;
+      const candidateStructuralKeys = buildStructuralSignature(recipe).ingredients.map((i) => i.canonicalKey);
       const candidateShingles = buildShingles(candidateEditorial);
 
-      const corpus = await getPublishedRecipesCorpus(recipeId);
-      const scored = corpus
-        .map((other) => {
-          const otherEditorial = buildEditorialText(other);
-          return { recipe: other, otherEditorial, jaccard: jaccardIndex(candidateShingles, buildShingles(otherEditorial)) };
-        })
+      // Index inversé (§6.3) : `overlaps` (opérateur `&&`, servi par le GIN
+      // sur `shingles`) ne remonte que les recettes publiées qui partagent
+      // au moins un shingle — pas de balayage du corpus entier.
+      const { data: candidatesRaw } = await shingleIndexTable(admin)
+        .select('recipe_id, editorial_text, shingles, structural_keys')
+        .neq('recipe_id', recipeId)
+        .overlaps('shingles', Array.from(candidateShingles));
+
+      const indexCandidates = (candidatesRaw ?? []) as {
+        recipe_id: string;
+        editorial_text: string;
+        shingles: string[];
+        structural_keys: string[];
+      }[];
+
+      const scored = indexCandidates
+        .map((c) => ({ c, jaccard: jaccardIndex(candidateShingles, new Set(c.shingles)) }))
         .filter((s) => s.jaccard > 0)
         .sort((a, b) => b.jaccard - a.jaccard)
         .slice(0, 5); // top 5, convention reprise de la recherche externe (§6.4)
 
+      // Les titres ne sont pas dans l'index (pas nécessaires à la
+      // comparaison elle-même) : une requête complémentaire, limitée aux
+      // quelques recettes retenues, pour l'affichage admin.
+      const titleById = new Map<string, string>();
+      if (scored.length) {
+        const { data: titles } = await admin
+          .from('recipes')
+          .select('id, title')
+          .in('id', scored.map((s) => s.c.recipe_id));
+        for (const t of (titles ?? []) as { id: string; title: string }[]) titleById.set(t.id, t.title);
+      }
+
       matches = scored.map((s) => {
-        const seq = longestCommonWordRun(candidateEditorial, s.otherEditorial);
-        const structScore = structuralJaccard(candidateStructural, buildStructuralSignature(s.recipe).ingredients);
+        const seq = longestCommonWordRun(candidateEditorial, s.c.editorial_text);
+        const structScore = jaccardIndex(new Set(candidateStructuralKeys), new Set(s.c.structural_keys));
         const excerpt = seq.words.join(' ');
         return {
           source_type: 'interne',
-          source_recipe_id: s.recipe.id,
-          source_title: s.recipe.title,
+          source_recipe_id: s.c.recipe_id,
+          source_title: titleById.get(s.c.recipe_id) ?? null,
           editorial_score: pct(s.jaccard),
           structural_score: pct(structScore),
           longest_common_sequence: seq.length,

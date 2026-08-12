@@ -773,6 +773,18 @@ export function CreerForm({
         }).catch(() => {});
       }
 
+      // Maintenance de l'index de similarité (§6.3) : publication (nouveau
+      // contenu à indexer) ou dépublication/modification d'une recette
+      // jusque-là publique (entrée à retirer ou rafraîchir) — la route
+      // détermine laquelle des deux depuis le statut réel en base.
+      if (finalStatus === 'published' || editRecipe?.status === 'published') {
+        fetch('/api/reindex-recette', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ recipeId }),
+        }).catch(() => {});
+      }
+
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,

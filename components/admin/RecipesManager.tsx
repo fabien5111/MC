@@ -21,6 +21,47 @@ const FLAG_STYLE: Record<string, string> = {
   rouge: 'bg-error-container text-on-error-container',
 };
 
+// Commande de réindexation complète (§6.3 : « Prévoir une commande de
+// réindexation complète »). Remet l'index de similarité en cohérence avec
+// l'état réel du corpus publié — utile après une dérive (recette supprimée
+// hors de ce parcours, migration…), pas un geste courant.
+function ReindexBar() {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function reindexAll() {
+    setRunning(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/reindex-recette', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ full: true }),
+      });
+      const data = (await res.json()) as { indexed?: number; total?: number; retires?: number; erreur?: string };
+      setResult(res.ok ? `${data.indexed}/${data.total} recette(s) indexée(s), ${data.retires ?? 0} entrée(s) retirée(s).` : data.erreur || 'Échec.');
+    } catch {
+      setResult('Échec de la réindexation.');
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3 text-xs text-on-surface-variant">
+      <button
+        type="button"
+        onClick={reindexAll}
+        disabled={running}
+        className="px-3 py-1.5 rounded border border-outline-variant hover:text-primary hover:border-primary font-label-md transition-colors disabled:opacity-50"
+      >
+        {running ? 'Réindexation…' : 'Réindexer le corpus (similarité)'}
+      </button>
+      {result && <span>{result}</span>}
+    </div>
+  );
+}
+
 // Une carte de correspondance (§9) : deux jauges distinctes et libellées —
 // « le texte rédigé est l'indicateur de copie, les ingrédients/structure
 // sont informatifs » (§4.1/§4.2, vocabulaire « similarité rédactionnelle
@@ -191,7 +232,17 @@ export function RecipesManager({
   const dialog = useDialog();
 
   async function setStatus(id: string, status: string) {
-    await mutate(() => createClient().from('recipes').update({ status }).eq('id', id));
+    const ok = await mutate(() => createClient().from('recipes').update({ status }).eq('id', id));
+    if (ok) {
+      // Maintenance de l'index de similarité (§6.3) : « Valider » publie
+      // (entrée à ajouter), « Refuser » dépublie (entrée à retirer) — la
+      // route détermine laquelle des deux depuis le statut réel en base.
+      fetch('/api/reindex-recette', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ recipeId: id }),
+      }).catch(() => {});
+    }
   }
 
   function Row({ r, isPending }: { r: AdminRecipeRow; isPending: boolean }) {
@@ -305,6 +356,7 @@ export function RecipesManager({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop space-y-12 max-w-[1400px] w-full">
+      <ReindexBar />
       <section>
         <div className="flex items-baseline gap-3 mb-6">
           <h2 className="font-headline-md text-primary">Recettes à valider</h2>
