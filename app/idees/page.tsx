@@ -5,6 +5,7 @@
 // la précédente (NavigationSpinner s'en charge déjà). Pas de tiroir de
 // facettes ici — un simple tri à deux valeurs ne justifie pas le mécanisme
 // de SearchProvider (debounce, panneau mobile…) construit pour /recherche.
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -13,6 +14,8 @@ import { IdeaCard } from '@/components/ideas/IdeaCard';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { IDEA_SORT_KEYS, IDEA_SORT_LABELS, IDEAS_PAGE_SIZE, parseIdeaSort } from '@/lib/ideas';
 import { listIdeas } from '@/lib/ideas-data';
+
+export const metadata: Metadata = { title: 'Boîte à idées | Je pâtisse !' };
 
 export default async function IdeesPage({
   searchParams,
@@ -28,7 +31,7 @@ export default async function IdeesPage({
 
   return (
     <>
-      <Header current="/idees" />
+      <Header />
 
       <main className="max-w-[900px] mx-auto pb-24 px-margin-mobile md:px-margin-desktop">
         <section className="pt-12 pb-8 flex items-start justify-between gap-6 flex-wrap">

@@ -7,9 +7,10 @@ import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { CreerForm } from '@/components/CreerForm';
 
-export const metadata: Metadata = { title: 'Créer une recette | Maryse Club' };
+export const metadata: Metadata = { title: 'Créer une recette | Je pâtisse !' };
 
 type SearchParams = { searchParams: Promise<{ id?: string }> };
 
@@ -40,9 +41,11 @@ export default async function CreerPage({ searchParams }: SearchParams) {
 
   return (
     <>
-      <Header current="/creer" />
+      <Header />
       <div className="creer-page">
-      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-40 md:pb-32">
+      {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
+          la barre d'actions fixe qui imposait `pb-40` a disparu. */}
+      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
         <CreerForm
           tags={tags}
           units={units}
@@ -59,6 +62,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
         />
       </main>
       </div>
+      <MobileNav />
     </>
   );
 }

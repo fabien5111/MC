@@ -81,7 +81,7 @@ export async function isReadOnlySession(): Promise<boolean> {
 // vers le profil avec un motif affichable plutôt que de laisser l'utilisateur
 // remplir un formulaire dont l'enregistrement sera refusé.
 export async function requireWritableSession(): Promise<void> {
-  if (await isReadOnlySession()) redirect('/profil?impersonation=lecture-seule');
+  if (await isReadOnlySession()) redirect('/reglages?impersonation=lecture-seule');
 }
 
 // Niveau de droit d'impersonation d'un admin (hérité par les sessions qu'il

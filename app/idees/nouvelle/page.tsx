@@ -6,7 +6,7 @@ import { requireWritableSession } from '@/lib/impersonation';
 import { Header } from '@/components/Header';
 import { IdeaForm } from '@/components/ideas/IdeaForm';
 
-export const metadata: Metadata = { title: 'Proposer une idée | Maryse Club' };
+export const metadata: Metadata = { title: 'Proposer une idée | Je pâtisse !' };
 
 export default async function NouvelleIdeePage() {
   await requireUser('/idees/nouvelle');
@@ -16,7 +16,7 @@ export default async function NouvelleIdeePage() {
 
   return (
     <>
-      <Header current="/idees" />
+      <Header />
       <main className="max-w-[640px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
         <Link
           href="/idees"

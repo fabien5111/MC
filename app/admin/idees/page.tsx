@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getAdminIdeas } from '@/lib/admin';
 import { IdeasManager } from '@/components/admin/IdeasManager';
 
-export const metadata: Metadata = { title: 'Boîte à idées | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Boîte à idées | Admin — Je pâtisse !' };
 
 export default async function AdminIdeesPage() {
+  await requireFullAdmin(); // modération : admin complet
   const ideas = await getAdminIdeas();
   return (
     <>

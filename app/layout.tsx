@@ -6,10 +6,15 @@ import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
 import { DialogProvider } from '@/components/Dialog';
 import { getImpersonationContext } from '@/lib/impersonation';
+import { APPLE_SPLASH_SCREENS } from '@/lib/apple-splash-screens';
+import { siteUrl } from '@/lib/site-url';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Maryse Club',
+  // Résout les URL relatives des pages (canonique, OpenGraph…) en URL
+  // absolues — sans ça, Next les résout sur `localhost:3000` au build.
+  metadataBase: new URL(siteUrl()),
+  title: 'Je pâtisse !',
   description:
     'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
   manifest: '/manifest.json',
@@ -35,13 +40,22 @@ export default async function RootLayout({
     <html lang="fr">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&family=Great+Vibes&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&family=Parisienne&display=swap"
           rel="stylesheet"
         />
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
+        {/* Splash natif iOS (cf. handoff design) : Safari ne lit pas le
+            manifeste pour cet écran, il faut une image par format d'appareil. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Je pâtisse" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/icons/apple-180.png" />
+        {APPLE_SPLASH_SCREENS.map((screen) => (
+          <link key={screen.href} rel="apple-touch-startup-image" media={screen.media} href={screen.href} />
+        ))}
       </head>
       <body
         data-impersonation={impersonation?.mode}

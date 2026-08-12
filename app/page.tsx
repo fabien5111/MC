@@ -3,12 +3,20 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { HomeBanner } from '@/components/HomeBanner';
-import { HomeRecipeGrid } from '@/components/HomeRecipeGrid';
 import { HomeSearch } from '@/components/HomeSearch';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { PartnerSlot } from '@/components/PartnerSlot';
+import { RecipeCardClient } from '@/components/RecipeCardClient';
+import { RailSection, ROW_CARD } from '@/components/home/RailSection';
+import { SessionsCarousel } from '@/components/home/SessionsCarousel';
+import { GuestIntro } from '@/components/home/GuestIntro';
+import { GuestCta } from '@/components/home/GuestCta';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
+import { getActiveExecutions } from '@/lib/executions';
+import { getFollowedRecipes } from '@/lib/follows';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -41,14 +49,19 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default async function HomePage() {
-  const [recipes, activeFeatured, favIds, banners, homeCategories, user] = await Promise.all([
-    getRecipes({ limit: 6 }),
-    getActiveFeaturedRecipe(),
-    getFavoriteIds(),
-    getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
-    getHomeCategories(),
-    getCurrentUser(),
-  ]);
+  const user = await getCurrentUser();
+  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes] =
+    await Promise.all([
+      getRecipes({ limit: 12 }),
+      getActiveFeaturedRecipe(),
+      getFavoriteIds(),
+      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
+      getHomeCategories(),
+      getActiveAds(['home_top', 'home_mid']),
+      // Réservées au membre — inutile de les demander à un visiteur.
+      user ? getActiveExecutions(user.id) : Promise.resolve([]),
+      user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
+    ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
   // la section ne disparaît jamais de l'accueil.
@@ -63,10 +76,11 @@ export default async function HomePage() {
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
       : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
+  const latest = await withAllergenPictos(recipes);
 
   return (
     <>
-      <Header current="/" />
+      <Header current="accueil" />
 
       <HomeBanner
         web={banners.banner_home_web}
@@ -76,47 +90,53 @@ export default async function HomePage() {
       />
 
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
-        {/* Publicité */}
-        <section className="mb-16">
-          <div className="ad-banner-placeholder w-full h-[120px] flex items-center justify-center rounded-xl overflow-hidden">
-            <div className="text-center">
-              <span className="block font-label-md text-on-tertiary-container uppercase tracking-[0.2em] mb-1 opacity-60">
-                Partenaire Gastronomique
-              </span>
-              <p className="text-secondary italic">
-                Découvrez la nouvelle collection d&apos;ustensiles Maryse
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Reprendre là où j'en suis (membre) / présentation du produit
+            (visiteur) — les deux occupent le même emplacement, jamais
+            ensemble. Un membre sans session en cours n'a rien ici : la page
+            commence directement à la recette de la semaine. */}
+        {user ? (
+          activeSessions.length > 0 && <SessionsCarousel sessions={activeSessions} />
+        ) : (
+          <GuestIntro />
+        )}
+
+        {/* Publicité — l'encart disparaît entièrement si aucune campagne n'est
+            programmée (repère visible des seuls administrateurs). */}
+        <PartnerSlot slot="home_top" ads={ads} className="mb-16" />
 
         {/* Recette de la semaine */}
         {featured && (
           <section className="mb-20">
-            <div className="luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
+            {/* Sur mobile, le libellé sort de la photo et se place au-dessus
+                du bloc : posé en surimpression, il masquait le sujet de
+                l'image sur une largeur d'écran étroite. */}
+            <div className="md:hidden mb-3">
+              <span className="inline-block bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
+                Recette de la Semaine
+              </span>
+            </div>
+            <div className="relative luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
-                  <Link href={`/recette/${featured.id}`} className="block group h-full">
-                    <div className="w-full h-full bg-surface-container">
-                      {featured.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img
-                          src={featured.hero_image_url}
-                          alt={featured.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                          <span className="material-symbols-outlined text-6xl">cake</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute top-6 left-6">
-                      <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
-                        Recette de la Semaine
-                      </span>
-                    </div>
-                  </Link>
+                  <div className="w-full h-full bg-surface-container">
+                    {featured.hero_image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                      <img
+                        src={featured.hero_image_url}
+                        alt={featured.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-6xl">cake</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute top-6 left-6 hidden md:block">
+                    <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
+                      Recette de la Semaine
+                    </span>
+                  </div>
                   <FavoriteHeart
                     recipeId={featured.id}
                     initialFav={favIds.has(featured.id)}
@@ -132,14 +152,16 @@ export default async function HomePage() {
                       <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
                     </Link>
                   )}
-                  <Link
-                    href={`/recette/${featured.id}?planifier=1`}
-                    title="Planifier cette recette"
-                    prefetch={false}
-                    className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
-                  >
-                    <PlanBadgeIcon />
-                  </Link>
+                  {user && (
+                    <Link
+                      href={`/recette/${featured.id}?planifier=1`}
+                      title="Planifier cette recette"
+                      prefetch={false}
+                      className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+                    >
+                      <PlanBadgeIcon />
+                    </Link>
+                  )}
                 </div>
 
                 <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
@@ -181,14 +203,13 @@ export default async function HomePage() {
                     )}
                   </div>
                   <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
-                  <Link
-                    href={`/recette/${featured.id}`}
-                    className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] transition-all hover:shadow-xl active:scale-95 self-start"
-                  >
-                    Voir la recette
-                  </Link>
                 </div>
               </div>
+              <Link
+                href={`/recette/${featured.id}`}
+                className="absolute inset-0 z-0"
+                aria-label={featured.title}
+              />
             </div>
           </section>
         )}
@@ -210,7 +231,7 @@ export default async function HomePage() {
               <h2 className="font-headline-lg text-headline-lg text-primary">Explorer par Catégorie</h2>
               <div className="h-1 w-12 bg-secondary mt-1" />
             </div>
-            <Link href="/" className="font-label-md text-label-md text-secondary hover:text-primary transition-colors">
+            <Link href="/recherche" className="font-label-md text-label-md text-secondary hover:text-primary transition-colors">
               Voir tout
             </Link>
           </div>
@@ -248,42 +269,43 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Publicité (entre Catégories et Dernières Créations) */}
-        <section className="mb-20">
-          <div className="ad-banner-placeholder w-full min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 rounded-xl overflow-hidden px-8 py-6">
-            <div className="flex flex-col gap-1 text-center md:text-left">
-              <span className="font-label-md text-on-tertiary-container uppercase tracking-[0.2em] text-[10px] opacity-60">
-                Publicité
-              </span>
-              <h3 className="font-headline-md text-headline-md text-primary">Coffrets &amp; ustensiles signés Maryse</h3>
-              <p className="text-secondary italic">Le matériel des chefs, livré chez vous pour réussir vos entremets.</p>
-            </div>
-            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
-              Découvrir
-            </button>
-          </div>
-        </section>
+        {/* Publicité (entre Catégories et le fil des abonnements / dernières créations) */}
+        <PartnerSlot slot="home_mid" ads={ads} className="mb-20" />
+
+        {/* Chez les pâtissiers que vous suivez (membre, seulement s'il y a
+            quelque chose à y montrer — pas de section vide). */}
+        {user && followedRecipes.length > 0 && (
+          <RailSection title="Chez les pâtissiers que vous suivez" viewAllHref="/carnet?scope=sub" viewAllLabel="Tout voir">
+            {followedRecipes.map((r) => (
+              <div key={r.id} data-row-card className={ROW_CARD}>
+                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} />
+              </div>
+            ))}
+          </RailSection>
+        )}
 
         {/* Dernières créations */}
-        <section className="mb-16">
-          <div className="flex justify-between items-end mb-10">
-            <div>
-              <h2 className="font-headline-lg text-headline-lg text-primary">Dernières Créations</h2>
-              <div className="h-1 w-12 bg-secondary mt-1" />
-            </div>
-          </div>
-          {recipes.length > 0 ? (
-            <HomeRecipeGrid initialRecipes={await withAllergenPictos(recipes)} initialFavIds={[...favIds]} currentUserId={user?.id} />
-          ) : (
-            <p className="text-on-surface-variant italic">
-              Aucune recette publiée pour le moment.
-            </p>
-          )}
-        </section>
+        {latest.length > 0 && (
+          <RailSection title="Dernières Créations" viewAllHref="/recherche" viewAllLabel="Explorer">
+            {latest.map((r) => (
+              <div key={r.id} data-row-card className={ROW_CARD}>
+                <RecipeCardClient
+                  recipe={r}
+                  isFav={favIds.has(r.id)}
+                  isOwner={!!user && r.author_id === user.id}
+                  showPlan={!!user}
+                />
+              </div>
+            ))}
+          </RailSection>
+        )}
+
+        {/* Invitation finale (visiteur) */}
+        {!user && <GuestCta />}
       </main>
 
       <Footer />
-      <MobileNav current="/" />
+      <MobileNav current="accueil" />
     </>
   );
 }

@@ -8,7 +8,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-12 border-b border-outline-variant/30 pb-12 mb-12">
           <div className="flex flex-col gap-6">
             <Link className="maryse-logo-font text-5xl text-primary leading-none" href="/">
-              maryse club
+              Je pâtisse !
             </Link>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-sm leading-relaxed">
               L&apos;excellence de la pâtisserie française partagée avec passion. Rejoignez notre

@@ -15,6 +15,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
+import { AuthorCard } from '@/components/search/AuthorCard';
 import { SearchProvider } from '@/components/search/SearchProvider';
 import { SearchHeaderBar } from '@/components/search/SearchHeaderBar';
 import { SearchFiltersPanel } from '@/components/search/SearchFiltersPanel';
@@ -22,7 +23,9 @@ import { SearchSummary } from '@/components/search/SearchSummary';
 import { SearchResults } from '@/components/search/SearchResults';
 import { SearchEmptyState } from '@/components/search/SearchEmptyState';
 import { LoadMore } from '@/components/search/LoadMore';
+import { PartnerSlot } from '@/components/PartnerSlot';
 import type { FacetRefs } from '@/components/search/SearchFacets';
+import { getActiveAds } from '@/lib/ads';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getAllergensWithPicto } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
@@ -39,23 +42,6 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-function AdBanner() {
-  return (
-    <div className="ad-banner-placeholder w-full min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 rounded-xl overflow-hidden px-8 py-6">
-      <div className="flex flex-col gap-1 text-center md:text-left">
-        <span className="font-label-md text-on-tertiary-container uppercase tracking-[0.2em] text-[10px] opacity-60">
-          Publicité
-        </span>
-        <h3 className="font-headline-md text-headline-md text-primary">Coffrets &amp; ustensiles signés Maryse</h3>
-        <p className="text-secondary italic">Le matériel des chefs, livré chez vous pour réussir vos entremets.</p>
-      </div>
-      <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
-        Découvrir
-      </button>
-    </div>
-  );
-}
-
 export default async function RecherchePage({
   searchParams,
 }: {
@@ -68,7 +54,7 @@ export default async function RecherchePage({
   // colonne est déjà là).
   const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  const [result, favIds, types, difficulties, tags, allergens, user] = await Promise.all([
+  const [result, favIds, types, difficulties, tags, allergens, user, ads] = await Promise.all([
     searchAdvanced(criteria),
     getFavoriteIds(),
     getRecipeTypes(),
@@ -76,6 +62,7 @@ export default async function RecherchePage({
     getTags(),
     getAllergensWithPicto(),
     getCurrentUser(),
+    getActiveAds(['search_list']),
   ]);
 
   const refs: FacetRefs = {
@@ -85,9 +72,14 @@ export default async function RecherchePage({
     allergens: allergens.map((a) => ({ id: a.id, name: a.name })),
   };
 
-  // Recomptes d'assouplissement : uniquement quand le total est nul.
+  // Recomptes d'assouplissement : uniquement quand le total est nul, et
+  // seulement si les recettes font partie de la portée choisie (les
+  // suggestions ne raisonnent que sur des facettes de recette, aucune n'a de
+  // sens pour un résultat pâtissier).
   const relaxations: Relaxation[] =
-    result.total === 0 && hasAnySearch(criteria) ? await relaxationSuggestions(criteria) : [];
+    criteria.includeRecipes && result.total === 0 && hasAnySearch(criteria)
+      ? await relaxationSuggestions(criteria)
+      : [];
 
   // Titre : une catégorie seule (lien de l'accueil) garde son intitulé
   // d'origine, pour ne pas dérouter qui arrive de la page d'accueil.
@@ -117,53 +109,90 @@ export default async function RecherchePage({
             <SearchFiltersPanel refs={refs} />
 
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
-              <SearchSummary total={result.total} refs={refs} />
+              <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />
 
-              <SearchResults>
-                {result.error ? (
-                  <div className="max-w-[560px] mx-auto py-12 text-center">
-                    <span className="material-symbols-outlined text-[56px] text-outline-variant mb-5 block">
-                      error_outline
-                    </span>
-                    <h2 className="font-headline-md text-[22px] text-primary mb-2.5">
-                      La recherche n&apos;a pas pu aboutir
-                    </h2>
-                    <p className="text-[13.5px] text-on-surface-variant leading-relaxed">
-                      Ce n&apos;est pas une recherche sans résultat : la requête elle-même a échoué.
-                      Réessayez dans un instant.
-                    </p>
-                    {process.env.NODE_ENV !== 'production' && (
-                      <p className="mt-5 text-[12px] text-error font-mono break-words">{result.error}</p>
-                    )}
-                  </div>
-                ) : result.total === 0 ? (
-                  hasAnySearch(criteria) ? (
-                    <SearchEmptyState criteria={criteria} relaxations={relaxations} />
-                  ) : (
-                    <p className="text-on-surface-variant italic">
-                      Aucune recette publiée pour le moment.
-                    </p>
-                  )
-                ) : (
-                  blocks.map((block, i) => (
-                    <section key={i} className="mb-12">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                        {block.map((r) => (
-                          <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} isOwner={!!user && r.author_id === user.id} />
-                        ))}
+              {criteria.includeRecipes && (
+                <>
+                  <SearchResults>
+                    {result.error ? (
+                      <div className="max-w-[560px] mx-auto py-12 text-center">
+                        <span className="material-symbols-outlined text-[56px] text-outline-variant mb-5 block">
+                          error_outline
+                        </span>
+                        <h2 className="font-headline-md text-[22px] text-primary mb-2.5">
+                          La recherche n&apos;a pas pu aboutir
+                        </h2>
+                        <p className="text-[13.5px] text-on-surface-variant leading-relaxed">
+                          Ce n&apos;est pas une recherche sans résultat : la requête elle-même a échoué.
+                          Réessayez dans un instant.
+                        </p>
+                        {process.env.NODE_ENV !== 'production' && (
+                          <p className="mt-5 text-[12px] text-error font-mono break-words">{result.error}</p>
+                        )}
                       </div>
-                      {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le dernier. */}
-                      {i < blocks.length - 1 && (
-                        <div className="mt-12">
-                          <AdBanner />
-                        </div>
-                      )}
-                    </section>
-                  ))
-                )}
-              </SearchResults>
+                    ) : result.total === 0 ? (
+                      hasAnySearch(criteria) ? (
+                        <SearchEmptyState criteria={criteria} relaxations={relaxations} />
+                      ) : (
+                        <p className="text-on-surface-variant italic">
+                          Aucune recette publiée pour le moment.
+                        </p>
+                      )
+                    ) : (
+                      blocks.map((block, i) => (
+                        <section key={i} className="mb-12">
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                            {block.map((r) => (
+                              <RecipeCard
+                                key={r.id}
+                                recipe={r}
+                                isFav={favIds.has(r.id)}
+                                isOwner={!!user && r.author_id === user.id}
+                                showPlan={!!user}
+                              />
+                            ))}
+                          </div>
+                          {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le
+                              dernier. `index` fait défiler les campagnes en cours
+                              d'un bandeau à l'autre plutôt que de répéter la même. */}
+                          {i < blocks.length - 1 && (
+                            <PartnerSlot slot="search_list" ads={ads} index={i} className="mt-12" />
+                          )}
+                        </section>
+                      ))
+                    )}
+                  </SearchResults>
 
-              <LoadMore shown={result.recipes.length} total={result.total} />
+                  <LoadMore shown={result.recipes.length} total={result.total} />
+                </>
+              )}
+
+              {/* Pâtissiers — séparés des recettes, sous la grille. Masqués
+                  sur la portée Recettes seule et sur la page vierge (pas de
+                  recherche formulée) tant qu'il n'y a rien à annoncer. */}
+              {criteria.includeAuthors && (result.authors.length > 0 || hasAnySearch(criteria)) && (
+                <section className="mt-12">
+                  <h2 className="font-headline-md text-[19px] text-primary mb-5">
+                    Pâtissiers
+                    {result.authorTotal > 0 && (
+                      <span className="ml-2 text-[14px] font-normal text-on-surface-variant">
+                        ({result.authorTotal})
+                      </span>
+                    )}
+                  </h2>
+                  {result.authors.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                      {result.authors.map((a) => (
+                        <AuthorCard key={a.id} author={a} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[13.5px] italic text-on-surface-variant">
+                      Aucun pâtissier ne correspond à cette recherche.
+                    </p>
+                  )}
+                </section>
+              )}
             </div>
           </div>
         </main>

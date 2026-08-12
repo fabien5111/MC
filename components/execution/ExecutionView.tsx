@@ -245,7 +245,7 @@ export function ExecutionView({
       setDeleting(false);
       return;
     }
-    router.push('/profil#planning');
+    router.push('/en-cuisine');
   }
 
   const jalons = useMemo(() => groupExecutionSteps(exec.execution_steps), [exec.execution_steps]);
@@ -295,7 +295,19 @@ export function ExecutionView({
   return (
     <>
       <LoadingOverlay visible={deleting} label="Suppression en cours…" />
-      {!showMep && jalons.length > 0 && <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} />}
+      {/* Le tiroir mobile compte double ici : c'est l'écran où l'on cuisine,
+          donc celui où le téléphone est le support normal et où le déroulé est
+          le plus long. `mobileInset` suit la barre d'actions fixe ci-dessous,
+          qui n'existe qu'en session ouverte. */}
+      {!showMep && jalons.length > 0 && (
+        <RecipeToc
+          sections={tocSections}
+          steps={tocSteps}
+          onNavigateToStep={expandJalon}
+          mobile="drawer"
+          mobileInset={readOnly ? 'none' : 'action-bar'}
+        />
+      )}
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{exec.planning?.recipe_title || 'Session de préparation'}</h1>
         <span className="font-label-md text-[12px] px-3 py-1 rounded-full bg-secondary/90 text-white">{STATUS_LBL[exec.status] || exec.status}</span>

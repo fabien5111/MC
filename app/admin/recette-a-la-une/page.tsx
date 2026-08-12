@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { requireFullAdmin } from '@/lib/auth';
 import { getFeaturedRecipesAdmin } from '@/lib/featured';
 import { FeaturedRecipesManager } from '@/components/admin/FeaturedRecipesManager';
 
-export const metadata: Metadata = { title: 'Recette à la une | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Recette à la une | Admin — Je pâtisse !' };
 
 export default async function AdminFeaturedRecipesPage() {
+  await requireFullAdmin(); // vitrine de l'accueil : admin complet
   const items = await getFeaturedRecipesAdmin();
 
   return (

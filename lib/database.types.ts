@@ -2053,6 +2053,8 @@ export type Database = {
           exc_allergens?: string[]
           exc_ingredients?: string[]
           inc_ingredients?: string[]
+          include_authors?: boolean
+          include_recipes?: boolean
           limit_val?: number
           max_total_time?: number
           min_author_rating?: number

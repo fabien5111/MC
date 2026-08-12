@@ -1026,10 +1026,16 @@ export function RelectureEditor({
 
   return (
     <>
+      {/* `mobile="drawer"` : même bascule que /creer et que la fiche recette —
+          sous 700 px, le bouton flottant porte le sommaire et ces actions, à la
+          place de la barre d'actions fixe qui occupait le bas de l'écran sans
+          donner accès aux sections. Pas de `mobileInset` : /relecture ne monte
+          pas la barre de navigation basse. */}
       <RecipeToc
         sections={RELECTURE_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandSp}
+        mobile="drawer"
         actions={[
           {
             id: 'create',
@@ -1900,12 +1906,14 @@ export function RelectureEditor({
         {ingredientsRecap.length === 0 ? (
           <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
         ) : (
-          <div className="max-w-2xl" style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+          // Nom en `minmax(0,1fr)` : une colonne `max-content` ne peut pas
+          // rétrécir, un nom long débordait donc de l'écran sur mobile.
+          <div className="max-w-2xl grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10">
             {ingredientsRecap.map((m, k) => {
               const conv = ingredientConversionText(conversions, unitRefs, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
               return (
                 <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                  <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                  <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
@@ -1928,48 +1936,20 @@ export function RelectureEditor({
         ))}
       </datalist>
 
-      {/* Barre d'actions fixe */}
-      <div
-        className="recipe-toc-fallback-bar fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-outline-variant z-40 px-margin-mobile md:px-margin-desktop py-3"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-      >
-        <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-3">
-          {importRow.statut !== 'brouillon' && importRow.recipe_id ? (
-            <a
-              href={`/recette/${importRow.recipe_id}`}
-              className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all"
-            >
-              <span className="material-symbols-outlined text-[18px]">menu_book</span> Voir la recette créée
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={onCreate}
-              disabled={busy || leaving}
-              className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
-            >
-              <span className="material-symbols-outlined text-[18px]">menu_book</span> Créer la recette dans mon carnet
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={busy || leaving}
-            className="border border-primary text-primary px-6 py-3 rounded-full font-label-md text-label-md hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-60"
-          >
-            Enregistrer les corrections
-          </button>
-          <span className="text-sm text-secondary font-label-md">{saveStatus}</span>
-          <button
-            type="button"
-            onClick={handleLeave}
-            disabled={busy || leaving}
-            className="ml-auto flex items-center gap-2 text-on-surface-variant font-label-md text-label-md hover:text-primary hover:underline disabled:opacity-60"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span> Quitter sans enregistrer
-          </button>
+      {/* Confirmation d'enregistrement (3 s). Elle vivait dans la barre
+          d'actions fixe, donc n'apparaissait déjà plus dès que le rail prenait
+          le relais ; posée ici en pastille flottante, elle est visible à toutes
+          les largeurs, y compris juste après un appui dans le tiroir mobile.
+          Décalée au-dessus du bouton flottant (52 px + marges), à sa gauche. */}
+      {saveStatus && (
+        <div
+          role="status"
+          className="fixed right-[14px] z-40 bg-primary text-white font-label-md text-label-md px-4 py-2 rounded-full shadow-lg"
+          style={{ bottom: 'calc(76px + env(safe-area-inset-bottom, 0px))' }}
+        >
+          {saveStatus}
         </div>
-      </div>
+      )}
 
       {/* Popup de choix des allergènes d'un ingrédient (max 3). Bascule chaque
           allergène de la table de référence ; les modifications sont live. */}

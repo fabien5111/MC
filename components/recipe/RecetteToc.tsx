@@ -12,6 +12,7 @@ import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { RecipeToc, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 
 export function RecetteToc({
   recipeId,
@@ -64,7 +65,11 @@ export function RecetteToc({
       : []),
     {
       id: 'plan',
-      icon: 'calendar_today',
+      // Même picto que la planification ailleurs sur le site (cartes recette,
+      // carnet) — pas l'icône Material générique `calendar_today` que
+      // portaient les autres entrées de ce rail, pour que ce déclencheur se
+      // reconnaisse au premier coup d'œil comme le même geste.
+      icon: <PlanningIcon size={20} discFill={DISC.surface} />,
       label: 'Planifier',
       variant: 'outline' as const,
       onClick: () => (open && !editMode ? close() : openCreate()),
@@ -77,7 +82,12 @@ export function RecetteToc({
 
   return (
     <>
-      <RecipeToc sections={sections} steps={steps} actions={actions} />
+      {/* `mobile="drawer"` : sous 700 px le rail disparaît, et avec lui la
+          seule voie d'accès à Planifier / Éditer / Dupliquer — `PlanWidget`
+          n'a pas de déclencheur propre. Le tiroir reprend les sections *et*
+          ces actions. `mobileInset="nav"` pour la barre de navigation basse,
+          que la fiche recette monte. */}
+      <RecipeToc sections={sections} steps={steps} actions={actions} mobile="drawer" mobileInset="nav" />
       <LoadingOverlay visible={pending !== null} label={pending === 'duplicate' ? 'Duplication de la recette…' : 'Ouverture de l’éditeur…'} />
     </>
   );

@@ -9,7 +9,16 @@ import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 import { cardAllergenNames } from '@/lib/recipe-view';
 
-export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFav: boolean }) {
+export function SuggestionCard({
+  recipe,
+  isFav,
+  showPlan = true,
+}: {
+  recipe: RecipeCardData;
+  isFav: boolean;
+  // Masqué pour un visiteur — planifier suppose une session (cf. RecipeCardLayout).
+  showPlan?: boolean;
+}) {
   const r = recipe;
   const level = (r.difficulties?.name || r.recipe_types?.name || 'Recette').toUpperCase();
   const diffLevel = r.difficulties?.level || 0;
@@ -47,14 +56,16 @@ export function SuggestionCard({ recipe, isFav }: { recipe: RecipeCardData; isFa
         <p className="text-sm text-on-surface-variant line-clamp-2 mt-1">{r.description || ''}</p>
       </Link>
       <FavoriteHeart recipeId={r.id} initialFav={isFav} />
-      <Link
-        href={`/recette/${r.id}?planifier=1`}
-        title="Planifier cette recette"
-        prefetch={false}
-        className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
-      >
-        <PlanBadgeIcon />
-      </Link>
+      {showPlan && (
+        <Link
+          href={`/recette/${r.id}?planifier=1`}
+          title="Planifier cette recette"
+          prefetch={false}
+          className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          <PlanBadgeIcon />
+        </Link>
+      )}
     </div>
   );
 }

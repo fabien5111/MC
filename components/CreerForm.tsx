@@ -764,7 +764,7 @@ export function CreerForm({
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,
-        // pour éviter qu'une visite ultérieure de /profil ou de la fiche
+        // pour éviter qu'une visite ultérieure du carnet ou de la fiche
         // recette ne réutilise un segment mis en cache avant cette écriture.
         router.refresh();
         router.push(`/recette/${recipeId}`);
@@ -788,7 +788,7 @@ export function CreerForm({
         // router.refresh() invalide le Router Cache client avant de naviguer
         // (cf. commentaire ci-dessus).
         router.refresh();
-        router.push('/profil');
+        router.push('/carnet');
       }
     } catch (e) {
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
@@ -812,7 +812,7 @@ export function CreerForm({
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
     setLeaving(true);
     const recipeId = editingId ?? createdIdRef.current;
-    router.push(recipeId ? `/recette/${recipeId}` : '/profil');
+    router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
   }, [router, editingId, dialog]);
 
   const scalingOptions =
@@ -836,10 +836,17 @@ export function CreerForm({
 
   return (
     <>
+      {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
+          flottant reprend le sommaire *et* ces actions — c'est ce qui a
+          remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
+          navigation entre sections et mangeait trois rangées de boutons sur un
+          téléphone. `mobileInset` reste à sa valeur par défaut : /creer ne
+          monte pas la barre de navigation basse. */}
       <RecipeToc
         sections={CREER_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandStep}
+        mobile="drawer"
         actions={[
           { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           {
@@ -848,6 +855,18 @@ export function CreerForm({
             label: 'Enregistrer en brouillon',
             variant: 'outline-strong',
             onClick: () => submit('draft', true),
+            disabled: busy || leaving,
+          },
+          // Sauver *et* quitter : cette action n'existait que dans la barre de
+          // bas d'écran. Elle est montée dans la liste commune pour que sa
+          // suppression ne la fasse pas disparaître du produit — le rail de
+          // bureau y gagne aussi le raccourci.
+          {
+            id: 'save-leave',
+            icon: 'exit_to_app',
+            label: 'Enregistrer en brouillon et quitter',
+            variant: 'outline-strong',
+            onClick: () => submit('draft', false),
             disabled: busy || leaving,
           },
           {
@@ -868,7 +887,7 @@ export function CreerForm({
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant">L&apos;excellence de la pâtisserie, rédigée par vos soins.</p>
         </div>
-        <Link href="/profil" className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md">
+        <Link href="/carnet" className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md">
           <span className="material-symbols-outlined">close</span> Annuler
         </Link>
       </div>
@@ -1929,12 +1948,14 @@ export function CreerForm({
             {ingredientsRecap.length === 0 ? (
               <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+              // Nom en `minmax(0,1fr)` : une colonne `max-content` ne peut pas
+              // rétrécir, un nom long débordait donc de l'écran sur mobile.
+              <div className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10">
                 {ingredientsRecap.map((m, k) => {
                   const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
                   return (
                     <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                      <span className="font-body-md text-body-md text-on-surface">{m.name}</span>
+                      <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
                       <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                         {[m.qty, m.unit].filter(Boolean).join(' ')}
                         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
@@ -1950,39 +1971,6 @@ export function CreerForm({
         <section className="pt-10 border-t-2 border-primary">
           <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
         </section>
-      </div>
-
-      <div
-        className="recipe-toc-fallback-bar fixed bottom-16 md:bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-      >
-        <div className="max-w-[1200px] mx-auto flex flex-wrap justify-center gap-3 px-margin-mobile md:px-margin-desktop">
-          <button
-            type="button"
-            onClick={() => submit('pending')}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 bg-primary-container text-white font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-primary transition-all flex items-center justify-center gap-3 rounded-full shadow-md disabled:opacity-60"
-          >
-            {isPublic ? 'Publier la recette' : 'Enregistrer'}
-            <span className="material-symbols-outlined text-[18px]">send</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => submit('draft', true)}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
-          >
-            Enregistrer en brouillon
-          </button>
-          <button
-            type="button"
-            onClick={() => submit('draft', false)}
-            disabled={busy}
-            className="flex-1 min-w-[220px] max-w-md py-3.5 border border-outline-variant bg-surface text-primary font-label-md text-label-md uppercase tracking-[0.15em] hover:bg-surface-container transition-all flex items-center justify-center gap-3 rounded-full disabled:opacity-60"
-          >
-            Enregistrer en brouillon et quitter
-          </button>
-        </div>
       </div>
 
       <datalist id="dl-ingredients">

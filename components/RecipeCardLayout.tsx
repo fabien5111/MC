@@ -15,6 +15,7 @@ export function RecipeCardLayout({
   recipe,
   isFav,
   isOwner = false,
+  showPlan = true,
   allergens,
 }: {
   recipe: RecipeCardData;
@@ -23,6 +24,11 @@ export function RecipeCardLayout({
   // l'auteur de la recette. Optionnel : les écrans qui ne le renseignent pas
   // (profil, suggestions) gardent le comportement d'avant son introduction.
   isOwner?: boolean;
+  // Planifier suppose une session : masqué pour un visiteur plutôt que de le
+  // renvoyer vers la connexion au clic. Par défaut affiché — seuls les écrans
+  // atteignables sans compte (accueil, recherche, profil public, suggestions
+  // de la fiche recette) le passent à `false` selon l'état de connexion.
+  showPlan?: boolean;
   allergens: ReactNode;
 }) {
   const r = recipe;
@@ -101,14 +107,16 @@ export function RecipeCardLayout({
           <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
         </Link>
       )}
-      <Link
-        href={`/recette/${r.id}?planifier=1`}
-        title="Planifier cette recette"
-        prefetch={false}
-        className={`absolute top-3 ${planPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
-      >
-        <PlanBadgeIcon />
-      </Link>
+      {showPlan && (
+        <Link
+          href={`/recette/${r.id}?planifier=1`}
+          title="Planifier cette recette"
+          prefetch={false}
+          className={`absolute top-3 ${planPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
+        >
+          <PlanBadgeIcon />
+        </Link>
+      )}
     </article>
   );
 }

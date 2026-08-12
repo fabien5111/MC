@@ -365,7 +365,15 @@ export function PlanStepDonePanel({
           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
         </summary>
         <div className="p-4 bg-white">
-          <ul style={{ display: 'grid', gridTemplateColumns: step.already_done ? 'max-content max-content max-content' : 'max-content max-content', columnGap: 40 }}>
+          {/* Nom en `minmax(0,1fr)` pour qu'il se replie : une grille tout en
+              `max-content` ne rétrécit pas et débordait du viewport mobile. */}
+          <ul
+            className={`grid gap-x-4 sm:gap-x-10 print:gap-x-10 ${
+              step.already_done
+                ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]'
+                : 'grid-cols-[max-content_minmax(0,1fr)]'
+            }`}
+          >
             {visible.map((it) => {
               // Ingrédient remplacé par une sous-recette : il reste listé,
               // barré, avec le renvoi — le faire disparaître laisserait
@@ -396,11 +404,11 @@ export function PlanStepDonePanel({
                       )}
                     </span>
                   )}
-                  <span className={`font-label-md text-label-md ${tone || 'text-primary'}`}>
+                  <span className={`font-label-md text-label-md whitespace-nowrap ${tone || 'text-primary'}`}>
                     <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                     {qtyText(it)} {it.unit || ''}
                   </span>
-                  <span className={`font-body-md text-body-md ${tone}`}>
+                  <span className={`font-body-md text-body-md break-words ${tone}`}>
                     {it.name}
                     {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                   </span>

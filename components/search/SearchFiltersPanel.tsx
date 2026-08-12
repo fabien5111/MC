@@ -16,6 +16,7 @@
 //    aucun moyen de revenir en arrière. Seul le compteur du bouton de pied
 //    est mis à jour en direct, via un appel « compte seul ».
 import { useEffect, useState } from 'react';
+import { BottomSheet } from '@/components/BottomSheet';
 import { SearchFacets, type FacetRefs } from '@/components/search/SearchFacets';
 import { useSearch } from '@/components/search/SearchProvider';
 import {
@@ -33,26 +34,22 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
   // Brouillon du tiroir : initialisé depuis les critères appliqués, et
   // resynchronisé à chaque ouverture.
   const [draft, setDraft] = useState<SearchCriteria>(criteria);
-  const [draftTotal, setDraftTotal] = useState<number | null>(null);
-  // Le tiroir est masqué en CSS au-dessus de 1024 px, mais `panelOpen` peut y
-  // être vrai (arrivée par `?panel=1` depuis l'en-tête). Sans cette garde, son
-  // blocage du défilement s'appliquait sur desktop : la page se figeait sans
-  // qu'aucun tiroir ne soit visible.
+  const [draftCounts, setDraftCounts] = useState<{ total: number; authorTotal: number } | null>(null);
+  // `panelOpen` peut être vrai sur desktop (arrivée par `?panel=1` depuis
+  // l'en-tête), où aucun tiroir n'est visible. <BottomSheet> se referme de
+  // lui-même au-dessus de son point de bascule — c'est là qu'est gardé le
+  // verrou de défilement, il ne doit pas rester posé sur une page sans tiroir.
+  // On ne suit ici que ce dont dépend le brouillon.
   const [wide, setWide] = useState(false);
   const drawerOpen = panelOpen && !wide;
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
-    const apply = () => {
-      setWide(mq.matches);
-      // En passant sur la colonne, l'ouverture du tiroir n'a plus de sens :
-      // on l'oublie, pour qu'un retour en dessous de 1024 px ne le rouvre pas.
-      if (mq.matches) setPanelOpen(false);
-    };
+    const apply = () => setWide(mq.matches);
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
-  }, [setPanelOpen]);
+  }, []);
 
   useEffect(() => {
     if (drawerOpen) setDraft(criteria);
@@ -60,21 +57,6 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
     // ne doit pas être écrasé par les critères appliqués.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerOpen]);
-
-  // Fermeture au clavier + blocage du défilement de la page derrière le tiroir.
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPanelOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [drawerOpen, setPanelOpen]);
 
   // Compteur du bouton de pied : requête « compte seul », dernière réponse
   // seule appliquée (la précédente est annulée).
@@ -86,12 +68,12 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       try {
         const res = await fetch(`/api/recherche/compte?${draftKey}`, { signal: controller.signal });
         if (!res.ok) return;
-        const { total } = (await res.json()) as { total: number };
-        setDraftTotal(total);
+        const counts = (await res.json()) as { total: number; authorTotal: number };
+        setDraftCounts(counts);
       } catch {
         // Requête annulée ou réseau indisponible : le bouton garde son
         // libellé générique plutôt qu'un nombre faux.
-        setDraftTotal(null);
+        setDraftCounts(null);
       }
     }, COUNT_DEBOUNCE_MS);
     return () => {
@@ -126,27 +108,16 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
       </aside>
 
       {/* ── Tiroir (< 1024 px) ──
-          z-[60] : au-dessus de MobileNav (z-50), dont la hauteur est aussi
-          compensée sous le pied du tiroir. */}
-      <div
-        className={`lg:hidden fixed inset-0 z-[60] ${drawerOpen ? '' : 'pointer-events-none'}`}
-        aria-hidden={!drawerOpen}
+          Voile, translation, verrou de défilement, Échap et piège à focus sont
+          portés par <BottomSheet>, commun avec le sommaire de la fiche
+          recette. */}
+      <BottomSheet
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        breakpoint="lg"
+        label="Critères de recherche"
+        sheetClassName="h-[88%]"
       >
-        <div
-          className="search-scrim absolute inset-0 bg-black/45"
-          data-open={drawerOpen}
-          onClick={() => setPanelOpen(false)}
-        />
-        <div
-          className="search-sheet absolute left-0 right-0 bottom-0 h-[88%] bg-surface rounded-t-[22px] shadow-2xl flex flex-col"
-          data-open={drawerOpen}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Critères de recherche"
-        >
-          <div className="pt-3 pb-1 flex justify-center shrink-0">
-            <span className="w-10 h-1 rounded-full bg-outline-variant" />
-          </div>
           <div className="flex items-center justify-between px-5 py-3 border-b border-outline-variant/60 shrink-0">
             <h2 className="font-headline-md text-[19px] text-primary">
               Filtres
@@ -167,8 +138,9 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
             <div className="h-4" />
           </div>
 
-          {/* Pied fixe. La marge basse dégage la barre de navigation mobile. */}
-          <div className="px-5 py-4 pb-[calc(1rem+72px)] border-t border-outline-variant/60 bg-surface-container-low shrink-0">
+          {/* Pied fixe. La marge basse dégage la barre de navigation mobile
+              (hauteur déclarée une fois, cf. `--mobile-nav-h`). */}
+          <div className="px-5 py-4 pb-[calc(1rem+var(--mobile-nav-h))] border-t border-outline-variant/60 bg-surface-container-low shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -177,16 +149,32 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
               }}
               className="w-full bg-primary text-on-primary py-3.5 rounded-full font-label-md text-[12.5px] uppercase tracking-[0.18em] active:scale-[0.98] transition-transform"
             >
-              {draftTotal === null
-                ? 'Voir les résultats'
-                : `Voir ${draftTotal === 0 ? 'les résultats' : `les ${draftTotal} recette${draftTotal > 1 ? 's' : ''}`}`}
+              {resultsButtonLabel(draftCounts, draft)}
             </button>
           </div>
-        </div>
-      </div>
-
+      </BottomSheet>
     </>
   );
+}
+
+// Libellé du bouton de validation — reflète la portée choisie dans le
+// brouillon (Recettes / Pâtissiers / les deux), pas seulement les recettes.
+function resultsButtonLabel(
+  counts: { total: number; authorTotal: number } | null,
+  draft: SearchCriteria,
+): string {
+  if (counts === null) return 'Voir les résultats';
+  const { total, authorTotal } = counts;
+  if (draft.includeRecipes && draft.includeAuthors) {
+    const sum = total + authorTotal;
+    return sum === 0 ? 'Voir les résultats' : `Voir les ${sum} résultat${sum > 1 ? 's' : ''}`;
+  }
+  if (draft.includeAuthors) {
+    return authorTotal === 0
+      ? 'Voir les résultats'
+      : `Voir les ${authorTotal} pâtissier${authorTotal > 1 ? 's' : ''}`;
+  }
+  return total === 0 ? 'Voir les résultats' : `Voir les ${total} recette${total > 1 ? 's' : ''}`;
 }
 
 function CountBadge({ value, className = '' }: { value: number; className?: string }) {

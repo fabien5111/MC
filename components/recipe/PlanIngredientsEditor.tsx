@@ -195,25 +195,48 @@ export function PlanIngredientsEditor({
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
-  const gridStyle = { display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content max-content', columnGap: 32 } as const;
-  const rowStyle = { display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' } as const;
+  // En dessous de 640 px, la grille à 5 colonnes n'a pas la place d'accueillir
+  // un nom d'ingrédient : les colonnes chiffrées (coef, deux quantités,
+  // actions) occupaient déjà l'essentiel du viewport, et le nom — replié dans
+  // le `minmax(0,1fr)` restant — cassait lettre par lettre. À partir de
+  // `sm:`, la grille tabulaire d'origine reprend (nom qui prend la place
+  // restante, colonnes chiffrées à leur largeur naturelle). En dessous, la
+  // ligne devient une carte empilée : nom en pleine largeur, puis coef /
+  // quantités / actions sur une ligne compacte en dessous.
+  const GRID_CLASS =
+    'flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)_max-content] sm:gap-x-8 print:grid print:grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)_max-content] print:gap-x-8';
+  // Ligne d'ingrédient : bloc empilé sur mobile, ligne de la subgrid à partir
+  // de `sm:` (`col-span-full` = `grid-column: 1/-1`, la subgrid ne peut
+  // s'écrire qu'en propriété arbitraire faute d'utilitaire Tailwind dédié).
+  const ROW_CLASS =
+    'flex flex-col gap-1 border-b border-outline-variant/30 py-2 sm:grid sm:[grid-template-columns:subgrid] sm:col-span-full sm:items-center sm:gap-0 sm:py-2';
+  // Regroupe coef / quantités / actions : ligne compacte sur mobile
+  // (`flex`), et sur `sm:` un `display: contents` qui efface ce wrapper pour
+  // que ses enfants redeviennent des cellules directes de la subgrid.
+  const META_CLASS = 'flex flex-wrap items-center gap-x-3 gap-y-1 sm:contents';
+  const MOBILE_LBL = 'sm:hidden text-[10px] uppercase tracking-wide text-on-surface-variant/70 mr-1';
 
   const withUnit = (text: string, unit: string | null, refId?: number | null) => {
     const tip = unit ? unitTips[unit.toLowerCase().trim()] : undefined;
     const conv = ingredientConversionText(conversions, units, refId, unit, text);
     return (
       <>
-        {text}
-        {text && unit ? ' ' : ''}
-        {unit ? (
-          tip ? (
-            <span className="unit-tip" title={tip}>
-              {unit}
-            </span>
-          ) : (
-            unit
-          )
-        ) : null}
+        {/* Nombre et unité insécables : sur une colonne étroite, « 1650 » ne
+            doit pas se retrouver sans son « ml ». La conversion reste en
+            dehors pour laisser la colonne se réduire. */}
+        <span className="whitespace-nowrap">
+          {text}
+          {text && unit ? ' ' : ''}
+          {unit ? (
+            tip ? (
+              <span className="unit-tip" title={tip}>
+                {unit}
+              </span>
+            ) : (
+              unit
+            )
+          ) : null}
+        </span>
         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
@@ -249,8 +272,8 @@ export function PlanIngredientsEditor({
               {step.title || ''}
             </h4>
             {rows.length > 0 && (
-              <ul style={gridStyle}>
-                <li className="pb-1" style={rowStyle}>
+              <ul className={GRID_CLASS}>
+                <li className="hidden sm:grid sm:[grid-template-columns:subgrid] sm:col-span-full sm:items-center pb-1">
                   <span />
                   <span className={LBL}>Coef.</span>
                   <span className={`${LBL} text-primary`}>Quantité ajustée</span>
@@ -282,8 +305,8 @@ export function PlanIngredientsEditor({
                     row.base_quantity != null ? fmtNum(row.base_quantity) : row.added ? '—' : row.quantity_text || '—';
                   return (
                     <Fragment key={row.id}>
-                      <li className="border-b border-outline-variant/30 py-2" style={rowStyle}>
-                        <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                      <li className={ROW_CLASS}>
+                        <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                           {row.url ? (
                             <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
                               {row.name}
@@ -293,61 +316,67 @@ export function PlanIngredientsEditor({
                           )}
                           {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
                         </span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
-                        <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                          {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
-                        </span>
-                        <span className="no-print flex items-center gap-1 justify-self-center">
-                          {expanded ? (
-                            // Une ligne remplacée ne se modifie plus : elle
-                            // n'entre nulle part tant que le remplacement
-                            // tient. Seul retour possible, l'annuler.
-                            <button
-                              type="button"
-                              onClick={() => cancelExpansion(row)}
-                              title="Annuler le remplacement et retirer les étapes ajoutées"
-                              className="text-primary hover:opacity-70"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">undo</span>
-                            </button>
-                          ) : (
-                            <>
+                        <div className={META_CLASS}>
+                          <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                            <span className={MOBILE_LBL}>Coef.</span>
+                            {coef != null ? `× ${fmtNum(coef)}` : '—'}
+                          </span>
+                          <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
+                          <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                            <span className={MOBILE_LBL}>Orig.</span>
+                            {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
+                          </span>
+                          <span className="no-print flex items-center gap-1 ml-auto sm:ml-0 sm:justify-self-end">
+                            {expanded ? (
+                              // Une ligne remplacée ne se modifie plus : elle
+                              // n'entre nulle part tant que le remplacement
+                              // tient. Seul retour possible, l'annuler.
                               <button
                                 type="button"
-                                onClick={() => setEditing(editing === key ? null : key)}
-                                title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
+                                onClick={() => cancelExpansion(row)}
+                                title="Annuler le remplacement et retirer les étapes ajoutées"
                                 className="text-primary hover:opacity-70"
                               >
-                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                                <span className="material-symbols-outlined text-[18px]">undo</span>
                               </button>
-                              {!row.removed && (
+                            ) : (
+                              <>
                                 <button
                                   type="button"
-                                  onClick={() => setExpanding(row)}
-                                  title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                                  onClick={() => setEditing(editing === key ? null : key)}
+                                  title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
                                   className="text-primary hover:opacity-70"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
                                 </button>
-                              )}
-                              {row.added ? (
-                                <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
-                                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleRemove(row)}
-                                  title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
-                                  className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </span>
+                                {!row.removed && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpanding(row)}
+                                    title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                                    className="text-primary hover:opacity-70"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                  </button>
+                                )}
+                                {row.added ? (
+                                  <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRemove(row)}
+                                    title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
+                                    className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </span>
+                        </div>
                       </li>
                       {expanded && (
                         <li className="pb-2 -mt-1" style={{ gridColumn: '1/-1' }}>

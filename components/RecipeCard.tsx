@@ -10,16 +10,19 @@ export function RecipeCard({
   recipe,
   isFav,
   isOwner,
+  showPlan,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
   isOwner?: boolean;
+  showPlan?: boolean;
 }) {
   return (
     <RecipeCardLayout
       recipe={recipe}
       isFav={isFav}
       isOwner={isOwner}
+      showPlan={showPlan}
       allergens={<AllergenPictos names={cardAllergenNames(recipe)} className="mb-4" iconClassName="w-6 h-6" />}
     />
   );

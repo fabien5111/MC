@@ -137,7 +137,32 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   vers `/connexion?next=…` si non connecté. Tolérant aux pannes : une erreur
   Supabase transitoire ne bloque pas le site, le contrôle fin restant assuré
   dans chaque page (`requireUser`, `requireAdmin`).
-- Rôles applicatifs dans `profiles.role` (`admin` pour le back-office).
+- Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
+  `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
+  (`member`, `null`…) vaut membre ordinaire.
+
+### Rôles du back-office
+
+| Rôle | Périmètre |
+|---|---|
+| `admin` | Tout : back-office complet, plus les privilèges d'édition disséminés dans le site (publication directe d'une recette, création de référentiels depuis l'éditeur, « connexion en tant que »). |
+| `gestionnaire` | Back-office restreint : modération des recettes (`/admin/recettes`) et rédaction du blog (`/admin/blog`). Ni membres, ni référentiels, ni paramètres du site, ni impersonation. |
+
+- `isAdmin()` garde **exactement** son ancien sens (`role === 'admin'`) : tous
+  les appels existants hors `/admin` (publication directe, création de tags,
+  régie publicitaire…) restent réservés à l'admin complet.
+- `isManager()` / `requireManager()` = admin **ou** gestionnaire — c'est la
+  garde du layout `/admin`.
+- **Le layout `/admin` est volontairement ouvert aux deux rôles ; chaque écran
+  réservé à l'admin complet se referme lui-même** par `requireFullAdmin()` en
+  première ligne. Conséquence à connaître : **une page ajoutée sous
+  `app/admin/` sans cette garde est ouverte au gestionnaire.** Le périmètre
+  autorisé est déclaré au même endroit que la barre latérale, dans
+  `lib/admin-access.ts` (`ADMIN_NAV`, champ `manager`).
+- Le filtrage des entrées de `AdminSidebar` est un confort d'affichage, jamais
+  la sécurité : celle-ci est côté serveur (gardes de page + RLS).
+- Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
+  restent fermées au gestionnaire.
 
 ### Connexion « en tant que » (impersonation)
 
@@ -333,16 +358,44 @@ Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
   nombre de votes est recompté à la volée par les RPC ci-dessous.
 - **Statuts** : `new` (défaut), `reviewing`, `in_progress`, `done`,
   `declined` (avec `admin_note` publique), `merged` (fusionnée dans une
-  autre idée — `merged_into_id` réservé pour une fusion de doublons en phase
-  ultérieure, pas encore d'écran pour la déclencher). Une idée `merged`
+  autre idée via `merged_into_id`, RPC `merge_ideas`). Une idée `merged`
   n'apparaît jamais dans `list_ideas` ni dans `suggest_similar_ideas`.
 - **Seul un admin modifie `status` / `admin_note` / `merged_into_id`** : la
   RLS ne sachant pas distinguer les colonnes changées dans une même ligne
   (`USING`/`WITH CHECK` ne voient jamais l'ancienne ET la nouvelle valeur
   dans la même expression), la règle est portée par un trigger
-  (`ideas_guard_admin_fields`), pas par une policy. Modification en place
-  depuis la liste (pas d'écran `/admin/idees` dédié en v1 : c'est l'action à
-  95 % de la modération).
+  (`ideas_guard_admin_fields`), pas par une policy.
+- **`/admin/idees`** (modération, `IdeasManager`) : statut, note admin
+  publique, suppression, fusion manuelle d'un doublon. Réservé à l'admin
+  complet — `requireFullAdmin()` en tête de page, comme `/admin/membres` ou
+  `/admin/moules` (cf. « Rôles du back-office » ci-dessus) : un gestionnaire
+  n'a pas à modérer la boîte à idées.
+- **RPC `merge_ideas(source_id, target_id)`** : transfère les votes de
+  l'idée absorbée vers la cible (`on conflict do nothing`, pas de doublon de
+  vote) puis marque la source `merged`. `SECURITY DEFINER` — transférer un
+  vote au nom d'un AUTRE utilisateur que l'appelant exige de contourner la
+  RLS de `idea_votes` (`user_id = auth.uid()`), même nécessité que le trigger
+  `ideas_auto_vote_author` ; la fonction vérifie `is_admin_user()`
+  elle-même, pas seulement l'écran qui l'appelle.
+- **Détection de doublons par IA** (Claude, `lib/ai/idea-duplicates.ts`),
+  en complément du trigramme/FTS ci-dessous qui ne repère qu'une proximité
+  lexicale : deux idées peuvent décrire le même besoin sans un seul mot
+  commun (« minuteur qui se lance tout seul » ↔ « chronomètre automatique »).
+  Deux usages, un seul jeu de prompts/parsing :
+  - à la création (`POST /api/idees/verifier-doublon`) : déclenchée à la
+    validation du formulaire, pas à la frappe (coût et latence d'un appel
+    IA par lettre tapée) — compare l'idée saisie à tout le fonds ouvert, y
+    compris les idées `declined` (savoir qu'une idée proche a déjà été
+    refusée, et pourquoi via `admin_note`, évite de la reproposer à
+    l'identique). Best-effort : clé API absente ou appel en échec →
+    `{ matches: [] }`, ne bloque jamais la publication ;
+  - côté admin (`POST /api/admin/idees/detecter-doublons`,
+    `IdeaDuplicateScanner`) : balaie les idées encore ouvertes deux par
+    deux, propose des paires à fusionner en un clic (RPC `merge_ideas`).
+  **RPC `ideas_summaries(idea_ids)`** : ré-hydrate les id renvoyés par l'IA
+  en objets affichables (titre, statut, votes, « ai-je voté ») avec les
+  mêmes composants que le reste du module (`StatusBadge`, `VoteButton`),
+  même motif que `list_ideas` / `suggest_similar_ideas`.
 - **Quota anti-spam** (trigger `ideas_check_quota`, 5 idées / 24 h / membre) :
   table publique en écriture ouverte à tout membre authentifié, sans lui un
   compte compromis la noierait en quelques secondes.

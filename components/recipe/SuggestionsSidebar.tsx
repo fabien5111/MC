@@ -2,14 +2,20 @@
 // la fiche recette (consultation) et l'éditeur (création/modification) —
 // porté de l'aside en dur de app/recette/[id]/page.tsx.
 import { SuggestionCard } from '@/components/recipe/SuggestionCard';
+import { PartnerSlot } from '@/components/PartnerSlot';
+import type { AdsBySlot } from '@/lib/ads-config';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function SuggestionsSidebar({
   suggestions,
   favIds,
+  ads,
+  showPlan = true,
 }: {
   suggestions: RecipeCardData[];
   favIds: Set<string>;
+  ads: AdsBySlot;
+  showPlan?: boolean;
 }) {
   return (
     <aside className="no-print lg:col-span-4 flex flex-col gap-12">
@@ -24,15 +30,11 @@ export function SuggestionsSidebar({
       {suggestions.length > 0 && (
         <div className="flex flex-col gap-8">
           <h3 className="font-label-md text-label-md uppercase tracking-widest text-secondary">Recettes suggérées</h3>
-          <SuggestionCard recipe={suggestions[0]} isFav={favIds.has(suggestions[0].id)} />
-          <div className="bg-surface-container-highest p-8 text-center border border-outline-variant py-20 flex flex-col items-center justify-center gap-4">
-            <span className="font-label-md text-[10px] tracking-widest text-outline">PUBLICITÉ</span>
-            <p className="font-headline-md text-headline-md text-primary">Masterclass : L&apos;art du chocolat</p>
-            <button className="mt-4 border border-primary px-6 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all">
-              Découvrir
-            </button>
-          </div>
-          {suggestions[1] && <SuggestionCard recipe={suggestions[1]} isFav={favIds.has(suggestions[1].id)} />}
+          <SuggestionCard recipe={suggestions[0]} isFav={favIds.has(suggestions[0].id)} showPlan={showPlan} />
+          <PartnerSlot slot="sidebar" ads={ads} />
+          {suggestions[1] && (
+            <SuggestionCard recipe={suggestions[1]} isFav={favIds.has(suggestions[1].id)} showPlan={showPlan} />
+          )}
         </div>
       )}
     </aside>

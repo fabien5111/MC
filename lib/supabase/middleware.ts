@@ -6,8 +6,19 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Routes nécessitant une session. Le gating fin (payant/gratuit, admin) se fait
 // ensuite dans chaque page/route ; ici on ne bloque que l'accès non authentifié.
+//
+// `/carnet` et `/en-cuisine` en sont volontairement absents : un visiteur qui
+// clique dessus doit voir l'écran d'invitation (README « Écran 4 »,
+// components/invitation/InvitationScreen.tsx) — jamais un renvoi sec vers la
+// connexion. Chacune des deux pages gère elle-même son rendu à deux états
+// (`getCurrentUser()` plutôt que `requireUser()`).
+//
+// `/profil` reste protégé bien qu'il ne soit plus qu'une redirection : il
+// dispatche vers des écrans privés, autant refuser tôt. `/idees` (liste) est
+// public à l'inverse — seule `/idees/nouvelle` (création) exige une session.
 const PROTECTED_PREFIXES = [
   '/profil',
+  '/reglages',
   '/creer',
   '/admin',
   '/execution',

@@ -5,6 +5,7 @@ import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
@@ -25,6 +26,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { PartnerSlot } from '@/components/PartnerSlot';
 import { SuggestionsSidebar } from '@/components/recipe/SuggestionsSidebar';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
@@ -50,7 +52,7 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const r = await getRecipeFull(id);
-  return { title: r ? `${r.title} | Maryse Club` : 'Recette | Maryse Club' };
+  return { title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !' };
 }
 
 export default async function RecettePage({ params, searchParams }: Params) {
@@ -70,7 +72,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
@@ -78,6 +80,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getMoldTypes(),
     getAllergensWithPicto(),
     getIngredientConversions(),
+    getActiveAds(['recipe_inline', 'sidebar']),
   ]);
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   // Le plan est une copie matérialisée indépendante de la recette (voir
@@ -124,17 +127,23 @@ export default async function RecettePage({ params, searchParams }: Params) {
     const conv = ingredientConversionText(conversions, units, refId, unit, quantity);
     return (
       <>
-        {q}
-        {q && unit ? ' ' : ''}
-        {unit ? (
-          tip ? (
-            <span className="unit-tip" title={tip}>
-              {unit}
-            </span>
-          ) : (
-            unit
-          )
-        ) : null}
+        {/* Le nombre et son unité forment un tout : sur une colonne étroite
+            (mobile), sans `nowrap`, « 1650 » se retrouve séparé de « ml ». La
+            conversion reste hors du groupe — l'inclure rigidifierait la
+            colonne à la largeur de « 1 unité(s) (≈ 20 g) ». */}
+        <span className="whitespace-nowrap">
+          {q}
+          {q && unit ? ' ' : ''}
+          {unit ? (
+            tip ? (
+              <span className="unit-tip" title={tip}>
+                {unit}
+              </span>
+            ) : (
+              unit
+            )
+          ) : null}
+        </span>
         {conv && <span className="print-fs-9 text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
       </>
     );
@@ -294,7 +303,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
             <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-label-md flex-wrap">
               <span className="flex items-center gap-2">
                 Par{' '}
-                <Link className="no-print flex items-center gap-2 hover:text-primary transition-colors" href="/profil">
+                {/* Signature de l'auteur : lien vers son profil public.
+                    Repli sur `author_id` si l'auteur n'a pas encore choisi de
+                    nom d'utilisateur — `getPublicProfile` accepte les deux. */}
+                <Link
+                  className="no-print flex items-center gap-2 hover:text-primary transition-colors"
+                  href={`/u/${recipe.profiles?.username || recipe.author_id}`}
+                >
                   <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
                     {recipe.profiles?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -334,22 +349,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             )}
           </div>
 
-          {/* Planifier — juste sous la rangée d'actions : le panneau s'ouvre au
-              clic sur « Planifier », qui doit rester visible sans scroller. */}
-          <div className="no-print">
-          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
-          </div>
-
-          {/* Hero */}
-          {recipe.hero_image_url && (
-            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
-              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
-              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
-            </div>
-          )}
-
-          {/* Contexte planifié (bannière + démarrage d'exécution) */}
+          {/* Contexte planifié (bannière + démarrage d'exécution) — juste sous
+              l'en-tête (qui porte le lien « Recette d'origine »), avant même le
+              panneau « Planifier » et la photo : sur une fiche planifiée, c'est
+              l'information la plus immédiatement utile, pas quelque chose sur
+              lequel on doit d'abord faire défiler la page. */}
           {planContext && planContext.planned_date && (
             <div className="no-print">
             <PlanNoticeBanner
@@ -374,10 +378,23 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           {/* Sessions de préparation (historique) — juste sous le bandeau de
-              planification, avant la note et la liste de courses : c'est la
-              suite directe de « Démarrer la recette » (ce bandeau), peu importe
-              la largeur d'écran. */}
+              planification : c'est la suite directe de « Démarrer la
+              recette » (ce bandeau), peu importe la largeur d'écran. */}
           <SessionsList execHistory={execHistory} />
+
+          {/* Planifier — le panneau s'ouvre au clic sur « Planifier ». */}
+          <div className="no-print">
+          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
+          </div>
+
+          {/* Hero */}
+          {recipe.hero_image_url && (
+            <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+              <img src={recipe.hero_image_url} alt={recipe.title} className="w-full h-full object-cover" />
+              {recipe.hero_image_ai_retouched && <AiPhotoBadge />}
+            </div>
+          )}
 
           {/* Note globale du plan + rappel de la convention de lecture. Une
               seule légende pour toute la fiche : les mêmes couleurs valent
@@ -626,7 +643,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">
                         {g.name || ''}
                       </h4>
-                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                      {/* La colonne du nom est en `minmax(0,1fr)`, jamais en
+                          `max-content` : une colonne `max-content` ne peut pas
+                          rétrécir, donc un nom long (« Levure sèche de
+                          boulanger — ou levure fraîche ») élargissait la grille
+                          au-delà du viewport et mettait toute la page en
+                          défilement horizontal sur mobile. */}
+                      <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
                         {[...(g.ingredients || [])]
                           .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                           .map((it) => {
@@ -640,7 +663,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                                 <span className="font-label-md text-label-md text-primary">
                                   <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                 </span>
-                                <span className="font-body-md text-body-md">
+                                <span className="font-body-md text-body-md break-words">
                                   {url ? (
                                     <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
                                       {it.name}
@@ -670,7 +693,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                   </summary>
                   <div className="p-4 bg-white">
-                    <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', columnGap: 40 }}>
+                    {/* Colonnes chiffrées en `minmax(min-content,max-content)` :
+                        elles gardent leur largeur naturelle, mais leurs
+                        en-têtes (« Quantité ajustée ») peuvent se replier sur
+                        deux lignes au lieu d'imposer leur largeur pleine — sur
+                        mobile, trois en-têtes en `max-content` ne laissaient
+                        plus rien au nom de l'ingrédient. */}
+                    <ul className="grid grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)] gap-x-3 sm:gap-x-10 print:gap-x-10">
                       <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                         <span />
                         <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
@@ -682,7 +711,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                         const tone = r.added ? 'text-green-700' : '';
                         return (
                           <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className={`font-body-md text-body-md${tone ? ' ' + tone : ''}`}>
+                            <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                               {/* Case à cocher au stylo — uniquement à l'impression, cochée
                                   à la main pendant les courses ou la préparation. */}
                               <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
@@ -710,10 +739,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                     </summary>
                     <div className="p-4 bg-white">
-                      <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                      <ul className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
                         {merged.map((m, k) => (
                           <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className="font-body-md text-body-md">
+                            <span className="font-body-md text-body-md break-words">
                               <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {m.name}
                               {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
@@ -748,18 +777,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           {/* Publicité */}
-          <div className="no-print mb-12 p-8 bg-surface-container-low border border-outline-variant/30 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-col gap-1">
-              <span className="font-label-md text-[10px] tracking-widest text-outline uppercase">Publicité</span>
-              <h4 className="font-headline-md text-headline-md text-primary">Découvrez nos coffrets de pâtisserie créative</h4>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Tout le nécessaire pour réussir vos entremets à la maison.
-              </p>
-            </div>
-            <button className="whitespace-nowrap border border-primary px-8 py-3 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-all uppercase tracking-widest">
-              En savoir plus
-            </button>
-          </div>
+          <PartnerSlot slot="recipe_inline" ads={ads} className="mb-12" />
 
           {/* Étapes */}
           {steps.length > 0 && (
@@ -925,14 +943,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                               <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                             </summary>
                             <div className="p-4 bg-white">
-                              <ul style={{ display: 'grid', gridTemplateColumns: 'max-content max-content', columnGap: 40 }}>
+                              <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
                                 {ings.map((it) => (
                                   <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                                     <span className="font-label-md text-label-md text-primary">
                                       <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                                       <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
                                     </span>
-                                    <span className="font-body-md text-body-md">
+                                    <span className="font-body-md text-body-md break-words">
                                       {it.name}
                                       {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                                     </span>
@@ -982,7 +1000,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
         </PlanProvider>
 
-        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} />
+        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} showPlan={!!user} />
       </main>
       </div>
 
