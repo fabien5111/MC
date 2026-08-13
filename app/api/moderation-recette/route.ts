@@ -91,6 +91,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const recipeId = typeof body?.recipeId === 'string' ? body.recipeId : null;
   if (!recipeId) return NextResponse.json({ erreur: 'recipeId requis.' }, { status: 400 });
+  // « Relancer l'analyse » (§10) doit forcer une nouvelle analyse même sans
+  // changement de contenu — c'est tout l'intérêt d'une relance manuelle.
+  // Sans ce drapeau, le cache par empreinte (ci-dessous) renvoyait l'ancien
+  // résultat en quelques centaines de ms sans rien recalculer.
+  const force = body?.force === true;
 
   const recipe = await getRecipeFull(recipeId);
   if (!recipe) return NextResponse.json({ erreur: 'Recette introuvable.' }, { status: 404 });
@@ -105,17 +110,20 @@ export async function POST(req: Request) {
 
   // Cache par empreinte de contenu (§6.4, cas de test #11) : une recette
   // resoumise sans modification du texte ne relance pas l'analyse — coût nul.
-  const { data: existing } = await analysisTable(admin)
-    .select('id')
-    .eq('recipe_id', recipeId)
-    .eq('recipe_content_hash', hash)
-    .eq('status', 'termine')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Contourné par une relance manuelle explicite (`force`).
+  if (!force) {
+    const { data: existing } = await analysisTable(admin)
+      .select('id')
+      .eq('recipe_id', recipeId)
+      .eq('recipe_content_hash', hash)
+      .eq('status', 'termine')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (existing) {
-    return NextResponse.json({ analysisId: (existing as AnalysisRow).id, cached: true });
+    if (existing) {
+      return NextResponse.json({ analysisId: (existing as AnalysisRow).id, cached: true });
+    }
   }
 
   const { data: inserted, error: insertError } = await analysisTable(admin)

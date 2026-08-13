@@ -259,10 +259,13 @@ function AnalysisPanel({
   async function relancer() {
     setRelancing(true);
     try {
+      // `force` contourne le cache par empreinte de contenu (§6.4) : une
+      // relance manuelle doit toujours recalculer, même sans changement du
+      // texte — sinon le bouton renvoie silencieusement l'ancien résultat.
       await fetch('/api/moderation-recette', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ recipeId }),
+        body: JSON.stringify({ recipeId, force: true }),
       });
       refresh();
     } finally {
