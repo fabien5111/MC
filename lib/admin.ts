@@ -52,9 +52,6 @@ export type AdminRecipeRow = {
   // `recipes_track_rejection_note` dès que `moderation_note` change — même
   // statut « pas encore régénéré » que `moderation_note` ci-dessus.
   moderation_note_at?: string | null;
-  // Motifs des refus précédents, archivés par le même trigger à chaque
-  // resoumission.
-  rejection_history?: string[] | null;
 };
 export type PendingComment = {
   id: number;
@@ -77,16 +74,9 @@ export async function getAdminStats(): Promise<{ totalRecipes: number; pendingRe
 
 export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  // `rejection_history` absente de lib/database.types.ts tant que la
-  // migration n'a pas été régénérée (npm run gen:types) — accès non typé sur
-  // ce seul champ, comme le reste du contrôle IA en attendant. Sélectionnée
-  // ici aussi : une recette « à valider » peut porter la trace de refus
-  // précédents (§9, panneau de validation).
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from('recipes')
-    .select(
-      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
-    )
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, profiles!recipes_author_id_fkey(full_name, username)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -94,12 +84,9 @@ export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
 
 export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  // `rejection_history` : voir le commentaire de getPendingRecipes.
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from('recipes')
-    .select(
-      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
-    )
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, profiles!recipes_author_id_fkey(full_name, username)')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -111,18 +98,52 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
 // si le refus était une erreur.
 export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  // `moderation_note` / `moderation_note_at` / `rejection_history` absentes de
+  // `moderation_note` / `moderation_note_at` absentes de
   // lib/database.types.ts tant que la migration n'a pas été régénérée
   // (npm run gen:types) — accès non typé sur ces champs, comme le reste du
   // contrôle IA en attendant.
   const { data } = await (supabase as any)
     .from('recipes')
     .select(
-      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, moderation_note, moderation_note_at, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, moderation_note, moderation_note_at, profiles!recipes_author_id_fkey(full_name, username)',
     )
     .eq('status', 'rejected')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
+}
+
+// Un refus précédent (§9), avec l'analyse IA qui était disponible au moment
+// du refus (`analysis_id`, `null` si aucune analyse n'existait alors) —
+// archivé par le trigger SQL `recipes_track_rejection_note` à chaque
+// resoumission. Table dédiée plutôt qu'une colonne sur `recipes` : porter
+// une date et une référence d'analyse par entrée ne tient plus dans un
+// simple tableau de texte.
+export type RejectionHistoryEntry = {
+  id: number;
+  motif: string;
+  rejected_at: string;
+  analysis_id: number | null;
+};
+
+export async function getRejectionHistory(recipeIds: string[]): Promise<Record<string, RejectionHistoryEntry[]>> {
+  if (!recipeIds.length) return {};
+  const supabase = await createClient();
+  // `recipe_rejection_history` absente de lib/database.types.ts tant que la
+  // migration n'a pas été régénérée (npm run gen:types).
+  const { data, error } = await (supabase as any)
+    .from('recipe_rejection_history')
+    .select('id, recipe_id, motif, rejected_at, analysis_id')
+    .in('recipe_id', recipeIds)
+    .order('rejected_at', { ascending: false });
+  if (error) {
+    console.error('getRejectionHistory:', error.message);
+    return {};
+  }
+  const byRecipe: Record<string, RejectionHistoryEntry[]> = {};
+  for (const row of (data ?? []) as (RejectionHistoryEntry & { recipe_id: string })[]) {
+    (byRecipe[row.recipe_id] ??= []).push(row);
+  }
+  return byRecipe;
 }
 
 // ── Contrôle IA à la validation des recettes (modération, §6.2) ───────────
@@ -181,6 +202,31 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
     if (!byRecipe[row.recipe_id]) byRecipe[row.recipe_id] = row;
   }
   return byRecipe;
+}
+
+// Un ensemble précis d'analyses par id — sert à ré-hydrater les analyses
+// historiques référencées par `recipe_rejection_history.analysis_id`
+// (§9 : « conserver les anciennes analyses avec les anciens motifs »),
+// contrairement à getLatestAnalyses qui ne garde que la plus récente par
+// recette.
+export async function getAnalysesByIds(analysisIds: number[]): Promise<Record<number, RecipeAnalysisSummary>> {
+  if (!analysisIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_analysis')
+    .select(
+      'id, status, overall_flag, moderation_verdict, moderation_details, ' +
+        'editorial_similarity_max, structural_similarity_max, error_message, ' +
+        'cost_usd, cost_tokens, cost_searches, created_at',
+    )
+    .in('id', analysisIds);
+  if (error) {
+    console.error('getAnalysesByIds:', error.message);
+    return {};
+  }
+  const byId: Record<number, RecipeAnalysisSummary> = {};
+  for (const row of (data ?? []) as RecipeAnalysisSummary[]) byId[row.id] = row;
+  return byId;
 }
 
 export type RecipeSimilarityMatchSummary = {
