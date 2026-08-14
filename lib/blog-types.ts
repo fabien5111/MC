@@ -91,9 +91,20 @@ type Table<Row, Insert, Update> = {
 type PublicSchema = Database['public'];
 
 // `Database` augmenté des objets créés par la migration du blog.
+//
+// `Omit` puis réajout plutôt qu'une simple intersection (`&`) : à la
+// régénération des types (`npm run gen:types`), `articles`,
+// `article_categories` et `gone_article_slugs` finissent par apparaître dans
+// `PublicSchema` elle-même (contrairement à ce que laissait supposer le
+// commentaire ci-dessus à l'origine). Une intersection sur une clé déjà
+// présente ne l'écrase pas : elle combine les deux définitions, et
+// `content: Json` (généré) ∩ `content: ProseDoc` (ici) produit
+// `content: Json & ProseDoc`, qu'aucune valeur concrète ne peut satisfaire.
+// `Omit` retire d'abord la clé générée pour que le type local la remplace
+// proprement, que la régénération ait eu lieu ou non.
 export type BlogDatabase = Omit<Database, 'public'> & {
   public: Omit<PublicSchema, 'Tables' | 'Functions'> & {
-    Tables: PublicSchema['Tables'] & {
+    Tables: Omit<PublicSchema['Tables'], 'articles' | 'article_categories'> & {
       articles: Table<ArticleRow, ArticleInsert, Partial<ArticleInsert>>;
       article_categories: Table<
         ArticleCategoryRow,
@@ -101,7 +112,7 @@ export type BlogDatabase = Omit<Database, 'public'> & {
         Partial<ArticleCategoryInsert>
       >;
     };
-    Functions: PublicSchema['Functions'] & {
+    Functions: Omit<PublicSchema['Functions'], 'gone_article_slugs'> & {
       // Slugs d'articles ayant déjà été publiés (`published_at` non nul) mais
       // dont le statut n'est plus `publie` — voir `getGoneSlugs` (lib/blog.ts)
       // et `lib/blog-gone.ts` (410 côté middleware).
