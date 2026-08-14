@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_events: {
+        Row: {
+          ad_id: number
+          created_at: string
+          event_type: string
+          id: number
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: number
+          created_at?: string
+          event_type: string
+          id?: number
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: number
+          created_at?: string
+          event_type?: string
+          id?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_events_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          cta_label: string | null
+          end_date: string | null
+          id: number
+          image_url: string | null
+          link_url: string | null
+          name: string
+          priority: number
+          slot: string
+          start_date: string
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          cta_label?: string | null
+          end_date?: string | null
+          id?: number
+          image_url?: string | null
+          link_url?: string | null
+          name: string
+          priority?: number
+          slot: string
+          start_date: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          cta_label?: string | null
+          end_date?: string | null
+          id?: number
+          image_url?: string | null
+          link_url?: string | null
+          name?: string
+          priority?: number
+          slot?: string
+          start_date?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       allergens: {
         Row: {
           created_at: string | null
@@ -76,6 +156,99 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      article_categories: {
+        Row: {
+          created_at: string | null
+          name: string
+          order_index: number
+          slug: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          name: string
+          order_index?: number
+          slug: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          name?: string
+          order_index?: number
+          slug?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      articles: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          category: string | null
+          content: Json
+          cover_image_url: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          published_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          category?: string | null
+          content?: Json
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          category?: string | null
+          content?: Json
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "articles_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "article_categories"
+            referencedColumns: ["slug"]
+          },
+        ]
       }
       comments: {
         Row: {
@@ -1440,6 +1613,205 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_analysis: {
+        Row: {
+          completed_at: string | null
+          cost_searches: number
+          cost_tokens: number
+          cost_usd: number | null
+          created_at: string
+          editorial_similarity_max: number | null
+          error_message: string | null
+          id: number
+          moderation_details: Json | null
+          moderation_prompt_version: string | null
+          moderation_verdict: string | null
+          overall_flag: string | null
+          recipe_content_hash: string
+          recipe_id: string
+          status: string
+          structural_similarity_max: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          cost_searches?: number
+          cost_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          editorial_similarity_max?: number | null
+          error_message?: string | null
+          id?: never
+          moderation_details?: Json | null
+          moderation_prompt_version?: string | null
+          moderation_verdict?: string | null
+          overall_flag?: string | null
+          recipe_content_hash: string
+          recipe_id: string
+          status?: string
+          structural_similarity_max?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          cost_searches?: number
+          cost_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          editorial_similarity_max?: number | null
+          error_message?: string | null
+          id?: never
+          moderation_details?: Json | null
+          moderation_prompt_version?: string | null
+          moderation_verdict?: string | null
+          overall_flag?: string | null
+          recipe_content_hash?: string
+          recipe_id?: string
+          status?: string
+          structural_similarity_max?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_analysis_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_analysis_feedback: {
+        Row: {
+          admin_id: string
+          analysis_id: number
+          comment: string | null
+          created_at: string
+          id: number
+          match_id: number | null
+          verdict: string
+        }
+        Insert: {
+          admin_id: string
+          analysis_id: number
+          comment?: string | null
+          created_at?: string
+          id?: never
+          match_id?: number | null
+          verdict: string
+        }
+        Update: {
+          admin_id?: string
+          analysis_id?: number
+          comment?: string | null
+          created_at?: string
+          id?: never
+          match_id?: number | null
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_analysis_feedback_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_analysis_feedback_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_similarity_match"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_shingle_index: {
+        Row: {
+          editorial_text: string
+          recipe_id: string
+          shingles: string[]
+          structural_keys: string[]
+          updated_at: string
+        }
+        Insert: {
+          editorial_text: string
+          recipe_id: string
+          shingles: string[]
+          structural_keys: string[]
+          updated_at?: string
+        }
+        Update: {
+          editorial_text?: string
+          recipe_id?: string
+          shingles?: string[]
+          structural_keys?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_shingle_index_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: true
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_similarity_match: {
+        Row: {
+          analysis_id: number
+          detection_method: string | null
+          editorial_score: number
+          id: number
+          longest_common_sequence: number | null
+          matched_excerpts: Json | null
+          source_recipe_id: string | null
+          source_title: string | null
+          source_type: string
+          source_url: string | null
+          structural_score: number
+        }
+        Insert: {
+          analysis_id: number
+          detection_method?: string | null
+          editorial_score: number
+          id?: never
+          longest_common_sequence?: number | null
+          matched_excerpts?: Json | null
+          source_recipe_id?: string | null
+          source_title?: string | null
+          source_type: string
+          source_url?: string | null
+          structural_score: number
+        }
+        Update: {
+          analysis_id?: number
+          detection_method?: string | null
+          editorial_score?: number
+          id?: never
+          longest_common_sequence?: number | null
+          matched_excerpts?: Json | null
+          source_recipe_id?: string | null
+          source_title?: string | null
+          source_type?: string
+          source_url?: string | null
+          structural_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_similarity_match_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_similarity_match_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_steps: {
         Row: {
           cook_temp: number | null
@@ -1613,12 +1985,14 @@ export type Database = {
           difficulty_id: number | null
           fts: unknown
           global_tips: string | null
+          has_hero_image: boolean
           hero_image_ai_retouched: boolean
           hero_image_original_url: string | null
           hero_image_url: string | null
           id: string
           is_public: boolean | null
           measure_type: string | null
+          moderation_note: string | null
           mold_dims: Json | null
           mold_type_id: number | null
           prep_time: number | null
@@ -1650,12 +2024,14 @@ export type Database = {
           difficulty_id?: number | null
           fts?: unknown
           global_tips?: string | null
+          has_hero_image?: boolean
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
           measure_type?: string | null
+          moderation_note?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -1687,12 +2063,14 @@ export type Database = {
           difficulty_id?: number | null
           fts?: unknown
           global_tips?: string | null
+          has_hero_image?: boolean
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
           measure_type?: string | null
+          moderation_note?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -2030,9 +2408,27 @@ export type Database = {
       }
     }
     Functions: {
+      can_write_articles: { Args: never; Returns: boolean }
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
+      gone_article_slugs: {
+        Args: never
+        Returns: {
+          slug: string
+        }[]
+      }
+      ideas_summaries: {
+        Args: { idea_ids: string[] }
+        Returns: {
+          has_voted: boolean
+          id: string
+          status: string
+          title: string
+          votes_count: number
+        }[]
+      }
       is_admin_user: { Args: never; Returns: boolean }
       is_read_only_session: { Args: never; Returns: boolean }
+      is_site_admin: { Args: never; Returns: boolean }
       list_ideas: {
         Args: {
           count_only?: boolean
@@ -2044,29 +2440,53 @@ export type Database = {
         Returns: Json
       }
       mc_norm: { Args: { txt: string }; Returns: string }
+      merge_ideas: {
+        Args: { source_id: string; target_id: string }
+        Returns: undefined
+      }
       owns_execution: { Args: { p_execution_id: number }; Returns: boolean }
       owns_plan: { Args: { p_planning_id: number }; Returns: boolean }
-      search_advanced_recipes: {
-        Args: {
-          count_only?: boolean
-          difficulty_levels?: number[]
-          exc_allergens?: string[]
-          exc_ingredients?: string[]
-          inc_ingredients?: string[]
-          include_authors?: boolean
-          include_recipes?: boolean
-          limit_val?: number
-          max_total_time?: number
-          min_author_rating?: number
-          min_recipe_rating?: number
-          offset_val?: number
-          search_term?: string
-          sort_by?: string
-          tag_slugs?: string[]
-          type_slug?: string
-        }
-        Returns: Json
-      }
+      search_advanced_recipes:
+        | {
+            Args: {
+              count_only?: boolean
+              difficulty_levels?: number[]
+              exc_allergens?: string[]
+              exc_ingredients?: string[]
+              inc_ingredients?: string[]
+              limit_val?: number
+              max_total_time?: number
+              min_author_rating?: number
+              min_recipe_rating?: number
+              offset_val?: number
+              search_term?: string
+              sort_by?: string
+              tag_slugs?: string[]
+              type_slug?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              count_only?: boolean
+              difficulty_levels?: number[]
+              exc_allergens?: string[]
+              exc_ingredients?: string[]
+              inc_ingredients?: string[]
+              include_authors?: boolean
+              include_recipes?: boolean
+              limit_val?: number
+              max_total_time?: number
+              min_author_rating?: number
+              min_recipe_rating?: number
+              offset_val?: number
+              search_term?: string
+              sort_by?: string
+              tag_slugs?: string[]
+              type_slug?: string
+            }
+            Returns: Json
+          }
       suggest_ingredients: {
         Args: { max_results?: number; term: string }
         Returns: {
@@ -2077,6 +2497,7 @@ export type Database = {
       suggest_similar_ideas: {
         Args: { max_results?: number; term: string }
         Returns: {
+          has_voted: boolean
           id: string
           rank: number
           status: string
