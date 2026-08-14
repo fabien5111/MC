@@ -1,6 +1,7 @@
 // Chargeurs de données admin, typés — portés de db.js (getMolds, getMoldTypes).
 import { createClient } from '@/lib/supabase/server';
 import { TAUX_EUR_AFFICHE } from '@/lib/ai/cost';
+import { MODERATION_MODEL, EXTERNAL_SEARCH_MODEL } from '@/lib/ai/claude';
 import {
   isImpersonationMode,
   withImpersonationSchema,
@@ -437,65 +438,120 @@ export async function getListEntries(table: string, orderBy = 'name'): Promise<R
   }
 }
 
-// ── Coûts IA (imports) ───────────────────────────────────────
-// Consommation et coût réels des imports de recettes, mesurés depuis le bloc
+// ── Coûts IA (import, vérification recettes, ajustement recette) ─────────
+// Consommation et coût réels par catégorie d'appel IA, mesurés depuis le bloc
 // `usage` renvoyé par l'API Claude (cf. lib/ai/cost.ts). Réservé au back-office.
+// Une seule granularité de tokens (total, pas entrée/sortie) : `recipe_analysis`
+// ne stocke que la somme (modération + éventuelle couche B + recherche
+// externe, cf. /api/moderation-recette), un détail par catégorie serait donc
+// incohérent entre les trois sources.
 export type AiCostSummary = {
-  /** Imports comptabilisés (ceux d'avant la migration n'ont pas de coût). */
-  imports: number;
-  importsSansCout: number;
-  inputTokens: number;
-  outputTokens: number;
+  /** Appels comptabilisés (ceux d'avant la mesure n'ont pas de coût). */
+  appels: number;
+  appelsSansCout: number;
+  tokens: number;
   usd: number;
   /** Conversion indicative, calculée côté serveur (le taux est une var d'env). */
   eur: number;
-  /** Coût moyen par import comptabilisé, en dollars. */
+  /** Coût moyen par appel comptabilisé, en dollars. */
   moyenneUsd: number;
 };
 
-export type AiCosts = {
+export type AiCostCategory = {
   jour: AiCostSummary;
   mois: AiCostSummary;
   total: AiCostSummary;
   /** Modèles rencontrés dans la période (le tarif dépend du modèle). */
   modeles: string[];
+};
+
+export type AiCosts = {
+  /** POST /api/import-url (+ /api/transcribe-photo en amont) — table `imports`. */
+  import: AiCostCategory;
+  /** POST /api/moderation-recette — table `recipe_analysis`. */
+  verification: AiCostCategory;
+  /** POST /api/scale-recipe — table `recipe_scale_costs`. */
+  ajustement: AiCostCategory;
+  /** Somme des trois catégories ci-dessus. */
+  ensemble: AiCostCategory;
   /** Taux dollar → euro appliqué, à afficher pour lever l'ambiguïté. */
   tauxEur: number;
 };
 
-type ImportCostRow = {
-  created_at: string;
-  model: string | null;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  cost_usd: number | null;
-};
+type CostRow = { created_at: string; tokens: number; cost_usd: number | null };
 
-function resume(rows: ImportCostRow[]): AiCostSummary {
+function resume(rows: CostRow[]): AiCostSummary {
   const avecCout = rows.filter((r) => r.cost_usd != null);
   const usd = avecCout.reduce((s, r) => s + Number(r.cost_usd), 0);
   return {
-    imports: rows.length,
-    importsSansCout: rows.length - avecCout.length,
-    inputTokens: rows.reduce((s, r) => s + (r.input_tokens ?? 0), 0),
-    outputTokens: rows.reduce((s, r) => s + (r.output_tokens ?? 0), 0),
+    appels: rows.length,
+    appelsSansCout: rows.length - avecCout.length,
+    tokens: rows.reduce((s, r) => s + r.tokens, 0),
     usd: Math.round(usd * 1e6) / 1e6,
     eur: Math.round(usd * TAUX_EUR_AFFICHE * 1e6) / 1e6,
     moyenneUsd: avecCout.length ? Math.round((usd / avecCout.length) * 1e6) / 1e6 : 0,
   };
 }
 
-// Agrégats jour / mois / total. Nécessite une politique RLS autorisant les
-// admins à lire toute la table `imports` (cf. migration) ; sans elle, les
-// compteurs ne refléteraient que les imports de l'admin connecté.
+function categorie(rows: CostRow[], modeles: string[], debutJour: Date, debutMois: Date): AiCostCategory {
+  return {
+    jour: resume(rows.filter((r) => new Date(r.created_at) >= debutJour)),
+    mois: resume(rows.filter((r) => new Date(r.created_at) >= debutMois)),
+    total: resume(rows),
+    modeles,
+  };
+}
+
+function fusionSummary(a: AiCostSummary, b: AiCostSummary): AiCostSummary {
+  const appels = a.appels + b.appels;
+  const appelsAvecCout = appels - (a.appelsSansCout + b.appelsSansCout);
+  const usd = Math.round((a.usd + b.usd) * 1e6) / 1e6;
+  return {
+    appels,
+    appelsSansCout: a.appelsSansCout + b.appelsSansCout,
+    tokens: a.tokens + b.tokens,
+    usd,
+    eur: Math.round((a.eur + b.eur) * 1e6) / 1e6,
+    moyenneUsd: appelsAvecCout ? Math.round((usd / appelsAvecCout) * 1e6) / 1e6 : 0,
+  };
+}
+
+function fusion(cats: AiCostCategory[]): AiCostCategory {
+  return {
+    jour: cats.map((c) => c.jour).reduce(fusionSummary),
+    mois: cats.map((c) => c.mois).reduce(fusionSummary),
+    total: cats.map((c) => c.total).reduce(fusionSummary),
+    modeles: [...new Set(cats.flatMap((c) => c.modeles))],
+  };
+}
+
+// Agrégats jour / mois / total par catégorie + un total général. Nécessite une
+// politique RLS autorisant les admins à lire toute la table sur `imports`,
+// `recipe_analysis` et `recipe_scale_costs` (cf. migrations) ; sans elle, les
+// compteurs ne refléteraient que les appels de l'admin connecté.
+//
+// `recipe_analysis` et `recipe_scale_costs` sont absentes de
+// lib/database.types.ts tant que leurs migrations n'ont pas été appliquées en
+// base puis régénérées (`npm run gen:types`) — accès non typé en attendant,
+// même motif que dans /api/moderation-recette et /api/scale-recipe.
 export async function getAiCosts(): Promise<AiCosts> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('imports')
-    .select('created_at, model, input_tokens, output_tokens, cost_usd')
-    .order('created_at', { ascending: false });
-  if (error) console.error('getAiCosts:', error.message);
-  const rows = (data as unknown as ImportCostRow[]) ?? [];
+
+  const [importsRes, verifRes, ajustRes] = await Promise.all([
+    supabase
+      .from('imports')
+      .select('created_at, model, input_tokens, output_tokens, cost_usd')
+      .order('created_at', { ascending: false }),
+    (supabase.from('recipe_analysis' as any) as ReturnType<typeof supabase.from>)
+      .select('created_at, cost_tokens, cost_usd')
+      .order('created_at', { ascending: false }),
+    (supabase.from('recipe_scale_costs' as any) as ReturnType<typeof supabase.from>)
+      .select('created_at, model, input_tokens, output_tokens, cost_usd')
+      .order('created_at', { ascending: false }),
+  ]);
+  if (importsRes.error) console.error('getAiCosts (import):', importsRes.error.message);
+  if (verifRes.error) console.error('getAiCosts (vérification):', verifRes.error.message);
+  if (ajustRes.error) console.error('getAiCosts (ajustement):', ajustRes.error.message);
 
   const debutJour = new Date();
   debutJour.setUTCHours(0, 0, 0, 0);
@@ -503,11 +559,41 @@ export async function getAiCosts(): Promise<AiCosts> {
   debutMois.setUTCDate(1);
   debutMois.setUTCHours(0, 0, 0, 0);
 
+  type TokensCostRow = { created_at: string; model: string | null; input_tokens: number | null; output_tokens: number | null; cost_usd: number | null };
+
+  const importRows = ((importsRes.data as unknown as TokensCostRow[]) ?? []).map((r) => ({
+    created_at: r.created_at,
+    tokens: (r.input_tokens ?? 0) + (r.output_tokens ?? 0),
+    cost_usd: r.cost_usd,
+  }));
+  const importModeles = [
+    ...new Set(((importsRes.data as unknown as TokensCostRow[]) ?? []).map((r) => r.model).filter((m): m is string => !!m)),
+  ];
+
+  const verifRows = (
+    (verifRes.data as unknown as { created_at: string; cost_tokens: number; cost_usd: number | null }[]) ?? []
+  ).map((r) => ({ created_at: r.created_at, tokens: r.cost_tokens, cost_usd: r.cost_usd }));
+
+  const ajustRows = ((ajustRes.data as unknown as TokensCostRow[]) ?? []).map((r) => ({
+    created_at: r.created_at,
+    tokens: (r.input_tokens ?? 0) + (r.output_tokens ?? 0),
+    cost_usd: r.cost_usd,
+  }));
+  const ajustModeles = [
+    ...new Set(((ajustRes.data as unknown as TokensCostRow[]) ?? []).map((r) => r.model).filter((m): m is string => !!m)),
+  ];
+
+  const importCat = categorie(importRows, importModeles, debutJour, debutMois);
+  // Modération et (le cas échéant) recherche externe : pas de colonne `model`
+  // par ligne, les deux modèles possibles sont donc listés statiquement.
+  const verifCat = categorie(verifRows, [MODERATION_MODEL, EXTERNAL_SEARCH_MODEL], debutJour, debutMois);
+  const ajustCat = categorie(ajustRows, ajustModeles, debutJour, debutMois);
+
   return {
-    jour: resume(rows.filter((r) => new Date(r.created_at) >= debutJour)),
-    mois: resume(rows.filter((r) => new Date(r.created_at) >= debutMois)),
-    total: resume(rows),
-    modeles: [...new Set(rows.map((r) => r.model).filter((m): m is string => !!m))],
+    import: importCat,
+    verification: verifCat,
+    ajustement: ajustCat,
+    ensemble: fusion([importCat, verifCat, ajustCat]),
     tauxEur: TAUX_EUR_AFFICHE,
   };
 }
