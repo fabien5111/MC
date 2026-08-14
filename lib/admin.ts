@@ -44,6 +44,10 @@ export type AdminRecipeRow = {
   // absent de lib/database.types.ts tant que la migration n'a pas été
   // régénérée (npm run gen:types).
   moderation_note?: string | null;
+  // Motifs des refus précédents, archivés par le trigger SQL
+  // `recipes_archive_rejection_note` à chaque resoumission — même statut
+  // « pas encore régénéré » que `moderation_note` ci-dessus.
+  rejection_history?: string[] | null;
 };
 export type PendingComment = {
   id: number;
@@ -66,9 +70,14 @@ export async function getAdminStats(): Promise<{ totalRecipes: number; pendingRe
 
 export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  // `rejection_history` absente de lib/database.types.ts tant que la
+  // migration n'a pas été régénérée (npm run gen:types) — accès non typé sur
+  // ce seul champ, comme le reste du contrôle IA en attendant. Sélectionnée
+  // ici aussi : une recette « à valider » peut porter la trace de refus
+  // précédents (§9, panneau de validation).
+  const { data } = await (supabase as any)
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, rejection_history, profiles!recipes_author_id_fkey(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -76,9 +85,10 @@ export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
 
 export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  // `rejection_history` : voir le commentaire de getPendingRecipes.
+  const { data } = await (supabase as any)
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, profiles!recipes_author_id_fkey(full_name)')
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, rejection_history, profiles!recipes_author_id_fkey(full_name)')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -90,12 +100,14 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
 // si le refus était une erreur.
 export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  // `moderation_note` absente de lib/database.types.ts tant que la migration
-  // n'a pas été régénérée (npm run gen:types) — accès non typé sur ce seul
-  // champ, comme le reste du contrôle IA en attendant.
+  // `moderation_note` / `rejection_history` absentes de lib/database.types.ts
+  // tant que la migration n'a pas été régénérée (npm run gen:types) — accès
+  // non typé sur ces deux champs, comme le reste du contrôle IA en attendant.
   const { data } = await (supabase as any)
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, profiles!recipes_author_id_fkey(full_name)')
+    .select(
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, rejection_history, profiles!recipes_author_id_fkey(full_name)',
+    )
     .eq('status', 'rejected')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];

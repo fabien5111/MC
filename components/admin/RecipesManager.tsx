@@ -521,6 +521,25 @@ export function RecipesManager({
           </td>
         </tr>
       )}
+      {/* Refus précédents (§9) : archivés par le trigger SQL
+          `recipes_archive_rejection_note` à chaque resoumission — motifs
+          seuls, sans date ni auteur du refus. Peut apparaître dans les trois
+          tables (une recette « à valider » ou republiée peut avoir été
+          refusée par le passé). */}
+      {r.rejection_history && r.rejection_history.length > 0 && (
+        <tr>
+          <td colSpan={6} className="px-6 pb-2 -mt-2">
+            <div className="text-xs text-on-surface-variant">
+              <span className="font-semibold text-on-surface">Refus précédents :</span>
+              <ul className="list-disc list-inside mt-1 space-y-0.5">
+                {r.rejection_history.map((motif, i) => (
+                  <li key={i}>{motif}</li>
+                ))}
+              </ul>
+            </div>
+          </td>
+        </tr>
+      )}
       {(mode === 'pending' || mode === 'rejected') && (
         <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">

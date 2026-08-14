@@ -305,11 +305,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <PrintButton />
               </span>
             </div>
-            {recipe.status === 'rejected' && recipe.moderation_note && (isOwner || userIsAdmin) && (
+            {recipe.moderation_note && (isOwner || userIsAdmin) && (
               // Motif saisi par l'admin à la refus (§9, Admin → Recettes) —
               // sans messagerie interne pour le transmettre autrement,
               // l'auteur ne le découvrait jusqu'ici qu'en le demandant.
-              // Visible de l'auteur et de l'admin, jamais du public.
+              // Visible de l'auteur et de l'admin, jamais du public. Reste
+              // affiché tant que la recette n'est pas resoumise (statut
+              // `rejected` ou repassée en `draft` sans resoumission) — la
+              // resoumission vide `moderation_note` (trigger SQL
+              // `recipes_archive_rejection_note`).
               <div className="no-print border border-error/40 bg-error-container/40 text-on-error-container rounded-xl px-5 py-3 flex items-start gap-3">
                 <span className="material-symbols-outlined text-[20px] shrink-0">info</span>
                 <p className="font-body-md text-[13px]">

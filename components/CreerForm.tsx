@@ -930,6 +930,19 @@ export function CreerForm({
         </Link>
       </div>
 
+      {editRecipe?.moderation_note && (
+        // Même bloc que sur la fiche recette (app/recette/[id]/page.tsx) :
+        // reste affiché tant que la recette n'a pas été resoumise (refusée ou
+        // repassée en brouillon depuis un refus) — la resoumission vide
+        // `moderation_note` (trigger SQL `recipes_archive_rejection_note`).
+        <div className="no-print mb-8 border border-error/40 bg-error-container/40 text-on-error-container rounded-xl px-5 py-3 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[20px] shrink-0">info</span>
+          <p className="font-body-md text-[13px]">
+            <span className="font-semibold">Motif du refus :</span> {editRecipe.moderation_note}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-16" onChange={markDirty}>
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
