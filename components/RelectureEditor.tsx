@@ -1155,6 +1155,10 @@ export function RelectureEditor({
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
+            <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
+          </label>
           <div className="space-y-1.5">
             <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
               <ImageSlot
@@ -1183,10 +1187,6 @@ export function RelectureEditor({
               </label>
             )}
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
-            <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
-          </label>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Catégories et Tags</span>
             <div className="flex flex-wrap gap-2 items-center mt-1">
