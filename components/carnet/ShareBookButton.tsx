@@ -91,6 +91,10 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
 
             <div className="p-6 flex flex-col gap-6">
               <div className="flex flex-col gap-3">
+                <label className="flex items-center gap-2 font-body-md text-sm text-on-surface-variant">
+                  <input type="checkbox" checked disabled className="accent-primary" />
+                  Toutes mes recettes privées
+                </label>
                 <label className="flex items-center gap-2 cursor-pointer font-body-md text-sm">
                   <input
                     type="checkbox"
@@ -99,10 +103,6 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
                     className="accent-primary"
                   />
                   Inclure mes brouillons
-                </label>
-                <label className="flex items-center gap-2 font-body-md text-sm text-on-surface-variant">
-                  <input type="checkbox" checked disabled className="accent-primary" />
-                  Toutes mes recettes privées
                 </label>
                 <p className="font-body-md text-[12px] text-on-surface-variant italic">
                   Vous pouvez aussi partager une recette privée à l’unité, depuis sa fiche.
