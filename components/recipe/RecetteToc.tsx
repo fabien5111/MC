@@ -9,10 +9,29 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
-import { RecipeToc, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
+import { RecipeToc, stepAnchorId, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
+
+// Même seuil que `SPY_THRESHOLD` dans lib/use-toc.ts : on veut retrouver la
+// même étape que celle mise en surbrillance dans le sommaire au moment du
+// clic sur « Éditer ».
+const SPY_THRESHOLD = 160;
+
+// Étape actuellement franchie (dernière ancre `sec-etape-N` passée sous le
+// seuil de lecture), pour rouvrir l'éditeur au même endroit de la recette
+// plutôt que toujours en haut du formulaire.
+function currentStepIndex(stepCount: number): number | null {
+  const limit = window.scrollY + SPY_THRESHOLD;
+  let current: number | null = null;
+  for (let i = 0; i < stepCount; i++) {
+    const el = document.getElementById(stepAnchorId(i));
+    if (!el) continue;
+    if (el.getBoundingClientRect().top + window.scrollY <= limit) current = i;
+  }
+  return current;
+}
 
 export function RecetteToc({
   recipeId,
@@ -35,7 +54,11 @@ export function RecetteToc({
   function edit() {
     if (pending) return;
     setPending('edit');
-    router.push(`/creer?id=${recipeId}`);
+    // Repositionne l'éditeur sur l'étape que l'on était en train de consulter,
+    // au lieu de toujours le rouvrir en haut du formulaire.
+    const stepIndex = currentStepIndex(steps.length);
+    const suffix = stepIndex !== null ? `&step=${stepIndex + 1}` : '';
+    router.push(`/creer?id=${recipeId}${suffix}`);
   }
 
   async function duplicate() {

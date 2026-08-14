@@ -12,13 +12,16 @@ import { CreerForm } from '@/components/CreerForm';
 
 export const metadata: Metadata = { title: 'Créer une recette | Je pâtisse !' };
 
-type SearchParams = { searchParams: Promise<{ id?: string }> };
+type SearchParams = { searchParams: Promise<{ id?: string; step?: string }> };
 
 export default async function CreerPage({ searchParams }: SearchParams) {
   const user = await requireUser('/creer');
   // Impersonation en lecture seule : l'éditeur n'est pas accessible.
   await requireWritableSession();
-  const { id } = await searchParams;
+  const { id, step } = await searchParams;
+  // Étape (1-indexée) sur laquelle se repositionner, transmise par le bouton
+  // « Éditer » de la fiche recette (cf. components/recipe/RecetteToc.tsx).
+  const initialStep = step ? parseInt(step, 10) || null : null;
 
   const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe, conversions, ingredientRefIds] =
     await Promise.all([
@@ -71,6 +74,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           editRecipe={owned}
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
+          initialStep={owned ? initialStep : null}
         />
       </main>
       </div>

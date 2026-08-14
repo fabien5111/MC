@@ -196,6 +196,7 @@ export function CreerForm({
   editRecipe,
   conversions,
   ingredientRefIds,
+  initialStep,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -215,6 +216,10 @@ export function CreerForm({
   editRecipe: RecipeFull | null;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
+  // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
+  // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
+  // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
+  initialStep?: number | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -511,6 +516,29 @@ export function CreerForm({
     [],
   );
 
+  // Repositionnement sur l'étape d'où l'édition a été ouverte (prop
+  // `initialStep`, cf. components/recipe/RecetteToc.tsx) : déplie l'étape
+  // visée puis défile jusqu'à elle, une seule fois au montage — un
+  // changement ultérieur de `initialStep` (il ne varie pas dans la vie du
+  // composant, l'id venant de l'URL initiale) ne doit pas rejouer le saut.
+  useEffect(() => {
+    const index = (initialStep ?? 0) - 1;
+    if (index < 0) return;
+    expandStep(index);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Double frame : laisse React déplier l'étape et le navigateur refaire la
+    // mise en page avant de mesurer la cible (même motif que `navigate` dans
+    // lib/use-toc.ts).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = document.getElementById(stepAnchorId(index));
+        if (!el) return;
+        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: reduce ? 'auto' : 'smooth' });
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Sous-étapes : bascule texte libre ⇄ liste éditable ──
   const [dragSub, setDragSub] = useState<{ si: number; idx: number } | null>(null);
   // « Éclater en sous-étapes » : découpe la description en lignes éditables et
@@ -601,6 +629,14 @@ export function CreerForm({
         ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'
         : 'Cette recette est publiée. La repasser en brouillon la retirera de votre carnet publié. Continuer ?';
       if (!(await dialog.confirm(msg))) return;
+    }
+    // Publication publique par un membre non-admin : reste en file de
+    // validation (cf. `finalStatus` plus bas) tant qu'un admin ne l'a pas
+    // relue. Prévenir avant l'envoi plutôt qu'après évite la surprise d'une
+    // recette qui semble « publiée » mais n'apparaît nulle part sur le site.
+    if (status === 'pending' && isPublic && !isAdmin) {
+      if (!(await dialog.confirm('Votre recette sera soumise à la validation d\'un modérateur avant d\'apparaître publiquement sur le site. Continuer ?')))
+        return;
     }
     busyRef.current = true;
     setBusy(true);
