@@ -213,31 +213,42 @@ export type WebSearchCall = { text: string; usage: ClaudeUsage; searches: number
 // nécessaire (jusqu'à 10 itérations d'outil serveur par défaut ; largement
 // suffisant pour 3 recherches).
 //
-// En streaming, comme callClaude : constaté en usage réel, jusqu'à 3
-// recherches enchaînées côté serveur peuvent légitimement prendre plus de
-// 40 s de bout en bout, et en non-streaming rien ne circule tant que ce
-// n'est pas entièrement fini — un délai fixe sur la requête entière finit
-// par tuer une requête qui progresse simplement lentement, sans distinguer
-// ce cas d'une requête réellement bloquée. `timeoutMs` est donc un délai
-// d'INACTIVITÉ (réinitialisé à chaque événement reçu), pas un plafond sur la
-// durée totale — le vrai filet de sécurité reste le `maxDuration` de la
-// route appelante.
+// En streaming, comme callClaude : en non-streaming rien ne circule tant que
+// l'enchaînement des recherches n'est pas entièrement fini, et un délai fixe
+// sur la requête entière tue alors une requête qui progresse simplement
+// lentement, sans la distinguer d'une requête réellement bloquée.
+//
+// DEUX garde-fous distincts, et ils ne sont pas interchangeables :
+//   - `inactiviteMs` : délai d'inactivité, réinitialisé à chaque événement
+//     reçu — repère une connexion réellement morte ;
+//   - `totalMs` : plafond ABSOLU sur la durée de l'appel, jamais
+//     réinitialisé. Indispensable : l'outil de recherche émet des événements
+//     en continu pendant qu'il travaille, si bien que le délai d'inactivité
+//     seul ne se déclenche jamais et laisse l'appel courir jusqu'à ce que
+//     l'hébergeur tue la fonction (FUNCTION_INVOCATION_TIMEOUT) — hors de
+//     tout try/catch, donc sans que l'analyse puisse être marquée en échec.
 export async function callClaudeWithWebSearch(
   apiKey: string,
   userContent: string,
   system: string,
   maxTokens: number,
-  timeoutMs: number,
+  inactiviteMs: number,
+  totalMs: number,
   model: string = EXTERNAL_SEARCH_MODEL,
   // Domaines à exclure des résultats (le site lui-même, §6.4 : « en
   // excluant le domaine de "Je pâtisse !" lui-même »).
   blockedDomains: string[] = [],
 ): Promise<WebSearchCall> {
   const ctl = new AbortController();
-  let timer = setTimeout(() => ctl.abort(), timeoutMs);
+  let budgetDepasse = false;
+  let timer = setTimeout(() => ctl.abort(), inactiviteMs);
+  const limiteTotale = setTimeout(() => {
+    budgetDepasse = true;
+    ctl.abort();
+  }, totalMs);
   const resetTimer = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => ctl.abort(), timeoutMs);
+    timer = setTimeout(() => ctl.abort(), inactiviteMs);
   };
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -258,7 +269,14 @@ export async function callClaudeWithWebSearch(
             type: 'web_search_20260209',
             name: 'web_search',
             // Garde-fou §6.4 : maximum 3 requêtes de recherche par recette.
-            max_uses: 3,
+            // Ramené à 2 : mesuré en préproduction, 3 recherches enchaînées
+            // (recherche + lecture des pages + jugement) dépassent à elles
+            // seules les ~50 s disponibles dans le `maxDuration` de la route,
+            // et la vérification externe n'aboutissait donc jamais. Deux
+            // recherches tiennent dans le budget — mieux vaut une
+            // vérification externe qui aboutit qu'une troisième requête qui
+            // fait tout échouer.
+            max_uses: 2,
             ...(blockedDomains.length ? { blocked_domains: blockedDomains } : {}),
           },
         ],
@@ -320,12 +338,17 @@ export async function callClaudeWithWebSearch(
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       throw Object.assign(
-        new Error(`API Claude (recherche web) : connexion inactive pendant plus de ${Math.round(timeoutMs / 1000)} s.`),
+        new Error(
+          budgetDepasse
+            ? `API Claude (recherche web) : non terminée dans le budget de ${Math.round(totalMs / 1000)} s imparti par la route.`
+            : `API Claude (recherche web) : connexion inactive pendant plus de ${Math.round(inactiviteMs / 1000)} s.`,
+        ),
         { code: 'TIMEOUT' },
       );
     }
     throw e;
   } finally {
     clearTimeout(timer);
+    clearTimeout(limiteTotale);
   }
 }

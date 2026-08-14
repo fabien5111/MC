@@ -94,7 +94,10 @@ const pct = (v: number) => Math.round(v * 10000) / 100; // 0..1 → pourcentage,
 // la modération et la relance ont déjà consommé le budget.
 const HARD_DEADLINE_MS = 52_000; // marge sous maxDuration=60 pour l'écriture finale + la réponse
 const MIN_BUDGET_COUCHE_B = 8_000; // sous ce seuil, mieux vaut sauter la couche B que la tronquer
-const MIN_BUDGET_EXTERNAL = 10_000; // idem pour la recherche externe
+// Sous ~20 s restantes, la recherche externe n'a aucune chance d'aboutir :
+// mieux vaut la sauter franchement que dépenser des tokens pour un appel
+// certain d'être interrompu.
+const MIN_BUDGET_EXTERNAL = 20_000;
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -399,13 +402,14 @@ export async function POST(req: Request) {
             buildExternalSearchUserContent(phrases),
             buildExternalSearchSystemPrompt(),
             1500,
-            // Timeout d'inactivité (réinitialisé à chaque octet reçu, cf.
-            // callClaudeWithWebSearch) borné par le budget de temps global
-            // restant : sans ça, un flux qui continue à produire des petits
-            // deltas peut légitimement dépasser le `maxDuration = 60` de la
-            // route — la fonction serait alors tuée par la plateforme avant
-            // l'écriture finale, laissant l'analyse bloquée en `en_cours`.
-            Math.min(40_000, remainingBudget() - 5_000),
+            // Inactivité : repère une connexion morte. Ne borne PAS la durée
+            // totale (il se réarme à chaque événement, et la recherche en
+            // émet en continu pendant qu'elle travaille).
+            15_000,
+            // Plafond absolu : tout le budget restant moins la marge de
+            // l'écriture finale. C'est lui qui garantit que la route rend la
+            // main avant que la plateforme ne tue la fonction.
+            Math.max(0, remainingBudget() - 5_000),
             undefined,
             [own],
           );
