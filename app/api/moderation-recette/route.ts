@@ -83,6 +83,19 @@ function shingleIndexTable(client: any) {
 const nowIso = () => new Date().toISOString();
 const pct = (v: number) => Math.round(v * 10000) / 100; // 0..1 → pourcentage, 2 décimales
 
+// Modération (jusqu'à 40 s avec relance) + couche B (jusqu'à 3×15 s) +
+// recherche externe (jusqu'à 40 s) peuvent dépasser en cumulé le
+// `maxDuration = 60` de la route : Vercel tue alors la fonction au niveau
+// plateforme, hors de tout try/catch — l'analyse reste bloquée en
+// `en_cours` sans jamais atteindre `termine` ni `echec`. Un budget de temps
+// global, vérifié avant chaque étape coûteuse et best-effort (couche B,
+// recherche externe), garantit à la place que l'écriture finale a toujours
+// lieu bien avant la coupure plateforme — au prix de sauter ces étapes si
+// la modération et la relance ont déjà consommé le budget.
+const HARD_DEADLINE_MS = 52_000; // marge sous maxDuration=60 pour l'écriture finale + la réponse
+const MIN_BUDGET_COUCHE_B = 8_000; // sous ce seuil, mieux vaut sauter la couche B que la tronquer
+const MIN_BUDGET_EXTERNAL = 10_000; // idem pour la recherche externe
+
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
@@ -148,6 +161,8 @@ export async function POST(req: Request) {
 
   const source = buildModerationSource(recipe);
   const sourceText = moderationSourceText(source);
+  const routeStart = Date.now();
+  const remainingBudget = () => HARD_DEADLINE_MS - (Date.now() - routeStart);
 
   try {
     let call = await callClaude(
@@ -291,7 +306,7 @@ export async function POST(req: Request) {
     // littérale — détecte une recette recopiée puis reformulée. Sautée si la
     // couche A a déjà trouvé une correspondance forte (même logique que la
     // recherche externe, §6.4). Best-effort.
-    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD) {
+    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD && remainingBudget() >= MIN_BUDGET_COUCHE_B) {
       try {
         const { data: structRows } = await shingleIndexTable(admin)
           .select('recipe_id, editorial_text, structural_keys')
@@ -314,11 +329,14 @@ export async function POST(req: Request) {
 
           const reformulationMatches: typeof matches = [];
           for (const cand of structCandidates) {
+            // Budget réévalué à chaque itération : un candidat de plus ne
+            // doit jamais faire franchir l'échéance globale.
+            if (remainingBudget() < MIN_BUDGET_COUCHE_B) break;
             const judged = await callClaude(
               apiKey,
               buildReformulationUserContent(candidateEditorial, cand.r.editorial_text),
               500,
-              15_000,
+              Math.min(15_000, remainingBudget() - 3_000),
               MODERATION_MODEL,
               'disabled',
               buildReformulationSystemPrompt(),
@@ -367,7 +385,9 @@ export async function POST(req: Request) {
     let externalNote: string | undefined;
     let searchesUsed = 0;
     let externalMatchCount = 0;
-    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD) {
+    if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD && remainingBudget() < MIN_BUDGET_EXTERNAL) {
+      externalNote = 'Vérification externe non effectuée (budget de temps épuisé par les étapes précédentes).';
+    } else if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD) {
       try {
         const phrases = extractSignaturePhrases(recipe);
         if (!phrases.length) {
@@ -379,12 +399,13 @@ export async function POST(req: Request) {
             buildExternalSearchUserContent(phrases),
             buildExternalSearchSystemPrompt(),
             1500,
-            // Jusqu'à 3 recherches + lecture des résultats, en non-streaming
-            // (rien ne revient tant que tout n'est pas fini) : 25 s s'est
-            // révélé trop juste en pratique. La modération prend en général
-            // 5-10 s, ce qui laisse de la marge dans le maxDuration = 60 de
-            // la route pour un délai plus généreux ici.
-            40_000,
+            // Timeout d'inactivité (réinitialisé à chaque octet reçu, cf.
+            // callClaudeWithWebSearch) borné par le budget de temps global
+            // restant : sans ça, un flux qui continue à produire des petits
+            // deltas peut légitimement dépasser le `maxDuration = 60` de la
+            // route — la fonction serait alors tuée par la plateforme avant
+            // l'écriture finale, laissant l'analyse bloquée en `en_cours`.
+            Math.min(40_000, remainingBudget() - 5_000),
             undefined,
             [own],
           );
