@@ -23,6 +23,13 @@ export function planFactor(plan: Pick<PlanningEntry, 'factor'> | null): number {
   return plan && plan.factor && plan.factor > 0 ? plan.factor : 1;
 }
 
+// Sérialise une date en `YYYY-MM-DD` d'après ses champs locaux (jamais via
+// `toISOString()`, qui repasse en UTC et décale d'un jour tout fuseau à
+// l'est de Greenwich — la France y compris).
+function isoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Étape « Jour J − n » → date réelle (jour de dégustation − offset), en mode planifié.
 export function planDayLabel(offset: number | null | undefined, plannedDate: string): string {
   const d = new Date(plannedDate + 'T00:00:00');
@@ -108,7 +115,7 @@ export function groupPlanningStepsByDate(
           executionId: running?.execution_id ?? null,
           executionStepId: running?.execution_step_id ?? null,
           sessionDone: !!running?.done,
-          date: d.toISOString().slice(0, 10),
+          date: isoLocal(d),
         });
       });
   });
