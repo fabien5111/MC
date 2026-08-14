@@ -224,21 +224,21 @@ export type WebSearchCall = { text: string; usage: ClaudeUsage; searches: number
 // sur la requête entière tue alors une requête qui progresse simplement
 // lentement, sans la distinguer d'une requête réellement bloquée.
 //
-// DEUX garde-fous distincts, et ils ne sont pas interchangeables :
-//   - `inactiviteMs` : délai d'inactivité, réinitialisé à chaque événement
-//     reçu — repère une connexion réellement morte ;
-//   - `totalMs` : plafond ABSOLU sur la durée de l'appel, jamais
-//     réinitialisé. Indispensable : l'outil de recherche émet des événements
-//     en continu pendant qu'il travaille, si bien que le délai d'inactivité
-//     seul ne se déclenche jamais et laisse l'appel courir jusqu'à ce que
-//     l'hébergeur tue la fonction (FUNCTION_INVOCATION_TIMEOUT) — hors de
-//     tout try/catch, donc sans que l'analyse puisse être marquée en échec.
+// UN SEUL garde-fou : `totalMs`, plafond ABSOLU sur la durée de l'appel.
+//
+// Surtout PAS de délai d'inactivité ici, contrairement à ce qu'on pourrait
+// croire : pendant qu'une recherche s'exécute côté serveur Anthropic, il n'y
+// a rien à streamer, et le flux reste donc légitimement muet de longues
+// secondes. Un délai d'inactivité y coupe des appels qui progressent
+// normalement (constaté : abandon au bout de 15 s de silence alors que la
+// recherche travaillait). Le plafond absolu suffit, puisqu'il est calculé
+// par la route à partir du temps qui lui reste avant que l'hébergeur ne tue
+// la fonction.
 export async function callClaudeWithWebSearch(
   apiKey: string,
   userContent: string,
   system: string,
   maxTokens: number,
-  inactiviteMs: number,
   totalMs: number,
   model: string = EXTERNAL_SEARCH_MODEL,
   // Domaines à exclure des résultats (le site lui-même, §6.4 : « en
@@ -246,16 +246,7 @@ export async function callClaudeWithWebSearch(
   blockedDomains: string[] = [],
 ): Promise<WebSearchCall> {
   const ctl = new AbortController();
-  let budgetDepasse = false;
-  let timer = setTimeout(() => ctl.abort(), inactiviteMs);
-  const limiteTotale = setTimeout(() => {
-    budgetDepasse = true;
-    ctl.abort();
-  }, totalMs);
-  const resetTimer = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => ctl.abort(), inactiviteMs);
-  };
+  const limiteTotale = setTimeout(() => ctl.abort(), totalMs);
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -304,7 +295,6 @@ export async function callClaudeWithWebSearch(
 
     for (;;) {
       const { done, value } = await reader.read();
-      resetTimer(); // un octet reçu (ou la fin du flux) prouve que ça avance
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       let fin = buffer.indexOf('\n\n');
@@ -346,16 +336,13 @@ export async function callClaudeWithWebSearch(
     if ((e as Error).name === 'AbortError') {
       throw Object.assign(
         new Error(
-          budgetDepasse
-            ? `API Claude (recherche web) : non terminée dans le budget de ${Math.round(totalMs / 1000)} s imparti par la route.`
-            : `API Claude (recherche web) : connexion inactive pendant plus de ${Math.round(inactiviteMs / 1000)} s.`,
+          `API Claude (recherche web) : non terminée dans le budget de ${Math.round(totalMs / 1000)} s imparti par la route.`,
         ),
         { code: 'TIMEOUT' },
       );
     }
     throw e;
   } finally {
-    clearTimeout(timer);
     clearTimeout(limiteTotale);
   }
 }

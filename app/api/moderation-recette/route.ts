@@ -92,7 +92,7 @@ const pct = (v: number) => Math.round(v * 10000) / 100; // 0..1 → pourcentage,
 // recherche externe), garantit à la place que l'écriture finale a toujours
 // lieu bien avant la coupure plateforme — au prix de sauter ces étapes si
 // la modération et la relance ont déjà consommé le budget.
-const HARD_DEADLINE_MS = 52_000; // marge sous maxDuration=60 pour l'écriture finale + la réponse
+const HARD_DEADLINE_MS = 54_000; // marge sous maxDuration=60 pour l'écriture finale + la réponse
 const MIN_BUDGET_COUCHE_B = 8_000; // sous ce seuil, mieux vaut sauter la couche B que la tronquer
 // Sous ~20 s restantes, la recherche externe n'a aucune chance d'aboutir :
 // mieux vaut la sauter franchement que dépenser des tokens pour un appel
@@ -402,14 +402,11 @@ export async function POST(req: Request) {
             buildExternalSearchUserContent(phrases),
             buildExternalSearchSystemPrompt(),
             1500,
-            // Inactivité : repère une connexion morte. Ne borne PAS la durée
-            // totale (il se réarme à chaque événement, et la recherche en
-            // émet en continu pendant qu'elle travaille).
-            15_000,
-            // Plafond absolu : tout le budget restant moins la marge de
-            // l'écriture finale. C'est lui qui garantit que la route rend la
-            // main avant que la plateforme ne tue la fonction.
-            Math.max(0, remainingBudget() - 5_000),
+            // Plafond absolu (seul garde-fou, cf. callClaudeWithWebSearch) :
+            // tout le budget restant moins la marge de l'écriture finale.
+            // C'est lui qui garantit que la route rend la main avant que la
+            // plateforme ne tue la fonction.
+            Math.max(0, remainingBudget() - 4_000),
             undefined,
             [own],
           );
