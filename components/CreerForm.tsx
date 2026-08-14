@@ -192,6 +192,7 @@ export function CreerForm({
   allergens,
   utensilRefs,
   isAdmin,
+  highlightUnknownRefs,
   editRecipe,
   conversions,
   ingredientRefIds,
@@ -205,6 +206,12 @@ export function CreerForm({
   allergens: { id: number; name: string }[];
   utensilRefs: string[];
   isAdmin: boolean;
+  // Cadre rouge sur un ingrédient/ustensile hors référentiel : true pour
+  // l'admin dans sa propre session ET pour une session d'impersonation (seul
+  // un admin complet peut en ouvrir une — cf. app/creer/page.tsx). Séparé
+  // d'`isAdmin`, qui reste réservé aux écritures (bouton « Ajouter au
+  // référentiel », publication directe, création de tag).
+  highlightUnknownRefs: boolean;
   editRecipe: RecipeFull | null;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
@@ -339,12 +346,12 @@ export function CreerForm({
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
-  // Cadre rouge (admin uniquement) sur un nom sans correspondance dans la
-  // table de référence — même définition qu'Admin → Éléments inconnus, pour
-  // repérer le rattachement manquant dès la saisie plutôt qu'après coup sur
-  // cet écran séparé.
+  // Cadre rouge (admin, y compris en impersonation) sur un nom sans
+  // correspondance dans la table de référence — même définition qu'Admin →
+  // Éléments inconnus, pour repérer le rattachement manquant dès la saisie
+  // plutôt qu'après coup sur cet écran séparé.
   const unknownRefClass = (known: Set<string>, name: string) =>
-    isAdmin && name.trim() && !known.has(name.trim().toLowerCase()) ? ' border-2 border-error' : '';
+    highlightUnknownRefs && name.trim() && !known.has(name.trim().toLowerCase()) ? ' border-2 border-error' : '';
 
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
