@@ -25,43 +25,64 @@ const FIELD = 'w-full border-b border-outline-variant bg-transparent py-2 text-s
 const LABEL = 'text-xs font-semibold text-on-surface-variant uppercase tracking-wider';
 const MAX_ALLERGENS = 3;
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Brouillon',
+  pending: 'En attente',
+  rejected: 'Refusée',
+  published: 'Publiée',
+};
+
+// Statut + visibilité entre parenthèses : un ingrédient inconnu peut dormir
+// dans un brouillon jamais publié — sans ça, rien ne distingue une correction
+// urgente (recette publique déjà visible) d'une saisie encore en chantier.
+function statusNote(status: string | null, isPublic: boolean | null): string | null {
+  const parts = [status ? (STATUS_LABELS[status] ?? status) : null, isPublic == null ? null : isPublic ? 'publique' : 'privée'].filter(
+    (p): p is string => !!p,
+  );
+  return parts.length ? parts.join(', ') : null;
+}
+
 function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
   return (
     <span className="flex flex-wrap gap-x-2 gap-y-1">
-      {recipes.map((r, i) => (
-        <span key={`${r.id}:${r.step ?? ''}`} className="text-xs">
-          <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
-            {r.title}
-          </Link>
-          {r.author ? (
-            r.authorId ? (
-              <>
-                {' — '}
-                <Link href={`/u/${r.authorId}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
-                  {r.author}
-                </Link>
-              </>
-            ) : (
-              <span className="text-on-surface-variant"> — {r.author}</span>
-            )
-          ) : null}
-          {r.step ? (
-            r.stepAnchor ? (
-              <>
-                {' '}
-                (
-                <Link href={`/recette/${r.id}#${r.stepAnchor}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
-                  étape « {r.step} »
-                </Link>
-                )
-              </>
-            ) : (
-              <span className="text-on-surface-variant"> (étape « {r.step} »)</span>
-            )
-          ) : null}
-          {i < recipes.length - 1 ? <span className="text-on-surface-variant">,</span> : null}
-        </span>
-      ))}
+      {recipes.map((r, i) => {
+        const note = statusNote(r.status, r.isPublic);
+        return (
+          <span key={`${r.id}:${r.step ?? ''}`} className="text-xs">
+            <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
+              {r.title}
+            </Link>
+            {note && <span className="text-on-surface-variant"> ({note})</span>}
+            {r.author ? (
+              r.authorId ? (
+                <>
+                  {' — '}
+                  <Link href={`/u/${r.authorId}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
+                    {r.author}
+                  </Link>
+                </>
+              ) : (
+                <span className="text-on-surface-variant"> — {r.author}</span>
+              )
+            ) : null}
+            {r.step ? (
+              r.stepAnchor ? (
+                <>
+                  {' '}
+                  (
+                  <Link href={`/recette/${r.id}#${r.stepAnchor}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
+                    étape « {r.step} »
+                  </Link>
+                  )
+                </>
+              ) : (
+                <span className="text-on-surface-variant"> (étape « {r.step} »)</span>
+              )
+            ) : null}
+            {i < recipes.length - 1 ? <span className="text-on-surface-variant">,</span> : null}
+          </span>
+        );
+      })}
     </span>
   );
 }

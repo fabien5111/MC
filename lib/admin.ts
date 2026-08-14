@@ -626,9 +626,21 @@ export async function getAiCosts(): Promise<AiCosts> {
 // l'id en handle de repli quand l'auteur n'a pas choisi de nom d'utilisateur
 // (cf. `getPublicProfile`), donc l'id seul suffit à construire un lien valide
 // dans tous les cas, sans requête supplémentaire pour résoudre un username.
+// `status` / `isPublic` : un ingrédient inconnu peut dormir dans un brouillon
+// jamais publié — sans cette info, rien ne distingue une correction urgente
+// (recette publique déjà visible) d'une saisie encore en chantier.
 export type UnknownItem = {
   name: string;
-  recipes: { id: string; title: string; author: string | null; authorId: string | null; step?: string; stepAnchor?: string }[];
+  recipes: {
+    id: string;
+    title: string;
+    author: string | null;
+    authorId: string | null;
+    status: string | null;
+    isPublic: boolean | null;
+    step?: string;
+    stepAnchor?: string;
+  }[];
 };
 
 function groupUnknownRows(
@@ -638,6 +650,8 @@ function groupUnknownRows(
     recipe_title: string;
     author_name?: string | null;
     author_id?: string | null;
+    recipe_status?: string | null;
+    is_public?: boolean | null;
     step_name?: string | null;
     step_order?: number | null;
   }[],
@@ -655,6 +669,8 @@ function groupUnknownRows(
         title: r.recipe_title,
         author: r.author_name ?? null,
         authorId: r.author_id ?? null,
+        status: r.recipe_status ?? null,
+        isPublic: r.is_public ?? null,
         step,
         stepAnchor,
       });
@@ -680,6 +696,8 @@ export async function getUnknownIngredients(): Promise<UnknownItem[]> {
       step_order: number | null;
       author_name: string | null;
       author_id: string | null;
+      recipe_status: string | null;
+      is_public: boolean | null;
     }[]) ?? [],
   );
 }
@@ -692,7 +710,15 @@ export async function getUnknownUtensils(): Promise<UnknownItem[]> {
     return [];
   }
   return groupUnknownRows(
-    (data as unknown as { name: string; recipe_id: string; recipe_title: string; author_name: string | null; author_id: string | null }[]) ?? [],
+    (data as unknown as {
+      name: string;
+      recipe_id: string;
+      recipe_title: string;
+      author_name: string | null;
+      author_id: string | null;
+      recipe_status: string | null;
+      is_public: boolean | null;
+    }[]) ?? [],
   );
 }
 
