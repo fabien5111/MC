@@ -339,6 +339,13 @@ export function CreerForm({
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
+  // Cadre rouge (admin uniquement) sur un nom sans correspondance dans la
+  // table de référence — même définition qu'Admin → Éléments inconnus, pour
+  // repérer le rattachement manquant dès la saisie plutôt qu'après coup sur
+  // cet écran séparé.
+  const unknownRefClass = (known: Set<string>, name: string) =>
+    isAdmin && name.trim() && !known.has(name.trim().toLowerCase()) ? ' border-2 border-error' : '';
+
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
@@ -1240,7 +1247,7 @@ export function CreerForm({
                       list="dl-utensils"
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
-                      className="editorial-input text-on-surface w-full"
+                      className={`editorial-input text-on-surface w-full${unknownRefClass(knownUtensils, u.name)}`}
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
@@ -1482,7 +1489,7 @@ export function CreerForm({
                                   patchIng(si, ii, { name });
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full"
+                              className={`editorial-input text-on-surface w-full${unknownRefClass(knownIngredients, g.name)}`}
                               type="text"
                               placeholder="Ingrédient"
                               autoComplete="off"
