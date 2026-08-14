@@ -49,7 +49,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts }, favIds, importsEnAttente, bookSharesGiven] = await Promise.all([
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven] = await Promise.all([
     isReadOnlySession(),
     getCarnetData(user.id),
     getFavoriteIds(),
@@ -91,7 +91,11 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             </div>
           )}
         </div>
-        <CarnetToolbar params={params} counts={counts} statusCounts={statusCounts} />
+        <CarnetToolbar
+          params={params}
+          counts={counts}
+          statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
+        />
         <CarnetContent
           items={filtered}
           favIds={[...favIds]}

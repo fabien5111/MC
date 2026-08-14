@@ -36,9 +36,12 @@ export const SORT_LABELS: Record<CarnetSortKey, string> = {
 
 export type CarnetParams = {
   scope: Scope;
-  // Le statut n'a de sens que sur mes propres recettes (mine/all) — ce sont
-  // les recettes des autres sur favoris/abonnements, leur statut ne me
-  // regarde pas (cf. CLAUDE.md « Mon carnet »).
+  // Le statut n'a de sens que sur mes propres recettes et sur ce qui m'est
+  // partagé (mine/all/shared) — ce sont les recettes des autres, déjà
+  // publiées et publiques, sur favoris/abonnements : leur statut ne me
+  // regarde pas (cf. CLAUDE.md « Mon carnet »). Les recettes partagées, elles,
+  // peuvent être des brouillons (portée « toutes »/« brouillons compris » du
+  // partage de carnet, ou un partage direct sans restriction de statut).
   statut: Status;
   q: string;
   tri: CarnetSortKey;
@@ -46,15 +49,15 @@ export type CarnetParams = {
 
 export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent' };
 
-// La barre de statut disparaît sur Favoris, Mes abonnements et Partagées avec moi : le
-// statut y est donc toujours remis à « Tous », qu'il ait été passé dans l'URL
-// ou non — une URL trafiquée (`?scope=fav&statut=draft`) ne doit pas produire
-// un état que l'interface ne peut jamais atteindre par elle-même.
+// La barre de statut disparaît sur Favoris et Mes abonnements : le statut y
+// est donc toujours remis à « Tous », qu'il ait été passé dans l'URL ou non —
+// une URL trafiquée (`?scope=fav&statut=draft`) ne doit pas produire un état
+// que l'interface ne peut jamais atteindre par elle-même.
 export function parseCarnetParams(sp: Record<string, string | string[] | undefined>): CarnetParams {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const scope = SCOPES.includes(one(sp.scope) as Scope) ? (one(sp.scope) as Scope) : 'all';
   const statutRaw = STATUSES.includes(one(sp.statut) as Status) ? (one(sp.statut) as Status) : 'all';
-  const statut = scope === 'fav' || scope === 'sub' || scope === 'shared' ? 'all' : statutRaw;
+  const statut = scope === 'fav' || scope === 'sub' ? 'all' : statutRaw;
   const tri = SORT_KEYS.includes(one(sp.tri) as CarnetSortKey) ? (one(sp.tri) as CarnetSortKey) : 'recent';
   return { scope, statut, q: one(sp.q) || '', tri };
 }

@@ -124,7 +124,12 @@ export const getRecipeShareInfo = cache(
 // elle est publiée (policy `recipes_partagees`) — inutile de reproduire ce
 // filtre ici.
 
-export type SharedRecipeItem = { recipe: RecipeCardWithAllergens; via: 'direct' | 'book'; ownerId: string };
+// `status` est renvoyé en plus de `CARD_SELECT` : contrairement aux favoris et
+// abonnements (toujours publiés), une recette partagée peut être un brouillon
+// (partage de carnet « brouillons compris », ou partage direct — sans
+// restriction de statut) — la barre de statut du carnet en a besoin pour ce
+// scope (cf. lib/carnet.ts `sharedStatusCounts`).
+export type SharedRecipeItem = { recipe: RecipeCardWithAllergens; via: 'direct' | 'book'; ownerId: string; status: string | null };
 
 export const getSharedWithMeRecipes = cache(async (userId: string): Promise<SharedRecipeItem[]> => {
   const supabase = await createClient();
@@ -143,14 +148,23 @@ export const getSharedWithMeRecipes = cache(async (userId: string): Promise<Shar
   if (directIds.size) branches.push(`id.in.(${[...directIds].join(',')})`);
   if (ownerIds.length) branches.push(`author_id.in.(${ownerIds.join(',')})`);
 
-  const { data, error } = await supabase.from('recipes').select(CARD_SELECT).or(branches.join(',')).order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`${CARD_SELECT}, status`)
+    .or(branches.join(','))
+    .order('created_at', { ascending: false });
   if (error) {
     console.error('getSharedWithMeRecipes:', error.message);
     return [];
   }
-  const rows = (data as unknown as RecipeCard[]) ?? [];
+  const rows = (data as unknown as (RecipeCard & { status: string | null })[]) ?? [];
   const withPictos = await withAllergenPictos(rows);
-  return withPictos.map((r) => ({ recipe: r, via: directIds.has(r.id) ? 'direct' : ('book' as const), ownerId: r.author_id }));
+  return withPictos.map((r) => ({
+    recipe: r,
+    via: directIds.has(r.id) ? 'direct' : ('book' as const),
+    ownerId: r.author_id,
+    status: r.status,
+  }));
 });
 
 // ── Recherche de membres (autocomplete des deux dialogs de partage) ────────
