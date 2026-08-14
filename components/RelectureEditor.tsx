@@ -129,18 +129,24 @@ const numOrNull = (v: string): number | null => {
   return isNaN(n) ? null : n;
 };
 
-// Fusion des ingrédients identiques (nom + unité) de toutes les étapes, pour
-// le récapitulatif global — même logique que `mergeRecapLines` de CreerForm.
-function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string }[] {
-  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
+// Fusion des ingrédients identiques (nom + unité + commentaire) de toutes les
+// étapes, pour le récapitulatif global — même logique que `mergeRecapLines`
+// de CreerForm, à ceci près que le commentaire fait partie de la clé de
+// fusion : « crème liquide, chaude » et « crème liquide, froide » (ou
+// « chocolat noir 66 % » / « chocolat noir 54 % » porté par la note plutôt
+// que le nom) désignent des lignes différentes de la recette, fusionner
+// leurs quantités produirait un total sans usage réel.
+function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string; note: string }[] {
+  const merged: { key: string; name: string; qty: string; unit: string; note: string }[] = [];
   sps.forEach((sp) =>
     sp.ings.forEach((i) => {
       const name = i.nom.trim();
       if (!name) return;
-      const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase();
+      const note = i.note.trim();
+      const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite });
+        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite, note });
         return;
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
@@ -149,8 +155,8 @@ function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; uni
       else ex.qty = [ex.qty, i.qte].filter(Boolean).join(' + ');
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
+  return merged.map(({ name, qty, unit, note }) => ({ name, qty, unit, note }));
 }
 
 // Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
@@ -349,6 +355,23 @@ export function RelectureEditor({
   const [saveStatus, setSaveStatus] = useState('');
   const spNomRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [justAddedSpKey, setJustAddedSpKey] = useState<string | null>(null);
+  const unitFieldRefs = useRef<Record<string, HTMLSelectElement | null>>({});
+  const [focusUnitKey, setFocusUnitKey] = useState<string | null>(null);
+
+  // Positionne sur le premier ingrédient dont l'unité manque/est invalide,
+  // déclenché depuis `onCreate`. Déplie l'étape et la liste d'ingrédients si
+  // besoin avant de défiler : le champ n'existe pas encore dans le DOM tant
+  // qu'ils sont repliés.
+  const goToUnitError = useCallback((si: number, key: string) => {
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, collapsed: false, ingsCollapsed: false } : sp)));
+    setFocusUnitKey(key);
+  }, []);
+  useEffect(() => {
+    if (!focusUnitKey) return;
+    unitFieldRefs.current[focusUnitKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    unitFieldRefs.current[focusUnitKey]?.focus();
+    setFocusUnitKey(null);
+  }, [focusUnitKey]);
 
   // Focus le nom de l'étape ajoutée (porté de relecture.html).
   useEffect(() => {
@@ -394,6 +417,12 @@ export function RelectureEditor({
   const [stLbl, stCls] = STATUT_LBL[importRow.statut] || [importRow.statut, 'bg-secondary'];
 
   const unitOptions = useMemo(() => Array.from(new Set(units.filter(Boolean))), [units]);
+  const validUnitNames = useMemo(() => new Set(unitOptions), [unitOptions]);
+  // Vrai dès qu'un nom et une quantité sont saisis mais que l'unité est
+  // absente ou hors référentiel : sert au cadre rouge du sélecteur et au
+  // blocage de `onCreate`. Une unité importée non reconnue ne doit jamais
+  // atteindre la table `ingredients` telle quelle.
+  const uniteInvalide = (g: IngRow) => !!(g.nom.trim() && String(g.qte).trim() && !validUnitNames.has(g.unite));
 
   // Tags : les libellés libres extraits par l'IA (recette.tags) sont
   // rapprochés du référentiel par nom (insensible à la casse) pour
@@ -804,11 +833,14 @@ export function RelectureEditor({
     if (busyRef.current) return;
     // Unité obligatoire dès qu'une quantité est saisie : une unité importée
     // non reconnue (absente du référentiel) ne doit jamais atteindre la table
-    // `ingredients` telle quelle (cf. normaliseUnite côté import).
-    const validUnitNames = new Set(unitOptions);
-    for (const sp of sps) {
-      for (const g of sp.ings) {
-        if (g.nom.trim() && String(g.qte).trim() && !validUnitNames.has(g.unite)) {
+    // `ingredients` telle quelle (cf. normaliseUnite côté import). Le premier
+    // ingrédient en cause est aussi mis en évidence (cadre rouge déjà visible
+    // à la saisie, cf. `uniteInvalide`) : on déplie son étape et on défile
+    // jusqu'à lui pour ne pas laisser le message d'alerte sans repère visuel.
+    for (let si = 0; si < sps.length; si++) {
+      for (const g of sps[si].ings) {
+        if (uniteInvalide(g)) {
+          goToUnitError(si, g.key);
           dialog.alert(`Choisissez une unité pour « ${g.nom.trim()} » avant de créer la recette.`);
           return;
         }
@@ -1010,10 +1042,9 @@ export function RelectureEditor({
     }
   }
 
-  // Bouton « Quitter » du rail : la suppression d'un import ne se fait plus
-  // depuis la relecture (déplacée dans la liste des imports, cf.
-  // ImporterList `supprimer`) — ce bouton ne fait que quitter, avec
-  // confirmation si des corrections n'ont pas été enregistrées.
+  // Bouton « Quitter » du rail : ne fait que quitter, avec confirmation si
+  // des corrections n'ont pas été enregistrées — la suppression du brouillon
+  // est un bouton distinct (« Abandonner l'import », ci-dessous).
   const handleLeave = useCallback(async () => {
     if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
     // Pas de reset à false ensuite : on quitte la page, autant garder le
@@ -1022,7 +1053,33 @@ export function RelectureEditor({
     router.push('/importer');
   }, [router, dialog]);
 
+  // Bouton « Abandonner l'import » du rail : supprime définitivement le
+  // brouillon (même écriture que `ImporterList.supprimer`), visible
+  // uniquement tant qu'aucune recette n'a été créée depuis cet import — au-
+  // delà, c'est la recette qu'il faudrait supprimer, pas l'import.
+  const canAbandon = importRow.statut === 'brouillon' && !importRow.recipe_id;
+  const handleAbandon = useCallback(async () => {
+    if (!(await dialog.confirm('Abandonner définitivement cet import ? Cette action est irréversible.'))) return;
+    setLeaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('imports').delete().eq('id', importRow.id);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      setLeaving(false);
+      return;
+    }
+    router.refresh();
+    router.push('/importer');
+  }, [router, dialog, importRow.id]);
+
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
+  // `champ` porte déjà `border-outline-variant` : lui ajouter `border-error`
+  // à côté laisse les deux classes de couleur de bordure coexister, et
+  // Tailwind compile `.border-outline-variant` après `.border-error` dans la
+  // feuille de styles — le gris l'emporte alors toujours dans la cascade,
+  // quel que soit l'ordre des classes dans le JSX (le rouge ne s'affichait
+  // donc jamais). Remplacer la classe de couleur au lieu de l'additionner.
+  const champErr = (invalid: boolean) => (invalid ? champ.replace('border-outline-variant', 'border-2 border-error') : champ);
 
   return (
     <>
@@ -1050,6 +1107,9 @@ export function RelectureEditor({
           },
           { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
           { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          ...(canAbandon
+            ? [{ id: 'abandon', icon: 'delete_forever', label: "Abandonner l'import", variant: 'outline-danger' as const, onClick: handleAbandon, disabled: busy || leaving }]
+            : []),
         ]}
       />
 
@@ -1102,6 +1162,10 @@ export function RelectureEditor({
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
         <div className="grid grid-cols-1 gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
+            <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
+          </label>
           <div className="space-y-1.5">
             <div className="relative aspect-[16/9] border border-dashed border-outline-variant overflow-hidden rounded-lg">
               <ImageSlot
@@ -1130,10 +1194,6 @@ export function RelectureEditor({
               </label>
             )}
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
-            <input value={titre} onChange={(e) => setTitre(e.target.value)} className={`${champ} font-headline-md text-[20px]`} />
-          </label>
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Catégories et Tags</span>
             <div className="flex flex-wrap gap-2 items-center mt-1">
@@ -1383,7 +1443,8 @@ export function RelectureEditor({
                       list="dl-utensils"
                       value={m.nom}
                       onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
-                      className={champ}
+                      className={champErr(!!(m.nom.trim() && !known))}
+                      title={m.nom.trim() && !known ? 'Ustensile absent de la table de référence' : undefined}
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
@@ -1590,6 +1651,7 @@ export function RelectureEditor({
                 ) : (
                   sp.ings.map((g, ii) => {
                     const known = knownIngredients.has(g.nom.trim().toLowerCase());
+                    const uniteKo = uniteInvalide(g);
                     return (
                     <div key={g.key} className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start py-1.5 border-b border-outline-variant/20">
                       <div className="text-sm text-on-surface-variant lg:pt-1.5">
@@ -1611,12 +1673,21 @@ export function RelectureEditor({
                                 patchIng(si, ii, { nom });
                               }
                             }}
-                            className={champ}
+                            className={champErr(!!(g.nom.trim() && !known))}
+                            title={g.nom.trim() && !known ? 'Ingrédient absent de la table de référence' : undefined}
                             placeholder="Farine"
                             autoComplete="off"
                           />
                           <input type="number" min={0} step="any" value={g.qte} onChange={(e) => patchIng(si, ii, { qte: e.target.value })} className={`${champ} text-center`} />
-                          <select value={g.unite} onChange={(e) => patchIng(si, ii, { unite: e.target.value })} className={champ}>
+                          <select
+                            ref={(el) => {
+                              unitFieldRefs.current[g.key] = el;
+                            }}
+                            value={g.unite}
+                            onChange={(e) => patchIng(si, ii, { unite: e.target.value })}
+                            className={champErr(uniteKo)}
+                            title={uniteKo ? 'Unité manquante ou absente de la table de référence' : undefined}
+                          >
                             <option value="">— unité —</option>
                             {unitOptions.map((u) => (
                               <option key={u} value={u}>
@@ -1913,7 +1984,10 @@ export function RelectureEditor({
               const conv = ingredientConversionText(conversions, unitRefs, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
               return (
                 <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                  <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
+                  <span className="font-body-md text-body-md text-on-surface break-words">
+                    {m.name}
+                    {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
+                  </span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
