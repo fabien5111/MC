@@ -71,8 +71,9 @@ export function CarnetToolbar({
   );
 
   // La barre de statut n'a de sens que sur mes propres recettes : elle
-  // disparaît sur Favoris et Mes abonnements, ce sont les recettes des autres.
-  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub';
+  // disparaît sur Favoris, Mes abonnements et Partagées avec moi, ce sont les
+  // recettes des autres.
+  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub' && params.scope !== 'shared';
 
   return (
     <div className="border-y border-outline-variant py-5">
