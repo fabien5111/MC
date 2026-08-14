@@ -262,8 +262,15 @@ function OtherCard({
             {item.favorite && (
               <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Favori</span>
             )}
-            {item.shared && (
-              <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Partagée avec vous</span>
+            {/* Statut connu seulement pour ce qui est partagé (favoris/abonnements
+                ne portent que du déjà-publié) — même badge que MineCard, pour
+                qu'un brouillon partagé se distingue au premier coup d'œil. Pas
+                de « Partagée avec vous » à côté : le bouton de révocation
+                (lien barré) ci-dessous porte déjà cette information. */}
+            {item.shared && item.status && (
+              <span className={`${(STATUS[item.status] || STATUS.draft).badge} rounded px-2 py-1 font-label-md text-[10px] text-white`}>
+                {(STATUS[item.status] || STATUS.draft).label}
+              </span>
             )}
           </div>
         </div>

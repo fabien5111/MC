@@ -29,6 +29,11 @@ export type CarnetItem =
       favorite: boolean;
       subscription: boolean;
       shared: SharedVia | null;
+      // Statut de modération de la recette — seulement connu pour ce qui est
+      // partagé (favoris/abonnements ne portent que du déjà-publié, cf.
+      // lib/shares-data.ts). Sert la barre de statut du scope « Partagées
+      // avec moi » et le badge de la carte, à la manière de `MineCard`.
+      status: string | null;
       // Date de parution : affichée seulement pour les abonnements (README —
       // ne concerne pas les favoris).
       publishedAt: string | null;
@@ -39,6 +44,10 @@ export type CarnetData = {
   counts: Record<'all' | 'mine' | 'fav' | 'sub' | 'shared', number>;
   // Comptes de la barre de statut, calculés sur l'ensemble de mes recettes.
   statusCounts: Record<'all' | 'published' | 'draft' | 'pending' | 'rejected', number>;
+  // Idem, mais sur ce qui m'est partagé — la barre de statut du scope
+  // « Partagées avec moi » ne doit pas montrer les compteurs de mes propres
+  // recettes.
+  sharedStatusCounts: Record<'all' | 'published' | 'draft' | 'pending' | 'rejected', number>;
 };
 
 export async function getCarnetData(userId: string): Promise<CarnetData> {
@@ -66,24 +75,35 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   const mineIds = new Set(recipes.map((r) => r.id));
   const othersById = new Map<
     string,
-    { recipe: RecipeCardWithAllergens; favorite: boolean; subscription: boolean; shared: SharedVia | null; publishedAt: string | null }
+    {
+      recipe: RecipeCardWithAllergens;
+      favorite: boolean;
+      subscription: boolean;
+      shared: SharedVia | null;
+      status: string | null;
+      publishedAt: string | null;
+    }
   >();
   for (const f of favorites) {
     if (!f.recipes || mineIds.has(f.recipes.id)) continue;
-    othersById.set(f.recipes.id, { recipe: f.recipes, favorite: true, subscription: false, shared: null, publishedAt: null });
+    othersById.set(f.recipes.id, { recipe: f.recipes, favorite: true, subscription: false, shared: null, status: null, publishedAt: null });
   }
   for (const r of followed) {
     if (mineIds.has(r.id)) continue;
     const existing = othersById.get(r.id);
     if (existing) existing.subscription = true;
-    else othersById.set(r.id, { recipe: r, favorite: false, subscription: true, shared: null, publishedAt: r.created_at });
+    else othersById.set(r.id, { recipe: r, favorite: false, subscription: true, shared: null, status: null, publishedAt: r.created_at });
   }
   for (const s of shared) {
     if (mineIds.has(s.recipe.id)) continue;
     const via: SharedVia = s.via === 'direct' ? { kind: 'direct' } : { kind: 'book', ownerId: s.ownerId };
     const existing = othersById.get(s.recipe.id);
-    if (existing) existing.shared = via;
-    else othersById.set(s.recipe.id, { recipe: s.recipe, favorite: false, subscription: false, shared: via, publishedAt: null });
+    if (existing) {
+      existing.shared = via;
+      existing.status = s.status;
+    } else {
+      othersById.set(s.recipe.id, { recipe: s.recipe, favorite: false, subscription: false, shared: via, status: s.status, publishedAt: null });
+    }
   }
   const otherItems: CarnetItem[] = [...othersById.values()].map((o) => ({ kind: 'other', ...o }));
 
@@ -104,7 +124,17 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
     rejected: byStatus('rejected'),
   };
 
-  return { items, counts, statusCounts };
+  const sharedItems = otherItems.filter((i) => i.kind === 'other' && i.shared);
+  const sharedByStatus = (s: string) => sharedItems.filter((i) => i.kind === 'other' && (i.status || 'draft') === s).length;
+  const sharedStatusCounts = {
+    all: sharedItems.length,
+    published: sharedByStatus('published'),
+    draft: sharedByStatus('draft'),
+    pending: sharedByStatus('pending'),
+    rejected: sharedByStatus('rejected'),
+  };
+
+  return { items, counts, statusCounts, sharedStatusCounts };
 }
 
 // Filtrage + tri appliqués au jeu déjà chargé (cf. en-tête de fichier) —
@@ -118,7 +148,10 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
     if (params.scope === 'fav' && !(item.kind === 'other' && item.favorite)) return false;
     if (params.scope === 'sub' && !(item.kind === 'other' && item.subscription)) return false;
     if (params.scope === 'shared' && !(item.kind === 'other' && item.shared)) return false;
-    if (params.statut !== 'all' && item.kind === 'mine' && (item.recipe.status || 'draft') !== params.statut) return false;
+    if (params.statut !== 'all') {
+      if (item.kind === 'mine' && (item.recipe.status || 'draft') !== params.statut) return false;
+      if (item.kind === 'other' && item.shared && (item.status || 'draft') !== params.statut) return false;
+    }
     if (q && !item.recipe.title.toLowerCase().includes(q)) return false;
     return true;
   });
