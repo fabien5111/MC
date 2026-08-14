@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type {
   AdminRecipeRow,
   RecipeAnalysisSummary,
@@ -24,7 +25,11 @@ const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'M
 const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(MODERATION_CATEGORIES.map((c) => [c.code, c.label]));
 
 const FLAG_STYLE: Record<string, string> = {
-  vert: 'bg-primary-fixed text-on-primary-fixed',
+  // Vert au sens propre (aucune couleur « verte » dans les tokens du design
+  // system — primary-fixed est bordeaux) : même poids visuel que les autres
+  // drapeaux (fond clair, texte foncé), mais une couleur qui se lit
+  // immédiatement comme « rien à signaler » plutôt que la teinte de marque.
+  vert: 'bg-green-100 text-green-800',
   orange: 'bg-tertiary-container text-on-tertiary-container',
   rouge: 'bg-error-container text-on-error-container',
 };
@@ -399,7 +404,7 @@ export function RecipesManager({
   feedback: Record<number, MatchFeedbackVerdict>;
   calibration: CalibrationBucket[];
 }) {
-  const { mutate } = useMutation();
+  const { mutate, busy } = useMutation();
   const dialog = useDialog();
 
   async function setStatus(id: string, status: string, moderationNote?: string) {
@@ -425,7 +430,10 @@ export function RecipesManager({
   function Row({ r, mode }: { r: AdminRecipeRow; mode: RowMode }) {
     return (
       <>
-      <tr className="hover:bg-surface-container-low transition-colors">
+      {/* Ancre ciblée par le tableau de bord (§ Recettes en attente de
+          validation) : le clic doit amener sur ce panneau de contrôle, pas
+          sur la fiche recette publique. */}
+      <tr id={mode === 'pending' ? `recette-${r.id}` : undefined} className="hover:bg-surface-container-low transition-colors scroll-mt-24">
         <td className="px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded bg-surface-container overflow-hidden flex items-center justify-center shrink-0">
@@ -567,6 +575,7 @@ export function RecipesManager({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop space-y-12 max-w-[1400px] w-full">
+      <LoadingOverlay visible={busy} />
       <ReindexBar />
       <section>
         <div className="flex items-baseline gap-3 mb-6">

@@ -130,7 +130,10 @@ export function AdminDashboard({
                             <span className="material-symbols-outlined text-on-surface-variant">image</span>
                           )}
                         </div>
-                        <Link href={`/recette/${r.id}`} className="font-medium hover:text-primary">
+                        {/* Panneau de contrôle (Admin → Recettes), pas la fiche
+                            recette publique : c'est là que se joue la décision
+                            (valider/refuser) et l'analyse IA. */}
+                        <Link href={`/admin/recettes#recette-${r.id}`} className="font-medium hover:text-primary">
                           {r.title}
                         </Link>
                       </div>
