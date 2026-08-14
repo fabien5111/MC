@@ -26,10 +26,11 @@ function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
   return (
     <span className="flex flex-wrap gap-x-2 gap-y-1">
       {recipes.map((r, i) => (
-        <span key={r.id} className="text-xs">
+        <span key={`${r.id}:${r.step ?? ''}`} className="text-xs">
           <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
             {r.title}
           </Link>
+          {r.step ? <span className="text-on-surface-variant"> (étape « {r.step} »)</span> : null}
           {i < recipes.length - 1 ? <span className="text-on-surface-variant">,</span> : null}
         </span>
       ))}

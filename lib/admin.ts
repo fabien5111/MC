@@ -608,14 +608,23 @@ export async function getAiCosts(): Promise<AiCosts> {
 // encore dans lib/database.types.ts — cast `as never`, motif `list_ideas`) :
 // une jointure ingrédient/ustensile → recette est plus simple à exprimer en
 // SQL qu'en PostgREST, et évite de rapatrier toutes les recettes côté client.
-export type UnknownItem = { name: string; recipes: { id: string; title: string }[] };
+// Pour un ingrédient, `step` (= `ingredient_groups.name`, qui porte le titre
+// de l'étape — cf. CreerForm) repère l'étape concernée dans la recette ; sans
+// ça, une recette à dix étapes obligerait à toutes les ouvrir pour retrouver
+// la ligne visée. Absent pour un ustensile (`recipe_utensils` n'a pas
+// d'étape, il est rattaché à la recette entière).
+export type UnknownItem = { name: string; recipes: { id: string; title: string; step?: string }[] };
 
-function groupUnknownRows(rows: { name: string; recipe_id: string; recipe_title: string }[]): UnknownItem[] {
+function groupUnknownRows(rows: { name: string; recipe_id: string; recipe_title: string; step_name?: string | null }[]): UnknownItem[] {
   const map = new Map<string, UnknownItem>();
   for (const r of rows) {
     const key = r.name.trim().toLowerCase();
     const entry = map.get(key) ?? { name: r.name.trim(), recipes: [] };
-    if (!entry.recipes.some((x) => x.id === r.recipe_id)) entry.recipes.push({ id: r.recipe_id, title: r.recipe_title });
+    const step = r.step_name ?? undefined;
+    const dedupeKey = `${r.recipe_id}:${step ?? ''}`;
+    if (!entry.recipes.some((x) => `${x.id}:${x.step ?? ''}` === dedupeKey)) {
+      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, step });
+    }
     map.set(key, entry);
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
@@ -628,7 +637,7 @@ export async function getUnknownIngredients(): Promise<UnknownItem[]> {
     console.error('getUnknownIngredients:', error.message);
     return [];
   }
-  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string }[]) ?? []);
+  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string; step_name: string | null }[]) ?? []);
 }
 
 export async function getUnknownUtensils(): Promise<UnknownItem[]> {
