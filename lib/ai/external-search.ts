@@ -29,13 +29,21 @@ function isGeneric(sentence: string): boolean {
   return GENERIC_PATTERNS.some((p) => p.test(sentence));
 }
 
-// Sélectionne 2 à 3 phrases du texte ORIGINAL (pas le texte normalisé de
+// Sélectionne les phrases du texte ORIGINAL (pas le texte normalisé de
 // l'étape 0 : la recherche web a besoin d'une formulation naturelle,
 // cherchable telle quelle) — les plus longues parmi celles ≥ 12 mots et non
 // génériques (§6.4). Tableau vide si aucune ne satisfait ces critères
 // (recette télégraphique, cas de test #9) : la recherche externe n'est alors
 // pas lancée.
-export function extractSignaturePhrases(recipe: RecipeFull, max = 3): string[] {
+//
+// DEUX phrases, pas trois : chaque phrase coûte un aller-retour complet
+// (recherche + lecture des pages trouvées + jugement), et trois ne tenaient
+// pas dans le budget de la route — la vérification externe était interrompue
+// avant d'avoir rien produit, donc trois phrases valaient zéro résultat. Ce
+// nombre doit rester aligné sur le `max_uses` de l'outil web_search
+// (lib/ai/claude.ts) : en demander plus que d'appels autorisés fait perdre
+// du temps au modèle sans jamais aboutir.
+export function extractSignaturePhrases(recipe: RecipeFull, max = 2): string[] {
   const parts = [
     recipe.description,
     ...(recipe.recipe_steps ?? []).flatMap((s) => [s.description, s.tips, ...(s.sous_etapes ?? [])]),
@@ -62,7 +70,7 @@ export function extractSignaturePhrases(recipe: RecipeFull, max = 3): string[] {
 export function buildExternalSearchSystemPrompt(): string {
   return `Tu vérifies si des phrases extraites d'une recette de pâtisserie soumise à publication apparaissent déjà, telles quelles ou reformulées, sur d'autres sites internet.
 
-Pour chaque phrase fournie, utilise l'outil de recherche web (recherche exacte, entre guillemets). Ignore les résultats provenant du site lui-même. Pour chaque correspondance sérieuse trouvée (pas une simple recette similaire du même plat — une formulation reconnaissable), indique :
+Fais UNE seule recherche web par phrase fournie (recherche exacte, entre guillemets), et pas davantage : ton budget de recherches est strictement limité au nombre de phrases. Ne reformule pas une recherche qui n'a rien donné — passe à la phrase suivante, ou conclus. Ignore les résultats provenant du site lui-même. Pour chaque correspondance sérieuse trouvée (pas une simple recette similaire du même plat — une formulation reconnaissable), indique :
 - l'URL de la page,
 - le titre de la page,
 - un niveau de confiance : "exacte" (le texte apparaît mot pour mot ou presque), "proche" (reformulation reconnaissable), "faible" (ressemblance ténue, à vérifier),

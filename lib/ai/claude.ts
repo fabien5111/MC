@@ -199,11 +199,17 @@ export async function callClaude(
   }
 }
 
-// Modèle de la recherche EXTERNE (étape 3, §6.4) — même modèle que la
-// modération : c'est la même tâche de jugement (une phrase trouvée sur une
-// page est-elle une correspondance sérieuse ?) qui bénéficie de la même
-// qualité.
-export const EXTERNAL_SEARCH_MODEL = process.env.EXTERNAL_SEARCH_MODEL || MODERATION_MODEL;
+// Modèle de la recherche EXTERNE (étape 3, §6.4). Haiku et non le modèle de
+// modération : ici c'est la LATENCE qui décide du résultat, pas la finesse du
+// jugement. L'appel enchaîne recherche → lecture des pages → jugement, et
+// avec `claude-sonnet-5` il ne terminait pas dans le budget de la route —
+// la vérification externe n'aboutissait donc jamais, quelle que soit la
+// qualité du modèle. Arbitrage assumé : un jugement un peu moins fin qui
+// rend un résultat vaut mieux qu'un jugement excellent jamais rendu.
+// Repasser à `claude-sonnet-5` via EXTERNAL_SEARCH_MODEL si les faux
+// positifs deviennent gênants (les correspondances externes sont de toute
+// façon présentées comme une estimation, jamais comme un score mesuré).
+export const EXTERNAL_SEARCH_MODEL = process.env.EXTERNAL_SEARCH_MODEL || 'claude-haiku-4-5';
 
 export type WebSearchCall = { text: string; usage: ClaudeUsage; searches: number };
 
@@ -271,11 +277,12 @@ export async function callClaudeWithWebSearch(
             // Garde-fou §6.4 : maximum 3 requêtes de recherche par recette.
             // Ramené à 2 : mesuré en préproduction, 3 recherches enchaînées
             // (recherche + lecture des pages + jugement) dépassent à elles
-            // seules les ~50 s disponibles dans le `maxDuration` de la route,
-            // et la vérification externe n'aboutissait donc jamais. Deux
-            // recherches tiennent dans le budget — mieux vaut une
-            // vérification externe qui aboutit qu'une troisième requête qui
-            // fait tout échouer.
+            // seules le budget disponible dans le `maxDuration` de la route,
+            // et la vérification externe n'aboutissait donc jamais. Doit
+            // rester aligné sur le nombre de phrases envoyées
+            // (`extractSignaturePhrases`, lib/ai/external-search.ts) : en
+            // autoriser moins que de phrases fait tourner le modèle dans le
+            // vide jusqu'à l'interruption.
             max_uses: 2,
             ...(blockedDomains.length ? { blocked_domains: blockedDomains } : {}),
           },
