@@ -314,7 +314,16 @@ export async function callClaudeWithWebSearch(
         system,
         tools: [
           {
-            type: 'web_search_20260209',
+            // Variante de BASE, et non `web_search_20260209` : cette dernière
+            // fait du « dynamic filtering » — elle exécute du code côté
+            // serveur pour filtrer les résultats avant de les remonter au
+            // modèle. Deux conséquences rédhibitoires ici : elle exige un
+            // modèle supportant l'appel d'outil programmatique (haiku-4-5 ne
+            // le supporte pas → HTTP 400), et cette exécution de code
+            // s'ajoute à chaque recherche — c'est très probablement ce qui
+            // faisait dépasser le budget de la route. Le filtrage ne nous
+            // apporte rien : on ne cherche que 2 phrases exactes.
+            type: 'web_search_20250305',
             name: 'web_search',
             // Garde-fou §6.4 : maximum 3 requêtes de recherche par recette.
             // Ramené à 2 : mesuré en préproduction, 3 recherches enchaînées
