@@ -39,7 +39,11 @@ export type AdminRecipeRow = {
   is_public: boolean | null;
   status: string | null;
   created_at: string | null;
-  profiles: { full_name: string | null } | null;
+  // Auteur de la recette : sert de repli pour le lien de profil (`/u/...`)
+  // quand l'auteur n'a pas encore choisi de nom d'utilisateur, même motif
+  // que sur la fiche recette publique.
+  author_id: string;
+  profiles: { full_name: string | null; username: string | null } | null;
   // Motif du refus (§9), présent seulement pour les recettes `rejected` —
   // absent de lib/database.types.ts tant que la migration n'a pas été
   // régénérée (npm run gen:types).
@@ -80,7 +84,9 @@ export async function getPendingRecipes(): Promise<AdminRecipeRow[]> {
   // précédents (§9, panneau de validation).
   const { data } = await (supabase as any)
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, rejection_history, profiles!recipes_author_id_fkey(full_name)')
+    .select(
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
+    )
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -91,7 +97,9 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   // `rejection_history` : voir le commentaire de getPendingRecipes.
   const { data } = await (supabase as any)
     .from('recipes')
-    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, rejection_history, profiles!recipes_author_id_fkey(full_name)')
+    .select(
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
+    )
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
@@ -110,7 +118,7 @@ export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
   const { data } = await (supabase as any)
     .from('recipes')
     .select(
-      'id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, moderation_note_at, rejection_history, profiles!recipes_author_id_fkey(full_name)',
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, author_id, moderation_note, moderation_note_at, rejection_history, profiles!recipes_author_id_fkey(full_name, username)',
     )
     .eq('status', 'rejected')
     .order('created_at', { ascending: false });

@@ -19,7 +19,7 @@ import type {
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 import { buildAnalysisSummary } from '@/lib/ai/analysis-summary';
 import { formatUsd } from '@/lib/ai/cost';
-import { formatDate } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -253,11 +253,18 @@ function AnalysisPanel({
   analysis,
   matches,
   feedback,
+  moderationNote,
+  moderationNoteAt,
 }: {
   recipeId: string;
   analysis: RecipeAnalysisSummary | undefined;
   matches: RecipeSimilarityMatchSummary[];
   feedback: Record<number, MatchFeedbackVerdict>;
+  // Motif du refus courant (§9) : descendu dans ce bloc pour rester avec le
+  // détail de l'analyse qui l'a motivé, plutôt qu'affiché dans une ligne à
+  // part. Absent hors statut `rejected`.
+  moderationNote?: string | null;
+  moderationNoteAt?: string | null;
 }) {
   const { refresh } = useMutation();
   const [relancing, setRelancing] = useState(false);
@@ -319,6 +326,15 @@ function AnalysisPanel({
         </button>
         {summary && <p className="text-xs text-on-surface-variant pt-1">{summary}</p>}
       </div>
+
+      {moderationNote && (
+        <p className="mt-2 pl-6 text-xs text-on-surface-variant">
+          <span className="font-semibold text-on-surface">
+            Motif du refus{moderationNoteAt ? ` ${formatDateTime(moderationNoteAt)}` : ''} :
+          </span>{' '}
+          {moderationNote}
+        </p>
+      )}
 
       {open && (
         <div className="mt-3 pl-6 space-y-3">
@@ -450,7 +466,15 @@ export function RecipesManager({
             </Link>
           </div>
         </td>
-        <td className="px-6 py-4 text-sm text-on-surface">{r.profiles?.full_name || '—'}</td>
+        <td className="px-6 py-4 text-sm text-on-surface">
+          {r.profiles ? (
+            <Link href={`/u/${r.profiles.username || r.author_id}`} className="hover:text-primary hover:underline">
+              {r.profiles.full_name || '—'}
+            </Link>
+          ) : (
+            '—'
+          )}
+        </td>
         <td className="px-6 py-4 text-sm text-on-surface-variant">{PLAN_LBL[r.measure_type || ''] || '—'}</td>
         <td className="px-6 py-4 text-sm text-on-surface-variant whitespace-nowrap">
           {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
@@ -513,20 +537,8 @@ export function RecipesManager({
           </div>
         </td>
       </tr>
-      {mode === 'rejected' && r.moderation_note && (
-        <tr>
-          <td colSpan={6} className="px-6 pb-2 -mt-2">
-            <p className="text-xs text-on-surface-variant">
-              <span className="font-semibold text-on-surface">
-                Motif du refus{r.moderation_note_at ? ` du ${formatDate(r.moderation_note_at)}` : ''} :
-              </span>{' '}
-              {r.moderation_note}
-            </p>
-          </td>
-        </tr>
-      )}
       {/* Refus précédents (§9) : archivés par le trigger SQL
-          `recipes_archive_rejection_note` à chaque resoumission — motifs
+          `recipes_track_rejection_note` à chaque resoumission — motifs
           seuls, sans date ni auteur du refus. Peut apparaître dans les trois
           tables (une recette « à valider » ou republiée peut avoir été
           refusée par le passé). */}
@@ -552,6 +564,8 @@ export function RecipesManager({
               analysis={analyses[r.id]}
               matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []}
               feedback={feedback}
+              moderationNote={mode === 'rejected' ? r.moderation_note : undefined}
+              moderationNoteAt={mode === 'rejected' ? r.moderation_note_at : undefined}
             />
           </td>
         </tr>
