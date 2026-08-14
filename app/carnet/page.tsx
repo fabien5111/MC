@@ -5,12 +5,14 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
+import { getBookSharesGiven } from '@/lib/shares-data';
 import { parseCarnetParams, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
+import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
@@ -23,6 +25,7 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   mine: 'Aucune recette pour l’instant. Créez-en une ou importez-en une.',
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
+  shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
 };
 
 type SearchParams = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -46,11 +49,12 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts }, favIds, importsEnAttente] = await Promise.all([
+  const [readOnly, { items, counts, statusCounts }, favIds, importsEnAttente, bookSharesGiven] = await Promise.all([
     isReadOnlySession(),
     getCarnetData(user.id),
     getFavoriteIds(),
     countImportsEnAttente(user.id),
+    getBookSharesGiven(user.id),
   ]);
   const filtered = applyCarnetFilters(items, params);
 
@@ -69,6 +73,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               d'entrée dominant pour un carnet neuf. */}
           {!readOnly && (
             <div className="flex items-center gap-3">
+              <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
               <Link
                 href="/importer"
                 prefetch={false}

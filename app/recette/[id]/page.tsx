@@ -4,6 +4,7 @@ import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type Al
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
+import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
@@ -109,6 +110,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
     return Array.from({ length: max + 1 }, (_, i) => i);
   })();
   const isOwner = !!user && recipe.author_id === user.id;
+  // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
+  // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
+  // RLS `recipes_partagees`).
+  const shareInfo = isOwner ? await getRecipeShareInfo(recipe.id, recipe.author_id, recipe.status) : undefined;
   // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
   const userIsAdmin = user ? await isAdmin(user.id) : false;
   const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
@@ -296,7 +301,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               )}
               <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
-                <ShareButton title={recipe.title} />
+                <ShareButton title={recipe.title} recipeId={recipe.id} ownerId={recipe.author_id} isOwner={isOwner} shareInfo={shareInfo} />
                 <PrintButton />
               </span>
             </div>

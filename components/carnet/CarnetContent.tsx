@@ -56,6 +56,44 @@ export function CarnetContent({
     if (ok) setRemovedIds((prev) => new Set(prev).add(id));
   }
 
+  // Révocation d'un partage reçu, par son destinataire (RLS `shared_with_id =
+  // auth.uid()` en DELETE — cf. lib/shares.ts). Un partage « via le carnet »
+  // couvre toutes les recettes de son auteur, pas seulement celle de la
+  // carte cliquée : le retirer les fait toutes disparaître de ce scope au
+  // prochain rendu serveur (`mutate` resynchronise), `removedIds` ne masque
+  // ici que la carte cliquée en attendant.
+  async function revokeShare(item: Extract<CarnetItem, { kind: 'other' }>) {
+    if (!item.shared) return;
+    const via = item.shared;
+    const r = item.recipe;
+    const confirmMsg =
+      via.kind === 'book'
+        ? `Retirer l’accès à tout le carnet partagé par ${r.profiles?.full_name || 'ce membre'} ?\nVous perdrez l’accès à toutes ses recettes partagées, pas seulement celle-ci.`
+        : `Retirer le partage de « ${r.title} » ?`;
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return null;
+        return via.kind === 'book'
+          ? supabase
+              .from('book_shares' as never)
+              .delete()
+              .eq('owner_id', via.ownerId)
+              .eq('shared_with_id', user.id)
+          : supabase
+              .from('recipe_shares' as never)
+              .delete()
+              .eq('recipe_id', r.id)
+              .eq('shared_with_id', user.id);
+      },
+      { confirm: confirmMsg },
+    );
+    if (ok) setRemovedIds((prev) => new Set(prev).add(r.id));
+  }
+
   return (
     <>
       <LoadingOverlay visible={busy} label="Traitement en cours…" />
@@ -85,7 +123,7 @@ export function CarnetContent({
             item.kind === 'mine' ? (
               <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} />
             ) : (
-              <OtherCard key={item.recipe.id} item={item} favIds={favIds} />
+              <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} />
             ),
           )}
         </div>
@@ -193,7 +231,15 @@ function MineCard({
   );
 }
 
-function OtherCard({ item, favIds }: { item: Extract<CarnetItem, { kind: 'other' }>; favIds: string[] }) {
+function OtherCard({
+  item,
+  favIds,
+  onRevokeShare,
+}: {
+  item: Extract<CarnetItem, { kind: 'other' }>;
+  favIds: string[];
+  onRevokeShare: (item: Extract<CarnetItem, { kind: 'other' }>) => void;
+}) {
   const r = item.recipe;
   const times = effectiveTimes(r);
   return (
@@ -212,11 +258,14 @@ function OtherCard({ item, favIds }: { item: Extract<CarnetItem, { kind: 'other'
               <span className="material-symbols-outlined text-5xl">cake</span>
             </div>
           )}
-          {item.favorite && (
-            <span className="absolute left-3 top-3 z-10 rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">
-              Favori
-            </span>
-          )}
+          <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+            {item.favorite && (
+              <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Favori</span>
+            )}
+            {item.shared && (
+              <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Partagée avec vous</span>
+            )}
+          </div>
         </div>
       </Link>
       <Link
@@ -227,6 +276,16 @@ function OtherCard({ item, favIds }: { item: Extract<CarnetItem, { kind: 'other'
       >
         <PlanBadgeIcon />
       </Link>
+      {item.shared && (
+        <button
+          type="button"
+          title="Retirer ce partage"
+          onClick={() => onRevokeShare(item)}
+          className="absolute right-[6.25rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+        >
+          <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
+        </button>
+      )}
       <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-3" />
       <div className="p-6">
         <div className="mb-2 flex items-center justify-between gap-2">
