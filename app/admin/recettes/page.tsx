@@ -31,14 +31,12 @@ export default async function AdminRecettesPage() {
     getRejectionHistory([...pending, ...managed, ...rejected].map((r) => r.id)),
   ]);
   // Détail complet dépliable pour chaque refus précédent (§9 : « conserver
-  // les anciennes analyses avec les anciens motifs ») — limité aux recettes
-  // où le panneau d'analyse a un sens (voir ci-dessus) : inutile de charger
-  // l'historique complet pour une entrée qui ne sera affichée qu'en simple
-  // liste (recettes republiées/validées).
-  const analysisRecipeIdSet = new Set(analysisRecipeIds);
-  const historicalAnalysisIds = Object.entries(rejectionHistory)
-    .filter(([recipeId]) => analysisRecipeIdSet.has(recipeId))
-    .flatMap(([, entries]) => entries)
+  // les anciennes analyses avec les anciens motifs »), dans les trois
+  // tables — y compris « validées et privées » : retrouver le détail d'un
+  // refus passé reste utile après l'acceptation, pas seulement pendant la
+  // décision.
+  const historicalAnalysisIds = Object.values(rejectionHistory)
+    .flat()
     .map((h) => h.analysis_id)
     .filter((id): id is number => id != null);
   const historicalAnalyses = await getAnalysesByIds(historicalAnalysisIds);

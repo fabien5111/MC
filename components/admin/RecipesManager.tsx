@@ -551,50 +551,34 @@ export function RecipesManager({
         </td>
       </tr>
       {/* Refus précédents (§9) : archivés par le trigger SQL
-          `recipes_track_rejection_note` à chaque resoumission. Peut
-          apparaître dans les trois tables (une recette « à valider » ou
-          republiée peut avoir été refusée par le passé) — détail complet
-          dépliable là où le panneau d'analyse a un sens (pending/rejected,
-          mêmes recettes que l'analyse courante ci-dessous), simple liste
-          ailleurs (managed). */}
-      {(rejectionHistory[r.id]?.length ?? 0) > 0 &&
-        (mode === 'pending' || mode === 'rejected' ? (
-          <tr>
-            <td colSpan={6} className="px-6 pb-4 -mt-2">
-              <p className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-2">Refus précédents</p>
-              <div className="space-y-2">
-                {rejectionHistory[r.id].map((h) => (
-                  <div key={h.id} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
-                    <AnalysisPanel
-                      recipeId={r.id}
-                      analysis={h.analysis_id != null ? historicalAnalyses[h.analysis_id] : undefined}
-                      matches={h.analysis_id != null ? matches[h.analysis_id] ?? [] : []}
-                      feedback={feedback}
-                      moderationNote={h.motif}
-                      moderationNoteAt={h.rejected_at}
-                      readOnly
-                    />
-                  </div>
-                ))}
-              </div>
-            </td>
-          </tr>
-        ) : (
-          <tr>
-            <td colSpan={6} className="px-6 pb-2 -mt-2">
-              <div className="text-xs text-on-surface-variant">
-                <span className="font-semibold text-on-surface">Refus précédents :</span>
-                <ul className="list-disc list-inside mt-1 space-y-0.5">
-                  {rejectionHistory[r.id].map((h) => (
-                    <li key={h.id}>
-                      {formatDateTime(h.rejected_at)} : {h.motif}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </td>
-          </tr>
-        ))}
+          `recipes_track_rejection_note` à chaque resoumission, avec le
+          détail complet de l'analyse qui les a motivés. Peut apparaître
+          dans les trois tables — y compris « validées et privées » : le
+          détail d'un refus passé reste utile à retrouver après
+          l'acceptation, pas seulement pendant la décision (pending) ou en
+          cas de nouveau refus (rejected). */}
+      {(rejectionHistory[r.id]?.length ?? 0) > 0 && (
+        <tr>
+          <td colSpan={6} className="px-6 pb-4 -mt-2">
+            <p className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-2">Refus précédents</p>
+            <div className="space-y-2">
+              {rejectionHistory[r.id].map((h) => (
+                <div key={h.id} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+                  <AnalysisPanel
+                    recipeId={r.id}
+                    analysis={h.analysis_id != null ? historicalAnalyses[h.analysis_id] : undefined}
+                    matches={h.analysis_id != null ? matches[h.analysis_id] ?? [] : []}
+                    feedback={feedback}
+                    moderationNote={h.motif}
+                    moderationNoteAt={h.rejected_at}
+                    readOnly
+                  />
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
       {(mode === 'pending' || mode === 'rejected') && (
         <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">

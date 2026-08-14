@@ -801,6 +801,15 @@ export function CreerForm({
       }
 
       if (status !== 'draft') {
+        if (finalStatus === 'pending') {
+          // Recette publique soumise par un membre non-admin (§ ligne 653 :
+          // seul ce cas reste en `pending`) : sans messagerie interne pour le
+          // signaler autrement, prévenir ici que la validation d'un admin est
+          // nécessaire avant que la recette ne devienne visible.
+          await dialog.alert(
+            "Votre recette a bien été soumise. Elle sera visible publiquement dès qu'un administrateur l'aura validée.",
+          );
+        }
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,
         // pour éviter qu'une visite ultérieure du carnet ou de la fiche

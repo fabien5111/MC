@@ -24,7 +24,7 @@ const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
   pending: { label: 'En attente', badge: 'bg-secondary/90' },
   draft: { label: 'Brouillon', badge: 'bg-secondary/90' },
-  rejected: { label: 'Publication refusée', badge: 'bg-error/90' },
+  rejected: { label: 'Refusée', badge: 'bg-error/90' },
 };
 
 export function CarnetContent({
