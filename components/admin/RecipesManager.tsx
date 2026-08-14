@@ -19,6 +19,7 @@ import type {
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 import { buildAnalysisSummary } from '@/lib/ai/analysis-summary';
 import { formatUsd } from '@/lib/ai/cost';
+import { formatDate } from '@/lib/format';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -516,7 +517,10 @@ export function RecipesManager({
         <tr>
           <td colSpan={6} className="px-6 pb-2 -mt-2">
             <p className="text-xs text-on-surface-variant">
-              <span className="font-semibold text-on-surface">Motif du refus :</span> {r.moderation_note}
+              <span className="font-semibold text-on-surface">
+                Motif du refus{r.moderation_note_at ? ` du ${formatDate(r.moderation_note_at)}` : ''} :
+              </span>{' '}
+              {r.moderation_note}
             </p>
           </td>
         </tr>

@@ -44,9 +44,12 @@ export type AdminRecipeRow = {
   // absent de lib/database.types.ts tant que la migration n'a pas été
   // régénérée (npm run gen:types).
   moderation_note?: string | null;
-  // Motifs des refus précédents, archivés par le trigger SQL
-  // `recipes_archive_rejection_note` à chaque resoumission — même statut
-  // « pas encore régénéré » que `moderation_note` ci-dessus.
+  // Date du refus courant, horodatée par le trigger SQL
+  // `recipes_track_rejection_note` dès que `moderation_note` change — même
+  // statut « pas encore régénéré » que `moderation_note` ci-dessus.
+  moderation_note_at?: string | null;
+  // Motifs des refus précédents, archivés par le même trigger à chaque
+  // resoumission.
   rejection_history?: string[] | null;
 };
 export type PendingComment = {
@@ -100,13 +103,14 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
 // si le refus était une erreur.
 export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
   const supabase = await createClient();
-  // `moderation_note` / `rejection_history` absentes de lib/database.types.ts
-  // tant que la migration n'a pas été régénérée (npm run gen:types) — accès
-  // non typé sur ces deux champs, comme le reste du contrôle IA en attendant.
+  // `moderation_note` / `moderation_note_at` / `rejection_history` absentes de
+  // lib/database.types.ts tant que la migration n'a pas été régénérée
+  // (npm run gen:types) — accès non typé sur ces champs, comme le reste du
+  // contrôle IA en attendant.
   const { data } = await (supabase as any)
     .from('recipes')
     .select(
-      'id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, rejection_history, profiles!recipes_author_id_fkey(full_name)',
+      'id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, moderation_note_at, rejection_history, profiles!recipes_author_id_fkey(full_name)',
     )
     .eq('status', 'rejected')
     .order('created_at', { ascending: false });

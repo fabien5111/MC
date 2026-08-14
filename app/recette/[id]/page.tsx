@@ -317,7 +317,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <div className="no-print border border-error/40 bg-error-container/40 text-on-error-container rounded-xl px-5 py-3 flex items-start gap-3">
                 <span className="material-symbols-outlined text-[20px] shrink-0">info</span>
                 <p className="font-body-md text-[13px]">
-                  <span className="font-semibold">Motif du refus :</span> {recipe.moderation_note}
+                  <span className="font-semibold">
+                    Motif du refus{recipe.moderation_note_at ? ` du ${formatDate(recipe.moderation_note_at)}` : ''} :
+                  </span>{' '}
+                  {recipe.moderation_note}
                 </p>
               </div>
             )}

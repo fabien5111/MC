@@ -154,6 +154,9 @@ export type RecipeFull = {
   // Motif du refus (§9, saisi depuis Admin → Recettes → Refuser), affiché à
   // l'auteur sur sa propre fiche recette. `null` hors statut `rejected`.
   moderation_note: string | null;
+  // Date de ce motif (horodatée par le trigger SQL `recipes_track_rejection_note`
+  // dès que `moderation_note` change). `null` en même temps que `moderation_note`.
+  moderation_note_at: string | null;
   created_at: string | null;
   rating_avg: number | null;
   rating_count: number | null;
