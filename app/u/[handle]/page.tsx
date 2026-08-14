@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getFavoriteIds } from '@/lib/favorites';
 import {
   getPublicProfile,
@@ -17,6 +17,7 @@ import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { ShareButton } from '@/components/recipe/ShareButton';
+import { ImpersonateButton } from '@/components/admin/ImpersonateButton';
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -52,6 +53,9 @@ export default async function PublicProfilePage({ params, searchParams }: Params
   const following = user ? await isFollowing(user.id, profile.id) : false;
 
   const isOwnProfile = user?.id === profile.id;
+  // Bouton « Connecter en tant que » réservé à un admin regardant le profil
+  // de quelqu'un d'autre — inutile de le calculer sur sa propre vitrine.
+  const viewerIsAdmin = user && !isOwnProfile ? await isAdmin(user.id) : false;
   const name = profile.full_name || profile.username || 'Pâtissier';
   const memberSince = profile.created_at
     ? new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
@@ -100,6 +104,13 @@ export default async function PublicProfilePage({ params, searchParams }: Params
                   </Link>
                 ) : (
                   <FollowButton profileId={profile.id} currentUserId={user?.id ?? null} initialFollowing={following} />
+                )}
+                {viewerIsAdmin && (
+                  <ImpersonateButton
+                    profileId={profile.id}
+                    name={name}
+                    className="flex items-center gap-2 rounded-lg border border-outline-variant px-6 py-3 font-label-md text-label-md text-on-surface-variant transition-all hover:border-primary hover:text-primary disabled:opacity-50"
+                  />
                 )}
                 <ShareButton title={name} />
               </div>
