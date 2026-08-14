@@ -1073,6 +1073,13 @@ export function RelectureEditor({
   }, [router, dialog, importRow.id]);
 
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';
+  // `champ` porte déjà `border-outline-variant` : lui ajouter `border-error`
+  // à côté laisse les deux classes de couleur de bordure coexister, et
+  // Tailwind compile `.border-outline-variant` après `.border-error` dans la
+  // feuille de styles — le gris l'emporte alors toujours dans la cascade,
+  // quel que soit l'ordre des classes dans le JSX (le rouge ne s'affichait
+  // donc jamais). Remplacer la classe de couleur au lieu de l'additionner.
+  const champErr = (invalid: boolean) => (invalid ? champ.replace('border-outline-variant', 'border-2 border-error') : champ);
 
   return (
     <>
@@ -1436,7 +1443,7 @@ export function RelectureEditor({
                       list="dl-utensils"
                       value={m.nom}
                       onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
-                      className={`${champ}${m.nom.trim() && !known ? ' border-2 border-error' : ''}`}
+                      className={champErr(!!(m.nom.trim() && !known))}
                       title={m.nom.trim() && !known ? 'Ustensile absent de la table de référence' : undefined}
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
@@ -1666,7 +1673,7 @@ export function RelectureEditor({
                                 patchIng(si, ii, { nom });
                               }
                             }}
-                            className={`${champ}${g.nom.trim() && !known ? ' border-2 border-error' : ''}`}
+                            className={champErr(!!(g.nom.trim() && !known))}
                             title={g.nom.trim() && !known ? 'Ingrédient absent de la table de référence' : undefined}
                             placeholder="Farine"
                             autoComplete="off"
@@ -1678,7 +1685,7 @@ export function RelectureEditor({
                             }}
                             value={g.unite}
                             onChange={(e) => patchIng(si, ii, { unite: e.target.value })}
-                            className={`${champ}${uniteKo ? ' border-2 border-error' : ''}`}
+                            className={champErr(uniteKo)}
                             title={uniteKo ? 'Unité manquante ou absente de la table de référence' : undefined}
                           >
                             <option value="">— unité —</option>
