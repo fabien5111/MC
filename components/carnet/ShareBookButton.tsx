@@ -65,6 +65,7 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
         className="flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container"
       >
         <span className="material-symbols-outlined text-[18px]">share</span> Partager mon carnet
+        {items.length > 0 ? ` (${items.length})` : ''}
       </button>
 
       {open && (
