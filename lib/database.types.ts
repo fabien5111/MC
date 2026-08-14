@@ -250,6 +250,42 @@ export type Database = {
           },
         ]
       }
+      book_shares: {
+        Row: {
+          created_at: string
+          owner_id: string
+          scope: string
+          shared_with_id: string
+        }
+        Insert: {
+          created_at?: string
+          owner_id: string
+          scope?: string
+          shared_with_id: string
+        }
+        Update: {
+          created_at?: string
+          owner_id?: string
+          scope?: string
+          shared_with_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_shares_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_shares_shared_with_id_fkey"
+            columns: ["shared_with_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -1723,6 +1759,79 @@ export type Database = {
           },
         ]
       }
+      recipe_scale_costs: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          id: number
+          input_tokens: number
+          model: string
+          output_tokens: number
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          id?: never
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          id?: never
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipe_shares: {
+        Row: {
+          created_at: string
+          owner_id: string
+          recipe_id: string
+          shared_with_id: string
+        }
+        Insert: {
+          created_at?: string
+          owner_id: string
+          recipe_id: string
+          shared_with_id: string
+        }
+        Update: {
+          created_at?: string
+          owner_id?: string
+          recipe_id?: string
+          shared_with_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_shares_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_shares_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_shares_shared_with_id_fkey"
+            columns: ["shared_with_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_shingle_index: {
         Row: {
           editorial_text: string
@@ -2408,6 +2517,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_view_shared_recipe: {
+        Args: { p_recipe_id: string }
+        Returns: boolean
+      }
       can_write_articles: { Args: never; Returns: boolean }
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
       gone_article_slugs: {
