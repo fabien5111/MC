@@ -6,7 +6,7 @@
 // partage (recherche + portée) et gérer ceux déjà émis (révocation).
 //
 // Écriture immédiate, pas d'acceptation du destinataire (celui-ci peut à
-// tout moment révoquer sa propre ligne depuis l'onglet « Partagées » de son
+// tout moment révoquer sa propre ligne depuis l'onglet « Partagées avec moi » de son
 // carnet — cf. lib/shares.ts).
 //
 // Suppression/ajout optimiste dans une liste locale initialisée depuis les

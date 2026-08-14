@@ -61,7 +61,7 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   // cas normalement, mais pas garanti côté données) : elle est déjà présente
   // comme carte « mienne », avec ses vraies actions (modifier/supprimer) — la
   // montrer aussi comme carte « d'un autre » la comptait deux fois dans
-  // « Tout » et pouvait faire gonfler « Favoris »/« Abonnements »/« Partagées »
+  // « Tout » et pouvait faire gonfler « Favoris »/« Abonnements »/« Partagées avec moi »
   // sans raison.
   const mineIds = new Set(recipes.map((r) => r.id));
   const othersById = new Map<

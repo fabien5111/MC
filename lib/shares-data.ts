@@ -117,7 +117,7 @@ export const getRecipeShareInfo = cache(
   },
 );
 
-// ── Recettes partagées avec moi (scope carnet « Partagées ») ───────────────
+// ── Recettes partagées avec moi (scope carnet « Partagées avec moi ») ──────
 //
 // RLS seule fait le tri : une recette d'un propriétaire dont le partage de
 // carnet est « publiées » n'est de toute façon renvoyée par la requête que si

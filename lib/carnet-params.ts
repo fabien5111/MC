@@ -11,7 +11,7 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   mine: 'Mes recettes',
   fav: 'Favoris',
   sub: 'Mes abonnements',
-  shared: 'Partagées',
+  shared: 'Partagées avec moi',
 };
 
 export const STATUSES = ['all', 'published', 'draft', 'pending', 'rejected'] as const;
@@ -46,7 +46,7 @@ export type CarnetParams = {
 
 export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent' };
 
-// La barre de statut disparaît sur Favoris, Mes abonnements et Partagées : le
+// La barre de statut disparaît sur Favoris, Mes abonnements et Partagées avec moi : le
 // statut y est donc toujours remis à « Tous », qu'il ait été passé dans l'URL
 // ou non — une URL trafiquée (`?scope=fav&statut=draft`) ne doit pas produire
 // un état que l'interface ne peut jamais atteindre par elle-même.
