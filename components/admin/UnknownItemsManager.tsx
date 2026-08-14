@@ -16,7 +16,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { UnknownItem } from '@/lib/admin';
+import type { UnknownItem, IgnoredRef } from '@/lib/admin';
+import { formatDate } from '@/lib/format';
+
+type Kind = 'ingredient' | 'utensil';
 
 const FIELD = 'w-full border-b border-outline-variant bg-transparent py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors';
 const LABEL = 'text-xs font-semibold text-on-surface-variant uppercase tracking-wider';
@@ -30,6 +33,7 @@ function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
           <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
             {r.title}
           </Link>
+          {r.author ? <span className="text-on-surface-variant"> — {r.author}</span> : null}
           {r.step ? (
             r.stepAnchor ? (
               <>
@@ -56,11 +60,13 @@ function Section({
   desc,
   items,
   onAdd,
+  onExclude,
 }: {
   title: string;
   desc: string;
   items: UnknownItem[];
   onAdd: (item: UnknownItem) => void;
+  onExclude: (item: UnknownItem) => void;
 }) {
   return (
     <div className="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
@@ -94,13 +100,23 @@ function Section({
                     <RecipeLinks recipes={it.recipes} />
                   </td>
                   <td className="px-6 py-4 text-right whitespace-nowrap">
-                    <button
-                      onClick={() => onAdd(it)}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary text-on-primary text-xs font-medium rounded hover:opacity-90 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      Ajouter à la référence
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onExclude(it)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded hover:border-error hover:text-error transition-all"
+                        title="Ne plus proposer ce nom au rattachement"
+                      >
+                        <span className="material-symbols-outlined text-sm">visibility_off</span>
+                        Exclure
+                      </button>
+                      <button
+                        onClick={() => onAdd(it)}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary text-on-primary text-xs font-medium rounded hover:opacity-90 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        Ajouter à la référence
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -254,17 +270,89 @@ function AddUtensilPanel({ item, onClose }: { item: UnknownItem; onClose: () => 
   );
 }
 
+// Éléments exclus (repliable, replié par défaut) : rester visible plutôt que
+// disparaître silencieusement — une exclusion se fait en un clic depuis les
+// tableaux ci-dessus, elle doit pouvoir se défaire aussi facilement.
+function IgnoredSection({ items, onRestore }: { items: IgnoredRef[]; onRestore: (ref: IgnoredRef) => void }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container-low transition-colors"
+      >
+        <div>
+          <h3 className="font-headline-md text-lg font-semibold">
+            Exclus <span className="text-on-surface-variant font-normal text-sm">({items.length})</span>
+          </h3>
+          <p className="text-xs text-on-surface-variant mt-0.5">Noms écartés du rattachement — à réintégrer si l&apos;exclusion était une erreur.</p>
+        </div>
+        <span className="material-symbols-outlined text-on-surface-variant">{open ? 'expand_less' : 'expand_more'}</span>
+      </button>
+      {open && (
+        <div className="overflow-x-auto border-t border-outline-variant">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-surface-container-low border-b border-outline-variant">
+                <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Nom</th>
+                <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Type</th>
+                <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Exclu par</th>
+                <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
+              {items.map((r) => (
+                <tr key={r.id} className="hover:bg-surface-container-low transition-colors">
+                  <td className="px-6 py-4 text-sm font-semibold text-on-surface">{r.name}</td>
+                  <td className="px-6 py-4 text-sm text-on-surface-variant">{r.kind === 'ingredient' ? 'Ingrédient' : 'Ustensile'}</td>
+                  <td className="px-6 py-4 text-sm text-on-surface-variant">
+                    {r.createdByName || '—'} <span className="text-xs">· {formatDate(r.createdAt)}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => onRestore(r)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded hover:border-primary hover:text-primary transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">visibility</span>
+                      Réintégrer
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function UnknownItemsManager({
   ingredients,
   utensils,
+  ignored,
   allergens,
 }: {
   ingredients: UnknownItem[];
   utensils: UnknownItem[];
+  ignored: IgnoredRef[];
   allergens: { id: number; name: string }[];
 }) {
+  const { mutate } = useMutation();
   const [addingIngredient, setAddingIngredient] = useState<UnknownItem | null>(null);
   const [addingUtensil, setAddingUtensil] = useState<UnknownItem | null>(null);
+
+  function exclude(kind: Kind, item: UnknownItem) {
+    mutate(() => createClient().rpc('admin_ignore_ref' as never, { p_kind: kind, p_name: item.name } as never), {
+      confirm: `Exclure « ${item.name} » de la liste des éléments inconnus ? Il ne sera plus proposé au rattachement tant que vous ne le réintégrerez pas depuis la section « Exclus ».`,
+      errorLabel: 'Exclusion impossible',
+    });
+  }
+
+  function restore(ref: IgnoredRef) {
+    mutate(() => createClient().rpc('admin_unignore_ref' as never, { p_id: ref.id } as never), { errorLabel: 'Réintégration impossible' });
+  }
 
   return (
     <div className="p-margin-desktop flex flex-col gap-gutter">
@@ -273,13 +361,16 @@ export function UnknownItemsManager({
         desc="Noms saisis dans une recette sans correspondance dans la table de référence des ingrédients."
         items={ingredients}
         onAdd={setAddingIngredient}
+        onExclude={(item) => exclude('ingredient', item)}
       />
       <Section
         title="Ustensiles"
         desc="Noms saisis dans une recette sans correspondance dans la table de référence des ustensiles."
         items={utensils}
         onAdd={setAddingUtensil}
+        onExclude={(item) => exclude('utensil', item)}
       />
+      <IgnoredSection items={ignored} onRestore={restore} />
       {addingIngredient && <AddIngredientPanel item={addingIngredient} allergens={allergens} onClose={() => setAddingIngredient(null)} />}
       {addingUtensil && <AddUtensilPanel item={addingUtensil} onClose={() => setAddingUtensil(null)} />}
     </div>

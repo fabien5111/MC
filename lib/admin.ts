@@ -620,10 +620,22 @@ export async function getAiCosts(): Promise<AiCosts> {
 // la même étape (CreerForm insère les deux avec `order_index: gi`), donc
 // `order_index + 1` retombe exactement sur ce même `n` sans requête
 // supplémentaire pour retrouver la position de l'étape dans la recette.
-export type UnknownItem = { name: string; recipes: { id: string; title: string; step?: string; stepAnchor?: string }[] };
+// `author` : nom (ou e-mail à défaut) de l'auteur de la recette — pour savoir
+// à qui demander avant de corriger une saisie, sans ouvrir chaque recette.
+export type UnknownItem = {
+  name: string;
+  recipes: { id: string; title: string; author: string | null; step?: string; stepAnchor?: string }[];
+};
 
 function groupUnknownRows(
-  rows: { name: string; recipe_id: string; recipe_title: string; step_name?: string | null; step_order?: number | null }[],
+  rows: {
+    name: string;
+    recipe_id: string;
+    recipe_title: string;
+    author_name?: string | null;
+    step_name?: string | null;
+    step_order?: number | null;
+  }[],
 ): UnknownItem[] {
   const map = new Map<string, UnknownItem>();
   for (const r of rows) {
@@ -633,7 +645,7 @@ function groupUnknownRows(
     const stepAnchor = step != null && r.step_order != null ? `sec-etape-${r.step_order + 1}` : undefined;
     const dedupeKey = `${r.recipe_id}:${step ?? ''}`;
     if (!entry.recipes.some((x) => `${x.id}:${x.step ?? ''}` === dedupeKey)) {
-      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, step, stepAnchor });
+      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, author: r.author_name ?? null, step, stepAnchor });
     }
     map.set(key, entry);
   }
@@ -648,7 +660,14 @@ export async function getUnknownIngredients(): Promise<UnknownItem[]> {
     return [];
   }
   return groupUnknownRows(
-    (data as unknown as { name: string; recipe_id: string; recipe_title: string; step_name: string | null; step_order: number | null }[]) ?? [],
+    (data as unknown as {
+      name: string;
+      recipe_id: string;
+      recipe_title: string;
+      step_name: string | null;
+      step_order: number | null;
+      author_name: string | null;
+    }[]) ?? [],
   );
 }
 
@@ -659,5 +678,23 @@ export async function getUnknownUtensils(): Promise<UnknownItem[]> {
     console.error('getUnknownUtensils:', error.message);
     return [];
   }
-  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string }[]) ?? []);
+  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string; author_name: string | null }[]) ?? []);
+}
+
+// Éléments explicitement exclus du rattachement (l'admin ne veut pas les
+// ajouter à la référence) — table `admin_ignored_refs`, jamais lue/écrite en
+// direct depuis le client : uniquement via ces RPC SECURITY DEFINER, qui
+// vérifient elles-mêmes `is_admin_user()` (motif `merge_ideas`).
+export type IgnoredRef = { id: number; kind: 'ingredient' | 'utensil'; name: string; createdAt: string; createdByName: string | null };
+
+export async function getIgnoredRefs(): Promise<IgnoredRef[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_list_ignored_refs' as never);
+  if (error) {
+    console.error('getIgnoredRefs:', error.message);
+    return [];
+  }
+  return (
+    (data as unknown as { id: number; kind: string; name: string; created_at: string; created_by_name: string | null }[]) ?? []
+  ).map((r) => ({ id: r.id, kind: r.kind as 'ingredient' | 'utensil', name: r.name, createdAt: r.created_at, createdByName: r.created_by_name }));
 }
