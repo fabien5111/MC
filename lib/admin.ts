@@ -622,9 +622,13 @@ export async function getAiCosts(): Promise<AiCosts> {
 // supplémentaire pour retrouver la position de l'étape dans la recette.
 // `author` : nom (ou e-mail à défaut) de l'auteur de la recette — pour savoir
 // à qui demander avant de corriger une saisie, sans ouvrir chaque recette.
+// `authorId` : lie ce nom au profil public `/u/{authorId}` — la route accepte
+// l'id en handle de repli quand l'auteur n'a pas choisi de nom d'utilisateur
+// (cf. `getPublicProfile`), donc l'id seul suffit à construire un lien valide
+// dans tous les cas, sans requête supplémentaire pour résoudre un username.
 export type UnknownItem = {
   name: string;
-  recipes: { id: string; title: string; author: string | null; step?: string; stepAnchor?: string }[];
+  recipes: { id: string; title: string; author: string | null; authorId: string | null; step?: string; stepAnchor?: string }[];
 };
 
 function groupUnknownRows(
@@ -633,6 +637,7 @@ function groupUnknownRows(
     recipe_id: string;
     recipe_title: string;
     author_name?: string | null;
+    author_id?: string | null;
     step_name?: string | null;
     step_order?: number | null;
   }[],
@@ -645,7 +650,14 @@ function groupUnknownRows(
     const stepAnchor = step != null && r.step_order != null ? `sec-etape-${r.step_order + 1}` : undefined;
     const dedupeKey = `${r.recipe_id}:${step ?? ''}`;
     if (!entry.recipes.some((x) => `${x.id}:${x.step ?? ''}` === dedupeKey)) {
-      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, author: r.author_name ?? null, step, stepAnchor });
+      entry.recipes.push({
+        id: r.recipe_id,
+        title: r.recipe_title,
+        author: r.author_name ?? null,
+        authorId: r.author_id ?? null,
+        step,
+        stepAnchor,
+      });
     }
     map.set(key, entry);
   }
@@ -667,6 +679,7 @@ export async function getUnknownIngredients(): Promise<UnknownItem[]> {
       step_name: string | null;
       step_order: number | null;
       author_name: string | null;
+      author_id: string | null;
     }[]) ?? [],
   );
 }
@@ -678,7 +691,9 @@ export async function getUnknownUtensils(): Promise<UnknownItem[]> {
     console.error('getUnknownUtensils:', error.message);
     return [];
   }
-  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string; author_name: string | null }[]) ?? []);
+  return groupUnknownRows(
+    (data as unknown as { name: string; recipe_id: string; recipe_title: string; author_name: string | null; author_id: string | null }[]) ?? [],
+  );
 }
 
 // Éléments explicitement exclus du rattachement (l'admin ne veut pas les

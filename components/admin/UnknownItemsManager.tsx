@@ -33,7 +33,18 @@ function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
           <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
             {r.title}
           </Link>
-          {r.author ? <span className="text-on-surface-variant"> — {r.author}</span> : null}
+          {r.author ? (
+            r.authorId ? (
+              <>
+                {' — '}
+                <Link href={`/u/${r.authorId}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
+                  {r.author}
+                </Link>
+              </>
+            ) : (
+              <span className="text-on-surface-variant"> — {r.author}</span>
+            )
+          ) : null}
           {r.step ? (
             r.stepAnchor ? (
               <>
