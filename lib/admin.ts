@@ -39,6 +39,10 @@ export type AdminRecipeRow = {
   status: string | null;
   created_at: string | null;
   profiles: { full_name: string | null } | null;
+  // Motif du refus (§9), présent seulement pour les recettes `rejected` —
+  // absent de lib/database.types.ts tant que la migration n'a pas été
+  // régénérée (npm run gen:types).
+  moderation_note?: string | null;
 };
 export type PendingComment = {
   id: number;
@@ -79,6 +83,23 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
   return (data as unknown as AdminRecipeRow[]) ?? [];
 }
 
+// Recettes refusées (§9, statut `rejected`) : jusqu'ici invisibles une fois
+// refusées (ni « à valider », ni « validées ») — remontées ici avec leur
+// motif pour que l'admin garde la trace de sa décision et puisse republier
+// si le refus était une erreur.
+export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
+  const supabase = await createClient();
+  // `moderation_note` absente de lib/database.types.ts tant que la migration
+  // n'a pas été régénérée (npm run gen:types) — accès non typé sur ce seul
+  // champ, comme le reste du contrôle IA en attendant.
+  const { data } = await (supabase as any)
+    .from('recipes')
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, profiles!recipes_author_id_fkey(full_name)')
+    .eq('status', 'rejected')
+    .order('created_at', { ascending: false });
+  return (data as unknown as AdminRecipeRow[]) ?? [];
+}
+
 // ── Contrôle IA à la validation des recettes (modération, §6.2) ───────────
 // `recipe_analysis` est absente de lib/database.types.ts tant que la
 // migration du lot 1 n'a pas été appliquée puis régénérée
@@ -102,6 +123,12 @@ export type RecipeAnalysisSummary = {
   editorial_similarity_max: number | null;
   structural_similarity_max: number | null;
   error_message: string | null;
+  // Coût réel en dollars (§9), calculé par la route depuis la consommation
+  // exacte de chaque appel — `null` si un tarif de modèle était inconnu au
+  // moment du calcul, ou pour toute analyse antérieure à cette colonne.
+  cost_usd: number | null;
+  cost_tokens: number | null;
+  cost_searches: number | null;
   created_at: string;
 };
 
@@ -115,7 +142,8 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
     .from('recipe_analysis')
     .select(
       'id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, ' +
-        'editorial_similarity_max, structural_similarity_max, error_message, created_at',
+        'editorial_similarity_max, structural_similarity_max, error_message, ' +
+        'cost_usd, cost_tokens, cost_searches, created_at',
     )
     .in('recipe_id', recipeIds)
     .order('created_at', { ascending: false });

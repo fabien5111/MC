@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   getPendingRecipes,
   getManagedRecipes,
+  getRejectedRecipes,
   getLatestAnalyses,
   getMatchesForAnalyses,
   getFeedbackForMatches,
@@ -13,10 +14,16 @@ import { RecipesManager } from '@/components/admin/RecipesManager';
 export const metadata: Metadata = { title: 'Recettes | Admin — Je pâtisse !' };
 
 export default async function AdminRecettesPage() {
-  const [pending, managed] = await Promise.all([getPendingRecipes(), getManagedRecipes()]);
-  // Seule la file « à valider » a besoin du panneau d'analyse IA (§9) : la
-  // modération se joue à la soumission, pas sur les recettes déjà publiées.
-  const analyses = await getLatestAnalyses(pending.map((r) => r.id));
+  const [pending, managed, rejected] = await Promise.all([
+    getPendingRecipes(),
+    getManagedRecipes(),
+    getRejectedRecipes(),
+  ]);
+  // Le panneau d'analyse IA (§9) n'a de sens que là où une décision de
+  // modération est en jeu : la file « à valider » et les recettes déjà
+  // refusées (pour comprendre le refus). Les recettes déjà publiées n'en
+  // ont pas besoin — la modération s'est jouée à leur soumission.
+  const analyses = await getLatestAnalyses([...pending, ...rejected].map((r) => r.id));
   const matches = await getMatchesForAnalyses(Object.values(analyses).map((a) => a.id));
   const matchIds = Object.values(matches).flat().map((m) => m.id);
   const [feedback, calibration] = await Promise.all([getFeedbackForMatches(matchIds), getCalibrationStats()]);
@@ -31,6 +38,7 @@ export default async function AdminRecettesPage() {
       <RecipesManager
         pending={pending}
         managed={managed}
+        rejected={rejected}
         analyses={analyses}
         matches={matches}
         feedback={feedback}

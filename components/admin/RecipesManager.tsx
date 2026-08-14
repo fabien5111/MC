@@ -17,6 +17,7 @@ import type {
 } from '@/lib/admin';
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 import { buildAnalysisSummary } from '@/lib/ai/analysis-summary';
+import { formatUsd } from '@/lib/ai/cost';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -354,6 +355,13 @@ function AnalysisPanel({
               )}
             </div>
           ))}
+          {analysis?.status === 'termine' && (
+            <p className="text-[11px] text-on-surface-variant">
+              Coût de l&apos;analyse : {analysis.cost_usd != null ? formatUsd(analysis.cost_usd) : 'inconnu (antérieure au suivi des coûts)'}
+              {analysis.cost_tokens != null && ` · ${analysis.cost_tokens.toLocaleString('fr-FR')} tokens`}
+              {!!analysis.cost_searches && ` · ${analysis.cost_searches} recherche${analysis.cost_searches > 1 ? 's' : ''} web`}
+            </p>
+          )}
           <button
             type="button"
             onClick={relancer}
@@ -368,9 +376,16 @@ function AnalysisPanel({
   );
 }
 
+// Trois lignes possibles pour une recette dans cette console : en attente de
+// décision, déjà publiée/privée, ou refusée (§9). Un enum plutôt qu'un
+// booléen `isPending` — le refus introduit un troisième état, pas
+// simplement la négation du premier.
+type RowMode = 'pending' | 'managed' | 'rejected';
+
 export function RecipesManager({
   pending,
   managed,
+  rejected,
   analyses,
   matches,
   feedback,
@@ -378,6 +393,7 @@ export function RecipesManager({
 }: {
   pending: AdminRecipeRow[];
   managed: AdminRecipeRow[];
+  rejected: AdminRecipeRow[];
   analyses: Record<string, RecipeAnalysisSummary>;
   matches: Record<number, RecipeSimilarityMatchSummary[]>;
   feedback: Record<number, MatchFeedbackVerdict>;
@@ -394,9 +410,10 @@ export function RecipesManager({
     if (moderationNote !== undefined) payload.moderation_note = moderationNote;
     const ok = await mutate(() => createClient().from('recipes').update(payload as never).eq('id', id));
     if (ok) {
-      // Maintenance de l'index de similarité (§6.3) : « Valider » publie
-      // (entrée à ajouter), « Refuser » dépublie (entrée à retirer) — la
-      // route détermine laquelle des deux depuis le statut réel en base.
+      // Maintenance de l'index de similarité (§6.3) : « Valider »/« Republier »
+      // publient (entrée à ajouter), « Refuser »/« Retirer » dépublient (entrée
+      // à retirer) — la route détermine laquelle des deux depuis le statut réel
+      // en base.
       fetch('/api/reindex-recette', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -405,7 +422,7 @@ export function RecipesManager({
     }
   }
 
-  function Row({ r, isPending }: { r: AdminRecipeRow; isPending: boolean }) {
+  function Row({ r, mode }: { r: AdminRecipeRow; mode: RowMode }) {
     return (
       <>
       <tr className="hover:bg-surface-container-low transition-colors">
@@ -440,13 +457,22 @@ export function RecipesManager({
         </td>
         <td className="px-6 py-4 text-right">
           <div className="flex justify-end gap-2 flex-wrap">
-            {isPending && (
+            {mode === 'pending' && (
               <button
                 onClick={() => setStatus(r.id, 'published')}
                 title="Valider"
                 className="flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-on-primary text-xs font-label-md hover:opacity-90 transition-opacity"
               >
                 <span className="material-symbols-outlined text-[16px]">check_circle</span> Valider
+              </button>
+            )}
+            {mode === 'rejected' && (
+              <button
+                onClick={() => setStatus(r.id, 'published')}
+                title="Republier (annule le refus)"
+                className="flex items-center gap-1 px-3 py-1.5 rounded bg-primary text-on-primary text-xs font-label-md hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[16px]">check_circle</span> Republier
               </button>
             )}
             <Link
@@ -456,29 +482,38 @@ export function RecipesManager({
             >
               <span className="material-symbols-outlined text-[16px]">edit_note</span> Modifier
             </Link>
-            <button
-              onClick={async () => {
-                // « Rejeter avec motif » (§9) : le motif remplace le simple
-                // confirm() — sans messagerie interne pour le transmettre à
-                // l'auteur (fonctionnalité distincte, pas encore construite),
-                // il est au moins enregistré sur la recette plutôt que perdu.
-                const motif = await dialog.prompt(
-                  isPending
-                    ? 'Motif du refus (la recette sera renvoyée en brouillon) :'
-                    : 'Motif du retrait (la recette sera renvoyée en brouillon) :',
-                  { required: true, placeholder: 'Ex. : recette déjà publiée par un autre membre, contenu inapproprié…' },
-                );
-                if (motif !== null) setStatus(r.id, 'rejected', motif.trim());
-              }}
-              title={isPending ? 'Refuser (renvoyer en brouillon)' : 'Retirer (repasser en brouillon)'}
-              className="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">block</span> Refuser
-            </button>
+            {mode !== 'rejected' && (
+              <button
+                onClick={async () => {
+                  // « Rejeter avec motif » (§9) : le motif remplace le simple
+                  // confirm() — sans messagerie interne pour le transmettre à
+                  // l'auteur (fonctionnalité distincte, pas encore construite),
+                  // il est au moins enregistré sur la recette plutôt que perdu.
+                  const motif = await dialog.prompt(
+                    mode === 'pending' ? 'Motif du refus :' : 'Motif du retrait (la recette sera dépubliée) :',
+                    { required: true, placeholder: 'Ex. : recette déjà publiée par un autre membre, contenu inapproprié…' },
+                  );
+                  if (motif !== null) setStatus(r.id, 'rejected', motif.trim());
+                }}
+                title={mode === 'pending' ? 'Refuser' : 'Retirer (dépublier)'}
+                className="flex items-center gap-1 px-3 py-1.5 rounded border border-error text-error hover:bg-error-container text-xs font-label-md transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">block</span> Refuser
+              </button>
+            )}
           </div>
         </td>
       </tr>
-      {isPending && (
+      {mode === 'rejected' && r.moderation_note && (
+        <tr>
+          <td colSpan={6} className="px-6 pb-2 -mt-2">
+            <p className="text-xs text-on-surface-variant">
+              <span className="font-semibold text-on-surface">Motif du refus :</span> {r.moderation_note}
+            </p>
+          </td>
+        </tr>
+      )}
+      {(mode === 'pending' || mode === 'rejected') && (
         <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">
             <AnalysisPanel
@@ -494,7 +529,13 @@ export function RecipesManager({
     );
   }
 
-  function Table({ rows, isPending }: { rows: AdminRecipeRow[]; isPending: boolean }) {
+  const EMPTY_LABEL: Record<RowMode, string> = {
+    pending: 'Aucune recette en attente de validation.',
+    managed: 'Aucune recette validée ou privée.',
+    rejected: 'Aucune recette refusée.',
+  };
+
+  function Table({ rows, mode }: { rows: AdminRecipeRow[]; mode: RowMode }) {
     return (
       <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[820px]">
@@ -512,11 +553,11 @@ export function RecipesManager({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
-                  {isPending ? 'Aucune recette en attente de validation.' : 'Aucune recette validée ou privée.'}
+                  {EMPTY_LABEL[mode]}
                 </td>
               </tr>
             ) : (
-              rows.map((r) => <Row key={r.id} r={r} isPending={isPending} />)
+              rows.map((r) => <Row key={r.id} r={r} mode={mode} />)
             )}
           </tbody>
         </table>
@@ -532,14 +573,21 @@ export function RecipesManager({
           <h2 className="font-headline-md text-primary">Recettes à valider</h2>
           <span className="font-label-md text-label-md text-on-surface-variant">({pending.length})</span>
         </div>
-        <Table rows={pending} isPending />
+        <Table rows={pending} mode="pending" />
       </section>
       <section>
         <div className="flex items-baseline gap-3 mb-6">
           <h2 className="font-headline-md text-primary">Recettes validées et privées</h2>
           <span className="font-label-md text-label-md text-on-surface-variant">({managed.length})</span>
         </div>
-        <Table rows={managed} isPending={false} />
+        <Table rows={managed} mode="managed" />
+      </section>
+      <section>
+        <div className="flex items-baseline gap-3 mb-6">
+          <h2 className="font-headline-md text-primary">Recettes refusées</h2>
+          <span className="font-label-md text-label-md text-on-surface-variant">({rejected.length})</span>
+        </div>
+        <Table rows={rejected} mode="rejected" />
       </section>
       <CalibrationStats buckets={calibration} />
     </main>
