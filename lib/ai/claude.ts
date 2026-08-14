@@ -211,9 +211,17 @@ export type WebSearchCall = { text: string; usage: ClaudeUsage; searches: number
 // récupération des résultats s'exécutent côté Anthropic à l'intérieur de cet
 // unique appel HTTP — aucune file d'attente ni worker séparé n'est
 // nécessaire (jusqu'à 10 itérations d'outil serveur par défaut ; largement
-// suffisant pour 3 recherches). Non-streaming : la sortie attendue est un
-// petit JSON, pas un texte long — pas de risque de dépasser le temps imparti
-// sans rien observer, contrairement à callClaude.
+// suffisant pour 3 recherches).
+//
+// En streaming, comme callClaude : constaté en usage réel, jusqu'à 3
+// recherches enchaînées côté serveur peuvent légitimement prendre plus de
+// 40 s de bout en bout, et en non-streaming rien ne circule tant que ce
+// n'est pas entièrement fini — un délai fixe sur la requête entière finit
+// par tuer une requête qui progresse simplement lentement, sans distinguer
+// ce cas d'une requête réellement bloquée. `timeoutMs` est donc un délai
+// d'INACTIVITÉ (réinitialisé à chaque événement reçu), pas un plafond sur la
+// durée totale — le vrai filet de sécurité reste le `maxDuration` de la
+// route appelante.
 export async function callClaudeWithWebSearch(
   apiKey: string,
   userContent: string,
@@ -226,7 +234,11 @@ export async function callClaudeWithWebSearch(
   blockedDomains: string[] = [],
 ): Promise<WebSearchCall> {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  let timer = setTimeout(() => ctl.abort(), timeoutMs);
+  const resetTimer = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => ctl.abort(), timeoutMs);
+  };
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -239,6 +251,7 @@ export async function callClaudeWithWebSearch(
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
+        stream: true,
         system,
         tools: [
           {
@@ -255,31 +268,59 @@ export async function callClaudeWithWebSearch(
     if (!r.ok) {
       throw new Error(`API Claude (recherche web) : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
     }
-    const data = (await r.json()) as {
-      content?: { type: string; text?: string }[];
-      usage?: Record<string, number>;
-    };
-    const content = data.content ?? [];
-    const text = content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text ?? '')
-      .join('\n');
-    const searches = content.filter((b) => b.type === 'server_tool_use').length;
-    const u = data.usage ?? {};
-    return {
-      text,
-      usage: {
-        inputTokens: u.input_tokens ?? 0,
-        outputTokens: u.output_tokens ?? 0,
-        cacheReadTokens: u.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
-      },
-      searches,
-    };
+    if (!r.body) throw new Error('API Claude (recherche web) : réponse sans corps.');
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    const usage: ClaudeUsage = { ...EMPTY_USAGE };
+    let buffer = '';
+    let text = '';
+    let searches = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      resetTimer(); // un octet reçu (ou la fin du flux) prouve que ça avance
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let fin = buffer.indexOf('\n\n');
+      while (fin !== -1) {
+        const bloc = buffer.slice(0, fin);
+        buffer = buffer.slice(fin + 2);
+        for (const ligne of bloc.split('\n')) {
+          if (!ligne.startsWith('data:')) continue;
+          const brut = ligne.slice(5).trim();
+          if (!brut) continue;
+          let ev: SseEvent & { content_block?: { type?: string } };
+          try {
+            ev = JSON.parse(brut);
+          } catch {
+            continue;
+          }
+          if (ev.type === 'message_start') {
+            const u = ev.message?.usage ?? {};
+            usage.inputTokens = u.input_tokens ?? 0;
+            usage.outputTokens = u.output_tokens ?? 0;
+            usage.cacheReadTokens = u.cache_read_input_tokens ?? 0;
+            usage.cacheWriteTokens = u.cache_creation_input_tokens ?? 0;
+          } else if (ev.type === 'content_block_start' && ev.content_block?.type === 'server_tool_use') {
+            searches++;
+          } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+            text += ev.delta.text ?? '';
+          } else if (ev.type === 'message_delta' && ev.usage?.output_tokens != null) {
+            usage.outputTokens = ev.usage.output_tokens;
+          } else if (ev.type === 'error') {
+            throw new Error(`API Claude (recherche web) : ${ev.error?.type ?? 'erreur'} — ${ev.error?.message ?? ''}`);
+          }
+        }
+        fin = buffer.indexOf('\n\n');
+      }
+    }
+
+    return { text, usage, searches };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       throw Object.assign(
-        new Error(`API Claude (recherche web) : aucune réponse au bout de ${Math.round(timeoutMs / 1000)} s.`),
+        new Error(`API Claude (recherche web) : connexion inactive pendant plus de ${Math.round(timeoutMs / 1000)} s.`),
         { code: 'TIMEOUT' },
       );
     }
