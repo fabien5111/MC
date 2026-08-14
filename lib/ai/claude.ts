@@ -81,6 +81,48 @@ export function parseStrictJson(text: string): unknown {
 // routes qui ont un `maxDuration` plus court passent leur propre valeur.
 export const TIMEOUT_MS = 50_000;
 
+// Pannes PASSAGÈRES de l'API : saturation du service (`overloaded_error`,
+// HTTP 529), limite de débit, incident momentané. Rien à voir avec une
+// requête invalide (400) ou une clé refusée (401), qui échoueront
+// identiquement à la tentative suivante — d'où la distinction, seules les
+// premières méritent d'être retentées.
+const TYPES_ERREUR_TRANSITOIRE = new Set(['overloaded_error', 'rate_limit_error', 'api_error']);
+const HTTP_TRANSITOIRE = new Set([408, 429, 500, 502, 503, 504, 529]);
+
+function erreurTransitoire(message: string, transitoire: boolean): Error {
+  return Object.assign(new Error(message), transitoire ? { code: 'TRANSIENT' } : {});
+}
+
+export function estTransitoire(e: unknown): boolean {
+  return (e as { code?: string } | null)?.code === 'TRANSIENT';
+}
+
+// Relance un appel IA sur panne passagère uniquement, avec attente
+// exponentielle. `budgetRestantMs` permet à l'appelant (route serverless
+// sous `maxDuration`) de renoncer plutôt que de retenter un appel qu'il n'a
+// plus le temps de mener à bien.
+export async function avecReprise<T>(
+  appel: () => Promise<T>,
+  essais = 3,
+  attenteInitialeMs = 1_000,
+  budgetRestantMs?: () => number,
+): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await appel();
+    } catch (e) {
+      const attente = attenteInitialeMs * 2 ** i;
+      const dernier = i >= essais - 1;
+      // Retenter sans avoir le temps d'aboutir consommerait le budget pour
+      // finir sur la même erreur, en moins lisible.
+      const tempsInsuffisant = budgetRestantMs ? budgetRestantMs() < attente + 8_000 : false;
+      if (!estTransitoire(e) || dernier || tempsInsuffisant) throw e;
+      console.warn(`[claude] panne passagère, nouvelle tentative dans ${attente} ms : ${(e as Error).message}`);
+      await new Promise((r) => setTimeout(r, attente));
+    }
+  }
+}
+
 export async function callClaude(
   apiKey: string,
   // Une chaîne suffit tant que l'entrée est textuelle ; les blocs servent aux
@@ -129,7 +171,10 @@ export async function callClaude(
       }),
     });
     if (!r.ok) {
-      throw new Error(`API Claude : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
+      throw erreurTransitoire(
+        `API Claude : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`,
+        HTTP_TRANSITOIRE.has(r.status),
+      );
     }
     if (!r.body) throw new Error('API Claude : réponse sans corps.');
 
@@ -172,7 +217,13 @@ export async function callClaude(
             // Décompte définitif des tokens produits.
             usage.outputTokens = ev.usage.output_tokens;
           } else if (ev.type === 'error') {
-            throw new Error(`API Claude : ${ev.error?.type ?? 'erreur'} — ${ev.error?.message ?? ''}`);
+            // La saturation du service arrive le plus souvent ICI, en cours
+            // de flux, et non sur le statut HTTP initial.
+            const type = ev.error?.type ?? 'erreur';
+            throw erreurTransitoire(
+              `API Claude : ${type} — ${ev.error?.message ?? ''}`,
+              TYPES_ERREUR_TRANSITOIRE.has(type),
+            );
           }
         }
         fin = buffer.indexOf('\n\n');
@@ -282,7 +333,10 @@ export async function callClaudeWithWebSearch(
       }),
     });
     if (!r.ok) {
-      throw new Error(`API Claude (recherche web) : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`);
+      throw erreurTransitoire(
+        `API Claude (recherche web) : HTTP ${r.status} — ${(await r.text()).slice(0, 300)}`,
+        HTTP_TRANSITOIRE.has(r.status),
+      );
     }
     if (!r.body) throw new Error('API Claude (recherche web) : réponse sans corps.');
 
@@ -324,7 +378,11 @@ export async function callClaudeWithWebSearch(
           } else if (ev.type === 'message_delta' && ev.usage?.output_tokens != null) {
             usage.outputTokens = ev.usage.output_tokens;
           } else if (ev.type === 'error') {
-            throw new Error(`API Claude (recherche web) : ${ev.error?.type ?? 'erreur'} — ${ev.error?.message ?? ''}`);
+            const type = ev.error?.type ?? 'erreur';
+            throw erreurTransitoire(
+              `API Claude (recherche web) : ${type} — ${ev.error?.message ?? ''}`,
+              TYPES_ERREUR_TRANSITOIRE.has(type),
+            );
           }
         }
         fin = buffer.indexOf('\n\n');

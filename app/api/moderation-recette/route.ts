@@ -12,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getRecipeFull } from '@/lib/recipes';
 import { siteUrl } from '@/lib/site-url';
 import { buildEditorialText, buildStructuralSignature, recipeContentFingerprint } from '@/lib/recipe-analysis';
-import { callClaude, callClaudeWithWebSearch, MODERATION_MODEL } from '@/lib/ai/claude';
+import { callClaude, callClaudeWithWebSearch, avecReprise, estTransitoire, MODERATION_MODEL } from '@/lib/ai/claude';
 import {
   MODERATION_PROMPT_VERSION,
   MODERATION_SYSTEM_PROMPT,
@@ -168,20 +168,12 @@ export async function POST(req: Request) {
   const remainingBudget = () => HARD_DEADLINE_MS - (Date.now() - routeStart);
 
   try {
-    let call = await callClaude(
-      apiKey,
-      buildModerationUserContent(source),
-      1500,
-      20_000,
-      MODERATION_MODEL,
-      'disabled',
-      MODERATION_SYSTEM_PROMPT,
-    );
-    let parsed = parseModerationJson(call.text);
-
-    if (!parsed.ok) {
-      // Une seule relance en cas d'échec de parsing, puis échec (annexe A.6).
-      const retry = await callClaude(
+    // Reprise sur panne passagère de l'API (saturation, limite de débit) :
+    // sans elle, un `overloaded_error` momentané fait échouer toute
+    // l'analyse — modération et similarité comprises — là où une seconde
+    // tentative aurait suffi.
+    const appelModeration = () =>
+      callClaude(
         apiKey,
         buildModerationUserContent(source),
         1500,
@@ -190,6 +182,13 @@ export async function POST(req: Request) {
         'disabled',
         MODERATION_SYSTEM_PROMPT,
       );
+
+    let call = await avecReprise(appelModeration, 3, 1_000, remainingBudget);
+    let parsed = parseModerationJson(call.text);
+
+    if (!parsed.ok) {
+      // Une seule relance en cas d'échec de parsing, puis échec (annexe A.6).
+      const retry = await avecReprise(appelModeration, 3, 1_000, remainingBudget);
       call = { text: retry.text, usage: { ...call.usage } };
       call.usage.inputTokens += retry.usage.inputTokens;
       call.usage.outputTokens += retry.usage.outputTokens;
@@ -462,8 +461,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ analysisId, verdict: verified.verdict, flag, matches: matches.length + externalMatchCount });
   } catch (e) {
+    // Une saturation de l'API n'appelle pas la même réaction qu'une vraie
+    // panne : l'admin doit savoir qu'une simple relance a des chances
+    // d'aboutir, plutôt que de lire un code d'erreur brut.
+    const message = estTransitoire(e)
+      ? `Service IA momentanément saturé, malgré plusieurs tentatives. Relancer l'analyse dans quelques minutes. (${(e as Error).message})`
+      : (e as Error).message;
     await analysisTable(admin)
-      .update({ status: 'echec', error_message: (e as Error).message, completed_at: nowIso() })
+      .update({ status: 'echec', error_message: message, completed_at: nowIso() })
       .eq('id', analysisId);
     console.error('moderation-recette:', (e as Error).message);
     return NextResponse.json({ analysisId, erreur: 'Analyse indisponible.' });
