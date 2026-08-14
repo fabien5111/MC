@@ -597,3 +597,145 @@ export async function getAiCosts(): Promise<AiCosts> {
     tauxEur: TAUX_EUR_AFFICHE,
   };
 }
+
+// ── Ingrédients / ustensiles non rattachés à la table de référence ───────
+// « Inconnu » = nom saisi dans une recette qui ne correspond (insensible à la
+// casse) à aucune entrée de `ingredient_refs` / `utensils`. Ne pas se fier à
+// `ref_id IS NULL` seul : côté ustensiles, CreerForm ne renseigne jamais ce
+// champ à l'enregistrement (cf. CLAUDE.md), donc `ref_id` y est toujours nul
+// même pour un nom déjà référencé.
+// RPC dédiées (`admin_unknown_ingredients` / `admin_unknown_utensils`, non
+// encore dans lib/database.types.ts — cast `as never`, motif `list_ideas`) :
+// une jointure ingrédient/ustensile → recette est plus simple à exprimer en
+// SQL qu'en PostgREST, et évite de rapatrier toutes les recettes côté client.
+// Pour un ingrédient, `step` (= `ingredient_groups.name`, qui porte le titre
+// de l'étape — cf. CreerForm) repère l'étape concernée dans la recette ; sans
+// ça, une recette à dix étapes obligerait à toutes les ouvrir pour retrouver
+// la ligne visée. Absent pour un ustensile (`recipe_utensils` n'a pas
+// d'étape, il est rattaché à la recette entière).
+// `stepAnchor` : la fiche recette ancre chaque étape sur `sec-etape-{n}`, `n`
+// étant sa position 1-based (`app/recette/[id]/page.tsx`, boucle `steps.map((s, i) …)`
+// avec `id={`sec-etape-${i + 1}`}`). `ingredient_groups.order_index` est
+// enregistré avec la même valeur 0-based que `recipe_steps.order_index` pour
+// la même étape (CreerForm insère les deux avec `order_index: gi`), donc
+// `order_index + 1` retombe exactement sur ce même `n` sans requête
+// supplémentaire pour retrouver la position de l'étape dans la recette.
+// `author` : nom (ou e-mail à défaut) de l'auteur de la recette — pour savoir
+// à qui demander avant de corriger une saisie, sans ouvrir chaque recette.
+// `authorId` : lie ce nom au profil public `/u/{authorId}` — la route accepte
+// l'id en handle de repli quand l'auteur n'a pas choisi de nom d'utilisateur
+// (cf. `getPublicProfile`), donc l'id seul suffit à construire un lien valide
+// dans tous les cas, sans requête supplémentaire pour résoudre un username.
+// `status` / `isPublic` : un ingrédient inconnu peut dormir dans un brouillon
+// jamais publié — sans cette info, rien ne distingue une correction urgente
+// (recette publique déjà visible) d'une saisie encore en chantier.
+export type UnknownItem = {
+  name: string;
+  recipes: {
+    id: string;
+    title: string;
+    author: string | null;
+    authorId: string | null;
+    status: string | null;
+    isPublic: boolean | null;
+    step?: string;
+    stepAnchor?: string;
+  }[];
+};
+
+function groupUnknownRows(
+  rows: {
+    name: string;
+    recipe_id: string;
+    recipe_title: string;
+    author_name?: string | null;
+    author_id?: string | null;
+    recipe_status?: string | null;
+    is_public?: boolean | null;
+    step_name?: string | null;
+    step_order?: number | null;
+  }[],
+): UnknownItem[] {
+  const map = new Map<string, UnknownItem>();
+  for (const r of rows) {
+    const key = r.name.trim().toLowerCase();
+    const entry = map.get(key) ?? { name: r.name.trim(), recipes: [] };
+    const step = r.step_name ?? undefined;
+    const stepAnchor = step != null && r.step_order != null ? `sec-etape-${r.step_order + 1}` : undefined;
+    const dedupeKey = `${r.recipe_id}:${step ?? ''}`;
+    if (!entry.recipes.some((x) => `${x.id}:${x.step ?? ''}` === dedupeKey)) {
+      entry.recipes.push({
+        id: r.recipe_id,
+        title: r.recipe_title,
+        author: r.author_name ?? null,
+        authorId: r.author_id ?? null,
+        status: r.recipe_status ?? null,
+        isPublic: r.is_public ?? null,
+        step,
+        stepAnchor,
+      });
+    }
+    map.set(key, entry);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+export async function getUnknownIngredients(): Promise<UnknownItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_unknown_ingredients' as never);
+  if (error) {
+    console.error('getUnknownIngredients:', error.message);
+    return [];
+  }
+  return groupUnknownRows(
+    (data as unknown as {
+      name: string;
+      recipe_id: string;
+      recipe_title: string;
+      step_name: string | null;
+      step_order: number | null;
+      author_name: string | null;
+      author_id: string | null;
+      recipe_status: string | null;
+      is_public: boolean | null;
+    }[]) ?? [],
+  );
+}
+
+export async function getUnknownUtensils(): Promise<UnknownItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_unknown_utensils' as never);
+  if (error) {
+    console.error('getUnknownUtensils:', error.message);
+    return [];
+  }
+  return groupUnknownRows(
+    (data as unknown as {
+      name: string;
+      recipe_id: string;
+      recipe_title: string;
+      author_name: string | null;
+      author_id: string | null;
+      recipe_status: string | null;
+      is_public: boolean | null;
+    }[]) ?? [],
+  );
+}
+
+// Éléments explicitement exclus du rattachement (l'admin ne veut pas les
+// ajouter à la référence) — table `admin_ignored_refs`, jamais lue/écrite en
+// direct depuis le client : uniquement via ces RPC SECURITY DEFINER, qui
+// vérifient elles-mêmes `is_admin_user()` (motif `merge_ideas`).
+export type IgnoredRef = { id: number; kind: 'ingredient' | 'utensil'; name: string; createdAt: string; createdByName: string | null };
+
+export async function getIgnoredRefs(): Promise<IgnoredRef[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_list_ignored_refs' as never);
+  if (error) {
+    console.error('getIgnoredRefs:', error.message);
+    return [];
+  }
+  return (
+    (data as unknown as { id: number; kind: string; name: string; created_at: string; created_by_name: string | null }[]) ?? []
+  ).map((r) => ({ id: r.id, kind: r.kind as 'ingredient' | 'utensil', name: r.name, createdAt: r.created_at, createdByName: r.created_by_name }));
+}

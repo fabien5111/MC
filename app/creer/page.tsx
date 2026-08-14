@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requireUser, isAdmin } from '@/lib/auth';
-import { requireWritableSession } from '@/lib/impersonation';
+import { requireWritableSession, getImpersonationContext } from '@/lib/impersonation';
 import { getRecipeFull, getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
@@ -39,6 +39,17 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   // Édition réservée à l'auteur ; sinon on repart d'un formulaire vierge.
   const owned = editRecipe && editRecipe.author_id === user.id ? editRecipe : null;
 
+  // Cadre rouge sur un ingrédient/ustensile hors référentiel : à afficher
+  // aussi quand l'admin édite la recette d'un membre en mode « connecté en
+  // tant que » — la session est alors celle du membre (`isAdmin(user.id)`
+  // vaut donc false), mais seul un admin complet peut ouvrir une session
+  // d'impersonation (cf. POST /api/admin/impersonate), donc sa seule présence
+  // suffit à identifier l'admin sans requête supplémentaire.
+  // Volontairement isolé d'`isAdmin` (bouton « Ajouter au référentiel »,
+  // publication directe, création de tag) : ces écritures restent réservées
+  // à l'admin complet dans SA PROPRE session, conformément à CLAUDE.md.
+  const highlightUnknownRefs = admin || (await getImpersonationContext()) !== null;
+
   return (
     <>
       <Header />
@@ -56,6 +67,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           allergens={allergens}
           utensilRefs={utensilRefs}
           isAdmin={admin}
+          highlightUnknownRefs={highlightUnknownRefs}
           editRecipe={owned}
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
