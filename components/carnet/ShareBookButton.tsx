@@ -26,7 +26,11 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
   const { mutate, busy } = useMutation();
   const [items, setItems] = useState(given);
   useEffect(() => setItems(given), [given]);
-  const [scope, setScope] = useState<ShareScope>('published');
+  // Seul choix réel : inclure les brouillons ou non — le reste (recettes
+  // privées comprises) est la portée de base, non négociable, cf. la case
+  // « Toutes mes recettes privées » ci-dessous.
+  const [includeDrafts, setIncludeDrafts] = useState(false);
+  const scope: ShareScope = includeDrafts ? 'all' : 'published';
 
   async function addShare(member: Member) {
     const ok = await mutate(
@@ -87,18 +91,21 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
 
             <div className="p-6 flex flex-col gap-6">
               <div className="flex flex-col gap-3">
-                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Portée</span>
-                <div className="flex flex-wrap gap-4">
-                  {(Object.keys(SHARE_SCOPE_LABELS) as ShareScope[]).map((s) => (
-                    <label key={s} className="flex items-center gap-2 cursor-pointer font-body-md text-sm">
-                      <input type="radio" name="share-scope" checked={scope === s} onChange={() => setScope(s)} className="accent-primary" />
-                      {SHARE_SCOPE_LABELS[s]}
-                    </label>
-                  ))}
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer font-body-md text-sm">
+                  <input
+                    type="checkbox"
+                    checked={includeDrafts}
+                    onChange={(e) => setIncludeDrafts(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  Inclure mes brouillons
+                </label>
+                <label className="flex items-center gap-2 font-body-md text-sm text-on-surface-variant">
+                  <input type="checkbox" checked disabled className="accent-primary" />
+                  Toutes mes recettes privées
+                </label>
                 <p className="font-body-md text-[12px] text-on-surface-variant italic">
-                  « Publiées » ne concerne que le statut de vos recettes (brouillon ou non), pas leur réglage privé/public : le partage donne
-                  accès même à ce que vous n’avez pas rendu public.
+                  Vous pouvez aussi partager une recette privée à l’unité, depuis sa fiche.
                 </p>
               </div>
 

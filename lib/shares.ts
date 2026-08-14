@@ -21,8 +21,8 @@
 // motif que `lib/ideas.ts` (pur) / `lib/ideas-data.ts` (RPC, server-only).
 export type ShareScope = 'all' | 'published';
 export const SHARE_SCOPE_LABELS: Record<ShareScope, string> = {
-  all: 'Toutes mes recettes',
-  published: 'Mes recettes publiées uniquement',
+  published: 'Toutes mes recettes privées',
+  all: 'Toutes mes recettes privées, brouillons compris',
 };
 
 export type Member = { id: string; full_name: string | null; avatar_url: string | null; username: string | null };
