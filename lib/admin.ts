@@ -597,3 +597,46 @@ export async function getAiCosts(): Promise<AiCosts> {
     tauxEur: TAUX_EUR_AFFICHE,
   };
 }
+
+// ── Ingrédients / ustensiles non rattachés à la table de référence ───────
+// « Inconnu » = nom saisi dans une recette qui ne correspond (insensible à la
+// casse) à aucune entrée de `ingredient_refs` / `utensils`. Ne pas se fier à
+// `ref_id IS NULL` seul : côté ustensiles, CreerForm ne renseigne jamais ce
+// champ à l'enregistrement (cf. CLAUDE.md), donc `ref_id` y est toujours nul
+// même pour un nom déjà référencé.
+// RPC dédiées (`admin_unknown_ingredients` / `admin_unknown_utensils`, non
+// encore dans lib/database.types.ts — cast `as never`, motif `list_ideas`) :
+// une jointure ingrédient/ustensile → recette est plus simple à exprimer en
+// SQL qu'en PostgREST, et évite de rapatrier toutes les recettes côté client.
+export type UnknownItem = { name: string; recipes: { id: string; title: string }[] };
+
+function groupUnknownRows(rows: { name: string; recipe_id: string; recipe_title: string }[]): UnknownItem[] {
+  const map = new Map<string, UnknownItem>();
+  for (const r of rows) {
+    const key = r.name.trim().toLowerCase();
+    const entry = map.get(key) ?? { name: r.name.trim(), recipes: [] };
+    if (!entry.recipes.some((x) => x.id === r.recipe_id)) entry.recipes.push({ id: r.recipe_id, title: r.recipe_title });
+    map.set(key, entry);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+export async function getUnknownIngredients(): Promise<UnknownItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_unknown_ingredients' as never);
+  if (error) {
+    console.error('getUnknownIngredients:', error.message);
+    return [];
+  }
+  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string }[]) ?? []);
+}
+
+export async function getUnknownUtensils(): Promise<UnknownItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_unknown_utensils' as never);
+  if (error) {
+    console.error('getUnknownUtensils:', error.message);
+    return [];
+  }
+  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string }[]) ?? []);
+}
