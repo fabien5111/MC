@@ -505,6 +505,12 @@ Modèle local : `.env.local.example` → `.env.local`.
   nécessite un redéploiement **sans cache de build**.
 - Côté Supabase : Site URL + Redirect URLs (`https://<domaine>/**`) dans
   Authentication → URL Configuration.
+- **Domaines** : `jepatisse.com` est le futur domaine public — affiche
+  pour l'instant une page d'attente aux visiteurs, ne pas le prendre pour
+  cible lors d'une vérification en production. **`dev.jepatisse.com`** est
+  l'URL de production réelle à ce stade, réservée aux testeurs (accès
+  restreint) : c'est elle qu'il faut utiliser pour vérifier qu'un correctif
+  déployé sur `main` se comporte comme attendu.
 
 ## Commandes
 
