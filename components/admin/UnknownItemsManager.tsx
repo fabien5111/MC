@@ -30,7 +30,20 @@ function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
           <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
             {r.title}
           </Link>
-          {r.step ? <span className="text-on-surface-variant"> (étape « {r.step} »)</span> : null}
+          {r.step ? (
+            r.stepAnchor ? (
+              <>
+                {' '}
+                (
+                <Link href={`/recette/${r.id}#${r.stepAnchor}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
+                  étape « {r.step} »
+                </Link>
+                )
+              </>
+            ) : (
+              <span className="text-on-surface-variant"> (étape « {r.step} »)</span>
+            )
+          ) : null}
           {i < recipes.length - 1 ? <span className="text-on-surface-variant">,</span> : null}
         </span>
       ))}

@@ -613,17 +613,27 @@ export async function getAiCosts(): Promise<AiCosts> {
 // ça, une recette à dix étapes obligerait à toutes les ouvrir pour retrouver
 // la ligne visée. Absent pour un ustensile (`recipe_utensils` n'a pas
 // d'étape, il est rattaché à la recette entière).
-export type UnknownItem = { name: string; recipes: { id: string; title: string; step?: string }[] };
+// `stepAnchor` : la fiche recette ancre chaque étape sur `sec-etape-{n}`, `n`
+// étant sa position 1-based (`app/recette/[id]/page.tsx`, boucle `steps.map((s, i) …)`
+// avec `id={`sec-etape-${i + 1}`}`). `ingredient_groups.order_index` est
+// enregistré avec la même valeur 0-based que `recipe_steps.order_index` pour
+// la même étape (CreerForm insère les deux avec `order_index: gi`), donc
+// `order_index + 1` retombe exactement sur ce même `n` sans requête
+// supplémentaire pour retrouver la position de l'étape dans la recette.
+export type UnknownItem = { name: string; recipes: { id: string; title: string; step?: string; stepAnchor?: string }[] };
 
-function groupUnknownRows(rows: { name: string; recipe_id: string; recipe_title: string; step_name?: string | null }[]): UnknownItem[] {
+function groupUnknownRows(
+  rows: { name: string; recipe_id: string; recipe_title: string; step_name?: string | null; step_order?: number | null }[],
+): UnknownItem[] {
   const map = new Map<string, UnknownItem>();
   for (const r of rows) {
     const key = r.name.trim().toLowerCase();
     const entry = map.get(key) ?? { name: r.name.trim(), recipes: [] };
     const step = r.step_name ?? undefined;
+    const stepAnchor = step != null && r.step_order != null ? `sec-etape-${r.step_order + 1}` : undefined;
     const dedupeKey = `${r.recipe_id}:${step ?? ''}`;
     if (!entry.recipes.some((x) => `${x.id}:${x.step ?? ''}` === dedupeKey)) {
-      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, step });
+      entry.recipes.push({ id: r.recipe_id, title: r.recipe_title, step, stepAnchor });
     }
     map.set(key, entry);
   }
@@ -637,7 +647,9 @@ export async function getUnknownIngredients(): Promise<UnknownItem[]> {
     console.error('getUnknownIngredients:', error.message);
     return [];
   }
-  return groupUnknownRows((data as unknown as { name: string; recipe_id: string; recipe_title: string; step_name: string | null }[]) ?? []);
+  return groupUnknownRows(
+    (data as unknown as { name: string; recipe_id: string; recipe_title: string; step_name: string | null; step_order: number | null }[]) ?? [],
+  );
 }
 
 export async function getUnknownUtensils(): Promise<UnknownItem[]> {
