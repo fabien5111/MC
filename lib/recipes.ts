@@ -151,6 +151,9 @@ export type RecipeFull = {
   author_id: string;
   is_public: boolean | null;
   status: string | null;
+  // Motif du refus (§9, saisi depuis Admin → Recettes → Refuser), affiché à
+  // l'auteur sur sa propre fiche recette. `null` hors statut `rejected`.
+  moderation_note: string | null;
   created_at: string | null;
   rating_avg: number | null;
   rating_count: number | null;
@@ -200,6 +203,20 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   const { data, error } = await supabase.from('recipes').select(FULL_SELECT).eq('id', id).maybeSingle();
   if (error) console.error('getRecipeFull:', error.message);
   return (data as unknown as RecipeFull | null) ?? null;
+}
+
+// Identifiants des recettes publiées — sert uniquement à la commande de
+// réindexation complète (§6.3, /api/reindex-recette) : la similarité
+// interne à la validation lit désormais l'index persisté
+// (recipe_shingle_index), plus le corpus complet à chaque analyse.
+export async function getPublishedRecipeIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('recipes').select('id').eq('status', 'published');
+  if (error) {
+    console.error('getPublishedRecipeIds:', error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => r.id);
 }
 
 // Table de référence des allergènes avec picto + infobulle. Sert à retrouver le

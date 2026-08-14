@@ -761,6 +761,30 @@ export function CreerForm({
         }
       }
 
+      // Contrôle IA à la validation (§3 et §5 de la spec) : déclenché à la
+      // soumission pour publication publique, et rejoué si le contenu d'une
+      // recette déjà publique change. Ne bloque jamais la soumission — la
+      // route écrit son propre statut d'échec si l'appel IA rate (§10).
+      if (finalStatus === 'pending' || editRecipe?.status === 'published') {
+        fetch('/api/moderation-recette', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ recipeId }),
+        }).catch(() => {});
+      }
+
+      // Maintenance de l'index de similarité (§6.3) : publication (nouveau
+      // contenu à indexer) ou dépublication/modification d'une recette
+      // jusque-là publique (entrée à retirer ou rafraîchir) — la route
+      // détermine laquelle des deux depuis le statut réel en base.
+      if (finalStatus === 'published' || editRecipe?.status === 'published') {
+        fetch('/api/reindex-recette', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ recipeId }),
+        }).catch(() => {});
+      }
+
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,

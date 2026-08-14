@@ -33,6 +33,12 @@ const TARIFS: Record<string, Tarif> = {
 const CACHE_READ = 0.1;
 const CACHE_WRITE = 1.25;
 
+// Recherche web (outil serveur `web_search`, §6.4) : facturée séparément des
+// tokens, à l'unité — pas de champ `usage` dédié côté API. Tarif Anthropic
+// (10 $ / 1000 recherches), utilisé par le contrôle IA à la validation des
+// recettes pour chiffrer le coût de l'étape 3.
+export const WEB_SEARCH_USD_PER_SEARCH = 0.01;
+
 // Taux de conversion dollar → euro, configurable car aucun taux n'est fiable
 // durablement. Sert uniquement à afficher une conversion indicative.
 const TAUX_EUR = Number(process.env.IMPORT_USD_EUR) || 0.92;

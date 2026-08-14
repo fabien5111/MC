@@ -10,17 +10,24 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 type DialogState =
   | { kind: 'alert'; message: string; resolve: () => void }
-  | { kind: 'confirm'; message: string; resolve: (ok: boolean) => void };
+  | { kind: 'confirm'; message: string; resolve: (ok: boolean) => void }
+  | { kind: 'prompt'; message: string; value: string; required: boolean; resolve: (value: string | null) => void };
 
 type DialogApi = {
   alert: (message: string) => Promise<void>;
   confirm: (message: string) => Promise<boolean>;
+  // Saisie libre (motif de refus, §9 « Rejeter avec motif ») — résout à
+  // `null` sur annulation, à la chaîne saisie sinon. `required` bloque la
+  // validation tant que le champ est vide (un motif de refus vide n'a pas
+  // de sens), sans empêcher l'annulation.
+  prompt: (message: string, opts?: { required?: boolean; placeholder?: string }) => Promise<string | null>;
 };
 
 const DialogContext = createContext<DialogApi | null>(null);
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DialogState | null>(null);
+  const [placeholder, setPlaceholder] = useState('');
 
   const alertFn = useCallback(
     (message: string) => new Promise<void>((resolve) => setState({ kind: 'alert', message, resolve })),
@@ -30,13 +37,22 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     (message: string) => new Promise<boolean>((resolve) => setState({ kind: 'confirm', message, resolve })),
     [],
   );
+  const promptFn = useCallback(
+    (message: string, opts?: { required?: boolean; placeholder?: string }) =>
+      new Promise<string | null>((resolve) => {
+        setPlaceholder(opts?.placeholder ?? '');
+        setState({ kind: 'prompt', message, value: '', required: opts?.required ?? false, resolve });
+      }),
+    [],
+  );
 
   const respond = useCallback(
     (ok: boolean) => {
       setState((prev) => {
         if (!prev) return prev;
         if (prev.kind === 'alert') prev.resolve();
-        else prev.resolve(ok);
+        else if (prev.kind === 'confirm') prev.resolve(ok);
+        else prev.resolve(ok ? prev.value : null);
         return null;
       });
     },
@@ -55,15 +71,15 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   }, [state, respond]);
 
   return (
-    <DialogContext.Provider value={{ alert: alertFn, confirm: confirmFn }}>
+    <DialogContext.Provider value={{ alert: alertFn, confirm: confirmFn, prompt: promptFn }}>
       {children}
       {state ? (
         <div
-          role={state.kind === 'confirm' ? 'alertdialog' : 'alert'}
+          role={state.kind === 'alert' ? 'alert' : 'alertdialog'}
           aria-modal="true"
           className="fixed inset-0 z-[110] flex items-center justify-center bg-background/40 backdrop-blur-[2px] px-6"
           // Un clic hors de la boîte ferme l'alerte (rien d'autre à décider) ;
-          // une confirmation impose un choix explicite.
+          // une confirmation ou une saisie impose un choix explicite.
           onClick={() => state.kind === 'alert' && respond(true)}
         >
           <div
@@ -71,8 +87,18 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             className="w-full max-w-sm bg-surface-container-low border border-outline-variant rounded-xl p-6 shadow-lg"
           >
             <p className="font-body-md text-body-md text-on-surface whitespace-pre-line">{state.message}</p>
+            {state.kind === 'prompt' && (
+              <textarea
+                autoFocus
+                rows={3}
+                value={state.value}
+                placeholder={placeholder}
+                onChange={(e) => setState((prev) => (prev?.kind === 'prompt' ? { ...prev, value: e.target.value } : prev))}
+                className="mt-3 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"
+              />
+            )}
             <div className="flex justify-end gap-3 mt-6">
-              {state.kind === 'confirm' && (
+              {state.kind !== 'alert' && (
                 <button
                   type="button"
                   onClick={() => respond(false)}
@@ -83,11 +109,12 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
               )}
               <button
                 type="button"
-                autoFocus
+                autoFocus={state.kind !== 'prompt'}
+                disabled={state.kind === 'prompt' && state.required && !state.value.trim()}
                 onClick={() => respond(true)}
-                className="px-5 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity"
+                className="px-5 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >
-                {state.kind === 'confirm' ? 'Confirmer' : 'OK'}
+                {state.kind === 'alert' ? 'OK' : 'Confirmer'}
               </button>
             </div>
           </div>

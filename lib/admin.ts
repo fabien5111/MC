@@ -39,6 +39,10 @@ export type AdminRecipeRow = {
   status: string | null;
   created_at: string | null;
   profiles: { full_name: string | null } | null;
+  // Motif du refus (§9), présent seulement pour les recettes `rejected` —
+  // absent de lib/database.types.ts tant que la migration n'a pas été
+  // régénérée (npm run gen:types).
+  moderation_note?: string | null;
 };
 export type PendingComment = {
   id: number;
@@ -77,6 +81,197 @@ export async function getManagedRecipes(): Promise<AdminRecipeRow[]> {
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   return (data as unknown as AdminRecipeRow[]) ?? [];
+}
+
+// Recettes refusées (§9, statut `rejected`) : jusqu'ici invisibles une fois
+// refusées (ni « à valider », ni « validées ») — remontées ici avec leur
+// motif pour que l'admin garde la trace de sa décision et puisse republier
+// si le refus était une erreur.
+export async function getRejectedRecipes(): Promise<AdminRecipeRow[]> {
+  const supabase = await createClient();
+  // `moderation_note` absente de lib/database.types.ts tant que la migration
+  // n'a pas été régénérée (npm run gen:types) — accès non typé sur ce seul
+  // champ, comme le reste du contrôle IA en attendant.
+  const { data } = await (supabase as any)
+    .from('recipes')
+    .select('id, title, hero_image_url, measure_type, is_public, status, created_at, moderation_note, profiles!recipes_author_id_fkey(full_name)')
+    .eq('status', 'rejected')
+    .order('created_at', { ascending: false });
+  return (data as unknown as AdminRecipeRow[]) ?? [];
+}
+
+// ── Contrôle IA à la validation des recettes (modération, §6.2) ───────────
+// `recipe_analysis` est absente de lib/database.types.ts tant que la
+// migration du lot 1 n'a pas été appliquée puis régénérée
+// (`npm run gen:types`) — jamais éditée à la main (CLAUDE.md). Accès non
+// typé sur cette seule table en attendant, comme ailleurs dans ce fichier
+// pour des jointures non régénérées.
+export type RecipeAnalysisCategory = {
+  code: string;
+  score: number;
+  extraits: string[];
+  explication: string;
+};
+export type RecipeAnalysisSummary = {
+  id: number;
+  status: 'en_cours' | 'termine' | 'echec';
+  overall_flag: 'vert' | 'orange' | 'rouge' | null;
+  moderation_verdict: 'clean' | 'attention' | 'bloquant' | null;
+  // `external_note` : mention explicite quand la recherche externe (§6.4)
+  // n'a pas pu être lancée ou tentée (texte trop générique, échec réseau).
+  moderation_details: { categories: RecipeAnalysisCategory[]; external_note?: string } | null;
+  editorial_similarity_max: number | null;
+  structural_similarity_max: number | null;
+  error_message: string | null;
+  // Coût réel en dollars (§9), calculé par la route depuis la consommation
+  // exacte de chaque appel — `null` si un tarif de modèle était inconnu au
+  // moment du calcul, ou pour toute analyse antérieure à cette colonne.
+  cost_usd: number | null;
+  cost_tokens: number | null;
+  cost_searches: number | null;
+  created_at: string;
+};
+
+// La plus récente analyse de chaque recette d'une liste, indexée par
+// `recipe_id`. Une recette peut avoir plusieurs lignes d'historique (relance
+// manuelle) : on ne garde que la plus fraîche pour l'affichage admin.
+export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<string, RecipeAnalysisSummary>> {
+  if (!recipeIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_analysis')
+    .select(
+      'id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, ' +
+        'editorial_similarity_max, structural_similarity_max, error_message, ' +
+        'cost_usd, cost_tokens, cost_searches, created_at',
+    )
+    .in('recipe_id', recipeIds)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getLatestAnalyses:', error.message);
+    return {};
+  }
+  const byRecipe: Record<string, RecipeAnalysisSummary> = {};
+  for (const row of (data ?? []) as (RecipeAnalysisSummary & { recipe_id: string })[]) {
+    if (!byRecipe[row.recipe_id]) byRecipe[row.recipe_id] = row;
+  }
+  return byRecipe;
+}
+
+export type RecipeSimilarityMatchSummary = {
+  id: number;
+  analysis_id: number;
+  source_type: 'interne' | 'externe';
+  source_recipe_id: string | null;
+  source_url: string | null;
+  source_title: string | null;
+  editorial_score: number;
+  structural_score: number;
+  longest_common_sequence: number | null;
+  matched_excerpts: { extrait_soumis: string; extrait_source: string; commun?: string }[] | null;
+  // 'embedding' sert de marqueur pour la couche B approximée par jugement
+  // Claude (pas un vrai calcul cosinus, cf. lib/ai/reformulation.ts) —
+  // distingue une reformulation détectée d'une copie littérale ('shingles').
+  detection_method: 'shingles' | 'embedding' | 'les_deux' | null;
+};
+
+// Correspondances de similarité (§6.3) pour un ensemble d'analyses, groupées
+// par `analysis_id` et triées par score rédactionnel décroissant (§7 : « les
+// correspondances sont triées par editorial_score décroissant »).
+export async function getMatchesForAnalyses(analysisIds: number[]): Promise<Record<number, RecipeSimilarityMatchSummary[]>> {
+  if (!analysisIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_similarity_match')
+    .select(
+      'id, analysis_id, source_type, source_recipe_id, source_url, source_title, ' +
+        'editorial_score, structural_score, longest_common_sequence, matched_excerpts, detection_method',
+    )
+    .in('analysis_id', analysisIds)
+    .order('editorial_score', { ascending: false });
+  if (error) {
+    console.error('getMatchesForAnalyses:', error.message);
+    return {};
+  }
+  const byAnalysis: Record<number, RecipeSimilarityMatchSummary[]> = {};
+  for (const row of (data ?? []) as RecipeSimilarityMatchSummary[]) {
+    (byAnalysis[row.analysis_id] ??= []).push(row);
+  }
+  return byAnalysis;
+}
+
+// ── Retour de calibration (§9 : « sur chaque correspondance, deux boutons
+// "Faux positif" / "Copie confirmée" ») ────────────────────────────────────
+
+export type MatchFeedbackVerdict = 'faux_positif' | 'confirme' | 'incertain';
+
+// Un seul retour affiché par correspondance (le plus récent), pour éviter
+// qu'un admin revote sur une correspondance déjà tranchée par un collègue —
+// la table accepte plusieurs lignes par match (plusieurs admins), l'écran
+// n'en affiche qu'une synthèse.
+export async function getFeedbackForMatches(matchIds: number[]): Promise<Record<number, MatchFeedbackVerdict>> {
+  if (!matchIds.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('recipe_analysis_feedback')
+    .select('match_id, verdict, created_at')
+    .in('match_id', matchIds)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getFeedbackForMatches:', error.message);
+    return {};
+  }
+  const byMatch: Record<number, MatchFeedbackVerdict> = {};
+  for (const row of (data ?? []) as { match_id: number; verdict: MatchFeedbackVerdict }[]) {
+    if (!(row.match_id in byMatch)) byMatch[row.match_id] = row.verdict;
+  }
+  return byMatch;
+}
+
+export type CalibrationBucket = { label: string; total: number; fauxPositifs: number; tauxFauxPositifs: number };
+
+// Tranches reprenant les seuils de drapeau du §8 (lib/ai/similarity.ts) :
+// c'est précisément la frontière que le retour de calibration doit aider à
+// ajuster.
+const CALIBRATION_BUCKETS: { label: string; min: number; max: number }[] = [
+  { label: '30–49 %', min: 30, max: 50 },
+  { label: '50–69 %', min: 50, max: 70 },
+  { label: '70–100 %', min: 70, max: 101 },
+];
+
+// Taux de faux positifs par tranche de score rédactionnel (§9 : « écran de
+// statistiques simple : taux de faux positifs par tranche de score »).
+export async function getCalibrationStats(): Promise<CalibrationBucket[]> {
+  const empty = () => CALIBRATION_BUCKETS.map((b) => ({ label: b.label, total: 0, fauxPositifs: 0, tauxFauxPositifs: 0 }));
+  const supabase = await createClient();
+  const { data: feedback, error } = await (supabase as any)
+    .from('recipe_analysis_feedback')
+    .select('match_id, verdict')
+    .not('match_id', 'is', null);
+  if (error) {
+    console.error('getCalibrationStats:', error.message);
+    return empty();
+  }
+  const rows = (feedback ?? []) as { match_id: number; verdict: MatchFeedbackVerdict }[];
+  if (!rows.length) return empty();
+
+  const matchIds = [...new Set(rows.map((r) => r.match_id))];
+  const { data: matches } = await (supabase as any).from('recipe_similarity_match').select('id, editorial_score').in('id', matchIds);
+  const scoreById = new Map(((matches ?? []) as { id: number; editorial_score: number }[]).map((m) => [m.id, m.editorial_score]));
+
+  return CALIBRATION_BUCKETS.map((b) => {
+    const inBucket = rows.filter((r) => {
+      const score = scoreById.get(r.match_id);
+      return score != null && score >= b.min && score < b.max;
+    });
+    const fauxPositifs = inBucket.filter((r) => r.verdict === 'faux_positif').length;
+    return {
+      label: b.label,
+      total: inBucket.length,
+      fauxPositifs,
+      tauxFauxPositifs: inBucket.length ? Math.round((fauxPositifs / inBucket.length) * 100) : 0,
+    };
+  });
 }
 
 export async function getPendingComments(): Promise<PendingComment[]> {
