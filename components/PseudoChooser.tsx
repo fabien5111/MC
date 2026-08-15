@@ -8,7 +8,13 @@
 // L'écriture est faite par `/api/pseudo/choisir` (clé service_role) et non
 // par ce composant : le navigateur ne doit pas pouvoir poser un pseudo qui
 // n'aurait pas passé l'unicité et le contrôle IA.
-import { useState } from 'react';
+//
+// Mêmes trois niveaux de contrôle que `LoginForm` (format local → disponibilité
+// en direct pendant la frappe, sans IA → vérification complète juste avant
+// l'écriture) : un pseudo refusé localement (ex. une liste noire évidente)
+// désactive le bouton, mais sans message live le visiteur ne comprend jamais
+// pourquoi puisqu'un bouton désactivé ne déclenche jamais `onSubmit`.
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import {
@@ -20,6 +26,10 @@ import {
   validerPseudo,
 } from '@/lib/pseudo';
 
+// Motif `IdeaForm` / `LoginForm` : vérification bon marché (unicité, pas
+// d'IA) débouncée pendant la frappe.
+const PSEUDO_CHECK_DEBOUNCE_MS = 300;
+
 export function PseudoChooser({ next, suggestion }: { next: string; suggestion: string }) {
   const router = useRouter();
   const [pseudo, setPseudo] = useState(suggestion);
@@ -29,11 +39,60 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
   const validation = validerPseudo(pseudo);
   const slug = validation.ok ? validation.slug : pseudoSlug(pseudo);
 
+  // Disponibilité vérifiée EN DIRECT (unicité seule, sans IA) : sans ça, le
+  // bouton reste cliquable pour un pseudo déjà pris jusqu'au clic, ce qui
+  // ressemble à un bouton qui « ne voit pas » le problème. La vérification
+  // qui fait vraiment foi reste celle d'avant l'écriture (`/api/pseudo/choisir`,
+  // IA comprise) — celle-ci n'est qu'un confort d'affichage.
+  const [pseudoCheck, setPseudoCheck] = useState<'idle' | 'checking' | 'ok' | 'ko'>('idle');
+  const [pseudoCheckMessage, setPseudoCheckMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!validation.ok) {
+      setPseudoCheck('idle');
+      setPseudoCheckMessage(null);
+      return;
+    }
+    setPseudoCheck('checking');
+    const controller = new AbortController();
+    const candidat = validation.pseudo;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/pseudo/verifier', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pseudo: candidat, verifierIA: false }),
+          signal: controller.signal,
+        });
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+        if (data?.ok) {
+          setPseudoCheck('ok');
+          setPseudoCheckMessage(null);
+        } else {
+          setPseudoCheck('ko');
+          setPseudoCheckMessage(data?.message || `Le pseudo « ${candidat} » est déjà pris.`);
+        }
+      } catch {
+        // Requête annulée (nouvelle frappe) ou réseau indisponible : ne pas
+        // bloquer sur un simple confort d'affichage, la vérification à
+        // l'envoi tranchera de toute façon.
+        setPseudoCheck('idle');
+      }
+    }, PSEUDO_CHECK_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `validation.pseudo` dérive de `pseudo`, inutile en double dépendance.
+  }, [validation.ok, validation.ok ? validation.pseudo : null]);
+
+  const blocked = !validation.ok || pseudoCheck === 'ko';
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!validation.ok) {
-      setError(validation.message);
+    if (blocked) {
+      setError(!validation.ok ? validation.message : pseudoCheckMessage || 'Ce pseudo est déjà pris.');
       return;
     }
     setBusy(true);
@@ -107,13 +166,25 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
                 Adresse de votre profil : <span className="text-secondary">jepatisse.com/u/{slug}</span>
               </p>
             )}
+            {/* Format local : dès que la saisie est assez longue pour être
+                jugée, même si le bouton, désactivé, ne permettrait jamais de
+                le découvrir en soumettant. */}
+            {pseudo.length > 0 && !validation.ok && (
+              <p className="text-[12px] text-error mt-1 ml-1">{validation.message}</p>
+            )}
+            {validation.ok && pseudoCheck === 'checking' && (
+              <p className="text-[12px] text-on-surface-variant mt-1 ml-1">Vérification du pseudo…</p>
+            )}
+            {validation.ok && pseudoCheck === 'ko' && (
+              <p className="text-[12px] text-error mt-1 ml-1">{pseudoCheckMessage}</p>
+            )}
           </div>
 
           {error && <p className="text-sm text-error text-center">{error}</p>}
 
           <button
             type="submit"
-            disabled={busy || !validation.ok}
+            disabled={busy || blocked}
             className="w-full bg-primary-container text-on-primary py-4 px-8 mt-4 hover:bg-primary transition-all duration-500 active:scale-[0.98] font-label-md text-label-md tracking-widest uppercase disabled:opacity-60"
           >
             Continuer
