@@ -1671,7 +1671,7 @@ export function CreerForm({
                             </option>
                           ))}
                         </select>
-                        <span className="col-start-1 row-start-1 self-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
+                        <span className="col-start-1 row-start-1 self-center text-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
                           Unité
                         </span>
                       </div>
