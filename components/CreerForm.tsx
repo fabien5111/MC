@@ -1657,23 +1657,31 @@ export function CreerForm({
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
-                      <div className="grid shrink-0">
-                        <select
-                          aria-hidden
-                          className="editorial-input invisible col-start-1 row-start-1"
-                          style={{ width: 'auto' }}
-                          tabIndex={-1}
-                        >
-                          <option value=""></option>
-                          {units.map((u) => (
-                            <option key={u.id} value={u.name}>
-                              {u.name}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="col-start-1 row-start-1 self-center text-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
-                          Unité
-                        </span>
+                      {/* Colonne « UNITÉ ». Le libellé est en flux normal,
+                          exactement comme ceux d'« INGRÉDIENTS » et
+                          d'« ALLERGÈNES » : les trois sont alors des boîtes de
+                          même hauteur qu'`items-center` aligne ensemble, et
+                          chacune commence au bord gauche de son champ. Le
+                          superposer au select (grid) le centrait au contraire
+                          dans une boîte de 39 px au lieu de 20 — le demi-pixel
+                          qui en résultait le remontait d'une ligne à l'écran,
+                          et le décalait à droite dès que la colonne s'élargit.
+                          Le select ci-dessous ne sert qu'à réserver la largeur
+                          de la colonne (celle de l'unité la plus longue, cf.
+                          le `width: auto` de la ligne d'ingrédient) : `h-0` le
+                          retire de la hauteur sans toucher à cette largeur. */}
+                      <div className="shrink-0">
+                        <span className="font-label-md text-label-md text-outline">UNITÉ</span>
+                        <div aria-hidden className="h-0 overflow-hidden">
+                          <select className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                            <option value=""></option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                       <div className="hidden xl:contents">
                         <div className="flex-1 min-w-0">
