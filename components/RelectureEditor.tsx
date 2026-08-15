@@ -410,15 +410,18 @@ export function RelectureEditor({
   // Suivi grossier de la saisie pour la confirmation de sortie, cf.
   // CreerForm. Écouteur délégué sur le document plutôt qu'`onChange` sur un
   // conteneur unique : contrairement à CreerForm, l'écran n'a pas de wrapper
-  // englobant toutes les sections éditables.
+  // englobant toutes les sections éditables. Ne couvre que les événements
+  // natifs `change` (champs, select…) : les interactions par clic qui ne
+  // passent pas par un `<input>`/`<select>` (ajout/retrait d'un tag) doivent
+  // appeler `markDirty()` elles-mêmes.
   const dirtyRef = useRef(false);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
   useEffect(() => {
-    const markDirty = () => {
-      dirtyRef.current = true;
-    };
     document.addEventListener('change', markDirty);
     return () => document.removeEventListener('change', markDirty);
-  }, []);
+  }, [markDirty]);
   // Recette créée depuis cette relecture. La création écrit la recette puis
   // ses étapes, photos et ingrédients : si l'un de ces écrits échoue, la
   // recette existe déjà. Sans cette mémoire, une nouvelle tentative en
@@ -539,6 +542,7 @@ export function RelectureEditor({
       setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
       setNewTagName('');
       setTagPickerOpen(false);
+      markDirty();
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
@@ -553,6 +557,7 @@ export function RelectureEditor({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    markDirty();
     refreshRefs();
   }
   // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
@@ -1271,7 +1276,10 @@ export function RelectureEditor({
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                  onClick={() => {
+                    setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)));
+                    markDirty();
+                  }}
                   title="Retirer ce tag"
                   className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                 >
@@ -1297,6 +1305,7 @@ export function RelectureEditor({
                           onClick={() => {
                             setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
                             setTagPickerOpen(false);
+                            markDirty();
                           }}
                           className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
                         >
