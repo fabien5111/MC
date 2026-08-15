@@ -277,7 +277,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
       <div className="recette-page">
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
-        <RecetteToc recipeId={recipe.id} isOwner={isOwner} sections={tocSections} steps={tocSteps} />
+        <RecetteToc
+          recipeId={recipe.id}
+          isOwner={isOwner}
+          sections={tocSections}
+          steps={tocSteps}
+          status={recipe.status || 'draft'}
+          isPublic={recipe.is_public !== false}
+          isAdmin={userIsAdmin}
+        />
         <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}
           <div className="flex flex-col gap-4 mb-8">

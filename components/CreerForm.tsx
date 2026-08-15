@@ -290,8 +290,9 @@ export function CreerForm({
   // superflue, un faux négatif perdrait une saisie en cours sans prévenir.
   // Couvre les champs contrôlés (texte, bascules, fichiers via ImageSlot) via
   // la délégation `onChange` posée sur le conteneur du formulaire ; les
-  // actions déclenchées par clic seul (tags, difficulté, ajout/suppression de
-  // lignes) n'y sont pas.
+  // actions déclenchées par clic seul (difficulté, ajout/suppression de
+  // lignes) n'y sont pas — sauf les tags, qui appellent `markDirty()`
+  // explicitement (même correctif que RelectureEditor).
   const dirtyRef = useRef(false);
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
@@ -416,6 +417,7 @@ export function CreerForm({
       setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
       setNewTagName('');
       setTagPickerOpen(false);
+      markDirty();
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
@@ -430,6 +432,7 @@ export function CreerForm({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    markDirty();
     refreshRefs();
   }
 
@@ -847,11 +850,12 @@ export function CreerForm({
           );
         }
         // Publication / enregistrement définitif : on ouvre la fiche recette.
-        // router.refresh() invalide le Router Cache client avant de naviguer,
-        // pour éviter qu'une visite ultérieure du carnet ou de la fiche
-        // recette ne réutilise un segment mis en cache avant cette écriture.
-        router.refresh();
+        // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+        // appelé avant, il ne rafraîchit que la route qu'on quitte (/creer) —
+        // la fiche recette, déjà visitée dans la session, resservirait alors
+        // une entrée du cache client antérieure à cette écriture.
         router.push(`/recette/${recipeId}`);
+        router.refresh();
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
         // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
@@ -868,11 +872,12 @@ export function CreerForm({
           router.replace(`/creer?id=${recipeId}`);
         }
       } else {
-        // « Enregistrer en brouillon et quitter » : retour au profil.
-        // router.refresh() invalide le Router Cache client avant de naviguer
-        // (cf. commentaire ci-dessus).
-        router.refresh();
+        // « Enregistrer en brouillon et quitter » : retour au carnet.
+        // router.refresh() APRÈS le push (cf. commentaire ci-dessus) : sinon
+        // le carnet, déjà visité dans la session, resservirait ses compteurs
+        // de statut d'avant ce changement (ex. publiée → brouillon).
         router.push('/carnet');
+        router.refresh();
       }
     } catch (e) {
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
@@ -884,20 +889,36 @@ export function CreerForm({
     }
   }
 
-  // Bouton « Quitter » du rail : aucun enregistrement, avec une confirmation
-  // dès qu'une saisie a été détectée depuis le chargement de l'écran. Retour
-  // à la fiche recette pour une édition (ou une création déjà enregistrée en
-  // brouillon dans cette session) ; à défaut de recette existante, retour au
-  // profil — contrairement au lien « Annuler » ci-dessous, qui revient
-  // toujours au profil.
-  const handleLeave = useCallback(async () => {
-    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
-    // Pas de reset à false ensuite : on quitte la page, autant garder le
-    // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
-    setLeaving(true);
-    const recipeId = editingId ?? createdIdRef.current;
-    router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
-  }, [router, editingId, dialog]);
+  // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
+  // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
+  // / enregistrer et quitter) — même motif que RelectureEditor.handleLeave.
+  // Retour à la fiche recette pour une édition (ou une création déjà
+  // enregistrée en brouillon dans cette session) ; à défaut de recette
+  // existante, retour au profil — contrairement au lien « Annuler »
+  // ci-dessous, qui revient toujours au profil. Fonction non mémoïsée (comme
+  // `submit`) : un `useCallback` à dépendances fixes figerait `submit` (donc
+  // tout l'état du formulaire) sur sa valeur du tout premier rendu — même
+  // piège que `handleSaveAndLeave` dans RelectureEditor.
+  async function handleLeave() {
+    if (!dirtyRef.current) {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+      return;
+    }
+    const choix = await dialog.choice("Des modifications n'ont pas été enregistrées. Que souhaitez-vous faire ?", [
+      { label: 'Quitter sans enregistrer', value: 'discard' },
+      { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+    ]);
+    if (choix === 'discard') {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+    } else if (choix === 'save') {
+      await submit('draft', false);
+    }
+    // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
+  }
 
   const scalingOptions =
     measure === 'mold'
@@ -942,25 +963,13 @@ export function CreerForm({
         onNavigateToStep={expandStep}
         mobile="drawer"
         actions={[
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           {
             id: 'save',
             icon: 'save',
             label: 'Enregistrer en brouillon',
             variant: 'outline-strong',
             onClick: () => submit('draft', true),
-            disabled: busy || leaving,
-          },
-          // Sauver *et* quitter : cette action n'existait que dans la barre de
-          // bas d'écran. Elle est montée dans la liste commune pour que sa
-          // suppression ne la fasse pas disparaître du produit — le rail de
-          // bureau y gagne aussi le raccourci.
-          {
-            id: 'save-leave',
-            icon: 'exit_to_app',
-            label: 'Enregistrer en brouillon et quitter',
-            variant: 'outline-strong',
-            onClick: () => submit('draft', false),
             disabled: busy || leaving,
           },
           {
@@ -1041,7 +1050,10 @@ export function CreerForm({
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                    onClick={() => {
+                      setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)));
+                      markDirty();
+                    }}
                     title="Retirer ce tag"
                     className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                   >
@@ -1067,6 +1079,7 @@ export function CreerForm({
                             onClick={() => {
                               setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
                               setTagPickerOpen(false);
+                              markDirty();
                             }}
                             className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
                           >
