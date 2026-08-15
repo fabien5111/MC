@@ -162,27 +162,41 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   });
 }
 
-// Fusion des lignes d'ingrédients identiques (nom + unité), quantités numériques additionnées.
-function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string }[] {
-  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
-  steps.forEach((st) =>
+// Fusion des lignes d'ingrédients identiques (nom + unité + commentaire) de
+// toutes les étapes, quantités numériques additionnées — même logique que
+// `mergeIngredientsRecap` de RelectureEditor : le commentaire fait partie de
+// la clé de fusion, sinon « crème liquide, chaude » et « crème liquide,
+// froide » (ou « chocolat noir 66 % » / « chocolat noir 54 % » porté par le
+// commentaire plutôt que le nom) fusionneraient leurs quantités en un total
+// sans usage réel.
+function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
+  steps.forEach((st, si) =>
     st.ings.forEach((i) => {
       const name = i.name.trim();
       if (!name) return;
-      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase();
+      const note = i.comment.trim();
+      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit });
+        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
         return;
       }
+      ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qty).replace(',', '.'));
       if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
       else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
+  return merged.map(({ name, qty, unit, note, steps }) => ({
+    name,
+    qty,
+    unit,
+    note,
+    stepIndices: Array.from(steps).sort((a, b) => a - b),
+  }));
 }
 
 export function CreerForm({
@@ -545,6 +559,23 @@ export function CreerForm({
     (i: number) => setSteps((s) => (s[i]?.collapsed ? s.map((st, k) => (k === i ? { ...st, collapsed: false } : st)) : s)),
     [],
   );
+
+  // Lien « voir l'étape » du récapitulatif d'ingrédients, pour un ingrédient
+  // qui n'apparaît que dans une seule étape — même motif que le `goToStep` de
+  // RelectureEditor : déplie l'étape si besoin avant de défiler jusqu'à elle.
+  const [scrollToStepIndex, setScrollToStepIndex] = useState<number | null>(null);
+  const goToStep = useCallback(
+    (i: number) => {
+      expandStep(i);
+      setScrollToStepIndex(i);
+    },
+    [expandStep],
+  );
+  useEffect(() => {
+    if (scrollToStepIndex === null) return;
+    document.getElementById(stepAnchorId(scrollToStepIndex))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScrollToStepIndex(null);
+  }, [scrollToStepIndex]);
 
   // Repositionnement sur l'étape d'où l'édition a été ouverte (prop
   // `initialStep`, cf. components/recipe/RecetteToc.tsx) : déplie l'étape
@@ -1634,13 +1665,13 @@ export function CreerForm({
                             </option>
                           ))}
                         </select>
-                        <span className="absolute inset-0 flex items-center px-3 pointer-events-none font-label-md text-label-md text-outline">
+                        <span className="absolute inset-0 flex items-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
                           Unité
                         </span>
                       </div>
                       <div className="hidden xl:contents">
                         <div className="flex-1 min-w-0">
-                          <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                          <span className="font-label-md text-label-md text-outline">ALLERGÈNES</span>
                         </div>
                         <div className="flex-1 min-w-0" />
                         <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
@@ -2174,7 +2205,22 @@ export function CreerForm({
                   const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
                   return (
                     <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                      <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
+                      <span className="font-body-md text-body-md text-on-surface break-words">
+                        {m.name}
+                        {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
+                        {m.stepIndices.length === 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => goToStep(m.stepIndices[0])}
+                            className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            1 étape — {steps[m.stepIndices[0]]?.title || `Étape ${m.stepIndices[0] + 1}`}
+                          </button>
+                        ) : (
+                          <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
+                        )}
+                      </span>
                       <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                         {[m.qty, m.unit].filter(Boolean).join(' ')}
                         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
