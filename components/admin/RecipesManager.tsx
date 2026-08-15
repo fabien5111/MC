@@ -550,15 +550,30 @@ export function RecipesManager({
           </div>
         </td>
       </tr>
+      {(mode === 'pending' || mode === 'rejected') && (
+        <tr className={(rejectionHistory[r.id]?.length ?? 0) > 0 ? undefined : 'border-b border-outline-variant last:border-0'}>
+          <td colSpan={6} className="px-6 pb-4 -mt-2">
+            <AnalysisPanel
+              recipeId={r.id}
+              analysis={analyses[r.id]}
+              matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []}
+              feedback={feedback}
+              moderationNote={mode === 'rejected' ? r.moderation_note : undefined}
+              moderationNoteAt={mode === 'rejected' ? r.moderation_note_at : undefined}
+            />
+          </td>
+        </tr>
+      )}
       {/* Refus précédents (§9) : archivés par le trigger SQL
           `recipes_track_rejection_note` à chaque resoumission, avec le
           détail complet de l'analyse qui les a motivés. Peut apparaître
           dans les trois tables — y compris « validées et privées » : le
           détail d'un refus passé reste utile à retrouver après
           l'acceptation, pas seulement pendant la décision (pending) ou en
-          cas de nouveau refus (rejected). */}
+          cas de nouveau refus (rejected). Affiché sous l'analyse courante :
+          le refus/l'état actuel prime, l'historique vient en complément. */}
       {(rejectionHistory[r.id]?.length ?? 0) > 0 && (
-        <tr>
+        <tr className="border-b border-outline-variant last:border-0">
           <td colSpan={6} className="px-6 pb-4 -mt-2">
             <p className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-2">Refus précédents</p>
             <div className="space-y-2">
@@ -576,20 +591,6 @@ export function RecipesManager({
                 </div>
               ))}
             </div>
-          </td>
-        </tr>
-      )}
-      {(mode === 'pending' || mode === 'rejected') && (
-        <tr className="border-b border-outline-variant last:border-0">
-          <td colSpan={6} className="px-6 pb-4 -mt-2">
-            <AnalysisPanel
-              recipeId={r.id}
-              analysis={analyses[r.id]}
-              matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []}
-              feedback={feedback}
-              moderationNote={mode === 'rejected' ? r.moderation_note : undefined}
-              moderationNoteAt={mode === 'rejected' ? r.moderation_note_at : undefined}
-            />
           </td>
         </tr>
       )}
