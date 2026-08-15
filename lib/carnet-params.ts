@@ -25,14 +25,11 @@ export const STATUS_LABELS: Record<Status, string> = {
   rejected: 'Refusées',
 };
 
-export const SORT_KEYS = ['recent', 'alpha', 'rating'] as const;
-export type CarnetSortKey = (typeof SORT_KEYS)[number];
-
-export const SORT_LABELS: Record<CarnetSortKey, string> = {
-  recent: 'Plus récentes',
-  alpha: 'Alphabétique',
-  rating: 'Mieux notées',
-};
+// Tris repris tels quels de `lib/recipe-sort.ts` : la vitrine publique d'un
+// pâtissier propose les mêmes, avec les mêmes libellés (cf. ce fichier).
+export { SORT_KEYS, SORT_LABELS } from '@/lib/recipe-sort';
+import { SORT_KEYS, type RecipeSortKey } from '@/lib/recipe-sort';
+export type CarnetSortKey = RecipeSortKey;
 
 export type CarnetParams = {
   scope: Scope;

@@ -3,12 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getFavoriteIds } from '@/lib/favorites';
-import {
-  getPublicProfile,
-  getPublicProfileStats,
-  getPublicProfileCategories,
-  getPublicProfileRecipes,
-} from '@/lib/public-profile';
+import { getPublicProfile, getPublicProfileStats, getPublicProfileRecipes } from '@/lib/public-profile';
+import { parsePublicProfileParams } from '@/lib/public-profile-params';
 import { getFollowCounts, isFollowing } from '@/lib/follows';
 import { activeLinks, normalizeUrl } from '@/lib/profile-links';
 import { Header } from '@/components/Header';
@@ -18,10 +14,11 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { ImpersonateButton } from '@/components/admin/ImpersonateButton';
+import { PublicProfileToolbar } from '@/components/profile/PublicProfileToolbar';
 
 type Params = {
   params: Promise<{ handle: string }>;
-  searchParams: Promise<{ cat?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -35,16 +32,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 // modification n'y figure (cf. CLAUDE.md « Profil public »).
 export default async function PublicProfilePage({ params, searchParams }: Params) {
   const { handle } = await params;
-  const { cat } = await searchParams;
+  const filters = parsePublicProfileParams(await searchParams);
 
   const profile = await getPublicProfile(handle);
   if (!profile) notFound();
 
-  const [user, stats, categories, recipes, favIds, followCounts] = await Promise.all([
+  const [user, stats, recipes, favIds, followCounts] = await Promise.all([
     getCurrentUser(),
     getPublicProfileStats(profile.id),
-    getPublicProfileCategories(profile.id),
-    getPublicProfileRecipes(profile.id, cat),
+    getPublicProfileRecipes(profile.id, filters),
     getFavoriteIds(),
     getFollowCounts(profile.id),
   ]);
@@ -156,25 +152,12 @@ export default async function PublicProfilePage({ params, searchParams }: Params
 
         {/* ── Recettes publiées ───────────────────────────────────────── */}
         <section className="mx-auto mt-12 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
-          {categories.length > 0 && (
-            <div className="mb-8 flex flex-wrap gap-2">
-              <Link
-                href={`/u/${handle}`}
-                className={`rounded-pill px-4 py-1.5 font-label-md text-[12.5px] transition-all ${!cat ? 'bg-primary text-on-primary' : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'}`}
-              >
-                Tout
-              </Link>
-              {categories.map((c) => (
-                <Link
-                  key={c.slug}
-                  href={`/u/${handle}?cat=${c.slug}`}
-                  className={`rounded-pill px-4 py-1.5 font-label-md text-[12.5px] transition-all ${cat === c.slug ? 'bg-primary text-on-primary' : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'}`}
-                >
-                  {c.name}
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* Barre affichée seulement s'il y a quelque chose à trier : sur une
+              vitrine encore vide, chercher et trier ne mènent nulle part. Le
+              compteur vient des statistiques (jeu complet), pas de `recipes`,
+              qui est déjà filtré — sinon la barre disparaîtrait sous les
+              doigts dès qu'une recherche ne renvoie rien. */}
+          {stats.recipeCount > 0 && <PublicProfileToolbar params={filters} />}
 
           {recipes.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -184,7 +167,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
             </div>
           ) : (
             <p className="py-16 text-center italic text-on-surface-variant">
-              {cat ? 'Aucune recette dans cette catégorie.' : "Ce pâtissier n'a encore rien publié."}
+              {filters.q ? 'Aucune recette ne correspond à cette recherche.' : "Ce pâtissier n'a encore rien publié."}
             </p>
           )}
         </section>

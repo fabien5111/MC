@@ -5,6 +5,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { CARD_SELECT, withAllergenPictos, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { EMPTY_PUBLIC_PROFILE_PARAMS, type PublicProfileParams } from '@/lib/public-profile-params';
 import type { Database } from '@/lib/database.types';
 
 export type PublicProfile = Pick<
@@ -48,71 +49,62 @@ export type PublicProfileStats = {
   ratingAvg: number | null;
 };
 
+// Compte des recettes publiées **et** note moyenne, calculés depuis les
+// recettes elles-mêmes plutôt que depuis la vue `author_ratings`.
+//
+// La vue reste la source de la facette « note de l'auteur » de `/recherche`,
+// mais elle ne dit pas de façon exploitable ici s'il existe au moins une
+// *note* : un profil dont l'unique recette n'a jamais été évaluée affichait
+// « 0.0 » en note moyenne — indiscernable d'une vraie mauvaise moyenne, qui
+// n'existe pas (les notes vont de 1 à 5). Le même travers dilue la moyenne dès
+// qu'une partie seulement des recettes est notée (une recette à 5 ★ et trois
+// sans note ne font pas 1,25). Une seule requête sur `recipes` tranche les
+// deux cas : on ne moyenne que les recettes qui portent au moins une note, et
+// on renvoie `null` — donc rien à l'écran — s'il n'y en a aucune.
 export const getPublicProfileStats = cache(async (authorId: string): Promise<PublicProfileStats> => {
-  const supabase = await createClient();
-  const [countRes, ratingRes] = await Promise.all([
-    supabase
-      .from('recipes')
-      .select('id', { count: 'exact', head: true })
-      .eq('author_id', authorId)
-      .eq('status', 'published'),
-    supabase.from('author_ratings').select('rating_avg, rated_recipes').eq('author_id', authorId).maybeSingle(),
-  ]);
-  if (countRes.error) console.error('getPublicProfileStats (recettes):', countRes.error.message);
-  if (ratingRes.error) console.error('getPublicProfileStats (note):', ratingRes.error.message);
-  // `rated_recipes` à 0 : aucune recette notée, `rating_avg` vaut alors 0 sans
-  // qu'aucune note n'ait jamais été donnée — à ne pas confondre avec une
-  // vraie moyenne de 0, qui n'existe pas (les notes vont de 1 à 5).
-  const ratedRecipes = ratingRes.data?.rated_recipes ?? 0;
-  return {
-    recipeCount: countRes.count ?? 0,
-    ratingAvg: ratedRecipes > 0 ? (ratingRes.data?.rating_avg ?? null) : null,
-  };
-});
-
-// Catégories filtrables du profil : **seulement** celles où ce pâtissier a
-// publié au moins une recette — jamais la liste complète du référentiel
-// (cf. CLAUDE.md « Profil public ») : un filtre qui ne renvoie rien est inutile.
-export async function getPublicProfileCategories(authorId: string): Promise<{ name: string; slug: string }[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('recipes')
-    .select('recipe_tags(tags(name, slug))')
+    .select('rating_avg, rating_count')
     .eq('author_id', authorId)
     .eq('status', 'published');
   if (error) {
-    console.error('getPublicProfileCategories:', error.message);
-    return [];
+    console.error('getPublicProfileStats:', error.message);
+    return { recipeCount: 0, ratingAvg: null };
   }
-  type Row = { recipe_tags: { tags: { name: string; slug: string } | null }[] };
-  const seen = new Map<string, string>();
-  for (const r of (data as unknown as Row[]) ?? []) {
-    for (const rt of r.recipe_tags) {
-      if (rt.tags) seen.set(rt.tags.slug, rt.tags.name);
-    }
-  }
-  return [...seen.entries()].map(([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-}
+  const recipes = data ?? [];
+  // Moyenne des notes des recettes notées, chaque recette pesant pareil —
+  // c'est la note de la recette qui est affichée sur sa carte, pas le nombre
+  // d'avis qu'elle a reçus.
+  const rated = recipes.filter((r) => (r.rating_count ?? 0) > 0 && r.rating_avg != null);
+  return {
+    recipeCount: recipes.length,
+    ratingAvg: rated.length > 0 ? rated.reduce((s, r) => s + (r.rating_avg ?? 0), 0) / rated.length : null,
+  };
+});
 
+// Recettes publiées d'un pâtissier, filtrées et triées **en SQL** : l'URL est
+// le seul état de l'écran (`lib/public-profile-params.ts`), le Server
+// Component re-rend à chaque changement — pas de seconde grille filtrée côté
+// client. La recherche porte sur le titre, comme celle du carnet.
 export async function getPublicProfileRecipes(
   authorId: string,
-  categorySlug?: string,
+  params: PublicProfileParams = EMPTY_PUBLIC_PROFILE_PARAMS,
 ): Promise<RecipeCardWithAllergens[]> {
   const supabase = await createClient();
   let q = supabase.from('recipes').select(CARD_SELECT).eq('author_id', authorId).eq('status', 'published');
-  // Filtrer par catégorie impose de passer par la jointure `recipe_tags` :
-  // un `.eq()` direct sur `recipe_tags.tags.slug` n'est pas exprimable via le
-  // client PostgREST, d'où la sous-requête d'identifiants.
-  if (categorySlug) {
-    const { data: ids } = await supabase
-      .from('recipe_tags')
-      .select('recipe_id, tags!inner(slug)')
-      .eq('tags.slug', categorySlug);
-    const recipeIds = ((ids as { recipe_id: string }[]) ?? []).map((r) => r.recipe_id);
-    if (recipeIds.length === 0) return [];
-    q = q.in('id', recipeIds);
-  }
-  const { data, error } = await q.order('created_at', { ascending: false });
+  const search = params.q.trim();
+  // `%` et `_` sont les jokers de `ilike` : les échapper évite qu'une saisie
+  // les contenant ne cherche autre chose que ce qui a été tapé.
+  if (search) q = q.ilike('title', `%${search.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
+  q =
+    params.tri === 'alpha'
+      ? q.order('title', { ascending: true })
+      : params.tri === 'rating'
+        ? // Une recette sans note ne passe pas devant une recette notée.
+          q.order('rating_avg', { ascending: false, nullsFirst: false })
+        : q.order('created_at', { ascending: false });
+  const { data, error } = await q;
   if (error) {
     console.error('getPublicProfileRecipes:', error.message);
     return [];

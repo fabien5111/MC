@@ -65,9 +65,16 @@ export function RecipeSharesCard({ ownerId, given }: { ownerId: string; given: R
               <ul className="mt-2 flex flex-col gap-2">
                 {group.entries.map((i) => (
                   <li key={i.member.id} className="flex items-center gap-3">
-                    <MemberAvatar member={i.member} size={28} />
+                    <Link href={`/u/${i.member.username || i.member.id}`} className="shrink-0">
+                      <MemberAvatar member={i.member} size={28} />
+                    </Link>
                     <span className="flex flex-col min-w-0 flex-1">
-                      <span className="font-body-md text-sm text-on-surface truncate">{i.member.full_name || 'Membre'}</span>
+                      <Link
+                        href={`/u/${i.member.username || i.member.id}`}
+                        className="font-body-md text-sm text-on-surface truncate hover:text-primary hover:underline"
+                      >
+                        {i.member.full_name || 'Membre'}
+                      </Link>
                       {i.created_at && (
                         <span className="font-body-md text-[12px] text-on-surface-variant">Depuis le {formatDate(i.created_at)}</span>
                       )}
