@@ -1090,8 +1090,12 @@ export function RelectureEditor({
 
   // Enregistre les corrections puis quitte (choix « Enregistrer et quitter »
   // de la popup ci-dessous) — même écriture que `onSave`, sans le statut
-  // temporaire affiché à l'écran puisqu'on le quitte aussitôt.
-  const handleSaveAndLeave = useCallback(async () => {
+  // temporaire affiché à l'écran puisqu'on le quitte aussitôt. Fonction non
+  // mémoïsée (comme `onSave`/`onCreate`) : un `useCallback` à dépendances
+  // fixes figerait `save()` (donc `readForm()`, donc `selectedTags` et le
+  // reste de l'état du formulaire) sur leur valeur du tout premier rendu —
+  // c'est ce qui faisait disparaître un tag ajouté juste avant de quitter.
+  async function handleSaveAndLeave() {
     setLeaving(true);
     try {
       await save();
@@ -1103,13 +1107,14 @@ export function RelectureEditor({
     }
     // Pas de reset à false côté succès : on quitte la page, autant garder le
     // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
-  }, [router, dialog]);
+  }
 
   // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
   // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
   // / enregistrer et quitter) — la suppression du brouillon reste un bouton
-  // distinct (« Abandonner l'import », ci-dessous).
-  const handleLeave = useCallback(async () => {
+  // distinct (« Abandonner l'import », ci-dessous). Non mémoïsé, même raison
+  // que `handleSaveAndLeave` ci-dessus.
+  async function handleLeave() {
     if (!dirtyRef.current) {
       setLeaving(true);
       router.push('/importer');
@@ -1126,7 +1131,7 @@ export function RelectureEditor({
       await handleSaveAndLeave();
     }
     // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
-  }, [router, dialog, handleSaveAndLeave]);
+  }
 
   // Bouton « Abandonner l'import » du rail : supprime définitivement le
   // brouillon (même écriture que `ImporterList.supprimer`), visible
