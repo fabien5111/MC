@@ -412,14 +412,9 @@ export function RelectureEditor({
   // conteneur unique : contrairement à CreerForm, l'écran n'a pas de wrapper
   // englobant toutes les sections éditables.
   const dirtyRef = useRef(false);
-  // État réactif jumeau du ref ci-dessus, pour le libellé du bouton « Quitter »
-  // (cf. rail d'actions) : un ref seul ne redéclenche pas de rendu quand la
-  // saisie commence.
-  const [dirty, setDirty] = useState(false);
   useEffect(() => {
     const markDirty = () => {
       dirtyRef.current = true;
-      setDirty(true);
     };
     document.addEventListener('change', markDirty);
     return () => document.removeEventListener('change', markDirty);
@@ -1088,16 +1083,45 @@ export function RelectureEditor({
     }
   }
 
-  // Bouton « Quitter » du rail : ne fait que quitter, avec confirmation si
-  // des corrections n'ont pas été enregistrées — la suppression du brouillon
-  // est un bouton distinct (« Abandonner l'import », ci-dessous).
-  const handleLeave = useCallback(async () => {
-    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
-    // Pas de reset à false ensuite : on quitte la page, autant garder le
-    // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
+  // Enregistre les corrections puis quitte (choix « Enregistrer et quitter »
+  // de la popup ci-dessous) — même écriture que `onSave`, sans le statut
+  // temporaire affiché à l'écran puisqu'on le quitte aussitôt.
+  const handleSaveAndLeave = useCallback(async () => {
     setLeaving(true);
-    router.push('/importer');
+    try {
+      await save();
+      router.refresh();
+      router.push('/importer');
+    } catch (e) {
+      dialog.alert('Erreur : ' + (e as Error).message);
+      setLeaving(false);
+    }
+    // Pas de reset à false côté succès : on quitte la page, autant garder le
+    // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
   }, [router, dialog]);
+
+  // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
+  // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
+  // / enregistrer et quitter) — la suppression du brouillon reste un bouton
+  // distinct (« Abandonner l'import », ci-dessous).
+  const handleLeave = useCallback(async () => {
+    if (!dirtyRef.current) {
+      setLeaving(true);
+      router.push('/importer');
+      return;
+    }
+    const choix = await dialog.choice("Des modifications n'ont pas été enregistrées. Que souhaitez-vous faire ?", [
+      { label: 'Quitter sans enregistrer', value: 'discard' },
+      { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+    ]);
+    if (choix === 'discard') {
+      setLeaving(true);
+      router.push('/importer');
+    } else if (choix === 'save') {
+      await handleSaveAndLeave();
+    }
+    // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
+  }, [router, dialog, handleSaveAndLeave]);
 
   // Bouton « Abandonner l'import » du rail : supprime définitivement le
   // brouillon (même écriture que `ImporterList.supprimer`), visible
@@ -1152,7 +1176,7 @@ export function RelectureEditor({
             disabled: busy || leaving,
           },
           { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
-          { id: 'leave', icon: 'close', label: dirty ? 'Quitter sans enregistrer' : 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           ...(canAbandon
             ? [{ id: 'abandon', icon: 'delete_forever', label: "Abandonner l'import", variant: 'outline-danger' as const, onClick: handleAbandon, disabled: busy || leaving }]
             : []),
