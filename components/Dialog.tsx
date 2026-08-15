@@ -105,9 +105,21 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-surface-container-low border border-outline-variant rounded-xl p-6 shadow-lg"
+            className="relative w-full max-w-sm bg-surface-container-low border border-outline-variant rounded-xl p-6 shadow-lg"
           >
-            <p className="font-body-md text-body-md text-on-surface whitespace-pre-line">{state.message}</p>
+            {state.kind === 'choice' && (
+              <button
+                type="button"
+                onClick={() => respondChoice(null)}
+                aria-label="Fermer"
+                className="absolute top-3 right-3 text-on-surface-variant hover:text-on-surface transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            )}
+            <p className={`font-body-md text-body-md text-on-surface whitespace-pre-line${state.kind === 'choice' ? ' pr-6' : ''}`}>
+              {state.message}
+            </p>
             {state.kind === 'prompt' && (
               <textarea
                 autoFocus
@@ -119,14 +131,9 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
               />
             )}
             {state.kind === 'choice' ? (
-              <div className="flex justify-end flex-wrap gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => respondChoice(null)}
-                  className="px-4 py-2 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors"
-                >
-                  Annuler
-                </button>
+              // Boutons sur une même ligne, largeur égale : l'annulation passe
+              // par la croix ci-dessus, pas par un bouton dédié dans la rangée.
+              <div className="flex gap-3 mt-6">
                 {state.options.map((opt) => (
                   <button
                     key={opt.value}
@@ -135,8 +142,8 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                     onClick={() => respondChoice(opt.value)}
                     className={
                       opt.variant === 'primary'
-                        ? 'px-5 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity'
-                        : 'px-4 py-2 rounded-full font-label-md text-label-md border border-outline-variant text-on-surface hover:bg-surface-container transition-colors'
+                        ? 'flex-1 px-4 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity'
+                        : 'flex-1 px-4 py-2 rounded-full font-label-md text-label-md border border-outline-variant text-on-surface hover:bg-surface-container transition-colors'
                     }
                   >
                     {opt.label}
