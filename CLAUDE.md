@@ -494,23 +494,31 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
+| `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
 
 ## Déploiement
 
-- **Vercel**, projet `mc-snowy`, branche de production `main`, racine du
-  dépôt (framework preset **Next.js**, Node **22.x** — voir `DEPLOY.md`).
+- **Vercel**, projet unique `mc-snowy`, branche de production `main`, racine
+  du dépôt (framework preset **Next.js**, Node **22.x** — voir `DEPLOY.md`).
+  Tous les domaines ci-dessous appartiennent à ce même projet — un déploiement
+  sur `main` les met donc tous à jour automatiquement.
 - Les variables `NEXT_PUBLIC_*` étant inlinées au build, tout changement
   nécessite un redéploiement **sans cache de build**.
 - Côté Supabase : Site URL + Redirect URLs (`https://<domaine>/**`) dans
   Authentication → URL Configuration.
-- **Domaines** : `jepatisse.com` est le futur domaine public — affiche
-  pour l'instant une page d'attente aux visiteurs, ne pas le prendre pour
-  cible lors d'une vérification en production. **`dev.jepatisse.com`** est
-  l'URL de production réelle à ce stade, réservée aux testeurs (accès
-  restreint) : c'est elle qu'il faut utiliser pour vérifier qu'un correctif
-  déployé sur `main` se comporte comme attendu.
+- **Domaines** : `jepatisse.com` (et `www.jepatisse.com`) est le futur
+  domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
+  visiteurs, ne pas le prendre pour cible lors d'une vérification en
+  production. **`dev.jepatisse.com`** est l'URL de production réelle à ce
+  stade, réservée aux testeurs (accès restreint) : c'est elle qu'il faut
+  utiliser pour vérifier qu'un correctif déployé sur `main` se comporte comme
+  attendu. Comme les deux domaines partagent désormais le même projet Vercel
+  (et donc le même scope Production pour `COMING_SOON`), c'est
+  `middleware.ts` qui exempte spécifiquement `dev.jepatisse.com` de la page
+  d'attente (comparaison sur l'en-tête `Host`) — sans quoi les testeurs
+  tomberaient eux aussi dessus.
 
 ## Commandes
 

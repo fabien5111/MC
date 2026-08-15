@@ -15,6 +15,7 @@ Dans **Settings → Environment Variables** du projet :
 | `ANTHROPIC_API_KEY` | *(clé Anthropic — jamais préfixée `NEXT_PUBLIC_`)* | Production + Preview |
 | `IMPORT_MODEL` | `claude-haiku-4-5` *(optionnel, valeur par défaut)* | Production + Preview |
 | `IMPORT_DAILY_QUOTA` | `20` *(optionnel, valeur par défaut)* | Production + Preview |
+| `COMING_SOON` | `true` | **Production uniquement** |
 
 Les deux `NEXT_PUBLIC_*` sont inlinées au build : elles doivent exister avant
 le déploiement. `ANTHROPIC_API_KEY` sert aux routes `/api/import-url` et
@@ -58,3 +59,9 @@ Dans le **dashboard Supabase → Authentication → URL Configuration** :
   bucket ni de CDN d'images à configurer.
 - **Types Supabase** : voir `README.md` (section « Types de la base ») pour
   régénérer `lib/database.types.ts`.
+- **Domaines** : `jepatisse.com`, `www.jepatisse.com`, `dev.jepatisse.com` et
+  `mc-snowy.vercel.app` sont tous des domaines **Production** du même projet
+  — un seul déploiement les met tous à jour. `COMING_SOON=true` (scopée
+  Production) affiche donc la page d'attente sur les quatre par défaut ;
+  `middleware.ts` exempte spécifiquement `dev.jepatisse.com` (comparaison sur
+  `Host`) pour que les testeurs gardent accès au site réel.
