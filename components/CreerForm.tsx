@@ -247,6 +247,11 @@ export function CreerForm({
   );
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
+  // Cases cochées dans la liste déroulante, pas encore insérées dans
+  // `selectedTags` — permet de cocher plusieurs tags puis de les ajouter en
+  // une seule fois plutôt qu'un par un.
+  const [pendingTagIds, setPendingTagIds] = useState<Set<number>>(new Set());
+  const tagPickerRef = useRef<HTMLDivElement>(null);
   // Tags créés à la volée par un admin depuis l'éditeur : complètent la liste
   // serveur pour l'autocomplétion et la sélection, sans recharger la page.
   const [extraTags, setExtraTags] = useState<Tag[]>([]);
@@ -401,6 +406,20 @@ export function CreerForm({
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
     refreshRefs();
   }
+
+  // Repli du menu déroulant de tags au clic en dehors (les cases cochées mais
+  // non confirmées sont perdues, comme un menu qu'on abandonne).
+  useEffect(() => {
+    if (!tagPickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (tagPickerRef.current && !tagPickerRef.current.contains(e.target as Node)) {
+        setTagPickerOpen(false);
+        setPendingTagIds(new Set());
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [tagPickerOpen]);
 
   // Création d'un tag inexistant dans le référentiel depuis l'éditeur (admin
   // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
@@ -1044,11 +1063,28 @@ export function CreerForm({
                 <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
                 <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only peer" />
-                <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container" />
-                <span className="ml-3 font-label-md text-label-md text-primary">{isPublic ? 'Public' : 'Privé'}</span>
-              </label>
+              <div className="flex rounded-full border border-outline-variant overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(false);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${!isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Privée
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(true);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Publique
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               <label className="font-label-md text-label-md text-outline uppercase block">Catégories et Tags</label>
@@ -1068,12 +1104,13 @@ export function CreerForm({
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 ))}
-                <div className="relative">
+                <div className="relative" ref={tagPickerRef}>
                   <button
                     type="button"
                     onClick={() => {
                       setTagPickerOpen((v) => !v);
                       setTagSearch('');
+                      setPendingTagIds(new Set());
                     }}
                     className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
                   >
@@ -1093,21 +1130,48 @@ export function CreerForm({
                       </div>
                       {filteredRemainingTags.length ? (
                         filteredRemainingTags.map((t) => (
-                          <button
+                          <label
                             key={t.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
-                              setTagPickerOpen(false);
-                              markDirty();
-                            }}
-                            className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
+                            className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                           >
+                            <input
+                              type="checkbox"
+                              checked={pendingTagIds.has(t.id)}
+                              onChange={(e) => {
+                                setPendingTagIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) next.add(t.id);
+                                  else next.delete(t.id);
+                                  return next;
+                                });
+                              }}
+                              className="accent-primary"
+                            />
                             {t.name}
-                          </button>
+                          </label>
                         ))
                       ) : (
                         <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                      )}
+                      {pendingTagIds.size > 0 && (
+                        <div className="px-2 pt-2 sticky bottom-0 bg-white border-t border-outline-variant">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTags((prev) => {
+                                const next = new Map(prev);
+                                for (const t of allTags) if (pendingTagIds.has(t.id)) next.set(t.id, t.name);
+                                return next;
+                              });
+                              setTagPickerOpen(false);
+                              setPendingTagIds(new Set());
+                              markDirty();
+                            }}
+                            className="w-full px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md hover:opacity-80 transition-opacity"
+                          >
+                            Ajouter {pendingTagIds.size} tag{pendingTagIds.size > 1 ? 's' : ''}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1561,14 +1625,19 @@ export function CreerForm({
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
-                      <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
-                        <option value=""></option>
-                        {units.map((u) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative shrink-0">
+                        <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                          <option value=""></option>
+                          {units.map((u) => (
+                            <option key={u.id} value={u.name}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="absolute inset-0 flex items-center px-3 pointer-events-none font-label-md text-label-md text-outline">
+                          Unité
+                        </span>
+                      </div>
                       <div className="hidden xl:contents">
                         <div className="flex-1 min-w-0">
                           <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
