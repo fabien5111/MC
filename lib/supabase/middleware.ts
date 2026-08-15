@@ -16,9 +16,15 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 // `/profil` reste protégé bien qu'il ne soit plus qu'une redirection : il
 // dispatche vers des écrans privés, autant refuser tôt. `/idees` (liste) est
 // public à l'inverse — seule `/idees/nouvelle` (création) exige une session.
+//
+// `/choix-pseudo` y figure au même titre : c'est un écran de compte, un
+// visiteur déconnecté n'y a rien à faire. Le contrôle « a-t-il déjà un
+// pseudo ? » reste, lui, côté page (`requireUser`, lib/auth.ts) — le poser
+// ici coûterait une requête base sur chaque requête HTTP du site.
 const PROTECTED_PREFIXES = [
   '/profil',
   '/reglages',
+  '/choix-pseudo',
   '/creer',
   '/admin',
   '/execution',

@@ -294,9 +294,17 @@ function ProfileEditor({
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
 
   async function save() {
+    const cleanUsername = username.trim() || null;
+    // Le pseudo choisi à l'inscription porte l'adresse du profil public ET
+    // sert de marque « ce compte a un pseudo » (cf. `requireUser`,
+    // lib/auth.ts). Le vider renverrait le membre sur `/choix-pseudo` à la
+    // page privée suivante, sans qu'il comprenne pourquoi.
+    if (!cleanUsername) {
+      dialog.alert("L'adresse du profil ne peut pas être vide.");
+      return;
+    }
     setBusy(true);
     const clean = (f: ProfileLinkField) => (links[f] || '').trim() || null;
-    const cleanUsername = username.trim() || null;
     const payload = {
       id: userId,
       bio: bio.trim() || null,
@@ -315,13 +323,13 @@ function ProfileEditor({
       // message clair plutôt que le texte brut de Postgres.
       dialog.alert(
         error.code === '23505'
-          ? `Le nom d'utilisateur « ${cleanUsername} » est déjà pris.`
+          ? `L'adresse « ${cleanUsername} » est déjà prise.`
           : 'Erreur lors de l’enregistrement : ' + error.message,
       );
       setBusy(false);
       return;
     }
-    onSaved(bio.trim(), cleanUsername ?? '', links);
+    onSaved(bio.trim(), cleanUsername, links);
   }
 
   return (
@@ -331,19 +339,19 @@ function ProfileEditor({
         <h3 className="font-headline-md text-primary mb-6">Modifier le profil</h3>
         <div className="flex flex-col gap-5">
           <label className="flex flex-col gap-1">
-            <span className={LBL}>Nom d&apos;utilisateur</span>
+            <span className={LBL}>Adresse du profil public</span>
             <div className="flex items-center gap-1">
-              <span className="text-on-surface-variant text-sm">je-patisse.fr/u/</span>
+              <span className="text-on-surface-variant text-sm">jepatisse.com/u/</span>
               <input
                 type="text"
                 className={`${IN} flex-1`}
-                placeholder="votre-nom"
+                placeholder="votre-pseudo"
                 value={username}
                 onChange={(e) => setUsername(normalizeUsername(e.target.value))}
               />
             </div>
             <span className="font-body-md text-xs text-on-surface-variant">
-              Détermine l&apos;adresse de votre profil public. Laissez vide pour ne pas en choisir.
+              Dérivée de votre pseudo à l&apos;inscription ; modifiable, mais elle ne peut pas rester vide.
             </span>
           </label>
           <label className="flex flex-col gap-1">

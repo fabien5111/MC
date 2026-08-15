@@ -19,6 +19,13 @@ export const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'claude-sonnet-5
 // sur la créativité, d'où `claude-sonnet-5` par défaut (cf. annexe A.6).
 export const MODERATION_MODEL = process.env.MODERATION_MODEL || 'claude-sonnet-5';
 
+// Modèle du contrôle des PSEUDOS à l'inscription. Haiku et non le modèle de
+// modération : l'appel est sur le chemin critique de la création de compte,
+// et il n'a que deux ou trois mots à juger — c'est la latence qui décide de
+// l'expérience, pas la finesse du jugement. Les cas ambigus sont de toute
+// façon tranchés en faveur de l'inscrit (cf. lib/ai/pseudo-moderation.ts).
+export const PSEUDO_MODERATION_MODEL = process.env.PSEUDO_MODERATION_MODEL || 'claude-haiku-4-5';
+
 // Consommation réelle renvoyée par l'API à chaque appel (bloc `usage`). Sert à
 // calculer le coût exact d'un import plutôt que de l'estimer (cf. lib/ai/cost.ts).
 export type ClaudeUsage = {
