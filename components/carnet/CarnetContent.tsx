@@ -259,7 +259,7 @@ function OtherCard({
   const r = item.recipe;
   const times = effectiveTimes(r);
   return (
-    <div className="group relative border border-secondary/50 bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
+    <div className="group relative border border-primary bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
           {r.hero_image_url ? (
