@@ -874,20 +874,36 @@ export function CreerForm({
     }
   }
 
-  // Bouton « Quitter » du rail : aucun enregistrement, avec une confirmation
-  // dès qu'une saisie a été détectée depuis le chargement de l'écran. Retour
-  // à la fiche recette pour une édition (ou une création déjà enregistrée en
-  // brouillon dans cette session) ; à défaut de recette existante, retour au
-  // profil — contrairement au lien « Annuler » ci-dessous, qui revient
-  // toujours au profil.
-  const handleLeave = useCallback(async () => {
-    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
-    // Pas de reset à false ensuite : on quitte la page, autant garder le
-    // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
-    setLeaving(true);
-    const recipeId = editingId ?? createdIdRef.current;
-    router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
-  }, [router, editingId, dialog]);
+  // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
+  // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
+  // / enregistrer et quitter) — même motif que RelectureEditor.handleLeave.
+  // Retour à la fiche recette pour une édition (ou une création déjà
+  // enregistrée en brouillon dans cette session) ; à défaut de recette
+  // existante, retour au profil — contrairement au lien « Annuler »
+  // ci-dessous, qui revient toujours au profil. Fonction non mémoïsée (comme
+  // `submit`) : un `useCallback` à dépendances fixes figerait `submit` (donc
+  // tout l'état du formulaire) sur sa valeur du tout premier rendu — même
+  // piège que `handleSaveAndLeave` dans RelectureEditor.
+  async function handleLeave() {
+    if (!dirtyRef.current) {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+      return;
+    }
+    const choix = await dialog.choice("Des modifications n'ont pas été enregistrées. Que souhaitez-vous faire ?", [
+      { label: 'Quitter sans enregistrer', value: 'discard' },
+      { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+    ]);
+    if (choix === 'discard') {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+    } else if (choix === 'save') {
+      await submit('draft', false);
+    }
+    // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
+  }
 
   const scalingOptions =
     measure === 'mold'
@@ -922,25 +938,13 @@ export function CreerForm({
         onNavigateToStep={expandStep}
         mobile="drawer"
         actions={[
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           {
             id: 'save',
             icon: 'save',
             label: 'Enregistrer en brouillon',
             variant: 'outline-strong',
             onClick: () => submit('draft', true),
-            disabled: busy || leaving,
-          },
-          // Sauver *et* quitter : cette action n'existait que dans la barre de
-          // bas d'écran. Elle est montée dans la liste commune pour que sa
-          // suppression ne la fasse pas disparaître du produit — le rail de
-          // bureau y gagne aussi le raccourci.
-          {
-            id: 'save-leave',
-            icon: 'exit_to_app',
-            label: 'Enregistrer en brouillon et quitter',
-            variant: 'outline-strong',
-            onClick: () => submit('draft', false),
             disabled: busy || leaving,
           },
           {
