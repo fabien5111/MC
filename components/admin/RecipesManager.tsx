@@ -15,10 +15,12 @@ import type {
   RecipeSimilarityMatchSummary,
   MatchFeedbackVerdict,
   CalibrationBucket,
+  RejectionHistoryEntry,
 } from '@/lib/admin';
 import { MODERATION_CATEGORIES } from '@/lib/ai/moderation';
 import { buildAnalysisSummary } from '@/lib/ai/analysis-summary';
 import { formatUsd } from '@/lib/ai/cost';
+import { formatDateTime } from '@/lib/format';
 
 const PLAN_LBL: Record<string, string> = { units: 'Quantité produite', mold: 'Moule', dimensions: 'Dimensions' };
 
@@ -252,11 +254,24 @@ function AnalysisPanel({
   analysis,
   matches,
   feedback,
+  moderationNote,
+  moderationNoteAt,
+  readOnly,
 }: {
   recipeId: string;
   analysis: RecipeAnalysisSummary | undefined;
   matches: RecipeSimilarityMatchSummary[];
   feedback: Record<number, MatchFeedbackVerdict>;
+  // Motif du refus courant (§9) : descendu dans ce bloc pour rester avec le
+  // détail de l'analyse qui l'a motivé, plutôt qu'affiché dans une ligne à
+  // part. Absent hors statut `rejected`.
+  moderationNote?: string | null;
+  moderationNoteAt?: string | null;
+  // Un refus précédent (§9, « conserver les anciennes analyses avec les
+  // anciens motifs ») : même détail que l'analyse courante, mais figé —
+  // relancer l'analyse recalculerait sur le contenu ACTUEL de la recette,
+  // sans rapport avec ce refus déjà résolu.
+  readOnly?: boolean;
 }) {
   const { refresh } = useMutation();
   const [relancing, setRelancing] = useState(false);
@@ -319,6 +334,15 @@ function AnalysisPanel({
         {summary && <p className="text-xs text-on-surface-variant pt-1">{summary}</p>}
       </div>
 
+      {moderationNote && (
+        <p className="mt-2 pl-6 text-xs text-on-surface-variant">
+          <span className="font-semibold text-on-surface">
+            Motif du refus{moderationNoteAt ? ` ${formatDateTime(moderationNoteAt)}` : ''} :
+          </span>{' '}
+          {moderationNote}
+        </p>
+      )}
+
       {open && (
         <div className="mt-3 pl-6 space-y-3">
           {analysis?.status === 'echec' && (
@@ -367,14 +391,16 @@ function AnalysisPanel({
               {!!analysis.cost_searches && ` · ${analysis.cost_searches} recherche${analysis.cost_searches > 1 ? 's' : ''} web`}
             </p>
           )}
-          <button
-            type="button"
-            onClick={relancer}
-            disabled={relancing}
-            className="px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors disabled:opacity-50"
-          >
-            {relancing ? 'Analyse…' : "Relancer l'analyse"}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={relancer}
+              disabled={relancing}
+              className="px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors disabled:opacity-50"
+            >
+              {relancing ? 'Analyse…' : "Relancer l'analyse"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -395,6 +421,8 @@ export function RecipesManager({
   matches,
   feedback,
   calibration,
+  rejectionHistory,
+  historicalAnalyses,
 }: {
   pending: AdminRecipeRow[];
   managed: AdminRecipeRow[];
@@ -403,6 +431,8 @@ export function RecipesManager({
   matches: Record<number, RecipeSimilarityMatchSummary[]>;
   feedback: Record<number, MatchFeedbackVerdict>;
   calibration: CalibrationBucket[];
+  rejectionHistory: Record<string, RejectionHistoryEntry[]>;
+  historicalAnalyses: Record<number, RecipeAnalysisSummary>;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -449,7 +479,15 @@ export function RecipesManager({
             </Link>
           </div>
         </td>
-        <td className="px-6 py-4 text-sm text-on-surface">{r.profiles?.full_name || '—'}</td>
+        <td className="px-6 py-4 text-sm text-on-surface">
+          {r.profiles ? (
+            <Link href={`/u/${r.profiles.username || r.author_id}`} className="hover:text-primary hover:underline">
+              {r.profiles.full_name || '—'}
+            </Link>
+          ) : (
+            '—'
+          )}
+        </td>
         <td className="px-6 py-4 text-sm text-on-surface-variant">{PLAN_LBL[r.measure_type || ''] || '—'}</td>
         <td className="px-6 py-4 text-sm text-on-surface-variant whitespace-nowrap">
           {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
@@ -512,24 +550,47 @@ export function RecipesManager({
           </div>
         </td>
       </tr>
-      {mode === 'rejected' && r.moderation_note && (
-        <tr>
-          <td colSpan={6} className="px-6 pb-2 -mt-2">
-            <p className="text-xs text-on-surface-variant">
-              <span className="font-semibold text-on-surface">Motif du refus :</span> {r.moderation_note}
-            </p>
-          </td>
-        </tr>
-      )}
       {(mode === 'pending' || mode === 'rejected') && (
-        <tr className="border-b border-outline-variant last:border-0">
+        <tr className={(rejectionHistory[r.id]?.length ?? 0) > 0 ? undefined : 'border-b border-outline-variant last:border-0'}>
           <td colSpan={6} className="px-6 pb-4 -mt-2">
             <AnalysisPanel
               recipeId={r.id}
               analysis={analyses[r.id]}
               matches={analyses[r.id] ? matches[analyses[r.id].id] ?? [] : []}
               feedback={feedback}
+              moderationNote={mode === 'rejected' ? r.moderation_note : undefined}
+              moderationNoteAt={mode === 'rejected' ? r.moderation_note_at : undefined}
             />
+          </td>
+        </tr>
+      )}
+      {/* Refus précédents (§9) : archivés par le trigger SQL
+          `recipes_track_rejection_note` à chaque resoumission, avec le
+          détail complet de l'analyse qui les a motivés. Peut apparaître
+          dans les trois tables — y compris « validées et privées » : le
+          détail d'un refus passé reste utile à retrouver après
+          l'acceptation, pas seulement pendant la décision (pending) ou en
+          cas de nouveau refus (rejected). Affiché sous l'analyse courante :
+          le refus/l'état actuel prime, l'historique vient en complément. */}
+      {(rejectionHistory[r.id]?.length ?? 0) > 0 && (
+        <tr className="border-b border-outline-variant last:border-0">
+          <td colSpan={6} className="px-6 pb-4 -mt-2">
+            <p className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-2">Refus précédents</p>
+            <div className="space-y-2">
+              {rejectionHistory[r.id].map((h) => (
+                <div key={h.id} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+                  <AnalysisPanel
+                    recipeId={r.id}
+                    analysis={h.analysis_id != null ? historicalAnalyses[h.analysis_id] : undefined}
+                    matches={h.analysis_id != null ? matches[h.analysis_id] ?? [] : []}
+                    feedback={feedback}
+                    moderationNote={h.motif}
+                    moderationNoteAt={h.rejected_at}
+                    readOnly
+                  />
+                </div>
+              ))}
+            </div>
           </td>
         </tr>
       )}

@@ -5,9 +5,11 @@ import {
   getManagedRecipes,
   getRejectedRecipes,
   getLatestAnalyses,
+  getAnalysesByIds,
   getMatchesForAnalyses,
   getFeedbackForMatches,
   getCalibrationStats,
+  getRejectionHistory,
 } from '@/lib/admin';
 import { RecipesManager } from '@/components/admin/RecipesManager';
 
@@ -23,8 +25,25 @@ export default async function AdminRecettesPage() {
   // modération est en jeu : la file « à valider » et les recettes déjà
   // refusées (pour comprendre le refus). Les recettes déjà publiées n'en
   // ont pas besoin — la modération s'est jouée à leur soumission.
-  const analyses = await getLatestAnalyses([...pending, ...rejected].map((r) => r.id));
-  const matches = await getMatchesForAnalyses(Object.values(analyses).map((a) => a.id));
+  const analysisRecipeIds = [...pending, ...rejected].map((r) => r.id);
+  const [analyses, rejectionHistory] = await Promise.all([
+    getLatestAnalyses(analysisRecipeIds),
+    getRejectionHistory([...pending, ...managed, ...rejected].map((r) => r.id)),
+  ]);
+  // Détail complet dépliable pour chaque refus précédent (§9 : « conserver
+  // les anciennes analyses avec les anciens motifs »), dans les trois
+  // tables — y compris « validées et privées » : retrouver le détail d'un
+  // refus passé reste utile après l'acceptation, pas seulement pendant la
+  // décision.
+  const historicalAnalysisIds = Object.values(rejectionHistory)
+    .flat()
+    .map((h) => h.analysis_id)
+    .filter((id): id is number => id != null);
+  const historicalAnalyses = await getAnalysesByIds(historicalAnalysisIds);
+  const matches = await getMatchesForAnalyses([
+    ...Object.values(analyses).map((a) => a.id),
+    ...Object.values(historicalAnalyses).map((a) => a.id),
+  ]);
   const matchIds = Object.values(matches).flat().map((m) => m.id);
   const [feedback, calibration] = await Promise.all([getFeedbackForMatches(matchIds), getCalibrationStats()]);
   return (
@@ -43,6 +62,8 @@ export default async function AdminRecettesPage() {
         matches={matches}
         feedback={feedback}
         calibration={calibration}
+        rejectionHistory={rejectionHistory}
+        historicalAnalyses={historicalAnalyses}
       />
     </>
   );

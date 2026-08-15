@@ -27,6 +27,7 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { formatDate } from '@/lib/format';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -836,6 +837,15 @@ export function CreerForm({
       }
 
       if (status !== 'draft') {
+        if (finalStatus === 'pending') {
+          // Recette publique soumise par un membre non-admin (§ ligne 653 :
+          // seul ce cas reste en `pending`) : sans messagerie interne pour le
+          // signaler autrement, prévenir ici que la validation d'un admin est
+          // nécessaire avant que la recette ne devienne visible.
+          await dialog.alert(
+            "Votre recette a bien été soumise. Elle sera visible publiquement dès qu'un administrateur l'aura validée.",
+          );
+        }
         // Publication / enregistrement définitif : on ouvre la fiche recette.
         // router.refresh() invalide le Router Cache client avant de naviguer,
         // pour éviter qu'une visite ultérieure du carnet ou de la fiche
@@ -908,6 +918,16 @@ export function CreerForm({
     </div>
   );
 
+  // Même étiquette que la fiche recette (app/recette/[id]/page.tsx) : donne
+  // au bloc « Motif du refus » ci-dessous le même repère visuel qu'ailleurs
+  // sur le site, y compris en brouillon (statut inchangé par un enregistrement
+  // en brouillon qui suit un refus).
+  let statusBadge: { label: string; cls: string } | null = null;
+  if (editRecipe?.status === 'pending') statusBadge = { label: 'En attente de validation', cls: 'bg-secondary text-white' };
+  else if (editRecipe?.status === 'draft') statusBadge = { label: 'Brouillon', cls: 'bg-secondary text-white' };
+  else if (editRecipe?.status === 'rejected') statusBadge = { label: 'Publication refusée', cls: 'bg-error text-white' };
+  else if (editRecipe?.status === 'published') statusBadge = { label: 'Publiée', cls: 'bg-green-700 text-white' };
+
   return (
     <>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
@@ -965,6 +985,29 @@ export function CreerForm({
           <span className="material-symbols-outlined">close</span> Annuler
         </Link>
       </div>
+
+      {statusBadge && (
+        <div className="no-print flex items-center gap-4 flex-wrap mb-4">
+          <span className={`${statusBadge.cls} px-3 py-1 font-label-md text-[10px] uppercase tracking-widest`}>{statusBadge.label}</span>
+        </div>
+      )}
+
+      {editRecipe?.moderation_note && (
+        // Même bloc que sur la fiche recette (app/recette/[id]/page.tsx),
+        // placé sous l'étiquette de statut ci-dessus : reste affiché tant que
+        // la recette n'a pas été resoumise (refusée ou repassée en brouillon
+        // depuis un refus) — la resoumission vide `moderation_note` (trigger
+        // SQL `recipes_track_rejection_note`).
+        <div className="no-print mb-8 border border-error/40 bg-error-container/40 text-on-error-container rounded-xl px-5 py-3 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[20px] shrink-0">info</span>
+          <p className="font-body-md text-[13px]">
+            <span className="font-semibold">
+              Motif du refus{editRecipe.moderation_note_at ? ` du ${formatDate(editRecipe.moderation_note_at)}` : ''} :
+            </span>{' '}
+            {editRecipe.moderation_note}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-16" onChange={markDirty}>
         {/* Infos de base & média */}
