@@ -14,6 +14,7 @@ import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useMutation } from '@/lib/use-mutation';
+import { SettingsCard } from '@/components/profile/SettingsCard';
 
 const FIELD =
   'w-full bg-transparent border-b border-outline-variant py-3 px-1 focus:outline-none focus:border-primary transition-all duration-300 font-body-md text-body-md placeholder:text-on-surface-variant/40';
@@ -64,19 +65,17 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
 
   if (!hasPassword) {
     return (
-      <section className="mt-10 bg-surface-container-lowest border border-outline-variant p-8 md:p-10">
-        <h2 className="font-headline-md text-headline-md text-primary mb-2">Mot de passe</h2>
+      <SettingsCard icon="lock" title="Mot de passe" count={0}>
         <p className="font-body-md text-body-md text-on-surface-variant">
           Votre compte est connecté via Google : le mot de passe est géré par Google, pas par Je pâtisse !.
         </p>
-      </section>
+      </SettingsCard>
     );
   }
 
   return (
-    <section className="mt-10 bg-surface-container-lowest border border-outline-variant p-8 md:p-10">
+    <SettingsCard icon="lock" title="Mot de passe" count={0}>
       <LoadingOverlay visible={busy} label="Mise à jour du mot de passe…" />
-      <h2 className="font-headline-md text-headline-md text-primary mb-6">Mot de passe</h2>
       <form onSubmit={submit} className="space-y-6 max-w-md">
         <div className="space-y-1">
           <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="current-password">
@@ -151,6 +150,6 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
           Mettre à jour le mot de passe
         </button>
       </form>
-    </section>
+    </SettingsCard>
   );
 }
