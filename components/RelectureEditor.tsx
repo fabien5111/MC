@@ -573,7 +573,7 @@ export function RelectureEditor({
     measure === 'mold'
       ? [
           ['simple', 'Ajustement selon la taille du moule (volume)'],
-          ['foncage', 'Recouvre une surface (fonçage, glaçage…)'],
+          ['foncage', 'Recouvre une surface (pâte à tarte, glaçage…)'],
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [

@@ -28,6 +28,8 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
+import { normLoose } from '@/lib/search-params';
+import { capitalizeSentences } from '@/lib/text';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -160,27 +162,41 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   });
 }
 
-// Fusion des lignes d'ingrédients identiques (nom + unité), quantités numériques additionnées.
-function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string }[] {
-  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
-  steps.forEach((st) =>
+// Fusion des lignes d'ingrédients identiques (nom + unité + commentaire) de
+// toutes les étapes, quantités numériques additionnées — même logique que
+// `mergeIngredientsRecap` de RelectureEditor : le commentaire fait partie de
+// la clé de fusion, sinon « crème liquide, chaude » et « crème liquide,
+// froide » (ou « chocolat noir 66 % » / « chocolat noir 54 % » porté par le
+// commentaire plutôt que le nom) fusionneraient leurs quantités en un total
+// sans usage réel.
+function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
+  steps.forEach((st, si) =>
     st.ings.forEach((i) => {
       const name = i.name.trim();
       if (!name) return;
-      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase();
+      const note = i.comment.trim();
+      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit });
+        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
         return;
       }
+      ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qty).replace(',', '.'));
       if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
       else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
+  return merged.map(({ name, qty, unit, note, steps }) => ({
+    name,
+    qty,
+    unit,
+    note,
+    stepIndices: Array.from(steps).sort((a, b) => a - b),
+  }));
 }
 
 export function CreerForm({
@@ -233,7 +249,7 @@ export function CreerForm({
   const [sourceUrl, setSourceUrl] = useState(editRecipe?.source_url || '');
   const [videoUrl, setVideoUrl] = useState(editRecipe?.video_url || '');
   const [servingAdvice, setServingAdvice] = useState(editRecipe?.serving_advice || '');
-  const [isPublic, setIsPublic] = useState(editRecipe?.is_public !== false);
+  const [isPublic, setIsPublic] = useState(editRecipe ? editRecipe.is_public !== false : false);
   const [hero, setHero] = useState<string | null>(editRecipe?.hero_image_url ?? null);
   const [heroOriginal, setHeroOriginal] = useState<string | null>(editRecipe?.hero_image_original_url ?? editRecipe?.hero_image_url ?? null);
   const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(editRecipe?.hero_image_ai_retouched ?? false);
@@ -244,6 +260,12 @@ export function CreerForm({
     () => new Map((editRecipe?.recipe_tags || []).map((t) => [t.tags?.id, t.tags?.name] as [number, string]).filter(([id]) => id != null)),
   );
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
+  // Cases cochées dans la liste déroulante, pas encore insérées dans
+  // `selectedTags` — permet de cocher plusieurs tags puis de les ajouter en
+  // une seule fois plutôt qu'un par un.
+  const [pendingTagIds, setPendingTagIds] = useState<Set<number>>(new Set());
+  const tagPickerRef = useRef<HTMLDivElement>(null);
   // Tags créés à la volée par un admin depuis l'éditeur : complètent la liste
   // serveur pour l'autocomplétion et la sélection, sans recharger la page.
   const [extraTags, setExtraTags] = useState<Tag[]>([]);
@@ -399,6 +421,20 @@ export function CreerForm({
     refreshRefs();
   }
 
+  // Repli du menu déroulant de tags au clic en dehors (les cases cochées mais
+  // non confirmées sont perdues, comme un menu qu'on abandonne).
+  useEffect(() => {
+    if (!tagPickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (tagPickerRef.current && !tagPickerRef.current.contains(e.target as Node)) {
+        setTagPickerOpen(false);
+        setPendingTagIds(new Set());
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [tagPickerOpen]);
+
   // Création d'un tag inexistant dans le référentiel depuis l'éditeur (admin
   // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
   // sélectionné pour la recette en cours. Un doublon (même nom) réutilise le
@@ -410,7 +446,7 @@ export function CreerForm({
   // La création étant réservée aux admins, la publication est immédiate — même
   // règle que pour une recette soumise par un admin (cf. submit()).
   async function addTag(name: string) {
-    const clean = name.trim();
+    const clean = capitalizeSentences(name.trim());
     if (!clean) return;
     const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
     if (existing) {
@@ -441,6 +477,10 @@ export function CreerForm({
   // double produirait deux entrées de même clé React dans le sélecteur).
   const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
+  const filteredRemainingTags = useMemo(() => {
+    const q = normLoose(tagSearch.trim());
+    return q ? remainingTags.filter((t) => normLoose(t.name).includes(q)) : remainingTags;
+  }, [remainingTags, tagSearch]);
 
   // ── Somme des temps des étapes : purement informative en édition (affichée à
   // côté des champs manuels), recalculée en direct depuis les étapes saisies.
@@ -519,6 +559,23 @@ export function CreerForm({
     (i: number) => setSteps((s) => (s[i]?.collapsed ? s.map((st, k) => (k === i ? { ...st, collapsed: false } : st)) : s)),
     [],
   );
+
+  // Lien « voir l'étape » du récapitulatif d'ingrédients, pour un ingrédient
+  // qui n'apparaît que dans une seule étape — même motif que le `goToStep` de
+  // RelectureEditor : déplie l'étape si besoin avant de défiler jusqu'à elle.
+  const [scrollToStepIndex, setScrollToStepIndex] = useState<number | null>(null);
+  const goToStep = useCallback(
+    (i: number) => {
+      expandStep(i);
+      setScrollToStepIndex(i);
+    },
+    [expandStep],
+  );
+  useEffect(() => {
+    if (scrollToStepIndex === null) return;
+    document.getElementById(stepAnchorId(scrollToStepIndex))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScrollToStepIndex(null);
+  }, [scrollToStepIndex]);
 
   // Repositionnement sur l'étape d'où l'édition a été ouverte (prop
   // `initialStep`, cf. components/recipe/RecetteToc.tsx) : déplie l'étape
@@ -693,8 +750,8 @@ export function CreerForm({
       if (status === 'pending' && (!isPublic || isAdmin)) finalStatus = 'published';
 
       const payload = {
-        title: title.trim(),
-        description: description.trim() || null,
+        title: capitalizeSentences(title.trim()),
+        description: capitalizeSentences(description.trim()) || null,
         is_public: isPublic,
         status: finalStatus,
         difficulty_id: diffRow?.id ?? null,
@@ -748,7 +805,7 @@ export function CreerForm({
       }
 
       const utRows = utensils
-        .map((u, i) => ({ recipe_id: recipeId, name: u.name.trim(), comment: u.comment.trim() || null, order_index: i }))
+        .map((u, i) => ({ recipe_id: recipeId, name: capitalizeSentences(u.name.trim()), comment: u.comment.trim() || null, order_index: i }))
         .filter((u) => u.name);
       if (utRows.length) {
         const { error } = await supabase.from('recipe_utensils').insert(utRows);
@@ -759,10 +816,10 @@ export function CreerForm({
         const st = steps[gi];
         const desc = st.description.trim();
         // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
-        const subs = st.subSteps ? st.subSteps.map((t) => t.trim()).filter(Boolean) : [];
+        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(t.trim())).filter(Boolean) : [];
         const lines = st.ings
           .map((l, i) => ({
-            name: l.name.trim(),
+            name: capitalizeSentences(l.name.trim()),
             quantity: l.qty.trim() || null,
             unit: l.unit || null,
             comment: l.comment.trim() || null,
@@ -780,8 +837,8 @@ export function CreerForm({
           .insert({
             recipe_id: recipeId,
             step_number: gi + 1,
-            title: st.title.trim() || `Étape ${gi + 1}`,
-            description: desc || null,
+            title: capitalizeSentences(st.title.trim()) || `Étape ${gi + 1}`,
+            description: capitalizeSentences(desc) || null,
             prep_time: gmin(st.prep),
             cook_time: gmin(st.cook),
             cook_temp: gmin(st.temp),
@@ -924,7 +981,7 @@ export function CreerForm({
     measure === 'mold'
       ? [
           ['simple', 'Ajustement selon la taille du moule (volume)'],
-          ['foncage', 'Recouvre une surface (fonçage, glaçage…)'],
+          ['foncage', 'Recouvre une surface (pâte à tarte, glaçage…)'],
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [
@@ -1037,11 +1094,28 @@ export function CreerForm({
                 <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
                 <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only peer" />
-                <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container" />
-                <span className="ml-3 font-label-md text-label-md text-primary">{isPublic ? 'Public' : 'Privé'}</span>
-              </label>
+              <div className="flex rounded-full border border-outline-variant overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(false);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${!isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Privée
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(true);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Publique
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               <label className="font-label-md text-label-md text-outline uppercase block">Catégories et Tags</label>
@@ -1061,33 +1135,74 @@ export function CreerForm({
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 ))}
-                <div className="relative">
+                <div className="relative" ref={tagPickerRef}>
                   <button
                     type="button"
-                    onClick={() => setTagPickerOpen((v) => !v)}
+                    onClick={() => {
+                      setTagPickerOpen((v) => !v);
+                      setTagSearch('');
+                      setPendingTagIds(new Set());
+                    }}
                     className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
                   >
                     + Ajouter un tag
                   </button>
                   {tagPickerOpen && (
                     <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
-                      {remainingTags.length ? (
-                        remainingTags.map((t) => (
-                          <button
+                      <div className="px-2 pb-2 sticky top-0 bg-white">
+                        <input
+                          type="text"
+                          value={tagSearch}
+                          onChange={(e) => setTagSearch(e.target.value)}
+                          placeholder="Rechercher un tag…"
+                          autoFocus
+                          className="w-full px-3 py-1.5 text-sm border border-outline-variant rounded-lg focus:border-primary outline-none"
+                        />
+                      </div>
+                      {filteredRemainingTags.length ? (
+                        filteredRemainingTags.map((t) => (
+                          <label
                             key={t.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
-                              setTagPickerOpen(false);
-                              markDirty();
-                            }}
-                            className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
+                            className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                           >
+                            <input
+                              type="checkbox"
+                              checked={pendingTagIds.has(t.id)}
+                              onChange={(e) => {
+                                setPendingTagIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) next.add(t.id);
+                                  else next.delete(t.id);
+                                  return next;
+                                });
+                              }}
+                              className="accent-primary"
+                            />
                             {t.name}
-                          </button>
+                          </label>
                         ))
                       ) : (
                         <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                      )}
+                      {pendingTagIds.size > 0 && (
+                        <div className="px-2 pt-2 sticky bottom-0 bg-white border-t border-outline-variant">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTags((prev) => {
+                                const next = new Map(prev);
+                                for (const t of allTags) if (pendingTagIds.has(t.id)) next.set(t.id, t.name);
+                                return next;
+                              });
+                              setTagPickerOpen(false);
+                              setPendingTagIds(new Set());
+                              markDirty();
+                            }}
+                            className="w-full px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md hover:opacity-80 transition-opacity"
+                          >
+                            Ajouter {pendingTagIds.size} tag{pendingTagIds.size > 1 ? 's' : ''}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1195,7 +1310,7 @@ export function CreerForm({
                   onChange={(e) => setHeroAiRetouched(e.target.checked)}
                   className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
                 />
-                Retravaillée avec l&apos;IA
+                Indication photo retravaillée avec l&apos;IA
               </label>
             )}
           </div>
@@ -1239,6 +1354,7 @@ export function CreerForm({
                     className="editorial-input font-body-md text-on-surface cursor-pointer appearance-none pr-6"
                   >
                     <option value="unite">Unité(s)</option>
+                    <option value="pers">Pers.</option>
                     <option value="kg">kg</option>
                     <option value="g">g</option>
                     <option value="l">l</option>
@@ -1541,17 +1657,35 @@ export function CreerForm({
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
-                      <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
-                        <option value="">— unité —</option>
-                        {units.map((u) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
+                      {/* Colonne « UNITÉ ». Le libellé est en flux normal,
+                          exactement comme ceux d'« INGRÉDIENTS » et
+                          d'« ALLERGÈNES » : les trois sont alors des boîtes de
+                          même hauteur qu'`items-center` aligne ensemble, et
+                          chacune commence au bord gauche de son champ. Le
+                          superposer au select (grid) le centrait au contraire
+                          dans une boîte de 39 px au lieu de 20 — le demi-pixel
+                          qui en résultait le remontait d'une ligne à l'écran,
+                          et le décalait à droite dès que la colonne s'élargit.
+                          Le select ci-dessous ne sert qu'à réserver la largeur
+                          de la colonne (celle de l'unité la plus longue, cf.
+                          le `width: auto` de la ligne d'ingrédient) : `h-0` le
+                          retire de la hauteur sans toucher à cette largeur. */}
+                      <div className="shrink-0">
+                        <span className="font-label-md text-label-md text-outline">UNITÉ</span>
+                        <div aria-hidden className="h-0 overflow-hidden">
+                          <select className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                            <option value=""></option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="hidden xl:contents">
                         <div className="flex-1 min-w-0">
-                          <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                          <span className="font-label-md text-label-md text-outline">ALLERGÈNES</span>
                         </div>
                         <div className="flex-1 min-w-0" />
                         <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
@@ -1612,7 +1746,7 @@ export function CreerForm({
                             // options → colonne alignée.
                             style={{ width: 'auto' }}
                           >
-                            <option value="">— unité —</option>
+                            <option value=""></option>
                             {units.map((u) => (
                               <option key={u.id} value={u.name}>
                                 {u.name}
@@ -1876,7 +2010,7 @@ export function CreerForm({
                               onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
                               className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
                             />
-                            Retravaillée avec l&apos;IA
+                            Indication photo retravaillée avec l&apos;IA
                           </label>
                         )}
                       </div>
@@ -2085,7 +2219,22 @@ export function CreerForm({
                   const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
                   return (
                     <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                      <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
+                      <span className="font-body-md text-body-md text-on-surface break-words">
+                        {m.name}
+                        {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
+                        {m.stepIndices.length === 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => goToStep(m.stepIndices[0])}
+                            className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            1 étape — {steps[m.stepIndices[0]]?.title || `Étape ${m.stepIndices[0] + 1}`}
+                          </button>
+                        ) : (
+                          <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
+                        )}
+                      </span>
                       <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                         {[m.qty, m.unit].filter(Boolean).join(' ')}
                         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
