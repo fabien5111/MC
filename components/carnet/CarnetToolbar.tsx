@@ -19,7 +19,7 @@
 // Restent en `router.replace()` les deux contrôles qui ne peuvent pas être des
 // liens : la saisie libre (débouncée, une frappe n'est pas un clic) et le
 // menu de tri.
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -32,6 +32,7 @@ import {
   carnetParamsToQueryString,
   type CarnetParams,
 } from '@/lib/carnet-params';
+import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 
 const DEBOUNCE_MS = 300;
 
@@ -46,7 +47,7 @@ export function CarnetToolbar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  const { startTransition } = useCarnetTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Saisie : seul contrôle à garder un état local, parce qu'il doit réagir à

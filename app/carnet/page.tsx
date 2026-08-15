@@ -10,6 +10,7 @@ import { parseCarnetParams, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { CarnetProvider } from '@/components/carnet/CarnetProvider';
 import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
@@ -91,21 +92,23 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             </div>
           )}
         </div>
-        <CarnetToolbar
-          params={params}
-          counts={counts}
-          statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
-        />
-        <CarnetContent
-          items={filtered}
-          favIds={[...favIds]}
-          importsEnAttente={importsEnAttente}
-          emptyMessage={
-            params.q || params.statut !== 'all'
-              ? 'Aucune recette ne correspond à ce filtre.'
-              : EMPTY_MESSAGES[params.scope]
-          }
-        />
+        <CarnetProvider>
+          <CarnetToolbar
+            params={params}
+            counts={counts}
+            statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
+          />
+          <CarnetContent
+            items={filtered}
+            favIds={[...favIds]}
+            importsEnAttente={importsEnAttente}
+            emptyMessage={
+              params.q || params.statut !== 'all'
+                ? 'Aucune recette ne correspond à ce filtre.'
+                : EMPTY_MESSAGES[params.scope]
+            }
+          />
+        </CarnetProvider>
       </main>
       <Footer />
       <MobileNav current="carnet" />

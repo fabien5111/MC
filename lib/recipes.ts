@@ -15,7 +15,7 @@ type Recipe = Database['public']['Tables']['recipes']['Row'];
 
 export const CARD_SELECT =
   'id, title, description, hero_image_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
-  'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
+  'profiles!recipes_author_id_fkey(full_name, avatar_url, username), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
@@ -33,7 +33,7 @@ export type RecipeCard = Pick<
   | 'rating_count'
   | 'created_at'
 > & {
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
+  profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
