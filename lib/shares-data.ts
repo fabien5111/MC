@@ -14,6 +14,7 @@ import type {
   BookShareGiven,
   BookShareReceived,
   Member,
+  RecipeShareGiven,
   RecipeShareInfo,
   RecipeShareReceived,
   ShareScope,
@@ -82,6 +83,34 @@ export const getRecipeSharesReceived = cache(async (userId: string): Promise<Rec
   return ((data as unknown as Row[]) ?? [])
     .filter((r): r is Row & { profiles: Omit<Member, 'id'> } => !!r.profiles)
     .map((r) => ({ created_at: r.created_at, recipe: r.recipes, owner: { id: r.owner_id, ...r.profiles } }));
+});
+
+// ── Partages d'une recette précise émis par le propriétaire ────────────────
+//
+// Pour la carte « Partages de mes recettes » des réglages — volontairement
+// distincte des partages de carnet (`getBookSharesGiven`) : la demande est de
+// ne jamais mélanger les deux granularités dans cet écran.
+export const getRecipeSharesGiven = cache(async (ownerId: string): Promise<RecipeShareGiven[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipe_shares' as never)
+    .select(`recipe_id, shared_with_id, created_at, recipes(id, title), profiles!recipe_shares_shared_with_id_fkey(${MEMBER_SELECT})`)
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getRecipeSharesGiven:', error.message);
+    return [];
+  }
+  type Row = {
+    recipe_id: string;
+    shared_with_id: string;
+    created_at: string | null;
+    recipes: { id: string; title: string } | null;
+    profiles: Omit<Member, 'id'> | null;
+  };
+  return ((data as unknown as Row[]) ?? [])
+    .filter((r): r is Row & { profiles: Omit<Member, 'id'> } => !!r.profiles)
+    .map((r) => ({ created_at: r.created_at, recipe: r.recipes, member: { id: r.shared_with_id, ...r.profiles } }));
 });
 
 // ── Qui a accès à UNE recette (fiche recette, propriétaire) ────────────────

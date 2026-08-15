@@ -6,6 +6,11 @@ import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
+import { FollowingCard } from '@/components/profile/FollowingCard';
+import { BookSharesCard } from '@/components/profile/BookSharesCard';
+import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
+import { getFollowCounts, getFollowing } from '@/lib/follows';
+import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -56,6 +61,13 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   // Google ayant ensuite lié un mot de passe).
   const hasPassword = user.identities ? user.identities.some((i) => i.provider === 'email') : true;
 
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven] = await Promise.all([
+    getFollowCounts(user.id),
+    getFollowing(user.id),
+    getBookSharesGiven(user.id),
+    getRecipeSharesGiven(user.id),
+  ]);
+
   return (
     <>
       <Header />
@@ -80,8 +92,12 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           fallbackName={fallbackName}
           fallbackAvatar={fallbackAvatar}
           isAdmin={admin}
+          followCounts={followCounts}
         />
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
+        <FollowingCard userId={user.id} following={following} />
+        <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
+        <RecipeSharesCard ownerId={user.id} given={recipeSharesGiven} />
       </main>
       <Footer />
       <MobileNav />

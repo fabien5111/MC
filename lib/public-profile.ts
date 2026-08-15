@@ -56,13 +56,17 @@ export const getPublicProfileStats = cache(async (authorId: string): Promise<Pub
       .select('id', { count: 'exact', head: true })
       .eq('author_id', authorId)
       .eq('status', 'published'),
-    supabase.from('author_ratings').select('rating_avg').eq('author_id', authorId).maybeSingle(),
+    supabase.from('author_ratings').select('rating_avg, rated_recipes').eq('author_id', authorId).maybeSingle(),
   ]);
   if (countRes.error) console.error('getPublicProfileStats (recettes):', countRes.error.message);
   if (ratingRes.error) console.error('getPublicProfileStats (note):', ratingRes.error.message);
+  // `rated_recipes` à 0 : aucune recette notée, `rating_avg` vaut alors 0 sans
+  // qu'aucune note n'ait jamais été donnée — à ne pas confondre avec une
+  // vraie moyenne de 0, qui n'existe pas (les notes vont de 1 à 5).
+  const ratedRecipes = ratingRes.data?.rated_recipes ?? 0;
   return {
     recipeCount: countRes.count ?? 0,
-    ratingAvg: ratingRes.data?.rating_avg ?? null,
+    ratingAvg: ratedRecipes > 0 ? (ratingRes.data?.rating_avg ?? null) : null,
   };
 });
 
