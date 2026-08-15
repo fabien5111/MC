@@ -24,10 +24,28 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 });
 
 // Exige une session ; redirige vers /connexion sinon.
+//
+// Exige AUSSI un pseudo choisi. La marque en est `profiles.username` (le slug
+// n'est écrit que par les chemins qui ont validé le pseudo : unicité + IA),
+// et non `full_name`, que le trigger `handle_new_user` remplit tout seul avec
+// le nom du compte Google — un nom que son porteur n'a jamais choisi
+// d'afficher publiquement à côté de ses recettes.
+//
+// La garde est ici, et pas dans le middleware, pour ne pas ajouter une
+// requête base à chaque requête HTTP du site : toutes les pages privées
+// passent par `requireUser`, et `getProfile` est mémoïsé par requête (React
+// cache), donc les pages qui lisent déjà le profil ne paient rien.
+//
+// `/choix-pseudo` n'appelle délibérément pas cette fonction : ce serait une
+// boucle de redirection.
 export async function requireUser(next?: string): Promise<User> {
   const user = await getCurrentUser();
   if (!user) {
     redirect(`/connexion${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+  }
+  const profile = await getProfile(user.id);
+  if (!profile?.username) {
+    redirect(`/choix-pseudo${next ? `?next=${encodeURIComponent(next)}` : ''}`);
   }
   return user;
 }

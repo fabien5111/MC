@@ -132,14 +132,96 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 - Supabase Auth par **cookies** (`@supabase/ssr`), vérifiable côté serveur.
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
   **OAuth Google** (callback : `/auth/callback`).
-- `middleware.ts` (runtime **Node.js**) protège `/profil`, `/creer`,
-  `/admin`, `/execution`, `/courses`, `/importer`, `/relecture` → redirection
-  vers `/connexion?next=…` si non connecté. Tolérant aux pannes : une erreur
-  Supabase transitoire ne bloque pas le site, le contrôle fin restant assuré
-  dans chaque page (`requireUser`, `requireAdmin`).
+- `middleware.ts` (runtime **Node.js**) protège `/profil`, `/reglages`,
+  `/choix-pseudo`, `/creer`, `/admin`, `/execution`, `/courses`, `/importer`,
+  `/relecture`, `/idees/nouvelle` → redirection vers `/connexion?next=…` si non
+  connecté. Tolérant aux pannes : une erreur Supabase transitoire ne bloque pas
+  le site, le contrôle fin restant assuré dans chaque page (`requireUser`,
+  `requireAdmin`).
 - Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
   `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
   (`member`, `null`…) vaut membre ordinaire.
+
+### Pseudo (création de compte)
+
+L'inscription demande un **pseudo**, et non plus un « nom complet ». Un seul
+geste de saisie alimente **deux colonnes**, et c'est la clé du dispositif :
+
+```
+saisie « Fabien Chenu »
+  → profiles.full_name = "Fabien Chenu"   (nom affiché, casse et accents gardés)
+  → profiles.username  = "fabien-chenu"   (adresse du profil public /u/…)
+```
+
+- **L'unicité insensible à la casse est portée par le SLUG**, pas par le texte
+  affiché : « Fabien » et « fabien » produisent tous deux `fabien`, et l'index
+  unique sur `username` refuse le second sans qu'aucun code ne s'en occupe. Le
+  même mécanisme attrape gratuitement « Élise » vs « Elise » et « Fabien » vs
+  « Fabien! ». Ne pas ajouter de second dispositif d'unicité sur `full_name`
+  côté application : la comparaison `ilike` de `pseudoDisponible` est un
+  confort d'affichage (message clair avant l'envoi), la contrainte est en base.
+- **Longueur 3 à 20** (`PSEUDO_MIN_LENGTH` / `PSEUDO_MAX_LENGTH`). Ce n'est pas
+  la base qui a décidé, c'est la carte de recette : l'auteur y est affiché en
+  `text-xs` sous un titre déjà serré (`RecipeCardLayout`), et au-delà d'une
+  vingtaine de caractères le nom tronque sur mobile. 20 tient par ailleurs sous
+  le plafond de 30 du slug — aucun pseudo valide ne peut donc produire un
+  handle tronqué, ce qui ferait coller deux pseudos distincts sur la même URL.
+- **Pas de contrainte CHECK sur `full_name`** : le trigger `handle_new_user` y
+  recopie le nom du compte Google, qui peut dépasser 20 caractères. Une
+  contrainte ferait échouer l'insertion dans `auth.users` — c'est-à-dire
+  casser la connexion Google entière. La longueur est tenue par l'application ;
+  la base ne contraint que `username`.
+- **Casse** : un pseudo saisi entièrement en majuscules est ramené à une
+  capitale par mot (`FABIEN` → `Fabien`). Seulement s'il compte au moins
+  3 lettres — `JP` et `MC` sont des initiales, pas un cri — et seulement à la
+  **sortie du champ**, jamais à la frappe : corriger « FAB » en « Fab » dès la
+  troisième lettre empêcherait de taper « FABIEN ».
+- **Contrôle IA** (`lib/ai/pseudo-moderation.ts`, modèle `claude-haiku-4-5`) :
+  grossièreté, propos haineux, diffamation, personnalité non recommandable,
+  usurpation. Un seul message côté visiteur — « Pseudo non autorisé » —, jamais
+  le motif : l'expliciter, c'est apprendre à contourner. Le motif part dans les
+  journaux serveur avec la version du prompt. **Best-effort** (même doctrine que
+  `/api/idees/verifier-doublon`) : clé absente, panne ou réponse illisible →
+  on autorise, parce que bloquer l'inscription sur une panne de l'API Anthropic
+  reviendrait à fermer le site. D'où le filet **local** de `lib/pseudo.ts`
+  (noms réservés + grossièretés évidentes), qui ne dépend d'aucun réseau — il
+  compare **mot à mot le slug**, jamais par sous-chaîne, sinon « con » refuserait
+  « Constance ».
+- **`lib/pseudo.ts` (pur) / `lib/pseudo-data.ts` (base + IA, serveur)** : même
+  séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire client
+  tirerait `next/headers` et casserait le build.
+- **Les contrôles client ne prouvent rien** : `supabase.auth.signUp()` est
+  appelable depuis la console du navigateur. Le formulaire appelle donc
+  `POST /api/pseudo/verifier` **avant** de créer le compte (unicité + IA), et
+  `/choix-pseudo` passe par `POST /api/pseudo/choisir`, qui **revalide tout**
+  puis écrit avec la clé service_role — le navigateur n'écrit jamais
+  `full_name` / `username` lui-même sur ce chemin. Vérifier avant plutôt
+  qu'après la création du compte évite de brûler une adresse e-mail (Supabase
+  la refuserait ensuite) pour un pseudo qu'il suffisait de changer.
+
+### `/choix-pseudo` — passage obligé
+
+Écran de choix du pseudo, imposé à tout compte qui n'en a pas — en pratique
+toute première connexion Google, où le trigger `handle_new_user` recopie le nom
+du compte Google dans `full_name` : un état civil que personne n'a choisi
+d'afficher à côté de ses recettes. Pré-rempli avec ce nom (nettoyé, tronqué,
+dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'écran.
+
+- **La marque « a un pseudo » est `profiles.username`**, pas `full_name` : le
+  slug n'est écrit que par les chemins qui ont validé le pseudo, alors que
+  `full_name` se remplit tout seul. Conséquence directe : **vider l'adresse du
+  profil depuis `/reglages` renverrait le membre ici** — `ProfileEditor` refuse
+  donc un champ vide.
+- **La garde vit dans `requireUser()`** (`lib/auth.ts`), pas dans le
+  middleware : toutes les pages privées y passent, `getProfile` est mémoïsé par
+  requête, et la poser dans le middleware coûterait une requête base sur
+  **chaque** requête HTTP du site. `/choix-pseudo` n'appelle donc pas
+  `requireUser` — ce serait une boucle de redirection.
+- `/auth/callback` est le seul endroit où le pseudo d'une inscription par
+  e-mail peut être écrit : au moment du `signUp` il n'y a pas encore de session.
+  Le pseudo validé voyage jusque-là dans les métadonnées du compte, et sa
+  disponibilité est **revérifiée** — plusieurs jours peuvent séparer
+  l'inscription de la confirmation de l'adresse.
 
 ### Rôles du back-office
 

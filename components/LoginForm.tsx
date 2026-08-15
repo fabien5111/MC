@@ -3,11 +3,26 @@
 // Formulaire de connexion / inscription + OAuth (Google).
 // Le panneau s'ouvre sur la connexion ; l'inscription se fait par bascule et
 // impose une confirmation du mot de passe + les règles de `lib/password.ts`.
+//
+// L'inscription demande un PSEUDO (et non plus un « nom complet ») : unique,
+// contrôlé par IA, il devient à la fois le nom affiché et l'adresse du profil
+// public — cf. `lib/pseudo.ts`. Les contrôles sont faits deux fois, ici pour
+// le confort (correction à la frappe, message immédiat) et dans
+// `/api/pseudo/verifier` pour de vrai : `supabase.auth.signUp()` est
+// appelable depuis la console du navigateur, un contrôle purement client ne
+// prouverait rien.
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
+import {
+  nettoyerSaisiePseudo,
+  normaliserCassePseudo,
+  PSEUDO_MAX_LENGTH,
+  PSEUDO_MIN_LENGTH,
+  validerPseudo,
+} from '@/lib/pseudo';
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 
@@ -30,7 +45,7 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   // (`/connexion?inscription=1`) : l'en-tête visiteur propose les deux gestes
   // séparément, chacun doit tomber sur le bon formulaire.
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
-  const [fullName, setFullName] = useState('');
+  const [pseudo, setPseudo] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -44,11 +59,12 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
 
   const strength = useMemo(() => evaluatePassword(password), [password]);
   const mismatch = isSignup && confirm.length > 0 && confirm !== password;
-  // À l'inscription seulement : la complexité, la confirmation et
-  // l'acceptation des conditions bloquent l'envoi. En connexion, aucun
-  // contrôle — les comptes existants peuvent avoir un mot de passe
-  // antérieur à ces règles.
-  const blocked = isSignup && (!strength.valid || password !== confirm || !terms);
+  const pseudoValidation = useMemo(() => validerPseudo(pseudo), [pseudo]);
+  // À l'inscription seulement : le pseudo, la complexité du mot de passe, la
+  // confirmation et l'acceptation des conditions bloquent l'envoi. En
+  // connexion, aucun contrôle — les comptes existants peuvent avoir un mot de
+  // passe antérieur à ces règles.
+  const blocked = isSignup && (!pseudoValidation.ok || !strength.valid || password !== confirm || !terms);
 
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
@@ -63,11 +79,13 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
     setNotice(null);
     if (blocked) {
       setError(
-        password !== confirm
-          ? 'Les deux mots de passe ne correspondent pas.'
-          : !terms
-            ? "Vous devez accepter les conditions d'utilisation."
-            : 'Le mot de passe ne respecte pas les règles de sécurité.',
+        !pseudoValidation.ok
+          ? pseudoValidation.message
+          : password !== confirm
+            ? 'Les deux mots de passe ne correspondent pas.'
+            : !terms
+              ? "Vous devez accepter les conditions d'utilisation."
+              : 'Le mot de passe ne respecte pas les règles de sécurité.',
       );
       return;
     }
@@ -86,12 +104,39 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
       router.refresh();
       return;
     }
+    // Déjà couvert par `blocked` ci-dessus ; répété pour que la suite du bloc
+    // manipule un pseudo normalisé et non l'union des deux issues.
+    if (!pseudoValidation.ok) {
+      setError(pseudoValidation.message);
+      setBusy(false);
+      return;
+    }
     try {
+      // Unicité + contrôle IA du pseudo AVANT de créer le compte : un compte
+      // créé puis refusé laisserait une adresse e-mail brûlée (Supabase la
+      // refuserait à la tentative suivante) pour un pseudo qu'il suffisait de
+      // changer.
+      const verif = await fetch('/api/pseudo/verifier', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pseudo: pseudoValidation.pseudo }),
+      });
+      const avis = (await verif.json().catch(() => null)) as { ok?: boolean; message?: string; slug?: string } | null;
+      if (!avis?.ok) {
+        setError(avis?.message || 'Ce pseudo ne peut pas être vérifié pour le moment. Réessayez.');
+        setBusy(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName },
+          // `full_name` reste la clé lue par le trigger `handle_new_user` ; le
+          // slug voyage à côté, `/auth/callback` l'écrira dans
+          // `profiles.username` une fois l'adresse confirmée (avant ça, il n'y
+          // a pas de session pour écrire quoi que ce soit).
+          data: { full_name: pseudoValidation.pseudo, pseudo: pseudoValidation.pseudo, pseudo_slug: avis.slug },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
@@ -160,10 +205,34 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
         <form onSubmit={submit} className="space-y-6">
           {isSignup && (
             <div className="space-y-1">
-              <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="name">
-                Nom complet
+              <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="pseudo">
+                Pseudo
               </label>
-              <input id="name" type="text" placeholder="Jean Dupont" value={fullName} onChange={(e) => setFullName(e.target.value)} className={FIELD} />
+              <input
+                id="pseudo"
+                type="text"
+                required
+                autoComplete="nickname"
+                maxLength={PSEUDO_MAX_LENGTH}
+                placeholder="MaryseGourmande"
+                value={pseudo}
+                // Nettoyage à la frappe (caractères autorisés, longueur), mais
+                // correction de la casse seulement à la sortie du champ :
+                // ramener « FAB » à « Fab » dès la troisième lettre
+                // empêcherait de taper « FABIEN ».
+                onChange={(e) => setPseudo(nettoyerSaisiePseudo(e.target.value))}
+                onBlur={() => setPseudo((v) => normaliserCassePseudo(v.trim()))}
+                className={FIELD}
+              />
+              <p className="flex items-baseline justify-between gap-3 text-[12px] text-on-surface-variant mt-1 ml-1">
+                <span>
+                  C&apos;est le nom qui apparaîtra sur vos recettes, et l&apos;adresse de votre profil public. De{' '}
+                  {PSEUDO_MIN_LENGTH} à {PSEUDO_MAX_LENGTH} caractères.
+                </span>
+                <span className={pseudo.length >= PSEUDO_MAX_LENGTH ? 'text-error shrink-0' : 'shrink-0'}>
+                  {pseudo.length}/{PSEUDO_MAX_LENGTH}
+                </span>
+              </p>
             </div>
           )}
           <div className="space-y-1">
