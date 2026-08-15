@@ -136,9 +136,9 @@ const numOrNull = (v: string): number | null => {
 // « chocolat noir 66 % » / « chocolat noir 54 % » porté par la note plutôt
 // que le nom) désignent des lignes différentes de la recette, fusionner
 // leurs quantités produirait un total sans usage réel.
-function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string; note: string }[] {
-  const merged: { key: string; name: string; qty: string; unit: string; note: string }[] = [];
-  sps.forEach((sp) =>
+function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
+  sps.forEach((sp, si) =>
     sp.ings.forEach((i) => {
       const name = i.nom.trim();
       if (!name) return;
@@ -146,9 +146,10 @@ function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; uni
       const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite, note });
+        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite, note, steps: new Set([si]) });
         return;
       }
+      ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qte).replace(',', '.'));
       if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
@@ -156,7 +157,13 @@ function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; uni
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
-  return merged.map(({ name, qty, unit, note }) => ({ name, qty, unit, note }));
+  return merged.map(({ name, qty, unit, note, steps }) => ({
+    name,
+    qty,
+    unit,
+    note,
+    stepIndices: Array.from(steps).sort((a, b) => a - b),
+  }));
 }
 
 // Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
@@ -372,6 +379,20 @@ export function RelectureEditor({
     unitFieldRefs.current[focusUnitKey]?.focus();
     setFocusUnitKey(null);
   }, [focusUnitKey]);
+
+  // Lien « voir l'étape » du récapitulatif d'ingrédients, pour un ingrédient
+  // qui n'apparaît que dans une seule étape. Déplie l'étape (et sa liste
+  // d'ingrédients) si besoin avant de défiler jusqu'à son en-tête.
+  const [scrollToStepIndex, setScrollToStepIndex] = useState<number | null>(null);
+  const goToStep = useCallback((si: number) => {
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, collapsed: false, ingsCollapsed: false } : sp)));
+    setScrollToStepIndex(si);
+  }, []);
+  useEffect(() => {
+    if (scrollToStepIndex === null) return;
+    document.getElementById(stepAnchorId(scrollToStepIndex))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScrollToStepIndex(null);
+  }, [scrollToStepIndex]);
 
   // Focus le nom de l'étape ajoutée (porté de relecture.html).
   useEffect(() => {
@@ -1987,6 +2008,18 @@ export function RelectureEditor({
                   <span className="font-body-md text-body-md text-on-surface break-words">
                     {m.name}
                     {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
+                    {m.stepIndices.length === 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => goToStep(m.stepIndices[0])}
+                        className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                        1 étape — {sps[m.stepIndices[0]]?.nom || `Étape ${m.stepIndices[0] + 1}`}
+                      </button>
+                    ) : (
+                      <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
+                    )}
                   </span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
