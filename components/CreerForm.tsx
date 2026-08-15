@@ -289,8 +289,9 @@ export function CreerForm({
   // superflue, un faux négatif perdrait une saisie en cours sans prévenir.
   // Couvre les champs contrôlés (texte, bascules, fichiers via ImageSlot) via
   // la délégation `onChange` posée sur le conteneur du formulaire ; les
-  // actions déclenchées par clic seul (tags, difficulté, ajout/suppression de
-  // lignes) n'y sont pas.
+  // actions déclenchées par clic seul (difficulté, ajout/suppression de
+  // lignes) n'y sont pas — sauf les tags, qui appellent `markDirty()`
+  // explicitement (même correctif que RelectureEditor).
   const dirtyRef = useRef(false);
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
@@ -415,6 +416,7 @@ export function CreerForm({
       setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
       setNewTagName('');
       setTagPickerOpen(false);
+      markDirty();
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
@@ -429,6 +431,7 @@ export function CreerForm({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    markDirty();
     refreshRefs();
   }
 
@@ -1002,7 +1005,10 @@ export function CreerForm({
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                    onClick={() => {
+                      setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)));
+                      markDirty();
+                    }}
                     title="Retirer ce tag"
                     className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                   >
@@ -1028,6 +1034,7 @@ export function CreerForm({
                             onClick={() => {
                               setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
                               setTagPickerOpen(false);
+                              markDirty();
                             }}
                             className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
                           >
