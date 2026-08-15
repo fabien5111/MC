@@ -452,10 +452,42 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   `ProfileHeader` reçoit `followCounts` déjà calculé par le serveur
   (`getFollowCounts`). Ces deux colonnes restent en base, mortes ; les
   supprimer est une migration séparée, hors périmètre de cet écran.
-- **Note moyenne d'un profil public** (`getPublicProfileStats`) : `null`
-  (donc masquée) tant que `author_ratings.rated_recipes` est à 0 — sans ça,
-  un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
-  vraie mauvaise moyenne.
+- **Note moyenne d'un profil public** : voir « Vitrine publique » ci-dessous —
+  elle ne vient plus de la vue `author_ratings`.
+
+## Vitrine publique d'un pâtissier
+
+`/u/[handle]` (la vitrine — ce qu'on montre, distinct de l'atelier
+`/reglages` et du carnet privé) : identité, statistiques, puis les recettes
+**publiées** de ce pâtissier.
+
+- **Note moyenne** (`getPublicProfileStats`, `lib/public-profile.ts`) :
+  calculée depuis `recipes` (`rating_avg` des recettes publiées dont
+  `rating_count > 0`), **pas** depuis la vue `author_ratings`. Celle-ci reste
+  la source de la facette « note de l'auteur » de `/recherche`, mais elle ne
+  permet pas de savoir ici s'il existe au moins une *note* : un profil dont
+  l'unique recette n'avait jamais été évaluée affichait « 0.0 », indiscernable
+  d'une vraie mauvaise moyenne (les notes vont de 1 à 5), et la moyenne se
+  diluait dès qu'une partie seulement des recettes était notée. `null` — donc
+  bloc masqué — s'il n'y a aucune recette notée.
+- **Pas de filtre par catégorie.** Les pastilles de tags ont été retirées (et
+  avec elles `?cat=` et `getPublicProfileCategories`) : sur la vitrine d'une
+  seule personne, chercher par titre et trier couvre le besoin, sans une
+  rangée de pastilles dont le contenu change d'un profil à l'autre. D'anciens
+  liens `?cat=` restent valides — le paramètre est simplement ignoré.
+- **Recherche et tri**, comme sur `/carnet` : `PublicProfileToolbar`
+  (recherche débouncée 300 ms + tri) réécrit l'URL, seul état de l'écran
+  (`lib/public-profile-params.ts`, pur), et le Server Component re-rend. Le
+  filtrage et le tri se font **en SQL** (`getPublicProfileRecipes`), pas en
+  mémoire comme au carnet : ce dernier charge de toute façon tout son jeu de
+  données pour ses compteurs de pastilles, ce que la vitrine n'a pas à faire.
+  Les trois tris sont ceux du carnet, définis une seule fois dans
+  `lib/recipe-sort.ts`.
+- **Pas de provider de transition** (contrairement à `CarnetProvider`) : au
+  carnet, l'overlay est rendu par la grille, cliente ; ici la grille reste un
+  Server Component (`RecipeCard` résout les allergènes côté serveur), donc
+  c'est la barre — seule à déclencher la navigation — qui porte le
+  `LoadingOverlay`, plein écran de toute façon.
 
 ## Base de données (Supabase / PostgreSQL)
 
