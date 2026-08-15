@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,10 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   }
 
   const admin = await isAdmin(user.id);
+  // Un compte lié à Google n'a pas forcément de mot de passe — présent
+  // uniquement si une identité e-mail existe (inscription directe, ou compte
+  // Google ayant ensuite lié un mot de passe).
+  const hasPassword = user.identities ? user.identities.some((i) => i.provider === 'email') : true;
 
   return (
     <>
@@ -76,6 +81,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           fallbackAvatar={fallbackAvatar}
           isAdmin={admin}
         />
+        {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
       </main>
       <Footer />
       <MobileNav />
