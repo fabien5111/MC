@@ -1354,6 +1354,7 @@ export function CreerForm({
                     className="editorial-input font-body-md text-on-surface cursor-pointer appearance-none pr-6"
                   >
                     <option value="unite">Unité(s)</option>
+                    <option value="pers">Pers.</option>
                     <option value="kg">kg</option>
                     <option value="g">g</option>
                     <option value="l">l</option>
@@ -1656,8 +1657,13 @@ export function CreerForm({
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
-                      <div className="relative shrink-0">
-                        <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                      <div className="grid shrink-0">
+                        <select
+                          aria-hidden
+                          className="editorial-input invisible col-start-1 row-start-1"
+                          style={{ width: 'auto' }}
+                          tabIndex={-1}
+                        >
                           <option value=""></option>
                           {units.map((u) => (
                             <option key={u.id} value={u.name}>
@@ -1665,7 +1671,7 @@ export function CreerForm({
                             </option>
                           ))}
                         </select>
-                        <span className="absolute inset-0 flex items-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
+                        <span className="col-start-1 row-start-1 self-center px-3 pointer-events-none font-label-md text-label-md text-outline uppercase">
                           Unité
                         </span>
                       </div>

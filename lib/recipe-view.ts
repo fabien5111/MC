@@ -38,7 +38,7 @@ export function matchAllergenPictos(names: string[], refs: AllergenRef[]): Aller
   });
 }
 
-export const UNITS_LBL: Record<string, string> = { unite: 'unité(s)', kg: 'kg', g: 'g', l: 'l' };
+export const UNITS_LBL: Record<string, string> = { unite: 'unité(s)', pers: 'pers.', kg: 'kg', g: 'g', l: 'l' };
 const MOLDS_LBL: Record<string, string> = { cercle: 'cercle', manque: 'moule à manqué', cadre: 'cadre rectangulaire' };
 
 export function moldLbl(rec: RecipeFull): string {
