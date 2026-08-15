@@ -410,15 +410,18 @@ export function RelectureEditor({
   // Suivi grossier de la saisie pour la confirmation de sortie, cf.
   // CreerForm. Écouteur délégué sur le document plutôt qu'`onChange` sur un
   // conteneur unique : contrairement à CreerForm, l'écran n'a pas de wrapper
-  // englobant toutes les sections éditables.
+  // englobant toutes les sections éditables. Ne couvre que les événements
+  // natifs `change` (champs, select…) : les interactions par clic qui ne
+  // passent pas par un `<input>`/`<select>` (ajout/retrait d'un tag) doivent
+  // appeler `markDirty()` elles-mêmes.
   const dirtyRef = useRef(false);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
   useEffect(() => {
-    const markDirty = () => {
-      dirtyRef.current = true;
-    };
     document.addEventListener('change', markDirty);
     return () => document.removeEventListener('change', markDirty);
-  }, []);
+  }, [markDirty]);
   // Recette créée depuis cette relecture. La création écrit la recette puis
   // ses étapes, photos et ingrédients : si l'un de ces écrits échoue, la
   // recette existe déjà. Sans cette mémoire, une nouvelle tentative en
@@ -539,6 +542,7 @@ export function RelectureEditor({
       setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
       setNewTagName('');
       setTagPickerOpen(false);
+      markDirty();
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
@@ -553,6 +557,7 @@ export function RelectureEditor({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
+    markDirty();
     refreshRefs();
   }
   // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
@@ -740,6 +745,26 @@ export function RelectureEditor({
   const sumCuisson = sps.reduce((n, sp) => n + (numOrNull(sp.cuisson) || 0), 0);
   const sumTotal = sumPrep + sumAttente + sumCuisson;
   const ingredientsRecap = useMemo(() => mergeIngredientsRecap(sps), [sps]);
+
+  // ── Planning de préparation (aperçu, même principe que CreerForm) ──
+  const allSameDay = sps.every((sp) => !numOrNull(sp.jour));
+  const planningDays = useMemo(() => {
+    if (allSameDay) return [];
+    const items = sps
+      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false }))
+      .sort((a, b) => b.offset - a.offset || a.order - b.order);
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    const days: { offset: number; items: typeof items }[] = [];
+    items.forEach((it) => {
+      let d = days.find((x) => x.offset === it.offset);
+      if (!d) {
+        d = { offset: it.offset, items: [] };
+        days.push(d);
+      }
+      d.items.push(it);
+    });
+    return days;
+  }, [sps, allSameDay]);
 
   // ── Lecture du formulaire → pivot corrigé ──
   function readForm(): any {
@@ -1063,16 +1088,50 @@ export function RelectureEditor({
     }
   }
 
-  // Bouton « Quitter » du rail : ne fait que quitter, avec confirmation si
-  // des corrections n'ont pas été enregistrées — la suppression du brouillon
-  // est un bouton distinct (« Abandonner l'import », ci-dessous).
-  const handleLeave = useCallback(async () => {
-    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
-    // Pas de reset à false ensuite : on quitte la page, autant garder le
-    // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
+  // Enregistre les corrections puis quitte (choix « Enregistrer et quitter »
+  // de la popup ci-dessous) — même écriture que `onSave`, sans le statut
+  // temporaire affiché à l'écran puisqu'on le quitte aussitôt. Fonction non
+  // mémoïsée (comme `onSave`/`onCreate`) : un `useCallback` à dépendances
+  // fixes figerait `save()` (donc `readForm()`, donc `selectedTags` et le
+  // reste de l'état du formulaire) sur leur valeur du tout premier rendu —
+  // c'est ce qui faisait disparaître un tag ajouté juste avant de quitter.
+  async function handleSaveAndLeave() {
     setLeaving(true);
-    router.push('/importer');
-  }, [router, dialog]);
+    try {
+      await save();
+      router.refresh();
+      router.push('/importer');
+    } catch (e) {
+      dialog.alert('Erreur : ' + (e as Error).message);
+      setLeaving(false);
+    }
+    // Pas de reset à false côté succès : on quitte la page, autant garder le
+    // spinner affiché jusqu'à la navigation (cf. DuplicateButton/CreerForm).
+  }
+
+  // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
+  // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
+  // / enregistrer et quitter) — la suppression du brouillon reste un bouton
+  // distinct (« Abandonner l'import », ci-dessous). Non mémoïsé, même raison
+  // que `handleSaveAndLeave` ci-dessus.
+  async function handleLeave() {
+    if (!dirtyRef.current) {
+      setLeaving(true);
+      router.push('/importer');
+      return;
+    }
+    const choix = await dialog.choice("Des modifications n'ont pas été enregistrées. Que souhaitez-vous faire ?", [
+      { label: 'Quitter sans enregistrer', value: 'discard' },
+      { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+    ]);
+    if (choix === 'discard') {
+      setLeaving(true);
+      router.push('/importer');
+    } else if (choix === 'save') {
+      await handleSaveAndLeave();
+    }
+    // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
+  }
 
   // Bouton « Abandonner l'import » du rail : supprime définitivement le
   // brouillon (même écriture que `ImporterList.supprimer`), visible
@@ -1127,7 +1186,7 @@ export function RelectureEditor({
             disabled: busy || leaving,
           },
           { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           ...(canAbandon
             ? [{ id: 'abandon', icon: 'delete_forever', label: "Abandonner l'import", variant: 'outline-danger' as const, onClick: handleAbandon, disabled: busy || leaving }]
             : []),
@@ -1222,7 +1281,10 @@ export function RelectureEditor({
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                  onClick={() => {
+                    setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)));
+                    markDirty();
+                  }}
                   title="Retirer ce tag"
                   className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                 >
@@ -1248,6 +1310,7 @@ export function RelectureEditor({
                           onClick={() => {
                             setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
                             setTagPickerOpen(false);
+                            markDirty();
                           }}
                           className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
                         >
@@ -1987,6 +2050,36 @@ export function RelectureEditor({
               <p className="font-headline-md text-[20px]">{val}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Planning de préparation (aperçu) : purement dérivé de `sps`, rien
+          n'est enregistré ici — même principe que dans l'éditeur de recette
+          (CreerForm). */}
+      <section id="sec-planning" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Planning de préparation</h2>
+        <div className="bg-surface-container-high p-gutter rounded">
+          {allSameDay ? (
+            <div className="w-full flex items-center justify-center gap-3 py-6">
+              <span className="material-symbols-outlined text-secondary">celebration</span>
+              <span className="font-body-lg text-body-lg italic text-primary">Peut être dégusté le jour de la préparation</span>
+            </div>
+          ) : (
+            <div className="relative flex flex-col md:flex-row gap-8">
+              <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+              {planningDays.map((day, i) => (
+                <div key={i} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                  <span className="font-label-md text-[12px] text-secondary">{day.offset > 0 ? `J − ${day.offset}` : 'JOUR J'}</span>
+                  {day.items.map((it, k) => (
+                    <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
+                      {it.title}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
