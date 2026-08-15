@@ -5,6 +5,7 @@
 // pour accorder un nouveau partage, mais pas pour les consulter tous d'un
 // coup). Révocation : même écriture que `ShareBookButton.revoke`.
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -39,9 +40,16 @@ export function BookSharesCard({ ownerId, given }: { ownerId: string; given: Boo
         <ul className="flex flex-col divide-y divide-outline-variant/40">
           {items.map((i) => (
             <li key={i.member.id} className="flex items-center gap-3 py-3">
-              <MemberAvatar member={i.member} size={36} />
+              <Link href={`/u/${i.member.username || i.member.id}`} className="shrink-0">
+                <MemberAvatar member={i.member} size={36} />
+              </Link>
               <span className="flex flex-col min-w-0 flex-1">
-                <span className="font-body-md text-sm text-on-surface truncate">{i.member.full_name || 'Membre'}</span>
+                <Link
+                  href={`/u/${i.member.username || i.member.id}`}
+                  className="font-body-md text-sm text-on-surface truncate hover:text-primary hover:underline"
+                >
+                  {i.member.full_name || 'Membre'}
+                </Link>
                 <span className="font-body-md text-[12px] text-on-surface-variant">
                   {SHARE_SCOPE_LABELS[i.scope]}
                   {i.created_at ? ` · depuis le ${formatDate(i.created_at)}` : ''}
