@@ -427,6 +427,36 @@ Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
   (`<Link>`), sans le `SearchProvider` (debounce, panneau mobile) construit
   pour la recherche avancée — un tri à deux valeurs ne le justifie pas.
 
+## Réglages du compte
+
+`/reglages` (l'atelier — ce qu'on règle pour soi, distinct de la vitrine
+`/u/[handle]`) porte, sous `ProfileHeader` et `PasswordChangeCard` : trois
+blocs repliables (`SettingsCard`, replié par défaut, compte affiché dans
+l'en-tête), un par relation révocable côté propriétaire — jamais ouverts par
+défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
+
+- **`FollowingCard`** (« Mes abonnements ») : pâtissiers suivis
+  (`lib/follows.ts` `getFollowing`), retrait via `follows` delete.
+- **`BookSharesCard`** (« Partages de mon carnet ») : mêmes lignes que la
+  liste interne de `ShareBookButton`, ici pour consultation/révocation sans
+  ouvrir la fenêtre de partage.
+- **`RecipeSharesCard`** (« Partages de mes recettes ») : **uniquement**
+  `recipe_shares` (partages recette par recette), jamais les partages de
+  carnet — les deux granularités restent des cartes séparées, cf. « Partage
+  du carnet » (`lib/shares.ts`). Un membre peut donc avoir accès à une
+  recette via son carnet sans apparaître ici ; la carte le rappelle en clair
+  plutôt que de laisser croire à une liste exhaustive des accès.
+- **Compteurs recalculés, jamais dénormalisés** (même doctrine que
+  `author_ratings`) : `profiles.followers_count` / `following_count` ne sont
+  écrites nulle part (cf. `lib/follows.ts`) et ne doivent **pas** être lues —
+  `ProfileHeader` reçoit `followCounts` déjà calculé par le serveur
+  (`getFollowCounts`). Ces deux colonnes restent en base, mortes ; les
+  supprimer est une migration séparée, hors périmètre de cet écran.
+- **Note moyenne d'un profil public** (`getPublicProfileStats`) : `null`
+  (donc masquée) tant que `author_ratings.rated_recipes` est à 0 — sans ça,
+  un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
+  vraie mauvaise moyenne.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables

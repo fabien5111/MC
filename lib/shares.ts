@@ -30,6 +30,7 @@ export type Member = { id: string; full_name: string | null; avatar_url: string 
 export type BookShareGiven = { scope: ShareScope; created_at: string | null; member: Member };
 export type BookShareReceived = { scope: ShareScope; created_at: string | null; owner: Member };
 export type RecipeShareReceived = { created_at: string | null; recipe: { id: string; title: string } | null; owner: Member };
+export type RecipeShareGiven = { created_at: string | null; recipe: { id: string; title: string } | null; member: Member };
 
 // Qui a accès à UNE recette (fiche recette, propriétaire) — union de deux
 // sources : les destinataires d'un partage direct de cette recette, et ceux

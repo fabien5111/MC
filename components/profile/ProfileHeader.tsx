@@ -22,12 +22,17 @@ export function ProfileHeader({
   fallbackName,
   fallbackAvatar,
   isAdmin,
+  followCounts,
 }: {
   userId: string;
   profile: Profile | null;
   fallbackName: string;
   fallbackAvatar: string | null;
   isAdmin: boolean;
+  // Recalculés depuis `follows` par le serveur (lib/follows.ts `getFollowCounts`)
+  // — `profiles.followers_count` / `following_count` ne sont jamais écrites,
+  // les lire ici affichait toujours 0.
+  followCounts: { followers: number; following: number };
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -164,17 +169,13 @@ export function ProfileHeader({
       <div className="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-outline-variant/30">
         <div className="flex gap-8 mb-4 md:mb-0">
           <div className="text-center md:text-left">
-            <span className="block font-headline-md text-primary">
-              {profile?.followers_count ?? 0}
-            </span>
+            <span className="block font-headline-md text-primary">{followCounts.followers}</span>
             <span className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
               Abonnés
             </span>
           </div>
           <div className="text-center md:text-left">
-            <span className="block font-headline-md text-primary">
-              {profile?.following_count ?? 0}
-            </span>
+            <span className="block font-headline-md text-primary">{followCounts.following}</span>
             <span className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
               Abonnements
             </span>

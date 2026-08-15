@@ -13,6 +13,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { CARD_SELECT, withAllergenPictos, type RecipeCard } from '@/lib/recipes';
+import type { Member } from '@/lib/shares';
 
 // `cache()` : une fiche recette et une page profil interrogent chacune ce
 // statut une fois par rendu ; sans mémoïsation, une page qui l'affiche à deux
@@ -46,6 +47,28 @@ export async function getFollowCounts(profileId: string): Promise<{ followers: n
   if (following.error) console.error('getFollowCounts (abonnements):', following.error.message);
   return { followers: followers.count ?? 0, following: following.count ?? 0 };
 }
+
+export type FollowedMember = { member: Member; created_at: string | null };
+
+// Pâtissiers suivis par `userId`, pour la carte « Mes abonnements » des
+// réglages — même motif que `getBookSharesGiven` (lib/shares-data.ts) :
+// jointure vers `profiles`, une ligne par abonnement.
+export const getFollowing = cache(async (userId: string): Promise<FollowedMember[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('follows')
+    .select('following_id, created_at, profiles!follows_following_id_fkey(id, full_name, avatar_url, username)')
+    .eq('follower_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getFollowing:', error.message);
+    return [];
+  }
+  type Row = { created_at: string | null; profiles: Member | null };
+  return ((data as unknown as Row[]) ?? [])
+    .filter((r): r is Row & { profiles: Member } => !!r.profiles)
+    .map((r) => ({ member: r.profiles, created_at: r.created_at }));
+});
 
 // Dernières publications des pâtissiers suivis par `userId` — le fil des
 // abonnements, commun à l'Accueil et au carnet (cf. README du handoff : « à
