@@ -6,14 +6,16 @@
 //
 // L'inscription demande un PSEUDO (et non plus un « nom complet ») : unique,
 // contrôlé par IA, il devient à la fois le nom affiché et l'adresse du profil
-// public — cf. `lib/pseudo.ts`. Les contrôles sont faits deux fois, ici pour
-// le confort (correction à la frappe, message immédiat) et dans
-// `/api/pseudo/verifier` pour de vrai : `supabase.auth.signUp()` est
-// appelable depuis la console du navigateur, un contrôle purement client ne
-// prouverait rien.
+// public — cf. `lib/pseudo.ts`. Trois niveaux de contrôle, du moins au plus
+// coûteux : format local (immédiat, pur), disponibilité en direct pendant la
+// frappe (débouncée, sans IA — motif `IdeaForm` / `/api/idees/similaires`,
+// pour que le bouton reflète un pseudo déjà pris sans attendre le clic), puis
+// vérification complète (IA comprise) juste avant `signUp`, qui seule fait
+// foi : `supabase.auth.signUp()` est appelable depuis la console du
+// navigateur, un contrôle purement client ne prouverait rien.
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import {
@@ -39,6 +41,11 @@ function translateAuthError(message: string): string {
   return AUTH_ERRORS[message] ?? message;
 }
 
+// Motif `IdeaForm` (`/api/idees/similaires`) : vérification bon marché
+// (unicité, pas d'IA) déclenchée pendant la frappe, débouncée pour ne pas
+// interroger le serveur à chaque caractère.
+const PSEUDO_CHECK_DEBOUNCE_MS = 300;
+
 export function LoginForm({ next, initialMode = 'signin' }: { next: string; initialMode?: 'signin' | 'signup' }) {
   const router = useRouter();
   // Le panneau s'ouvre sur la connexion, sauf arrivée par « Créer un compte »
@@ -60,11 +67,62 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   const strength = useMemo(() => evaluatePassword(password), [password]);
   const mismatch = isSignup && confirm.length > 0 && confirm !== password;
   const pseudoValidation = useMemo(() => validerPseudo(pseudo), [pseudo]);
-  // À l'inscription seulement : le pseudo, la complexité du mot de passe, la
-  // confirmation et l'acceptation des conditions bloquent l'envoi. En
-  // connexion, aucun contrôle — les comptes existants peuvent avoir un mot de
-  // passe antérieur à ces règles.
-  const blocked = isSignup && (!pseudoValidation.ok || !strength.valid || password !== confirm || !terms);
+
+  // Disponibilité du pseudo, vérifiée EN DIRECT pendant la frappe (unicité
+  // seule, sans IA — cf. `/api/pseudo/verifier`) : sans ça, le bouton
+  // « S'inscrire » resterait cliquable pour un pseudo déjà pris jusqu'au
+  // clic, ce qui ressemble à un bouton qui « ne voit pas » le problème alors
+  // que le format, lui, est immédiatement contrôlé. La vérification qui fait
+  // vraiment foi reste celle d'avant `signUp`, IA comprise — celle-ci n'est
+  // qu'un confort d'affichage, invalidé à chaque frappe.
+  const [pseudoCheck, setPseudoCheck] = useState<'idle' | 'checking' | 'ok' | 'ko'>('idle');
+  const [pseudoCheckMessage, setPseudoCheckMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSignup || !pseudoValidation.ok) {
+      setPseudoCheck('idle');
+      setPseudoCheckMessage(null);
+      return;
+    }
+    setPseudoCheck('checking');
+    const controller = new AbortController();
+    const candidat = pseudoValidation.pseudo;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/pseudo/verifier', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pseudo: candidat, verifierIA: false }),
+          signal: controller.signal,
+        });
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+        if (data?.ok) {
+          setPseudoCheck('ok');
+          setPseudoCheckMessage(null);
+        } else {
+          setPseudoCheck('ko');
+          setPseudoCheckMessage(data?.message || `Le pseudo « ${candidat} » est déjà pris.`);
+        }
+      } catch {
+        // Requête annulée (nouvelle frappe) ou réseau indisponible : ne pas
+        // bloquer sur un simple confort d'affichage, la vérification à
+        // l'envoi tranchera de toute façon.
+        setPseudoCheck('idle');
+      }
+    }, PSEUDO_CHECK_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `pseudoValidation.pseudo` dérive de `pseudo`, inutile en double dépendance.
+  }, [isSignup, pseudoValidation.ok, pseudoValidation.ok ? pseudoValidation.pseudo : null]);
+
+  // À l'inscription seulement : le pseudo (format ET disponibilité connue),
+  // la complexité du mot de passe, la confirmation et l'acceptation des
+  // conditions bloquent l'envoi. En connexion, aucun contrôle — les comptes
+  // existants peuvent avoir un mot de passe antérieur à ces règles.
+  const blocked =
+    isSignup && (!pseudoValidation.ok || pseudoCheck === 'ko' || !strength.valid || password !== confirm || !terms);
 
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
@@ -81,11 +139,13 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
       setError(
         !pseudoValidation.ok
           ? pseudoValidation.message
-          : password !== confirm
-            ? 'Les deux mots de passe ne correspondent pas.'
-            : !terms
-              ? "Vous devez accepter les conditions d'utilisation."
-              : 'Le mot de passe ne respecte pas les règles de sécurité.',
+          : pseudoCheck === 'ko'
+            ? pseudoCheckMessage || 'Ce pseudo est déjà pris.'
+            : password !== confirm
+              ? 'Les deux mots de passe ne correspondent pas.'
+              : !terms
+                ? "Vous devez accepter les conditions d'utilisation."
+                : 'Le mot de passe ne respecte pas les règles de sécurité.',
       );
       return;
     }
@@ -233,6 +293,19 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
                   {pseudo.length}/{PSEUDO_MAX_LENGTH}
                 </span>
               </p>
+              {/* Format local (longueur, caractères, noms réservés, grossièretés
+                  évidentes) : dès que la saisie est assez longue pour être jugée,
+                  même si le bouton, désactivé, ne permettrait jamais de le
+                  découvrir en soumettant. */}
+              {pseudo.length > 0 && !pseudoValidation.ok && (
+                <p className="text-[12px] text-error mt-1 ml-1">{pseudoValidation.message}</p>
+              )}
+              {pseudoValidation.ok && pseudoCheck === 'checking' && (
+                <p className="text-[12px] text-on-surface-variant mt-1 ml-1">Vérification du pseudo…</p>
+              )}
+              {pseudoValidation.ok && pseudoCheck === 'ko' && (
+                <p className="text-[12px] text-error mt-1 ml-1">{pseudoCheckMessage}</p>
+              )}
             </div>
           )}
           <div className="space-y-1">

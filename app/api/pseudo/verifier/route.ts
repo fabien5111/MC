@@ -1,6 +1,14 @@
 // Route Handler — vérification d'un pseudo AVANT création du compte
 // (formulaire d'inscription) ou avant son enregistrement (`/choix-pseudo`).
 //
+// Deux usages, un seul endpoint : `LoginForm` l'appelle en LIVE pendant la
+// frappe (`verifierIA: false`, motif `/api/idees/similaires` — la vérification
+// lexicale/d'unicité est bon marché, l'IA ne l'est pas) pour que le bouton
+// « S'inscrire » reflète l'état réel d'un pseudo déjà pris sans attendre le
+// clic ; et une seconde fois juste avant `signUp` (par défaut, IA comprise) —
+// c'est cette seconde vérification qui fait foi, la première n'est qu'un
+// confort d'affichage qu'un visiteur pressé peut très bien ne jamais voir finir.
+//
 // Ouverte aux visiteurs non connectés : à l'inscription par e-mail, il n'y a
 // par définition pas encore de session. C'est aussi pourquoi la chaîne de
 // contrôles est ordonnée du moins cher au plus cher (format local → unicité
@@ -46,11 +54,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const saisie = typeof body?.pseudo === 'string' ? body.pseudo.slice(0, PSEUDO_MAX_LENGTH * 2) : '';
+  const avecIA = body?.verifierIA !== false;
 
   // Session éventuelle (`/choix-pseudo`) : son propre profil ne doit pas se
   // compter comme un doublon de lui-même.
   const user = await getCurrentUser();
-  const resultat = await verifierPseudoComplet(saisie, user?.id);
+  const resultat = await verifierPseudoComplet(saisie, user?.id, { avecIA });
 
   // Toujours 200 : un pseudo refusé n'est pas une erreur de la requête, et le
   // formulaire n'a qu'un champ `message` à afficher.

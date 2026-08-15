@@ -110,14 +110,25 @@ export async function pseudoModereParIA(pseudo: string): Promise<boolean> {
 // ordre, pour ne dépenser un appel IA que sur un pseudo par ailleurs
 // recevable (et pour qu'un robot ne puisse pas s'en servir comme d'un accès
 // gratuit à l'API en boucle).
-export async function verifierPseudoComplet(saisie: string, exclureId?: string): Promise<ValidationPseudo> {
+//
+// `avecIA` à `false` saute l'appel IA : sert à la vérification LIVE pendant
+// la frappe (`LoginForm`), motif `/api/idees/similaires` — un appel IA par
+// frappe serait lent et coûteux, donc réservé au moment de valider vraiment
+// (`/api/pseudo/choisir`, ou le second appel fait par `LoginForm` juste avant
+// `signUp`). Toujours `true` par défaut : c'est le réglage sûr, un appelant
+// qui oublie de le préciser ne perd pas la modération.
+export async function verifierPseudoComplet(
+  saisie: string,
+  exclureId?: string,
+  options?: { avecIA?: boolean },
+): Promise<ValidationPseudo> {
   const validation = validerPseudo(saisie);
   if (!validation.ok) return validation;
 
   if (!(await pseudoDisponible(validation.pseudo, validation.slug, exclureId))) {
     return { ok: false, message: `Le pseudo « ${validation.pseudo} » est déjà pris.` };
   }
-  if (!(await pseudoModereParIA(validation.pseudo))) {
+  if ((options?.avecIA ?? true) && !(await pseudoModereParIA(validation.pseudo))) {
     return { ok: false, message: PSEUDO_REFUS };
   }
   return validation;
