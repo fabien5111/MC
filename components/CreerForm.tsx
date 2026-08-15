@@ -832,12 +832,17 @@ export function CreerForm({
         const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
         if (!hasContent) continue;
 
+        // Réutilisé pour `recipe_steps.title` et `ingredient_groups.name` :
+        // les deux affichent le même intitulé (fiche recette, planning), une
+        // capitalisation calculée séparément avait divergé entre les deux.
+        const stepTitle = capitalizeSentences(st.title.trim()) || `Étape ${gi + 1}`;
+
         const { data: stepRow, error: stepErr } = await supabase
           .from('recipe_steps')
           .insert({
             recipe_id: recipeId,
             step_number: gi + 1,
-            title: capitalizeSentences(st.title.trim()) || `Étape ${gi + 1}`,
+            title: stepTitle,
             description: capitalizeSentences(desc) || null,
             prep_time: gmin(st.prep),
             cook_time: gmin(st.cook),
@@ -863,7 +868,7 @@ export function CreerForm({
         if (lines.length) {
           const { data: grp, error: grpErr } = await supabase
             .from('ingredient_groups')
-            .insert({ recipe_id: recipeId, name: st.title.trim() || `Étape ${gi + 1}`, order_index: gi, scaling_mode: st.scaling })
+            .insert({ recipe_id: recipeId, name: stepTitle, order_index: gi, scaling_mode: st.scaling })
             .select('id')
             .single();
           if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
