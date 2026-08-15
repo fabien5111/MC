@@ -79,13 +79,22 @@ export async function getUtensilRefNames(): Promise<string[]> {
 // l'afficher dans sa grille — il le signale et renvoie vers `/importer`, qui
 // reste le tunnel d'entrée. C'est aussi ce qui évite de faire croire qu'une
 // recette existe alors qu'elle n'a pas encore été vérifiée.
+//
+// Le filtre porte sur `statut = 'brouillon'`, pas sur `recipe_id IS NULL` :
+// `recipe_id` repasse à `null` (`imports_recipe_id_fkey`, `ON DELETE SET
+// NULL`) si la recette créée par la relecture est supprimée par la suite,
+// alors que l'import lui-même reste `verifiee` — il a bien été relu, la
+// suppression de la recette est un événement distinct. Compter sur
+// `recipe_id` gonflait donc le bandeau d'un import déjà relu dont la recette
+// avait été retirée du carnet, en désaccord avec le badge de `/importer`
+// (`ImporterList`), qui n'affiche « Brouillon » que pour ce même statut.
 export async function countImportsEnAttente(userId: string): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from('imports')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .is('recipe_id', null);
+    .eq('statut', 'brouillon');
   if (error) {
     console.error('countImportsEnAttente:', error.message);
     return 0;
