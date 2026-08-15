@@ -1075,10 +1075,12 @@ export function RelectureEditor({
       }
 
       await supabase.from('imports').update({ statut: 'verifiee', recipe_id: recipeId }).eq('id', importRow.id);
-      // Invalide le rendu serveur avant de naviguer : le carnet de recettes et
-      // la liste « Mes imports » doivent refléter la recette créée.
-      router.refresh();
+      // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+      // appelé avant, il ne rafraîchit que la route qu'on quitte (/relecture)
+      // — l'éditeur de recette, déjà visité dans la session, resservirait
+      // alors une entrée du cache client antérieure à cette création.
       router.push(`/creer?id=${recipeId}`);
+      router.refresh();
     } catch (e) {
       // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
       // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.
@@ -1099,8 +1101,11 @@ export function RelectureEditor({
     setLeaving(true);
     try {
       await save();
-      router.refresh();
+      // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+      // sinon « Mes imports », déjà visité dans la session, resservirait une
+      // entrée du cache client antérieure à ces corrections.
       router.push('/importer');
+      router.refresh();
     } catch (e) {
       dialog.alert('Erreur : ' + (e as Error).message);
       setLeaving(false);
@@ -1148,8 +1153,11 @@ export function RelectureEditor({
       setLeaving(false);
       return;
     }
-    router.refresh();
+    // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+    // sinon « Mes imports », déjà visité dans la session, resservirait une
+    // entrée du cache client antérieure à cette suppression.
     router.push('/importer');
+    router.refresh();
   }, [router, dialog, importRow.id]);
 
   const champ = 'border border-outline-variant rounded-lg px-2.5 py-1.5 bg-white text-[15px] w-full focus:outline-none focus:border-primary';

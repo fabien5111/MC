@@ -840,11 +840,12 @@ export function CreerForm({
 
       if (status !== 'draft') {
         // Publication / enregistrement définitif : on ouvre la fiche recette.
-        // router.refresh() invalide le Router Cache client avant de naviguer,
-        // pour éviter qu'une visite ultérieure du carnet ou de la fiche
-        // recette ne réutilise un segment mis en cache avant cette écriture.
-        router.refresh();
+        // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+        // appelé avant, il ne rafraîchit que la route qu'on quitte (/creer) —
+        // la fiche recette, déjà visitée dans la session, resservirait alors
+        // une entrée du cache client antérieure à cette écriture.
         router.push(`/recette/${recipeId}`);
+        router.refresh();
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
         // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
@@ -861,11 +862,12 @@ export function CreerForm({
           router.replace(`/creer?id=${recipeId}`);
         }
       } else {
-        // « Enregistrer en brouillon et quitter » : retour au profil.
-        // router.refresh() invalide le Router Cache client avant de naviguer
-        // (cf. commentaire ci-dessus).
-        router.refresh();
+        // « Enregistrer en brouillon et quitter » : retour au carnet.
+        // router.refresh() APRÈS le push (cf. commentaire ci-dessus) : sinon
+        // le carnet, déjà visité dans la session, resservirait ses compteurs
+        // de statut d'avant ce changement (ex. publiée → brouillon).
         router.push('/carnet');
+        router.refresh();
       }
     } catch (e) {
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
