@@ -7,7 +7,7 @@
 // différent selon la provenance de chaque élément (README « Mon carnet » —
 // mes recettes portent statut/actions, les recettes des autres portent
 // auteur/note, jamais les deux).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -18,7 +18,13 @@ import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
+import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import type { CarnetItem } from '@/lib/carnet';
+
+// Délai avant d'afficher le fouet pour une navigation de tri/recherche : un
+// rafraîchissement quasi instantané ne doit pas produire de clignotement —
+// même délai que NavigationSpinner et SearchResults.
+const NAV_SHOW_DELAY_MS = 120;
 
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
@@ -39,6 +45,16 @@ export function CarnetContent({
   emptyMessage: string;
 }) {
   const { mutate, busy } = useMutation();
+  const { pending: navPending } = useCarnetTransition();
+  const [navVisible, setNavVisible] = useState(false);
+  useEffect(() => {
+    if (!navPending) {
+      setNavVisible(false);
+      return;
+    }
+    const timer = setTimeout(() => setNavVisible(true), NAV_SHOW_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [navPending]);
 
   // Suppression optimiste : un simple ensemble d'ids retirés cette session,
   // superposé au rendu — jamais une copie de `items` en état local. Une copie
@@ -96,7 +112,7 @@ export function CarnetContent({
 
   return (
     <>
-      <LoadingOverlay visible={busy} label="Traitement en cours…" />
+      <LoadingOverlay visible={busy || navVisible} label="Traitement en cours…" />
 
       {importsEnAttente > 0 && (
         <Link
@@ -243,7 +259,7 @@ function OtherCard({
   const r = item.recipe;
   const times = effectiveTimes(r);
   return (
-    <div className="group relative border border-outline-variant bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
+    <div className="group relative border border-secondary/50 bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
           {r.hero_image_url ? (
@@ -322,7 +338,9 @@ function OtherCard({
         {r.description && <p className="mb-4 line-clamp-2 text-sm text-on-surface-variant">{r.description}</p>}
         <AllergenPictosView items={r.allergenItems} className="mb-4" iconClassName="w-6 h-6" />
         <span className="text-xs text-secondary">
-          {r.profiles?.full_name || 'Auteur'}
+          <Link href={`/u/${r.profiles?.username || r.author_id}`} prefetch={false} className="hover:text-primary hover:underline">
+            {r.profiles?.full_name || 'Auteur'}
+          </Link>
           {item.subscription && item.publishedAt ? ' · publiée le ' + formatDate(item.publishedAt) : ''}
           {r.rating_avg ? ' · ' + Number(r.rating_avg).toFixed(1) + ' ★' : ''}
         </span>
