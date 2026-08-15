@@ -412,9 +412,14 @@ export function RelectureEditor({
   // conteneur unique : contrairement à CreerForm, l'écran n'a pas de wrapper
   // englobant toutes les sections éditables.
   const dirtyRef = useRef(false);
+  // État réactif jumeau du ref ci-dessus, pour le libellé du bouton « Quitter »
+  // (cf. rail d'actions) : un ref seul ne redéclenche pas de rendu quand la
+  // saisie commence.
+  const [dirty, setDirty] = useState(false);
   useEffect(() => {
     const markDirty = () => {
       dirtyRef.current = true;
+      setDirty(true);
     };
     document.addEventListener('change', markDirty);
     return () => document.removeEventListener('change', markDirty);
@@ -740,6 +745,26 @@ export function RelectureEditor({
   const sumCuisson = sps.reduce((n, sp) => n + (numOrNull(sp.cuisson) || 0), 0);
   const sumTotal = sumPrep + sumAttente + sumCuisson;
   const ingredientsRecap = useMemo(() => mergeIngredientsRecap(sps), [sps]);
+
+  // ── Planning de préparation (aperçu, même principe que CreerForm) ──
+  const allSameDay = sps.every((sp) => !numOrNull(sp.jour));
+  const planningDays = useMemo(() => {
+    if (allSameDay) return [];
+    const items = sps
+      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false }))
+      .sort((a, b) => b.offset - a.offset || a.order - b.order);
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    const days: { offset: number; items: typeof items }[] = [];
+    items.forEach((it) => {
+      let d = days.find((x) => x.offset === it.offset);
+      if (!d) {
+        d = { offset: it.offset, items: [] };
+        days.push(d);
+      }
+      d.items.push(it);
+    });
+    return days;
+  }, [sps, allSameDay]);
 
   // ── Lecture du formulaire → pivot corrigé ──
   function readForm(): any {
@@ -1127,7 +1152,7 @@ export function RelectureEditor({
             disabled: busy || leaving,
           },
           { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+          { id: 'leave', icon: 'close', label: dirty ? 'Quitter sans enregistrer' : 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           ...(canAbandon
             ? [{ id: 'abandon', icon: 'delete_forever', label: "Abandonner l'import", variant: 'outline-danger' as const, onClick: handleAbandon, disabled: busy || leaving }]
             : []),
@@ -1987,6 +2012,36 @@ export function RelectureEditor({
               <p className="font-headline-md text-[20px]">{val}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Planning de préparation (aperçu) : purement dérivé de `sps`, rien
+          n'est enregistré ici — même principe que dans l'éditeur de recette
+          (CreerForm). */}
+      <section id="sec-planning" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <h2 className="font-headline-md text-[22px] text-primary mb-4">Planning de préparation</h2>
+        <div className="bg-surface-container-high p-gutter rounded">
+          {allSameDay ? (
+            <div className="w-full flex items-center justify-center gap-3 py-6">
+              <span className="material-symbols-outlined text-secondary">celebration</span>
+              <span className="font-body-lg text-body-lg italic text-primary">Peut être dégusté le jour de la préparation</span>
+            </div>
+          ) : (
+            <div className="relative flex flex-col md:flex-row gap-8">
+              <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+              {planningDays.map((day, i) => (
+                <div key={i} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                  <span className="font-label-md text-[12px] text-secondary">{day.offset > 0 ? `J − ${day.offset}` : 'JOUR J'}</span>
+                  {day.items.map((it, k) => (
+                    <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
+                      {it.title}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
