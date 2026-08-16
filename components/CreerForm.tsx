@@ -255,7 +255,9 @@ export function CreerForm({
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
-  const help = useHelpBlocks('creer', helpBlocks ?? []);
+  // Dépliés par défaut en création, repliés en modification — l'auteur qui
+  // reprend une recette déjà rédigée connaît déjà l'éditeur.
+  const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');

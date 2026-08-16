@@ -11,7 +11,7 @@ export function HelpBlockSlot({ blockKey, help }: { blockKey: string; help: Help
   if (!block) return null;
   return (
     <div className="mb-8">
-      <HelpBlock block={block} onDismiss={() => help.dismiss(blockKey)} />
+      <HelpBlock block={block} onDismiss={() => help.dismiss(blockKey)} defaultExpanded={help.defaultExpanded} />
     </div>
   );
 }

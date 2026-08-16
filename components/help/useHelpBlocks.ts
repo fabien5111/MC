@@ -21,9 +21,16 @@ import type { VisibleHelpBlock } from '@/lib/help';
 export type HelpBlocksState = {
   get: (key: string) => VisibleHelpBlock | undefined;
   dismiss: (key: string) => void;
+  // État initial (déplié/replié) des blocs à l'affichage — pas de sens à le
+  // faire varier bloc par bloc, un seul réglage pour toute la page.
+  defaultExpanded: boolean;
 };
 
-export function useHelpBlocks(page: HelpPageSlug, initial: VisibleHelpBlock[]): HelpBlocksState {
+export function useHelpBlocks(
+  page: HelpPageSlug,
+  initial: VisibleHelpBlock[],
+  defaultExpanded: boolean,
+): HelpBlocksState {
   const dialog = useDialog();
   const { mutate } = useMutation();
   const [visible, setVisible] = useState(initial);
@@ -67,5 +74,5 @@ export function useHelpBlocks(page: HelpPageSlug, initial: VisibleHelpBlock[]): 
 
   const get = useCallback((key: string) => visible.find((b) => b.key === key), [visible]);
 
-  return { get, dismiss };
+  return { get, dismiss, defaultExpanded };
 }
