@@ -32,7 +32,7 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
-import { capitalizeSentences } from '@/lib/text';
+import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -90,6 +90,17 @@ function splitSousEtapes(description: string): string[] {
 
 let uid = 0;
 const key = () => `k${uid++}`;
+
+// Redimensionne un <textarea> à la hauteur de son contenu — jamais de scroll
+// interne, y compris pour du texte déjà rempli en modification. Fonction
+// simple (pas un hook d'état) : utilisable en `ref` comme en gestionnaire
+// d'événement, y compris à l'intérieur des `.map()` d'étapes/ingrédients où
+// un hook ne serait pas légal (ordre d'appel instable selon leur nombre).
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
 
 // Slug généré depuis un libellé (même règle que le back-office des listes) :
 // la colonne `tags.slug` est NOT NULL et n'est pas saisie dans l'éditeur.
@@ -255,7 +266,9 @@ export function CreerForm({
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
-  const help = useHelpBlocks('creer', helpBlocks ?? []);
+  // Dépliés par défaut en création, repliés en modification — l'auteur qui
+  // reprend une recette déjà rédigée connaît déjà l'éditeur.
+  const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
@@ -311,6 +324,7 @@ export function CreerForm({
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     return us.length ? us.map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })) : [{ key: key(), name: '', comment: '' }];
   });
+  const addUtensil = () => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }]);
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
@@ -841,17 +855,20 @@ export function CreerForm({
         const st = steps[gi];
         const desc = st.description.trim();
         // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
-        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(t.trim())).filter(Boolean) : [];
+        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(fixOeufLigature(t.trim()))).filter(Boolean) : [];
         const lines = st.ings
-          .map((l, i) => ({
-            name: capitalizeSentences(l.name.trim()),
-            quantity: l.qty.trim() || null,
-            unit: l.unit || null,
-            comment: l.comment.trim() || null,
-            allergen: l.allergen.length ? l.allergen.join(', ') : null,
-            order_index: i,
-            ref_id: resolveIngredientRefId(l.name, ingredientRefIds),
-          }))
+          .map((l, i) => {
+            const name = capitalizeSentences(fixOeufLigature(l.name.trim()));
+            return {
+              name,
+              quantity: l.qty.trim() || null,
+              unit: l.unit || null,
+              comment: l.comment.trim() || null,
+              allergen: l.allergen.length ? l.allergen.join(', ') : null,
+              order_index: i,
+              ref_id: resolveIngredientRefId(name, ingredientRefIds),
+            };
+          })
           .filter((l) => l.name);
         const photoRows = st.photos.filter((p): p is StepPhoto => !!p);
         const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
@@ -860,7 +877,7 @@ export function CreerForm({
         // Réutilisé pour `recipe_steps.title` et `ingredient_groups.name` :
         // les deux affichent le même intitulé (fiche recette, planning), une
         // capitalisation calculée séparément avait divergé entre les deux.
-        const stepTitle = capitalizeSentences(st.title.trim()) || `Étape ${gi + 1}`;
+        const stepTitle = capitalizeSentences(fixOeufLigature(st.title.trim())) || `Étape ${gi + 1}`;
 
         const { data: stepRow, error: stepErr } = await supabase
           .from('recipe_steps')
@@ -868,7 +885,7 @@ export function CreerForm({
             recipe_id: recipeId,
             step_number: gi + 1,
             title: stepTitle,
-            description: capitalizeSentences(desc) || null,
+            description: capitalizeSentences(fixOeufLigature(desc)) || null,
             prep_time: gmin(st.prep),
             cook_time: gmin(st.cook),
             cook_temp: gmin(st.temp),
@@ -956,7 +973,10 @@ export function CreerForm({
           router.refresh();
         } else {
           setAwaitingEditMode(true);
-          router.replace(`/creer?id=${recipeId}`);
+          // `scroll: false` : bascule création → édition, pas une navigation
+          // vers un autre écran — l'auteur reste au même endroit du
+          // formulaire, il ne doit pas se retrouver renvoyé en haut de page.
+          router.replace(`/creer?id=${recipeId}`, { scroll: false });
         }
       } else {
         // « Enregistrer en brouillon et quitter » : retour au carnet.
@@ -1313,10 +1333,14 @@ export function CreerForm({
           <div className="lg:col-span-12">
             <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Description rapide</label>
             <textarea
+              ref={autoGrow}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                autoGrow(e.target);
+              }}
               rows={2}
-              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
               placeholder="Décrivez votre recette en quelques mots"
             />
           </div>
@@ -1362,6 +1386,8 @@ export function CreerForm({
                   setHero(url);
                   setHeroAiRetouched(false);
                 }}
+                promptAiRetouched
+                onAiRetouchedChange={setHeroAiRetouched}
                 onOriginalChange={setHeroOriginal}
                 onClear={() => {
                   setHero(null);
@@ -1514,15 +1540,21 @@ export function CreerForm({
                 Complément d&apos;informations sur les quantités
               </label>
               <textarea
+                ref={autoGrow}
                 value={yieldNotes}
-                onChange={(e) => setYieldNotes(e.target.value)}
-                className="editorial-input w-full font-body-md text-on-surface italic"
+                onChange={(e) => {
+                  setYieldNotes(e.target.value);
+                  autoGrow(e.target);
+                }}
+                className="editorial-input w-full font-body-md text-on-surface italic resize-none overflow-hidden"
                 placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
                 rows={3}
               />
             </div>
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
 
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
@@ -1535,6 +1567,7 @@ export function CreerForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
                     <input
                       list="dl-utensils"
+                      data-name-utensil
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
                       className={`editorial-input text-on-surface w-full${unknownRefClass(knownUtensils, u.name)}`}
@@ -1544,6 +1577,19 @@ export function CreerForm({
                     <textarea
                       value={u.comment}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      onKeyDown={(e) => {
+                        // Tab (sans Maj) depuis le dernier champ de la dernière
+                        // ligne → ouvrir une nouvelle ligne d'ustensile et y
+                        // placer le curseur (motif identique aux ingrédients).
+                        if (e.key === 'Tab' && !e.shiftKey && i === utensils.length - 1) {
+                          e.preventDefault();
+                          addUtensil();
+                          setTimeout(() => {
+                            const names = document.querySelectorAll<HTMLInputElement>('[data-name-utensil]');
+                            names[names.length - 1]?.focus();
+                          }, 0);
+                        }
+                      }}
                       className="editorial-input text-on-surface w-full resize-y"
                       rows={1}
                       placeholder="Commentaire (optionnel)"
@@ -1575,7 +1621,7 @@ export function CreerForm({
           </ul>
           <button
             type="button"
-            onClick={() => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }])}
+            onClick={addUtensil}
             className="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline"
           >
             <span className="material-symbols-outlined">add</span> Ajouter un ustensile
@@ -1961,9 +2007,13 @@ export function CreerForm({
                       // Mode texte libre : description + bouton d'éclatement.
                       <>
                         <textarea
+                          ref={autoGrow}
                           value={st.description}
-                          onChange={(e) => patchStep(si, { description: e.target.value })}
-                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                          onChange={(e) => {
+                            patchStep(si, { description: e.target.value });
+                            autoGrow(e.target);
+                          }}
+                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                           placeholder="Décrivez les gestes techniques avec précision..."
                           rows={8}
                         />
@@ -2071,6 +2121,8 @@ export function CreerForm({
                             originalSrc={p?.original_url}
                             aiRetouched={p?.ai_retouched}
                             onChange={(url) => patchPhoto(si, pi, url)}
+                            promptAiRetouched
+                            onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                             onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                             onClear={() => patchPhoto(si, pi, null)}
                             shape="rect"
@@ -2113,9 +2165,13 @@ export function CreerForm({
                     </summary>
                     <div className="pb-6">
                       <textarea
+                        ref={autoGrow}
                         value={st.tips}
-                        onChange={(e) => patchStep(si, { tips: e.target.value })}
-                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors"
+                        onChange={(e) => {
+                          patchStep(si, { tips: e.target.value });
+                          autoGrow(e.target);
+                        }}
+                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                         placeholder="Une astuce particulière pour cette étape ?"
                         rows={4}
                       />
@@ -2144,9 +2200,13 @@ export function CreerForm({
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
+            ref={autoGrow}
             value={tips}
-            onChange={(e) => setTips(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setTips(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
             rows={4}
           />
@@ -2156,9 +2216,13 @@ export function CreerForm({
         <section className="space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
           <textarea
+            ref={autoGrow}
             value={servingAdvice}
-            onChange={(e) => setServingAdvice(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setServingAdvice(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
