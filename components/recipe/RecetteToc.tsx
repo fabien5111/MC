@@ -135,6 +135,13 @@ export function RecetteToc({
     ...(isOwner
       ? [{ id: 'edit', icon: 'edit_note', label: 'Éditer la recette', variant: 'outline' as const, onClick: edit, disabled: pending !== null }]
       : []),
+    // Correctif d'une recette d'un membre par un admin (jamais pour sa propre
+    // recette, déjà couverte par « Éditer la recette » ci-dessus) — même cible
+    // que le bouton « Modifier » de /admin/recettes (cf. RecipesManager.tsx),
+    // autorisée côté serveur par app/creer/page.tsx.
+    ...(!isOwner && isAdmin
+      ? [{ id: 'edit-admin', icon: 'edit_note', label: 'Modifier (admin)', variant: 'outline' as const, onClick: edit, disabled: pending !== null }]
+      : []),
     ...(isOwner && status === 'draft'
       ? [{ id: 'publish', icon: 'send', label: 'Publier la recette', variant: 'filled' as const, onClick: publish, disabled: pending !== null || statusBusy }]
       : []),

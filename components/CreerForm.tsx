@@ -211,6 +211,7 @@ export function CreerForm({
   isAdmin,
   highlightUnknownRefs,
   editRecipe,
+  editingOtherAuthor,
   conversions,
   ingredientRefIds,
   initialStep,
@@ -231,6 +232,10 @@ export function CreerForm({
   // référentiel », publication directe, création de tag).
   highlightUnknownRefs: boolean;
   editRecipe: RecipeFull | null;
+  // Admin en train d'éditer la recette d'un membre depuis /admin/recettes
+  // (bouton « Modifier ») : affiche un bandeau pour ne pas confondre avec
+  // une recette de l'admin lui-même.
+  editingOtherAuthor?: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
   // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
@@ -665,7 +670,13 @@ export function CreerForm({
   }, [steps, allSameDay]);
   const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
 
-  async function submit(status: 'draft' | 'pending', stay = false) {
+  // `keepStatus` : bouton « Enregistrer » de l'admin qui corrige la recette
+  // d'un membre (cf. `editingOtherAuthor`) — enregistre le contenu sans
+  // jamais changer le statut (`draft`/`pending`/`published`/`rejected`)
+  // ni déclencher les confirmations/alertes liées à un changement de statut,
+  // qui n'a pas lieu ici. `status` ne sert alors qu'à choisir la branche de
+  // navigation post-enregistrement (cf. plus bas).
+  async function submit(status: 'draft' | 'pending', stay = false, keepStatus = false) {
     // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
     // pas ouvrir deux enregistrements concurrents.
     if (busyRef.current) return;
@@ -685,7 +696,7 @@ export function CreerForm({
         }
       }
     }
-    if (status === 'draft' && editRecipe?.status === 'published') {
+    if (!keepStatus && status === 'draft' && editRecipe?.status === 'published') {
       const msg = isPublic
         ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'
         : 'Cette recette est publiée. La repasser en brouillon la retirera de votre carnet publié. Continuer ?';
@@ -695,7 +706,7 @@ export function CreerForm({
     // validation (cf. `finalStatus` plus bas) tant qu'un admin ne l'a pas
     // relue. Prévenir avant l'envoi plutôt qu'après évite la surprise d'une
     // recette qui semble « publiée » mais n'apparaît nulle part sur le site.
-    if (status === 'pending' && isPublic && !isAdmin) {
+    if (!keepStatus && status === 'pending' && isPublic && !isAdmin) {
       if (!(await dialog.confirm('Votre recette sera soumise à la validation d\'un modérateur avant d\'apparaître publiquement sur le site. Continuer ?')))
         return;
     }
@@ -748,6 +759,10 @@ export function CreerForm({
       // Soumission (« pending ») → file de validation, sauf : recette privée,
       // ou auteur administrateur → publication immédiate sans validation.
       if (status === 'pending' && (!isPublic || isAdmin)) finalStatus = 'published';
+      // Admin qui corrige la recette d'un membre : le statut d'origine ne
+      // doit jamais bouger, quel que soit `status` (choisi ici uniquement
+      // pour la navigation post-enregistrement, cf. plus bas).
+      if (keepStatus) finalStatus = editRecipe?.status || 'draft';
 
       const payload = {
         title: capitalizeSentences(title.trim()),
@@ -902,7 +917,7 @@ export function CreerForm({
       }
 
       if (status !== 'draft') {
-        if (finalStatus === 'pending') {
+        if (!keepStatus && finalStatus === 'pending') {
           // Recette publique soumise par un membre non-admin (§ ligne 653 :
           // seul ce cas reste en `pending`) : sans messagerie interne pour le
           // signaler autrement, prévenir ici que la validation d'un admin est
@@ -982,6 +997,17 @@ export function CreerForm({
     // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
   }
 
+  // Bouton « Quitter sans enregistrer » du rail, uniquement quand l'admin
+  // corrige la recette d'un membre (`editingOtherAuthor`) : contrairement à
+  // `handleLeave`, aucune popup — le libellé du bouton dit déjà ce qu'il fait,
+  // et il n'y a ici que deux actions possibles (enregistrer / ne pas
+  // enregistrer), pas de statut à choisir entre les deux.
+  function handleDiscardLeave() {
+    setLeaving(true);
+    const recipeId = editingId ?? createdIdRef.current;
+    router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+  }
+
   const scalingOptions =
     measure === 'mold'
       ? [
@@ -1024,25 +1050,49 @@ export function CreerForm({
         steps={tocSteps}
         onNavigateToStep={expandStep}
         mobile="drawer"
-        actions={[
-          { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
-          {
-            id: 'save',
-            icon: 'save',
-            label: 'Enregistrer en brouillon',
-            variant: 'outline-strong',
-            onClick: () => submit('draft', true),
-            disabled: busy || leaving,
-          },
-          {
-            id: 'publish',
-            icon: 'send',
-            label: isPublic ? 'Publier la recette' : 'Enregistrer',
-            variant: 'filled',
-            onClick: () => submit('pending'),
-            disabled: busy || leaving,
-          },
-        ]}
+        actions={
+          editingOtherAuthor
+            ? // Admin qui corrige la recette d'un membre : pas de statut à
+              // choisir, seulement enregistrer ou non (cf. `submit(status, stay,
+              // keepStatus)` et `handleDiscardLeave`).
+              [
+                {
+                  id: 'leave',
+                  icon: 'close',
+                  label: 'Quitter sans enregistrer',
+                  variant: 'outline',
+                  onClick: handleDiscardLeave,
+                  disabled: busy || leaving,
+                },
+                {
+                  id: 'save',
+                  icon: 'save',
+                  label: 'Enregistrer',
+                  variant: 'filled',
+                  onClick: () => submit('pending', false, true),
+                  disabled: busy || leaving,
+                },
+              ]
+            : [
+                { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+                {
+                  id: 'save',
+                  icon: 'save',
+                  label: 'Enregistrer en brouillon',
+                  variant: 'outline-strong',
+                  onClick: () => submit('draft', true),
+                  disabled: busy || leaving,
+                },
+                {
+                  id: 'publish',
+                  icon: 'send',
+                  label: isPublic ? 'Publier la recette' : 'Enregistrer',
+                  variant: 'filled',
+                  onClick: () => submit('pending'),
+                  disabled: busy || leaving,
+                },
+              ]
+        }
       />
 
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
@@ -1056,6 +1106,13 @@ export function CreerForm({
           <span className="material-symbols-outlined">close</span> Annuler
         </Link>
       </div>
+
+      {editingOtherAuthor && (
+        <div className="no-print flex items-center gap-2 flex-wrap mb-4 bg-primary/10 text-primary px-4 py-2 font-label-md text-label-md">
+          <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+          Vous modifiez la recette de {editRecipe?.profiles?.full_name || editRecipe?.profiles?.username || 'un autre membre'} en tant qu&apos;administrateur.
+        </div>
+      )}
 
       {statusBadge && (
         <div className="no-print flex items-center gap-4 flex-wrap mb-4">
