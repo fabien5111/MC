@@ -962,7 +962,10 @@ export function CreerForm({
           router.refresh();
         } else {
           setAwaitingEditMode(true);
-          router.replace(`/creer?id=${recipeId}`);
+          // `scroll: false` : bascule création → édition, pas une navigation
+          // vers un autre écran — l'auteur reste au même endroit du
+          // formulaire, il ne doit pas se retrouver renvoyé en haut de page.
+          router.replace(`/creer?id=${recipeId}`, { scroll: false });
         }
       } else {
         // « Enregistrer en brouillon et quitter » : retour au carnet.
