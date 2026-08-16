@@ -23,6 +23,11 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
   { key: 'creer.intro', page: 'creer', adminLabel: "En haut du formulaire, juste avant le titre" },
   { key: 'creer.taille', page: 'creer', adminLabel: "Avant la section « Taille / Nombre de portions »" },
   {
+    key: 'creer.ustensiles',
+    page: 'creer',
+    adminLabel: "Avant la section « Ustensiles nécessaires »",
+  },
+  {
     key: 'creer.ajustement_etape',
     page: 'creer',
     adminLabel: "Dans la 1ʳᵉ étape, avant « Ajustement des quantités de cette étape »",
@@ -41,11 +46,6 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     key: 'creer.ingredients_recap',
     page: 'creer',
     adminLabel: "« Liste complète des ingrédients » — avant la section « Récapitulatif des ingrédients »",
-  },
-  {
-    key: 'creer.ustensiles',
-    page: 'creer',
-    adminLabel: "Avant la section « Ustensiles nécessaires »",
   },
   { key: 'relecture.intro', page: 'relecture', adminLabel: "En haut de « Informations générales », avant le titre" },
   { key: 'relecture.taille', page: 'relecture', adminLabel: "Avant le champ « Taille / Nombre de portions »" },
