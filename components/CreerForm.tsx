@@ -1364,6 +1364,8 @@ export function CreerForm({
                   setHero(url);
                   setHeroAiRetouched(false);
                 }}
+                promptAiRetouched
+                onAiRetouchedChange={setHeroAiRetouched}
                 onOriginalChange={setHeroOriginal}
                 onClear={() => {
                   setHero(null);
@@ -2075,6 +2077,8 @@ export function CreerForm({
                             originalSrc={p?.original_url}
                             aiRetouched={p?.ai_retouched}
                             onChange={(url) => patchPhoto(si, pi, url)}
+                            promptAiRetouched
+                            onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                             onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                             onClear={() => patchPhoto(si, pi, null)}
                             shape="rect"

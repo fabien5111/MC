@@ -1261,6 +1261,8 @@ export function RelectureEditor({
                 originalSrc={heroOriginal}
                 aiRetouched={heroAiRetouched}
                 onChange={patchHero}
+                promptAiRetouched
+                onAiRetouchedChange={setHeroAiRetouched}
                 onOriginalChange={setHeroOriginal}
                 onClear={() => patchHero(null)}
                 shape="rect"
@@ -1951,6 +1953,8 @@ export function RelectureEditor({
                         originalSrc={p?.original_url}
                         aiRetouched={p?.ai_retouched}
                         onChange={(url) => patchPhoto(si, pi, url)}
+                        promptAiRetouched
+                        onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                         onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                         onClear={() => patchPhoto(si, pi, null)}
                         shape="rect"
