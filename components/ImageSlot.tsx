@@ -257,7 +257,7 @@ export function ImageSlot({
               dialog
                 .confirm(
                   "Cette photo a-t-elle été retravaillée avec l'IA ?\n\n" +
-                    "Si oui, un filigrane « Photo retravaillée avec l'IA » sera apposé dessus.",
+                    "Si oui, un filigrane « Photo retravaillée avec l'IA » sera apposé.",
                 )
                 .then((yes) => onAiRetouchedChange?.(yes));
             }

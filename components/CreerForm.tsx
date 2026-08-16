@@ -91,6 +91,17 @@ function splitSousEtapes(description: string): string[] {
 let uid = 0;
 const key = () => `k${uid++}`;
 
+// Redimensionne un <textarea> à la hauteur de son contenu — jamais de scroll
+// interne, y compris pour du texte déjà rempli en modification. Fonction
+// simple (pas un hook d'état) : utilisable en `ref` comme en gestionnaire
+// d'événement, y compris à l'intérieur des `.map()` d'étapes/ingrédients où
+// un hook ne serait pas légal (ordre d'appel instable selon leur nombre).
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 // Slug généré depuis un libellé (même règle que le back-office des listes) :
 // la colonne `tags.slug` est NOT NULL et n'est pas saisie dans l'éditeur.
 const slugify = (name: string): string =>
@@ -1322,10 +1333,14 @@ export function CreerForm({
           <div className="lg:col-span-12">
             <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Description rapide</label>
             <textarea
+              ref={autoGrow}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                autoGrow(e.target);
+              }}
               rows={2}
-              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
               placeholder="Décrivez votre recette en quelques mots"
             />
           </div>
@@ -1525,9 +1540,13 @@ export function CreerForm({
                 Complément d&apos;informations sur les quantités
               </label>
               <textarea
+                ref={autoGrow}
                 value={yieldNotes}
-                onChange={(e) => setYieldNotes(e.target.value)}
-                className="editorial-input w-full font-body-md text-on-surface italic"
+                onChange={(e) => {
+                  setYieldNotes(e.target.value);
+                  autoGrow(e.target);
+                }}
+                className="editorial-input w-full font-body-md text-on-surface italic resize-none overflow-hidden"
                 placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
                 rows={3}
               />
@@ -1988,9 +2007,13 @@ export function CreerForm({
                       // Mode texte libre : description + bouton d'éclatement.
                       <>
                         <textarea
+                          ref={autoGrow}
                           value={st.description}
-                          onChange={(e) => patchStep(si, { description: e.target.value })}
-                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                          onChange={(e) => {
+                            patchStep(si, { description: e.target.value });
+                            autoGrow(e.target);
+                          }}
+                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                           placeholder="Décrivez les gestes techniques avec précision..."
                           rows={8}
                         />
@@ -2142,9 +2165,13 @@ export function CreerForm({
                     </summary>
                     <div className="pb-6">
                       <textarea
+                        ref={autoGrow}
                         value={st.tips}
-                        onChange={(e) => patchStep(si, { tips: e.target.value })}
-                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors"
+                        onChange={(e) => {
+                          patchStep(si, { tips: e.target.value });
+                          autoGrow(e.target);
+                        }}
+                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                         placeholder="Une astuce particulière pour cette étape ?"
                         rows={4}
                       />
@@ -2173,9 +2200,13 @@ export function CreerForm({
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
+            ref={autoGrow}
             value={tips}
-            onChange={(e) => setTips(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setTips(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
             rows={4}
           />
@@ -2185,9 +2216,13 @@ export function CreerForm({
         <section className="space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
           <textarea
+            ref={autoGrow}
             value={servingAdvice}
-            onChange={(e) => setServingAdvice(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setServingAdvice(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
