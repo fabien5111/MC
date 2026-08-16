@@ -80,9 +80,15 @@ img {
   /* Champ ingrédient relié à une <datalist> (suggestions) : Chrome/Edge
      dessinent une flèche identique à celle d'un <select>, qui laisse croire
      à tort à une liste fermée alors qu'il s'agit d'un texte libre. On masque
-     l'indicateur natif ; les suggestions au clavier restent inchangées. */
-  .editorial-input[list]::-webkit-calendar-picker-indicator {
-    display: none;
+     l'indicateur natif ; les suggestions au clavier restent inchangées.
+     `display: none` (solution habituellement citée) reste sans effet sur les
+     versions de Chrome testées ici — seul `opacity: 0` supprime réellement le
+     rendu de la flèche ; `-webkit-list-button` est ciblé en plus par
+     précaution pour les moteurs qui exposeraient l'icône via cet autre
+     pseudo-élément. */
+  .editorial-input[list]::-webkit-calendar-picker-indicator,
+  .editorial-input[list]::-webkit-list-button {
+    opacity: 0;
   }
 }
 /* ---- Sommaire de navigation de l'éditeur de recette ----------------------
