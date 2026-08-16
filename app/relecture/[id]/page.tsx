@@ -42,10 +42,7 @@ export default async function RelecturePage({ params }: Params) {
     isAdmin(user.id),
     getIngredientConversions(),
     getIngredientRefsList(),
-    // Réutilise les blocs de la page 'creer' (mêmes clés, même contenu) :
-    // RelectureEditor affiche les mêmes blocs que CreerForm aux positions
-    // équivalentes du parcours, sans dupliquer la saisie en admin.
-    getVisibleHelpBlocks('creer', user.id),
+    getVisibleHelpBlocks('relecture', user.id),
   ]);
 
   return (

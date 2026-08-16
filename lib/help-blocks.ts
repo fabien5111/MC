@@ -4,11 +4,12 @@
 // section admin « Blocs d'aide » n'en édite que le contenu (texte + lien
 // vidéo, table `help_blocks`), sans écran d'ajout/suppression. Un nouveau
 // bloc s'ajoute donc ici, un par un, au fil des besoins.
-export type HelpPageSlug = 'creer' | 'planification';
+export type HelpPageSlug = 'creer' | 'planification' | 'relecture';
 
 export const HELP_PAGES: { slug: HelpPageSlug; label: string }[] = [
   { slug: 'creer', label: 'Création / modification recette' },
   { slug: 'planification', label: 'Planification' },
+  { slug: 'relecture', label: "Relecture d'un import" },
 ];
 
 export type HelpBlockDef = {
@@ -18,48 +19,56 @@ export type HelpBlockDef = {
   adminLabel: string;
 };
 
-// Les 7 blocs ci-dessous sont aussi affichés sur /relecture (relecture d'un
-// import), au même endroit du parcours (RelectureEditor réutilise ces mêmes
-// clés plutôt que d'en déclarer de nouvelles) : un seul contenu à saisir ici
-// pour les deux écrans, et un masquage par le membre vaut pour les deux.
 export const HELP_BLOCKS: HelpBlockDef[] = [
-  {
-    key: 'creer.intro',
-    page: 'creer',
-    adminLabel: "En haut du formulaire, juste avant le titre (aussi affiché en tête de la relecture d'un import)",
-  },
-  {
-    key: 'creer.taille',
-    page: 'creer',
-    adminLabel: "Avant la section « Taille / Nombre de portions » (aussi affiché en relecture)",
-  },
+  { key: 'creer.intro', page: 'creer', adminLabel: "En haut du formulaire, juste avant le titre" },
+  { key: 'creer.taille', page: 'creer', adminLabel: "Avant la section « Taille / Nombre de portions »" },
   {
     key: 'creer.ajustement_etape',
     page: 'creer',
-    adminLabel:
-      "Dans la 1ʳᵉ étape, avant « Ajustement des quantités de cette étape » (aussi affiché en relecture)",
+    adminLabel: "Dans la 1ʳᵉ étape, avant « Ajustement des quantités de cette étape »",
   },
   {
     key: 'creer.description_etape',
     page: 'creer',
-    adminLabel:
-      "Dans la 1ʳᵉ étape, avant le champ « Description » (aussi affiché en relecture, avant les sous-étapes)",
+    adminLabel: "Dans la 1ʳᵉ étape, avant le champ « Description »",
   },
   {
     key: 'creer.verification',
     page: 'creer',
-    adminLabel: "« Vérification de la recette » — avant la section « Planning de préparation » (aussi affiché en relecture)",
+    adminLabel: "« Vérification de la recette » — avant la section « Planning de préparation »",
   },
   {
     key: 'creer.ingredients_recap',
     page: 'creer',
-    adminLabel:
-      "« Liste complète des ingrédients » — avant la section « Récapitulatif des ingrédients » (aussi affiché en relecture)",
+    adminLabel: "« Liste complète des ingrédients » — avant la section « Récapitulatif des ingrédients »",
   },
   {
     key: 'creer.ustensiles',
     page: 'creer',
-    adminLabel: "Avant la section « Ustensiles nécessaires » (aussi affiché en relecture)",
+    adminLabel: "Avant la section « Ustensiles nécessaires »",
+  },
+  { key: 'relecture.intro', page: 'relecture', adminLabel: "En haut de « Informations générales », avant le titre" },
+  { key: 'relecture.taille', page: 'relecture', adminLabel: "Avant le champ « Taille / Nombre de portions »" },
+  { key: 'relecture.ustensiles', page: 'relecture', adminLabel: "Avant la section « Ustensiles »" },
+  {
+    key: 'relecture.ajustement_etape',
+    page: 'relecture',
+    adminLabel: "Dans la 1ʳᵉ étape, avant « Ajustement des quantités de cette étape »",
+  },
+  {
+    key: 'relecture.description_etape',
+    page: 'relecture',
+    adminLabel: "Dans la 1ʳᵉ étape, avant « Sous-étapes importées »",
+  },
+  {
+    key: 'relecture.verification',
+    page: 'relecture',
+    adminLabel: "Avant la section « Planning de préparation »",
+  },
+  {
+    key: 'relecture.ingredients_recap',
+    page: 'relecture',
+    adminLabel: "Avant la section « Récapitulatif des ingrédients »",
   },
 ];
 
