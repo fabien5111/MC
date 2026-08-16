@@ -77,6 +77,13 @@ img {
   .editorial-input:focus {
     border-color: #300a12; /* primary */
   }
+  /* Champ ingrédient relié à une <datalist> (suggestions) : Chrome/Edge
+     dessinent une flèche identique à celle d'un <select>, qui laisse croire
+     à tort à une liste fermée alors qu'il s'agit d'un texte libre. On masque
+     l'indicateur natif ; les suggestions au clavier restent inchangées. */
+  .editorial-input[list]::-webkit-calendar-picker-indicator {
+    display: none;
+  }
 }
 /* ---- Sommaire de navigation de l'éditeur de recette ----------------------
    Rail vertical fixé au bord gauche (components/recipe/RecipeToc.tsx). Valeurs
