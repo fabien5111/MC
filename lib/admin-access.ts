@@ -23,18 +23,20 @@ export type AdminNavItem = {
   manager?: boolean;
 };
 
+// Ordre : « Tableau de bord » en tête, le reste trié alphabétiquement — pas
+// de sens métier à préserver ici, contrairement à `SECTIONS` de
+// admin-lists-config.ts.
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
-  { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book', manager: true },
+  { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
   { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
-  { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
+  { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/inconnus', label: 'Éléments inconnus', icon: 'help' },
-  { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
-  { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
-  { href: '/admin/moules', label: 'Moules', icon: 'cake' },
+  { href: '/admin/membres', label: 'Membres', icon: 'group' },
   { href: '/admin/photos', label: 'Photos du site', icon: 'photo_library' },
   { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
-  { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
+  { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
+  { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book', manager: true },
 ];

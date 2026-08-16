@@ -11,11 +11,13 @@ export function RecipeCard({
   isFav,
   isOwner,
   showPlan,
+  defaultPhoto,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
   isOwner?: boolean;
   showPlan?: boolean;
+  defaultPhoto?: string | null;
 }) {
   return (
     <RecipeCardLayout
@@ -23,6 +25,7 @@ export function RecipeCard({
       isFav={isFav}
       isOwner={isOwner}
       showPlan={showPlan}
+      defaultPhoto={defaultPhoto}
       allergens={<AllergenPictos names={cardAllergenNames(recipe)} className="mb-4" iconClassName="w-6 h-6" />}
     />
   );

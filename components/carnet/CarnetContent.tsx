@@ -38,11 +38,14 @@ export function CarnetContent({
   favIds,
   importsEnAttente,
   emptyMessage,
+  defaultPhoto = null,
 }: {
   items: CarnetItem[];
   favIds: string[];
   importsEnAttente: number;
   emptyMessage: string;
+  // Photo « site_settings.recipe_default_photo » (cf. RecipeCardLayout).
+  defaultPhoto?: string | null;
 }) {
   const { mutate, busy } = useMutation();
   const { pending: navPending } = useCarnetTransition();
@@ -137,9 +140,9 @@ export function CarnetContent({
         <div className="grid grid-cols-1 gap-8 py-8 md:grid-cols-2 lg:grid-cols-3">
           {list.map((item) =>
             item.kind === 'mine' ? (
-              <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} />
+              <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} defaultPhoto={defaultPhoto} />
             ) : (
-              <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} />
+              <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} defaultPhoto={defaultPhoto} />
             ),
           )}
         </div>
@@ -154,10 +157,12 @@ function MineCard({
   item,
   favIds,
   onDelete,
+  defaultPhoto = null,
 }: {
   item: Extract<CarnetItem, { kind: 'mine' }>;
   favIds: string[];
   onDelete: (id: string, title: string) => void;
+  defaultPhoto?: string | null;
 }) {
   const r = item.recipe;
   const st = STATUS[r.status] || STATUS.draft;
@@ -166,10 +171,10 @@ function MineCard({
     <div className="group relative border border-outline-variant bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
-          {r.hero_image_url ? (
+          {r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url}
+              src={r.hero_image_url || defaultPhoto!}
               alt={r.title}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
@@ -251,10 +256,12 @@ function OtherCard({
   item,
   favIds,
   onRevokeShare,
+  defaultPhoto = null,
 }: {
   item: Extract<CarnetItem, { kind: 'other' }>;
   favIds: string[];
   onRevokeShare: (item: Extract<CarnetItem, { kind: 'other' }>) => void;
+  defaultPhoto?: string | null;
 }) {
   const r = item.recipe;
   const times = effectiveTimes(r);
@@ -262,10 +269,10 @@ function OtherCard({
     <div className="group relative border border-primary bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
-          {r.hero_image_url ? (
+          {r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url}
+              src={r.hero_image_url || defaultPhoto!}
               alt={r.title}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />

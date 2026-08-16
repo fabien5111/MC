@@ -10,6 +10,7 @@ import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
+import { getRecipeDefaultPhoto } from '@/lib/site';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import {
@@ -73,7 +74,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads, defaultPhoto] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
@@ -82,6 +83,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getAllergensWithPicto(),
     getIngredientConversions(),
     getActiveAds(['recipe_inline', 'sidebar']),
+    getRecipeDefaultPhoto(),
   ]);
   // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
   // Le plan est une copie matérialisée indépendante de la recette (voir
@@ -1032,7 +1034,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
         </div>
         </PlanProvider>
 
-        <SuggestionsSidebar suggestions={suggestions} favIds={favIds} ads={ads} showPlan={!!user} />
+        <SuggestionsSidebar
+          suggestions={suggestions}
+          favIds={favIds}
+          ads={ads}
+          showPlan={!!user}
+          defaultPhoto={defaultPhoto}
+        />
       </main>
       </div>
 

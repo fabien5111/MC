@@ -11,6 +11,7 @@ import {
 } from '@/lib/public-profile';
 import { getFollowCounts, isFollowing } from '@/lib/follows';
 import { activeLinks, normalizeUrl } from '@/lib/profile-links';
+import { getRecipeDefaultPhoto } from '@/lib/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -40,13 +41,14 @@ export default async function PublicProfilePage({ params, searchParams }: Params
   const profile = await getPublicProfile(handle);
   if (!profile) notFound();
 
-  const [user, stats, categories, recipes, favIds, followCounts] = await Promise.all([
+  const [user, stats, categories, recipes, favIds, followCounts, defaultPhoto] = await Promise.all([
     getCurrentUser(),
     getPublicProfileStats(profile.id),
     getPublicProfileCategories(profile.id),
     getPublicProfileRecipes(profile.id, cat),
     getFavoriteIds(),
     getFollowCounts(profile.id),
+    getRecipeDefaultPhoto(),
   ]);
   // Après le `getCurrentUser()` ci-dessus : `isFollowing` a besoin de son
   // résultat, donc hors du même `Promise.all`.
@@ -179,7 +181,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
           {recipes.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
               {recipes.map((r) => (
-                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} showPlan={!!user} />
+                <RecipeCard key={r.id} recipe={r} isFav={favIds.has(r.id)} showPlan={!!user} defaultPhoto={defaultPhoto} />
               ))}
             </div>
           ) : (

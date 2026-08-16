@@ -13,3 +13,10 @@ export async function getSiteSettings(keys: string[]): Promise<Record<string, st
     (data ?? []).map((s) => [s.key, typeof s.value === 'string' ? s.value : String(s.value ?? '')]),
   );
 }
+
+// Photo par défaut des cartes recette (RecipeCardLayout, SuggestionCard,
+// CarnetContent, accueil) quand l'auteur n'a fourni aucune photo.
+export async function getRecipeDefaultPhoto(): Promise<string | null> {
+  const settings = await getSiteSettings(['recipe_default_photo']);
+  return settings.recipe_default_photo || null;
+}

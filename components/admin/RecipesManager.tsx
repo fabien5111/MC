@@ -524,6 +524,8 @@ export function RecipesManager({
             <Link
               href={`/creer?id=${r.id}`}
               title="Modifier"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary text-xs font-label-md transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">edit_note</span> Modifier

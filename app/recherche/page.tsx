@@ -29,6 +29,7 @@ import { getActiveAds } from '@/lib/ads';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getAllergensWithPicto } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
+import { getRecipeDefaultPhoto } from '@/lib/site';
 import { relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
 import { countActiveCriteria, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
 import { getDifficulties, getRecipeTypes, getTags } from '@/lib/taxonomy';
@@ -54,7 +55,7 @@ export default async function RecherchePage({
   // colonne est déjà là).
   const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  const [result, favIds, types, difficulties, tags, allergens, user, ads] = await Promise.all([
+  const [result, favIds, types, difficulties, tags, allergens, user, ads, defaultPhoto] = await Promise.all([
     searchAdvanced(criteria),
     getFavoriteIds(),
     getRecipeTypes(),
@@ -63,6 +64,7 @@ export default async function RecherchePage({
     getAllergensWithPicto(),
     getCurrentUser(),
     getActiveAds(['search_list']),
+    getRecipeDefaultPhoto(),
   ]);
 
   const refs: FacetRefs = {
@@ -149,6 +151,7 @@ export default async function RecherchePage({
                                 isFav={favIds.has(r.id)}
                                 isOwner={!!user && r.author_id === user.id}
                                 showPlan={!!user}
+                                defaultPhoto={defaultPhoto}
                               />
                             ))}
                           </div>

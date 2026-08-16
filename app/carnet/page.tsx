@@ -6,6 +6,7 @@ import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
+import { getRecipeDefaultPhoto } from '@/lib/site';
 import { parseCarnetParams, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -50,13 +51,15 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven] = await Promise.all([
-    isReadOnlySession(),
-    getCarnetData(user.id),
-    getFavoriteIds(),
-    countImportsEnAttente(user.id),
-    getBookSharesGiven(user.id),
-  ]);
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto] =
+    await Promise.all([
+      isReadOnlySession(),
+      getCarnetData(user.id),
+      getFavoriteIds(),
+      countImportsEnAttente(user.id),
+      getBookSharesGiven(user.id),
+      getRecipeDefaultPhoto(),
+    ]);
   const filtered = applyCarnetFilters(items, params);
 
   return (
@@ -107,6 +110,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
                 ? 'Aucune recette ne correspond à ce filtre.'
                 : EMPTY_MESSAGES[params.scope]
             }
+            defaultPhoto={defaultPhoto}
           />
         </CarnetProvider>
       </main>
