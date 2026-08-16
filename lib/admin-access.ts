@@ -28,6 +28,7 @@ export type AdminNavItem = {
 // admin-lists-config.ts.
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
+  { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
   { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
   { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
   { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },

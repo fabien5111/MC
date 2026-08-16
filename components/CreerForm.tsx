@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -26,6 +28,7 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
@@ -215,6 +218,7 @@ export function CreerForm({
   conversions,
   ingredientRefIds,
   initialStep,
+  helpBlocks,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -242,10 +246,16 @@ export function CreerForm({
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
   initialStep?: number | null;
+  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné,
+  // ni bloc ni vidéo ni page masqués pour l'utilisateur courant) — cf.
+  // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
+  // tout masqué), le composant ne rend alors rien.
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
+  const help = useHelpBlocks('creer', helpBlocks ?? []);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
@@ -1141,6 +1151,7 @@ export function CreerForm({
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
+            <HelpBlockSlot blockKey="creer.intro" help={help} />
             <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
             <input
               value={title}
@@ -1377,6 +1388,8 @@ export function CreerForm({
             )}
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.taille" help={help} />
 
         {/* Métadonnées : quantité produite */}
         <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
@@ -1633,6 +1646,7 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
                     <select
@@ -1934,6 +1948,8 @@ export function CreerForm({
                     </button>
                   </div>
 
+                  {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}
+
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">
                       DESCRIPTION{' '}
@@ -2148,6 +2164,8 @@ export function CreerForm({
           />
         </section>
 
+        <HelpBlockSlot blockKey="creer.verification" help={help} />
+
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
@@ -2263,6 +2281,8 @@ export function CreerForm({
             </div>
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
 
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">

@@ -6,6 +6,7 @@ import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getU
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { CreerForm } from '@/components/CreerForm';
@@ -23,21 +24,35 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   // « Éditer » de la fiche recette (cf. components/recipe/RecetteToc.tsx).
   const initialStep = step ? parseInt(step, 10) || null : null;
 
-  const [tags, units, moldTypes, difficulties, ingredientRefs, refAllergens, allergens, utensilRefs, admin, editRecipe, conversions, ingredientRefIds] =
-    await Promise.all([
-      getTags(),
-      getUnits(),
-      getMoldTypes(),
-      getDifficulties(),
-      getIngredientRefNames(),
-      getIngredientRefAllergens(),
-      getAllergenRefs(),
-      getUtensilRefNames(),
-      isAdmin(user.id),
-      id ? getRecipeFull(id) : Promise.resolve(null),
-      getIngredientConversions(),
-      getIngredientRefsList(),
-    ]);
+  const [
+    tags,
+    units,
+    moldTypes,
+    difficulties,
+    ingredientRefs,
+    refAllergens,
+    allergens,
+    utensilRefs,
+    admin,
+    editRecipe,
+    conversions,
+    ingredientRefIds,
+    helpBlocks,
+  ] = await Promise.all([
+    getTags(),
+    getUnits(),
+    getMoldTypes(),
+    getDifficulties(),
+    getIngredientRefNames(),
+    getIngredientRefAllergens(),
+    getAllergenRefs(),
+    getUtensilRefNames(),
+    isAdmin(user.id),
+    id ? getRecipeFull(id) : Promise.resolve(null),
+    getIngredientConversions(),
+    getIngredientRefsList(),
+    getVisibleHelpBlocks('creer', user.id),
+  ]);
 
   // Édition réservée à l'auteur, ou à un admin complet (bouton « Modifier »
   // depuis /admin/recettes — cf. components/admin/RecipesManager.tsx) ;
@@ -79,6 +94,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
           initialStep={owned ? initialStep : null}
+          helpBlocks={helpBlocks}
         />
       </main>
       </div>
