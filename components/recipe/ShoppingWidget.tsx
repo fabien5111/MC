@@ -150,7 +150,7 @@ export function ShoppingWidget({
           <>
             <ul className="flex flex-col">
               {ingredients.map((m, i) => (
-                <li key={i} className="flex items-center gap-3 py-1.5 border-b border-outline-variant/30">
+                <li key={i} className="flex items-center gap-3 py-1.5 border-b border-outline-variant/30 w-fit max-w-full">
                   <input
                     type="checkbox"
                     checked={picked[i]}
