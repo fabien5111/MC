@@ -13,11 +13,14 @@ export function SuggestionCard({
   recipe,
   isFav,
   showPlan = true,
+  defaultPhoto = null,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
   // Masqué pour un visiteur — planifier suppose une session (cf. RecipeCardLayout).
   showPlan?: boolean;
+  // Photo « site_settings.recipe_default_photo » (cf. RecipeCardLayout).
+  defaultPhoto?: string | null;
 }) {
   const r = recipe;
   const level = (r.difficulties?.name || r.recipe_types?.name || 'Recette').toUpperCase();
@@ -26,9 +29,9 @@ export function SuggestionCard({
     <div className="relative group">
       <Link href={`/recette/${r.id}`} className="cursor-pointer block">
         <div className="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant relative">
-          {r.hero_image_url ? (
+          {r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-            <img src={r.hero_image_url} alt={r.title} className="w-full h-full object-cover" />
+            <img src={r.hero_image_url || defaultPhoto!} alt={r.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-on-surface-variant bg-surface-container">
               <span className="material-symbols-outlined text-4xl">cake</span>
