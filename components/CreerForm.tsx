@@ -2107,6 +2107,8 @@ export function CreerForm({
           />
         </section>
 
+        <HelpBlockSlot blockKey="creer.verification" help={help} />
+
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
@@ -2222,6 +2224,8 @@ export function CreerForm({
             </div>
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
 
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">

@@ -31,6 +31,16 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     page: 'creer',
     adminLabel: "Dans la 1ʳᵉ étape, avant le champ « Description »",
   },
+  {
+    key: 'creer.verification',
+    page: 'creer',
+    adminLabel: "« Vérification de la recette » — avant la section « Planning de préparation »",
+  },
+  {
+    key: 'creer.ingredients_recap',
+    page: 'creer',
+    adminLabel: "« Liste complète des ingrédients » — avant la section « Récapitulatif des ingrédients »",
+  },
 ];
 
 export function helpBlocksForPage(page: HelpPageSlug): HelpBlockDef[] {
