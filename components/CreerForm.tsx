@@ -32,7 +32,7 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
-import { capitalizeSentences } from '@/lib/text';
+import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -844,17 +844,20 @@ export function CreerForm({
         const st = steps[gi];
         const desc = st.description.trim();
         // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
-        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(t.trim())).filter(Boolean) : [];
+        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(fixOeufLigature(t.trim()))).filter(Boolean) : [];
         const lines = st.ings
-          .map((l, i) => ({
-            name: capitalizeSentences(l.name.trim()),
-            quantity: l.qty.trim() || null,
-            unit: l.unit || null,
-            comment: l.comment.trim() || null,
-            allergen: l.allergen.length ? l.allergen.join(', ') : null,
-            order_index: i,
-            ref_id: resolveIngredientRefId(l.name, ingredientRefIds),
-          }))
+          .map((l, i) => {
+            const name = capitalizeSentences(fixOeufLigature(l.name.trim()));
+            return {
+              name,
+              quantity: l.qty.trim() || null,
+              unit: l.unit || null,
+              comment: l.comment.trim() || null,
+              allergen: l.allergen.length ? l.allergen.join(', ') : null,
+              order_index: i,
+              ref_id: resolveIngredientRefId(name, ingredientRefIds),
+            };
+          })
           .filter((l) => l.name);
         const photoRows = st.photos.filter((p): p is StepPhoto => !!p);
         const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
@@ -863,7 +866,7 @@ export function CreerForm({
         // Réutilisé pour `recipe_steps.title` et `ingredient_groups.name` :
         // les deux affichent le même intitulé (fiche recette, planning), une
         // capitalisation calculée séparément avait divergé entre les deux.
-        const stepTitle = capitalizeSentences(st.title.trim()) || `Étape ${gi + 1}`;
+        const stepTitle = capitalizeSentences(fixOeufLigature(st.title.trim())) || `Étape ${gi + 1}`;
 
         const { data: stepRow, error: stepErr } = await supabase
           .from('recipe_steps')
@@ -871,7 +874,7 @@ export function CreerForm({
             recipe_id: recipeId,
             step_number: gi + 1,
             title: stepTitle,
-            description: capitalizeSentences(desc) || null,
+            description: capitalizeSentences(fixOeufLigature(desc)) || null,
             prep_time: gmin(st.prep),
             cook_time: gmin(st.cook),
             cook_temp: gmin(st.temp),
