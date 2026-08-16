@@ -148,16 +148,20 @@ export function ShoppingWidget({
           </p>
         ) : (
           <>
-            <ul className="flex flex-col">
+            <ul className="grid grid-cols-[max-content_minmax(0,16rem)_max-content] gap-x-3 sm:gap-x-6">
               {ingredients.map((m, i) => (
-                <li key={i} className="flex items-center gap-3 py-1.5 border-b border-outline-variant/30 w-fit max-w-full">
+                <li
+                  key={i}
+                  className="items-center py-1.5 border-b border-outline-variant/30"
+                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}
+                >
                   <input
                     type="checkbox"
                     checked={picked[i]}
                     onChange={() => toggle(i)}
-                    className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                    className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
                   />
-                  <span className="font-body-md text-body-md flex-1 min-w-0 max-w-[16rem]">
+                  <span className="font-body-md text-body-md break-words">
                     {m.name}
                     {m.comment && <span className="text-on-surface-variant italic"> — {m.comment}</span>}
                   </span>
