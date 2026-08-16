@@ -18,7 +18,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
-import { HelpBlockList } from '@/components/help/HelpBlockList';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -249,6 +250,7 @@ export function CreerForm({
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
+  const help = useHelpBlocks('creer', helpBlocks ?? []);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
@@ -1092,7 +1094,7 @@ export function CreerForm({
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
-            {helpBlocks && helpBlocks.length > 0 && <HelpBlockList page="creer" blocks={helpBlocks} />}
+            <HelpBlockSlot blockKey="creer.intro" help={help} />
             <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
             <input
               value={title}
@@ -1329,6 +1331,8 @@ export function CreerForm({
             )}
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.taille" help={help} />
 
         {/* Métadonnées : quantité produite */}
         <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
@@ -1585,6 +1589,7 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
                     <select
@@ -1885,6 +1890,8 @@ export function CreerForm({
                       <span className="material-symbols-outlined">add</span> Ajouter un ingrédient
                     </button>
                   </div>
+
+                  {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}
 
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">

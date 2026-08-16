@@ -20,6 +20,17 @@ export type HelpBlockDef = {
 
 export const HELP_BLOCKS: HelpBlockDef[] = [
   { key: 'creer.intro', page: 'creer', adminLabel: "En haut du formulaire, juste avant le titre" },
+  { key: 'creer.taille', page: 'creer', adminLabel: "Avant la section « Taille / Nombre de portions »" },
+  {
+    key: 'creer.ajustement_etape',
+    page: 'creer',
+    adminLabel: "Dans la 1ʳᵉ étape, avant « Ajustement des quantités de cette étape »",
+  },
+  {
+    key: 'creer.description_etape',
+    page: 'creer',
+    adminLabel: "Dans la 1ʳᵉ étape, avant le champ « Description »",
+  },
 ];
 
 export function helpBlocksForPage(page: HelpPageSlug): HelpBlockDef[] {
