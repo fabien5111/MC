@@ -46,6 +46,38 @@ export type Database = {
           },
         ]
       }
+      admin_ignored_refs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          kind: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          kind?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_ignored_refs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ads: {
         Row: {
           active: boolean
@@ -721,6 +753,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      help_blocks: {
+        Row: {
+          key: string
+          text: string | null
+          updated_at: string
+          updated_by: string | null
+          video_url: string | null
+        }
+        Insert: {
+          key: string
+          text?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          key?: string
+          text?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      help_dismissals: {
+        Row: {
+          created_at: string
+          kind: string
+          target: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          target: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          target?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       idea_votes: {
         Row: {
@@ -1759,6 +1836,48 @@ export type Database = {
           },
         ]
       }
+      recipe_rejection_history: {
+        Row: {
+          analysis_id: number | null
+          created_at: string
+          id: number
+          motif: string
+          recipe_id: string
+          rejected_at: string
+        }
+        Insert: {
+          analysis_id?: number | null
+          created_at?: string
+          id?: never
+          motif: string
+          recipe_id: string
+          rejected_at: string
+        }
+        Update: {
+          analysis_id?: number | null
+          created_at?: string
+          id?: never
+          motif?: string
+          recipe_id?: string
+          rejected_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_rejection_history_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_rejection_history_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_scale_costs: {
         Row: {
           cost_usd: number | null
@@ -2102,6 +2221,7 @@ export type Database = {
           is_public: boolean | null
           measure_type: string | null
           moderation_note: string | null
+          moderation_note_at: string | null
           mold_dims: Json | null
           mold_type_id: number | null
           prep_time: number | null
@@ -2141,6 +2261,7 @@ export type Database = {
           is_public?: boolean | null
           measure_type?: string | null
           moderation_note?: string | null
+          moderation_note_at?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -2180,6 +2301,7 @@ export type Database = {
           is_public?: boolean | null
           measure_type?: string | null
           moderation_note?: string | null
+          moderation_note_at?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
@@ -2517,6 +2639,57 @@ export type Database = {
       }
     }
     Functions: {
+      admin_ignore_ref: {
+        Args: { p_kind: string; p_name: string }
+        Returns: undefined
+      }
+      admin_link_ingredient_ref: {
+        Args: { p_allergen?: string; p_name: string }
+        Returns: number
+      }
+      admin_link_utensil_ref: {
+        Args: { p_comment?: string; p_name: string; p_url?: string }
+        Returns: number
+      }
+      admin_list_ignored_refs: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by_name: string
+          id: number
+          kind: string
+          name: string
+        }[]
+      }
+      admin_unignore_ref: { Args: { p_id: number }; Returns: undefined }
+      admin_unknown_ingredients: {
+        Args: never
+        Returns: {
+          author_id: string
+          author_name: string
+          ingredient_id: number
+          is_public: boolean
+          name: string
+          recipe_id: string
+          recipe_status: string
+          recipe_title: string
+          step_name: string
+          step_order: number
+        }[]
+      }
+      admin_unknown_utensils: {
+        Args: never
+        Returns: {
+          author_id: string
+          author_name: string
+          is_public: boolean
+          name: string
+          recipe_id: string
+          recipe_status: string
+          recipe_title: string
+          utensil_id: number
+        }[]
+      }
       can_view_shared_recipe: {
         Args: { p_recipe_id: string }
         Returns: boolean
@@ -2553,6 +2726,7 @@ export type Database = {
         Returns: Json
       }
       mc_norm: { Args: { txt: string }; Returns: string }
+      mc_pseudo_slug: { Args: { p: string }; Returns: string }
       merge_ideas: {
         Args: { source_id: string; target_id: string }
         Returns: undefined
