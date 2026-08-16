@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
+import { HelpBlockList } from '@/components/help/HelpBlockList';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -26,6 +27,7 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
@@ -214,6 +216,7 @@ export function CreerForm({
   conversions,
   ingredientRefIds,
   initialStep,
+  helpBlocks,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -237,6 +240,11 @@ export function CreerForm({
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
   initialStep?: number | null;
+  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné,
+  // ni bloc ni vidéo ni page masqués pour l'utilisateur courant) — cf.
+  // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
+  // tout masqué), le composant ne rend alors rien.
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -1084,6 +1092,7 @@ export function CreerForm({
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
+            {helpBlocks && helpBlocks.length > 0 && <HelpBlockList page="creer" blocks={helpBlocks} />}
             <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
             <input
               value={title}

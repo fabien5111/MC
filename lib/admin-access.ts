@@ -36,4 +36,5 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/moules', label: 'Moules', icon: 'cake' },
   { href: '/admin/photos', label: 'Photos du site', icon: 'photo_library' },
   { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
+  { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
 ];
