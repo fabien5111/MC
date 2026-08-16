@@ -1241,8 +1241,8 @@ export function CreerForm({
                     + Ajouter un tag
                   </button>
                   {tagPickerOpen && (
-                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
-                      <div className="px-2 pb-2 sticky top-0 bg-white">
+                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg min-w-[220px] max-h-64 flex flex-col overflow-hidden">
+                      <div className="px-2 pt-2 pb-2 shrink-0">
                         <input
                           type="text"
                           value={tagSearch}
@@ -1252,33 +1252,35 @@ export function CreerForm({
                           className="w-full px-3 py-1.5 text-sm border border-outline-variant rounded-lg focus:border-primary outline-none"
                         />
                       </div>
-                      {filteredRemainingTags.length ? (
-                        filteredRemainingTags.map((t) => (
-                          <label
-                            key={t.id}
-                            className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={pendingTagIds.has(t.id)}
-                              onChange={(e) => {
-                                setPendingTagIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(t.id);
-                                  else next.delete(t.id);
-                                  return next;
-                                });
-                              }}
-                              className="accent-primary"
-                            />
-                            {t.name}
-                          </label>
-                        ))
-                      ) : (
-                        <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
-                      )}
+                      <div className="overflow-y-auto flex-1 min-h-0 pb-2">
+                        {filteredRemainingTags.length ? (
+                          filteredRemainingTags.map((t) => (
+                            <label
+                              key={t.id}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={pendingTagIds.has(t.id)}
+                                onChange={(e) => {
+                                  setPendingTagIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (e.target.checked) next.add(t.id);
+                                    else next.delete(t.id);
+                                    return next;
+                                  });
+                                }}
+                                className="accent-primary"
+                              />
+                              {t.name}
+                            </label>
+                          ))
+                        ) : (
+                          <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                        )}
+                      </div>
                       {pendingTagIds.size > 0 && (
-                        <div className="px-2 pt-2 sticky bottom-0 bg-white border-t border-outline-variant">
+                        <div className="px-2 pt-2 pb-2 shrink-0 border-t border-outline-variant">
                           <button
                             type="button"
                             onClick={() => {
