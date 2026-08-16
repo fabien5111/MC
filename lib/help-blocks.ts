@@ -41,6 +41,11 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     page: 'creer',
     adminLabel: "« Liste complète des ingrédients » — avant la section « Récapitulatif des ingrédients »",
   },
+  {
+    key: 'creer.ustensiles',
+    page: 'creer',
+    adminLabel: "Avant la section « Ustensiles nécessaires »",
+  },
 ];
 
 export function helpBlocksForPage(page: HelpPageSlug): HelpBlockDef[] {

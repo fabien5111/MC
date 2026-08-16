@@ -1526,6 +1526,8 @@ export function CreerForm({
           </div>
         </section>
 
+        <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
+
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
           <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>

@@ -26,19 +26,30 @@ export function HelpBlock({
 
   return (
     <div className="no-print bg-secondary-container/30 border border-secondary-container rounded-xl p-6">
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-2 text-primary min-w-0"
-        >
+      {/* Toute la ligne (pas seulement le titre) replie/déplie — la croix de
+          masquage arrête la propagation pour rester une action distincte. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          setExpanded((v) => !v);
+        }}
+        className="flex items-center justify-between gap-3 cursor-pointer"
+      >
+        <div className="flex items-center gap-2 text-primary min-w-0">
           <span className="material-symbols-outlined text-[20px] shrink-0">help_center</span>
           <span className="font-label-md text-label-md uppercase tracking-wide">Aides et Conseils</span>
           <span className="material-symbols-outlined text-[20px] shrink-0">{expanded ? 'expand_less' : 'expand_more'}</span>
-        </button>
+        </div>
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss();
+          }}
           title="Ne plus afficher cette aide"
           aria-label="Ne plus afficher cette aide"
           className="text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
