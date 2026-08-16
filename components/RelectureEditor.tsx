@@ -260,7 +260,10 @@ export function RelectureEditor({
   const router = useRouter();
   const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
-  const help = useHelpBlocks('relecture', helpBlocks ?? [], true);
+  // Réutilise la page d'aide 'creer' : ce sont les mêmes blocs (mêmes clés)
+  // que CreerForm, pour ne pas dupliquer leur saisie en admin — masquer un
+  // bloc (ou toute l'aide) ici le masque donc aussi dans l'éditeur de recette.
+  const help = useHelpBlocks('creer', helpBlocks ?? [], true);
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
   const [heroOriginal, setHeroOriginal] = useState<string | null>(recette.photo_principale_original ?? recette.photo_principale ?? null);
@@ -1255,7 +1258,7 @@ export function RelectureEditor({
       {/* Infos générales */}
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
-        <HelpBlockSlot blockKey="relecture.intro" help={help} />
+        <HelpBlockSlot blockKey="creer.intro" help={help} />
         <div className="grid grid-cols-1 gap-4">
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
@@ -1373,7 +1376,7 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
           </label>
-          <HelpBlockSlot blockKey="relecture.taille" help={help} />
+          <HelpBlockSlot blockKey="creer.taille" help={help} />
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Taille / Nombre de portions</span>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 mt-1">
@@ -1529,7 +1532,7 @@ export function RelectureEditor({
         </div>
       </section>
 
-      <HelpBlockSlot blockKey="relecture.ustensiles" help={help} />
+      <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
 
       {/* Ustensiles (liste unique de la recette, regroupée depuis les étapes importées) */}
       <section id="sec-ustensiles" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
@@ -1658,7 +1661,7 @@ export function RelectureEditor({
 
             {!sp.collapsed && (
             <>
-            {si === 0 && <div className="px-6 pt-6"><HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} /></div>}
+            {si === 0 && <div className="px-6 pt-6"><HelpBlockSlot blockKey="creer.ajustement_etape" help={help} /></div>}
             {/* Ajustement des quantités : même réglage que l'éditeur de
                 recette, absent jusqu'ici de la relecture — une recette
                 importée arrivait donc toujours en ajustement proportionnel,
@@ -1890,7 +1893,7 @@ export function RelectureEditor({
               )}
 
               {/* Étapes */}
-              {si === 0 && <HelpBlockSlot blockKey="relecture.description_etape" help={help} />}
+              {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Sous-étapes importées</p>
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Version corrigée</p>
@@ -2077,7 +2080,7 @@ export function RelectureEditor({
         </div>
       </section>
 
-      <HelpBlockSlot blockKey="relecture.verification" help={help} />
+      <HelpBlockSlot blockKey="creer.verification" help={help} />
 
       {/* Planning de préparation (aperçu) : purement dérivé de `sps`, rien
           n'est enregistré ici — même principe que dans l'éditeur de recette
@@ -2109,7 +2112,7 @@ export function RelectureEditor({
         </div>
       </section>
 
-      <HelpBlockSlot blockKey="relecture.ingredients_recap" help={help} />
+      <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
 
       {/* Récapitulatif des ingrédients : fusion des lignes identiques (nom +
           unité) de toutes les étapes, purement dérivé (rien n'est enregistré
