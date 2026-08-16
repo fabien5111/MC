@@ -313,6 +313,7 @@ export function CreerForm({
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     return us.length ? us.map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })) : [{ key: key(), name: '', comment: '' }];
   });
+  const addUtensil = () => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }]);
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
@@ -1541,6 +1542,7 @@ export function CreerForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
                     <input
                       list="dl-utensils"
+                      data-name-utensil
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
                       className={`editorial-input text-on-surface w-full${unknownRefClass(knownUtensils, u.name)}`}
@@ -1550,6 +1552,19 @@ export function CreerForm({
                     <textarea
                       value={u.comment}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      onKeyDown={(e) => {
+                        // Tab (sans Maj) depuis le dernier champ de la dernière
+                        // ligne → ouvrir une nouvelle ligne d'ustensile et y
+                        // placer le curseur (motif identique aux ingrédients).
+                        if (e.key === 'Tab' && !e.shiftKey && i === utensils.length - 1) {
+                          e.preventDefault();
+                          addUtensil();
+                          setTimeout(() => {
+                            const names = document.querySelectorAll<HTMLInputElement>('[data-name-utensil]');
+                            names[names.length - 1]?.focus();
+                          }, 0);
+                        }
+                      }}
                       className="editorial-input text-on-surface w-full resize-y"
                       rows={1}
                       placeholder="Commentaire (optionnel)"
@@ -1581,7 +1596,7 @@ export function CreerForm({
           </ul>
           <button
             type="button"
-            onClick={() => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }])}
+            onClick={addUtensil}
             className="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline"
           >
             <span className="material-symbols-outlined">add</span> Ajouter un ustensile
