@@ -39,8 +39,11 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       getIngredientRefsList(),
     ]);
 
-  // Édition réservée à l'auteur ; sinon on repart d'un formulaire vierge.
-  const owned = editRecipe && editRecipe.author_id === user.id ? editRecipe : null;
+  // Édition réservée à l'auteur, ou à un admin complet (bouton « Modifier »
+  // depuis /admin/recettes — cf. components/admin/RecipesManager.tsx) ;
+  // sinon on repart d'un formulaire vierge.
+  const owned = editRecipe && (editRecipe.author_id === user.id || admin) ? editRecipe : null;
+  const editingOtherAuthor = owned !== null && owned.author_id !== user.id;
 
   // Cadre rouge sur un ingrédient/ustensile hors référentiel : à afficher
   // aussi quand l'admin édite la recette d'un membre en mode « connecté en
@@ -72,6 +75,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           isAdmin={admin}
           highlightUnknownRefs={highlightUnknownRefs}
           editRecipe={owned}
+          editingOtherAuthor={editingOtherAuthor}
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
           initialStep={owned ? initialStep : null}

@@ -211,6 +211,7 @@ export function CreerForm({
   isAdmin,
   highlightUnknownRefs,
   editRecipe,
+  editingOtherAuthor,
   conversions,
   ingredientRefIds,
   initialStep,
@@ -231,6 +232,10 @@ export function CreerForm({
   // référentiel », publication directe, création de tag).
   highlightUnknownRefs: boolean;
   editRecipe: RecipeFull | null;
+  // Admin en train d'éditer la recette d'un membre depuis /admin/recettes
+  // (bouton « Modifier ») : affiche un bandeau pour ne pas confondre avec
+  // une recette de l'admin lui-même.
+  editingOtherAuthor?: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
   // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
@@ -1056,6 +1061,13 @@ export function CreerForm({
           <span className="material-symbols-outlined">close</span> Annuler
         </Link>
       </div>
+
+      {editingOtherAuthor && (
+        <div className="no-print flex items-center gap-2 flex-wrap mb-4 bg-primary/10 text-primary px-4 py-2 font-label-md text-label-md">
+          <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+          Vous modifiez la recette de {editRecipe?.profiles?.full_name || editRecipe?.profiles?.username || 'un autre membre'} en tant qu&apos;administrateur.
+        </div>
+      )}
 
       {statusBadge && (
         <div className="no-print flex items-center gap-4 flex-wrap mb-4">
