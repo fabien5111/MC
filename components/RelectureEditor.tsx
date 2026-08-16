@@ -11,6 +11,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { ImportFull } from '@/lib/imports';
 import type { Difficulty, Tag } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
+import type { VisibleHelpBlock } from '@/lib/help';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
@@ -237,6 +240,7 @@ export function RelectureEditor({
   isAdmin,
   conversions,
   ingredientRefIds,
+  helpBlocks,
 }: {
   importRow: ImportFull;
   units: string[];
@@ -251,10 +255,12 @@ export function RelectureEditor({
   isAdmin: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
+  const help = useHelpBlocks('relecture', helpBlocks ?? [], true);
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
   const [heroOriginal, setHeroOriginal] = useState<string | null>(recette.photo_principale_original ?? recette.photo_principale ?? null);
@@ -1249,6 +1255,7 @@ export function RelectureEditor({
       {/* Infos générales */}
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Informations générales</h2>
+        <HelpBlockSlot blockKey="relecture.intro" help={help} />
         <div className="grid grid-cols-1 gap-4">
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Titre</span>
@@ -1366,6 +1373,7 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
           </label>
+          <HelpBlockSlot blockKey="relecture.taille" help={help} />
           <div className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Taille / Nombre de portions</span>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 mt-1">
@@ -1521,6 +1529,8 @@ export function RelectureEditor({
         </div>
       </section>
 
+      <HelpBlockSlot blockKey="relecture.ustensiles" help={help} />
+
       {/* Ustensiles (liste unique de la recette, regroupée depuis les étapes importées) */}
       <section id="sec-ustensiles" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Ustensiles</h2>
@@ -1648,6 +1658,7 @@ export function RelectureEditor({
 
             {!sp.collapsed && (
             <>
+            {si === 0 && <div className="px-6 pt-6"><HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} /></div>}
             {/* Ajustement des quantités : même réglage que l'éditeur de
                 recette, absent jusqu'ici de la relecture — une recette
                 importée arrivait donc toujours en ajustement proportionnel,
@@ -1879,6 +1890,7 @@ export function RelectureEditor({
               )}
 
               {/* Étapes */}
+              {si === 0 && <HelpBlockSlot blockKey="relecture.description_etape" help={help} />}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Sous-étapes importées</p>
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Version corrigée</p>
@@ -2065,6 +2077,8 @@ export function RelectureEditor({
         </div>
       </section>
 
+      <HelpBlockSlot blockKey="relecture.verification" help={help} />
+
       {/* Planning de préparation (aperçu) : purement dérivé de `sps`, rien
           n'est enregistré ici — même principe que dans l'éditeur de recette
           (CreerForm). */}
@@ -2094,6 +2108,8 @@ export function RelectureEditor({
           )}
         </div>
       </section>
+
+      <HelpBlockSlot blockKey="relecture.ingredients_recap" help={help} />
 
       {/* Récapitulatif des ingrédients : fusion des lignes identiques (nom +
           unité) de toutes les étapes, purement dérivé (rien n'est enregistré
