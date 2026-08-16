@@ -31,10 +31,9 @@ Règles :
   rapport des NOMBRES DE PERSONNES : cible / départ.
 
 - « J'ai seulement X d'un ingrédient » : coefficient = X / quantité actuelle de cet ingrédient.
-- Un « Complément d'informations sur les quantités » peut préciser des éléments non
-  déductibles du rendement seul (ex. moule rempli aux 3/4, marge de fonçage
-  particulière, quantité pensée pour X pièces au-delà du rendement affiché) :
-  tiens-en compte dans le calcul quand il est pertinent pour la demande.
+- Complément d'informations sur les quantités (ex. moule rempli aux 3/4, marge de
+  fonçage particulière, quantité pour 6 à 8 personnes...). Les ajustements de
+  recette via l'IA prendront en compte ces éléments.
 - Le coefficient doit être strictement positif ; arrondis-le à 2 décimales.
 - Si la demande est ambiguë, impossible ou sans rapport avec un redimensionnement,
   renvoie coefficient null et explique brièvement pourquoi.
