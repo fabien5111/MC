@@ -17,6 +17,7 @@ export function RecipeCardLayout({
   isOwner = false,
   showPlan = true,
   allergens,
+  defaultPhoto = null,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
@@ -30,6 +31,9 @@ export function RecipeCardLayout({
   // de la fiche recette) le passent à `false` selon l'état de connexion.
   showPlan?: boolean;
   allergens: ReactNode;
+  // Photo « site_settings.recipe_default_photo », affichée à la place du
+  // pictogramme quand la recette n'a pas de photo.
+  defaultPhoto?: string | null;
 }) {
   const r = recipe;
   const times = effectiveTimes(r);
@@ -41,10 +45,10 @@ export function RecipeCardLayout({
     <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
-          {r.hero_image_url ? (
+          {r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url}
+              src={r.hero_image_url || defaultPhoto!}
               alt={r.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />

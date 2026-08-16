@@ -55,7 +55,7 @@ export default async function HomePage() {
       getRecipes({ limit: 12 }),
       getActiveFeaturedRecipe(),
       getFavoriteIds(),
-      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
+      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile', 'recipe_default_photo']),
       getHomeCategories(),
       getActiveAds(['home_top', 'home_mid']),
       // Réservées au membre — inutile de les demander à un visiteur.
@@ -65,6 +65,7 @@ export default async function HomePage() {
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
   // la section ne disparaît jamais de l'accueil.
+  const defaultPhoto = banners.recipe_default_photo || null;
   const featured = activeFeatured ?? recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
@@ -119,10 +120,10 @@ export default async function HomePage() {
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
-                    {featured.hero_image_url ? (
+                    {featured.hero_image_url || defaultPhoto ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                       <img
-                        src={featured.hero_image_url}
+                        src={featured.hero_image_url || defaultPhoto!}
                         alt={featured.title}
                         className="w-full h-full object-cover"
                       />
@@ -278,7 +279,7 @@ export default async function HomePage() {
           <RailSection title="Chez les pâtissiers que vous suivez" viewAllHref="/carnet?scope=sub" viewAllLabel="Tout voir">
             {followedRecipes.map((r) => (
               <div key={r.id} data-row-card className={ROW_CARD}>
-                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} />
+                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} defaultPhoto={defaultPhoto} />
               </div>
             ))}
           </RailSection>
@@ -294,6 +295,7 @@ export default async function HomePage() {
                   isFav={favIds.has(r.id)}
                   isOwner={!!user && r.author_id === user.id}
                   showPlan={!!user}
+                  defaultPhoto={defaultPhoto}
                 />
               </div>
             ))}
