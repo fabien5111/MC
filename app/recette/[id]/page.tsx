@@ -773,9 +773,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                     </summary>
                     <div className="p-4 bg-white">
-                      <ul className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
+                      <ul className="grid grid-cols-[minmax(0,min(1fr,16rem))_max-content] gap-x-3 sm:gap-x-6 print:gap-x-6">
                         {merged.map((m, k) => (
-                          <li key={k} className="py-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                          <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
                             <span className="font-body-md text-body-md break-words">
                               <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
                               {m.name}

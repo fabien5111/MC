@@ -157,7 +157,7 @@ export function ShoppingWidget({
                     onChange={() => toggle(i)}
                     className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
-                  <span className="font-body-md text-body-md flex-1">
+                  <span className="font-body-md text-body-md flex-1 min-w-0 max-w-[16rem]">
                     {m.name}
                     {m.comment && <span className="text-on-surface-variant italic"> — {m.comment}</span>}
                   </span>
