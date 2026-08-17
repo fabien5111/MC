@@ -540,14 +540,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 <div className="flex items-center gap-2 flex-wrap">
                   {allergens.map((a) =>
                     a.picto ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                      <img
-                        key={a.key}
-                        src={a.picto}
-                        alt={a.name}
-                        title={a.name}
-                        className="w-8 h-8 object-contain"
-                      />
+                      <span key={a.key} className="flex flex-col items-center gap-0.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base */}
+                        <img src={a.picto} alt={a.name} title={a.name} className="w-8 h-8 object-contain" />
+                        {/* Libellé absent à l'écran (le nom est déjà dans le title au survol) mais
+                            indispensable au papier, où le survol n'existe pas. */}
+                        <span className="hidden print:block print-fs-9 text-[9px] text-on-surface-variant">
+                          {a.name}
+                        </span>
+                      </span>
                     ) : (
                       <span
                         key={a.key}
