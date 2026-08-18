@@ -1,14 +1,19 @@
 'use client';
 
-// Vue par jour de l'onglet Planning (Profil) : les étapes de TOUTES les
-// recettes planifiées de l'utilisateur, regroupées par date réelle (pas par
-// day_offset, relatif à chaque recette) — cf. `groupPlanningStepsByDate`.
+// Vue par jour de « Mes fournées » : les étapes de TOUTES les fournées de
+// l'utilisateur, regroupées par date réelle (pas par day_offset, relatif à
+// chaque fournée) — cf. `groupPlanningStepsByDate`. C'est la vue par défaut
+// de l'écran « En cuisine » (décision produit) et ses étapes sont
+// directement cochables : `done` est la seule case d'une étape (cf.
+// CLAUDE.md « Fournées »), il n'y a plus de session séparée à croiser pour
+// savoir si elle est faite.
 //
 // Le glisser-déposer ne réordonne qu'au sein d'un même jour, entre étapes de
-// recettes potentiellement différentes : il n'existe aucun ordre partagé
-// entre plans avant ce geste (`plan_steps.order_index` n'ordonne qu'à
-// l'intérieur d'un seul plan), d'où `day_order_index`, une colonne dédiée à
-// cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce jour-là.
+// fournées potentiellement différentes : il n'existe aucun ordre partagé
+// entre fournées avant ce geste (`batch_steps.order_index` n'ordonne qu'à
+// l'intérieur d'une seule fournée), d'où `day_order_index`, une colonne
+// dédiée à cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce
+// jour-là.
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,29 +22,19 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
-import type { PlanningRow } from '@/lib/profile';
-import type { RunningExecStep } from '@/lib/executions';
+import type { BatchListRow } from '@/lib/profile';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-export function PlanningDayView({
-  plans,
-  runningExecSteps,
-}: {
-  plans: PlanningRow[];
-  // Sessions en cours de l'utilisateur, indexées par plan_step_id — pour
-  // faire pointer le lien de chaque étape vers sa session active plutôt que
-  // vers la fiche recette planifiée, quand une session est en cours.
-  runningExecSteps: Record<number, RunningExecStep[]>;
-}) {
+export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   const router = useRouter();
   const { mutate, busy } = useMutation();
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
 
-  // Une étape cochée depuis l'écran d'exécution (autre page) n'a aucune
+  // Une étape cochée depuis la fiche d'une fournée (autre page) n'a aucune
   // raison d'invalidater le cache de navigation client de cette page-ci —
   // resynchronisation explicite à chaque arrivée sur cette vue, quel que
   // soit le chemin (chargement direct, bascule d'onglet, retour arrière).
@@ -52,12 +47,12 @@ export function PlanningDayView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const groups = groupPlanningStepsByDate(list, runningExecSteps);
+  const groups = groupPlanningStepsByDate(list);
 
-  // Réordonne les étapes d'UN jour (entre recettes potentiellement
+  // Réordonne les étapes d'UN jour (entre fournées potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
   // d'intercaler une seule valeur (même principe que `moveSubstep` dans
-  // PlanStepDonePanel), pour que `day_order_index` reste toujours défini pour
+  // BatchStepDonePanel), pour que `day_order_index` reste toujours défini pour
   // tout le monde une fois qu'on a touché à ce jour.
   async function moveStep(date: string, fromIdx: number, toIdx: number) {
     if (fromIdx === toIdx) return;
@@ -71,7 +66,7 @@ export function PlanningDayView({
     setList((all) =>
       all.map((p) => ({
         ...p,
-        plan_steps: p.plan_steps.map((s) => {
+        batch_steps: p.batch_steps.map((s) => {
           const r = reassigned.find((it) => it.stepId === s.id);
           return r ? { ...s, day_order_index: r.day_order_index } : s;
         }),
@@ -81,7 +76,7 @@ export function PlanningDayView({
     const ok = await mutate(
       async () => {
         const results = await Promise.all(
-          reassigned.map((it) => supabase.from('plan_steps').update({ day_order_index: it.day_order_index }).eq('id', it.stepId)),
+          reassigned.map((it) => supabase.from('batch_steps').update({ day_order_index: it.day_order_index }).eq('id', it.stepId)),
         );
         const failed = results.find((r) => r.error);
         return failed ? { error: failed.error } : { error: null };
@@ -91,19 +86,32 @@ export function PlanningDayView({
     if (!ok) setList(prev);
   }
 
+  // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
+  // seule source de vérité (`batch_steps.done`), la même que sur la fiche et
+  // en mode Cuisiner.
+  async function toggleDone(stepId: number, checked: boolean) {
+    const prev = list;
+    setList((all) => all.map((p) => ({ ...p, batch_steps: p.batch_steps.map((s) => (s.id === stepId ? { ...s, done: checked } : s)) })));
+    const ok = await mutate(() => createClient().from('batch_steps').update({ done: checked }).eq('id', stepId), {
+      errorLabel: 'Modification non enregistrée',
+      refresh: false,
+    });
+    if (!ok) setList(prev);
+  }
+
   if (groups.length === 0) {
     return (
       <p className="text-on-surface-variant italic">
-        Aucune étape à afficher — seules les recettes planifiées avec une date de dégustation apparaissent ici.
+        Aucune étape à afficher — seules les fournées avec une date de dégustation apparaissent ici.
       </p>
     );
   }
 
-  // Une journée est « terminée » dès que toutes ses étapes sont déjà
-  // réalisées (plan) ou cochées (session active) — peu importe sa date,
-  // passée ou non. Regroupées à part, repliées par défaut : pas noyer les
-  // jours restants sous un historique qui grossit sans fin.
-  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.already_done || it.sessionDone);
+  // Une journée est « terminée » dès que toutes ses étapes sont cochées —
+  // peu importe sa date, passée ou non. Regroupées à part, repliées par
+  // défaut : pas noyer les jours restants sous un historique qui grossit
+  // sans fin.
+  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done);
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
 
@@ -150,34 +158,26 @@ export function PlanningDayView({
                   >
                     drag_indicator
                   </span>
+                  <input
+                    type="checkbox"
+                    checked={it.done}
+                    onChange={(e) => toggleDone(it.stepId, e.target.checked)}
+                    title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
+                    className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                  />
                   <span className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0">{it.recipeTitle}</span>
-                  {/* Priorité à la session active si elle existe (l'étape s'y
-                      exécute réellement) ; sinon la fiche recette planifiée ;
-                      pas de lien si la recette a été supprimée depuis
+                  {/* Pas de lien si la fournée a été supprimée depuis
                       (recipeId absent, recipeTitle dénormalisé prend le
                       relais pour l'affichage — cf. CLAUDE.md). */}
                   {(() => {
-                    const href = it.executionId
-                      ? `/execution/${it.executionId}#etape-${it.executionStepId}`
-                      : it.recipeId
-                        ? `/recette/${it.recipeId}?plan=${it.planId}#sec-etape-${it.number}`
-                        : null;
-                    // Barrée si déjà marquée « Déjà réalisé » sur le plan, ou
-                    // si cochée dans sa session de préparation active — deux
-                    // façons distinctes d'arriver au même constat.
-                    const done = it.already_done || it.sessionDone;
-                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
-                    const titleSpan = <span className={`font-body-md ${done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
-                    return href ? (
+                    const href = `/fournee/${it.planId}#etape-${it.stepId}`;
+                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
+                    const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
+                    return (
                       <Link href={href} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
                         {numberSpan}
                         {titleSpan}
                       </Link>
-                    ) : (
-                      <span className="flex items-baseline gap-1.5 flex-1 min-w-[160px]">
-                        {numberSpan}
-                        {titleSpan}
-                      </span>
                     );
                   })()}
                   <div className="flex gap-2 flex-wrap">

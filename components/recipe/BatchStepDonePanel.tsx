@@ -1,8 +1,9 @@
 'use client';
 
-// Case « Déjà réalisé » d'une étape + exception ligne par ligne par
-// ingrédient/sous-étape, affichées directement dans le déroulé de la recette
-// planifiée — voir CLAUDE.md « Recettes planifiées ».
+// Case unique d'une étape (cf. CLAUDE.md « Fournées » — fusion de l'ancien
+// « déjà réalisé » du plan et du « fait » de la session) + exception ligne
+// par ligne par ingrédient/sous-étape, affichées directement dans le déroulé
+// de la fournée.
 //
 // Un seul composant pour la case de l'étape, la liste d'ingrédients et la
 // liste de sous-étapes : les trois doivent rester synchronisés instantanément
@@ -10,36 +11,39 @@
 // séparées ne garantiraient pas avant le prochain router.refresh().
 //
 // Une étape entièrement traitée (`collapsible`) se replie derrière son titre
-// — la case « Déjà réalisé » reste néanmoins visible hors du volet replié,
-// pour pouvoir revenir dessus sans déplier.
+// — la case reste néanmoins visible hors du volet replié, pour pouvoir
+// revenir dessus sans déplier.
+//
+// Cocher ici a exactement le même effet que cocher en mode Cuisiner : il n'y
+// a plus de copie séparée à garder synchronisée, donc plus de session à
+// proposer de supprimer après un déplacement de jour ou l'ajout d'une
+// sous-étape.
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { fmtNum, planDayLabel, stepDayMoved, type PlanIngredientRow, type PlanStepRow, type PlanSubstepRow } from '@/lib/recipe-plan';
+import { fmtNum, batchDayLabel, stepDayMoved, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
-import type { RunningExecStep } from '@/lib/executions';
 
-type StepFlags = Pick<PlanStepRow, 'id' | 'already_done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
+type StepFlags = Pick<BatchStepRow, 'id' | 'done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
 type IngRow = Pick<
-  PlanIngredientRow,
+  BatchIngredientRow,
   'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
 > & { expanded_recipe?: { id: string; title: string } | null };
-type SubRow = Pick<PlanSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
+type SubRow = Pick<BatchSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
 
 function qtyText(it: Pick<IngRow, 'quantity' | 'quantity_text'>): string {
   return it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '';
 }
 
-export function PlanStepDonePanel({
+export function BatchStepDonePanel({
   step: initialStep,
   ingredients: initialIngredients,
   substeps: initialSubsteps,
   plannedDate,
   dayOptions,
-  runningExecSteps,
   collapsible = false,
   title,
   meta,
@@ -48,21 +52,17 @@ export function PlanStepDonePanel({
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
-  // Date de dégustation du plan : rend les jours sous forme de vraies dates
-  // dans le sélecteur, comme les badges de la fiche.
+  // Date de dégustation de la fournée : rend les jours sous forme de vraies
+  // dates dans le sélecteur, comme les badges de la fiche.
   plannedDate: string | null;
-  // Jours proposés au déplacement (0 = jour J), calculés une fois pour tout le
-  // plan par la page — l'étape seule ne connaît pas l'amplitude des autres.
+  // Jours proposés au déplacement (0 = jour J), calculés une fois pour toute
+  // la fournée par la page — l'étape seule ne connaît pas l'amplitude des
+  // autres.
   dayOptions: number[];
-  // Étapes des sessions en cours pointant sur cette étape du plan : une
-  // sous-étape ajoutée y est répercutée par insertion, sinon elle resterait
-  // invisible et non cochable dans une session déjà démarrée (cf.
-  // lib/executions.ts getRunningExecutionSteps).
-  runningExecSteps: RunningExecStep[];
   // Étape entièrement traitée : repliée derrière un chevron, fermée par
-  // défaut — la case « Déjà réalisé » reste visible hors du volet replié,
-  // pour pouvoir revenir dessus sans déplier. Sans chevron sinon, toujours
-  // dépliée (étape active).
+  // défaut — la case reste visible hors du volet replié, pour pouvoir
+  // revenir dessus sans déplier. Sans chevron sinon, toujours dépliée (étape
+  // active).
   collapsible?: boolean;
   // Titre seul sur sa ligne ; `meta` (les badges) partage sa ligne avec la
   // case et, si repliable, le chevron.
@@ -97,18 +97,18 @@ export function PlanStepDonePanel({
   useEffect(() => setSubsteps(initialSubsteps), [initialSubsteps]);
 
   async function toggleDone() {
-    const next = !step.already_done;
+    const next = !step.done;
     const ok = await mutate(
-      () => createClient().from('plan_steps').update({ already_done: next } as never).eq('id', step.id),
+      () => createClient().from('batch_steps').update({ done: next } as never).eq('id', step.id),
       { errorLabel: 'Modification non enregistrée' },
     );
-    if (ok) setStep((s) => ({ ...s, already_done: next }));
+    if (ok) setStep((s) => ({ ...s, done: next }));
   }
 
   async function toggleIngredient(row: IngRow) {
     const next = !row.excluded_when_done;
     const ok = await mutate(
-      () => createClient().from('plan_ingredients').update({ excluded_when_done: next } as never).eq('id', row.id),
+      () => createClient().from('batch_ingredients').update({ excluded_when_done: next } as never).eq('id', row.id),
       { errorLabel: 'Modification non enregistrée' },
     );
     if (ok) setIngredients((prev) => prev.map((r) => (r.id === row.id ? { ...r, excluded_when_done: next } : r)));
@@ -119,7 +119,7 @@ export function PlanStepDonePanel({
   async function toggleSubstep(sub: SubRow) {
     const next = !sub.excluded_when_done;
     const ok = await mutate(
-      () => createClient().from('plan_substeps').update({ excluded_when_done: next } as never).eq('id', sub.id),
+      () => createClient().from('batch_substeps').update({ excluded_when_done: next } as never).eq('id', sub.id),
       { errorLabel: 'Modification non enregistrée' },
     );
     if (ok) setSubsteps((prev) => prev.map((s) => (s.id === sub.id ? { ...s, excluded_when_done: next } : s)));
@@ -127,37 +127,18 @@ export function PlanStepDonePanel({
 
   // ── Déplacement de l'étape ───────────────────────────────────────────
   // Seul `day_offset` bouge : `base_day_offset` garde le jour de la recette,
-  // ce qui permet d'afficher les deux et de rétablir. Une session déjà
-  // démarrée n'est volontairement pas touchée — son `execution_steps.day_offset`
-  // est figé, et c'est lui qui porte l'ossature de son déroulé (jalons, tempo).
+  // ce qui permet d'afficher les deux et de rétablir.
   async function changeDay(next: number) {
     if (next === step.day_offset) return;
-    const ok = await mutate(() => createClient().from('plan_steps').update({ day_offset: next } as never).eq('id', step.id), {
+    const ok = await mutate(() => createClient().from('batch_steps').update({ day_offset: next } as never).eq('id', step.id), {
       errorLabel: 'Jour non enregistré',
     });
-    if (ok) {
-      setStep((s) => ({ ...s, day_offset: next }));
-      await proposeDeleteRunningSessions();
-    }
-  }
-
-  // Une session en cours garde le jour figé à son démarrage (cf. dayControl
-  // ci-dessous) — elle ne reflète donc jamais ce déplacement. Proposée à la
-  // suppression plutôt qu'un avertissement muet, sur le même principe que
-  // PlanIngredientsEditor pour une modification d'ingrédient.
-  async function proposeDeleteRunningSessions() {
-    if (!runningExecSteps.length) return;
-    const ids = [...new Set(runningExecSteps.map((r) => r.execution_id))];
-    const plural = ids.length > 1;
-    await mutate(() => createClient().from('executions').delete().in('id', ids), {
-      confirm: `${plural ? 'Des sessions' : 'Une session'} de préparation en cours ${plural ? 'ont' : 'a'} été figée${plural ? 's' : ''} avant ce changement de jour et ne le reflète${plural ? 'nt' : ''} pas.\n\n${plural ? 'Les supprimer' : 'La supprimer'} ?`,
-      errorLabel: 'Suppression impossible',
-    });
+    if (ok) setStep((s) => ({ ...s, day_offset: next }));
   }
 
   async function saveNote() {
     const next = noteDraft.trim() || null;
-    const ok = await mutate(() => createClient().from('plan_steps').update({ user_note: next } as never).eq('id', step.id), {
+    const ok = await mutate(() => createClient().from('batch_steps').update({ user_note: next } as never).eq('id', step.id), {
       errorLabel: 'Note non enregistrée',
     });
     if (ok) {
@@ -166,9 +147,8 @@ export function PlanStepDonePanel({
     }
   }
 
-  // Ajout d'une sous-étape : à la fin de la liste (pas d'intercalation, qui
-  // demanderait un `order_index` fractionnaire), puis répercussion sur les
-  // sessions en cours — insertion pure, aucune colonne figée n'est réécrite.
+  // Ajout d'une sous-étape, à la fin de la liste (pas d'intercalation, qui
+  // demanderait un `order_index` fractionnaire).
   async function addSubstep() {
     const texte = substepDraft.trim();
     if (!texte) {
@@ -180,38 +160,15 @@ export function PlanStepDonePanel({
     setAddingSubstep(false);
     setSubstepDraft('');
     await mutate(
-      async () => {
-        const res = await supabase
-          .from('plan_substeps')
-          .insert({ step_id: step.id, order_index: nextOrder, texte, added: true } as never)
-          .select('id')
-          .single();
-        if (res.error || !res.data) return res;
-        const substepId = (res.data as { id: number }).id;
-        if (runningExecSteps.length) {
-          const propagated = await supabase.from('execution_substeps').insert(
-            runningExecSteps.map((e) => ({
-              execution_id: e.execution_id,
-              execution_step_id: e.execution_step_id,
-              plan_substep_id: substepId,
-              texte,
-              order_index: nextOrder,
-            })),
-          );
-          if (propagated.error) return propagated;
-        }
-        return res;
-      },
+      () => supabase.from('batch_substeps').insert({ batch_step_id: step.id, order_index: nextOrder, texte, added: true } as never),
       { errorLabel: 'Ajout impossible' },
     );
   }
 
   // Supprimable seulement si elle a été ajoutée ici : une sous-étape de la
   // recette se neutralise par « déjà réalisé », jamais par suppression.
-  // `execution_substeps.plan_substep_id` est en ON DELETE SET NULL — une
-  // session qui l'avait déjà cochée en garde la trace, avec son texte figé.
   async function deleteSubstep(sub: SubRow) {
-    const ok = await mutate(() => createClient().from('plan_substeps').delete().eq('id', sub.id), { errorLabel: 'Suppression impossible' });
+    const ok = await mutate(() => createClient().from('batch_substeps').delete().eq('id', sub.id), { errorLabel: 'Suppression impossible' });
     if (ok) setSubsteps((prev) => prev.filter((s) => s.id !== sub.id));
   }
 
@@ -231,7 +188,7 @@ export function PlanStepDonePanel({
     const supabase = createClient();
     const ok = await mutate(
       async () => {
-        const results = await Promise.all(reindexed.map((s) => supabase.from('plan_substeps').update({ order_index: s.order_index }).eq('id', s.id)));
+        const results = await Promise.all(reindexed.map((s) => supabase.from('batch_substeps').update({ order_index: s.order_index }).eq('id', s.id)));
         const failed = results.find((r) => r.error);
         return failed ? { error: failed.error } : { error: null };
       },
@@ -240,7 +197,7 @@ export function PlanStepDonePanel({
     if (!ok) setSubsteps(prev);
   }
 
-  const dayText = (offset: number) => (plannedDate ? planDayLabel(offset, plannedDate) : dayLabel(offset));
+  const dayText = (offset: number) => (plannedDate ? batchDayLabel(offset, plannedDate) : dayLabel(offset));
   const moved = stepDayMoved(step);
 
   // Une ligne retirée à la main (éditeur de quantités) reste exclue quelle
@@ -279,11 +236,6 @@ export function PlanStepDonePanel({
           </button>
         </>
       )}
-      {/* Mention factuelle, pas un avertissement : une session déjà démarrée
-          conserve son propre planning (day_offset figé au démarrage). */}
-      {runningExecSteps.length > 0 && (
-        <span className="font-label-md text-[11px] text-on-surface-variant italic">une session en cours conserve son planning</span>
-      )}
     </span>
   );
 
@@ -291,27 +243,27 @@ export function PlanStepDonePanel({
     <label
       className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer"
       title={
-        step.already_done
+        step.done
           ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
           : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
       }
     >
       <input
         type="checkbox"
-        checked={step.already_done}
+        checked={step.done}
         onChange={toggleDone}
         className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
       />
-      Déjà réalisé
+      Réalisée
     </label>
   );
 
   // Note personnelle : bloc distinct du texte de la recette (description,
-  // astuces), qui n'est jamais modifié. Distincte aussi du commentaire de
-  // session (execution_steps.commentaire), qui relate ce qui s'est
-  // réellement passé le jour J. S'imprime. Placée avant les ingrédients :
-  // c'est la première chose à relire en abordant l'étape (matériel à
-  // sortir, adaptation…), pas une note de fin de liste.
+  // astuces), qui n'est jamais modifié. Distincte aussi du constat du jour J
+  // (`commentaire`, saisi en mode Cuisiner) — l'une est l'intention, l'autre
+  // la réalisation. S'imprime. Placée avant les ingrédients : c'est la
+  // première chose à relire en abordant l'étape (matériel à sortir,
+  // adaptation…), pas une note de fin de liste.
   const noteBlock = (
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
@@ -369,9 +321,7 @@ export function PlanStepDonePanel({
               `max-content` ne rétrécit pas et débordait du viewport mobile. */}
           <ul
             className={`grid gap-x-4 sm:gap-x-10 print:gap-x-10 ${
-              step.already_done
-                ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]'
-                : 'grid-cols-[max-content_minmax(0,1fr)]'
+              step.done ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]' : 'grid-cols-[max-content_minmax(0,1fr)]'
             }`}
           >
             {visible.map((it) => {
@@ -380,14 +330,14 @@ export function PlanStepDonePanel({
               // croire à un oubli. Rien à cocher dessus : il ne rentre plus
               // dans le parcours quel que soit l'état de l'étape.
               const replaced = it.expanded_into_recipe_id != null;
-              const excluded = !replaced && step.already_done && it.excluded_when_done;
+              const excluded = !replaced && step.done && it.excluded_when_done;
               // Barré en rouge comme une suppression : l'ingrédient ne
               // s'achète plus. La mention verte en dessous dit où il est
               // fabriqué à la place.
               const tone = replaced ? 'text-error line-through' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
               return (
                 <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
-                  {step.already_done && (
+                  {step.done && (
                     <span className="no-print">
                       {replaced ? null : (
                       <input
@@ -439,9 +389,9 @@ export function PlanStepDonePanel({
       {sortedSubsteps.length > 0 && (
         <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
           {sortedSubsteps.map((su, idx) => {
-              const excluded = step.already_done && su.excluded_when_done;
+              const excluded = step.done && su.excluded_when_done;
               // Vert = ajoutée par l'utilisateur, comme un ingrédient ajouté
-              // dans PlanIngredientsEditor. L'exclusion « déjà fait » prime.
+              // dans BatchIngredientsEditor. L'exclusion « déjà fait » prime.
               const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : su.added ? 'text-green-700' : '';
               return (
                 <li
@@ -471,7 +421,7 @@ export function PlanStepDonePanel({
                   >
                     drag_indicator
                   </span>
-                  {step.already_done ? (
+                  {step.done ? (
                     <input
                       type="checkbox"
                       checked={su.excluded_when_done}

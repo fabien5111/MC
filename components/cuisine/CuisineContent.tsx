@@ -3,59 +3,57 @@
 // Contenu d'« En cuisine » — ce qui est en train de se faire, ce qui est prévu,
 // ce qu'il faut acheter.
 //
-// Réunit trois choses qui étaient éparpillées dans trois onglets de `/profil` :
-// les **sessions en cours**, le **planning** et les **listes de courses**. Le
-// regroupement n'est pas cosmétique : une liste de courses naît de ce qui est
-// planifié, la ranger sur un autre écran forçait un aller-retour pour une
-// question unique (« qu'est-ce que je fais aujourd'hui, et qu'est-ce qu'il me
-// manque ? »).
+// Réunit trois choses : les **fournées en cours de cuisson**, **mes
+// fournées** (planning) et les **listes de courses**. Le regroupement n'est
+// pas cosmétique : une liste de courses naît de ce qui est planifié, la
+// ranger sur un autre écran forçait un aller-retour pour une question unique
+// (« qu'est-ce que je fais aujourd'hui, et qu'est-ce qu'il me manque ? »).
 //
-// Deux actions distinctes sur une recette planifiée, à ne pas confondre :
-//  - **Archiver** ne touche jamais aux exécutions — la recette sort du
-//    planning actif, rien n'est perdu, consultable dans « Archivées » juste
-//    en dessous. Disponible à tout moment, pas seulement en repli.
-//  - **Supprimer** efface pour de bon. Un plan qui a une trace d'exécution
-//    (`executions.planning_id` est en `ON DELETE RESTRICT`, cf. CLAUDE.md)
-//    ne peut pas être supprimé tel quel : sa suppression purge d'abord
-//    l'historique de ses sessions, après avertissement — plus jamais
-//    d'archivage silencieux à la place d'une suppression demandée.
+// Une fournée est toujours supprimable d'un geste : la fusion plan + session
+// (cf. CLAUDE.md « Fournées ») a fait disparaître la trace d'exécution
+// séparée qui imposait autrefois de choisir entre « Archiver » (garder) et
+// « Supprimer » (bloqué si déjà cuisinée). Il ne reste qu'une action —
+// supprimer — et un second sort pour une fournée terminée ou abandonnée :
+// elle glisse d'elle-même dans « Fournées terminées », sans geste.
 //
-// Le planning s'ouvre désormais sur la **vue par recette** (repli initial de
-// `planningView` ci-dessous) — la vue par jour reste accessible en un clic et
-// par son ancre (`#planning-jours`), inchangée.
+// La vue par défaut du planning est la vue **par jour** : ses étapes sont
+// cochables sur place (PlanningDayView), c'est elle qui répond à « qu'est-ce
+// que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
+// fournée reste à un clic.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
+import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
-import type { PlanningRow, ShoppingListSummary } from '@/lib/profile';
-import type { ActiveExecutionRow, RunningExecStep } from '@/lib/executions';
+import { BATCH_FULL_SELECT, type BatchFull } from '@/lib/recipe-plan';
+import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 
 type PlanningView = 'jours' | 'recettes';
 
 export function CuisineContent({
   planning,
-  archivedPlanning,
-  activeSessions,
-  runningExecSteps,
+  batchesTerminees,
+  activeBatches,
   shoppingLists,
 }: {
-  planning: PlanningRow[];
-  // Recettes retirées du planning alors qu'une session leur était déjà liée
-  // (`planning.status = 'archive'`) — affichées sous le planning actif plutôt
-  // que sur un écran séparé : rien d'autre ne les relit, les reléguer hors de
-  // vue les rendait de fait introuvables.
-  archivedPlanning: PlanningRow[];
-  activeSessions: ActiveExecutionRow[];
-  runningExecSteps: Record<number, RunningExecStep[]>;
+  planning: BatchListRow[];
+  // Fournées closes (terminées ou abandonnées) — écran dédié plutôt qu'un
+  // repli d'affichage, pour rester un vrai second sort plutôt qu'une case
+  // oubliée du planning actif.
+  batchesTerminees: BatchListRow[];
+  activeBatches: ActiveBatchRow[];
   shoppingLists: ShoppingListSummary[];
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
+  const writeGuard = useWriteGuard();
   const router = useRouter();
   // Cf. CarnetContent : le cache client du routeur peut resservir un rendu
   // obsolète alors que la page est en `force-dynamic` côté serveur.
@@ -66,8 +64,8 @@ export function CuisineContent({
 
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
-  const [archivedPlanningList, setArchivedPlanningList] = useState(archivedPlanning);
-  useEffect(() => setArchivedPlanningList(archivedPlanning), [archivedPlanning]);
+  const [terminees, setTerminees] = useState(batchesTerminees);
+  useEffect(() => setTerminees(batchesTerminees), [batchesTerminees]);
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
@@ -82,12 +80,13 @@ export function CuisineContent({
     return items.length > 0 && items.every((i) => i.checked);
   });
   const [mergingListId, setMergingListId] = useState<number | null>(null);
-  const [planningView, setPlanningView] = useState<PlanningView>('recettes');
+  // La vue par jour est la vue par défaut (décision produit) : c'est elle
+  // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
+  const [planningView, setPlanningView] = useState<PlanningView>('jours');
+  const [refaisant, setRefaisant] = useState<number | null>(null);
 
   // La vue du planning reste tracée dans le hash : sans ça, un retour arrière
-  // du navigateur depuis une session de préparation ne rétablit jamais la vue
-  // choisie. Les anciens hash de `/profil` (`#planning`, `#planning-jours`)
-  // sont conservés à l'identique — ils sont la cible des redirections.
+  // du navigateur depuis une fournée ne rétablit jamais la vue choisie.
   useEffect(() => {
     const fromHash = () => {
       if (location.hash === '#planning') setPlanningView('recettes');
@@ -154,125 +153,209 @@ export function CuisineContent({
     }
   }
 
-  // Purge complète d'un plan et de l'historique de ses sessions : les quatre
-  // tables filles d'une exécution (sans cascade connue depuis ce dépôt, le
-  // schéma SQL n'y étant pas versionné, cf. CLAUDE.md), puis `executions`
-  // elle-même, puis `planning`. `executions.planning_id` est en
-  // ON DELETE RESTRICT — sans cette purge préalable, la suppression du plan
-  // échouerait dès qu'une exécution existe. Partagée par `delPlan` (session
-  // en cours, retirée du planning actif) et `delArchivedPlan` (recette déjà
-  // archivée : plus d'étape intermédiaire possible, la suppression est là la
-  // seule issue).
-  async function purgePlanAndExecutions(planId: number) {
-    const supabase = createClient();
-    const { data: execs, error: execsErr } = await supabase.from('executions').select('id').eq('planning_id', planId);
-    if (execsErr) return { error: execsErr };
-    const execIds = (execs ?? []).map((e) => e.id);
-    if (execIds.length > 0) {
-      const { error: e1 } = await supabase.from('execution_ingredients').delete().in('execution_id', execIds);
-      if (e1) return { error: e1 };
-      const { error: e2 } = await supabase.from('execution_substeps').delete().in('execution_id', execIds);
-      if (e2) return { error: e2 };
-      const { error: e3 } = await supabase.from('execution_steps').delete().in('execution_id', execIds);
-      if (e3) return { error: e3 };
-      const { error: e4 } = await supabase.from('execution_utensils').delete().in('execution_id', execIds);
-      if (e4) return { error: e4 };
-      const { error: e5 } = await supabase.from('executions').delete().in('id', execIds);
-      if (e5) return { error: e5 };
-    }
-    return supabase.from('planning').delete().eq('id', planId);
-  }
-
-  // Archiver ne touche jamais aux exécutions — contrairement à « Supprimer »
-  // ci-dessous, rien n'est perdu, donc rien à distinguer selon qu'une session
-  // ait tourné ou non. Disponible sur n'importe quel plan actif, pas
-  // seulement ceux qu'on ne peut pas supprimer proprement : mettre de côté
-  // une recette est une décision en soi, pas seulement un repli.
-  async function archivePlan(plan: PlanningRow) {
-    const ok = await mutate(() => createClient().from('planning').update({ status: 'archive' }).eq('id', plan.id), {
-      confirm: 'Archiver cette recette ? Elle sortira du planning actif et restera consultable dans les recettes archivées.',
-    });
-    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
-  }
-
-  async function delPlan(plan: PlanningRow) {
-    // Suppression réelle, toujours — contrairement à avant, elle ne bascule
-    // plus silencieusement vers un archivage quand une exécution existe :
-    // « Archiver » est maintenant sa propre action, explicite, disponible à
-    // côté. Un plan qui a une trace d'exécution (active ou passée) ne peut
-    // pas être supprimé tel quel — `executions.planning_id` est en
-    // ON DELETE RESTRICT (cf. CLAUDE.md) — donc la purge de son historique
-    // est nécessaire ; l'utilisateur en est prévenu avant de confirmer.
-    const hasExecutions = (plan.executions?.[0]?.count || 0) > 0;
-    const hasActiveSession = plan.active_execution.length > 0;
-    const ok = await mutate(
-      () =>
-        hasExecutions
-          ? purgePlanAndExecutions(plan.id)
-          : createClient().from('planning').delete().eq('id', plan.id),
-      {
-        confirm: hasActiveSession
-          ? 'Une session est en cours pour cette recette. La supprimer maintenant arrêtera cette session et effacera définitivement l’historique de ses préparations, en plus de retirer la recette du planning. Pour la garder sans la supprimer, utilisez plutôt « Archiver ». Continuer ?'
-          : hasExecutions
-            ? 'Cette recette a déjà été cuisinée. La supprimer effacera définitivement l’historique de ses sessions. Pour la garder, utilisez plutôt « Archiver ». Continuer ?'
-            : 'Retirer cette recette du planning ?',
-        errorLabel: 'Suppression impossible',
-      },
-    );
-    if (ok) setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
-  }
-
-  async function delArchivedPlan(plan: PlanningRow) {
-    const hasActiveSession = plan.active_execution.length > 0;
-    const ok = await mutate(() => purgePlanAndExecutions(plan.id), {
-      confirm: hasActiveSession
-        ? 'Une session est en cours pour cette recette. La supprimer définitivement arrêtera cette session et effacera l’historique de ses préparations. Cette action est irréversible. Continuer ?'
-        : 'Supprimer définitivement cette recette et l’historique de ses sessions ? Cette action est irréversible.',
+  // Supprimer une fournée est désormais un geste unique et toujours possible
+  // : la fusion plan + session a fait disparaître la trace d'exécution
+  // séparée qui bloquait la suppression (`ON DELETE RESTRICT`). L'historique
+  // (`executions_legacy`) reste en base pour mémoire technique, mais n'est
+  // plus lu ni protégé par l'application.
+  async function delPlan(plan: BatchListRow, fromTerminees: boolean) {
+    const ok = await mutate(() => createClient().from('batches').delete().eq('id', plan.id), {
+      confirm: 'Supprimer définitivement cette fournée ? Cette action est irréversible.',
       errorLabel: 'Suppression impossible',
     });
-    if (ok) setArchivedPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
+    if (!ok) return;
+    if (fromTerminees) setTerminees((prev) => prev.filter((p) => p.id !== plan.id));
+    else setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
+  }
+
+  // Duplique la fournée (jamais la recette) à une nouvelle date : toutes les
+  // adaptations faites (ajustement, ingrédients ajoutés/retirés, étapes
+  // déplacées, remplacements par une sous-recette, notes) sont reprises —
+  // seul l'état d'avancement repart à zéro. Fonctionne même si la recette de
+  // base a disparu depuis, la fournée étant autonome (cf. CLAUDE.md).
+  async function refaireBatch(plan: BatchListRow) {
+    if (!writeGuard('Recréation d’une fournée')) return;
+    const dateStr = await dialog.prompt(
+      `Date de dégustation de la nouvelle fournée « ${plan.recipe_title || ''} » (AAAA-MM-JJ)`,
+      { required: true, placeholder: new Date().toISOString().slice(0, 10) },
+    );
+    if (!dateStr) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+      dialog.alert('Date invalide — attendu au format AAAA-MM-JJ.');
+      return;
+    }
+    setRefaisant(plan.id);
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase.from('batches').select(BATCH_FULL_SELECT).eq('id', plan.id).maybeSingle();
+      if (error || !data) throw error || new Error('Fournée introuvable');
+      const source = data as unknown as BatchFull;
+
+      const { data: newBatch, error: insErr } = await supabase
+        .from('batches')
+        .insert({
+          user_id: source.user_id,
+          recipe_id: source.recipe_id,
+          recipe_title: source.recipe_title,
+          planned_date: dateStr.trim(),
+          factor: source.factor,
+          adjust_label: source.adjust_label,
+          status: 'planifiee',
+          notes: source.notes,
+          source_plan_id: source.id,
+          measure_type: source.measure_type,
+          yield_qty: source.yield_qty,
+          yield_unit: source.yield_unit,
+          yield_desc: source.yield_desc,
+          yield_notes: source.yield_notes,
+          recipe_description: source.recipe_description,
+          recipe_tips: source.recipe_tips,
+          recipe_serving_advice: source.recipe_serving_advice,
+          recipe_source: source.recipe_source,
+          recipe_source_url: source.recipe_source_url,
+          recipe_video_url: source.recipe_video_url,
+          difficulty_name: source.difficulty_name,
+          difficulty_level: source.difficulty_level,
+          mold_type_name: source.mold_type_name,
+          mold_forme: source.mold_forme,
+          mold_dims: source.mold_dims,
+          tags_text: source.tags_text,
+        })
+        .select('id')
+        .single();
+      if (insErr || !newBatch) throw insErr || new Error('Fournée non créée');
+      const batchId = newBatch.id;
+
+      const sortedSteps = [...source.batch_steps].sort((a, b) => a.order_index - b.order_index);
+      const { data: stepRows, error: stepErr } = await supabase
+        .from('batch_steps')
+        .insert(
+          sortedSteps.map((s) => ({
+            batch_id: batchId,
+            order_index: s.order_index,
+            day_offset: s.day_offset,
+            base_day_offset: s.base_day_offset,
+            title: s.title,
+            description: s.description,
+            tips: s.tips,
+            video_url: s.video_url,
+            prep_time: s.prep_time,
+            cook_time: s.cook_time,
+            wait_time: s.wait_time,
+            cook_temp: s.cook_temp,
+            scaling_mode: s.scaling_mode,
+            source_recipe_id: s.source_recipe_id,
+            source_step_id: s.source_step_id,
+            source_ingredient_id: s.source_ingredient_id,
+            user_note: s.user_note,
+          })),
+        )
+        .select('id')
+        .order('order_index', { ascending: true });
+      if (stepErr || !stepRows) throw stepErr || new Error('Étapes non créées');
+      const idByOldStep = new Map(sortedSteps.map((s, i) => [s.id, stepRows[i].id]));
+
+      const substepsToInsert = sortedSteps.flatMap((s) =>
+        s.batch_substeps.map((su) => ({
+          batch_step_id: idByOldStep.get(s.id)!,
+          order_index: su.order_index,
+          texte: su.texte,
+          added: su.added,
+          excluded_when_done: su.excluded_when_done,
+        })),
+      );
+      if (substepsToInsert.length) {
+        const { error } = await supabase.from('batch_substeps').insert(substepsToInsert);
+        if (error) throw error;
+      }
+
+      const ingredientsToInsert = source.batch_ingredients.map((it) => ({
+        batch_id: batchId,
+        batch_step_id: it.batch_step_id != null ? (idByOldStep.get(it.batch_step_id) ?? null) : null,
+        order_index: it.order_index,
+        ref_id: it.ref_id,
+        name: it.name,
+        base_quantity: it.base_quantity,
+        quantity: it.quantity,
+        quantity_text: it.quantity_text,
+        unit: it.unit,
+        comment: it.comment,
+        url: it.url,
+        allergen: it.allergen,
+        added: it.added,
+        removed: it.removed,
+        excluded_when_done: it.excluded_when_done,
+        expanded_into_recipe_id: it.expanded_into_recipe_id,
+        scaling_mode: it.scaling_mode,
+        source_ingredient_id: it.source_ingredient_id,
+        source_recipe_id: it.source_recipe_id,
+      }));
+      if (ingredientsToInsert.length) {
+        const { error } = await supabase.from('batch_ingredients').insert(ingredientsToInsert);
+        if (error) throw error;
+      }
+
+      if (source.batch_utensils.length) {
+        const { error } = await supabase.from('batch_utensils').insert(
+          source.batch_utensils.map((u) => ({
+            batch_id: batchId,
+            order_index: u.order_index,
+            name: u.name,
+            comment: u.comment,
+            url: u.url,
+            source_recipe_id: u.source_recipe_id,
+          })),
+        );
+        if (error) throw error;
+      }
+
+      router.push(`/fournee/${batchId}`);
+    } catch (e) {
+      dialog.alert('Erreur lors de la recréation de la fournée : ' + (e as Error).message);
+      setRefaisant(null);
+    }
   }
 
   return (
     <>
-      <LoadingOverlay visible={busy} label="Traitement en cours…" />
+      <LoadingOverlay visible={busy || refaisant !== null} label={refaisant !== null ? 'Recréation de la fournée…' : 'Traitement en cours…'} />
 
-      {/* ── Sessions en cours ─────────────────────────────────────────────
+      {/* ── Fournées en cours de cuisson ──────────────────────────────────
           Plusieurs peuvent tourner en même temps (un levain sur trois jours
           pendant qu'un entremets se monte). Quand aucune ne tourne, la section
           disparaît entièrement et le planning remonte : pas de bloc vide. */}
-      {activeSessions.length > 0 && (
+      {activeBatches.length > 0 && (
         <section className="mt-10">
           <div className="mb-4 flex items-center gap-2.5">
             <h2 className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Sessions en cours
+              En cours de cuisson
             </h2>
             <span className="flex items-center gap-1.5 rounded-pill bg-primary px-2 py-0.5 font-label-md text-[10.5px] text-on-primary">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-white opacity-70 motion-reduce:hidden" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-white" />
               </span>
-              {activeSessions.length}
+              {activeBatches.length}
             </span>
           </div>
           <div className="space-y-4">
-            {activeSessions.map((x) => (
-              <SessionCard key={x.id} session={x} />
+            {activeBatches.map((x) => (
+              <ActiveBatchCard key={x.id} batch={x} />
             ))}
           </div>
         </section>
       )}
 
-      {/* ── Planning + Listes de courses ─────────────────────────────────
+      {/* ── Mes fournées + Listes de courses ─────────────────────────────
           Côte à côte au bureau (grille 12 colonnes, 7/5), empilées sur
           mobile : la liste de courses ne vit jamais sur un autre écran,
-          elle naît de ce qui est planifié juste à côté (cf. CLAUDE.md). */}
+          elle naît de ce qui est planifié juste à côté. */}
       <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-16">
-      {/* ── Planning ───────────────────────────────────────────────────── */}
+      {/* ── Mes fournées ──────────────────────────────────────────────── */}
       <section className="lg:col-span-7">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
-            <PlanningIcon size={24} discFill={DISC.surface} /> Planning
+            <PlanningIcon size={24} discFill={DISC.surface} /> Mes fournées
           </h2>
           {planningList.length > 0 && (
             <div className="flex items-center gap-2">
@@ -288,33 +371,25 @@ export function CuisineContent({
                 onClick={() => switchPlanningView('recettes')}
                 className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${planningView === 'recettes' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
               >
-                Par recette
+                Par fournée
               </button>
             </div>
           )}
         </div>
         {planningView === 'jours' ? (
-          <PlanningDayView plans={planningList} runningExecSteps={runningExecSteps} />
+          <PlanningDayView plans={planningList} />
         ) : planningList.length > 0 ? (
           <div className="max-w-3xl space-y-4">
             {planningList.map((p) => {
-              const timeTxt =
-                p.recipes?.total_time || p.recipes?.prep_time
-                  ? formatTime(p.recipes.total_time || p.recipes.prep_time)
-                  : '';
-              // Nombre de jours du plan matérialisé (day_offset des plan_steps),
-              // pas de la recette d'origine — cf. CLAUDE.md « Recettes planifiées ».
-              const daysCount = new Set([0, ...p.plan_steps.map((s) => Math.max(0, s.day_offset || 0))]).size;
+              const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
+              // Nombre de jours de la fournée matérialisée (day_offset des
+              // batch_steps), pas de la recette de base.
+              const daysCount = new Set([0, ...p.batch_steps.map((s) => Math.max(0, s.day_offset || 0))]).size;
               const daysTxt = daysCount > 1 ? `${daysCount} jours` : '';
               const durationTxt = [timeTxt, daysTxt].filter(Boolean).join(' · ');
               const meta = [
                 p.planned_date
-                  ? 'Prévu pour ' +
-                    new Date(p.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })
+                  ? 'Prévu pour ' + new Date(p.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
                   : '',
                 [p.adjust_label || '', durationTxt].filter(Boolean).join(' — '),
                 p.factor && Number(p.factor) !== 1 ? '× ' + String(Number(p.factor)).replace('.', ',') : '',
@@ -322,11 +397,8 @@ export function CuisineContent({
                 .filter(Boolean)
                 .join(' · ');
               return (
-                <div
-                  key={p.id}
-                  className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container"
-                >
-                  <Link href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`} className="flex items-center gap-4">
+                <div key={p.id} className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container">
+                  <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                       {p.recipes?.hero_image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -336,41 +408,31 @@ export function CuisineContent({
                       )}
                     </div>
                     <div>
-                      <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
+                      <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
                       <p className="font-body-md text-[12px] text-on-surface-variant">{meta}</p>
                       {p.notes && <p className="font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
                     </div>
                   </Link>
                   <div className="flex shrink-0 items-center gap-3">
-                    {p.active_execution.length > 0 ? (
-                      <Link
-                        href={`/execution/${p.active_execution[0].id}`}
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill bg-secondary/90 px-3 py-1.5 font-label-md text-[11px] text-white hover:opacity-90"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">play_circle</span>
-                        <span className="hidden sm:inline">Session en cours</span>
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}&demarrer=1`}
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">play_arrow</span>
-                        <span className="hidden sm:inline">Démarrer une session</span>
-                      </Link>
-                    )}
+                    <Link
+                      href={`/fournee/${p.id}`}
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">play_arrow</span>
+                      <span className="hidden sm:inline">Cuisiner</span>
+                    </Link>
                     <button
                       type="button"
-                      title="Archiver"
-                      onClick={() => archivePlan(p)}
+                      title="Refaire cette fournée"
+                      onClick={() => refaireBatch(p)}
                       className="rounded p-1.5 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
                     >
-                      <span className="material-symbols-outlined">archive</span>
+                      <span className="material-symbols-outlined">restart_alt</span>
                     </button>
                     <button
                       type="button"
                       title="Supprimer"
-                      onClick={() => delPlan(p)}
+                      onClick={() => delPlan(p, false)}
                       className="rounded p-1.5 text-error opacity-0 transition-opacity hover:bg-error/10 focus-visible:opacity-100 group-hover:opacity-100"
                     >
                       <span className="material-symbols-outlined">delete</span>
@@ -382,29 +444,21 @@ export function CuisineContent({
           </div>
         ) : (
           <p className="italic text-on-surface-variant">
-            Aucune recette planifiée pour le moment. Ouvrez une recette et cliquez sur « Planifier ».
+            Aucune fournée pour le moment. Ouvrez une recette et cliquez sur « Créer une fournée ».
           </p>
         )}
-        {archivedPlanningList.length > 0 && (
+        {terminees.length > 0 && (
           <details className="group mt-10 border-t border-outline-variant/60 pt-8">
             <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Archivées ({archivedPlanningList.length})
-              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">
-                expand_more
-              </span>
+              Fournées terminées ({terminees.length})
+              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span>
             </summary>
             <div className="mt-4 max-w-3xl space-y-4">
-              {archivedPlanningList.map((p) => {
-                const timeTxt =
-                  p.recipes?.total_time || p.recipes?.prep_time
-                    ? formatTime(p.recipes.total_time || p.recipes.prep_time)
-                    : '';
+              {terminees.map((p) => {
+                const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
                 return (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100"
-                  >
-                    <Link href={`/recette/${p.recipes?.id || p.recipe_id}?plan=${p.id}`} className="flex flex-1 items-center gap-4 min-w-0">
+                  <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
+                    <Link href={`/fournee/${p.id}?lecture=1`} className="flex flex-1 items-center gap-4 min-w-0">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                         {p.recipes?.hero_image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -414,18 +468,24 @@ export function CuisineContent({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-label-md text-primary">{p.recipes?.title || ''}</p>
+                        <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
                         <p className="font-body-md text-[12px] text-on-surface-variant">
-                          {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt]
-                            .filter(Boolean)
-                            .join(' · ')}
+                          {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                     </Link>
                     <button
                       type="button"
+                      title="Refaire cette fournée"
+                      onClick={() => refaireBatch(p)}
+                      className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                    </button>
+                    <button
+                      type="button"
                       title="Supprimer définitivement"
-                      onClick={() => delArchivedPlan(p)}
+                      onClick={() => delPlan(p, true)}
                       className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -500,7 +560,7 @@ export function CuisineContent({
           </div>
         ) : (
           <p className="text-sm italic text-on-surface-variant">
-            Aucune liste de courses active. Depuis une recette, cliquez sur « Liste de courses » dans la liste
+            Aucune liste de courses active. Depuis une fournée, cliquez sur « Liste de courses » dans la liste
             complète des ingrédients.
           </p>
         )}
@@ -523,14 +583,14 @@ export function CuisineContent({
   );
 }
 
-// Carte de session. L'avancement est dit en étapes — « Étape 2 sur 5 · Crème
-// Chiboust » — et non en décompte (« dans 12 min ») : le modèle ne porte aucun
-// ancrage horaire par étape, un décompte serait une estimation déguisée en
-// horloge. Il viendra quand les étapes auront une heure.
-function SessionCard({ session }: { session: ActiveExecutionRow }) {
-  const { done, total, currentTitle } = session.progress;
+// Carte de fournée en cours de cuisson. L'avancement est dit en étapes —
+// « Étape 2 sur 5 · Crème Chiboust » — et non en décompte (« dans 12 min ») :
+// le modèle ne porte aucun ancrage horaire par étape, un décompte serait une
+// estimation déguisée en horloge. Il viendra quand les étapes auront une heure.
+function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
+  const { done, total, currentTitle } = batch.progress;
   const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
-  const image = session.planning?.recipes?.hero_image_url;
+  const image = batch.recipes?.hero_image_url;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
@@ -547,33 +607,21 @@ function SessionCard({ session }: { session: ActiveExecutionRow }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="font-headline-md text-lg leading-tight text-primary">
-          {session.planning?.recipe_title || 'Session de préparation'}
-        </p>
+        <p className="font-headline-md text-lg leading-tight text-primary">{batch.recipe_title || 'Fournée'}</p>
         <p className="mt-0.5 font-body-md text-[13px] text-on-surface-variant">
-          {[etape, currentTitle].filter(Boolean).join(' · ') || 'Session démarrée'}
+          {[etape, currentTitle].filter(Boolean).join(' · ') || 'Fournée en cours'}
         </p>
         {total > 0 && (
-          <div
-            className="mt-3 flex gap-1"
-            role="img"
-            aria-label={`${done} étape${done > 1 ? 's' : ''} sur ${total} terminée${done > 1 ? 's' : ''}`}
-          >
+          <div className="mt-3 flex gap-1" role="img" aria-label={`${done} étape${done > 1 ? 's' : ''} sur ${total} terminée${done > 1 ? 's' : ''}`}>
             {Array.from({ length: total }, (_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 flex-1 rounded-pill ${i < done ? 'bg-primary' : 'bg-surface-container-highest'}`}
-              />
+              <span key={i} className={`h-1.5 flex-1 rounded-pill ${i < done ? 'bg-primary' : 'bg-surface-container-highest'}`} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Pleine largeur sur mobile (README « En cuisine » mobile) : le bouton
-          est la seule action de la carte, autant lui laisser toute la ligne
-          plutôt qu'un bouton étriqué à côté d'un espace vide. */}
       <Link
-        href={`/execution/${session.id}`}
+        href={`/fournee/${batch.id}`}
         className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:w-auto"
       >
         <span className="material-symbols-outlined text-[18px]">play_arrow</span> Reprendre

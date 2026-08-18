@@ -1,11 +1,15 @@
 'use client';
 
-// Ingrédients en mode planifié (porté de recette.html) : colonnes Coef. /
+// Ingrédients d'une fournée (porté de recette.html) : colonnes Coef. /
 // Quantité ajustée / Quantité d'origine, lignes barrées (retirées) / ajoutées
 // (vert), édition en ligne (crayon), ajout d'un ingrédient par étape. Écrit
-// directement sur `plan_ingredients` (le plan possède sa propre copie des
-// ingrédients — voir CLAUDE.md « Recettes planifiées ») : chaque action est
-// une écriture ciblée sur la ligne concernée, plus de blob JSON à réécrire.
+// directement sur `batch_ingredients` (la fournée possède sa propre copie des
+// ingrédients — voir CLAUDE.md « Fournées ») : chaque action est une écriture
+// ciblée sur la ligne concernée, plus de blob JSON à réécrire.
+//
+// Écriture immédiatement reflétée partout (fiche et mode Cuisiner lisent la
+// même ligne) : plus de session figée à proposer de supprimer après une
+// modification, contrairement à l'ancien modèle plan + session séparés.
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -13,7 +17,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import type { Unit } from '@/lib/profile';
-import { fmtNum, planIngredientExpanded, planStepIsExpansion, type PlanFull, type PlanIngredientRow } from '@/lib/recipe-plan';
+import { fmtNum, batchIngredientExpanded, batchStepIsExpansion, type BatchFull, type BatchIngredientRow } from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 
@@ -25,54 +29,36 @@ const numify = (v: string): number | null => {
 };
 const round2 = (n: number): number => +n.toFixed(2);
 
-export function PlanIngredientsEditor({
-  plan,
+export function BatchIngredientsEditor({
+  batch,
   units,
   unitTips,
   conversions,
-  runningExecutionIds,
 }: {
-  plan: PlanFull;
+  batch: BatchFull;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
-  // Sessions `en_cours` du plan, tous pas confondus (calculé par la page) :
-  // une session figée à son démarrage ne reflète aucune de ces modifications
-  // (cf. CLAUDE.md « Recettes planifiées ») — proposée à la suppression après
-  // chaque écriture aboutie, plutôt qu'un avertissement qui se contredirait
-  // silencieusement au fil des modifications suivantes.
-  runningExecutionIds: number[];
 }) {
   const { mutate, busy, refresh } = useMutation();
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
   // Ligne en cours de remplacement par une sous-recette (fenêtre ouverte).
-  const [expanding, setExpanding] = useState<PlanIngredientRow | null>(null);
-
-  async function proposeDeleteRunningSessions() {
-    if (!runningExecutionIds.length) return;
-    const plural = runningExecutionIds.length > 1;
-    await mutate(() => createClient().from('executions').delete().in('id', runningExecutionIds), {
-      confirm: `${plural ? 'Des sessions' : 'Une session'} de préparation en cours ${plural ? 'ont' : 'a'} été figée${plural ? 's' : ''} avant cette modification et ne la reflète${plural ? 'nt' : ''} pas.\n\n${plural ? 'Les supprimer' : 'La supprimer'} ?`,
-      errorLabel: 'Suppression impossible',
-    });
-  }
+  const [expanding, setExpanding] = useState<BatchIngredientRow | null>(null);
 
   // Remplacement inséré depuis la fenêtre modale : c'est ici qu'est déclenchée
   // la resynchronisation, et non dans la fenêtre — celle-ci se ferme aussitôt,
   // emportant sa transition et donc son spinner avant le retour du rendu
-  // serveur. Émise en tout premier, de façon synchrone, pour que le voile de
-  // cet éditeur soit déjà en place au rendu qui démonte la fenêtre.
-  async function onExpansionDone() {
+  // serveur.
+  function onExpansionDone() {
     refresh();
-    await proposeDeleteRunningSessions();
   }
 
-  // Chaque action est une écriture ciblée sur `plan_ingredients` (via
+  // Chaque action est une écriture ciblée sur `batch_ingredients` (via
   // useMutation : spinner + confirm optionnel + resynchronisation du Server
-  // Component parent — fiche recette, liste de courses, onglet Planning).
-  async function applyEdit(row: PlanIngredientRow, qtyStr: string, coefStr: string) {
+  // Component parent — fiche recette, liste de courses, onglet fournées).
+  async function applyEdit(row: BatchIngredientRow, qtyStr: string, coefStr: string) {
     const qv = qtyStr.trim() === '' ? null : numify(qtyStr);
     const cv = coefStr.trim() === '' ? null : numify(coefStr);
     let patch: { quantity: number | null; quantity_text: string | null } | null = null;
@@ -83,18 +69,15 @@ export function PlanIngredientsEditor({
     }
     setEditing(null);
     if (!patch) return;
-    const ok = await mutate(() => createClient().from('plan_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
-    if (ok) await proposeDeleteRunningSessions();
+    await mutate(() => createClient().from('batch_ingredients').update(patch!).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
   }
 
-  async function toggleRemove(row: PlanIngredientRow) {
-    const ok = await mutate(() => createClient().from('plan_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
-    if (ok) await proposeDeleteRunningSessions();
+  async function toggleRemove(row: BatchIngredientRow) {
+    await mutate(() => createClient().from('batch_ingredients').update({ removed: !row.removed }).eq('id', row.id), { errorLabel: 'Modification non enregistrée' });
   }
 
-  async function removeAdded(row: PlanIngredientRow) {
-    const ok = await mutate(() => createClient().from('plan_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
-    if (ok) await proposeDeleteRunningSessions();
+  async function removeAdded(row: BatchIngredientRow) {
+    await mutate(() => createClient().from('batch_ingredients').delete().eq('id', row.id), { errorLabel: 'Suppression impossible' });
   }
 
   // Défait un remplacement : les étapes insérées (et tout ce qu'elles
@@ -102,18 +85,18 @@ export function PlanIngredientsEditor({
   // elle n'a jamais été modifiée entre-temps, seulement marquée.
   //
   // Les ustensiles venus de la sous-recette ne sont retirés que s'ils ne
-  // servent plus : `plan_utensils` ne porte pas de lien vers la ligne
+  // servent plus : `batch_utensils` ne porte pas de lien vers la ligne
   // remplacée (une seule colonne `source_recipe_id`), donc un second
-  // éclatement de la même recette ailleurs dans le plan doit les conserver.
-  // Et jamais quand la sous-recette est la recette du plan elle-même : on
-  // supprimerait ses propres ustensiles.
-  async function cancelExpansion(row: PlanIngredientRow) {
+  // éclatement de la même recette ailleurs dans la fournée doit les
+  // conserver. Et jamais quand la sous-recette est la recette de la fournée
+  // elle-même : on supprimerait ses propres ustensiles.
+  async function cancelExpansion(row: BatchIngredientRow) {
     const subRecipeId = row.expanded_into_recipe_id;
-    const stepIds = plan.plan_steps.filter((s) => s.source_ingredient_id === row.id).map((s) => s.id);
-    const stillUsed = plan.plan_ingredients.some((it) => it.id !== row.id && it.expanded_into_recipe_id === subRecipeId);
-    const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== plan.recipe_id;
+    const stepIds = batch.batch_steps.filter((s) => s.source_ingredient_id === row.id).map((s) => s.id);
+    const stillUsed = batch.batch_ingredients.some((it) => it.id !== row.id && it.expanded_into_recipe_id === subRecipeId);
+    const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== batch.recipe_id;
     const supabase = createClient();
-    const ok = await mutate(
+    await mutate(
       async () => {
         // Le contenu des étapes et les ustensiles ne dépendent pas les uns des
         // autres : une seule salve. Seule la suppression des étapes doit
@@ -124,18 +107,18 @@ export function PlanIngredientsEditor({
         if (stepIds.length || dropUtensils) {
           const results = await Promise.all([
             ...(stepIds.length
-              ? [supabase.from('plan_ingredients').delete().in('step_id', stepIds), supabase.from('plan_substeps').delete().in('step_id', stepIds)]
+              ? [supabase.from('batch_ingredients').delete().in('batch_step_id', stepIds), supabase.from('batch_substeps').delete().in('batch_step_id', stepIds)]
               : []),
-            ...(dropUtensils ? [supabase.from('plan_utensils').delete().eq('planning_id', plan.id).eq('source_recipe_id', subRecipeId)] : []),
+            ...(dropUtensils ? [supabase.from('batch_utensils').delete().eq('batch_id', batch.id).eq('source_recipe_id', subRecipeId)] : []),
           ]);
           const failed = results.find((r) => r.error);
           if (failed) return failed;
         }
         if (stepIds.length) {
-          const steps = await supabase.from('plan_steps').delete().in('id', stepIds);
+          const steps = await supabase.from('batch_steps').delete().in('id', stepIds);
           if (steps.error) return steps;
         }
-        return supabase.from('plan_ingredients').update({ expanded_into_recipe_id: null }).eq('id', row.id);
+        return supabase.from('batch_ingredients').update({ expanded_into_recipe_id: null }).eq('id', row.id);
       },
       {
         confirm:
@@ -145,25 +128,23 @@ export function PlanIngredientsEditor({
         errorLabel: 'Annulation impossible',
       },
     );
-    if (ok) await proposeDeleteRunningSessions();
   }
 
-  async function applyEditAdded(row: PlanIngredientRow, name: string, qtyStr: string, unit: string) {
+  async function applyEditAdded(row: BatchIngredientRow, name: string, qtyStr: string, unit: string) {
     if (!name.trim()) {
       dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
     const n = numify(qtyStr);
     setEditing(null);
-    const ok = await mutate(
+    await mutate(
       () =>
         createClient()
-          .from('plan_ingredients')
+          .from('batch_ingredients')
           .update({ name: name.trim(), quantity: n, quantity_text: n == null && qtyStr.trim() ? qtyStr.trim() : null, unit: unit.trim() || null })
           .eq('id', row.id),
       { errorLabel: 'Modification non enregistrée' },
     );
-    if (ok) await proposeDeleteRunningSessions();
   }
 
   async function addIng(stepId: number, name: string, qtyStr: string, unit: string) {
@@ -172,16 +153,16 @@ export function PlanIngredientsEditor({
       return;
     }
     const n = numify(qtyStr);
-    const stepRows = plan.plan_ingredients.filter((it) => it.step_id === stepId);
+    const stepRows = batch.batch_ingredients.filter((it) => it.batch_step_id === stepId);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
     setAddingStep(null);
-    const ok = await mutate(
+    await mutate(
       () =>
         createClient()
-          .from('plan_ingredients')
+          .from('batch_ingredients')
           .insert({
-            planning_id: plan.id,
-            step_id: stepId,
+            batch_id: batch.id,
+            batch_step_id: stepId,
             order_index: nextOrder,
             name: name.trim(),
             quantity: n,
@@ -191,7 +172,6 @@ export function PlanIngredientsEditor({
           }),
       { errorLabel: 'Ajout impossible' },
     );
-    if (ok) await proposeDeleteRunningSessions();
   }
 
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center';
@@ -242,31 +222,31 @@ export function PlanIngredientsEditor({
     );
   };
 
-  const sortedSteps = [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index);
+  const sortedSteps = [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
       {expanding && (
         <IngredientExpandDialog
-          plan={plan}
+          batch={batch}
           row={expanding}
           onClose={() => setExpanding(null)}
           onDone={onExpansionDone}
         />
       )}
       {sortedSteps.map((step) => {
-        const rows = plan.plan_ingredients.filter((it) => it.step_id === step.id).sort((a, b) => a.order_index - b.order_index);
+        const rows = batch.batch_ingredients.filter((it) => it.batch_step_id === step.id).sort((a, b) => a.order_index - b.order_index);
         if (!rows.length && addingStep !== step.id) return null;
         return (
           <div key={step.id}>
-            {/* La case « Déjà réalisé » et l'exception par ingrédient vivent
-                dans le déroulé de la recette (PlanStepDonePanel), pas ici —
-                cette section ne fait plus qu'informer (titre barré, lignes
-                grisées) de l'état déjà réglé là-bas. */}
+            {/* La case et l'exception par ingrédient vivent dans le déroulé
+                de la recette (BatchStepDonePanel), pas ici — cette section ne
+                fait plus qu'informer (titre barré, lignes grisées) de l'état
+                déjà réglé là-bas. */}
             <h4
               className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${
-                step.already_done ? 'text-on-surface-variant line-through' : planStepIsExpansion(step) ? 'text-green-700' : 'text-secondary'
+                step.done ? 'text-on-surface-variant line-through' : batchStepIsExpansion(step) ? 'text-green-700' : 'text-secondary'
               }`}
             >
               {step.title || ''}
@@ -284,11 +264,11 @@ export function PlanIngredientsEditor({
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
                   // `removed` prime toujours sur l'exclusion « déjà fait ».
-                  const excludedByStep = step.already_done && row.excluded_when_done;
+                  const excludedByStep = step.done && row.excluded_when_done;
                   // Ligne remplacée par une sous-recette : barrée en rouge,
                   // comme une suppression — elle ne s'achète plus, la mention
                   // verte en dessous dit où elle est fabriquée à la place.
-                  const expanded = planIngredientExpanded(row);
+                  const expanded = batchIngredientExpanded(row);
                   const tone = row.removed || expanded
                     ? 'text-error line-through'
                     : excludedByStep
@@ -421,7 +401,7 @@ export function PlanIngredientsEditor({
 
 const FIELD = 'border border-outline-variant rounded px-3 py-1.5 font-body-md text-sm';
 
-function LineEditForm({ row, onApply, onCancel }: { row: PlanIngredientRow; onApply: (qty: string, coef: string) => void; onCancel: () => void }) {
+function LineEditForm({ row, onApply, onCancel }: { row: BatchIngredientRow; onApply: (qty: string, coef: string) => void; onCancel: () => void }) {
   const coef = row.base_quantity && row.quantity != null ? +(row.quantity / row.base_quantity).toFixed(2) : null;
   const [coefStr, setCoefStr] = useState(coef != null ? fmtNum(coef) : '');
   const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : '');
@@ -448,7 +428,7 @@ function LineEditForm({ row, onApply, onCancel }: { row: PlanIngredientRow; onAp
   );
 }
 
-function AddedEditForm({ row, units, onApply, onCancel }: { row: PlanIngredientRow; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
+function AddedEditForm({ row, units, onApply, onCancel }: { row: BatchIngredientRow; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
   const [name, setName] = useState(row.name);
   const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '');
   const [unit, setUnit] = useState(row.unit || '');

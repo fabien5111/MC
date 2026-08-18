@@ -1,29 +1,29 @@
 'use client';
 
-// Note globale d'une recette planifiée (`planning.user_note`), éditable
-// directement sur la fiche de la recette planifiée.
+// Note globale d'une fournée (`batches.user_note`), éditable directement sur
+// sa fiche.
 //
-// Distincte de `planning.notes` — le commentaire saisi dans le dialogue de
-// planification (PlanWidget), affiché dans le bandeau de la fiche, l'écran
-// d'exécution et Profil → Planning. Deux colonnes séparées et non deux
-// surfaces d'édition du même champ : modifier l'une ne doit jamais faire
-// apparaître son contenu dans l'autre.
+// Distincte de `batches.notes` — le commentaire saisi dans le dialogue de
+// création (BatchWidget), affiché dans le bandeau de la fiche et Profil →
+// Fournées. Deux colonnes séparées et non deux surfaces d'édition du même
+// champ : modifier l'une ne doit jamais faire apparaître son contenu dans
+// l'autre.
 //
-// Même mise en forme que la note d'étape (PlanStepDonePanel) : les deux sont
-// des notes personnelles au même titre, l'une pour toute la planification,
-// l'autre pour une étape précise — une seule convention visuelle pour ne pas
-// les faire lire comme deux choses différentes.
+// Même mise en forme que la note d'étape (BatchStepDonePanel) : les deux sont
+// des notes personnelles au même titre, l'une pour toute la fournée, l'autre
+// pour une étape précise — une seule convention visuelle pour ne pas les
+// faire lire comme deux choses différentes.
 //
 // C'est une note personnelle : elle ne se confond pas avec les textes de la
-// recette (`recipes.notes`, astuces des étapes), qui restent affichés à leur
-// place et ne sont jamais écrasés. Elle s'imprime — on imprime la fiche pour
-// cuisiner — seuls les contrôles d'édition sont en `no-print`.
+// recette (astuces des étapes...), qui restent affichés à leur place et ne
+// sont jamais écrasés. Elle s'imprime — on imprime la fiche pour cuisiner —
+// seuls les contrôles d'édition sont en `no-print`.
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 
-export function PlanNotes({ planId, notes: initialNotes }: { planId: number; notes: string | null }) {
+export function BatchNotes({ batchId, notes: initialNotes }: { batchId: number; notes: string | null }) {
   const { mutate, busy } = useMutation();
   const [notes, setNotes] = useState(initialNotes);
   const [editing, setEditing] = useState(false);
@@ -35,7 +35,7 @@ export function PlanNotes({ planId, notes: initialNotes }: { planId: number; not
 
   async function save() {
     const next = draft.trim() || null;
-    const ok = await mutate(() => createClient().from('planning').update({ user_note: next } as never).eq('id', planId), {
+    const ok = await mutate(() => createClient().from('batches').update({ user_note: next } as never).eq('id', batchId), {
       errorLabel: 'Note non enregistrée',
     });
     if (ok) {

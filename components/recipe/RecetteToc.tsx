@@ -1,9 +1,9 @@
 'use client';
 
-// Boutons d'action du rail sur la fiche recette : Éditer / Planifier /
+// Boutons d'action du rail sur la fiche recette : Éditer / Créer une fournée /
 // Dupliquer — remontés depuis l'ancienne rangée d'actions sous le titre.
 // Doit être monté sous <PlanProvider> (cf. app/recette/[id]/page.tsx) : le
-// bouton Planifier partage l'état du panneau via usePlanCtx(), comme
+// bouton « Créer une fournée » partage l'état du panneau via usePlanCtx(), comme
 // l'ancien PlanToggleButton qu'il remplace.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -155,7 +155,7 @@ export function RecetteToc({
       // portaient les autres entrées de ce rail, pour que ce déclencheur se
       // reconnaisse au premier coup d'œil comme le même geste.
       icon: <PlanningIcon size={20} discFill={DISC.surface} />,
-      label: 'Planifier',
+      label: 'Créer une fournée',
       variant: 'outline' as const,
       onClick: () => (open && !editMode ? close() : openCreate()),
       disabled: pending !== null,
@@ -168,7 +168,7 @@ export function RecetteToc({
   return (
     <>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et avec lui la
-          seule voie d'accès à Planifier / Éditer / Dupliquer — `PlanWidget`
+          seule voie d'accès à Créer une fournée / Éditer / Dupliquer — `BatchWidget`
           n'a pas de déclencheur propre. Le tiroir reprend les sections *et*
           ces actions. `mobileInset="nav"` pour la barre de navigation basse,
           que la fiche recette monte. */}

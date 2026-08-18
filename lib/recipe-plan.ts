@@ -16,7 +16,7 @@
 // batch_ingredients → ...), une table dépendant de l'id de la précédente.
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
-import type { PlanningEntry, PlanningRow } from '@/lib/profile';
+import type { BatchEntry, BatchListRow } from '@/lib/profile';
 
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -25,7 +25,7 @@ const numify = (v: unknown): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 export const fmtNum = (n: number): string => String(round2(n)).replace('.', ',');
 
-export function batchFactor(batch: Pick<PlanningEntry, 'factor'> | null): number {
+export function batchFactor(batch: Pick<BatchEntry, 'factor'> | null): number {
   return batch && batch.factor && batch.factor > 0 ? batch.factor : 1;
 }
 
@@ -80,12 +80,12 @@ export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 // Case cochable directement depuis cette vue (décision « vue par jour
 // actionnable ») : `done` vient tel quel de `batch_steps`, plus besoin de
 // croiser une session active — il n'y en a plus.
-export function groupPlanningStepsByDate(plans: PlanningRow[]): PlanningDayGroup[] {
+export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGroup[] {
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
     if (!p.planned_date) return;
     const recipeTitle = p.recipe_title || p.recipes?.title || '';
-    [...p.plan_steps]
+    [...p.batch_steps]
       .sort((a, b) => a.order_index - b.order_index)
       .forEach((s, i) => {
         const d = new Date(p.planned_date + 'T00:00:00');
@@ -588,9 +588,9 @@ export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: n
 // Opère directement sur `batch_steps` : il n'y a plus de matérialisation
 // séparée d'une « exécution », cuisiner ne fait qu'afficher la fournée
 // autrement.
-export type BatchJalon = { offset: number; steps: BatchStepRow[] };
-export function groupBatchStepsByDay(steps: BatchStepRow[]): BatchJalon[] {
-  const map = new Map<number, BatchStepRow[]>();
+export type BatchJalon = { offset: number; steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[] };
+export function groupBatchStepsByDay(steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[]): BatchJalon[] {
+  const map = new Map<number, (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[]>();
   steps.forEach((s) => {
     const o = Math.max(0, s.day_offset || 0);
     const arr = map.get(o);

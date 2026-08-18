@@ -1,11 +1,11 @@
 'use client';
 
-// Carrousel « Sessions en cours » de l'accueil (membre, seulement si au
-// moins une session tourne — cf. README Écran 1).
+// Carrousel « Fournées en cours » de l'accueil (membre, seulement si au
+// moins une fournée est en cuisson — cf. README Écran 1).
 //
-// Une session par vue, `translateX` de 100 %, transition 300 ms, flèches
+// Une fournée par vue, `translateX` de 100 %, transition 300 ms, flèches
 // désactivées en butée. **Tri par prochaine échéance** (fait en amont par
-// `getActiveExecutions`, jamais par heure de démarrage) — ce composant ne
+// `getActiveBatches`, jamais par heure de démarrage) — ce composant ne
 // fait qu'afficher l'ordre reçu.
 //
 // Toute la carte mène à `/en-cuisine` : depuis l'accueil, on choisit d'abord
@@ -17,9 +17,9 @@
 // sait, sans en dire plus (cf. lot « En cuisine »).
 import { useState } from 'react';
 import Link from 'next/link';
-import type { ActiveExecutionRow } from '@/lib/executions';
+import type { ActiveBatchRow } from '@/lib/profile';
 
-export function SessionsCarousel({ sessions }: { sessions: ActiveExecutionRow[] }) {
+export function SessionsCarousel({ sessions }: { sessions: ActiveBatchRow[] }) {
   const [i, setI] = useState(0);
   const atStart = i === 0;
   const atEnd = i === sessions.length - 1;
@@ -29,7 +29,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveExecutionRow[] 
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2.5">
           <p className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-            Sessions en cours
+            Fournées en cours
           </p>
           <span className="flex items-center gap-1.5 bg-primary text-on-primary rounded-full px-2 py-0.5 text-[10.5px] font-semibold">
             <span className="relative flex h-1.5 w-1.5">
@@ -71,7 +71,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveExecutionRow[] 
         >
           {sessions.map((s) => {
             const { done, total, currentTitle } = s.progress;
-            const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : 'Session démarrée';
+            const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : 'Fournée démarrée';
             return (
               <div key={s.id} className="w-full shrink-0 px-0.5">
                 <Link
@@ -85,7 +85,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveExecutionRow[] 
                     </span>
                     <div className="min-w-0">
                       <p className="text-[15px] text-on-surface truncate">
-                        <strong className="text-primary">{s.planning?.recipe_title || 'Session de préparation'}</strong>
+                        <strong className="text-primary">{s.recipe_title || 'Fournée'}</strong>
                         {currentTitle ? <> — {currentTitle.toLowerCase()}</> : null}
                       </p>
                       {total > 0 && (
@@ -113,7 +113,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveExecutionRow[] 
         </div>
       </div>
       <p className="text-[13px] text-on-surface-variant mt-3">
-        Ces rappels n&apos;apparaissent que si des sessions tournent, triés par prochaine échéance.
+        Ces rappels n&apos;apparaissent que si des fournées sont en cuisson, triés par prochaine échéance.
       </p>
     </section>
   );

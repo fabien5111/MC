@@ -28,6 +28,7 @@ const PROTECTED_PREFIXES = [
   '/creer',
   '/admin',
   '/execution',
+  '/fournee',
   '/courses',
   '/importer',
   '/relecture',

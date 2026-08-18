@@ -7,22 +7,11 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getActiveAds } from '@/lib/ads';
-import { getUnits, getShoppingLists, getPlan } from '@/lib/profile';
+import { getUnits, getShoppingLists } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
-import { getExecutions, getRunningExecutionSteps } from '@/lib/executions';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
-import {
-  mergePlanIngredients,
-  mergedRowQtyText,
-  planDayLabel,
-  planFactor,
-  planGroupsAsIngredientGroups,
-  planStepsAsRecipeSteps,
-  planUtensilsAsRecipeUtensils,
-  fmtNum,
-} from '@/lib/recipe-plan';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -33,22 +22,17 @@ import { SuggestionsSidebar } from '@/components/recipe/SuggestionsSidebar';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
-import { PlanWidget } from '@/components/recipe/PlanWidget';
+import { BatchWidget } from '@/components/recipe/BatchWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
-import { PlanNoticeBanner } from '@/components/recipe/PlanNoticeBanner';
-import { PlanNotes } from '@/components/recipe/PlanNotes';
-import { PlanIngredientsEditor } from '@/components/recipe/PlanIngredientsEditor';
-import { PlanStepDonePanel } from '@/components/recipe/PlanStepDonePanel';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
-import { SessionsList } from '@/components/recipe/SessionsList';
 
 type Params = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ plan?: string; planifier?: string; demarrer?: string }>;
+  searchParams: Promise<{ planifier?: string }>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -59,7 +43,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { plan: planParam, planifier, demarrer } = await searchParams;
+  const { planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
 
   if (!recipe) {
@@ -85,38 +69,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getActiveAds(['recipe_inline', 'sidebar']),
     getRecipeDefaultPhoto(),
   ]);
-  // Contexte planifié (arrivée depuis l'onglet Planning) : bannière d'info.
-  // Le plan est une copie matérialisée indépendante de la recette (voir
-  // CLAUDE.md « Recettes planifiées ») : ingrédients/étapes/ustensiles du
-  // mode planifié viennent de ses propres tables, pas de `recipe`.
-  const planEntry = planParam && Number.isFinite(Number(planParam)) ? await getPlan(Number(planParam)) : null;
-  const planContext = planEntry && planEntry.recipe_id === recipe.id ? planEntry : null;
-  const planMerged = planContext ? mergePlanIngredients(planContext) : null;
-  const execHistory = planContext ? await getExecutions(planContext.id) : [];
-  // Étapes des sessions en cours, par `plan_step_id` : une sous-étape ajoutée
-  // y est répercutée pour rester cochable (cf. lib/executions.ts).
-  const runningExecSteps = planContext ? await getRunningExecutionSteps(planContext.id) : {};
-  // Sessions en cours du plan, tous pas confondus — greffé sur
-  // PlanIngredientsEditor (contrairement à PlanStepDonePanel, une édition
-  // d'ingrédient n'est pas rattachée à une seule étape du déroulé) pour
-  // proposer leur suppression après une modification qu'elles ne reflèteront
-  // pas (figées à leur démarrage, cf. CLAUDE.md « Recettes planifiées »).
-  const runningExecutionIds = [...new Set(Object.values(runningExecSteps).flatMap((rows) => rows.map((r) => r.execution_id)))];
-  // Jours proposés au déplacement d'une étape : ceux déjà utilisés par le plan
-  // (jour d'origine compris, pour pouvoir revenir en arrière) plus deux
-  // d'anticipation, afin de pouvoir sortir une étape du jour J.
-  const planDayOptions = (() => {
-    if (!planContext) return [];
-    const used = planContext.plan_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
-    const max = Math.max(0, ...used) + 2;
-    return Array.from({ length: max + 1 }, (_, i) => i);
-  })();
   const isOwner = !!user && recipe.author_id === user.id;
   // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
   // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
   // RLS `recipes_partagees`).
   const shareInfo = isOwner ? await getRecipeShareInfo(recipe.id, recipe.author_id, recipe.status) : undefined;
-  // Admin : débloque le mode d'ajustement des quantités par IA dans la planification.
+  // Admin : débloque le mode d'ajustement des quantités par IA dans la création d'une fournée.
   const userIsAdmin = user ? await isAdmin(user.id) : false;
   const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
   const unitTips: Record<string, string> = {};
@@ -157,31 +115,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
   };
 
   const yInfo = yieldInfo(recipe);
-  // Quantité ajustée par la planification en cours, affichée à la place de la
-  // quantité de base (elle-même reportée en dessous, en plus petit). Pour une
-  // recette « unités », un simple produit par le facteur du plan suffit ; pour
-  // une recette « moule »/« dimensions », il n'y a pas de quantité numérique
-  // unique à multiplier — on réutilise `adjust_label`, déjà construit par
-  // PlanWidget lors de la planification (description du moule/coefficient cible).
-  const adjustedYield = ((): string | null => {
-    if (!planContext || !yInfo) return null;
-    const factor = planFactor(planContext);
-    if (recipe.measure_type === 'units' && recipe.yield_qty) {
-      if (factor === 1) return null;
-      const q = parseFloat(String(recipe.yield_qty).replace(',', '.'));
-      if (isNaN(q)) return null;
-      const u = UNITS_LBL[recipe.yield_unit || ''] || recipe.yield_unit || '';
-      return `${fmtNum(q * factor)} ${u}`.trim();
-    }
-    return planContext.adjust_label || null;
-  })();
   const level = recipe.difficulties?.level || 0;
   const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
-  // Mode planifié : groupes/étapes/ustensiles viennent du plan matérialisé
-  // (sa propre copie), pas de la recette — elle a pu évoluer depuis.
-  const groups = planContext
-    ? planGroupsAsIngredientGroups(planContext)
-    : [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const groups = [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   // Allergènes de la recette : on part des infos contenues dans la recette
   // elle-même — le champ « allergène » (texte libre) de chaque ingrédient,
   // éventuellement multiple — complété par l'allergène du référentiel rattaché.
@@ -219,22 +155,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
   })();
   const groupsByOrder: Record<number, (typeof groups)[number]> = {};
   groups.forEach((g) => (groupsByOrder[g.order_index || 0] = g));
-  const steps = planContext ? planStepsAsRecipeSteps(planContext) : [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  // Étape brute (plan_steps) par id, pour les sous-étapes brutes du mode
-  // planifié (voir rawSubsteps ci-dessous).
-  const planStepsById = new Map((planContext?.plan_steps ?? []).map((ps) => [ps.id, ps]));
-  const utensils = planContext
-    ? planUtensilsAsRecipeUtensils(planContext.plan_utensils)
-    : [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  // Temps : ceux du plan (somme de ses propres étapes) en mode planifié — le
-  // plan ne reprend pas un éventuel temps global forcé sur la recette
-  // d'origine (non dupliqué à la matérialisation, limitation acceptée).
-  const times = planContext ? effectiveTimes({ prep_time: null, cook_time: null, wait_time: null, total_time: null, recipe_steps: steps }) : effectiveTimes(recipe);
+  const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const times = effectiveTimes(recipe);
   const merged = mergeIngredients(recipe);
   const days = planningDays(steps);
-  // Avec un contexte de planification, « JOUR J − n » devient la vraie date.
-  const dLabel = (offset: number | null | undefined) =>
-    planContext && planContext.planned_date ? planDayLabel(offset, planContext.planned_date) : dayLabel(offset);
+  const dLabel = (offset: number | null | undefined) => dayLabel(offset);
 
   // Sommaire de consultation : contrairement à l'éditeur, une section absente
   // de la recette n'existe pas dans le DOM — elle n'a donc rien à faire dans
@@ -364,14 +290,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
             </div>
-            {planContext && (
-              <Link
-                href={`/recette/${recipe.id}`}
-                className="no-print inline-flex items-center gap-2 self-start text-primary underline underline-offset-2 hover:text-secondary font-label-md text-label-md"
-              >
-                <span className="material-symbols-outlined text-[18px]">menu_book</span>Recette d&apos;origine
-              </Link>
-            )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
                 {tags.map((n) => (
@@ -383,42 +301,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
             )}
           </div>
 
-          {/* Contexte planifié (bannière + démarrage d'exécution) — juste sous
-              l'en-tête (qui porte le lien « Recette d'origine »), avant même le
-              panneau « Planifier » et la photo : sur une fiche planifiée, c'est
-              l'information la plus immédiatement utile, pas quelque chose sur
-              lequel on doit d'abord faire défiler la page. */}
-          {planContext && planContext.planned_date && (
-            <div className="no-print">
-            <PlanNoticeBanner
-              plan={planContext}
-              autoStart={demarrer === '1'}
-              text={
-                `Recette planifiée pour le ` +
-                new Date(planContext.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                }) +
-                (planContext.factor && planContext.factor !== 1
-                  ? ` — quantités ajustées × ${String(planContext.factor).replace('.', ',')}`
-                  : planContext.adjust_label
-                    ? ` — ${planContext.adjust_label}`
-                    : '')
-              }
-            />
-            </div>
-          )}
-
-          {/* Sessions de préparation (historique) — juste sous le bandeau de
-              planification : c'est la suite directe de « Démarrer la
-              recette » (ce bandeau), peu importe la largeur d'écran. */}
-          <SessionsList execHistory={execHistory} />
-
-          {/* Planifier — le panneau s'ouvre au clic sur « Planifier ». */}
+          {/* Créer une fournée — le panneau s'ouvre au clic sur le bouton du
+              rail. Une fournée créée quitte cette fiche pour vivre sur son
+              propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
-          <PlanWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} existingPlan={planContext} isAdmin={userIsAdmin} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} isAdmin={userIsAdmin} />
           </div>
 
           {/* Hero */}
@@ -430,39 +317,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Note globale du plan + rappel de la convention de lecture. Une
-              seule légende pour toute la fiche : les mêmes couleurs valent
-              pour les ingrédients (PlanIngredientsEditor) et les étapes
-              (PlanStepDonePanel) — en inventer une seconde les opposerait. */}
-          {planContext && (
-            <div className="no-print">
-              <p className="mb-3 font-body-md text-[12px] text-on-surface-variant">
-                Sur cette fiche planifiée : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes
-                venues d&apos;un ingrédient que vous fabriquez vous-même),{' '}
-                <span className="text-error line-through">barré en rouge</span> ce que vous avez retiré ou remplacé par une recette,{' '}
-                <span className="text-on-surface-variant line-through">barré en gris</span> ce que vous avez déjà réalisé, et
-                « recette : … » rappelle la valeur d&apos;origine.
-              </p>
-              <PlanNotes planId={planContext.id} notes={planContext.user_note} />
-            </div>
-          )}
-
-          {/* Liste de courses — remontée juste sous le bandeau de planification
-              en mode planifié (au lieu de fin de section Ingrédients), pour
-              rester visible sans scroller depuis « Démarrer la recette ». */}
-          {planContext && planMerged && planMerged.length > 0 && (
-            <div className="no-print mb-12">
-              <ShoppingWidget
-                recipeTitle={recipe.title}
-                ingredients={planMerged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id }))}
-                lists={shoppingLists}
-                isLoggedIn={!!user}
-                conversions={conversions}
-                units={units}
-              />
-            </div>
-          )}
-
           {/* Bloc technique */}
           <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-8 mb-12 space-y-8">
             <div className="flex flex-wrap justify-evenly items-start gap-y-8 gap-x-4">
@@ -471,12 +325,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
                     {yInfo.label}
                   </span>
-                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
-                  {adjustedYield && (
-                    <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">
-                      Recette d&apos;origine : {yInfo.value}
-                    </span>
-                  )}
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{yInfo.value}</span>
                 </div>
               )}
               <div className="flex flex-col gap-1 items-center text-center">
@@ -619,15 +468,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     </div>
                     <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
                     {d.items.map((it, k) => (
-                      <p
-                        key={k}
-                        // Même convention que le déroulé : barré si l'étape est
-                        // entièrement traitée, vert si elle vient d'un
-                        // ingrédient que l'utilisateur fabrique lui-même.
-                        className={`font-body-md text-body-md font-semibold${
-                          it.fully_done ? ' text-on-surface-variant line-through' : it.added ? ' text-green-700' : ''
-                        }`}
-                      >
+                      <p key={k} className="font-body-md text-body-md font-semibold">
                         {it.title}
                       </p>
                     ))}
@@ -665,13 +506,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {groups.length > 0 && (
             <div id="sec-ingredients" className="scroll-mt-28 mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
-              {/* Détail par groupe/étape : redondant à l'impression avec le total
-                  ci-dessous et les « Ingrédients de l'étape » dans le déroulé —
-                  masqué au print, conservé à l'écran (édition du plan incluse). */}
               <div className="no-print">
-              {planContext ? (
-                <PlanIngredientsEditor plan={planContext} units={units} unitTips={unitTips} conversions={conversions} runningExecutionIds={runningExecutionIds} />
-              ) : (
                 <div className="space-y-10">
                   {groups.map((g) => (
                     <div key={g.id}>
@@ -718,85 +553,34 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     </div>
                   ))}
                 </div>
-              )}
               </div>
 
-              {planMerged && planMerged.length > 0 ? (
+              {merged.length > 0 && (
                 <details className="group border border-outline-variant mt-12">
                   <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
                     <span className="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span>
                     <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
                   </summary>
                   <div className="p-4 bg-white">
-                    {/* Colonnes chiffrées en `minmax(min-content,max-content)` :
-                        elles gardent leur largeur naturelle, mais leurs
-                        en-têtes (« Quantité ajustée ») peuvent se replier sur
-                        deux lignes au lieu d'imposer leur largeur pleine — sur
-                        mobile, trois en-têtes en `max-content` ne laissaient
-                        plus rien au nom de l'ingrédient. */}
-                    <ul className="grid grid-cols-[minmax(0,1fr)_minmax(min-content,max-content)_minmax(min-content,max-content)_minmax(min-content,max-content)] gap-x-3 sm:gap-x-10 print:gap-x-10">
-                      <li className="pb-1" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                        <span />
-                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Coef.</span>
-                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-primary text-center">Quantité ajustée</span>
-                        <span className="print-fs-9 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant text-center">Quantité d&apos;origine</span>
-                      </li>
-                      {planMerged.map((r, k) => {
-                        const coef = r.orig && r.adj != null ? r.adj / r.orig : null;
-                        const tone = r.added ? 'text-green-700' : '';
-                        return (
-                          <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
-                              {/* Case à cocher au stylo — uniquement à l'impression, cochée
-                                  à la main pendant les courses ou la préparation. */}
-                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                              {r.name}
-                              {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
-                            </span>
-                            <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>{coef != null ? `× ${fmtNum(coef)}` : '—'}</span>
-                            <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>
-                              <Qty quantity={r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ')} unit={r.unit} refId={r.ref_id} />
-                            </span>
-                            <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                              {r.orig != null ? <Qty quantity={[fmtNum(r.orig), ...r.origTxt].join(' + ')} unit={r.unit} refId={r.ref_id} /> : r.origTxt.length ? <Qty quantity={r.origTxt.join(' + ')} unit={r.unit} refId={r.ref_id} /> : '—'}
-                            </span>
-                          </li>
-                        );
-                      })}
+                    <ul className="grid grid-cols-[minmax(0,16rem)_max-content] gap-x-3 sm:gap-x-6 print:gap-x-6">
+                      {merged.map((m, k) => (
+                        <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                          <span className="font-body-md text-body-md break-words">
+                            <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                            {m.name}
+                            {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
+                          </span>
+                          <span className="font-label-md text-label-md text-primary">
+                            <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </details>
-              ) : (
-                merged.length > 0 && (
-                  <details className="group border border-outline-variant mt-12">
-                    <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                      <span className="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span>
-                      <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                    </summary>
-                    <div className="p-4 bg-white">
-                      <ul className="grid grid-cols-[minmax(0,16rem)_max-content] gap-x-3 sm:gap-x-6 print:gap-x-6">
-                        {merged.map((m, k) => (
-                          <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                            <span className="font-body-md text-body-md break-words">
-                              <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                              {m.name}
-                              {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
-                            </span>
-                            <span className="font-label-md text-label-md text-primary">
-                              <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </details>
-                )
               )}
 
-              {/* Mode planifié : la liste de courses est affichée plus haut,
-                  juste sous le bandeau de planification (cf. plus bas dans le
-                  fichier) — pas ici, pour ne pas la dupliquer. */}
-              {!planContext && merged.length > 0 && (
+              {merged.length > 0 && (
                 <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
@@ -820,20 +604,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {steps.map((s, i) => {
                 const grp = groupsByOrder[s.order_index || 0];
                 const ings = grp ? [...(grp.ingredients || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) : [];
-                // Lignes brutes (plan_substeps) pour PlanStepDonePanel : `s.sous_etapes`
-                // (RecipeStepView) est déjà filtré des sous-étapes exclues, donc
-                // inutilisable pour proposer la case « conserver » sur ces lignes-là.
-                const rawSubsteps = planStepsById.get(s.id)?.plan_substeps ?? [];
                 const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
                 const stepTotal = (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0);
                 const badges: string[] = [
-                  // Mode planifié : le jour est porté par le sélecteur de
-                  // PlanStepDonePanel (modifiable, avec rappel du jour de la
-                  // recette) — un badge en plus ferait doublon.
-                  planContext ? '' : dLabel(Math.max(0, s.day_offset || 0)),
-                  // Mode planifié : étape conservée pour sa seule cuisson, ses
-                  // ingrédients et son temps de préparation ont déjà été retirés.
-                  s.already_done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
+                  dLabel(Math.max(0, s.day_offset || 0)),
                   s.prep_time ? `PRÉP ${formatTime(s.prep_time).toUpperCase()}` : '',
                   s.wait_time ? `ATTENTE ${formatTime(s.wait_time).toUpperCase()}` : '',
                   s.cook_time
@@ -843,27 +617,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       : '',
                 ].filter(Boolean);
                 const stepTitle = (
-                  <h4
-                    className={`font-headline-md text-headline-md ${
-                      s.fully_done ? 'text-on-surface-variant line-through' : s.added ? 'text-green-700' : 'text-primary'
-                    }`}
-                  >
+                  <h4 className="font-headline-md text-headline-md text-primary">
                     {i + 1}. {s.title || 'Étape ' + (i + 1)}
-                    {/* Étape venue du remplacement d'un ingrédient par une
-                        sous-recette : en vert comme tout ce que l'utilisateur
-                        a ajouté, avec le renvoi vers la recette d'origine. */}
-                    {s.added && (
-                      <span className="block font-body-md text-[12px] text-green-700 font-normal mt-1">
-                        Ajouté —{' '}
-                        {s.from_recipe ? (
-                          <Link href={`/recette/${s.from_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
-                            {s.from_recipe.title}
-                          </Link>
-                        ) : (
-                          'sous-recette'
-                        )}
-                      </span>
-                    )}
                   </h4>
                 );
                 const stepMeta = (
@@ -884,34 +639,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     {stepMeta}
                   </>
                 );
-                // Ligne brute du plan : `s` (RecipeStepView) ne porte ni le
-                // jour d'origine ni la note personnelle, absents de la vue de
-                // compatibilité recette.
-                const rawStep = planStepsById.get(s.id);
-                const planStepProps = {
-                  id: s.id,
-                  already_done: s.already_done ?? false,
-                  day_offset: rawStep?.day_offset ?? 0,
-                  base_day_offset: rawStep?.base_day_offset ?? null,
-                  user_note: rawStep?.user_note ?? null,
-                };
-                const planIngredientsOfStep = planContext ? planContext.plan_ingredients.filter((it) => it.step_id === s.id) : [];
-                // Contenu replié avec le reste quand l'étape est entièrement traitée
-                // (photos, vidéo, astuces…) — inchangé sinon.
                 const extra = (
                   <>
                     <StepPhotoGallery photos={photos} />
                     {s.video_url && <StepVideoPlayer url={s.video_url} />}
-                    {/* Mode planifié : la puce/case des sous-étapes est déjà rendue par
-                        PlanStepDonePanel ci-dessus ; ici, seul le repli sur la description
-                        reste à afficher s'il n'y a pas de sous-étapes du tout. */}
-                    {planContext ? (
-                      rawSubsteps.length === 0 && s.description ? (
-                        <div className="font-body-lg text-body-lg leading-relaxed text-on-surface whitespace-pre-line">
-                          {s.description}
-                        </div>
-                      ) : null
-                    ) : Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
+                    {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
                       <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
                         {s.sous_etapes.map((t, k) => (
                           <li key={k} className="flex gap-3">
@@ -946,58 +678,34 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     // fonction plante au rendu serveur (référence client, pas de code
                     // exécutable côté serveur).
                     id={`sec-etape-${i + 1}`}
-                    // Pas de séparateur supplémentaire pour une étape repliée : son
-                    // propre trait sous le titre suffit déjà à la distinguer de la
-                    // suivante, sans doubler la ligne visible.
-                    className={`scroll-mt-28 flex flex-col gap-6${!s.fully_done && i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
+                    className={`scroll-mt-28 flex flex-col gap-6${i < steps.length - 1 ? ' pb-14 border-b-2 border-outline-variant' : ''}`}
                   >
-                    {planContext ? (
-                      // Étape entièrement traitée : repliée par défaut, plus rien n'y
-                      // reste à faire — seul le titre barré, ses badges et la case
-                      // « Déjà réalisé » restent visibles hors du volet replié.
-                      <PlanStepDonePanel
-                        collapsible={!!s.fully_done}
-                        title={stepTitle}
-                        meta={stepMeta}
-                        step={planStepProps}
-                        ingredients={planIngredientsOfStep}
-                        substeps={rawSubsteps}
-                        plannedDate={planContext.planned_date}
-                        dayOptions={planDayOptions}
-                        runningExecSteps={runningExecSteps[s.id] ?? []}
-                      >
-                        {extra}
-                      </PlanStepDonePanel>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">{header}</div>
-                        {ings.length > 0 && (
-                          <details className="group border border-outline-variant mb-2" open>
-                            <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                              <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
-                              <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                            </summary>
-                            <div className="p-4 bg-white">
-                              <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-                                {ings.map((it) => (
-                                  <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                                    <span className="font-label-md text-label-md text-primary">
-                                      <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                                      <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
-                                    </span>
-                                    <span className="font-body-md text-body-md break-words">
-                                      {it.name}
-                                      {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </details>
-                        )}
-                        {extra}
-                      </>
+                    <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">{header}</div>
+                    {ings.length > 0 && (
+                      <details className="group border border-outline-variant mb-2" open>
+                        <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                          <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+                          <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                        </summary>
+                        <div className="p-4 bg-white">
+                          <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+                            {ings.map((it) => (
+                              <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
+                                <span className="font-label-md text-label-md text-primary">
+                                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                                  <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
+                                </span>
+                                <span className="font-body-md text-body-md break-words">
+                                  {it.name}
+                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </details>
                     )}
+                    {extra}
                   </div>
                 );
               })}
