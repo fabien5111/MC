@@ -38,6 +38,20 @@ function qtyText(it: Pick<IngRow, 'quantity' | 'quantity_text'>): string {
   return it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '';
 }
 
+// Conversions jour ↔ date, pour le sélecteur de jour ci-dessous : la donnée
+// reste un décalage (`day_offset`, jours avant la dégustation — cf. lib/
+// recipe-plan.ts), le calendrier n'en est qu'une autre façon de le saisir.
+function offsetToDate(offset: number, plannedDate: string): string {
+  const d = new Date(plannedDate + 'T00:00:00');
+  d.setDate(d.getDate() - Math.max(0, offset || 0));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dateToOffset(dateStr: string, plannedDate: string): number {
+  const d = new Date(dateStr + 'T00:00:00');
+  const p = new Date(plannedDate + 'T00:00:00');
+  return Math.max(0, Math.round((p.getTime() - d.getTime()) / 86400000));
+}
+
 export function BatchStepDonePanel({
   step: initialStep,
   ingredients: initialIngredients,
@@ -207,20 +221,34 @@ export function BatchStepDonePanel({
   // Jour de l'étape : modifiable ici, avec le jour de la recette rappelé à
   // côté dès qu'il diffère (même principe que « Quantité d'origine » sur les
   // ingrédients) et un retour en arrière possible.
+  // Calendrier natif (input date) plutôt qu'une liste de jours : la liste
+  // n'allait que jusqu'au jour le plus reculé utilisé par une étape (+ une
+  // marge de 2), donc invisible pour reculer davantage. Le calendrier n'a pas
+  // cette limite — plafonné au jour de dégustation (`max`), puisqu'une étape
+  // ne peut pas tomber après. Repli sur la liste de décalages si la fournée
+  // n'a pas de date (rien à quoi ancrer un calendrier).
+  const dayControlCls = `h-7 border border-outline-variant rounded px-2 font-label-md text-[11px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}`;
+  const dayInput = plannedDate ? (
+    <input
+      type="date"
+      value={offsetToDate(step.day_offset ?? 0, plannedDate)}
+      max={plannedDate}
+      onChange={(e) => e.target.value && changeDay(dateToOffset(e.target.value, plannedDate))}
+      title="Déplacer cette étape à un autre jour"
+      className={dayControlCls}
+    />
+  ) : (
+    <select value={step.day_offset} onChange={(e) => changeDay(parseInt(e.target.value, 10))} title="Déplacer cette étape à un autre jour" className={dayControlCls}>
+      {dayOptions.map((o) => (
+        <option key={o} value={o}>
+          {dayText(o)}
+        </option>
+      ))}
+    </select>
+  );
   const dayControl = (
     <span className="no-print flex items-center gap-1.5">
-      <select
-        value={step.day_offset}
-        onChange={(e) => changeDay(parseInt(e.target.value, 10))}
-        title="Déplacer cette étape à un autre jour"
-        className={`border border-outline-variant rounded px-2 py-1 font-label-md text-[11px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}`}
-      >
-        {dayOptions.map((o) => (
-          <option key={o} value={o}>
-            {dayText(o)}
-          </option>
-        ))}
-      </select>
+      {dayInput}
       {moved && (
         <>
           <span className="font-label-md text-[11px] text-on-surface-variant" title="Jour prévu par la recette">

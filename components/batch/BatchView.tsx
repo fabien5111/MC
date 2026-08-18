@@ -548,13 +548,13 @@ function PreparerView({
               times.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}` : s.cook_temp ? `CUISSON ${s.cook_temp} °C` : '',
             ].filter(Boolean);
             const stepMeta = (
-              <div className="flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+              <div className="flex items-center gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
                 {badges.map((b, k) => (
-                  <span key={k} className="bg-surface-variant px-3 py-1">
+                  <span key={k} className="h-7 inline-flex items-center bg-surface-variant px-3">
                     {b}
                   </span>
                 ))}
-                {stepTotal > 0 && <span className="bg-primary text-white px-3 py-1">TOTAL {formatTime(stepTotal).toUpperCase()}</span>}
+                {stepTotal > 0 && <span className="h-7 inline-flex items-center bg-primary text-white px-3">TOTAL {formatTime(stepTotal).toUpperCase()}</span>}
               </div>
             );
             const photos = baseRecipe && s.source_step_id ? baseRecipe.stepPhotosBySourceStepId[s.source_step_id] || [] : [];
