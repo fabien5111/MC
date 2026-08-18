@@ -15,7 +15,7 @@ import { GuestCta } from '@/components/home/GuestCta';
 import { getRecipes, withAllergenPictos } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
-import { getActiveExecutions } from '@/lib/executions';
+import { getActiveBatches } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
@@ -59,7 +59,7 @@ export default async function HomePage() {
       getHomeCategories(),
       getActiveAds(['home_top', 'home_mid']),
       // Réservées au membre — inutile de les demander à un visiteur.
-      user ? getActiveExecutions(user.id) : Promise.resolve([]),
+      user ? getActiveBatches(user.id) : Promise.resolve([]),
       user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
     ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne

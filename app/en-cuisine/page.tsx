@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
-import { getPlanning, getShoppingLists } from '@/lib/profile';
-import { getActiveExecutions, getActiveExecutionStepsForUser } from '@/lib/executions';
+import { getBatches, getActiveBatches, getShoppingLists } from '@/lib/profile';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -29,11 +28,10 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, archivedPlanning, activeSessions, runningExecSteps, shoppingLists] = await Promise.all([
-    getPlanning(user.id),
-    getPlanning(user.id, 'archive'),
-    getActiveExecutions(user.id),
-    getActiveExecutionStepsForUser(user.id),
+  const [planning, batchesTerminees, activeBatches, shoppingLists] = await Promise.all([
+    getBatches(user.id, 'actives'),
+    getBatches(user.id, 'terminees'),
+    getActiveBatches(user.id),
     getShoppingLists(user.id),
   ]);
 
@@ -51,9 +49,8 @@ export default async function EnCuisinePage() {
         </div>
         <CuisineContent
           planning={planning}
-          archivedPlanning={archivedPlanning}
-          activeSessions={activeSessions}
-          runningExecSteps={runningExecSteps}
+          batchesTerminees={batchesTerminees}
+          activeBatches={activeBatches}
           shoppingLists={shoppingLists}
         />
       </main>

@@ -14,7 +14,7 @@
 // l'en-tête bureau complet selon les pages.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, resolveAvatarUrl, isManager } from '@/lib/auth';
-import { hasActiveExecutions } from '@/lib/executions';
+import { hasActiveBatches } from '@/lib/profile';
 import { AccountSheetButton } from '@/components/account/AccountSheetButton';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
@@ -27,7 +27,7 @@ export async function MobileNav({ current }: { current?: NavKey }) {
   // Lien « Administration » du tiroir Compte : admin complet ou gestionnaire
   // (même garde que le lien équivalent de Header.tsx).
   const backOffice = user ? await isManager(user.id) : false;
-  const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
+  const sessionEnCours = user ? await hasActiveBatches(user.id) : false;
 
   return (
     // Réserve d'encoche : sans elle, l'indicateur d'accueil des iPhone se pose

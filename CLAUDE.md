@@ -43,10 +43,11 @@ app/                    Pages et routes (App Router)
 ├── page.tsx            Accueil
 ├── connexion/          Connexion / inscription (e-mail + OAuth)
 ├── creer/              Éditeur de recette (création + édition)
-├── recette/[id]/       Fiche recette (+ mode planifié)
-├── execution/[id]/     Écran d'exécution guidée d'une recette
+├── recette/[id]/       Fiche recette (consultation, création d'une fournée)
+├── fournee/[id]/       Fiche + mode Cuisiner d'une fournée (Préparer/Cuisiner)
+├── execution/[id]/     Ancienne URL d'une session — redirection vers /fournee/[id]
 ├── courses/[id]/       Liste de courses
-├── profil/             Profil (recettes, favoris, planning, listes)
+├── profil/             Profil (recettes, favoris, fournées, listes)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
@@ -311,97 +312,126 @@ remontant** en dessous.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
 
-## Recettes planifiées (planning / exécution)
+## Fournées (batches)
 
-Un plan est une **copie matérialisée** de la recette au moment de la
-planification, pas un diff appliqué sur la recette vivante. L'ancien modèle
-(`planning.overrides` référençant les `id` de `ingredients` / `recipe_steps`
-de la recette) se corrompait silencieusement dès que l'auteur ré-enregistrait
-sa recette : `CreerForm` fait un `delete` + `insert` complet de
-`ingredient_groups` / `recipe_steps` à chaque sauvegarde, ce qui change tous
-les `id` — un plan existant perdait ses ajustements, réaffichait des
-ingrédients supprimés, et pouvait désynchroniser liste de courses et mise en
-place. Le nouveau modèle matérialise le contenu dans le plan lui-même, qui
-devient indépendant de la recette d'origine.
+Une **fournée** (table `batches`, + `batch_steps`, `batch_substeps`,
+`batch_ingredients`, `batch_utensils`) est une **copie matérialisée** de la
+recette au moment de sa création, pas un diff appliqué sur la recette
+vivante — mono-recette : une fournée, une recette adaptée, un jour. L'ancien
+modèle (`planning.overrides` référençant les `id` de `ingredients` /
+`recipe_steps` de la recette) se corrompait silencieusement dès que l'auteur
+ré-enregistrait sa recette (`CreerForm` fait un `delete` + `insert` complet à
+chaque sauvegarde, ce qui change tous les `id`). Le modèle matérialisé
+corrige ça en rendant la fournée indépendante de la recette de base dès sa
+création.
 
-- **`planning`** (+ `plan_steps`, `plan_substeps`, `plan_ingredients`,
-  `plan_utensils`) porte l'**intention** : une copie de la recette propre à
-  l'utilisateur, modifiable (quantités, ingrédients ajoutés/supprimés,
-  remplacement d'un ingrédient par une sous-recette) sans dépendre de
-  l'évolution de la recette d'origine. `planning.recipe_id` est en
-  `ON DELETE SET NULL` (`recipe_title` dénormalisé prend le relais pour
-  l'affichage si la recette est supprimée). `plan_ingredients.step_id` est une
-  vraie clé étrangère vers `plan_steps` — contrairement à l'ancien appariement
-  par `order_index` entre `ingredient_groups` et `recipe_steps` (aucune FK),
-  ce qui permettra d'insérer les étapes d'une sous-recette sans désynchroniser
-  le lien étape ↔ ingrédients. `order_index` est `numeric` (pas `integer`)
-  pour pouvoir intercaler une insertion sans renuméroter toute la suite.
-- **`executions`** (+ `execution_steps`, `execution_substeps`,
-  `execution_ingredients`, `execution_utensils`) porte la **réalisation** :
-  une session par « je cuisine ce plan maintenant », plusieurs sessions
-  possibles par plan. Chaque ligne **fige** au démarrage le nom, l'unité et
-  la quantité prévue (`planned_quantity` / `planned_text`), et n'ajoute que
-  l'état constaté (`done`, `real_quantity`, `commentaire`). Ses clés
-  étrangères vers les tables `plan_*` sont en `ON DELETE SET NULL`.
-  **Ne jamais resynchroniser ces colonnes figées depuis le plan** — même bien
-  intentionné, ça détruirait la trace de ce qui a réellement été fait le jour
-  J. Si le plan évolue après une session (l'auteur remplace la pâte de
-  pistache par du praliné, ou vous corrigez le plan vous-même), la session
-  passée reste inchangée : c'est le but, pas un oubli.
-- Un plan **ayant au moins une exécution ne peut plus être supprimé**
-  (`executions.planning_id` en `ON DELETE RESTRICT`) — seulement archivé
-  (`planning.status = 'archive'`). C'est ce qui garantit la trace des
-  recettes planifiées déjà réalisées. Toute action « supprimer un plan »
-  (ex. bouton « Retirer du planning » de l'onglet Planning) doit d'abord
-  tenter l'archivage plutôt qu'un `delete` qui échouerait en violation de
-  contrainte dès qu'une session existe.
-- **Étape « déjà faite »** (`plan_steps.already_done`,
-  `plan_ingredients.excluded_when_done`, `plan_substeps.excluded_when_done`) :
+**Fusion plan + session (migration « Fournées »)** : l'ancien modèle portait
+deux objets successifs — un `planning` (intention) et une `executions`
+(réalisation, plusieurs sessions possibles par plan, chaque ligne figée à son
+démarrage). Ils sont fusionnés en un seul : une fournée **est** sa propre
+réalisation, `batch_steps.done` est la seule case à cocher d'une étape, que
+ce soit avant le jour J (« déjà fait en amont ») ou pendant (mode Cuisiner de
+l'écran `/fournee/[id]`, cf. `components/batch/BatchView.tsx`). Conséquences
+directes :
+- **Aucune session à démarrer** : passer en mode Cuisiner ne matérialise
+  plus rien (l'ancien `insertMaterializedExecution` a disparu) — la fournée
+  porte déjà tout ce qu'il faut cocher depuis sa création. `BatchView` se
+  contente de poser `batches.date_debut` à la première entrée en mode
+  Cuisiner.
+- **Aucune session figée à proposer de supprimer** : modifier un ingrédient
+  ou déplacer une étape se reflète instantanément partout, il n'y a plus de
+  copie séparée à désynchroniser. Les anciens avertissements (« une session
+  en cours ne reflète pas cette modification ») ont disparu de
+  `BatchIngredientsEditor` et `BatchStepDonePanel`.
+- **Une fournée est toujours supprimable d'un geste** : l'ancienne
+  contrainte `executions.planning_id ON DELETE RESTRICT` (qui forçait à
+  archiver plutôt que supprimer un plan déjà cuisiné) n'a plus lieu d'être —
+  desserrée en `ON DELETE SET NULL` sur `executions_legacy` à la migration.
+  `CuisineContent` n'a donc plus qu'une seule action de sortie du planning
+  actif (« Supprimer la fournée »), plus de distinction archiver/supprimer.
+- **Perte assumée** : plus de trace immuable du jour J (corriger une fournée
+  après coup réécrit ce qui a été réellement fait) ni d'historique
+  multi-sessions sur un même objet — remplacés par la chaîne de fournées
+  successives via « Refaire cette fournée » (`batches.source_plan_id`, posé
+  à la duplication dans `CuisineContent.refaireBatch`).
+- L'historique de l'ancien modèle (`executions`, `execution_steps`,
+  `execution_substeps`, `execution_ingredients`, `execution_utensils`) a été
+  renommé `*_legacy` et conservé en base, sans être ni lu ni écrit par
+  l'application — une suppression réelle est une migration séparée, à ne
+  lancer qu'une fois cette bascule éprouvée.
+
+- **`batches.recipe_id`** est en `ON DELETE SET NULL` (`recipe_title`
+  dénormalisé prend le relais pour l'affichage si la recette est supprimée).
+  `batch_ingredients.batch_step_id` est une vraie clé étrangère vers
+  `batch_steps` — contrairement à l'ancien appariement par `order_index`
+  entre `ingredient_groups` et `recipe_steps` (aucune FK), ce qui permet
+  d'insérer les étapes d'une sous-recette sans désynchroniser le lien étape ↔
+  ingrédients. `order_index` est `numeric` (pas `integer`) pour pouvoir
+  intercaler une insertion sans renuméroter toute la suite.
+- **Contenu texte de la recette copié, jamais ses images.** `batches` porte
+  sa propre copie de `description`, `tips` (`recipe_description`,
+  `recipe_tips`), `serving_advice` (`recipe_serving_advice`), rendement
+  (`measure_type`, `yield_qty`, `yield_unit`, `yield_desc`, `yield_notes`),
+  provenance (`recipe_source`, `recipe_source_url`, `recipe_video_url`),
+  difficulté (`difficulty_name`, `difficulty_level`) et moule
+  (`mold_type_name`, `mold_forme`, `mold_dims`, `tags_text`) — posée une fois
+  pour toutes à la création (`BatchWidget`), jamais resynchronisée après. Une
+  fournée reste ainsi complète et lisible même si la recette de base est
+  ensuite dépubliée ou supprimée. **Les photos ne sont jamais copiées**
+  (data-URL en base, trop lourdes à dupliquer par fournée et par « Refaire ») :
+  l'image d'en-tête et les photos d'étape sont relues en direct sur la
+  recette de base (via `batch_steps.source_step_id`), avec dégradation propre
+  (absence, pas d'erreur) si elle n'est plus accessible. Un bandeau sur
+  `/fournee/[id]` signale si la recette de base a été modifiée depuis la
+  création de la fournée (comparaison `recipes.updated_at` /
+  `batches.created_at`, calculée à la lecture, sans colonne dédiée).
+- **Étape « déjà faite / réalisée »** (`batch_steps.done`,
+  `batch_ingredients.excluded_when_done`, `batch_substeps.excluded_when_done`) :
   l'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
-  est déjà au congélateur »). C'est une **intention**, donc portée par le plan
-  et non par l'exécution — la liste de courses est générée depuis le plan, bien
-  avant qu'une session existe. `already_done` sort les ingrédients et
-  sous-étapes de l'étape des courses, de la mise en place et de l'exécution.
-  `plan_ingredients.excluded_when_done` / `plan_substeps.excluded_when_done`
-  (par défaut `true` chacune) permettent une exception ligne par ligne : un
-  ingrédient ou une sous-étape de l'étape restent dans le parcours malgré
-  `already_done` si l'utilisateur l'a explicitement décoché (ex. l'œuf de
-  dorure d'une pâte déjà façonnée mais pas encore badigeonnée ni cuite, ou la
-  puce « Porter à ébullition » d'une étape dont le mélange initial est déjà
-  fait) — un ingrédient ou une sous-étape conservés gardent aussi leur étape
-  affichée normalement. **Une étape n'est jamais retirée du déroulé** (ni de la
-  fiche recette planifiée, ni d'une exécution démarrée par la suite) : une fois
-  entièrement traitée (`already_done`, sans aucun ingrédient/sous-étape gardé),
-  elle reste affichée, simplement barrée (`stepFullyDone`) — pour que la
-  progression reste visible et qu'une case cochée par erreur se corrige sans
-  faire disparaître l'étape. **Ne jamais implémenter ça en basculant
-  `plan_ingredients.removed`** : ça écraserait les suppressions faites à la
-  main ligne par ligne, et décocher l'étape les rétablirait silencieusement —
-  c'est la même corruption que l'ancien modèle `overrides` (`plan_substeps`
-  n'a pas cette colonne : rien à y écraser). Les filtres concernés sont
-  centralisés dans `lib/recipe-plan.ts`
-  (`planIngredientExcluded`, `planSubstepExcluded`, `stepFullyDone`,
+  est déjà au congélateur ») ou la coche pendant qu'il cuisine — c'est la
+  même case. `done` sort les ingrédients et sous-étapes de l'étape des
+  courses et de la mise en place. `batch_ingredients.excluded_when_done` /
+  `batch_substeps.excluded_when_done` (par défaut `true` chacune) permettent
+  une exception ligne par ligne : un ingrédient ou une sous-étape de l'étape
+  restent dans le parcours malgré `done` si l'utilisateur l'a explicitement
+  décoché (ex. l'œuf de dorure d'une pâte déjà façonnée mais pas encore
+  badigeonnée ni cuite, ou la puce « Porter à ébullition » d'une étape dont
+  le mélange initial est déjà fait) — un ingrédient ou une sous-étape
+  conservés gardent aussi leur étape affichée normalement. **Une étape n'est
+  jamais retirée du déroulé** : une fois entièrement traitée (`done`, sans
+  aucun ingrédient/sous-étape gardé), elle reste affichée, simplement barrée
+  (`stepFullyDone`) — pour que la progression reste visible et qu'une case
+  cochée par erreur se corrige sans faire disparaître l'étape. **Ne jamais
+  implémenter ça en basculant `batch_ingredients.removed`** : ça écraserait
+  les suppressions faites à la main ligne par ligne, et décocher l'étape les
+  rétablirait silencieusement — c'est la même corruption que l'ancien modèle
+  `overrides` (`batch_substeps` n'a pas cette colonne : rien à y écraser).
+  Les filtres concernés sont centralisés dans `lib/recipe-plan.ts`
+  (`batchIngredientExcluded`, `batchSubstepExcluded`, `stepFullyDone`,
   `remainingStepTimes`) : tout l'aval (courses, mise en place, temps affiché,
-  tempo d'exécution) en découle. Conséquences assumées, cohérentes avec le
-  modèle : une session déjà démarrée n'est pas retouchée, et une liste de
-  courses déjà générée non plus (les deux sont des instantanés).
-- **Remplacer un ingrédient par une recette** (`plan_ingredients.expanded_into_recipe_id`,
-  `plan_steps.source_ingredient_id`) : « j'ai du praliné dans ma recette, mais
-  je le fais moi-même ». Les étapes de la sous-recette sont **copiées** dans le
-  plan (comme le reste du plan : la sous-recette peut évoluer ou disparaître
-  ensuite sans rien changer), à la position et au jour choisis étape par étape
-  dans `IngredientExpandDialog`. La ligne d'ingrédient n'est ni supprimée ni
-  modifiée, seulement **marquée** : `planIngredientExcluded` la sort des
-  courses, de la mise en place et de l'exécution (on ne l'achète plus, on la
+  tempo de cuisson) en découle.
+- **Deux notes par étape**, distinctes : `batch_steps.user_note` porte
+  l'intention (écrite en amont, éditable depuis le mode Préparer,
+  `BatchStepDonePanel`) ; `batch_steps.commentaire` porte le constat du jour
+  J (saisi en mode Cuisiner, `BatchView`). Ne jamais les fusionner en un seul
+  champ : l'une prépare, l'autre relate.
+- **Remplacer un ingrédient par une recette** (`batch_ingredients.expanded_into_recipe_id`,
+  `batch_steps.source_ingredient_id`) : « j'ai du praliné dans ma recette,
+  mais je le fais moi-même ». Les étapes de la sous-recette sont **copiées**
+  dans la fournée (comme le reste : la sous-recette peut évoluer ou
+  disparaître ensuite sans rien changer), à la position et au jour choisis
+  étape par étape dans `IngredientExpandDialog`. La ligne d'ingrédient n'est
+  ni supprimée ni modifiée, seulement **marquée** : `batchIngredientExcluded`
+  la sort des courses et de la mise en place (on ne l'achète plus, on la
   fabrique), et elle reste affichée barrée avec le renvoi vers la recette —
   annuler le remplacement la rétablit intacte. Deux choix structurants :
   - Les ingrédients insérés portent **`added = true`**. Même sens que pour un
-    ingrédient ajouté à la main (« absent de la recette d'origine »), même
-    couleur verte, et surtout même conséquence : `rescalePlanIngredients` ne
-    touche jamais une ligne `added`. Sans ça, un changement d'ajustement global
-    du plan recalculerait `quantité = base × facteur du plan` et **écraserait le
-    coefficient propre à la sous-recette** — exactement la corruption
-    silencieuse que le plan matérialisé a corrigée.
+    ingrédient ajouté à la main (« absent de la recette de base »), même
+    couleur verte, et surtout même conséquence : `rescaleBatchIngredients` ne
+    touche jamais une ligne `added`. Sans ça, un changement d'ajustement
+    global de la fournée recalculerait `quantité = base × facteur` et
+    **écraserait le coefficient propre à la sous-recette** — exactement la
+    corruption silencieuse que le modèle matérialisé a corrigée.
   - Le jour proposé pour une étape insérée est
     `jour de l'étape consommatrice + day_offset de l'étape dans sa recette`
     (`suggestedExpansionDay`) : le `day_offset` d'une recette compte à rebours
@@ -409,19 +439,25 @@ devient indépendant de la recette d'origine.
     prête. Une nuit de repos recule donc l'étape d'un jour, toute seule. Ce jour
     proposé est figé dans `base_day_offset`, ce qui permet de le rétablir depuis
     la fiche comme pour n'importe quelle étape déplacée.
-  L'intercalation utilise `computeInsertOrderIndexes` : `plan_steps.order_index`
+  L'intercalation utilise `computeInsertOrderIndexes` : `batch_steps.order_index`
   étant `numeric`, on calcule des valeurs intermédiaires plutôt que de
-  renuméroter le plan (ce qui invaliderait les positions retenues ailleurs).
-  Un ingrédient déjà remplacé ne propose plus le picto : il faut d'abord annuler.
-- **Replanifier** une recette à partir d'un plan existant = dupliquer les
-  lignes `plan_*` d'un `planning.id` vers un nouveau, avec une nouvelle
-  `planned_date` (`planning.source_plan_id` trace la filiation). Ça ne
-  requête jamais la recette d'origine — le plan copié est déjà autonome.
+  renuméroter la fournée (ce qui invaliderait les positions retenues
+  ailleurs). Un ingrédient déjà remplacé ne propose plus le picto : il faut
+  d'abord annuler.
+- **« Refaire cette fournée »** (`CuisineContent.refaireBatch`) duplique
+  toutes les lignes `batch_*` d'une fournée vers une nouvelle, avec une
+  nouvelle `planned_date` (`batches.source_plan_id` trace la filiation) —
+  état d'avancement (`done`, `mep_done`, quantités réelles, commentaires)
+  remis à zéro, tout le reste (ajustements, ingrédients ajoutés/retirés,
+  étapes déplacées, remplacements par une sous-recette, notes) repris tel
+  quel. Ça ne requête jamais la recette de base — la fournée copiée est déjà
+  autonome, et ça fonctionne même si cette recette a disparu depuis.
 - **RLS à deux couches**, motif repris de `shopping_lists` : une policy
-  `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur
-  `owns_plan()` / `owns_execution()`) + trois policies `impersonation_ro_*`
-  (`RESTRICTIVE`, rôle `authenticated`) qui bloquent toute écriture en
-  session « en tant que » lecture seule, quel que soit le propriétaire.
+  `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur `owns_plan()`)
+  + trois policies `impersonation_ro_*` (`RESTRICTIVE`, rôle `authenticated`)
+  qui bloquent toute écriture en session « en tant que » lecture seule, quel
+  que soit le propriétaire. `owns_execution()` ne sert plus qu'aux policies
+  des tables `*_legacy`.
 
 ## Boîte à idées
 
@@ -755,9 +791,9 @@ Structurer systématiquement :
 Carnet de recette privé et public
 Ajustement de la recette par quantité à produire ou par type de moule
 Ajustement de la recette en fonction de la quantité d'un ingrédient disponible
-Planification de l'execution des recettes
+Fournées (planification puis cuisson guidée d'une recette adaptée, écran /fournee/[id])
 Gestion de la liste des courses
-Remplacement d'un ingrédient d'une recette planifiée par une autre recette
+Remplacement d'un ingrédient d'une fournée par une autre recette
 (le praliné acheté devient le praliné fabriqué : ses étapes s'insèrent dans le
 déroulé, ses ingrédients rejoignent les courses)
 Boîte à idées communautaire pour le développement du site (liste triable,

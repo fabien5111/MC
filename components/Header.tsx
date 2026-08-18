@@ -13,7 +13,7 @@
 // pré-masquage CSS ni de flash au chargement.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
-import { hasActiveExecutions } from '@/lib/executions';
+import { hasActiveBatches } from '@/lib/profile';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
 import { getHomeCategories } from '@/lib/taxonomy';
@@ -29,7 +29,7 @@ export async function Header({ current }: { current?: NavKey }) {
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
   // Pastille d'« En cuisine » : présente dès qu'une session tourne, **sans
   // chiffre** — le compte se lit dans l'écran, pas dans le menu.
-  const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
+  const sessionEnCours = user ? await hasActiveBatches(user.id) : false;
   // Suggestions du panneau de recherche : les catégories promues par l'admin
   // sur l'accueil, jamais une liste codée en dur. Limitées à quatre pour que
   // le panneau reste une ligne.

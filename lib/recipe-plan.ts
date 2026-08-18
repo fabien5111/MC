@@ -1,16 +1,22 @@
-// Plan matérialisé (planning + plan_steps/plan_substeps/plan_ingredients/
-// plan_utensils) et exécution associée (executions + execution_*) — voir
-// CLAUDE.md « Recettes planifiées » pour le pourquoi de ce modèle (copie
-// indépendante de la recette, plus un diff sur des id fragiles).
+// Fournée matérialisée (batches + batch_steps/batch_substeps/batch_ingredients/
+// batch_utensils) — voir CLAUDE.md « Fournées » pour le pourquoi de ce modèle
+// (copie indépendante de la recette, plus un diff sur des id fragiles).
+//
+// Une fournée porte à la fois l'intention (ce qui est prévu) et la
+// réalisation (ce qui a été fait) : il n'existe plus d'objet « session »
+// séparé. `done` est la seule case à cocher d'une étape, que ce soit avant le
+// jour J (« déjà fait en amont ») ou pendant (mode Cuisiner) — les deux cases
+// distinctes de l'ancien modèle (`already_done` du plan, `done` de la
+// session) sont fusionnées.
 //
 // Fonctions pures uniquement : la matérialisation calcule le contenu à
 // insérer, mais l'écriture réseau reste dans les composants clients
-// (PlanWidget, PlanNoticeBanner) qui doivent enchaîner plusieurs requêtes
-// pour obtenir les id générés (planning → plan_steps → plan_substeps /
-// plan_ingredients → ...), une table dépendant de l'id de la précédente.
+// (BatchWidget, BatchNoticeBanner) qui doivent enchaîner plusieurs requêtes
+// pour obtenir les id générés (batch → batch_steps → batch_substeps /
+// batch_ingredients → ...), une table dépendant de l'id de la précédente.
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
-import type { PlanningEntry, PlanningRow } from '@/lib/profile';
+import type { BatchEntry, BatchListRow } from '@/lib/profile';
 
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -19,8 +25,8 @@ const numify = (v: unknown): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 export const fmtNum = (n: number): string => String(round2(n)).replace('.', ',');
 
-export function planFactor(plan: Pick<PlanningEntry, 'factor'> | null): number {
-  return plan && plan.factor && plan.factor > 0 ? plan.factor : 1;
+export function batchFactor(batch: Pick<BatchEntry, 'factor'> | null): number {
+  return batch && batch.factor && batch.factor > 0 ? batch.factor : 1;
 }
 
 // Sérialise une date en `YYYY-MM-DD` d'après ses champs locaux (jamais via
@@ -30,8 +36,8 @@ function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Étape « Jour J − n » → date réelle (jour de dégustation − offset), en mode planifié.
-export function planDayLabel(offset: number | null | undefined, plannedDate: string): string {
+// Étape « Jour J − n » → date réelle (jour de dégustation − offset), en mode fournée.
+export function batchDayLabel(offset: number | null | undefined, plannedDate: string): string {
   const d = new Date(plannedDate + 'T00:00:00');
   d.setDate(d.getDate() - Math.max(0, offset || 0));
   return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
@@ -43,61 +49,47 @@ export type PlanningDayItem = {
   recipeTitle: string;
   recipeId: string | null;
   // Numéro d'étape au sein de sa propre recette (pas un numéro transverse au
-  // jour) : c'est le même numéro que sur la fiche recette planifiée.
+  // jour) : c'est le même numéro que sur la fiche fournée.
   number: number;
   title: string | null;
   order_index: number;
   day_order_index: number | null;
-  // « Déjà réalisé » côté plan (case cochée sur la fiche recette avant même
-  // de démarrer une session), distinct de `sessionDone` ci-dessous.
-  already_done: boolean;
   prep_time: number | null;
   wait_time: number | null;
   cook_time: number | null;
   cook_temp: number | null;
-  // Session de préparation en cours pour cette étape, s'il y en a une — pour
-  // pointer le lien de PlanningDayView directement dessus plutôt que sur la
-  // fiche recette planifiée (cf. `getActiveExecutionStepsForUser`).
-  executionId: number | null;
-  executionStepId: number | null;
-  // Étape cochée dans cette session active (execution_steps.done) — distinct
-  // de `already_done` (une session peut cocher une étape sans que le plan
-  // ait jamais été marqué « Déjà réalisé », et inversement).
-  sessionDone: boolean;
+  // Case unique de l'étape (cf. en-tête du fichier) : cochée avant ou pendant
+  // le jour J, une seule et même colonne.
+  done: boolean;
 };
 export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 
-// Regroupe les étapes de TOUTES les recettes planifiées de l'utilisateur par
-// date réelle — vue par jour transverse de l'onglet Planning
+// Regroupe les étapes de TOUTES les fournées de l'utilisateur par date
+// réelle — vue par jour transverse de l'onglet « Mes fournées »
 // (PlanningDayView). `day_offset` n'est relatif qu'à la date de dégustation
-// de sa propre recette : deux recettes planifiées le même jour calendaire
-// doivent d'abord être ramenées à cette date commune avant de pouvoir
-// regrouper leurs étapes ensemble (cf. `planDayLabel`, même calcul).
+// de sa propre recette : deux fournées le même jour calendaire doivent
+// d'abord être ramenées à cette date commune avant de pouvoir regrouper leurs
+// étapes ensemble (cf. `batchDayLabel`, même calcul).
 //
 // Tri par défaut tant qu'aucune étape du jour n'a été réordonnée
 // manuellement (`day_order_index` toutes nulles) : `plans` doit déjà être
 // trié par `planned_date` (comme le renvoie `getPlanning`) — combiné à
-// `order_index` au sein de chaque plan, cet ordre d'insertion sert de tri
+// `order_index` au sein de chaque fournée, cet ordre d'insertion sert de tri
 // stable par défaut.
 //
-// `runningExecSteps` : sessions en cours de l'utilisateur, indexées par
-// `plan_step_id` (cf. `getActiveExecutionStepsForUser`) — un plan_step_id
-// n'a normalement qu'une seule session active à la fois, on prend la
-// première si plusieurs.
-export function groupPlanningStepsByDate(
-  plans: PlanningRow[],
-  runningExecSteps: Record<number, { execution_id: number; execution_step_id: number; done?: boolean }[]> = {},
-): PlanningDayGroup[] {
+// Case cochable directement depuis cette vue (décision « vue par jour
+// actionnable ») : `done` vient tel quel de `batch_steps`, plus besoin de
+// croiser une session active — il n'y en a plus.
+export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGroup[] {
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
     if (!p.planned_date) return;
     const recipeTitle = p.recipe_title || p.recipes?.title || '';
-    [...p.plan_steps]
+    [...p.batch_steps]
       .sort((a, b) => a.order_index - b.order_index)
       .forEach((s, i) => {
         const d = new Date(p.planned_date + 'T00:00:00');
         d.setDate(d.getDate() - Math.max(0, s.day_offset || 0));
-        const running = runningExecSteps[s.id]?.[0] ?? null;
         withDate.push({
           stepId: s.id,
           planId: p.id,
@@ -107,14 +99,11 @@ export function groupPlanningStepsByDate(
           title: s.title,
           order_index: s.order_index,
           day_order_index: s.day_order_index,
-          already_done: s.already_done,
+          done: s.done,
           prep_time: s.prep_time,
           wait_time: s.wait_time,
           cook_time: s.cook_time,
           cook_temp: s.cook_temp,
-          executionId: running?.execution_id ?? null,
-          executionStepId: running?.execution_step_id ?? null,
-          sessionDone: !!running?.done,
           date: isoLocal(d),
         });
       });
@@ -133,191 +122,164 @@ export function groupPlanningStepsByDate(
     }));
 }
 
-// ── Lignes des tables plan_* / execution_* ────────────────────────────
-// `already_done` est ajoutée par la migration « étape déjà faite » (cf.
-// CLAUDE.md « Recettes planifiées »). Déclarée ici en attendant que
-// `npm run gen:types` soit rejoué sur la base migrée — retirer cette
-// intersection à ce moment-là, `lib/database.types.ts` étant la source de
-// vérité (jamais éditée à la main).
-// `base_day_offset` et `user_note` viennent de la migration « ajustements du
-// plan » : le jour d'origine de l'étape (pour distinguer une étape déplacée et
-// pouvoir la rétablir, même rôle que `plan_ingredients.base_quantity`) et la
-// note personnelle de l'utilisateur — distincte de `description`/`tips`, qui
-// sont la copie du texte de la recette et ne doivent jamais être écrasées.
-type PlanStepPending = { already_done: boolean; base_day_offset: number | null; user_note: string | null };
-export type PlanStepRow = Database['public']['Tables']['plan_steps']['Row'] & PlanStepPending;
-// `excluded_when_done` fait partie de la même migration en attente (cf.
-// PlanStepPending ci-dessus) : mêmes semantique et défaut que sur
-// plan_ingredients, appliqués aux sous-étapes. `added` reprend le marqueur de
-// `plan_ingredients.added` : une sous-étape ajoutée par l'utilisateur, absente
-// de la recette d'origine.
-type PlanSubstepPending = { excluded_when_done: boolean; added: boolean };
-export type PlanSubstepRow = Database['public']['Tables']['plan_substeps']['Row'] & PlanSubstepPending;
-type PlanIngredientPending = { excluded_when_done: boolean };
-export type PlanIngredientRow = Database['public']['Tables']['plan_ingredients']['Row'] &
-  PlanIngredientPending & {
-    ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
-    // Sous-recette qui remplace cet ingrédient (« je fais moi-même mon
-    // praliné ») — cf. « Ingrédient remplacé par une sous-recette » plus bas.
-    // Renseignée après coup par `getPlan` (et non par une jointure imbriquée,
-    // cf. PLAN_FULL_SELECT). `null` si la ligne n'est pas remplacée, ou si la
-    // recette n'est plus lisible (dépubliée, supprimée) : le plan reste
-    // autonome, seul le lien vers la fiche se dégrade.
-    expanded_recipe?: { id: string; title: string } | null;
-  };
-export type PlanUtensilRow = Database['public']['Tables']['plan_utensils']['Row'];
-// `user_note` vient de la migration « note déplaçable » : distincte de
-// `notes` (le commentaire saisi dans le dialogue de planification, affiché
-// dans le bandeau de la fiche, l'écran d'exécution et Profil → Planning) —
-// deux notes personnelles bien séparées plutôt qu'un même champ édité depuis
-// deux endroits différents. Modifiable uniquement via PlanNotes, sur la
-// fiche de la recette planifiée.
-type PlanPending = { user_note: string | null };
-export type PlanFull = Database['public']['Tables']['planning']['Row'] &
-  PlanPending & {
-    plan_steps: (PlanStepRow & { plan_substeps: PlanSubstepRow[] })[];
-    plan_ingredients: PlanIngredientRow[];
-    plan_utensils: PlanUtensilRow[];
-  };
+// ── Lignes des tables batch_* ───────────────────────────────────────────
+export type BatchStepRow = Database['public']['Tables']['batch_steps']['Row'];
+export type BatchSubstepRow = Database['public']['Tables']['batch_substeps']['Row'];
+export type BatchIngredientRow = Database['public']['Tables']['batch_ingredients']['Row'] & {
+  ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
+  // Sous-recette qui remplace cet ingrédient (« je fais moi-même mon
+  // praliné ») — cf. « Ingrédient remplacé par une sous-recette » plus bas.
+  // Renseignée après coup par `getPlan` (et non par une jointure imbriquée,
+  // cf. BATCH_FULL_SELECT). `null` si la ligne n'est pas remplacée, ou si la
+  // recette n'est plus lisible (dépubliée, supprimée) : la fournée reste
+  // autonome, seul le lien vers la fiche se dégrade.
+  expanded_recipe?: { id: string; title: string } | null;
+};
+export type BatchUtensilRow = Database['public']['Tables']['batch_utensils']['Row'];
+export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
+  batch_steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[];
+  batch_ingredients: BatchIngredientRow[];
+  batch_utensils: BatchUtensilRow[];
+};
 
 // ── Étape « déjà faite » ───────────────────────────────────────────────
 // L'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
-// est déjà au congélateur »). C'est une intention, donc porté par le plan et
-// non par l'exécution : la liste de courses est générée depuis le plan, bien
-// avant qu'une session existe.
+// est déjà au congélateur »), ou la coche pendant qu'il cuisine (mode
+// Cuisiner) — c'est la même case, `batch_steps.done`, qu'elle soit cochée
+// avant ou pendant le jour J.
 //
-// Distinct de `plan_ingredients.removed` : le « déjà fait » ne doit pas
-// écraser les suppressions faites à la main ligne par ligne, sinon décocher
-// l'étape les rétablirait silencieusement. `already_done` sort les
-// ingrédients de l'étape des courses, de la mise en place et de l'exécution,
-// sauf ceux explicitement conservés (ex. l'œuf de dorure d'une pâte déjà
-// façonnée mais pas encore badigeonnée/cuite) — `excluded_when_done` à
-// `false` sur ces lignes-là.
+// Distinct de `batch_ingredients.removed` : la case de l'étape ne doit pas
+// écraser les suppressions faites à la main ligne par ligne, sinon la
+// décocher les rétablirait silencieusement. `done` sort les ingrédients de
+// l'étape des courses et de la mise en place, sauf ceux explicitement
+// conservés (ex. l'œuf de dorure d'une pâte déjà façonnée mais pas encore
+// badigeonnée ni cuite) — `excluded_when_done` à `false` sur ces lignes-là.
 //
-// `plan_substeps.excluded_when_done` reprend la même exception ligne par
+// `batch_substeps.excluded_when_done` reprend la même exception ligne par
 // ligne pour les sous-étapes (texte libre découpé en puces) : par défaut
 // toutes sortent du déroulé avec l'étape, mais l'une d'elles peut rester
 // utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
 // déjà fait).
-type StepDoneFlags = Pick<PlanStepRow, 'already_done'>;
-type IngredientDoneFlags = Pick<PlanIngredientRow, 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'>;
-type SubstepDoneFlags = Pick<PlanSubstepRow, 'excluded_when_done'>;
+type StepDoneFlags = Pick<BatchStepRow, 'done'>;
+type IngredientDoneFlags = Pick<BatchIngredientRow, 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'>;
+type SubstepDoneFlags = Pick<BatchSubstepRow, 'excluded_when_done'>;
 
-// Un ingrédient sort du parcours (courses, mise en place, exécution) s'il a
-// été retiré à la main, s'il a été remplacé par une sous-recette (on ne
-// l'achète plus : on le fabrique, cf. plus bas), ou si son étape est déjà
-// faite et qu'il n'a pas été explicitement conservé.
-export function planIngredientExcluded(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
+// Un ingrédient sort du parcours (courses, mise en place) s'il a été retiré à
+// la main, s'il a été remplacé par une sous-recette (on ne l'achète plus : on
+// le fabrique, cf. plus bas), ou si son étape est faite et qu'il n'a pas été
+// explicitement conservé.
+export function batchIngredientExcluded(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
   if (ing.removed) return true;
   if (ing.expanded_into_recipe_id != null) return true;
-  return step.already_done && ing.excluded_when_done;
+  return step.done && ing.excluded_when_done;
 }
 
 // Même règle pour une sous-étape, sans notion de suppression manuelle
-// (`plan_substeps` n'a pas de colonne `removed`).
-export function planSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags): boolean {
-  return step.already_done && sub.excluded_when_done;
+// (`batch_substeps` n'a pas de colonne `removed`).
+export function batchSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags): boolean {
+  return step.done && sub.excluded_when_done;
 }
 
-const NO_STEP: StepDoneFlags = { already_done: false };
+const NO_STEP: StepDoneFlags = { done: false };
 
-// Prédicat lié à un plan donné : une ligne d'ingrédient ne porte que son
-// `step_id`, jamais son étape entière — utilisé par mergePlanIngredients et
-// materializeExecution, qui parcourent `plan_ingredients` à plat.
-function excludedInPlan(plan: PlanFull): (it: PlanIngredientRow) => boolean {
-  const stepById = new Map(plan.plan_steps.map((s) => [s.id, s]));
-  return (it) => planIngredientExcluded(it.step_id != null ? (stepById.get(it.step_id) ?? NO_STEP) : NO_STEP, it);
+// Prédicat lié à une fournée donnée : une ligne d'ingrédient ne porte que son
+// `batch_step_id`, jamais son étape entière — utilisé par mergeBatchIngredients,
+// qui parcourt `batch_ingredients` à plat.
+function excludedInBatch(batch: BatchFull): (it: BatchIngredientRow) => boolean {
+  const stepById = new Map(batch.batch_steps.map((s) => [s.id, s]));
+  return (it) => batchIngredientExcluded(it.batch_step_id != null ? (stepById.get(it.batch_step_id) ?? NO_STEP) : NO_STEP, it);
 }
 
 // L'étape ne disparaît jamais du déroulé — une étape entièrement traitée y
 // reste visible, barrée, plutôt que de s'effacer (on doit pouvoir constater sa
 // progression, et revenir sur une case cochée par erreur). Ce prédicat sert
-// uniquement à décider ce rendu barré : déjà faite, et sans aucun ingrédient
-// ni sous-étape gardés — s'il en reste un (l'œuf de dorure), l'étape s'affiche
+// uniquement à décider ce rendu barré : faite, et sans aucun ingrédient ni
+// sous-étape gardés — s'il en reste un (l'œuf de dorure), l'étape s'affiche
 // normalement pour lui.
 export function stepFullyDone(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
-  if (!step.already_done) return false;
-  return ingredientsOfStep.every((it) => planIngredientExcluded(step, it)) && substepsOfStep.every((su) => planSubstepExcluded(step, su));
+  if (!step.done) return false;
+  return ingredientsOfStep.every((it) => batchIngredientExcluded(step, it)) && substepsOfStep.every((su) => batchSubstepExcluded(step, su));
 }
 
 // Temps restant d'une étape : une étape entièrement traitée n'a plus rien à
 // annoncer (ni préparation, ni attente, ni cuisson). Sans ça, le temps affiché
 // contredirait ce qu'il reste réellement à faire.
-export function remainingStepTimes(s: StepDoneFlags & Pick<PlanStepRow, 'prep_time' | 'wait_time' | 'cook_time'>): {
+export function remainingStepTimes(s: StepDoneFlags & Pick<BatchStepRow, 'prep_time' | 'wait_time' | 'cook_time'>): {
   prep_time: number | null;
   wait_time: number | null;
   cook_time: number | null;
 } {
-  if (!s.already_done) return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
+  if (!s.done) return { prep_time: s.prep_time, wait_time: s.wait_time, cook_time: s.cook_time };
   return { prep_time: null, wait_time: null, cook_time: null };
 }
 
 // ── Étape déplacée ─────────────────────────────────────────────────────
-// Le plan porte le jour choisi (`day_offset`) et le jour d'origine de la
+// La fournée porte le jour choisi (`day_offset`) et le jour d'origine de la
 // recette (`base_day_offset`, figé à la matérialisation) : afficher les deux
 // est ce qui permet de distinguer la recette initiale de l'ajustement, comme
 // « Quantité d'origine » le fait pour les ingrédients. `base_day_offset` nul
-// (plan matérialisé avant la migration) vaut « jamais déplacée ».
-export function stepDayMoved(s: Pick<PlanStepRow, 'day_offset' | 'base_day_offset'>): boolean {
+// (fournée matérialisée avant la migration) vaut « jamais déplacée ».
+export function stepDayMoved(s: Pick<BatchStepRow, 'day_offset' | 'base_day_offset'>): boolean {
   return s.base_day_offset != null && s.base_day_offset !== s.day_offset;
 }
 
 // ── Ingrédient remplacé par une sous-recette ───────────────────────────
 // « J'ai du praliné dans ma recette, mais je veux le faire moi-même » :
 // l'ingrédient est remplacé par les étapes d'une autre recette de
-// l'application, insérées dans le déroulé du plan.
+// l'application, insérées dans le déroulé de la fournée.
 //
-// Trois colonnes, prévues dès la création des tables `plan_*`, portent le
-// lien — aucune n'est un diff sur la recette vivante, le plan reste la copie
-// autonome décrite dans CLAUDE.md :
-//   • `plan_ingredients.expanded_into_recipe_id` : la ligne remplacée pointe
+// Trois colonnes, prévues dès la création des tables `batch_*`, portent le
+// lien — aucune n'est un diff sur la recette vivante, la fournée reste la
+// copie autonome décrite dans CLAUDE.md :
+//   • `batch_ingredients.expanded_into_recipe_id` : la ligne remplacée pointe
 //     la sous-recette. Elle reste affichée (barrée, avec le lien) mais sort
-//     des courses, de la mise en place et de l'exécution — cf.
-//     `planIngredientExcluded` : on ne l'achète plus, on la fabrique.
-//   • `plan_steps.source_ingredient_id` : les étapes insérées pointent la
+//     des courses et de la mise en place — cf. `batchIngredientExcluded` :
+//     on ne l'achète plus, on la fabrique.
+//   • `batch_steps.source_ingredient_id` : les étapes insérées pointent la
 //     ligne remplacée. C'est ce lien qui permet de tout défaire d'un bloc,
 //     et de reconnaître une étape ajoutée pour la teinter en vert.
 //   • `source_recipe_id` (étapes, ingrédients, ustensiles) : la sous-recette
-//     d'origine, déjà renseignée à la matérialisation pour la recette du plan.
+//     d'origine, déjà renseignée à la matérialisation pour la recette de
+//     base de la fournée.
 //
 // Les ingrédients insérés portent `added = true`, comme un ingrédient ajouté
 // à la main dans l'éditeur. Ce n'est pas un abus de marqueur mais la même
 // signification (« absent de la recette d'origine »), et surtout la même
-// conséquence attendue : `rescalePlanIngredients` ne touche jamais une ligne
-// `added`. Sans ça, un changement d'ajustement global du plan recalculerait
-// `quantité = base × facteur du plan` sur des lignes dont la quantité vient
-// du coefficient propre à la sous-recette — le coefficient serait écrasé
-// silencieusement, exactement la corruption que le plan matérialisé a
-// corrigée en remplaçant `planning.overrides`.
-export function planIngredientExpanded(ing: Pick<PlanIngredientRow, 'expanded_into_recipe_id'>): boolean {
+// conséquence attendue : `rescaleBatchIngredients` ne touche jamais une ligne
+// `added`. Sans ça, un changement d'ajustement global de la fournée
+// recalculerait `quantité = base × facteur de la fournée` sur des lignes dont
+// la quantité vient du coefficient propre à la sous-recette — le coefficient
+// serait écrasé silencieusement, exactement la corruption que la fournée
+// matérialisée a corrigée en remplaçant `planning.overrides`.
+export function batchIngredientExpanded(ing: Pick<BatchIngredientRow, 'expanded_into_recipe_id'>): boolean {
   return ing.expanded_into_recipe_id != null;
 }
 
-// Étape issue de l'éclatement d'un ingrédient (et non de la recette du plan).
-export function planStepIsExpansion(s: Pick<PlanStepRow, 'source_ingredient_id'>): boolean {
+// Étape issue de l'éclatement d'un ingrédient (et non de la recette de base).
+export function batchStepIsExpansion(s: Pick<BatchStepRow, 'source_ingredient_id'>): boolean {
   return s.source_ingredient_id != null;
 }
 
 // Sous-recette dont provient une étape insérée, retrouvée via la ligne
-// d'ingrédient remplacée (`plan_steps.source_ingredient_id`). Le titre n'est
-// pas dupliqué sur `plan_steps` : une seule jointure, sur `plan_ingredients`,
+// d'ingrédient remplacée (`batch_steps.source_ingredient_id`). Le titre n'est
+// pas dupliqué sur `batch_steps` : une seule jointure, sur `batch_ingredients`,
 // suffit à nommer toutes les étapes d'un même éclatement.
-export function expansionSource(plan: PlanFull, step: Pick<PlanStepRow, 'source_ingredient_id'>): { id: string; title: string } | null {
+export function expansionSource(batch: BatchFull, step: Pick<BatchStepRow, 'source_ingredient_id'>): { id: string; title: string } | null {
   if (step.source_ingredient_id == null) return null;
-  const row = plan.plan_ingredients.find((it) => it.id === step.source_ingredient_id);
+  const row = batch.batch_ingredients.find((it) => it.id === step.source_ingredient_id);
   return row?.expanded_recipe ?? null;
 }
 
-// Position d'insertion des étapes d'une sous-recette dans le déroulé du plan.
-// `plan_steps.order_index` est `numeric` (et non `integer`) précisément pour
-// permettre cette intercalation : on calcule des valeurs intermédiaires entre
-// l'étape choisie comme point d'ancrage et la suivante, plutôt que de
-// renuméroter tout le plan — ce qui invaliderait les positions retenues par
-// l'utilisateur sur les autres étapes.
+// Position d'insertion des étapes d'une sous-recette dans le déroulé de la
+// fournée. `batch_steps.order_index` est `numeric` (et non `integer`)
+// précisément pour permettre cette intercalation : on calcule des valeurs
+// intermédiaires entre l'étape choisie comme point d'ancrage et la suivante,
+// plutôt que de renuméroter toute la fournée — ce qui invaliderait les
+// positions retenues par l'utilisateur sur les autres étapes.
 //
-// `anchors[i]` = `order_index` de l'étape du plan après laquelle insérer la
-// i-ème sous-étape, ou `null` pour la placer en tête. Plusieurs sous-étapes
-// partageant la même ancre gardent leur ordre d'arrivée.
+// `anchors[i]` = `order_index` de l'étape de la fournée après laquelle
+// insérer la i-ème sous-étape, ou `null` pour la placer en tête. Plusieurs
+// sous-étapes partageant la même ancre gardent leur ordre d'arrivée.
 export function computeInsertOrderIndexes(planOrders: number[], anchors: (number | null)[]): number[] {
   const sorted = [...planOrders].sort((a, b) => a - b);
   const first = sorted.length ? sorted[0] : 0;
@@ -350,35 +312,35 @@ export function suggestedExpansionDay(consumingDayOffset: number, subStepDayOffs
   return Math.max(0, consumingDayOffset) + Math.max(0, subStepDayOffset);
 }
 
-// Sélection complète d'un plan, à utiliser par lib/profile.ts (getPlan).
+// Sélection complète d'une fournée, à utiliser par lib/profile.ts (getPlan).
 //
 // `expanded_recipe` (titre de la sous-recette qui remplace un ingrédient)
-// n'est volontairement PAS une jointure imbriquée ici : `plan_ingredients`
+// n'est volontairement PAS une jointure imbriquée ici : `batch_ingredients`
 // ayant deux clés étrangères vers `recipes`, PostgREST exigerait de nommer la
 // contrainte dans le select — une chaîne à tenir à jour à la main dont une
-// erreur ferait échouer toute la requête, donc perdre le mode planifié en
-// entier pour un simple libellé. `getPlan` complète ces titres après coup, et
-// seulement si le plan comporte au moins un remplacement.
-export const PLAN_FULL_SELECT = `
+// erreur ferait échouer toute la requête, donc perdre la fournée en entier
+// pour un simple libellé. `getPlan` complète ces titres après coup, et
+// seulement si la fournée comporte au moins un remplacement.
+export const BATCH_FULL_SELECT = `
   *,
-  plan_steps(*, plan_substeps(*)),
-  plan_ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip))),
-  plan_utensils(*)
+  batch_steps(*, batch_substeps(*)),
+  batch_ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip))),
+  batch_utensils(*)
 `;
 
 // Contenu d'une recette candidate à l'éclatement, lu depuis le navigateur
-// (RLS via la session) : strictement ce dont `materializePlan` a besoin, plus
-// le rendement pour proposer un coefficient. Volontairement plus étroit que
-// le `FULL_SELECT` de lib/recipes.ts — pas de photos d'étapes ni d'image
+// (RLS via la session) : strictement ce dont `materializeBatch` a besoin,
+// plus le rendement pour proposer un coefficient. Volontairement plus étroit
+// que le `FULL_SELECT` de lib/recipes.ts — pas de photos d'étapes ni d'image
 // d'en-tête, stockées en data-URL et sans usage ici.
-export const PLAN_SOURCE_SELECT = `
+export const RECIPE_SOURCE_SELECT = `
   id, title, measure_type, yield_qty, yield_unit, yield_desc, yield_notes,
   recipe_utensils(*, utensils(url)),
   ingredient_groups(*, ingredients(*)),
   recipe_steps(*)
 `;
 
-export type PlanSourceRecipe = MaterializableRecipe & {
+export type RecipeSource = MaterializableRecipe & {
   id: string;
   title: string;
   measure_type: string | null;
@@ -388,70 +350,26 @@ export type PlanSourceRecipe = MaterializableRecipe & {
   yield_notes: string | null;
 };
 
-export type ExecutionRow = Database['public']['Tables']['executions']['Row'];
-// Le déroulé (description, astuces, vidéo, temps, température) n'est pas
-// dupliqué sur execution_steps — seuls le titre et l'état d'exécution le
-// sont (cf. CLAUDE.md). Il est donc relu en direct sur le plan via la FK
-// `plan_step_id` : sans conséquence tant que le plan n'a pas d'édition de
-// ses étapes ; se dégrade proprement (absent) si l'étape a été retirée du
-// plan depuis (FK à null).
-// `user_note` rejoint les colonnes relues en direct (et non figées) : une note
-// écrite la veille (« prévoir la plaque du bas ») doit apparaître pendant la
-// cuisson, y compris dans une session déjà démarrée. Elle ne se confond pas
-// avec `execution_steps.commentaire`, qui est le constat du jour J propre à
-// une session — l'une est l'intention, l'autre la réalisation.
-export type ExecutionSubstepRow = Database['public']['Tables']['execution_substeps']['Row'];
-export type ExecutionStepRow = Database['public']['Tables']['execution_steps']['Row'] & {
-  execution_substeps: ExecutionSubstepRow[];
-  plan_steps: Pick<PlanStepRow, 'description' | 'tips' | 'video_url' | 'prep_time' | 'cook_time' | 'wait_time' | 'cook_temp' | 'already_done' | 'user_note'> | null;
-};
-export type ExecutionIngredientRow = Database['public']['Tables']['execution_ingredients']['Row'] & {
-  // Rapprochement conversions d'ingrédients : execution_ingredients n'a pas
-  // sa propre colonne ref_id (ligne figée au démarrage, cf. CLAUDE.md), donc
-  // relu en direct sur le plan via `plan_ingredient_id` (ON DELETE SET NULL —
-  // absent si la ligne du plan a été supprimée depuis).
-  plan_ingredients: { ref_id: number | null } | null;
-};
-export type ExecutionUtensilRow = Database['public']['Tables']['execution_utensils']['Row'];
-export type ExecutionFull = ExecutionRow & {
-  execution_steps: ExecutionStepRow[];
-  execution_ingredients: ExecutionIngredientRow[];
-  execution_utensils: ExecutionUtensilRow[];
-  // Titre de la recette planifiée — pas de colonne dédiée sur `executions`,
-  // relu via la FK planning_id (recipe_title y est déjà dénormalisé). `notes`
-  // (note globale du plan) suit le même chemin, et pour la même raison que
-  // `user_note` sur les étapes : relue en direct plutôt que figée.
-  planning: { recipe_title: string | null; notes: string | null } | null;
-};
-
-export const EXECUTION_FULL_SELECT = `
-  *,
-  execution_steps(*, execution_substeps(*), plan_steps(description, tips, video_url, prep_time, cook_time, wait_time, cook_temp, already_done, user_note)),
-  execution_ingredients(*, plan_ingredients(ref_id)),
-  execution_utensils(*),
-  planning(recipe_title, notes)
-`;
-
 // ── Vues de compatibilité recette ──────────────────────────────────────
-// Le plan matérialisé prend la forme d'une recette (RecipeFull) pour
+// La fournée matérialisée prend la forme d'une recette (RecipeFull) pour
 // réutiliser tel quel le rendu de la fiche (planningDays, effectiveTimes,
 // listes d'ingrédients/étapes). Seul l'éditeur d'ingrédients
-// (PlanIngredientsEditor) lit les tables plan_* brutes, pour écrire
+// (BatchIngredientsEditor) lit les tables batch_* brutes, pour écrire
 // directement dessus.
-function qtyDisplay(it: Pick<PlanIngredientRow, 'quantity' | 'quantity_text'>): string | null {
+function qtyDisplay(it: Pick<BatchIngredientRow, 'quantity' | 'quantity_text'>): string | null {
   if (it.quantity != null) return fmtNum(it.quantity);
   return it.quantity_text;
 }
 
-export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
-  return [...plan.plan_steps]
+export function batchStepsAsRecipeSteps(batch: BatchFull): RecipeStepView[] {
+  return [...batch.batch_steps]
     .sort((a, b) => a.order_index - b.order_index)
     .map((s) => {
-      const ingredientsOfStep = plan.plan_ingredients.filter((it) => it.step_id === s.id);
+      const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
       // Sous-étapes exclues (« déjà fait ») retirées de cette vue non
       // interactive (impression, sommaire…) ; l'exception ligne par ligne se
-      // règle via PlanStepDonePanel, qui lit les lignes brutes de son côté.
-      const visibleSubsteps = [...s.plan_substeps].sort((a, b) => a.order_index - b.order_index).filter((su) => !planSubstepExcluded(s, su));
+      // règle via BatchStepDonePanel, qui lit les lignes brutes de son côté.
+      const visibleSubsteps = [...s.batch_substeps].sort((a, b) => a.order_index - b.order_index).filter((su) => !batchSubstepExcluded(s, su));
       return {
         id: s.id,
         title: s.title,
@@ -461,34 +379,34 @@ export function planStepsAsRecipeSteps(plan: PlanFull): RecipeStepView[] {
         cook_temp: s.cook_temp,
         tips: s.tips,
         video_url: s.video_url,
-        already_done: s.already_done,
-        fully_done: stepFullyDone(s, ingredientsOfStep, s.plan_substeps),
+        already_done: s.done,
+        fully_done: stepFullyDone(s, ingredientsOfStep, s.batch_substeps),
         // Étape issue de l'éclatement d'un ingrédient en sous-recette : rendue
         // en vert, comme un ingrédient ajouté (une seule convention de couleur
-        // pour toute la fiche planifiée).
-        added: planStepIsExpansion(s),
-        from_recipe: expansionSource(plan, s),
+        // pour toute la fiche fournée).
+        added: batchStepIsExpansion(s),
+        from_recipe: expansionSource(batch, s),
         sous_etapes: visibleSubsteps.length ? visibleSubsteps.map((su) => su.texte) : null,
         order_index: s.order_index,
-        step_photos: [], // non dupliquées dans le plan : restent liées à la recette d'origine
+        step_photos: [], // non dupliquées dans la fournée : restent liées à la recette de base
       };
     });
 }
 
-export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingredient_groups'] {
-  // Chaque étape garde son groupe, même entièrement traité (l'éditeur du plan
-  // l'affiche barré plutôt que de le faire disparaître) ; seuls les
-  // ingrédients exclus (retirés à la main, ou déjà faits et non conservés)
+export function batchGroupsAsIngredientGroups(batch: BatchFull): RecipeFull['ingredient_groups'] {
+  // Chaque étape garde son groupe, même entièrement traité (l'éditeur de la
+  // fournée l'affiche barré plutôt que de le faire disparaître) ; seuls les
+  // ingrédients exclus (retirés à la main, ou faits et non conservés)
   // sortent de la liste de ce groupe.
-  return [...plan.plan_steps]
+  return [...batch.batch_steps]
     .sort((a, b) => a.order_index - b.order_index)
     .map((step) => ({
       id: step.id,
       name: step.title,
       order_index: step.order_index,
       scaling_mode: step.scaling_mode,
-      ingredients: plan.plan_ingredients
-        .filter((it) => it.step_id === step.id && !planIngredientExcluded(step, it))
+      ingredients: batch.batch_ingredients
+        .filter((it) => it.batch_step_id === step.id && !batchIngredientExcluded(step, it))
         .sort((a, b) => a.order_index - b.order_index)
         .map((it) => ({
           id: it.id,
@@ -505,22 +423,20 @@ export function planGroupsAsIngredientGroups(plan: PlanFull): RecipeFull['ingred
     }));
 }
 
-export function planUtensilsAsRecipeUtensils(utensils: PlanUtensilRow[]): RecipeFull['recipe_utensils'] {
+export function batchUtensilsAsRecipeUtensils(utensils: BatchUtensilRow[]): RecipeFull['recipe_utensils'] {
   return [...utensils]
     .sort((a, b) => a.order_index - b.order_index)
     .map((u) => ({ id: u.id, name: u.name, comment: u.comment, url: u.url, order_index: u.order_index, utensils: null }));
 }
 
 // ── Liste fusionnée (courses, détail imprimable) : ingrédients identiques
-// (nom + unité) additionnés, lignes supprimées exclues. Remplace l'ancien
-// effectiveMergedRows — plus de « groupes déjà en ma possession » : le plan
-// ne suit plus les étapes réalisées (déplacé côté exécution, cf. CLAUDE.md).
-export type MergedPlanRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
+// (nom + unité) additionnés, lignes supprimées exclues.
+export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
 
-export function mergePlanIngredients(plan: PlanFull): MergedPlanRow[] {
-  const rows: (MergedPlanRow & { key: string })[] = [];
-  const excluded = excludedInPlan(plan);
-  plan.plan_ingredients
+export function mergeBatchIngredients(batch: BatchFull): MergedBatchRow[] {
+  const rows: (MergedBatchRow & { key: string })[] = [];
+  const excluded = excludedInBatch(batch);
+  batch.batch_ingredients
     .filter((it) => it.name && !excluded(it))
     .forEach((it) => {
       const unit = it.unit || '';
@@ -540,15 +456,15 @@ export function mergePlanIngredients(plan: PlanFull): MergedPlanRow[] {
   return rows.map(({ key: _key, ...r }) => r);
 }
 
-export function mergedRowQtyText(r: MergedPlanRow): string {
+export function mergedRowQtyText(r: MergedBatchRow): string {
   return r.adj != null ? fmtNum(r.adj) : r.origTxt.join(' + ') || '';
 }
 
 // ── Coefficient d'échelle par étape ────────────────────────────────────
-// Identique à l'ancien baseScalingCoef : « aucun » fige la quantité (×1) ;
-// pour une recette moule, « fonçage » suit la surface, sinon le volume ;
-// sinon le facteur global du plan. Utilisé à la fois à la matérialisation
-// et lors d'un changement d'échelle globale sur un plan déjà créé.
+// « aucun » fige la quantité (×1) ; pour une recette moule, « fonçage » suit
+// la surface, sinon le volume ; sinon le facteur global de la fournée.
+// Utilisé à la fois à la matérialisation et lors d'un changement d'échelle
+// globale sur une fournée déjà créée.
 export function scalingCoef(mode: string | null | undefined, factor: number, moldCoefs?: { surface: number; volume: number } | null): number {
   if (mode === 'aucun') return 1;
   if (moldCoefs) return mode === 'foncage' ? (moldCoefs.surface ?? moldCoefs.volume) : (moldCoefs.volume ?? moldCoefs.surface);
@@ -561,8 +477,8 @@ function scaleQty(raw: string | null, coef: number): { quantity: number | null; 
   return { quantity: round2(base * coef), quantity_text: null, base_quantity: base };
 }
 
-// Rescale une ligne déjà matérialisée (édition du facteur d'un plan
-// existant, cf. PlanWidget). N'a de sens que pour une ligne issue de la
+// Rescale une ligne déjà matérialisée (édition du facteur d'une fournée
+// existante, cf. BatchWidget). N'a de sens que pour une ligne issue de la
 // recette (`base_quantity` connu) : les lignes ajoutées à la main dans
 // l'éditeur d'ingrédients ne sont jamais touchées par ce recalcul.
 export function scaleFromBase(baseQuantity: number | null, quantityText: string | null, coef: number): { quantity: number | null; quantity_text: string | null } {
@@ -571,8 +487,8 @@ export function scaleFromBase(baseQuantity: number | null, quantityText: string 
 }
 
 // ── Matérialisation : contenu de la recette (vivante), scalé par le
-// facteur / les coefficients moule choisis en planifiant. Pure : ne fait
-// aucun accès réseau — PlanWidget enchaîne les insertions à partir de
+// facteur / les coefficients moule choisis en créant la fournée. Pure : ne
+// fait aucun accès réseau — BatchWidget enchaîne les insertions à partir de
 // cette structure.
 export type MatIngredient = {
   order_index: number;
@@ -589,7 +505,7 @@ export type MatIngredient = {
 export type MatStep = {
   order_index: number;
   day_offset: number;
-  // Jour de la recette d'origine, figé ici une fois pour toutes : c'est lui
+  // Jour de la recette de base, figé ici une fois pour toutes : c'est lui
   // qui restera affiché en regard du jour choisi si l'étape est déplacée.
   base_day_offset: number;
   title: string | null;
@@ -606,14 +522,15 @@ export type MatStep = {
   ingredients: MatIngredient[];
 };
 export type MatUtensil = { order_index: number; name: string; comment: string | null; url: string | null };
-export type MaterializedPlan = { steps: MatStep[]; utensils: MatUtensil[] };
+export type MaterializedBatch = { steps: MatStep[]; utensils: MatUtensil[] };
 
-// Seules ces trois collections sont matérialisées : la recette du plan comme
-// une sous-recette éclatée passent par la même fonction, la seconde n'étant
-// lue qu'avec `PLAN_SOURCE_SELECT` (bien plus étroit qu'un `RecipeFull`).
+// Seules ces trois collections sont matérialisées : la recette de base de la
+// fournée comme une sous-recette éclatée passent par la même fonction, la
+// seconde n'étant lue qu'avec `RECIPE_SOURCE_SELECT` (bien plus étroit qu'un
+// `RecipeFull`).
 export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_steps' | 'recipe_utensils'>;
 
-export function materializePlan(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedPlan {
+export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedBatch {
   const groupsByOrder = new Map<number, RecipeFull['ingredient_groups'][number]>();
   (recipe.ingredient_groups || []).forEach((g) => groupsByOrder.set(g.order_index ?? 0, g));
 
@@ -666,65 +583,14 @@ export function materializePlan(recipe: MaterializableRecipe, opts: { factor: nu
   return { steps, utensils };
 }
 
-// ── Matérialisation d'une exécution à partir du plan ───────────────────
-// Chaque ligne fige nom/unité/quantité prévue au démarrage (cf. CLAUDE.md :
-// ne jamais resynchroniser ces colonnes depuis le plan par la suite).
-export type MatExecSubstep = { plan_substep_id: number; texte: string | null; order_index: number | null };
-export type MatExecIngredient = { plan_ingredient_id: number; name: string; unit: string | null; planned_quantity: number | null; planned_text: string | null };
-export type MatExecStep = {
-  plan_step_id: number;
-  titre: string | null;
-  order_index: number | null;
-  day_offset: number | null;
-  substeps: MatExecSubstep[];
-  ingredients: MatExecIngredient[];
-};
-export type MatExecUtensil = { plan_utensil_id: number; name: string };
-export type MaterializedExecution = { steps: MatExecStep[]; utensils: MatExecUtensil[] };
-
-export function materializeExecution(plan: PlanFull): MaterializedExecution {
-  // Une étape déjà faite entre quand même dans la session (elle s'y affiche
-  // barrée, cf. stepFullyDone côté lecture) : seuls ses ingrédients et
-  // sous-étapes exclus (non conservés) n'ont pas de mise en place à leur
-  // sujet. Le figeage joue ensuite normalement — une session démarrée n'est
-  // jamais resynchronisée si le plan change après coup (cf. CLAUDE.md).
-  const excluded = excludedInPlan(plan);
-  const ingByStep = new Map<number, PlanIngredientRow[]>();
-  plan.plan_ingredients
-    .filter((it) => it.step_id != null && !excluded(it))
-    .forEach((it) => {
-      const k = it.step_id as number;
-      const arr = ingByStep.get(k);
-      if (arr) arr.push(it);
-      else ingByStep.set(k, [it]);
-    });
-
-  const steps: MatExecStep[] = [...plan.plan_steps]
-    .sort((a, b) => a.order_index - b.order_index)
-    .map((s) => ({
-      plan_step_id: s.id,
-      titre: s.title,
-      order_index: s.order_index,
-      day_offset: s.day_offset,
-      substeps: [...s.plan_substeps]
-        .filter((su) => !planSubstepExcluded(s, su))
-        .sort((a, b) => a.order_index - b.order_index)
-        .map((su) => ({ plan_substep_id: su.id, texte: su.texte, order_index: su.order_index })),
-      ingredients: (ingByStep.get(s.id) || [])
-        .sort((a, b) => a.order_index - b.order_index)
-        .map((it) => ({ plan_ingredient_id: it.id, name: it.name, unit: it.unit, planned_quantity: it.quantity, planned_text: it.quantity_text })),
-    }));
-
-  const utensils: MatExecUtensil[] = [...plan.plan_utensils].sort((a, b) => a.order_index - b.order_index).map((u) => ({ plan_utensil_id: u.id, name: u.name }));
-
-  return { steps, utensils };
-}
-
-// Regroupe les étapes d'une exécution par jour, du plus lointain au jour J
-// (même logique que l'ancien buildExecutionSnapshot côté jalons).
-export type ExecJalon = { offset: number; steps: ExecutionStepRow[] };
-export function groupExecutionSteps(steps: ExecutionStepRow[]): ExecJalon[] {
-  const map = new Map<number, ExecutionStepRow[]>();
+// ── Jalons (mode Cuisiner, regroupement par jour) ──────────────────────
+// Regroupe les étapes de la fournée par jour, du plus lointain au jour J.
+// Opère directement sur `batch_steps` : il n'y a plus de matérialisation
+// séparée d'une « exécution », cuisiner ne fait qu'afficher la fournée
+// autrement.
+export type BatchJalon = { offset: number; steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[] };
+export function groupBatchStepsByDay(steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[]): BatchJalon[] {
+  const map = new Map<number, (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[]>();
   steps.forEach((s) => {
     const o = Math.max(0, s.day_offset || 0);
     const arr = map.get(o);
@@ -734,30 +600,4 @@ export function groupExecutionSteps(steps: ExecutionStepRow[]): ExecJalon[] {
   return [...map.entries()]
     .sort((a, b) => b[0] - a[0])
     .map(([offset, jSteps]) => ({ offset, steps: [...jSteps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) }));
-}
-
-// ── Mise en place (écran de démarrage d'une exécution) ─────────────────
-// Les lignes execution_ingredients sont par étape (une occurrence par
-// plan_ingredient) : la mise en place fusionne les occurrences identiques
-// (nom + unité) en une ligne à cocher — `ids` porte toutes les lignes
-// sous-jacentes pour que cocher la ligne fusionnée coche chaque occurrence.
-export type MepIngredientRow = { key: string; ids: number[]; name: string; unit: string | null; quantity: number | null; quantityText: string | null; done: boolean; ref_id: number | null };
-
-export function mergeExecutionIngredientsForMep(ingredients: ExecutionIngredientRow[]): MepIngredientRow[] {
-  const rows: MepIngredientRow[] = [];
-  ingredients.forEach((it) => {
-    const unit = it.unit || '';
-    const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
-    let r = rows.find((x) => x.key === key);
-    if (!r) {
-      r = { key, ids: [], name: it.name, unit: it.unit, quantity: null, quantityText: null, done: true, ref_id: it.plan_ingredients?.ref_id ?? null };
-      rows.push(r);
-    }
-    r.ids.push(it.id);
-    if (it.planned_quantity != null) r.quantity = round2((r.quantity || 0) + it.planned_quantity);
-    else if (it.planned_text) r.quantityText = r.quantityText ? r.quantityText + ' + ' + it.planned_text : it.planned_text;
-    if (!it.mep_done) r.done = false;
-  });
-  rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return rows;
 }
