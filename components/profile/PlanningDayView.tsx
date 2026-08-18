@@ -165,7 +165,12 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                     title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
                     className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
-                  <span className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0">{it.recipeTitle}</span>
+                  <Link
+                    href={`/fournee/${it.planId}?mode=preparer`}
+                    className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0 hover:underline"
+                  >
+                    {it.recipeTitle}
+                  </Link>
                   {/* Pas de lien si la fournée a été supprimée depuis
                       (recipeId absent, recipeTitle dénormalisé prend le
                       relais pour l'affichage — cf. CLAUDE.md). */}
