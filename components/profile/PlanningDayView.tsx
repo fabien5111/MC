@@ -107,11 +107,14 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     );
   }
 
-  // Une journée est « terminée » dès que toutes ses étapes sont cochées —
-  // peu importe sa date, passée ou non. Regroupées à part, repliées par
-  // défaut : pas noyer les jours restants sous un historique qui grossit
-  // sans fin.
-  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done);
+  // Une journée est « terminée » quand toutes ses étapes sont cochées ET que
+  // chaque fournée qui y contribue est elle-même entièrement terminée — pas
+  // seulement les étapes tombant ce jour-là. Sans cette deuxième condition,
+  // une journée de préparation intermédiaire (dont les étapes sont cochées)
+  // basculait en « terminée » alors que la recette continue sur d'autres
+  // jours, la faisant disparaître du planning actif à tort.
+  const fullyDoneBatchIds = new Set(list.filter((p) => p.batch_steps.every((s) => s.done)).map((p) => p.id));
+  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && fullyDoneBatchIds.has(it.planId));
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
 
