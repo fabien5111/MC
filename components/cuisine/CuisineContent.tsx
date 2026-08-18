@@ -444,7 +444,7 @@ export function CuisineContent({
           </div>
         ) : (
           <p className="italic text-on-surface-variant">
-            Aucune fournée pour le moment. Ouvrez une recette et cliquez sur « Créer une fournée ».
+            Aucune fournée pour le moment. Ouvrez une recette et cliquez sur « Lancer une fournée ».
           </p>
         )}
         {terminees.length > 0 && (

@@ -364,7 +364,7 @@ export function BatchWidget({
     const adjustmentChanged = !!editing && (res.factor !== (existingBatch.factor ?? 1) || res.label !== existingBatch.adjust_label);
 
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const lines = [editing ? `Modifier cette fournée de « ${recipe.title} » pour le ${dateTxt} ?` : `Créer une fournée de « ${recipe.title} » pour le ${dateTxt} ?`];
+    const lines = [editing ? `Modifier cette fournée de « ${recipe.title} » pour le ${dateTxt} ?` : `Lancer une fournée de « ${recipe.title} » pour le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
     if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
     if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
@@ -436,7 +436,11 @@ export function BatchWidget({
     close();
     // `busy` reste vrai jusqu'au démontage par la navigation : le spinner doit
     // rester affiché pendant la transition vers la fiche de la fournée.
-    router.push(`/fournee/${batchRow.id}`);
+    // `mode=preparer` : la fournée qui vient d'être lancée s'ouvre toujours
+    // sur Préparer, jamais sur Cuisiner — même si la date de dégustation est
+    // aujourd'hui, l'ajustement se fait au calme avant de passer aux
+    // fourneaux (cf. BatchView.defaultMode).
+    router.push(`/fournee/${batchRow.id}?mode=preparer`);
   }
 
   // Rendu même panneau fermé (après `close()` en fin de validation) : la
@@ -500,7 +504,7 @@ export function BatchWidget({
       <LoadingOverlay visible={busy} label="Enregistrement de la fournée…" />
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
-        {editMode && existingBatch ? 'Modifier la fournée' : 'Créer une fournée'}
+        {editMode && existingBatch ? 'Modifier la fournée' : 'Lancer une fournée'}
       </h3>
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">

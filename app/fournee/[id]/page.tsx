@@ -8,7 +8,7 @@ import { BatchView } from '@/components/batch/BatchView';
 
 type Params = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ lecture?: string }>;
+  searchParams: Promise<{ lecture?: string; mode?: string }>;
 };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -55,7 +55,7 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
 
 export default async function FourneePage({ params, searchParams }: Params) {
   const { id } = await params;
-  const { lecture } = await searchParams;
+  const { lecture, mode } = await searchParams;
   await requireUser(`/fournee/${id}`);
 
   const batchId = Number(id);
@@ -83,6 +83,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
       conversions={conversions}
       shoppingLists={shoppingLists}
       lecture={lecture === '1'}
+      initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
     />
   );
 }

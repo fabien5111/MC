@@ -21,7 +21,7 @@ import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
-import { RecipeToc, type TocSections } from '@/components/recipe/RecipeToc';
+import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
@@ -122,6 +122,7 @@ export function BatchView({
   conversions,
   shoppingLists,
   lecture,
+  initialMode,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -130,6 +131,10 @@ export function BatchView({
   conversions: ConversionRef[];
   shoppingLists: { id: number; name: string }[];
   lecture: boolean;
+  // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
+  // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
+  // l'ajustement se fait au calme avant de passer aux fourneaux.
+  initialMode?: 'preparer' | 'cuisiner';
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -137,7 +142,7 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
-  const [mode, setMode] = useState<'preparer' | 'cuisiner'>(() => defaultMode(initialBatch));
+  const [mode, setMode] = useState<'preparer' | 'cuisiner'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
 
   const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
@@ -155,6 +160,19 @@ export function BatchView({
       const { error } = await createClient().from('batches').update({ date_debut: now }).eq('id', batch.id);
       if (!error) setBatch((b) => ({ ...b, date_debut: now }));
     }
+  }
+
+  async function deleteBatch() {
+    if (!writeGuard('Suppression de la fournée')) return;
+    if (!(await dialog.confirm('Supprimer définitivement cette fournée ? Cette action est irréversible.'))) return;
+    setBusy(true);
+    const { error } = await createClient().from('batches').delete().eq('id', batch.id);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      setBusy(false);
+      return;
+    }
+    router.push('/en-cuisine');
   }
 
   const dateTxt = batch.planned_date
@@ -239,32 +257,18 @@ export function BatchView({
         </div>
 
         {mode === 'preparer' ? (
-          <PreparerView batch={batch} baseRecipe={baseRecipe} units={units} unitTips={unitTips} conversions={conversions} shoppingLists={shoppingLists} />
+          <PreparerView
+            batch={batch}
+            baseRecipe={baseRecipe}
+            units={units}
+            unitTips={unitTips}
+            conversions={conversions}
+            shoppingLists={shoppingLists}
+            readOnly={readOnly}
+            onDelete={deleteBatch}
+          />
         ) : (
           <CuisinerView batch={batch} setBatch={setBatch} readOnly={readOnly} conversions={conversions} units={units} setBusy={setBusy} />
-        )}
-
-        {mode === 'preparer' && !readOnly && (
-          <div className="mt-10 flex items-center gap-3 flex-wrap">
-            <button
-              type="button"
-              onClick={async () => {
-                if (!writeGuard('Suppression de la fournée')) return;
-                if (!(await dialog.confirm('Supprimer définitivement cette fournée ? Cette action est irréversible.'))) return;
-                setBusy(true);
-                const { error } = await createClient().from('batches').delete().eq('id', batch.id);
-                if (error) {
-                  dialog.alert('Erreur : ' + error.message);
-                  setBusy(false);
-                  return;
-                }
-                router.push('/en-cuisine');
-              }}
-              className="border border-error text-error px-5 py-2 rounded-full font-label-md text-label-md hover:bg-error/5"
-            >
-              Supprimer la fournée
-            </button>
-          </div>
         )}
       </div>
     </>
@@ -279,6 +283,8 @@ function PreparerView({
   unitTips,
   conversions,
   shoppingLists,
+  readOnly,
+  onDelete,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -286,6 +292,8 @@ function PreparerView({
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
   shoppingLists: { id: number; name: string }[];
+  readOnly: boolean;
+  onDelete: () => void;
 }) {
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
@@ -328,8 +336,33 @@ function PreparerView({
   }, [batch.batch_steps]);
   const dLabel = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : `JOUR J${offset > 0 ? ' − ' + offset : ''}`);
 
+  // Sommaire de navigation (rail fixe à gauche, cf. RecipeToc) : mêmes
+  // sections que la fiche recette, plus « Liste de courses » (positionnée
+  // désormais sous les ingrédients, cf. plus bas) — une section absente de
+  // la fournée n'a rien à faire dans la liste, sous peine de lien mort.
+  const tocSections: TocSections = {
+    before: [
+      { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
+      ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
+      ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_bag', level: 1 as const }] : []),
+      ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
+    ],
+    after: [
+      ...(batch.recipe_tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
+      ...(batch.recipe_serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
+    ],
+  };
+  const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
+  const actions: TocAction[] = readOnly
+    ? []
+    : [{ id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger', onClick: onDelete }];
+
   return (
     <div className="flex flex-col gap-8">
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="none" />
+
       <p className="font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
         d&apos;un ingrédient que vous fabriquez vous-même), <span className="text-error line-through">barré en rouge</span> ce
@@ -339,19 +372,8 @@ function PreparerView({
 
       <BatchNotes batchId={batch.id} notes={batch.user_note} />
 
-      {merged.length > 0 && (
-        <ShoppingWidget
-          recipeTitle={batch.recipe_title || 'Fournée'}
-          ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id }))}
-          lists={shoppingLists}
-          isLoggedIn
-          conversions={conversions}
-          units={units}
-        />
-      )}
-
       {/* Bloc technique */}
-      <div className="bg-surface-container-low p-6 rounded-xl space-y-6">
+      <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-6 rounded-xl space-y-6">
         <div className="flex flex-wrap justify-evenly items-start gap-y-6 gap-x-4">
           {yInfo && (
             <div className="flex flex-col gap-1 items-center text-center">
@@ -377,7 +399,7 @@ function PreparerView({
       </div>
 
       {batch.recipe_description && (
-        <div className="bg-primary p-8 text-white rounded-xl">
+        <div id="sec-description" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
           <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
             <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
           </h3>
@@ -394,7 +416,7 @@ function PreparerView({
       )}
 
       {batch.batch_utensils.length > 0 && (
-        <div>
+        <div id="sec-ustensiles" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Ustensiles nécessaires</h3>
           <ul className="grid grid-cols-1 gap-y-2">
             {[...batch.batch_utensils]
@@ -416,14 +438,30 @@ function PreparerView({
       )}
 
       {batch.batch_ingredients.length > 0 && (
-        <div>
+        <div id="sec-ingredients" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Ingrédients</h3>
           <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
         </div>
       )}
 
+      {/* Liste de courses — sous les ingrédients : c'est leur suite directe
+          une fois qu'on a fini de les ajuster, pas une information à
+          retrouver plus haut sur la fiche. */}
+      {merged.length > 0 && (
+        <div id="sec-courses" className="scroll-mt-28">
+          <ShoppingWidget
+            recipeTitle={batch.recipe_title || 'Fournée'}
+            ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id }))}
+            lists={shoppingLists}
+            isLoggedIn
+            conversions={conversions}
+            units={units}
+          />
+        </div>
+      )}
+
       {sortedSteps.length > 0 && (
-        <div className="space-y-12">
+        <div id="sec-etapes" className="scroll-mt-28 space-y-12">
           <h3 className="font-headline-md text-headline-md text-primary">Étapes</h3>
           {sortedSteps.map((s, i) => {
             const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
@@ -499,7 +537,7 @@ function PreparerView({
       )}
 
       {batch.recipe_tips && (
-        <div className="bg-primary p-8 text-white rounded-xl">
+        <div id="sec-conseils" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
           <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
             <span className="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette
           </h3>
@@ -508,7 +546,7 @@ function PreparerView({
       )}
 
       {batch.recipe_serving_advice && (
-        <div className="bg-surface-container-low border border-outline-variant p-8 rounded-xl">
+        <div id="sec-degustation" className="scroll-mt-28 bg-surface-container-low border border-outline-variant p-8 rounded-xl">
           <h3 className="font-headline-md text-headline-md text-primary mb-3 flex items-center gap-3">
             <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
           </h3>
