@@ -601,29 +601,3 @@ export function groupBatchStepsByDay(steps: (BatchStepRow & { batch_substeps: Ba
     .sort((a, b) => b[0] - a[0])
     .map(([offset, jSteps]) => ({ offset, steps: [...jSteps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)) }));
 }
-
-// ── Mise en place (écran de démarrage du mode Cuisiner) ────────────────
-// Les lignes batch_ingredients sont par étape (une occurrence par
-// ingrédient) : la mise en place fusionne les occurrences identiques
-// (nom + unité) en une ligne à cocher — `ids` porte toutes les lignes
-// sous-jacentes pour que cocher la ligne fusionnée coche chaque occurrence.
-export type MepIngredientRow = { key: string; ids: number[]; name: string; unit: string | null; quantity: number | null; quantityText: string | null; done: boolean; ref_id: number | null };
-
-export function mergeIngredientsForMep(ingredients: BatchIngredientRow[]): MepIngredientRow[] {
-  const rows: MepIngredientRow[] = [];
-  ingredients.forEach((it) => {
-    const unit = it.unit || '';
-    const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
-    let r = rows.find((x) => x.key === key);
-    if (!r) {
-      r = { key, ids: [], name: it.name, unit: it.unit, quantity: null, quantityText: null, done: true, ref_id: it.ref_id ?? null };
-      rows.push(r);
-    }
-    r.ids.push(it.id);
-    if (it.quantity != null) r.quantity = round2((r.quantity || 0) + it.quantity);
-    else if (it.quantity_text) r.quantityText = r.quantityText ? r.quantityText + ' + ' + it.quantity_text : it.quantity_text;
-    if (!it.mep_done) r.done = false;
-  });
-  rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return rows;
-}

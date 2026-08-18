@@ -2,10 +2,12 @@
 
 // Écran d'une fournée (porté de recette.html mode planifié + execution.html) :
 // deux modes sur la même donnée — Préparer (avant, au calme : ajuster,
-// éditer) et Cuisiner (pendant : jalons à cocher, mise en place, tempo). La
-// case d'une étape est unique (`batch_steps.done`) : la cocher dans un mode
-// la coche instantanément dans l'autre, il n'y a plus de session séparée à
-// garder synchronisée — voir CLAUDE.md « Fournées ».
+// éditer) et Cuisiner (pendant : jalons à cocher, tempo). Pas d'écran de
+// mise en place intercalé : c'est le mode Préparer qui sert à tout vérifier
+// avant de passer aux fourneaux, Cuisiner s'ouvre directement sur le
+// déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
+// dans un mode la coche instantanément dans l'autre, il n'y a plus de
+// session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -37,7 +39,6 @@ import {
   groupBatchStepsByDay,
   mergeBatchIngredients,
   mergedRowQtyText,
-  mergeIngredientsForMep,
   remainingStepTimes,
   stepFullyDone,
   type BatchFull,
@@ -346,7 +347,7 @@ function PreparerView({
       ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_bag', level: 1 as const }] : []),
+      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
       ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [
@@ -663,27 +664,6 @@ function CuisinerView({
     }, 800);
   }
 
-  async function toggleMepIngredients(ids: number[], checked: boolean) {
-    if (readOnly) return;
-    setBatch((prev) => ({ ...prev, batch_ingredients: prev.batch_ingredients.map((it) => (ids.includes(it.id) ? { ...it, mep_done: checked } : it)) }));
-    const { error } = await createClient().from('batch_ingredients').update({ mep_done: checked }).in('id', ids);
-    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
-  }
-
-  async function toggleMepUtensil(id: number, checked: boolean) {
-    if (readOnly) return;
-    setBatch((prev) => ({ ...prev, batch_utensils: prev.batch_utensils.map((u) => (u.id !== id ? u : { ...u, mep_done: checked })) }));
-    const { error } = await createClient().from('batch_utensils').update({ mep_done: checked }).eq('id', id);
-    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
-  }
-
-  async function mepDone() {
-    setBatch((prev) => ({ ...prev, mep_done: true }));
-    window.scrollTo(0, 0);
-    const { error } = await createClient().from('batches').update({ mep_done: true }).eq('id', batch.id);
-    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
-  }
-
   function onGlobalComment(value: string) {
     setBatch((prev) => ({ ...prev, commentaire_global: value }));
     clearTimeout(globalTimer.current ?? undefined);
@@ -729,8 +709,7 @@ function CuisinerView({
   const nbEtapes = batch.batch_steps.length;
   const meta = [deg ? `Dégustation prévue ${deg}` : '', `${jalons.length} jalon${jalons.length > 1 ? 's' : ''} · ${nbEtapes} étape${nbEtapes > 1 ? 's' : ''}`].filter(Boolean).join(' — ');
 
-  const showMep = !readOnly && !batch.mep_done && (batch.batch_utensils.length > 0 || batch.batch_ingredients.length > 0);
-  const showResume = batch.status !== 'planifiee' && !showMep;
+  const showResume = batch.status !== 'planifiee';
   const tocSteps = useMemo(() => jalons.map((j, ji) => ({ key: String(ji), title: jalonLabel(j) })), [jalons]);
   const tocSections: TocSections = useMemo(
     () => ({ before: [], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
@@ -739,7 +718,7 @@ function CuisinerView({
 
   return (
     <>
-      {!showMep && jalons.length > 0 && (
+      {jalons.length > 0 && (
         <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} mobile="drawer" mobileInset={readOnly ? 'none' : 'action-bar'} />
       )}
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
@@ -752,30 +731,26 @@ function CuisinerView({
       )}
 
       <div className="flex flex-col gap-6">
-        {showMep ? (
-          <MiseEnPlace batch={batch} onToggleIngredients={toggleMepIngredients} onToggleUtensil={toggleMepUtensil} onDone={mepDone} conversions={conversions} units={units} />
-        ) : (
-          <CuisinerBody
-            batch={batch}
-            jalons={jalons}
-            readOnly={readOnly}
-            manuallyOpenedJalons={manuallyOpenedJalons}
-            conversions={conversions}
-            units={units}
-            onToggleStep={toggleStep}
-            onToggleSub={toggleSub}
-            onSubComment={onSubComment}
-            onToggleIng={(id, checked) => updateIngredient(id, { done: checked })}
-            onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
-            onIngComment={onIngComment}
-            onStepComment={onStepComment}
-          />
-        )}
+        <CuisinerBody
+          batch={batch}
+          jalons={jalons}
+          readOnly={readOnly}
+          manuallyOpenedJalons={manuallyOpenedJalons}
+          conversions={conversions}
+          units={units}
+          onToggleStep={toggleStep}
+          onToggleSub={toggleSub}
+          onSubComment={onSubComment}
+          onToggleIng={(id, checked) => updateIngredient(id, { done: checked })}
+          onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
+          onIngComment={onIngComment}
+          onStepComment={onStepComment}
+        />
       </div>
 
-      {batch.status !== 'planifiee' && !showMep && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
+      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
 
-      {!readOnly && !showMep && (
+      {!readOnly && (
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="max-w-[900px] mx-auto flex gap-3">
             <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
@@ -792,77 +767,6 @@ function CuisinerView({
         </div>
       )}
     </>
-  );
-}
-
-function MiseEnPlace({
-  batch,
-  onToggleIngredients,
-  onToggleUtensil,
-  onDone,
-  conversions,
-  units,
-}: {
-  batch: BatchFull;
-  onToggleIngredients: (ids: number[], checked: boolean) => void;
-  onToggleUtensil: (id: number, checked: boolean) => void;
-  onDone: () => void;
-  conversions: ConversionRef[];
-  units: UnitRef[];
-}) {
-  const included = useMemo(() => {
-    const stepById = new Map(batch.batch_steps.map((s) => [s.id, s]));
-    return batch.batch_ingredients.filter((it) => !batchIngredientExcluded(it.batch_step_id != null ? (stepById.get(it.batch_step_id) ?? { done: false }) : { done: false }, it));
-  }, [batch]);
-  const mepIngredients = useMemo(() => mergeIngredientsForMep(included), [included]);
-  return (
-    <div className="border border-primary rounded-xl bg-surface-container-lowest p-6">
-      <h2 className="font-headline-md text-headline-md text-primary mb-1">Mise en place</h2>
-      <p className="text-on-surface-variant text-sm mb-6">Vérifiez que tout est prêt — ou passez directement à la recette.</p>
-      {batch.batch_utensils.length > 0 && (
-        <>
-          <p className={`${LBL_CLS} mb-1`}>Ustensiles</p>
-          <ul className="mb-6">
-            {batch.batch_utensils.map((u) => (
-              <li key={u.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
-                <input type="checkbox" checked={u.mep_done} onChange={(e) => onToggleUtensil(u.id, e.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0" />
-                <span className={`font-body-md flex-1${u.mep_done ? ' line-through opacity-50' : ''}`}>{u.name}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {mepIngredients.length > 0 && (
-        <>
-          <p className={`${LBL_CLS} mb-1`}>Ingrédients</p>
-          <ul className="mb-6">
-            {mepIngredients.map((it) => (
-              <li key={it.key} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30">
-                <input type="checkbox" checked={it.done} onChange={(e) => onToggleIngredients(it.ids, e.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0" />
-                <span className={`font-body-md flex-1${it.done ? ' line-through opacity-50' : ''}`}>{it.name}</span>
-                {(it.quantity != null || it.quantityText) && (
-                  <span className={`font-label-md text-label-md text-primary whitespace-nowrap${it.done ? ' line-through opacity-50' : ''}`}>
-                    {[it.quantity != null ? fmtNum(it.quantity) : it.quantityText, it.unit].filter(Boolean).join(' ')}
-                    {(() => {
-                      const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantityText);
-                      return conv ? <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span> : null;
-                    })()}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      <div className="flex gap-3">
-        <button type="button" onClick={onDone} className="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md">
-          Commencer
-        </button>
-        <button type="button" onClick={onDone} className="border border-outline px-6 py-3.5 rounded-full font-label-md text-label-md text-on-surface-variant">
-          Passer
-        </button>
-      </div>
-    </div>
   );
 }
 
