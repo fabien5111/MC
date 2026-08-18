@@ -24,10 +24,12 @@ import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
+import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL } from '@/lib/recipe-view';
+import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import type { Unit } from '@/lib/profile';
+import type { AllergenRef } from '@/lib/recipes';
 import {
   fmtNum,
   batchDayLabel,
@@ -122,6 +124,7 @@ export function BatchView({
   unitTips,
   conversions,
   shoppingLists,
+  allergenRefs,
   lecture,
   initialMode,
 }: {
@@ -131,6 +134,7 @@ export function BatchView({
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
   shoppingLists: { id: number; name: string }[];
+  allergenRefs: AllergenRef[];
   lecture: boolean;
   // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
   // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
@@ -283,6 +287,7 @@ export function BatchView({
             unitTips={unitTips}
             conversions={conversions}
             shoppingLists={shoppingLists}
+            allergenRefs={allergenRefs}
             readOnly={readOnly}
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
@@ -311,6 +316,7 @@ function PreparerView({
   unitTips,
   conversions,
   shoppingLists,
+  allergenRefs,
   readOnly,
   onDelete,
   onSwitchMode,
@@ -321,10 +327,12 @@ function PreparerView({
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
   shoppingLists: { id: number; name: string }[];
+  allergenRefs: AllergenRef[];
   readOnly: boolean;
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
 }) {
+  const [notesOpen, setNotesOpen] = useState(false);
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
   const adjustedYield = ((): string | null => {
@@ -358,6 +366,7 @@ function PreparerView({
     });
     return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   })();
+  const allergenItems = matchAllergenPictos(allergens.map((a) => a.name), allergenRefs);
 
   const dayOptions = useMemo(() => {
     const used = batch.batch_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
@@ -420,12 +429,24 @@ function PreparerView({
             </div>
           )}
         </div>
-        {batch.yield_notes && <p className="font-body-md text-sm italic text-on-surface-variant whitespace-pre-line">{batch.yield_notes}</p>}
-        {allergens.length > 0 && (
-          <p className="font-body-md text-sm text-on-surface-variant">
-            <span className={LBL_CLS}>Allergènes : </span>
-            {allergens.map((a) => a.name).join(', ')}
-          </p>
+        {batch.yield_notes && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setNotesOpen((v) => !v)}
+              aria-expanded={notesOpen}
+              className="flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-[16px]">{notesOpen ? 'expand_less' : 'expand_more'}</span>
+              Complément d&apos;informations sur les quantités (recette de base)
+            </button>
+            {notesOpen && (
+              <p className="mt-2 font-body-md text-sm italic text-on-surface-variant whitespace-pre-line">{batch.yield_notes}</p>
+            )}
+          </div>
+        )}
+        {allergenItems.length > 0 && (
+          <AllergenPictosView items={allergenItems} className="justify-center pt-4 border-t border-outline-variant/40" iconClassName="w-8 h-8" />
         )}
       </div>
 
