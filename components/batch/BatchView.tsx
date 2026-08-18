@@ -163,6 +163,24 @@ export function BatchView({
     }
   }
 
+  // Bascule Préparer/Cuisiner, appelée par les deux pastilles du haut comme
+  // par le bouton du rail : elle inscrit le mode dans l'URL (`history.
+  // replaceState`, pas `router.replace`) pour qu'un rafraîchissement retombe
+  // sur le mode affiché plutôt que sur `defaultMode()` — sans ce marquage,
+  // dès qu'on est passé une fois en Cuisiner (`date_debut` posé), un F5
+  // ramenait toujours à Cuisiner même après être revenu sur Préparer. Pas de
+  // navigation Next (pas de resynchronisation serveur) : ce n'est qu'un
+  // changement de vue locale, pas une écriture à refléter ailleurs.
+  function switchMode(m: 'preparer' | 'cuisiner') {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', m);
+      window.history.replaceState(null, '', url);
+    }
+    if (m === 'cuisiner') enterCuisiner();
+    else setMode('preparer');
+  }
+
   async function deleteBatch() {
     if (!writeGuard('Suppression de la fournée')) return;
     if (!(await dialog.confirm('Supprimer définitivement cette fournée ? Cette action est irréversible.'))) return;
@@ -238,14 +256,14 @@ export function BatchView({
         <div className="flex items-center gap-2 mb-6">
           <button
             type="button"
-            onClick={() => setMode('preparer')}
+            onClick={() => switchMode('preparer')}
             className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'preparer' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
           >
             Préparer
           </button>
           <button
             type="button"
-            onClick={enterCuisiner}
+            onClick={() => switchMode('cuisiner')}
             className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
           >
             Cuisiner
@@ -267,9 +285,18 @@ export function BatchView({
             shoppingLists={shoppingLists}
             readOnly={readOnly}
             onDelete={deleteBatch}
+            onSwitchMode={switchMode}
           />
         ) : (
-          <CuisinerView batch={batch} setBatch={setBatch} readOnly={readOnly} conversions={conversions} units={units} setBusy={setBusy} />
+          <CuisinerView
+            batch={batch}
+            setBatch={setBatch}
+            readOnly={readOnly}
+            conversions={conversions}
+            units={units}
+            setBusy={setBusy}
+            onSwitchMode={switchMode}
+          />
         )}
       </div>
     </>
@@ -286,6 +313,7 @@ function PreparerView({
   shoppingLists,
   readOnly,
   onDelete,
+  onSwitchMode,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -295,6 +323,7 @@ function PreparerView({
   shoppingLists: { id: number; name: string }[];
   readOnly: boolean;
   onDelete: () => void;
+  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
 }) {
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
@@ -356,9 +385,10 @@ function PreparerView({
     ],
   };
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
-  const actions: TocAction[] = readOnly
-    ? []
-    : [{ id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger', onClick: onDelete }];
+  const actions: TocAction[] = [
+    { id: 'switch-cuisiner', icon: 'skillet', label: 'Passer en mode Cuisiner', variant: 'outline-strong', onClick: () => onSwitchMode('cuisiner') },
+    ...(readOnly ? [] : [{ id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger' as const, onClick: onDelete }]),
+  ];
 
   return (
     <div className="flex flex-col gap-8">
@@ -566,6 +596,7 @@ function CuisinerView({
   conversions,
   units,
   setBusy,
+  onSwitchMode,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -573,6 +604,7 @@ function CuisinerView({
   conversions: ConversionRef[];
   units: UnitRef[];
   setBusy: (b: boolean) => void;
+  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -715,11 +747,24 @@ function CuisinerView({
     () => ({ before: [], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
     [showResume],
   );
+  // Symétrique du bouton « Passer en mode Cuisiner » du rail Préparer : le
+  // rail reste visible pendant le défilement, contrairement aux deux
+  // pastilles du haut de page.
+  const tocActions: TocAction[] = [
+    { id: 'switch-preparer', icon: 'tune', label: 'Passer en mode Préparer', variant: 'outline-strong', onClick: () => onSwitchMode('preparer') },
+  ];
 
   return (
     <>
       {jalons.length > 0 && (
-        <RecipeToc sections={tocSections} steps={tocSteps} onNavigateToStep={expandJalon} mobile="drawer" mobileInset={readOnly ? 'none' : 'action-bar'} />
+        <RecipeToc
+          sections={tocSections}
+          steps={tocSteps}
+          actions={tocActions}
+          onNavigateToStep={expandJalon}
+          mobile="drawer"
+          mobileInset={readOnly ? 'none' : 'action-bar'}
+        />
       )}
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
 
