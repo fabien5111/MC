@@ -227,7 +227,7 @@ export function BatchStepDonePanel({
   // cette limite — plafonné au jour de dégustation (`max`), puisqu'une étape
   // ne peut pas tomber après. Repli sur la liste de décalages si la fournée
   // n'a pas de date (rien à quoi ancrer un calendrier).
-  const dayControlCls = `h-7 border border-outline-variant rounded px-2 font-label-md text-[11px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}`;
+  const dayControlCls = `h-7 border border-outline-variant rounded px-2 font-label-md text-[12px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}`;
   const dayInput = plannedDate ? (
     <input
       type="date"
