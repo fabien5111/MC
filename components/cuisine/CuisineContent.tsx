@@ -328,7 +328,7 @@ export function CuisineContent({
         <section className="mt-10">
           <div className="mb-4 flex items-center gap-2.5">
             <h2 className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              En cours de cuisson
+              Fournées en cours
             </h2>
             <span className="flex items-center gap-1.5 rounded-pill bg-primary px-2 py-0.5 font-label-md text-[10.5px] text-on-primary">
               <span className="relative flex h-1.5 w-1.5">
