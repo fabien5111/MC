@@ -303,6 +303,12 @@ export function BatchView({
           </div>
         )}
 
+        {/* Avis sur la recette d'origine : affiché au-dessus des onglets
+            Préparer/Cuisiner (donc visible quel que soit l'onglet ouvert par
+            défaut à l'arrivée sur une fournée terminée), pas seulement en
+            mode Cuisiner. */}
+        {canReview && <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} />}
+
         <div className="flex items-center gap-2 mb-6">
           <button
             type="button"
@@ -347,8 +353,6 @@ export function BatchView({
             units={units}
             setBusy={setBusy}
             onSwitchMode={switchMode}
-            canReview={canReview}
-            myReview={myReview}
           />
         )}
       </div>
@@ -666,8 +670,6 @@ function CuisinerView({
   units,
   setBusy,
   onSwitchMode,
-  canReview,
-  myReview,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -676,8 +678,6 @@ function CuisinerView({
   units: UnitRef[];
   setBusy: (b: boolean) => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
-  canReview: boolean;
-  myReview: MyRecipeReview | null;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -867,8 +867,6 @@ function CuisinerView({
       </div>
 
       {batch.status !== 'planifiee' && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
-
-      {canReview && <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} />}
 
       {!readOnly && (
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
