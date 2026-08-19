@@ -413,7 +413,7 @@ export function CuisineContent({
                       {p.notes && <p className="font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
                     </div>
                   </Link>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-col items-end gap-2">
                     <Link
                       href={`/fournee/${p.id}`}
                       className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
@@ -421,22 +421,24 @@ export function CuisineContent({
                       <span className="material-symbols-outlined text-[14px]">play_arrow</span>
                       <span className="hidden sm:inline">Cuisiner</span>
                     </Link>
-                    <button
-                      type="button"
-                      title="Refaire cette fournée"
-                      onClick={() => refaireBatch(p)}
-                      className="rounded p-1.5 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
-                    >
-                      <span className="material-symbols-outlined">restart_alt</span>
-                    </button>
-                    <button
-                      type="button"
-                      title="Supprimer"
-                      onClick={() => delPlan(p, false)}
-                      className="rounded p-1.5 text-error opacity-0 transition-opacity hover:bg-error/10 focus-visible:opacity-100 group-hover:opacity-100"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        title="Refaire cette fournée"
+                        onClick={() => refaireBatch(p)}
+                        className="rounded p-1.5 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <span className="material-symbols-outlined">restart_alt</span>
+                      </button>
+                      <button
+                        type="button"
+                        title="Supprimer"
+                        onClick={() => delPlan(p, false)}
+                        className="rounded p-1.5 text-error opacity-0 transition-opacity hover:bg-error/10 focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
