@@ -157,6 +157,12 @@ export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
   // déjà, seul le typage est en retard.
   review_status: 'none' | 'pending' | 'approved' | 'rejected';
   review_rejection_reason: string | null;
+  // Carte d'avis masquée sur CETTE fournée (« ne plus afficher »), à la main
+  // du propriétaire. Portée volontairement par la fournée et non par la
+  // recette : une autre fournée terminée de la même recette continue de
+  // proposer l'avis. Absente de lib/database.types.ts tant que la migration
+  // n'a pas été régénérée (npm run gen:types).
+  review_dismissed: boolean;
 };
 
 // ── Étape « déjà faite » ───────────────────────────────────────────────

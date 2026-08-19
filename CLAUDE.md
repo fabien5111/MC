@@ -482,6 +482,14 @@ d'en créer une nouvelle.
   d'entrée principal. Donner son avis n'est pas modifier la fournée. Seule
   l'impersonation lecture seule reste bloquante côté client ; la propriété
   de la fournée et la session sont revérifiées par la route serveur.
+- **« Ne plus afficher » est porté par la fournée** (`batches.review_dismissed`),
+  jamais par la recette : masquer la carte sur une fournée n'empêche pas une
+  AUTRE fournée terminée de la même recette de la proposer — sinon un membre
+  qui masque une fois se fermerait définitivement la porte de l'avis sur
+  cette recette. La mutation vit dans `BatchView` et non dans `BatchReview`
+  (masquage optimiste + `router.refresh()`) : la carte se démonte aussitôt, et
+  une transition déclarée en son sein mourrait avec elle — même motif que les
+  fenêtres modales.
 - **Commentaire obligatoire sous 3/5** (`lib/reviews.ts`
   `reviewCommentRequired`) : une note basse sans explication n'aide ni
   l'auteur ni les futurs lecteurs. Validé côté client ET dans la route

@@ -107,7 +107,7 @@ function ReviewForm({
           value={comment}
           onChange={(e) => setComment(e.target.value.slice(0, REVIEW_COMMENT_MAX))}
           rows={3}
-          placeholder={required ? 'Dites-nous ce qui n’a pas fonctionné (obligatoire pour une note inférieure à 3/5)…' : 'Un commentaire à ajouter ? (facultatif)'}
+          placeholder={required ? 'Dites-nous ce qui n’a pas fonctionné…' : 'Un commentaire à ajouter ? (facultatif)'}
           className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-[14px] text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none resize-none"
         />
         <p className="text-[12px] text-outline mt-1 text-right">
@@ -136,10 +136,15 @@ export function BatchReview({
   batchId,
   recipeId,
   myReview,
+  onDismiss,
 }: {
   batchId: number;
   recipeId: string | null;
   myReview: MyRecipeReview | null;
+  // « Ne plus afficher », porté par le parent : la carte se démonte aussitôt
+  // l'écriture faite, une mutation déclarée ici emporterait sa transition
+  // avec elle (cf. CLAUDE.md, même motif que les fenêtres modales).
+  onDismiss: () => void;
 }) {
   const [justSubmitted, setJustSubmitted] = useState(false);
 
@@ -150,10 +155,23 @@ export function BatchReview({
 
   const Card = ({ children }: { children: React.ReactNode }) => (
     <div id="sec-avis" className="scroll-mt-28 mb-6 p-5 bg-secondary-container/20 border border-secondary/30 rounded-xl">
-      <h3 className="font-headline-md text-headline-md text-primary mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-[20px]">rate_review</span>
-        Votre avis sur cette recette
-      </h3>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">rate_review</span>
+          Votre avis sur cette recette
+        </h3>
+        {/* Masquage définitif sur cette fournée seulement — une autre fournée
+            terminée de la même recette continuera de proposer l'avis. */}
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Ne plus afficher pour cette fournée"
+          aria-label="Ne plus afficher pour cette fournée"
+          className="shrink-0 -mt-1 -mr-1 p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
       {children}
     </div>
   );

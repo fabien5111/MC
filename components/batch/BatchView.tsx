@@ -169,7 +169,7 @@ export function BatchView({
   // d'entrée principal. Donner son avis n'est pas modifier la fournée.
   // Seule l'impersonation lecture seule reste bloquante (garde réelle,
   // revérifiée côté serveur par la route avec la propriété de la fournée).
-  const canReview = batch.status === 'terminee' && !impersonationReadOnly;
+  const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly;
 
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une
@@ -233,6 +233,28 @@ export function BatchView({
       return;
     }
     setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
+    startResume(() => router.refresh());
+  }
+
+  // « Ne plus afficher » la carte d'avis, pour cette fournée seulement : une
+  // autre fournée terminée de la même recette continuera de la proposer (la
+  // marque est sur `batches`, pas sur la recette). Masquage optimiste — la
+  // carte disparaît dès l'écriture aboutie, sans attendre le rendu serveur
+  // (cf. CLAUDE.md « Suppression optimiste dans une liste ») ; c'est aussi
+  // pour ça que la mutation est portée ICI et non par `BatchReview`, qui se
+  // démonte aussitôt et emporterait sa transition avec lui.
+  async function dismissReview() {
+    if (!writeGuard('Masquage de la carte d’avis')) return;
+    setBusy(true);
+    // `review_dismissed` absente de lib/database.types.ts tant que la
+    // migration n'a pas été régénérée (npm run gen:types).
+    const { error } = await (createClient() as any).from('batches').update({ review_dismissed: true }).eq('id', batch.id);
+    setBusy(false);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      return;
+    }
+    setBatch((b) => ({ ...b, review_dismissed: true }));
     startResume(() => router.refresh());
   }
 
@@ -311,7 +333,9 @@ export function BatchView({
             Préparer/Cuisiner (donc visible quel que soit l'onglet ouvert par
             défaut à l'arrivée sur une fournée terminée), pas seulement en
             mode Cuisiner. */}
-        {canReview && <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} />}
+        {canReview && (
+          <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} onDismiss={dismissReview} />
+        )}
 
         <div className="flex items-center gap-2 mb-6">
           <button
