@@ -312,6 +312,35 @@ export default async function RecettePage({ params, searchParams }: Params) {
           <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} isAdmin={userIsAdmin} />
           </div>
 
+          {/* Mes fournées terminées — historique personnel, replié par
+              défaut. Absent de l'impression : sans intérêt sur la fiche
+              papier de la recette. */}
+          {completedBatches.length > 0 && (
+            <details className="no-print group border border-outline-variant mb-12">
+              <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
+                <span className="font-label-md text-label-md text-primary">
+                  MES FOURNÉES TERMINÉES ({completedBatches.length})
+                </span>
+                <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+              </summary>
+              <div className="p-4 bg-white">
+                <ul className="divide-y divide-outline-variant/30">
+                  {completedBatches.map((b) => (
+                    <li key={b.id} className="py-3 flex items-center justify-between gap-4 flex-wrap">
+                      <Link href={`/fournee/${b.id}?mode=preparer`} className="font-body-md text-body-md text-primary underline underline-offset-2 hover:text-secondary">
+                        {formatDate(b.date_fin ?? b.planned_date)}
+                      </Link>
+                      <span className="flex items-center gap-3 text-on-surface-variant font-label-md text-label-md flex-wrap">
+                        <span className="bg-surface-variant px-2 py-1">× {fmtNum(batchFactor(b))}</span>
+                        {b.user_note && <span className="italic">{b.user_note}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </details>
+          )}
+
           {/* Hero */}
           {recipe.hero_image_url && (
             <div className="print-hero relative w-full aspect-[16/9] mb-12 overflow-hidden ambient-shadow border border-outline-variant">
@@ -743,35 +772,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </h3>
               <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{recipe.serving_advice}</p>
             </div>
-          )}
-
-          {/* Mes fournées terminées — historique personnel, replié par
-              défaut. Absent de l'impression : sans intérêt sur la fiche
-              papier de la recette. */}
-          {completedBatches.length > 0 && (
-            <details className="no-print group border border-outline-variant mt-12">
-              <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                <span className="font-label-md text-label-md text-primary">
-                  MES FOURNÉES TERMINÉES ({completedBatches.length})
-                </span>
-                <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 bg-white">
-                <ul className="divide-y divide-outline-variant/30">
-                  {completedBatches.map((b) => (
-                    <li key={b.id} className="py-3 flex items-center justify-between gap-4 flex-wrap">
-                      <Link href={`/fournee/${b.id}`} className="font-body-md text-body-md text-primary underline underline-offset-2 hover:text-secondary">
-                        {formatDate(b.date_fin ?? b.planned_date)}
-                      </Link>
-                      <span className="flex items-center gap-3 text-on-surface-variant font-label-md text-label-md flex-wrap">
-                        <span className="bg-surface-variant px-2 py-1">× {fmtNum(batchFactor(b))}</span>
-                        {b.user_note && <span className="italic">{b.user_note}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </details>
           )}
         </div>
         </PlanProvider>
