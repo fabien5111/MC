@@ -32,6 +32,7 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import {
   fmtNum,
+  BATCH_STATUS_LBL,
   batchDayLabel,
   batchFactor,
   batchIngredientExcluded,
@@ -71,11 +72,6 @@ const stepDur = (s: BatchStepRow) => {
 const jalonDur = (j: BatchJalon) => j.steps.reduce((n, s) => n + stepDur(s), 0);
 const jalonLabel = (j: BatchJalon) => (j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J');
 const jalonAnchorId = (ji: number) => `sec-jalon-${ji}`;
-const STATUS_LBL: Record<string, { label: string; cls: string }> = {
-  planifiee: { label: 'En cours', cls: 'bg-secondary' },
-  terminee: { label: 'Terminée', cls: 'bg-green-700' },
-  abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
-};
 const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
 
 type Photo = { url: string; ai_retouched: boolean };
@@ -248,8 +244,8 @@ export function BatchView({
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
           <span className="flex items-center gap-3">
-            <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
-              {STATUS_LBL[batch.status]?.label || batch.status}
+            <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
+              {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
             </span>
             {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
               <button
