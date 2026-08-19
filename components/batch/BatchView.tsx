@@ -249,9 +249,10 @@ export function BatchView({
               <button
                 type="button"
                 onClick={resumeBatch}
-                className="flex items-center gap-1 font-label-md text-[12px] text-primary hover:underline"
+                className="flex items-center gap-1 font-label-md text-[12px] text-primary"
               >
-                <span className="material-symbols-outlined text-[16px]">restart_alt</span> Reprendre cette fournée
+                <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                <span className="hover:underline">Reprendre cette fournée</span>
               </button>
             )}
           </span>
@@ -850,7 +851,7 @@ function CuisinerView({
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="max-w-[900px] mx-auto flex gap-3">
             <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">flag</span> Terminer ma fournée
+              <span className="material-symbols-outlined text-[18px]">flag</span> Marquer ma fournée comme terminée
             </button>
             <button
               type="button"
