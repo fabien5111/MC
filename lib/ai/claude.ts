@@ -26,6 +26,12 @@ export const MODERATION_MODEL = process.env.MODERATION_MODEL || 'claude-sonnet-5
 // façon tranchés en faveur de l'inscrit (cf. lib/ai/pseudo-moderation.ts).
 export const PSEUDO_MODERATION_MODEL = process.env.PSEUDO_MODERATION_MODEL || 'claude-haiku-4-5';
 
+// Modèle du contrôle des AVIS (note + commentaire d'une fournée terminée sur
+// sa recette d'origine). Comme pour les pseudos : l'IA ne fait qu'assister un
+// modérateur humain qui tranche toujours (cf. lib/ai/comment-moderation.ts),
+// donc la latence prime sur la finesse du jugement.
+export const COMMENT_MODERATION_MODEL = process.env.COMMENT_MODERATION_MODEL || 'claude-haiku-4-5';
+
 // Consommation réelle renvoyée par l'API à chaque appel (bloc `usage`). Sert à
 // calculer le coût exact d'un import plutôt que de l'estimer (cf. lib/ai/cost.ts).
 export type ClaudeUsage = {

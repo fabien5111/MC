@@ -459,6 +459,66 @@ directes :
   que soit le propriétaire. `owns_execution()` ne sert plus qu'aux policies
   des tables `*_legacy`.
 
+## Avis sur une recette (note + commentaire)
+
+Une fournée **terminée** (`batches.status = 'terminee'`) propose de noter et
+commenter la recette d'origine — réutilise la table `comments` déjà en place
+(modération admin déjà câblée avant même cette fonctionnalité) plutôt que
+d'en créer une nouvelle.
+
+- **Un seul avis par recette et par membre** (index unique
+  `comments(recipe_id, user_id)`), jamais un avis par fournée : une même
+  recette cuisinée plusieurs fois n'accumule pas les avis du même membre.
+  Conséquence directe sur l'affichage : le bouton « Donner votre avis »
+  apparaît sur **toute** fournée terminée de cette recette tant qu'aucun avis
+  n'existe (`BatchReview`, mode Cuisiner — même emplacement que le résumé de
+  fin de fournée), et disparaît des autres dès qu'un avis est déposé, quel
+  que soit son statut. `comments.batch_id` trace la fournée d'origine — seule
+  elle rouvre le formulaire en cas de refus.
+- **Commentaire obligatoire sous 3/5** (`lib/reviews.ts`
+  `reviewCommentRequired`) : une note basse sans explication n'aide ni
+  l'auteur ni les futurs lecteurs. Validé côté client ET dans la route
+  serveur (`POST /api/fournee/[id]/avis`) — jamais uniquement côté client,
+  même doctrine que la vérification de pseudo.
+- **Écriture par la route, jamais directement par le membre** : `comments`
+  n'a pas de policy RLS d'écriture pour un membre ordinaire — seule la route
+  serveur écrit, avec la clé service_role (`lib/reviews-data.ts`
+  `submitOrUpdateReview`), après avoir vérifié la propriété de la fournée, son
+  statut `terminee`, et l'absence d'un avis concurrent pour cette recette.
+  Même doctrine que `enregistrerPseudo` : le navigateur ne pose jamais lui-
+  même `status`, `ai_score` ou `batch_id`.
+- **Score IA indicatif, jamais bloquant** (`lib/ai/comment-moderation.ts`,
+  modèle `COMMENT_MODERATION_MODEL`) : 0 à 100, probabilité que le texte soit
+  injurieux ou inapproprié — affiché à l'admin (Admin → Commentaires) pour
+  prioriser sa file, jamais utilisé pour publier ou refuser automatiquement :
+  **tout** avis commenté passe devant un modérateur humain. Best-effort,
+  comme la modération des pseudos : clé absente, panne ou réponse illisible →
+  score neutre (50), l'avis part quand même en modération.
+- **Modération humaine à deux issues** (Admin → Commentaires,
+  `AdminDashboard`) : Approuver (`status = 'approved'`, publié) ou Refuser
+  avec motif (`status = 'rejected'`, `rejection_reason`) — motif saisi par
+  `dialog.prompt`, même geste que « Rejeter avec motif » sur les recettes
+  (`RecipesManager`). Spam et Supprimer restent disponibles pour l'abus
+  manifeste, sans motif à donner.
+- **Le motif de refus atterrit sur la fournée d'origine**, pas seulement sur
+  la ligne `comments` : le trigger SQL `comments_sync_batch_review` recopie
+  `status`/`rejection_reason` vers `batches.review_status` /
+  `review_rejection_reason` à chaque changement (et réinitialise à `none` si
+  la ligne est supprimée). C'est ce qui permet à `BatchReview` de rouvrir un
+  formulaire pré-rempli avec le motif, sans requête supplémentaire ni lien
+  entre écrans à maintenir à la main.
+- **Note moyenne recalculée, jamais accumulée à la main** : le trigger SQL
+  `comments_recompute_recipe_rating` réécrit `recipes.rating_avg` /
+  `rating_count` depuis les commentaires `approved` à chaque changement —
+  même doctrine que `author_ratings` (pas de dérive silencieuse possible).
+  Ces deux colonnes existaient déjà et étaient déjà affichées sous le titre
+  de la fiche recette ; c'est l'absence d'écriture dans `comments` qui les
+  laissait à zéro jusqu'ici.
+- **Affichage** : note + nombre d'avis sous le titre (`app/recette/[id]`,
+  déjà en place), avis publiés en bas de fiche (`RecipeComments`, section
+  `#sec-commentaires`, uniquement les `approved` — filtré par la RLS, pas
+  par le composant).
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
@@ -642,6 +702,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |
 | `PSEUDO_MODERATION_MODEL` | Modèle du contrôle des pseudos à l'inscription (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
+| `COMMENT_MODERATION_MODEL` | Modèle du score IA sur les avis d'une fournée terminée (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 | `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
 

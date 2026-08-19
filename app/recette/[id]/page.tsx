@@ -10,6 +10,7 @@ import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingLists } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
+import { getApprovedComments } from '@/lib/reviews-data';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -29,6 +30,7 @@ import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
+import { RecipeComments } from '@/components/recipe/RecipeComments';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -58,7 +60,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     );
   }
 
-  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads, defaultPhoto] = await Promise.all([
+  const [user, favIds, units, suggestionsRaw, moldTypes, allergenRefs, conversions, ads, defaultPhoto, comments] = await Promise.all([
     getCurrentUser(),
     getFavoriteIds(),
     getUnits(),
@@ -68,6 +70,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getIngredientConversions(),
     getActiveAds(['recipe_inline', 'sidebar']),
     getRecipeDefaultPhoto(),
+    getApprovedComments(recipe.id),
   ]);
   const isOwner = !!user && recipe.author_id === user.id;
   // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
@@ -177,6 +180,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
     after: [
       ...(recipe.tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
       ...(recipe.serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
+      ...(comments.length > 0 ? [{ id: 'sec-commentaires', label: `Avis (${comments.length})`, icon: 'rate_review', level: 1 as const }] : []),
     ],
   };
   const tocSteps = steps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
@@ -740,6 +744,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{recipe.serving_advice}</p>
             </div>
           )}
+
+          <RecipeComments comments={comments} />
         </div>
         </PlanProvider>
 

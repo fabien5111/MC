@@ -21,6 +21,8 @@ import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
+import { BatchReview } from '@/components/batch/BatchReview';
+import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
@@ -123,6 +125,7 @@ export function BatchView({
   allergenRefs,
   lecture,
   initialMode,
+  myReview,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -132,6 +135,10 @@ export function BatchView({
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
   lecture: boolean;
+  // Avis (note + commentaire) courant du membre pour la recette d'origine —
+  // `null` si aucun avis n'a encore été déposé, quelle que soit la fournée.
+  // cf. CLAUDE.md « Avis sur une recette ».
+  myReview: MyRecipeReview | null;
   // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
   // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
   // l'ajustement se fait au calme avant de passer aux fourneaux.
@@ -153,6 +160,12 @@ export function BatchView({
   const [resuming, startResume] = useTransition();
 
   const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
+  // Avis sur la recette d'origine : uniquement depuis la fournée du
+  // propriétaire, jamais en consultation (lien partagé) ni en impersonation
+  // lecture seule — même périmètre que l'action bar de fin de fournée.
+  // Distinct de `readOnly` : une fournée `terminee` est déjà en lecture
+  // seule pour ses étapes, mais doit rester écrivable pour ce formulaire.
+  const canReview = batch.status === 'terminee' && !lecture && !impersonationReadOnly;
 
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une
@@ -334,6 +347,8 @@ export function BatchView({
             units={units}
             setBusy={setBusy}
             onSwitchMode={switchMode}
+            canReview={canReview}
+            myReview={myReview}
           />
         )}
       </div>
@@ -651,6 +666,8 @@ function CuisinerView({
   units,
   setBusy,
   onSwitchMode,
+  canReview,
+  myReview,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -659,6 +676,8 @@ function CuisinerView({
   units: UnitRef[];
   setBusy: (b: boolean) => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  canReview: boolean;
+  myReview: MyRecipeReview | null;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -848,6 +867,8 @@ function CuisinerView({
       </div>
 
       {batch.status !== 'planifiee' && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
+
+      {canReview && <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} />}
 
       {!readOnly && (
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>

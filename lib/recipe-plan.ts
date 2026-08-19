@@ -149,6 +149,14 @@ export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
   batch_steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[];
   batch_ingredients: BatchIngredientRow[];
   batch_utensils: BatchUtensilRow[];
+  // État de l'avis (note + commentaire) laissé sur la recette d'origine
+  // depuis CETTE fournée, synchronisé par le trigger SQL
+  // `comments_sync_batch_review` — cf. CLAUDE.md « Avis sur une recette ».
+  // Absentes de lib/database.types.ts tant que la migration n'a pas été
+  // régénérée (npm run gen:types) ; `BATCH_FULL_SELECT` (`*`) les renvoie
+  // déjà, seul le typage est en retard.
+  review_status: 'none' | 'pending' | 'approved' | 'rejected';
+  review_rejection_reason: string | null;
 };
 
 // ── Étape « déjà faite » ───────────────────────────────────────────────

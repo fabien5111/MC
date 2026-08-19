@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getAllergensWithPicto } from '@/lib/recipes';
+import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { BatchView } from '@/components/batch/BatchView';
 
@@ -62,12 +63,13 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, shoppingListsRaw, baseRecipe, allergenRefs] = await Promise.all([
+  const [units, conversions, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
     getUnits(),
     getIngredientConversions(),
     getShoppingLists(batch.user_id!),
     getBaseRecipeInfo(batch.recipe_id),
     getAllergensWithPicto(),
+    batch.recipe_id ? getMyRecipeReview(batch.recipe_id, batch.user_id!) : Promise.resolve(null),
   ]);
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
@@ -86,6 +88,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
       allergenRefs={allergenRefs}
       lecture={lecture === '1'}
       initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
+      myReview={myReview}
     />
   );
 }

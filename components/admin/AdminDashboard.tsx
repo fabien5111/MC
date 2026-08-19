@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import type { AdminRecipeRow, PendingComment, AiCosts, AiCostCategory, AiCostSummary } from '@/lib/admin';
 
 // Montants déjà convertis côté serveur (le taux €/$ est une variable
@@ -41,7 +42,24 @@ export function AdminDashboard({
   aiCosts: AiCosts;
 }) {
   const { mutate } = useMutation();
+  const dialog = useDialog();
   const sb = () => createClient();
+
+  async function refuserCommentaire(id: number) {
+    // « Refuser avec motif » (cf. CLAUDE.md « Avis sur une recette ») : le
+    // motif est repris sur la fournée d'origine par le trigger SQL
+    // `comments_sync_batch_review`, qui rouvre le formulaire pour
+    // resoumission — même principe que « Rejeter avec motif » des recettes
+    // (RecipesManager).
+    const motif = await dialog.prompt('Motif du refus :', {
+      required: true,
+      placeholder: "Ex. : commentaire hors sujet, ton agressif envers l'auteur…",
+    });
+    if (motif === null) return;
+    // `rejection_reason` absente de lib/database.types.ts tant que la
+    // migration n'a pas été régénérée (npm run gen:types).
+    mutate(() => (sb() as any).from('comments').update({ status: 'rejected', rejection_reason: motif.trim() }).eq('id', id));
+  }
 
   const cards = [
     { icon: 'menu_book', label: 'Total Recettes', value: stats.totalRecipes.toLocaleString('fr-FR'), badge: '+12%', badgeCls: 'text-on-tertiary-container' },
@@ -213,14 +231,16 @@ export function AdminDashboard({
               <tr>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Recette</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Utilisateur</th>
+                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Note</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Aperçu</th>
+                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Score IA</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
               {comments.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-8 py-10 text-center text-on-surface-variant">
+                  <td colSpan={6} className="px-8 py-10 text-center text-on-surface-variant">
                     Aucun commentaire en attente.
                   </td>
                 </tr>
@@ -244,7 +264,28 @@ export function AdminDashboard({
                         <span>{c.profiles?.full_name || '—'}</span>
                       </div>
                     </td>
+                    <td className="px-8 py-5 whitespace-nowrap">{c.rating ? `${c.rating}/5` : '—'}</td>
                     <td className="px-8 py-5 italic text-on-surface-variant">&quot;{c.content.substring(0, 80)}…&quot;</td>
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      {/* Score IA (§ Avis) : probabilité que le texte soit inapproprié, à
+                          titre indicatif — la décision reste humaine. */}
+                      {c.ai_score == null ? (
+                        <span className="text-on-surface-variant">—</span>
+                      ) : (
+                        <span
+                          title={c.ai_reason || undefined}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            c.ai_score >= 85
+                              ? 'bg-error-container text-on-error-container'
+                              : c.ai_score >= 51
+                                ? 'bg-tertiary-container text-on-tertiary-container'
+                                : 'bg-surface-container-highest text-on-surface-variant'
+                          }`}
+                        >
+                          {c.ai_score}%
+                        </span>
+                      )}
+                    </td>
                     <td className="px-8 py-5 text-right">
                       <div className="flex justify-end gap-2">
                         <button
@@ -252,6 +293,12 @@ export function AdminDashboard({
                           className="px-3 py-1 bg-primary text-surface-bright rounded text-xs font-label-md hover:bg-primary-container transition-colors"
                         >
                           Approuver
+                        </button>
+                        <button
+                          onClick={() => refuserCommentaire(c.id)}
+                          className="px-3 py-1 border border-error text-error text-xs font-label-md hover:bg-error-container transition-colors"
+                        >
+                          Refuser
                         </button>
                         <button
                           onClick={() => mutate(() => sb().from('comments').update({ status: 'spam' }).eq('id', c.id))}

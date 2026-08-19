@@ -60,6 +60,13 @@ export type PendingComment = {
   created_at: string | null;
   profiles: { full_name: string | null } | null;
   recipes: { title: string | null } | null;
+  // Note (avis fournée, cf. CLAUDE.md « Avis sur une recette ») et score IA
+  // (0-100, probabilité que le texte soit inapproprié) — absentes de
+  // lib/database.types.ts tant que la migration n'a pas été régénérée
+  // (npm run gen:types), comme `moderation_note` sur les recettes.
+  rating?: number | null;
+  ai_score?: number | null;
+  ai_reason?: string | null;
 };
 
 export async function getAdminStats(): Promise<{ totalRecipes: number; pendingRecipes: number; pendingComments: number }> {
@@ -349,6 +356,7 @@ export async function getPendingComments(): Promise<PendingComment[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('comments')
+    // `rating, ai_score, ai_reason` : cf. PendingComment ci-dessus.
     .select('*, profiles(full_name), recipes(title)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
