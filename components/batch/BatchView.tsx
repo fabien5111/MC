@@ -8,7 +8,7 @@
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -149,6 +149,12 @@ export function BatchView({
   useEffect(() => setBatch(initialBatch), [initialBatch]);
   const [mode, setMode] = useState<'preparer' | 'cuisiner'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
+  // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
+  // attendable, donc `resumeBatch` doit garder le voile affiché jusqu'à ce
+  // que la resynchronisation soit effective (cf. CLAUDE.md « busy couvre
+  // aussi la resynchronisation »), sans quoi le spinner s'éteindrait avant
+  // que le statut « en cours » ne soit revenu du serveur.
+  const [resuming, startResume] = useTransition();
 
   const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
 
@@ -214,7 +220,7 @@ export function BatchView({
       return;
     }
     setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
-    router.refresh();
+    startResume(() => router.refresh());
   }
 
   const dateTxt = batch.planned_date
@@ -237,7 +243,7 @@ export function BatchView({
       </header>
 
       <div className="max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
-        <LoadingOverlay visible={busy} label="Enregistrement…" />
+        <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
