@@ -25,6 +25,15 @@ const numify = (v: unknown): number | null => {
 const round2 = (n: number): number => +n.toFixed(2);
 export const fmtNum = (n: number): string => String(round2(n)).replace('.', ',');
 
+// Libellé + couleur du statut d'une fournée, partagés entre l'écran
+// /fournee/[id] (badge d'en-tête) et « Mes fournées » (liste des terminées) —
+// une seule source pour ne pas laisser dériver le vocabulaire entre les deux.
+export const BATCH_STATUS_LBL: Record<string, { label: string; cls: string }> = {
+  planifiee: { label: 'En cours', cls: 'bg-secondary' },
+  terminee: { label: 'Terminée', cls: 'bg-green-700' },
+  abandonnee: { label: 'Abandonnée', cls: 'bg-error' },
+};
+
 export function batchFactor(batch: Pick<BatchEntry, 'factor'> | null): number {
   return batch && batch.factor && batch.factor > 0 ? batch.factor : 1;
 }

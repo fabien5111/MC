@@ -32,7 +32,7 @@ import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
-import { BATCH_FULL_SELECT, type BatchFull } from '@/lib/recipe-plan';
+import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 
 type PlanningView = 'jours' | 'recettes';
@@ -476,6 +476,9 @@ export function CuisineContent({
                         </p>
                       </div>
                     </Link>
+                    <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-1 rounded-full text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
+                      {BATCH_STATUS_LBL[p.status]?.label || p.status}
+                    </span>
                     <button
                       type="button"
                       title="Refaire cette fournée"
