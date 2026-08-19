@@ -46,6 +46,20 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     startRefresh(() => router.refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Ce rafraîchissement aboutit quasi toujours instantanément (rien n'avait
+  // changé) : l'afficher sans délai faisait tourner le fouet une fraction de
+  // seconde derrière une page déjà rendue et à jour, à chaque arrivée sur
+  // l'écran. Même délai que NavigationSpinner (120 ms) avant de le montrer —
+  // passé inaperçu si la resynchronisation a déjà fini.
+  const [showRefreshSpinner, setShowRefreshSpinner] = useState(false);
+  useEffect(() => {
+    if (!refreshing) {
+      setShowRefreshSpinner(false);
+      return;
+    }
+    const t = setTimeout(() => setShowRefreshSpinner(true), 120);
+    return () => clearTimeout(t);
+  }, [refreshing]);
 
   const groups = groupPlanningStepsByDate(list);
 
@@ -207,7 +221,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy || refreshing} label={refreshing ? 'Actualisation…' : 'Réorganisation en cours…'} />
+      <LoadingOverlay visible={busy || showRefreshSpinner} label={showRefreshSpinner ? 'Actualisation…' : 'Réorganisation en cours…'} />
       {pendingGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
           <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>
