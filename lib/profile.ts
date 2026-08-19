@@ -183,6 +183,35 @@ export async function getBatch(id: number): Promise<BatchFull | null> {
   return batch;
 }
 
+// Fournées terminées d'un utilisateur pour une recette donnée — affichées
+// dans un bloc repliable sur la fiche recette. RLS (`owns_plan()`) limite
+// déjà la lecture aux fournées du visiteur connecté : aucune fournée d'un
+// autre utilisateur ne peut remonter ici, même sur une recette publique.
+// Tri décroissant sur la date de clôture réelle (`date_fin`), avec repli sur
+// la date prévue (`planned_date`) pour les fournées sans `date_fin` — d'où le
+// tri en JS plutôt qu'un simple `.order()` PostgREST (pas de COALESCE côté
+// requêteur).
+export type CompletedBatchRow = {
+  id: number;
+  planned_date: string | null;
+  date_fin: string | null;
+  factor: number;
+  user_note: string | null;
+};
+
+export async function getRecipeCompletedBatches(userId: string, recipeId: string): Promise<CompletedBatchRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('batches')
+    .select('id, planned_date, date_fin, factor, user_note')
+    .eq('user_id', userId)
+    .eq('recipe_id', recipeId)
+    .eq('status', 'terminee');
+  if (error) console.error('getRecipeCompletedBatches:', error.message);
+  const rows = (data as unknown as CompletedBatchRow[]) ?? [];
+  return rows.sort((a, b) => (b.date_fin ?? b.planned_date ?? '').localeCompare(a.date_fin ?? a.planned_date ?? ''));
+}
+
 export async function getUnits(): Promise<Unit[]> {
   const supabase = await createClient();
   const { data } = await supabase.from('units').select('*').order('name');

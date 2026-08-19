@@ -460,7 +460,7 @@ export function CuisineContent({
                 const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
                 return (
                   <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
-                    <Link href={`/fournee/${p.id}?lecture=1`} className="flex flex-1 items-center gap-4 min-w-0">
+                    <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                         {p.recipes?.hero_image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
