@@ -27,6 +27,11 @@ type BaseRecipeInfo = {
   heroImageUrl: string | null;
   heroImageAiRetouched: boolean;
   stepPhotosBySourceStepId: Record<number, { url: string; ai_retouched: boolean }[]>;
+  // Auteur de la recette de base — pour le lien « Voir la recette d'origine »
+  // + signature affichés sur la fournée (même pattern que la fiche recette :
+  // repli sur `author_id` si l'auteur n'a pas encore choisi de pseudo).
+  authorId: string | null;
+  author: { username: string | null; fullName: string | null; avatarUrl: string | null } | null;
 };
 
 async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInfo | null> {
@@ -34,7 +39,9 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
   const supabase = await createClient();
   const { data } = await supabase
     .from('recipes')
-    .select('id, updated_at, hero_image_url, hero_image_ai_retouched, recipe_steps(id, step_photos(url, ai_retouched, order_index))')
+    .select(
+      'id, updated_at, hero_image_url, hero_image_ai_retouched, author_id, profiles(username, full_name, avatar_url), recipe_steps(id, step_photos(url, ai_retouched, order_index))',
+    )
     .eq('id', recipeId)
     .maybeSingle();
   if (!data) return null;
@@ -44,12 +51,15 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
       .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
       .map((p) => ({ url: p.url, ai_retouched: p.ai_retouched }));
   });
+  const profile = data.profiles as unknown as { username: string | null; full_name: string | null; avatar_url: string | null } | null;
   return {
     id: data.id,
     updatedAt: data.updated_at,
     heroImageUrl: data.hero_image_url,
     heroImageAiRetouched: data.hero_image_ai_retouched,
     stepPhotosBySourceStepId,
+    authorId: data.author_id,
+    author: profile ? { username: profile.username, fullName: profile.full_name, avatarUrl: profile.avatar_url } : null,
   };
 }
 
