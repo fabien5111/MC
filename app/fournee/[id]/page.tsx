@@ -37,13 +37,14 @@ type BaseRecipeInfo = {
 async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInfo | null> {
   if (!recipeId) return null;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('recipes')
     .select(
-      'id, updated_at, hero_image_url, hero_image_ai_retouched, author_id, profiles(username, full_name, avatar_url), recipe_steps(id, step_photos(url, ai_retouched, order_index))',
+      'id, updated_at, hero_image_url, hero_image_ai_retouched, author_id, profiles!recipes_author_id_fkey(username, full_name, avatar_url), recipe_steps(id, step_photos(url, ai_retouched, order_index))',
     )
     .eq('id', recipeId)
     .maybeSingle();
+  if (error) console.error('getBaseRecipeInfo:', error.message);
   if (!data) return null;
   const stepPhotosBySourceStepId: Record<number, { url: string; ai_retouched: boolean }[]> = {};
   (data.recipe_steps || []).forEach((s: { id: number; step_photos: { url: string; ai_retouched: boolean; order_index: number | null }[] }) => {
