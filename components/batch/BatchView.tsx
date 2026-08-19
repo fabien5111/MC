@@ -83,6 +83,8 @@ type BaseRecipeInfo = {
   heroImageUrl: string | null;
   heroImageAiRetouched: boolean;
   stepPhotosBySourceStepId: Record<number, Photo[]>;
+  authorId: string | null;
+  author: { username: string | null; fullName: string | null; avatarUrl: string | null } | null;
 } | null;
 
 // Rendement à l'échelle de base de la recette (avant ajustement de la
@@ -501,6 +503,39 @@ function PreparerView({
           <AllergenPictosView items={allergenItems} className="justify-center pt-4 border-t border-outline-variant/40" iconClassName="w-8 h-8" />
         )}
       </div>
+
+      {/* Recette d'origine — absente si la recette de base n'est plus
+          accessible (supprimée/dépubliée), même repli que le bandeau
+          d'avertissement plus haut. Même pattern que la signature de la
+          fiche recette (avatar + nom vers /u/[handle]). */}
+      {baseRecipe && (
+        <div className="flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
+          <Link href={`/recette/${baseRecipe.id}`} className="text-primary underline underline-offset-2 hover:text-secondary">
+            Voir la recette d&apos;origine
+          </Link>
+          {baseRecipe.authorId && (
+            <span className="flex items-center gap-2">
+              Par
+              <Link
+                className="flex items-center gap-2 hover:text-primary transition-colors"
+                href={`/u/${baseRecipe.author?.username || baseRecipe.authorId}`}
+              >
+                <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
+                  {baseRecipe.author?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                    <img src={baseRecipe.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant flex items-center justify-center w-full h-full">
+                      person
+                    </span>
+                  )}
+                </span>
+                <span className="border-b border-primary">{baseRecipe.author?.fullName || 'Auteur'}</span>
+              </Link>
+            </span>
+          )}
+        </div>
+      )}
 
       {batch.recipe_description && (
         <div id="sec-description" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
