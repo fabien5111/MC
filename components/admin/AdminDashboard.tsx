@@ -1,13 +1,14 @@
 'use client';
 
-// Tableau de bord admin (porté de admin.html) : stats, recettes en attente
-// (approuver/supprimer), commentaires en attente (approuver/spam/supprimer).
+// Tableau de bord admin (porté de admin.html) : stats, coût IA, recettes en
+// attente (approuver/supprimer). La modération des avis a son propre écran
+// (/admin/commentaires, `CommentsManager`) — elle vivait ici en simple ancre
+// `#comments`, invisible depuis la barre latérale une fois la file ouverte.
 // Mutations via useMutation (écriture navigateur + resynchro serveur).
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import { useDialog } from '@/components/Dialog';
-import type { AdminRecipeRow, PendingComment, AiCosts, AiCostCategory, AiCostSummary } from '@/lib/admin';
+import type { AdminRecipeRow, AiCosts, AiCostCategory, AiCostSummary } from '@/lib/admin';
 
 // Montants déjà convertis côté serveur (le taux €/$ est une variable
 // d'environnement serveur) : ici, formatage seul.
@@ -33,53 +34,38 @@ function CoutCellule({ d }: { d: AiCostSummary }) {
 export function AdminDashboard({
   stats,
   pending,
-  comments,
   aiCosts,
 }: {
   stats: { totalRecipes: number; pendingRecipes: number; pendingComments: number };
   pending: AdminRecipeRow[];
-  comments: PendingComment[];
   aiCosts: AiCosts;
 }) {
   const { mutate } = useMutation();
-  const dialog = useDialog();
   const sb = () => createClient();
 
-  async function refuserCommentaire(id: number) {
-    // « Refuser avec motif » (cf. CLAUDE.md « Avis sur une recette ») : le
-    // motif est repris sur la fournée d'origine par le trigger SQL
-    // `comments_sync_batch_review`, qui rouvre le formulaire pour
-    // resoumission — même principe que « Rejeter avec motif » des recettes
-    // (RecipesManager).
-    const motif = await dialog.prompt('Motif du refus :', {
-      required: true,
-      placeholder: "Ex. : commentaire hors sujet, ton agressif envers l'auteur…",
-    });
-    if (motif === null) return;
-    // `rejection_reason` absente de lib/database.types.ts tant que la
-    // migration n'a pas été régénérée (npm run gen:types).
-    mutate(() => (sb() as any).from('comments').update({ status: 'rejected', rejection_reason: motif.trim() }).eq('id', id));
-  }
-
   const cards = [
-    { icon: 'menu_book', label: 'Total Recettes', value: stats.totalRecipes.toLocaleString('fr-FR'), badge: '+12%', badgeCls: 'text-on-tertiary-container' },
-    { icon: 'pending_actions', label: 'En Attente', value: String(stats.pendingRecipes), badge: 'Priorité', badgeCls: 'text-error' },
-    { icon: 'chat_bubble', label: 'Nouveaux Commentaires', value: String(stats.pendingComments), badge: "Aujourd'hui", badgeCls: 'text-on-tertiary-container' },
-    { icon: 'group', label: 'Utilisateurs Actifs', value: '8,5k', badge: 'Actifs', badgeCls: 'text-on-tertiary-container' },
+    { icon: 'menu_book', label: 'Total Recettes', value: stats.totalRecipes.toLocaleString('fr-FR'), badge: '+12%', badgeCls: 'text-on-tertiary-container', href: '/admin/recettes' },
+    { icon: 'pending_actions', label: 'En Attente', value: String(stats.pendingRecipes), badge: 'Priorité', badgeCls: 'text-error', href: '/admin/recettes' },
+    { icon: 'chat_bubble', label: 'Avis à modérer', value: String(stats.pendingComments), badge: 'À valider', badgeCls: 'text-on-tertiary-container', href: '/admin/commentaires' },
+    { icon: 'group', label: 'Utilisateurs Actifs', value: '8,5k', badge: 'Actifs', badgeCls: 'text-on-tertiary-container', href: '/admin/membres' },
   ];
 
   return (
     <main className="flex-1 overflow-y-auto p-gutter lg:px-margin-desktop lg:py-12 bg-surface">
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-12">
         {cards.map((c) => (
-          <div key={c.label} className="bg-surface-container-low border border-tertiary/10 p-8 rounded-xl">
+          <Link
+            key={c.label}
+            href={c.href}
+            className="bg-surface-container-low border border-tertiary/10 p-8 rounded-xl block hover:border-primary/40 transition-colors"
+          >
             <div className="flex justify-between items-start mb-4">
               <span className="material-symbols-outlined text-primary-container p-2 bg-primary-fixed rounded-lg">{c.icon}</span>
               <span className={`text-xs font-label-md tracking-wider ${c.badgeCls}`}>{c.badge}</span>
             </div>
             <h3 className="font-label-md text-on-surface-variant uppercase tracking-widest text-xs mb-1">{c.label}</h3>
             <p className="font-headline-lg text-primary">{c.value}</p>
-          </div>
+          </Link>
         ))}
       </section>
 
@@ -202,115 +188,6 @@ export function AdminDashboard({
                           title="Supprimer"
                         >
                           <span className="material-symbols-outlined">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="comments">
-        <div className="flex items-baseline justify-between mb-6">
-          <h2 className="font-headline-md text-primary">Commentaires en attente</h2>
-          <div className="flex gap-2">
-            <button className="bg-surface-container border border-outline-variant px-4 py-1.5 rounded-full text-xs font-label-md text-on-surface-variant hover:bg-outline-variant transition-colors">
-              Filtrer par date
-            </button>
-            <button className="bg-surface-container border border-outline-variant px-4 py-1.5 rounded-full text-xs font-label-md text-on-surface-variant hover:bg-outline-variant transition-colors">
-              Actions groupées
-            </button>
-          </div>
-        </div>
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[720px]">
-            <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
-              <tr>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Recette</th>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Utilisateur</th>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Note</th>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Aperçu</th>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Score IA</th>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
-              {comments.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-8 py-10 text-center text-on-surface-variant">
-                    Aucun commentaire en attente.
-                  </td>
-                </tr>
-              ) : (
-                comments.map((c) => (
-                  <tr key={c.id} className="hover:bg-surface-container-low transition-colors">
-                    <td className="px-8 py-5 font-medium text-primary">
-                      {c.recipe_id ? (
-                        <Link href={`/recette/${c.recipe_id}`} className="hover:underline">
-                          {c.recipes?.title || '—'}
-                        </Link>
-                      ) : (
-                        c.recipes?.title || '—'
-                      )}
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-secondary-container text-[10px] flex items-center justify-center font-bold">
-                          {(c.profiles?.full_name || 'U').charAt(0)}
-                        </div>
-                        <span>{c.profiles?.full_name || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap">{c.rating ? `${c.rating}/5` : '—'}</td>
-                    <td className="px-8 py-5 italic text-on-surface-variant">&quot;{c.content.substring(0, 80)}…&quot;</td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      {/* Score IA (§ Avis) : probabilité que le texte soit inapproprié, à
-                          titre indicatif — la décision reste humaine. */}
-                      {c.ai_score == null ? (
-                        <span className="text-on-surface-variant">—</span>
-                      ) : (
-                        <span
-                          title={c.ai_reason || undefined}
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                            c.ai_score >= 85
-                              ? 'bg-error-container text-on-error-container'
-                              : c.ai_score >= 51
-                                ? 'bg-tertiary-container text-on-tertiary-container'
-                                : 'bg-surface-container-highest text-on-surface-variant'
-                          }`}
-                        >
-                          {c.ai_score}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => mutate(() => sb().from('comments').update({ status: 'approved' }).eq('id', c.id))}
-                          className="px-3 py-1 bg-primary text-surface-bright rounded text-xs font-label-md hover:bg-primary-container transition-colors"
-                        >
-                          Approuver
-                        </button>
-                        <button
-                          onClick={() => refuserCommentaire(c.id)}
-                          className="px-3 py-1 border border-error text-error text-xs font-label-md hover:bg-error-container transition-colors"
-                        >
-                          Refuser
-                        </button>
-                        <button
-                          onClick={() => mutate(() => sb().from('comments').update({ status: 'spam' }).eq('id', c.id))}
-                          className="px-3 py-1 border border-outline text-xs font-label-md hover:bg-surface-container transition-colors"
-                        >
-                          Spam
-                        </button>
-                        <button
-                          onClick={() => mutate(() => sb().from('comments').delete().eq('id', c.id), { confirm: 'Supprimer ?' })}
-                          className="px-3 py-1 border border-error text-error text-xs font-label-md hover:bg-error-container transition-colors"
-                        >
-                          Supprimer
                         </button>
                       </div>
                     </td>

@@ -363,6 +363,29 @@ export async function getPendingComments(): Promise<PendingComment[]> {
   return (data as unknown as PendingComment[]) ?? [];
 }
 
+// Avis de l'écran de modération dédié (Admin → Commentaires) : TOUS les
+// statuts, contrairement à `getPendingComments` — même besoin que
+// `getRejectedRecipes` pour les recettes, un refus doit rester consultable
+// (et rattrapable) après coup. Le tri par statut est fait côté composant.
+export type AdminComment = PendingComment & {
+  status: string | null;
+  rejection_reason?: string | null;
+  batch_id?: number | null;
+};
+
+export async function getAdminComments(): Promise<AdminComment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*, profiles(full_name), recipes(title)')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getAdminComments:', error.message);
+    return [];
+  }
+  return (data as unknown as AdminComment[]) ?? [];
+}
+
 // ── Boîte à idées (modération) ─────────────────────────────────────────
 // Contrairement à `listIdeas` (vue publique, RPC `list_ideas`), on veut ici
 // TOUTES les idées y compris fusionnées/refusées — visibilité complète pour

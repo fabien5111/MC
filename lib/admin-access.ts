@@ -31,7 +31,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
   { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
   { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
-  { href: '/admin#comments', label: 'Commentaires', icon: 'forum' },
+  { href: '/admin/commentaires', label: 'Commentaires', icon: 'forum' },
   { href: '/admin/inconnus', label: 'Éléments inconnus', icon: 'help' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },

@@ -162,12 +162,14 @@ export function BatchView({
   const [resuming, startResume] = useTransition();
 
   const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
-  // Avis sur la recette d'origine : uniquement depuis la fournée du
-  // propriétaire, jamais en consultation (lien partagé) ni en impersonation
-  // lecture seule — même périmètre que l'action bar de fin de fournée.
-  // Distinct de `readOnly` : une fournée `terminee` est déjà en lecture
-  // seule pour ses étapes, mais doit rester écrivable pour ce formulaire.
-  const canReview = batch.status === 'terminee' && !lecture && !impersonationReadOnly;
+  // Avis sur la recette d'origine. Volontairement indépendant de `readOnly`
+  // ET de `lecture` : une fournée terminée est toujours en lecture seule pour
+  // ses étapes, et « Fournées terminées » (/en-cuisine) l'ouvre justement en
+  // `?lecture=1` — s'y adosser rendait la carte invisible depuis son point
+  // d'entrée principal. Donner son avis n'est pas modifier la fournée.
+  // Seule l'impersonation lecture seule reste bloquante (garde réelle,
+  // revérifiée côté serveur par la route avec la propriété de la fournée).
+  const canReview = batch.status === 'terminee' && !impersonationReadOnly;
 
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une

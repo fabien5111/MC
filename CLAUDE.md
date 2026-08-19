@@ -471,10 +471,17 @@ d'en créer une nouvelle.
   recette cuisinée plusieurs fois n'accumule pas les avis du même membre.
   Conséquence directe sur l'affichage : le bouton « Donner votre avis »
   apparaît sur **toute** fournée terminée de cette recette tant qu'aucun avis
-  n'existe (`BatchReview`, mode Cuisiner — même emplacement que le résumé de
-  fin de fournée), et disparaît des autres dès qu'un avis est déposé, quel
-  que soit son statut. `comments.batch_id` trace la fournée d'origine — seule
-  elle rouvre le formulaire en cas de refus.
+  n'existe (`BatchReview`), et disparaît des autres dès qu'un avis est
+  déposé, quel que soit son statut. `comments.batch_id` trace la fournée
+  d'origine — seule elle rouvre le formulaire en cas de refus.
+- **La carte d'avis est au-dessus des onglets Préparer/Cuisiner**, et son
+  affichage (`canReview`) ne dépend **ni de `readOnly` ni de `lecture`** :
+  une fournée terminée est toujours en lecture seule pour ses étapes, et
+  « Fournées terminées » (`/en-cuisine`) l'ouvre justement en `?lecture=1` —
+  s'adosser à l'un ou l'autre rendait la carte invisible depuis son point
+  d'entrée principal. Donner son avis n'est pas modifier la fournée. Seule
+  l'impersonation lecture seule reste bloquante côté client ; la propriété
+  de la fournée et la session sont revérifiées par la route serveur.
 - **Commentaire obligatoire sous 3/5** (`lib/reviews.ts`
   `reviewCommentRequired`) : une note basse sans explication n'aide ni
   l'auteur ni les futurs lecteurs. Validé côté client ET dans la route
@@ -494,12 +501,17 @@ d'en créer une nouvelle.
   **tout** avis commenté passe devant un modérateur humain. Best-effort,
   comme la modération des pseudos : clé absente, panne ou réponse illisible →
   score neutre (50), l'avis part quand même en modération.
-- **Modération humaine à deux issues** (Admin → Commentaires,
-  `AdminDashboard`) : Approuver (`status = 'approved'`, publié) ou Refuser
+- **Modération humaine à deux issues** (`/admin/commentaires`,
+  `CommentsManager`) : Approuver (`status = 'approved'`, publié) ou Refuser
   avec motif (`status = 'rejected'`, `rejection_reason`) — motif saisi par
   `dialog.prompt`, même geste que « Rejeter avec motif » sur les recettes
   (`RecipesManager`). Spam et Supprimer restent disponibles pour l'abus
-  manifeste, sans motif à donner.
+  manifeste, sans motif à donner. **Écran dédié, trois files** (à valider /
+  refusés / publiés) comme `RecipesManager`, et non une section du tableau
+  de bord : la modération y vivait sous une simple ancre `/admin#comments`,
+  qui ne menait à aucun écran depuis la barre latérale et laissait un refus
+  prononcé introuvable ensuite. Réservé à l'admin complet
+  (`requireFullAdmin()` en tête de page, cf. « Rôles du back-office »).
 - **Le motif de refus atterrit sur la fournée d'origine**, pas seulement sur
   la ligne `comments` : le trigger SQL `comments_sync_batch_review` recopie
   `status`/`rejection_reason` vers `batches.review_status` /
