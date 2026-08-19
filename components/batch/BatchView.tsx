@@ -198,6 +198,25 @@ export function BatchView({
     router.push('/en-cuisine');
   }
 
+  // Reprendre une fournée abandonnée : repasse `status` à `planifiee` (et
+  // efface `date_fin`), ce qui suffit à rouvrir toutes les écritures — la
+  // fournée redevient une fournée « en cours » ordinaire, sans distinction
+  // avec une qui n'aurait jamais été abandonnée. Pas de symétrique pour
+  // « terminée » : seul l'abandon est présenté comme réversible (l'idée de
+  // « terminée » implique un jugement délibéré, pas une interruption).
+  async function resumeBatch() {
+    if (!writeGuard('Reprise de la fournée')) return;
+    setBusy(true);
+    const { error } = await createClient().from('batches').update({ status: 'planifiee', date_fin: null }).eq('id', batch.id);
+    setBusy(false);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      return;
+    }
+    setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
+    router.refresh();
+  }
+
   const dateTxt = batch.planned_date
     ? new Date(batch.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : '';
@@ -222,8 +241,19 @@ export function BatchView({
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
-          <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
-            {STATUS_LBL[batch.status]?.label || batch.status}
+          <span className="flex items-center gap-3">
+            <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
+              {STATUS_LBL[batch.status]?.label || batch.status}
+            </span>
+            {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
+              <button
+                type="button"
+                onClick={resumeBatch}
+                className="flex items-center gap-1 font-label-md text-[12px] text-primary hover:underline"
+              >
+                <span className="material-symbols-outlined text-[16px]">restart_alt</span> Reprendre cette fournée
+              </button>
+            )}
           </span>
         </div>
         <p className="text-on-surface-variant text-sm mb-4">
@@ -820,7 +850,7 @@ function CuisinerView({
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="max-w-[900px] mx-auto flex gap-3">
             <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">flag</span> Terminer
+              <span className="material-symbols-outlined text-[18px]">flag</span> Terminer ma fournée
             </button>
             <button
               type="button"
