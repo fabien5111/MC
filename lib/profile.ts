@@ -49,10 +49,15 @@ export type BatchListRow = {
     cook_time: number | null;
     cook_temp: number | null;
   }[];
+  // Pas d'image ici : ces listes n'affichent qu'une vignette (56-64 px), or
+  // `hero_image_url` est une data-URL pleine définition (jusqu'à 1400 px) —
+  // la sélectionner pour chaque fournée listée gonflait le payload RSC de
+  // plusieurs centaines de Ko sans bénéfice visuel. Les cartes retombent sur
+  // l'icône par défaut (cf. CuisineContent). L'image pleine définition reste
+  // chargée normalement sur la fiche d'une fournée (BATCH_FULL_SELECT).
   recipes: {
     id: string;
     title: string | null;
-    hero_image_url: string | null;
     prep_time: number | null;
     total_time: number | null;
   } | null;
@@ -83,16 +88,32 @@ export async function getFavorites(userId: string): Promise<FavoriteRow[]> {
 //   pour l'écran « Fournées terminées » (décision produit : une fournée
 //   terminée ne reste plus dans le planning actif, elle rejoint un écran
 //   dédié plutôt qu'un simple repli « Archivées »).
+// Fournées terminées/abandonnées : les plus récentes seulement. Sans borne,
+// cette requête (et le payload de la page « En cuisine ») grossit avec
+// l'ancienneté du compte, pour toujours — un utilisateur de longue date finit
+// par attendre le chargement de fournées vieilles de plusieurs années à
+// chaque visite. Pas de « voir plus » pour l'instant : au-delà de ce nombre,
+// les plus anciennes restent consultables depuis la fiche de leur recette
+// (getRecipeCompletedBatches), simplement plus depuis cet écran.
+const TERMINEES_LIMIT = 30;
+
 export async function getBatches(userId: string, scope: 'actives' | 'terminees' = 'actives'): Promise<BatchListRow[]> {
   const supabase = await createClient();
+  // Colonnes explicites (pas `select('*')`) : `batches` porte sa propre copie
+  // du contenu de la recette (description, conseils, moule, tags… — cf.
+  // CLAUDE.md « Fournées »), aucune de ces colonnes n'est utilisée par les
+  // listes de l'écran « En cuisine ». Les sélectionner quand même alourdissait
+  // le payload RSC de la page pour rien.
   let query = supabase
     .from('batches')
     .select(
-      '*, recipes(id, title, hero_image_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
+      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
     )
     .eq('user_id', userId);
   query = scope === 'actives' ? query.eq('status', 'planifiee') : query.in('status', ['terminee', 'abandonnee']);
-  const { data, error } = await query.order('planned_date', { ascending: scope === 'actives' });
+  query = query.order('planned_date', { ascending: scope === 'actives' });
+  if (scope === 'terminees') query = query.limit(TERMINEES_LIMIT);
+  const { data, error } = await query;
   if (error) console.error('getBatches:', error.message);
   return (data as unknown as BatchListRow[]) ?? [];
 }
@@ -104,7 +125,6 @@ export async function getBatches(userId: string, scope: 'actives' | 'terminees' 
 // joindre, l'état vit directement sur `batches` (`date_debut` renseignée,
 // `date_fin` encore nulle).
 export type ActiveBatchRow = Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
-  recipes: { hero_image_url: string | null } | null;
   // Avancement constaté, calculé depuis `batch_steps` : nombre d'étapes
   // cochées, total, et titre de la première étape restante.
   //
@@ -122,14 +142,13 @@ export async function getActiveBatches(userId: string): Promise<ActiveBatchRow[]
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('batches')
-    .select('id, recipe_title, date_debut, degustation_at, recipes(hero_image_url), batch_steps(title, order_index, done)')
+    .select('id, recipe_title, date_debut, degustation_at, batch_steps(title, order_index, done)')
     .eq('user_id', userId)
     .eq('status', 'planifiee')
     .not('date_debut', 'is', null)
     .order('date_debut', { ascending: false });
   if (error) console.error('getActiveBatches:', error.message);
   const rows = (data as unknown as (Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
-    recipes: { hero_image_url: string | null } | null;
     batch_steps: { title: string | null; order_index: number; done: boolean }[];
   })[]) ?? [];
   return rows.map((r) => {

@@ -14,9 +14,8 @@
 // l'intérieur d'une seule fournée), d'où `day_order_index`, une colonne
 // dédiée à cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce
 // jour-là.
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -27,39 +26,16 @@ import type { BatchListRow } from '@/lib/profile';
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
+// Pas de resynchronisation ici : `CuisineContent`, qui monte toujours cette
+// vue, fait déjà un `router.refresh()` à son propre montage (même raison —
+// cache client du routeur face à une page `force-dynamic`). En refaire un
+// ici doublait chaque arrivée sur « En cuisine » d'un second aller-retour
+// serveur identique au premier, pour rien.
 export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
-  const router = useRouter();
   const { mutate, busy } = useMutation();
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
-
-  // Une étape cochée depuis la fiche d'une fournée (autre page) n'a aucune
-  // raison d'invalidater le cache de navigation client de cette page-ci —
-  // resynchronisation explicite à chaque arrivée sur cette vue, quel que
-  // soit le chemin (chargement direct, bascule d'onglet, retour arrière).
-  // `useTransition` permet d'afficher le spinner pendant l'attente : sans
-  // lui, l'écran affiche d'abord les données encore en cache puis se corrige
-  // silencieusement à l'arrivée de la réponse, ce qui se voit comme un saut.
-  const [refreshing, startRefresh] = useTransition();
-  useEffect(() => {
-    startRefresh(() => router.refresh());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // Ce rafraîchissement aboutit quasi toujours instantanément (rien n'avait
-  // changé) : l'afficher sans délai faisait tourner le fouet une fraction de
-  // seconde derrière une page déjà rendue et à jour, à chaque arrivée sur
-  // l'écran. Même délai que NavigationSpinner (120 ms) avant de le montrer —
-  // passé inaperçu si la resynchronisation a déjà fini.
-  const [showRefreshSpinner, setShowRefreshSpinner] = useState(false);
-  useEffect(() => {
-    if (!refreshing) {
-      setShowRefreshSpinner(false);
-      return;
-    }
-    const t = setTimeout(() => setShowRefreshSpinner(true), 120);
-    return () => clearTimeout(t);
-  }, [refreshing]);
 
   const groups = groupPlanningStepsByDate(list);
 
@@ -221,7 +197,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy || showRefreshSpinner} label={showRefreshSpinner ? 'Actualisation…' : 'Réorganisation en cours…'} />
+      <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
       {pendingGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
           <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>

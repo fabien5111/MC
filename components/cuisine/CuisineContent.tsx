@@ -20,7 +20,7 @@
 // cochables sur place (PlanningDayView), c'est elle qui répond à « qu'est-ce
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -56,11 +56,26 @@ export function CuisineContent({
   const writeGuard = useWriteGuard();
   const router = useRouter();
   // Cf. CarnetContent : le cache client du routeur peut resservir un rendu
-  // obsolète alors que la page est en `force-dynamic` côté serveur.
+  // obsolète alors que la page est en `force-dynamic` côté serveur. Seule
+  // resynchronisation de l'écran (PlanningDayView n'en fait plus une seconde
+  // pour son propre compte — même page, même cache à invalider).
+  // `useTransition` + délai avant d'afficher le fouet : ce rafraîchissement
+  // aboutit le plus souvent très vite (rien n'avait changé), l'afficher sans
+  // délai le ferait clignoter derrière une page déjà à jour.
+  const [refreshing, startRefresh] = useTransition();
   useEffect(() => {
-    router.refresh();
+    startRefresh(() => router.refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const [showRefreshSpinner, setShowRefreshSpinner] = useState(false);
+  useEffect(() => {
+    if (!refreshing) {
+      setShowRefreshSpinner(false);
+      return;
+    }
+    const t = setTimeout(() => setShowRefreshSpinner(true), 120);
+    return () => clearTimeout(t);
+  }, [refreshing]);
 
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
@@ -318,7 +333,10 @@ export function CuisineContent({
 
   return (
     <>
-      <LoadingOverlay visible={busy || refaisant !== null} label={refaisant !== null ? 'Recréation de la fournée…' : 'Traitement en cours…'} />
+      <LoadingOverlay
+        visible={busy || refaisant !== null || showRefreshSpinner}
+        label={refaisant !== null ? 'Recréation de la fournée…' : showRefreshSpinner ? 'Actualisation…' : 'Traitement en cours…'}
+      />
 
       {/* ── Fournées en cours de cuisson ──────────────────────────────────
           Plusieurs peuvent tourner en même temps (un levain sur trois jours
@@ -400,12 +418,7 @@ export function CuisineContent({
                 <div key={p.id} className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                      {p.recipes?.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                      )}
+                      <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                     </div>
                     <div>
                       <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
@@ -462,12 +475,7 @@ export function CuisineContent({
                   <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
                     <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                        {p.recipes?.hero_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                          <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                        )}
+                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
@@ -595,7 +603,6 @@ export function CuisineContent({
 function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
   const { done, total, currentTitle } = batch.progress;
   const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
-  const image = batch.recipes?.hero_image_url;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
@@ -603,12 +610,7 @@ function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
           tenu au-dessus d'un plan de travail, c'est l'avancement qui sert,
           pas l'illustration. */}
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-container md:h-20 md:w-20">
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-          <img src={image} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-        )}
+        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
       </div>
 
       <div className="min-w-0 flex-1">
