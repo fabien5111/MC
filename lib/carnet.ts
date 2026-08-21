@@ -12,7 +12,7 @@ import { getUserRecipes, type UserRecipeCard } from '@/lib/recipes';
 import { getFavorites } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
 import { getSharedWithMeRecipes } from '@/lib/shares-data';
-import type { RecipeCardWithAllergens } from '@/lib/recipes';
+import type { RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type { CarnetParams } from '@/lib/carnet-params';
 
 // Provenance d'un partage reçu — direct (cette recette précisément) ou via le
@@ -25,7 +25,7 @@ export type CarnetItem =
   | { kind: 'mine'; recipe: UserRecipeCard }
   | {
       kind: 'other';
-      recipe: RecipeCardWithAllergens;
+      recipe: RecipeCardWithAllergenNames;
       favorite: boolean;
       subscription: boolean;
       shared: SharedVia | null;
@@ -76,7 +76,7 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   const othersById = new Map<
     string,
     {
-      recipe: RecipeCardWithAllergens;
+      recipe: RecipeCardWithAllergenNames;
       favorite: boolean;
       subscription: boolean;
       shared: SharedVia | null;

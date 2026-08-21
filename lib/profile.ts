@@ -2,7 +2,7 @@
 // (getFavorites, getBatches, getShoppingLists, getUnits). Server-side, RLS via session.
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
-import { CARD_SELECT, withAllergenPictos, type RecipeCard, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import { BATCH_FULL_SELECT, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 
 export type Unit = Database['public']['Tables']['units']['Row'];
@@ -13,7 +13,7 @@ export type Unit = Database['public']['Tables']['units']['Row'];
 export type FavoriteRow = {
   recipe_id: string;
   created_at: string | null;
-  recipes: RecipeCardWithAllergens | null;
+  recipes: RecipeCardWithAllergenNames | null;
 };
 
 export type BatchListRow = {
@@ -80,8 +80,8 @@ export async function getFavorites(userId: string): Promise<FavoriteRow[]> {
   if (error) console.error('getFavorites:', error.message);
   const rows = (data as unknown as { recipe_id: string; created_at: string | null; recipes: RecipeCard | null }[]) ?? [];
   const cards = rows.map((r) => r.recipes).filter((r): r is RecipeCard => !!r);
-  const withPictos = await withAllergenPictos(cards);
-  const byId = new Map(withPictos.map((c) => [c.id, c]));
+  const withNames = withAllergenNames(cards);
+  const byId = new Map(withNames.map((c) => [c.id, c]));
   return rows.map((r) => ({ ...r, recipes: r.recipes ? (byId.get(r.recipes.id) ?? null) : null }));
 }
 
