@@ -98,13 +98,15 @@ function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// Miniature (bornée en largeur) depuis une image déjà en data-URL — pour les
-// listes qui n'affichent qu'une vignette de quelques dizaines de pixels
-// (fournées d'« En cuisine ») sans transporter l'image pleine définition
-// (`hero_image_url`, jusqu'à 1400 px). Utilisée à la fois à l'enregistrement
-// d'une recette (CreerForm) et par le rétro-remplissage admin des recettes
-// déjà en base (RecipeThumbnailBackfill) : une seule implémentation, un seul
-// format, pour que les deux chemins produisent des miniatures identiques.
+// Réduction (bornée en largeur) d'une image déjà en data-URL — pour les
+// gabarits qui n'ont pas besoin de l'image pleine définition (`hero_image_url`,
+// jusqu'à 1400 px) : la vignette de quelques dizaines de pixels des listes de
+// fournées d'« En cuisine » (`hero_thumb_url`, ~96 px) et la photo des cartes
+// recette — accueil, recherche, carnet, profils, suggestions
+// (`hero_card_url`, ~480 px). Utilisée à la fois à l'enregistrement d'une
+// recette (CreerForm) et par le rétro-remplissage admin des recettes déjà en
+// base (RecipeImageBackfill) : une seule implémentation, pour que les deux
+// chemins produisent des dérivés identiques quel que soit le gabarit demandé.
 export async function resizeDataUrlToThumb(
   src: string,
   maxWidth = 96,
