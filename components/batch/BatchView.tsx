@@ -926,10 +926,10 @@ function CuisinerView({
             </button>
             <button
               type="button"
-              onClick={() => endSession('abandonnee', 'Abandonner cette fournée ?\nLa progression restera consultable dans l’historique.')}
+              onClick={() => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.')}
               className="border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
             >
-              Abandonner
+              Annuler ma fournée
             </button>
           </div>
         </div>
