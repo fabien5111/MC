@@ -3,7 +3,7 @@ import { requireFullAdmin } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 import { RecipeDefaultPhotoManager } from '@/components/admin/RecipeDefaultPhotoManager';
-import { RecipeThumbnailBackfill } from '@/components/admin/RecipeThumbnailBackfill';
+import { RecipeImageBackfill } from '@/components/admin/RecipeImageBackfill';
 
 export const metadata: Metadata = { title: 'Photos du site | Admin — Je pâtisse !' };
 
@@ -39,7 +39,21 @@ export default async function AdminPhotosPage() {
           <RecipeDefaultPhotoManager initialUrl={settings.recipe_default_photo || null} />
         </section>
         <section className="mb-12 max-w-4xl">
-          <RecipeThumbnailBackfill />
+          <RecipeImageBackfill
+            column="hero_thumb_url"
+            maxWidth={96}
+            title="Miniatures des fournées"
+            description="Génère la miniature des recettes créées avant son ajout, pour qu'elles affichent une vignette dans les listes de fournées de l'écran « En cuisine » au lieu de l'icône par défaut. Les recettes créées ou modifiées depuis en ont déjà une — relancer ne les retouche pas."
+          />
+        </section>
+        <section className="mb-12 max-w-4xl">
+          <RecipeImageBackfill
+            column="hero_card_url"
+            maxWidth={480}
+            quality={0.7}
+            title="Vignettes des cartes recette"
+            description="Génère la vignette des recettes créées avant son ajout, pour les cartes recette de l'accueil, la recherche, le carnet, les profils et les suggestions, au lieu de transporter la photo en pleine définition. Les recettes créées ou modifiées depuis en ont déjà une — relancer ne les retouche pas."
+          />
         </section>
       </main>
     </>

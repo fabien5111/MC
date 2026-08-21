@@ -13,8 +13,16 @@ import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conver
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
+// `hero_card_url` (~480 px, générée à l'enregistrement de la recette —
+// CreerForm, lib/images.ts) est ce que les cartes affichent réellement
+// (RecipeCardLayout, SuggestionCard, CarnetContent) : `hero_image_url`, en
+// pleine définition (jusqu'à 1400 px, data-URL), n'est conservée dans cette
+// sélection qu'en repli pour les recettes pas encore rétro-remplies — sans
+// lui, une grille de 25 cartes peut transporter plusieurs Mo pour rien. Absent
+// de `lib/database.types.ts` (colonne ajoutée par migration, types non encore
+// régénérés) : même contournement que `hero_thumb_url` (lib/profile.ts).
 export const CARD_SELECT =
-  'id, title, description, hero_image_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
+  'id, title, description, hero_image_url, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name, avatar_url, username), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
@@ -33,6 +41,7 @@ export type RecipeCard = Pick<
   | 'rating_count'
   | 'created_at'
 > & {
+  hero_card_url: string | null;
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;

@@ -823,12 +823,17 @@ export function CreerForm({
       // pour la navigation post-enregistrement, cf. plus bas).
       if (keepStatus) finalStatus = editRecipe?.status || 'draft';
 
-      // Miniature dédiée (~96 px) : recalculée à chaque enregistrement plutôt
-      // que suivie via un état séparé — un redimensionnement est instantané,
-      // pister « la photo a-t-elle changé » l'est moins. Sert les listes de
-      // fournées d'« En cuisine », qui n'ont besoin que d'une vignette sans
-      // transporter `hero_image_url` en pleine définition (cf. CuisineContent).
+      // Deux dérivés dédiés, recalculés à chaque enregistrement plutôt que
+      // suivis via un état séparé — un redimensionnement est instantané,
+      // pister « la photo a-t-elle changé » l'est moins. Ni l'un ni l'autre ne
+      // transporte `hero_image_url` en pleine définition (cf. CuisineContent
+      // pour le premier, RecipeCardLayout/SuggestionCard/CarnetContent pour
+      // le second) :
+      //  - `heroThumb` (~96 px) sert les listes de fournées d'« En cuisine » ;
+      //  - `heroCard` (~480 px) sert les cartes recette — accueil, recherche,
+      //    carnet, profils, suggestions.
       const heroThumb = hero ? await resizeDataUrlToThumb(hero) : null;
+      const heroCard = hero ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
 
       const payload = {
         title: capitalizeSentences(title.trim()),
@@ -854,6 +859,7 @@ export function CreerForm({
         total_time: gmin(total),
         hero_image_url: hero,
         hero_thumb_url: heroThumb,
+        hero_card_url: heroCard,
         hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
       };
@@ -865,11 +871,12 @@ export function CreerForm({
       // création — y compris après une erreur en cours d'enregistrement.
       let recipeId = editingId ?? createdIdRef.current;
       if (recipeId) {
-        // `as never` : `hero_thumb_url` est absent de lib/database.types.ts
-        // tant que la migration qui l'ajoute n'a pas été appliquée puis
-        // régénérée (npm run gen:types, cf. CLAUDE.md) — la colonne existe
-        // en base et l'écriture est correcte, seul le typage généré est en
-        // retard. À retirer une fois les types régénérés.
+        // `as never` : `hero_thumb_url` et `hero_card_url` sont absentes de
+        // lib/database.types.ts tant que leurs migrations n'ont pas été
+        // appliquées puis régénérées (npm run gen:types, cf. CLAUDE.md) — les
+        // colonnes existent en base et l'écriture est correcte, seul le
+        // typage généré est en retard. À retirer une fois les types
+        // régénérées.
         const { error } = await supabase.from('recipes').update(payload as never).eq('id', recipeId);
         if (error) throw error;
         await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId);

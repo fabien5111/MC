@@ -200,10 +200,11 @@ function MineCard({
     <div className="group relative border border-outline-variant bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
-          {r.hero_image_url || defaultPhoto ? (
+          {r.hero_card_url || r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url || defaultPhoto!}
+              // `hero_card_url` plutôt que la pleine définition — cf. RecipeCardLayout.
+              src={r.hero_card_url || r.hero_image_url || defaultPhoto!}
               alt={r.title}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
@@ -298,10 +299,11 @@ function OtherCard({
     <div className="group relative border border-primary bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
-          {r.hero_image_url || defaultPhoto ? (
+          {r.hero_card_url || r.hero_image_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url || defaultPhoto!}
+              // `hero_card_url` plutôt que la pleine définition — cf. RecipeCardLayout.
+              src={r.hero_card_url || r.hero_image_url || defaultPhoto!}
               alt={r.title}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
