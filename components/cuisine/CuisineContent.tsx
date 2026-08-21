@@ -32,7 +32,7 @@ import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
-import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, type BatchFull } from '@/lib/recipe-plan';
+import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 
 type PlanningView = 'jours' | 'recettes';
@@ -81,6 +81,23 @@ export function CuisineContent({
   useEffect(() => setPlanningList(planning), [planning]);
   const [terminees, setTerminees] = useState(batchesTerminees);
   useEffect(() => setTerminees(batchesTerminees), [batchesTerminees]);
+  // `getBatches(..., 'terminees')` ne renvoie qu'une page (TERMINEES_PAGE_SIZE) —
+  // une page pleine laisse supposer qu'il en reste, sans certitude (compte
+  // pile rond) : le pire cas est un « Voir plus » qui ne ramène rien.
+  const [hasMoreTerminees, setHasMoreTerminees] = useState(batchesTerminees.length === TERMINEES_PAGE_SIZE);
+  useEffect(() => setHasMoreTerminees(batchesTerminees.length === TERMINEES_PAGE_SIZE), [batchesTerminees]);
+  const [loadingMoreTerminees, setLoadingMoreTerminees] = useState(false);
+  async function loadMoreTerminees() {
+    setLoadingMoreTerminees(true);
+    try {
+      const res = await fetch(`/api/fournee/terminees?offset=${terminees.length}`);
+      const { items } = (await res.json()) as { items?: BatchListRow[] };
+      setTerminees((prev) => [...prev, ...(items || [])]);
+      setHasMoreTerminees((items || []).length === TERMINEES_PAGE_SIZE);
+    } finally {
+      setLoadingMoreTerminees(false);
+    }
+  }
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
@@ -465,7 +482,7 @@ export function CuisineContent({
         {terminees.length > 0 && (
           <details className="group mt-10 border-t border-outline-variant/60 pt-8">
             <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Fournées terminées ({terminees.length})
+              Fournées terminées ({terminees.length}{hasMoreTerminees ? '+' : ''})
               <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span>
             </summary>
             <div className="mt-4 max-w-3xl space-y-4">
@@ -506,6 +523,18 @@ export function CuisineContent({
                   </div>
                 );
               })}
+              {hasMoreTerminees && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreTerminees}
+                    disabled={loadingMoreTerminees}
+                    className="rounded-pill border border-primary px-6 py-2 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-60"
+                  >
+                    {loadingMoreTerminees ? 'Chargement…' : 'Voir plus'}
+                  </button>
+                </div>
+              )}
             </div>
           </details>
         )}

@@ -18,6 +18,16 @@ import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
 import type { BatchEntry, BatchListRow } from '@/lib/profile';
 
+// Taille de page des fournées terminées (« En cuisine ») : `getBatches` de
+// `lib/profile.ts` (server-only, importe next/headers) et le bouton
+// « Voir plus » de `CuisineContent` (client) doivent partager la même
+// valeur. Elle vit ici, module de fonctions pures, plutôt que dans
+// `lib/profile.ts` : un import de valeur (pas `import type`) depuis un
+// composant client embarquerait tout `lib/profile.ts`, donc `next/headers`,
+// dans le bundle client — même piège que `lib/ideas.ts` / `lib/ideas-data.ts`
+// (cf. CLAUDE.md).
+export const TERMINEES_PAGE_SIZE = 30;
+
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return isNaN(n) ? null : n;

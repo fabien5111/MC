@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { CARD_SELECT, withAllergenPictos, type RecipeCard, type RecipeCardWithAllergens } from '@/lib/recipes';
-import { BATCH_FULL_SELECT, type BatchFull } from '@/lib/recipe-plan';
+import { BATCH_FULL_SELECT, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 
 export type Unit = Database['public']['Tables']['units']['Row'];
 
@@ -88,16 +88,19 @@ export async function getFavorites(userId: string): Promise<FavoriteRow[]> {
 //   pour l'écran « Fournées terminées » (décision produit : une fournée
 //   terminée ne reste plus dans le planning actif, elle rejoint un écran
 //   dédié plutôt qu'un simple repli « Archivées »).
-// Fournées terminées/abandonnées : les plus récentes seulement. Sans borne,
-// cette requête (et le payload de la page « En cuisine ») grossit avec
-// l'ancienneté du compte, pour toujours — un utilisateur de longue date finit
-// par attendre le chargement de fournées vieilles de plusieurs années à
-// chaque visite. Pas de « voir plus » pour l'instant : au-delà de ce nombre,
-// les plus anciennes restent consultables depuis la fiche de leur recette
-// (getRecipeCompletedBatches), simplement plus depuis cet écran.
-const TERMINEES_LIMIT = 30;
-
-export async function getBatches(userId: string, scope: 'actives' | 'terminees' = 'actives'): Promise<BatchListRow[]> {
+// Fournées terminées/abandonnées : chargées par pages de `TERMINEES_PAGE_SIZE`
+// (lib/recipe-plan.ts), la plus récente d'abord. Sans borne, cette requête
+// (et le payload de la page « En cuisine ») grossit avec l'ancienneté du
+// compte, pour toujours — un utilisateur de longue date finirait par
+// attendre le chargement de fournées vieilles de plusieurs années à chaque
+// visite. Au-delà, le bouton « Voir plus » de CuisineContent appelle
+// `GET /api/fournee/terminees` avec cette même taille de page en décalage
+// (`offset`).
+export async function getBatches(
+  userId: string,
+  scope: 'actives' | 'terminees' = 'actives',
+  offset = 0,
+): Promise<BatchListRow[]> {
   const supabase = await createClient();
   // Colonnes explicites (pas `select('*')`) : `batches` porte sa propre copie
   // du contenu de la recette (description, conseils, moule, tags… — cf.
@@ -112,7 +115,7 @@ export async function getBatches(userId: string, scope: 'actives' | 'terminees' 
     .eq('user_id', userId);
   query = scope === 'actives' ? query.eq('status', 'planifiee') : query.in('status', ['terminee', 'abandonnee']);
   query = query.order('planned_date', { ascending: scope === 'actives' });
-  if (scope === 'terminees') query = query.limit(TERMINEES_LIMIT);
+  if (scope === 'terminees') query = query.range(offset, offset + TERMINEES_PAGE_SIZE - 1);
   const { data, error } = await query;
   if (error) console.error('getBatches:', error.message);
   return (data as unknown as BatchListRow[]) ?? [];
