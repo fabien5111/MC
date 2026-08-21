@@ -14,7 +14,25 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 4 s.
+//
+// Piège vérifié dans les sources de Next (`HistoryUpdater`,
+// app-router.js) : `window.history.pushState` — donc `window.location` — n'est
+// posé qu'au commit du routeur, exactement en même temps que `pathname` /
+// `searchParams` changent, jamais avant. Il est donc impossible de détecter
+// « cette navigation n'aboutira à aucun changement d'URL » en comparant
+// `window.location` à l'URL de départ pendant l'attente : sur une route sans
+// cache (`force-dynamic`, ex. `/carnet`) ou simplement lente, `window.location`
+// reste celle de départ tant que le nouveau rendu n'est pas revenu — un tel
+// filet éteindrait le spinner sur une navigation bien réelle, juste lente.
+// (Une tentative en ce sens a été revertée pour cette raison — cf. historique
+// git.) Le cas « lien ciblant l'URL de départ après une redirection serveur »
+// reste donc couvert par le seul filet de sécurité à 4 s.
+//
+// `console.debug('[spinner-timing]', …)` : instrumentation temporaire pour
+// mesurer la durée réelle de l'overlay par déclencheur (aide à trancher la
+// question « le spinner ralentit-il la page » sans deviner). À retirer une
+// fois la mesure faite sur dev.jepatisse.com.
 //
 // Le départ est détecté sur `click` (souris, clavier) et, pour les pointeurs
 // tactiles, dès le relâchement du doigt : sur certains navigateurs mobiles,
@@ -51,6 +69,11 @@ export function NavigationSpinner() {
   // déclencheur pour le même geste (le `click` qui suit un tapotement) ne
   // relance le délai d'affichage depuis le début.
   const pending = useRef(false);
+  // Horodatage et URL de départ au moment de l'armement, uniquement pour
+  // l'instrumentation ci-dessous (durée réellement affichée par déclencheur).
+  const armedAt = useRef<number | null>(null);
+  const armedFromUrl = useRef<string | null>(null);
+  const shown = useRef(false);
 
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
@@ -58,13 +81,24 @@ export function NavigationSpinner() {
     pending.current = false;
   };
 
+  const logTiming = (reason: string) => {
+    if (armedAt.current === null) return;
+    const elapsed = Math.round(performance.now() - armedAt.current);
+    console.debug(
+      `[spinner-timing] ${reason} — ${elapsed}ms depuis ${armedFromUrl.current}` +
+        (shown.current ? ' (overlay affiché)' : ' (jamais affiché, <120ms)'),
+    );
+  };
+
   // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
   // chaîne : `search` est un objet recréé à chaque rendu, donc inutilisable
   // tel quel comme dépendance.
   useEffect(() => {
+    const wasPending = pending.current;
     committedUrlRef.current = committedUrl;
     clearTimers();
     setVisible(false);
+    if (wasPending) logTiming('navigation-committed');
   }, [committedUrl]);
 
   useEffect(() => {
@@ -72,11 +106,18 @@ export function NavigationSpinner() {
       if (pending.current) return;
       clearTimers();
       pending.current = true;
-      showTimer.current = setTimeout(() => setVisible(true), 120);
+      armedAt.current = performance.now();
+      armedFromUrl.current = committedUrlRef.current;
+      shown.current = false;
+      showTimer.current = setTimeout(() => {
+        setVisible(true);
+        shown.current = true;
+      }, 120);
       safetyTimer.current = setTimeout(() => {
+        logTiming('safety-timeout');
         setVisible(false);
         pending.current = false;
-      }, 8000);
+      }, 4000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -101,9 +142,17 @@ export function NavigationSpinner() {
 
     const onClick = (e: MouseEvent) => {
       // On ignore les clics « augmentés » (nouvel onglet, sélection…).
-      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.button !== 0) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if (isInternalNavigation(e.target)) start();
+      if (!isInternalNavigation(e.target)) return;
+      // Écouteur en capture : il reçoit l'événement avant tout gestionnaire
+      // React porté par l'ancre elle-même (ex. une navigation interceptée
+      // pour un défilement en page). `defaultPrevented` n'est donc fiable
+      // qu'une fois la diffusion de l'événement terminée — on le relit après
+      // coup plutôt qu'ici, où il vaut toujours `false`.
+      setTimeout(() => {
+        if (!e.defaultPrevented) start();
+      }, 0);
     };
 
     // Tactile : on suit le geste pour distinguer un tapotement d'un début de

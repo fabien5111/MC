@@ -7,7 +7,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
 import { getRecipeDefaultPhoto } from '@/lib/site';
-import { parseCarnetParams, type Scope } from '@/lib/carnet-params';
+import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -102,6 +102,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
           />
           <CarnetContent
+            key={carnetParamsToQueryString(params)}
             items={filtered}
             favIds={[...favIds]}
             importsEnAttente={importsEnAttente}

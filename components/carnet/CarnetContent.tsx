@@ -26,6 +26,16 @@ import type { CarnetItem } from '@/lib/carnet';
 // même délai que NavigationSpinner et SearchResults.
 const NAV_SHOW_DELAY_MS = 120;
 
+// Cartes affichées initialement, puis révélées par tranches via « Charger
+// plus » — jeu déjà entièrement chargé côté serveur (cf. lib/carnet.ts), donc
+// une simple limite d'affichage côté client : aucune requête supplémentaire.
+// Sert à alléger le premier rendu d'un carnet fourni (les photos sont des
+// data-URL décodées en une fois). `key={queryString}` sur ce composant
+// (app/carnet/page.tsx) réinitialise ce compteur à chaque changement de
+// filtre/tri, sans le remettre à zéro sur un simple rafraîchissement après
+// suppression ou révocation.
+const PAGE_SIZE = 15;
+
 const STATUS: Record<string, { label: string; badge: string }> = {
   published: { label: 'Publiée', badge: 'bg-green-700' },
   pending: { label: 'En attente', badge: 'bg-secondary/90' },
@@ -67,6 +77,9 @@ export function CarnetContent({
   // ce que le serveur vient d'envoyer.
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const list = items.filter((i) => !removedIds.has(i.recipe.id));
+
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const visible = list.slice(0, visibleCount);
 
   async function delRecipe(id: string, title: string) {
     const ok = await mutate(() => createClient().from('recipes').delete().eq('id', id), {
@@ -137,15 +150,31 @@ export function CarnetContent({
       )}
 
       {list.length > 0 ? (
-        <div className="grid grid-cols-1 gap-8 py-8 md:grid-cols-2 lg:grid-cols-3">
-          {list.map((item) =>
-            item.kind === 'mine' ? (
-              <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} defaultPhoto={defaultPhoto} />
-            ) : (
-              <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} defaultPhoto={defaultPhoto} />
-            ),
+        <>
+          <div className="grid grid-cols-1 gap-8 py-8 md:grid-cols-2 lg:grid-cols-3">
+            {visible.map((item) =>
+              item.kind === 'mine' ? (
+                <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} defaultPhoto={defaultPhoto} />
+              ) : (
+                <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} defaultPhoto={defaultPhoto} />
+              ),
+            )}
+          </div>
+          {list.length > visibleCount && (
+            <div className="pb-8 text-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                className="rounded-full border-2 border-primary px-12 py-3.5 font-label-md text-[12.5px] uppercase tracking-[0.18em] text-primary transition-all hover:bg-primary hover:text-on-primary active:scale-95"
+              >
+                Charger plus
+              </button>
+              <p className="mt-3 text-[12px] text-outline">
+                {visible.length} recette{visible.length > 1 ? 's' : ''} sur {list.length}
+              </p>
+            </div>
           )}
-        </div>
+        </>
       ) : (
         <p className="py-16 text-center italic text-on-surface-variant">{emptyMessage}</p>
       )}
