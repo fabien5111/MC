@@ -14,20 +14,29 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 4 s.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
 //
-// Piège vérifié dans les sources de Next (`HistoryUpdater`,
-// app-router.js) : `window.history.pushState` — donc `window.location` — n'est
-// posé qu'au commit du routeur, exactement en même temps que `pathname` /
-// `searchParams` changent, jamais avant. Il est donc impossible de détecter
-// « cette navigation n'aboutira à aucun changement d'URL » en comparant
-// `window.location` à l'URL de départ pendant l'attente : sur une route sans
-// cache (`force-dynamic`, ex. `/carnet`) ou simplement lente, `window.location`
-// reste celle de départ tant que le nouveau rendu n'est pas revenu — un tel
-// filet éteindrait le spinner sur une navigation bien réelle, juste lente.
-// (Une tentative en ce sens a été revertée pour cette raison — cf. historique
-// git.) Le cas « lien ciblant l'URL de départ après une redirection serveur »
-// reste donc couvert par le seul filet de sécurité à 4 s.
+// DEUX PIÈGES, vérifiés dans les sources de Next, chacun ayant déjà produit
+// une régression (cf. historique git) — ne pas les retenter :
+//
+//  1. `window.location` ne devance PAS le rendu. `HistoryUpdater`
+//     (app-router.js) ne pose `history.pushState` qu'au commit du routeur,
+//     exactement en même temps que `pathname` / `searchParams` changent. On ne
+//     peut donc pas détecter « cette navigation n'aboutira à aucun changement
+//     d'URL » en comparant `window.location` à l'URL de départ pendant
+//     l'attente : sur une route sans cache (`force-dynamic`, ex. `/carnet`) ou
+//     simplement lente, elle reste celle de départ tant que le nouveau rendu
+//     n'est pas revenu. Un tel filet éteint le spinner sur une navigation bien
+//     réelle, juste lente. Le cas « lien ciblant l'URL de départ après une
+//     redirection serveur » reste couvert par le seul filet de sécurité.
+//
+//  2. `defaultPrevented` ne se relit pas après coup. `<Link>` appelle
+//     lui-même `preventDefault()` sur tout lien interne pour faire sa
+//     navigation côté client (link.js `linkClicked`). Le drapeau doit donc
+//     être lu dans la phase de capture, où il ne vaut `true` que si un
+//     gestionnaire extérieur a annulé le clic ; le relire une fois
+//     l'événement diffusé le trouve toujours à `true` et le spinner ne
+//     s'arme plus jamais nulle part. Voir `onClick`.
 //
 // `console.debug('[spinner-timing]', …)` : instrumentation temporaire pour
 // mesurer la durée réelle de l'overlay par déclencheur (aide à trancher la
@@ -113,11 +122,14 @@ export function NavigationSpinner() {
         setVisible(true);
         shown.current = true;
       }, 120);
+      // 8 s : `/carnet` (force-dynamic, jamais de cache) est mesurée autour
+      // de 5 s sur une connexion ordinaire. Un filet plus court éteindrait le
+      // fouet avant l'arrivée de la page, c'est-à-dire pile là où il sert.
       safetyTimer.current = setTimeout(() => {
         logTiming('safety-timeout');
         setVisible(false);
         pending.current = false;
-      }, 4000);
+      }, 8000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -142,17 +154,18 @@ export function NavigationSpinner() {
 
     const onClick = (e: MouseEvent) => {
       // On ignore les clics « augmentés » (nouvel onglet, sélection…).
-      if (e.button !== 0) return;
+      // `defaultPrevented` est lu ICI, dans la phase de capture, et surtout
+      // PAS après la diffusion de l'événement : `<Link>` appelle lui-même
+      // `preventDefault()` sur tout lien interne pour faire sa navigation
+      // côté client (next/dist/client/app-dir/link.js). Relire le drapeau
+      // après coup le trouve donc toujours à `true`, sur absolument toutes
+      // les navigations du site — le spinner ne s'arme alors plus jamais.
+      // (Tentative revertée pour cette raison, cf. historique git.) En
+      // capture, il ne vaut `true` que si un gestionnaire extérieur a déjà
+      // annulé le clic avant nous.
+      if (e.defaultPrevented || e.button !== 0) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if (!isInternalNavigation(e.target)) return;
-      // Écouteur en capture : il reçoit l'événement avant tout gestionnaire
-      // React porté par l'ancre elle-même (ex. une navigation interceptée
-      // pour un défilement en page). `defaultPrevented` n'est donc fiable
-      // qu'une fois la diffusion de l'événement terminée — on le relit après
-      // coup plutôt qu'ici, où il vaut toujours `false`.
-      setTimeout(() => {
-        if (!e.defaultPrevented) start();
-      }, 0);
+      if (isInternalNavigation(e.target)) start();
     };
 
     // Tactile : on suit le geste pour distinguer un tapotement d'un début de
