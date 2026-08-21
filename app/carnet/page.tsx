@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
+import { getAllergensWithPicto } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
@@ -51,7 +52,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto] =
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs] =
     await Promise.all([
       isReadOnlySession(),
       getCarnetData(user.id),
@@ -59,6 +60,10 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       countImportsEnAttente(user.id),
       getBookSharesGiven(user.id),
       getRecipeDefaultPhoto(),
+      // Table de référence chargée une seule fois pour toute la grille — les
+      // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
+      // withAllergenNames), le picto est résolu au rendu (CarnetContent).
+      getAllergensWithPicto(),
     ]);
   const filtered = applyCarnetFilters(items, params);
 
@@ -106,6 +111,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             items={filtered}
             favIds={[...favIds]}
             importsEnAttente={importsEnAttente}
+            allergenRefs={allergenRefs}
             emptyMessage={
               params.q || params.statut !== 'all'
                 ? 'Aucune recette ne correspond à ce filtre.'

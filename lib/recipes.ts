@@ -8,7 +8,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
-import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '@/lib/recipe-view';
+import { cardAllergenNames } from '@/lib/recipe-view';
 import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
@@ -91,7 +91,7 @@ export async function getRecipes(opts: {
 // reconstituer une union d'identifiants, sans total ni pagination réelle :
 // elles sont retirées plutôt que laissées en doublon d'un chemin plus complet.
 
-export type UserRecipeCard = RecipeCardWithAllergens & { status: string; is_public: boolean };
+export type UserRecipeCard = RecipeCardWithAllergenNames & { status: string; is_public: boolean };
 
 export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> {
   const supabase = await createClient();
@@ -109,7 +109,7 @@ export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> 
     if (error) console.error('getUserRecipes (retry):', error.message);
   }
   const rows = (data as unknown as (RecipeCard & { status: string; is_public: boolean })[]) ?? [];
-  return withAllergenPictos(rows);
+  return withAllergenNames(rows);
 }
 
 export async function getRecipe(id: string) {
@@ -289,15 +289,19 @@ export const getIngredientRefsList = cache(async (): Promise<IngredientRefOption
   return (data ?? []).filter((r) => r.name);
 });
 
-// Résout les pictos d'allergènes pour un lot de cartes (une seule lecture de
-// la table de référence). Utile pour les rendus faits hors d'un Server
-// Component (ex. route API de pagination), où l'on ne peut pas s'appuyer sur
-// le composant asynchrone AllergenPictos.
-export type RecipeCardWithAllergens = RecipeCard & { allergenItems: AllergenPictoItem[] };
-export async function withAllergenPictos<T extends Pick<RecipeCard, 'ingredient_groups'>>(
+// Attache la liste des NOMS d'allergènes à un lot de cartes — jamais leurs
+// pictos. Les pictos (data-URL, ~6 kB chacun en moyenne) sont résolus au
+// rendu, à partir d'une table de référence (getAllergensWithPicto) chargée
+// une seule fois par écran, jamais dupliquée par recette : la version
+// précédente (`withAllergenPictos`) inlinait `allergenItems` — pictos inclus —
+// dans chaque recette, et cette table franchissant la frontière Client
+// Component (RecipeCardClient, CarnetContent) était sérialisée en entier dans
+// le payload RSC à chaque occurrence. Motif déjà en place dans BatchView
+// (`allergenRefs` en prop, résolu via `matchAllergenPictos` au rendu) —
+// généralisé ici à toutes les grilles de cartes.
+export type RecipeCardWithAllergenNames = RecipeCard & { allergenNames: string[] };
+export function withAllergenNames<T extends Pick<RecipeCard, 'ingredient_groups'>>(
   recipes: T[],
-): Promise<(T & { allergenItems: AllergenPictoItem[] })[]> {
-  if (!recipes.length) return [];
-  const refs = await getAllergensWithPicto();
-  return recipes.map((r) => ({ ...r, allergenItems: matchAllergenPictos(cardAllergenNames(r), refs) }));
+): (T & { allergenNames: string[] })[] {
+  return recipes.map((r) => ({ ...r, allergenNames: cardAllergenNames(r) }));
 }

@@ -4,7 +4,7 @@
 // écriture, uploads…), qui restent l'affaire de `/reglages`.
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { CARD_SELECT, withAllergenPictos, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { CARD_SELECT, withAllergenNames, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type { Database } from '@/lib/database.types';
 
 export type PublicProfile = Pick<
@@ -97,7 +97,7 @@ export async function getPublicProfileCategories(authorId: string): Promise<{ na
 export async function getPublicProfileRecipes(
   authorId: string,
   categorySlug?: string,
-): Promise<RecipeCardWithAllergens[]> {
+): Promise<RecipeCardWithAllergenNames[]> {
   const supabase = await createClient();
   let q = supabase.from('recipes').select(CARD_SELECT).eq('author_id', authorId).eq('status', 'published');
   // Filtrer par catégorie impose de passer par la jointure `recipe_tags` :
@@ -117,5 +117,5 @@ export async function getPublicProfileRecipes(
     console.error('getPublicProfileRecipes:', error.message);
     return [];
   }
-  return withAllergenPictos(data as unknown as import('@/lib/recipes').RecipeCard[]);
+  return withAllergenNames(data as unknown as import('@/lib/recipes').RecipeCard[]);
 }

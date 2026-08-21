@@ -12,7 +12,7 @@ import { RailSection, ROW_CARD } from '@/components/home/RailSection';
 import { SessionsCarousel } from '@/components/home/SessionsCarousel';
 import { GuestIntro } from '@/components/home/GuestIntro';
 import { GuestCta } from '@/components/home/GuestCta';
-import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { getRecipes, withAllergenNames, getAllergensWithPicto } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
 import { getActiveBatches } from '@/lib/profile';
@@ -50,7 +50,7 @@ const FALLBACK_CATEGORIES = [
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes] =
+  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes, allergenRefs] =
     await Promise.all([
       getRecipes({ limit: 12 }),
       getActiveFeaturedRecipe(),
@@ -61,6 +61,10 @@ export default async function HomePage() {
       // Réservées au membre — inutile de les demander à un visiteur.
       user ? getActiveBatches(user.id) : Promise.resolve([]),
       user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
+      // Table de référence chargée une seule fois pour toute la page — les
+      // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
+      // withAllergenNames), le picto est résolu au rendu (RecipeCardClient).
+      getAllergensWithPicto(),
     ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
@@ -77,7 +81,7 @@ export default async function HomePage() {
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
       : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
-  const latest = await withAllergenPictos(recipes);
+  const latest = withAllergenNames(recipes);
 
   return (
     <>
@@ -281,7 +285,7 @@ export default async function HomePage() {
           <RailSection title="Chez les pâtissiers que vous suivez" viewAllHref="/carnet?scope=sub" viewAllLabel="Tout voir">
             {followedRecipes.map((r) => (
               <div key={r.id} data-row-card className={ROW_CARD}>
-                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} defaultPhoto={defaultPhoto} />
+                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} defaultPhoto={defaultPhoto} allergenRefs={allergenRefs} />
               </div>
             ))}
           </RailSection>
@@ -298,6 +302,7 @@ export default async function HomePage() {
                   isOwner={!!user && r.author_id === user.id}
                   showPlan={!!user}
                   defaultPhoto={defaultPhoto}
+                  allergenRefs={allergenRefs}
                 />
               </div>
             ))}

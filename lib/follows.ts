@@ -12,7 +12,7 @@
 // via `FollowButton`. Ce module ne porte que les lectures serveur.
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { CARD_SELECT, withAllergenPictos, type RecipeCard } from '@/lib/recipes';
+import { CARD_SELECT, withAllergenNames, type RecipeCard } from '@/lib/recipes';
 import type { Member } from '@/lib/shares';
 
 // `cache()` : une fiche recette et une page profil interrogent chacune ce
@@ -104,5 +104,5 @@ export async function getFollowedRecipes(userId: string, limit = 12) {
     console.error('getFollowedRecipes:', error.message);
     return [];
   }
-  return withAllergenPictos(data as unknown as RecipeCard[]);
+  return withAllergenNames(data as unknown as RecipeCard[]);
 }

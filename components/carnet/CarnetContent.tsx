@@ -13,13 +13,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatTime } from '@/lib/format';
-import { effectiveTimes } from '@/lib/recipe-view';
+import { effectiveTimes, matchAllergenPictos } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import type { CarnetItem } from '@/lib/carnet';
+import type { AllergenRef } from '@/lib/recipes';
 
 // Délai avant d'afficher le fouet pour une navigation de tri/recherche : un
 // rafraîchissement quasi instantané ne doit pas produire de clignotement —
@@ -49,6 +50,7 @@ export function CarnetContent({
   importsEnAttente,
   emptyMessage,
   defaultPhoto = null,
+  allergenRefs,
 }: {
   items: CarnetItem[];
   favIds: string[];
@@ -56,6 +58,10 @@ export function CarnetContent({
   emptyMessage: string;
   // Photo « site_settings.recipe_default_photo » (cf. RecipeCardLayout).
   defaultPhoto?: string | null;
+  // Table de référence des allergènes (pictos), chargée une seule fois par
+  // app/carnet/page.tsx — jamais dupliquée par recette (cf. lib/recipes.ts
+  // withAllergenNames). Résolue au rendu par MineCard/OtherCard.
+  allergenRefs: AllergenRef[];
 }) {
   const { mutate, busy } = useMutation();
   const { pending: navPending } = useCarnetTransition();
@@ -154,9 +160,23 @@ export function CarnetContent({
           <div className="grid grid-cols-1 gap-8 py-8 md:grid-cols-2 lg:grid-cols-3">
             {visible.map((item) =>
               item.kind === 'mine' ? (
-                <MineCard key={item.recipe.id} item={item} favIds={favIds} onDelete={delRecipe} defaultPhoto={defaultPhoto} />
+                <MineCard
+                  key={item.recipe.id}
+                  item={item}
+                  favIds={favIds}
+                  onDelete={delRecipe}
+                  defaultPhoto={defaultPhoto}
+                  allergenRefs={allergenRefs}
+                />
               ) : (
-                <OtherCard key={item.recipe.id} item={item} favIds={favIds} onRevokeShare={revokeShare} defaultPhoto={defaultPhoto} />
+                <OtherCard
+                  key={item.recipe.id}
+                  item={item}
+                  favIds={favIds}
+                  onRevokeShare={revokeShare}
+                  defaultPhoto={defaultPhoto}
+                  allergenRefs={allergenRefs}
+                />
               ),
             )}
           </div>
@@ -187,11 +207,13 @@ function MineCard({
   favIds,
   onDelete,
   defaultPhoto = null,
+  allergenRefs,
 }: {
   item: Extract<CarnetItem, { kind: 'mine' }>;
   favIds: string[];
   onDelete: (id: string, title: string) => void;
   defaultPhoto?: string | null;
+  allergenRefs: AllergenRef[];
 }) {
   const r = item.recipe;
   const st = STATUS[r.status] || STATUS.draft;
@@ -272,7 +294,7 @@ function MineCard({
           </h3>
         </Link>
         {r.description && <p className="mb-4 line-clamp-2 text-sm text-on-surface-variant">{r.description}</p>}
-        <AllergenPictosView items={r.allergenItems} className="mb-4" iconClassName="w-6 h-6" />
+        <AllergenPictosView items={matchAllergenPictos(r.allergenNames, allergenRefs)} className="mb-4" iconClassName="w-6 h-6" />
         <span className="text-xs text-secondary">
           {formatDate(r.created_at)}
           {r.rating_avg ? ' · ' + Number(r.rating_avg).toFixed(1) + ' ★' : ''}
@@ -287,11 +309,13 @@ function OtherCard({
   favIds,
   onRevokeShare,
   defaultPhoto = null,
+  allergenRefs,
 }: {
   item: Extract<CarnetItem, { kind: 'other' }>;
   favIds: string[];
   onRevokeShare: (item: Extract<CarnetItem, { kind: 'other' }>) => void;
   defaultPhoto?: string | null;
+  allergenRefs: AllergenRef[];
 }) {
   const r = item.recipe;
   const times = effectiveTimes(r);
@@ -374,7 +398,7 @@ function OtherCard({
           </h3>
         </Link>
         {r.description && <p className="mb-4 line-clamp-2 text-sm text-on-surface-variant">{r.description}</p>}
-        <AllergenPictosView items={r.allergenItems} className="mb-4" iconClassName="w-6 h-6" />
+        <AllergenPictosView items={matchAllergenPictos(r.allergenNames, allergenRefs)} className="mb-4" iconClassName="w-6 h-6" />
         <span className="text-xs text-secondary">
           <Link href={`/u/${r.profiles?.username || r.author_id}`} prefetch={false} className="hover:text-primary hover:underline">
             {r.profiles?.full_name || 'Auteur'}

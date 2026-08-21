@@ -1,12 +1,17 @@
 'use client';
 
-// Variante client-safe de RecipeCard : les allergènes sont déjà résolus
-// (allergenItems, calculés côté serveur par withAllergenPictos) au lieu
-// d'être chargés via le Server Component AllergenPictos. Utilisée par
-// HomeRecipeGrid pour les cartes ajoutées après la pagination côté client.
+// Variante client-safe de RecipeCard : les allergènes sont déjà résolus par
+// noms (allergenNames, calculés côté serveur par withAllergenNames) au lieu
+// d'être chargés via le Server Component AllergenPictos — un Client Component
+// ne peut pas rendre un composant serveur asynchrone. Le picto lui-même est
+// résolu ici, à partir de la table de référence (allergenRefs) chargée une
+// seule fois par la page et passée en prop : jamais dupliqué par recette
+// (même motif que BatchView). Utilisée par l'accueil pour toutes les cartes
+// des rails (abonnements, dernières créations).
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { RecipeCardLayout } from '@/components/RecipeCardLayout';
-import type { RecipeCardWithAllergens } from '@/lib/recipes';
+import { matchAllergenPictos } from '@/lib/recipe-view';
+import type { AllergenRef, RecipeCardWithAllergenNames } from '@/lib/recipes';
 
 export function RecipeCardClient({
   recipe,
@@ -14,12 +19,14 @@ export function RecipeCardClient({
   isOwner,
   showPlan,
   defaultPhoto,
+  allergenRefs,
 }: {
-  recipe: RecipeCardWithAllergens;
+  recipe: RecipeCardWithAllergenNames;
   isFav: boolean;
   isOwner?: boolean;
   showPlan?: boolean;
   defaultPhoto?: string | null;
+  allergenRefs: AllergenRef[];
 }) {
   return (
     <RecipeCardLayout
@@ -28,7 +35,13 @@ export function RecipeCardClient({
       isOwner={isOwner}
       showPlan={showPlan}
       defaultPhoto={defaultPhoto}
-      allergens={<AllergenPictosView items={recipe.allergenItems} className="mb-4" iconClassName="w-6 h-6" />}
+      allergens={
+        <AllergenPictosView
+          items={matchAllergenPictos(recipe.allergenNames, allergenRefs)}
+          className="mb-4"
+          iconClassName="w-6 h-6"
+        />
+      }
     />
   );
 }

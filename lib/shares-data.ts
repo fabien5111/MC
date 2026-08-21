@@ -9,7 +9,7 @@
 // absentes des types générés le sont déjà ailleurs (lib/search.ts).
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { CARD_SELECT, withAllergenPictos, type RecipeCard, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type {
   BookShareGiven,
   BookShareReceived,
@@ -158,7 +158,7 @@ export const getRecipeShareInfo = cache(
 // (partage de carnet « brouillons compris », ou partage direct — sans
 // restriction de statut) — la barre de statut du carnet en a besoin pour ce
 // scope (cf. lib/carnet.ts `sharedStatusCounts`).
-export type SharedRecipeItem = { recipe: RecipeCardWithAllergens; via: 'direct' | 'book'; ownerId: string; status: string | null };
+export type SharedRecipeItem = { recipe: RecipeCardWithAllergenNames; via: 'direct' | 'book'; ownerId: string; status: string | null };
 
 export const getSharedWithMeRecipes = cache(async (userId: string): Promise<SharedRecipeItem[]> => {
   const supabase = await createClient();
@@ -187,8 +187,8 @@ export const getSharedWithMeRecipes = cache(async (userId: string): Promise<Shar
     return [];
   }
   const rows = (data as unknown as (RecipeCard & { status: string | null })[]) ?? [];
-  const withPictos = await withAllergenPictos(rows);
-  return withPictos.map((r) => ({
+  const withNames = withAllergenNames(rows);
+  return withNames.map((r) => ({
     recipe: r,
     via: directIds.has(r.id) ? 'direct' : ('book' as const),
     ownerId: r.author_id,
