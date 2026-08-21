@@ -3,6 +3,7 @@ import { requireFullAdmin } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 import { RecipeDefaultPhotoManager } from '@/components/admin/RecipeDefaultPhotoManager';
+import { RecipeThumbnailBackfill } from '@/components/admin/RecipeThumbnailBackfill';
 
 export const metadata: Metadata = { title: 'Photos du site | Admin — Je pâtisse !' };
 
@@ -36,6 +37,9 @@ export default async function AdminPhotosPage() {
             profils, suggestions) quand l&apos;auteur n&apos;a pas ajouté de photo.
           </p>
           <RecipeDefaultPhotoManager initialUrl={settings.recipe_default_photo || null} />
+        </section>
+        <section className="mb-12 max-w-4xl">
+          <RecipeThumbnailBackfill />
         </section>
       </main>
     </>

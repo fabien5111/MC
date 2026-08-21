@@ -20,7 +20,7 @@
 // cochables sur place (PlanningDayView), c'est elle qui répond à « qu'est-ce
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -32,7 +32,7 @@ import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
-import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, type BatchFull } from '@/lib/recipe-plan';
+import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 
 type PlanningView = 'jours' | 'recettes';
@@ -56,16 +56,48 @@ export function CuisineContent({
   const writeGuard = useWriteGuard();
   const router = useRouter();
   // Cf. CarnetContent : le cache client du routeur peut resservir un rendu
-  // obsolète alors que la page est en `force-dynamic` côté serveur.
+  // obsolète alors que la page est en `force-dynamic` côté serveur. Seule
+  // resynchronisation de l'écran (PlanningDayView n'en fait plus une seconde
+  // pour son propre compte — même page, même cache à invalider).
+  // `useTransition` + délai avant d'afficher le fouet : ce rafraîchissement
+  // aboutit le plus souvent très vite (rien n'avait changé), l'afficher sans
+  // délai le ferait clignoter derrière une page déjà à jour.
+  const [refreshing, startRefresh] = useTransition();
   useEffect(() => {
-    router.refresh();
+    startRefresh(() => router.refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const [showRefreshSpinner, setShowRefreshSpinner] = useState(false);
+  useEffect(() => {
+    if (!refreshing) {
+      setShowRefreshSpinner(false);
+      return;
+    }
+    const t = setTimeout(() => setShowRefreshSpinner(true), 120);
+    return () => clearTimeout(t);
+  }, [refreshing]);
 
   const [planningList, setPlanningList] = useState(planning);
   useEffect(() => setPlanningList(planning), [planning]);
   const [terminees, setTerminees] = useState(batchesTerminees);
   useEffect(() => setTerminees(batchesTerminees), [batchesTerminees]);
+  // `getBatches(..., 'terminees')` ne renvoie qu'une page (TERMINEES_PAGE_SIZE) —
+  // une page pleine laisse supposer qu'il en reste, sans certitude (compte
+  // pile rond) : le pire cas est un « Voir plus » qui ne ramène rien.
+  const [hasMoreTerminees, setHasMoreTerminees] = useState(batchesTerminees.length === TERMINEES_PAGE_SIZE);
+  useEffect(() => setHasMoreTerminees(batchesTerminees.length === TERMINEES_PAGE_SIZE), [batchesTerminees]);
+  const [loadingMoreTerminees, setLoadingMoreTerminees] = useState(false);
+  async function loadMoreTerminees() {
+    setLoadingMoreTerminees(true);
+    try {
+      const res = await fetch(`/api/fournee/terminees?offset=${terminees.length}`);
+      const { items } = (await res.json()) as { items?: BatchListRow[] };
+      setTerminees((prev) => [...prev, ...(items || [])]);
+      setHasMoreTerminees((items || []).length === TERMINEES_PAGE_SIZE);
+    } finally {
+      setLoadingMoreTerminees(false);
+    }
+  }
   const [shoppingList, setShoppingList] = useState(shoppingLists);
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
@@ -318,7 +350,10 @@ export function CuisineContent({
 
   return (
     <>
-      <LoadingOverlay visible={busy || refaisant !== null} label={refaisant !== null ? 'Recréation de la fournée…' : 'Traitement en cours…'} />
+      <LoadingOverlay
+        visible={busy || refaisant !== null || showRefreshSpinner}
+        label={refaisant !== null ? 'Recréation de la fournée…' : showRefreshSpinner ? 'Actualisation…' : 'Traitement en cours…'}
+      />
 
       {/* ── Fournées en cours de cuisson ──────────────────────────────────
           Plusieurs peuvent tourner en même temps (un levain sur trois jours
@@ -400,9 +435,9 @@ export function CuisineContent({
                 <div key={p.id} className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                      {p.recipes?.hero_image_url ? (
+                      {p.recipes?.hero_thumb_url ? (
                         // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
+                        <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                       )}
@@ -452,7 +487,7 @@ export function CuisineContent({
         {terminees.length > 0 && (
           <details className="group mt-10 border-t border-outline-variant/60 pt-8">
             <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Fournées terminées ({terminees.length})
+              Fournées terminées ({terminees.length}{hasMoreTerminees ? '+' : ''})
               <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span>
             </summary>
             <div className="mt-4 max-w-3xl space-y-4">
@@ -462,9 +497,9 @@ export function CuisineContent({
                   <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
                     <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                        {p.recipes?.hero_image_url ? (
+                        {p.recipes?.hero_thumb_url ? (
                           // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                          <img src={p.recipes.hero_image_url} alt="" className="h-full w-full object-cover" />
+                          <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                         )}
@@ -498,6 +533,18 @@ export function CuisineContent({
                   </div>
                 );
               })}
+              {hasMoreTerminees && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreTerminees}
+                    disabled={loadingMoreTerminees}
+                    className="rounded-pill border border-primary px-6 py-2 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-60"
+                  >
+                    {loadingMoreTerminees ? 'Chargement…' : 'Voir plus'}
+                  </button>
+                </div>
+              )}
             </div>
           </details>
         )}
@@ -595,7 +642,7 @@ export function CuisineContent({
 function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
   const { done, total, currentTitle } = batch.progress;
   const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
-  const image = batch.recipes?.hero_image_url;
+  const image = batch.recipes?.hero_thumb_url;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
