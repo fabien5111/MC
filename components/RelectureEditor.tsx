@@ -20,7 +20,7 @@ import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
-import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { useDialog } from '@/components/Dialog';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -132,21 +132,30 @@ const numOrNull = (v: string): number | null => {
   return isNaN(n) ? null : n;
 };
 
-// Fusion des ingrédients identiques (nom + unité + commentaire) de toutes les
-// étapes, pour le récapitulatif global — même logique que `mergeRecapLines`
-// de CreerForm, à ceci près que le commentaire fait partie de la clé de
-// fusion : « crème liquide, chaude » et « crème liquide, froide » (ou
-// « chocolat noir 66 % » / « chocolat noir 54 % » porté par la note plutôt
-// que le nom) désignent des lignes différentes de la recette, fusionner
-// leurs quantités produirait un total sans usage réel.
-function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+// Fusion des ingrédients identiques (nom + commentaire) de toutes les étapes,
+// pour le récapitulatif global — même logique que `mergeRecapLines` de
+// CreerForm, à ceci près que le commentaire fait partie de la clé de fusion :
+// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
+// 66 % » / « chocolat noir 54 % » porté par la note plutôt que le nom)
+// désignent des lignes différentes de la recette, fusionner leurs quantités
+// produirait un total sans usage réel.
+//
+// Deux lignes du même ingrédient saisies dans des unités différentes sont
+// converties vers l'unité de la première rencontrée via la table de
+// référence (`convertQty`) plutôt que de rester sur deux lignes séparées.
+function mergeIngredientsRecap(
+  sps: SpState[],
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  ingredientRefIds: IngredientRefOption[],
+): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
   const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
   sps.forEach((sp, si) =>
     sp.ings.forEach((i) => {
       const name = i.nom.trim();
       if (!name) return;
       const note = i.note.trim();
-      const mkey = name.toLowerCase() + '|' + i.unite.toLowerCase() + '|' + note.toLowerCase();
+      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
         merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite, note, steps: new Set([si]) });
@@ -155,8 +164,22 @@ function mergeIngredientsRecap(sps: SpState[]): { name: string; qty: string; uni
       ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qte).replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-      else ex.qty = [ex.qty, i.qte].filter(Boolean).join(' + ');
+      if (isNaN(a) || isNaN(b)) {
+        ex.qty = [ex.qty, i.qte].filter(Boolean).join(' + ');
+        return;
+      }
+      if (ex.unit.trim().toLowerCase() === i.unite.trim().toLowerCase()) {
+        ex.qty = String(+(a + b).toFixed(2));
+        return;
+      }
+      const refId = resolveIngredientRefId(name, ingredientRefIds);
+      const converted = convertQty(conversions, units, refId, i.unite, b, ex.unit);
+      if (converted != null) {
+        ex.qty = String(+(a + converted).toFixed(2));
+      } else {
+        ex.qty = `${ex.qty} ${ex.unit} + ${i.qte} ${i.unite}`.trim();
+        ex.unit = '';
+      }
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
@@ -651,13 +674,22 @@ export function RelectureEditor({
         k === si ? { ...sp, ings: [...sp.ings, { key: nextKey(), imported: null, nom: '', qte: '', unite: '', note: '', allergen: [] }] } : sp,
       ),
     );
-  const delIng = (si: number, ii: number) =>
+  const delIng = async (si: number, ii: number) => {
+    const label = sps[si]?.ings[ii]?.nom.trim();
+    const msg = label ? `Supprimer l'ingrédient « ${label} » ?` : 'Supprimer cet ingrédient ?';
+    if (!(await dialog.confirm(msg))) return;
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ings: sp.ings.filter((_, j) => j !== ii) } : sp)));
+  };
   // ── Ustensiles (liste unique au niveau de la recette) ──
   const patchUtensil = (mi: number, patch: Partial<MatRow>) =>
     setUtensils((prev) => prev.map((m, j) => (j === mi ? { ...m, ...patch } : m)));
   const addUtensil = () => setUtensils((prev) => [...prev, { key: nextKey(), nom: '', commentaire: '' }]);
-  const delUtensil = (mi: number) => setUtensils((prev) => prev.filter((_, j) => j !== mi));
+  const delUtensil = async (mi: number) => {
+    const label = utensils[mi]?.nom.trim();
+    const msg = label ? `Supprimer l'ustensile « ${label} » ?` : 'Supprimer cet ustensile ?';
+    if (!(await dialog.confirm(msg))) return;
+    setUtensils((prev) => prev.filter((_, j) => j !== mi));
+  };
   const addEtape = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) => (k === si ? { ...sp, etapes: [...sp.etapes, { key: nextKey(), imported: null, texte: '' }] } : sp)),
@@ -750,7 +782,10 @@ export function RelectureEditor({
   const sumAttente = sps.reduce((n, sp) => n + (numOrNull(sp.attente) || 0), 0);
   const sumCuisson = sps.reduce((n, sp) => n + (numOrNull(sp.cuisson) || 0), 0);
   const sumTotal = sumPrep + sumAttente + sumCuisson;
-  const ingredientsRecap = useMemo(() => mergeIngredientsRecap(sps), [sps]);
+  const ingredientsRecap = useMemo(
+    () => mergeIngredientsRecap(sps, conversions, unitRefs, ingredientRefIds),
+    [sps, conversions, unitRefs, ingredientRefIds],
+  );
 
   // ── Planning de préparation (aperçu, même principe que CreerForm) ──
   const allSameDay = sps.every((sp) => !numOrNull(sp.jour));

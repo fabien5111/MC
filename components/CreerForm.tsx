@@ -30,7 +30,7 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
@@ -177,21 +177,32 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   });
 }
 
-// Fusion des lignes d'ingrédients identiques (nom + unité + commentaire) de
-// toutes les étapes, quantités numériques additionnées — même logique que
-// `mergeIngredientsRecap` de RelectureEditor : le commentaire fait partie de
-// la clé de fusion, sinon « crème liquide, chaude » et « crème liquide,
-// froide » (ou « chocolat noir 66 % » / « chocolat noir 54 % » porté par le
-// commentaire plutôt que le nom) fusionneraient leurs quantités en un total
-// sans usage réel.
-function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+// Fusion des lignes d'ingrédients identiques (nom + commentaire) de toutes
+// les étapes, quantités additionnées — même logique que `mergeIngredientsRecap`
+// de RelectureEditor : le commentaire fait partie de la clé de fusion, sinon
+// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
+// 66 % » / « chocolat noir 54 % » porté par le commentaire plutôt que le nom)
+// fusionneraient leurs quantités en un total sans usage réel.
+//
+// Deux lignes de même ingrédient saisies dans des unités différentes (300 g
+// d'œufs sur une étape, 1 unité sur une autre) sont converties vers l'unité
+// de la première rencontrée grâce à la table de référence (`convertQty`),
+// pour n'afficher qu'une seule ligne au lieu de deux. Sans conversion connue
+// entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
+// toutes lettres plutôt que perdue.
+function mergeRecapLines(
+  steps: StepState[],
+  conversions: ConversionRef[],
+  units: Unit[],
+  ingredientRefIds: IngredientRefOption[],
+): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
   const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
   steps.forEach((st, si) =>
     st.ings.forEach((i) => {
       const name = i.name.trim();
       if (!name) return;
       const note = i.comment.trim();
-      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase() + '|' + note.toLowerCase();
+      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
         merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
@@ -200,8 +211,22 @@ function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit:
       ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qty).replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-      else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+      if (isNaN(a) || isNaN(b)) {
+        ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+        return;
+      }
+      if (ex.unit.trim().toLowerCase() === i.unit.trim().toLowerCase()) {
+        ex.qty = String(+(a + b).toFixed(2));
+        return;
+      }
+      const refId = resolveIngredientRefId(name, ingredientRefIds);
+      const converted = convertQty(conversions, units, refId, i.unit, b, ex.unit);
+      if (converted != null) {
+        ex.qty = String(+(a + converted).toFixed(2));
+      } else {
+        ex.qty = `${ex.qty} ${ex.unit} + ${i.qty} ${i.unit}`.trim();
+        ex.unit = '';
+      }
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
@@ -290,10 +315,6 @@ export function CreerForm({
   );
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
-  // Cases cochées dans la liste déroulante, pas encore insérées dans
-  // `selectedTags` — permet de cocher plusieurs tags puis de les ajouter en
-  // une seule fois plutôt qu'un par un.
-  const [pendingTagIds, setPendingTagIds] = useState<Set<number>>(new Set());
   const tagPickerRef = useRef<HTMLDivElement>(null);
   // Tags créés à la volée par un admin depuis l'éditeur : complètent la liste
   // serveur pour l'autocomplétion et la sélection, sans recharger la page.
@@ -326,6 +347,13 @@ export function CreerForm({
     return us.length ? us.map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })) : [{ key: key(), name: '', comment: '' }];
   });
   const addUtensil = () => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }]);
+  const delUtensil = async (i: number) => {
+    if (utensils.length <= 1) return;
+    const label = utensils[i]?.name.trim();
+    const msg = label ? `Supprimer l'ustensile « ${label} » ?` : 'Supprimer cet ustensile ?';
+    if (!(await dialog.confirm(msg))) return;
+    setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p));
+  };
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
@@ -451,14 +479,12 @@ export function CreerForm({
     refreshRefs();
   }
 
-  // Repli du menu déroulant de tags au clic en dehors (les cases cochées mais
-  // non confirmées sont perdues, comme un menu qu'on abandonne).
+  // Repli du menu déroulant de tags au clic en dehors.
   useEffect(() => {
     if (!tagPickerOpen) return;
     const onPointerDown = (e: PointerEvent) => {
       if (tagPickerRef.current && !tagPickerRef.current.contains(e.target as Node)) {
         setTagPickerOpen(false);
-        setPendingTagIds(new Set());
       }
     };
     document.addEventListener('pointerdown', onPointerDown);
@@ -530,7 +556,12 @@ export function CreerForm({
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
   const addIng = (si: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: [...st.ings, emptyIng()] } : st)));
-  const delIng = (si: number, ii: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
+  const delIng = async (si: number, ii: number) => {
+    const label = steps[si]?.ings[ii]?.name.trim();
+    const msg = label ? `Supprimer l'ingrédient « ${label} » ?` : 'Supprimer cet ingrédient ?';
+    if (!(await dialog.confirm(msg))) return;
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
+  };
   const patchPhoto = (si: number, pi: number, url: string | null) =>
     setSteps((s) =>
       s.map((st, k) =>
@@ -693,7 +724,10 @@ export function CreerForm({
     });
     return days;
   }, [steps, allSameDay]);
-  const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
+  const ingredientsRecap = useMemo(
+    () => mergeRecapLines(steps, conversions, units, ingredientRefIds),
+    [steps, conversions, units, ingredientRefIds],
+  );
 
   // `keepStatus` : bouton « Enregistrer » de l'admin qui corrige la recette
   // d'un membre (cf. `editingOtherAuthor`) — enregistre le contenu sans
@@ -1248,7 +1282,6 @@ export function CreerForm({
                     onClick={() => {
                       setTagPickerOpen((v) => !v);
                       setTagSearch('');
-                      setPendingTagIds(new Set());
                     }}
                     className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
                   >
@@ -1275,14 +1308,11 @@ export function CreerForm({
                             >
                               <input
                                 type="checkbox"
-                                checked={pendingTagIds.has(t.id)}
+                                checked={false}
                                 onChange={(e) => {
-                                  setPendingTagIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (e.target.checked) next.add(t.id);
-                                    else next.delete(t.id);
-                                    return next;
-                                  });
+                                  if (!e.target.checked) return;
+                                  setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
+                                  markDirty();
                                 }}
                                 className="accent-primary"
                               />
@@ -1293,26 +1323,6 @@ export function CreerForm({
                           <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
                         )}
                       </div>
-                      {pendingTagIds.size > 0 && (
-                        <div className="px-2 pt-2 pb-2 shrink-0 border-t border-outline-variant">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedTags((prev) => {
-                                const next = new Map(prev);
-                                for (const t of allTags) if (pendingTagIds.has(t.id)) next.set(t.id, t.name);
-                                return next;
-                              });
-                              setTagPickerOpen(false);
-                              setPendingTagIds(new Set());
-                              markDirty();
-                            }}
-                            className="w-full px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md hover:opacity-80 transition-opacity"
-                          >
-                            Ajouter {pendingTagIds.size} tag{pendingTagIds.size > 1 ? 's' : ''}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -1626,7 +1636,7 @@ export function CreerForm({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p))}
+                  onClick={() => delUtensil(i)}
                   title="Supprimer"
                   className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 mt-1"
                 >

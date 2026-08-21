@@ -80,3 +80,33 @@ export function ingredientConversionText(
 
   return null;
 }
+
+// Convertit une quantité d'une unité vers une autre pour un ingrédient
+// référencé — même table que `ingredientConversionText`, mais entre deux
+// unités précises (celles des deux lignes à fusionner) plutôt que « la
+// première conversion disponible pour l'affichage ». `null` si l'ingrédient
+// n'est pas référencé ou si aucune conversion ne relie ces deux unités —
+// deux lignes qu'on ne peut pas convertir l'une vers l'autre ne doivent
+// jamais se retrouver cumulées dans un total inventé.
+export function convertQty(
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  refId: number | null | undefined,
+  fromUnitText: string | null | undefined,
+  qty: number,
+  toUnitText: string | null | undefined,
+): number | null {
+  if (!refId || !fromUnitText || !toUnitText || !isFinite(qty)) return null;
+  if (normUnit(fromUnitText) === normUnit(toUnitText)) return qty;
+  const fromUnit = units.find((u) => normUnit(u.name) === normUnit(fromUnitText));
+  const toUnit = units.find((u) => normUnit(u.name) === normUnit(toUnitText));
+  if (!fromUnit || !toUnit) return null;
+
+  const forward = conversions.find((c) => c.ingredient_ref_id === refId && c.from_unit_id === fromUnit.id && c.to_unit_id === toUnit.id);
+  if (forward && forward.from_quantity) return (qty * forward.to_quantity) / forward.from_quantity;
+
+  const reverse = conversions.find((c) => c.ingredient_ref_id === refId && c.to_unit_id === fromUnit.id && c.from_unit_id === toUnit.id);
+  if (reverse && reverse.to_quantity) return (qty * reverse.from_quantity) / reverse.to_quantity;
+
+  return null;
+}

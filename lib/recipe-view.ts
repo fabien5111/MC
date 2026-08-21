@@ -2,6 +2,7 @@
 // — pas d'accès Supabase, utilisables aussi bien côté serveur que dans les
 // Client Components (ex. RecipeCard rendu dans une grille avec pagination).
 import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
+import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -61,18 +62,25 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
   return null;
 }
 
-// Fusion des ingrédients identiques (nom + unité) pour la liste complète.
-// `ref_id` (rapprochement conversions d'ingrédients) est celui du premier
-// ingrédient fusionné : deux lignes de même nom + unité référencent en
-// pratique toujours le même ingrédient du référentiel.
+// Fusion des ingrédients identiques (nom) pour la liste complète. `ref_id`
+// (rapprochement conversions d'ingrédients) est celui du premier ingrédient
+// fusionné : deux lignes de même nom référencent en pratique toujours le même
+// ingrédient du référentiel.
+//
+// Deux lignes du même ingrédient saisies dans des unités différentes (300 g
+// d'œufs dans une étape, 1 unité dans une autre) sont converties vers l'unité
+// de la première rencontrée via la table de référence (`convertQty`) plutôt
+// que de rester sur deux lignes séparées de la liste. Sans conversion connue
+// entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
+// toutes lettres plutôt que perdue.
 export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null; ref_id: number | null };
-export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
+export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
     (g.ingredients || []).forEach((it) => {
       if (!it.name) return;
       const unit = it.unit || '';
-      const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+      const key = it.name.toLowerCase();
       const ex = merged.find((m) => m.key === key);
       if (!ex) {
         merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null, ref_id: it.ref_id ?? null });
@@ -80,8 +88,19 @@ export function mergeIngredients(recipe: RecipeFull): MergedIngredient[] {
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(it.quantity || '').replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-      else ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
+      if (isNaN(a) || isNaN(b)) {
+        ex.qty = [ex.qty, it.quantity].filter(Boolean).join(' + ');
+      } else if (ex.unit.toLowerCase() === unit.toLowerCase()) {
+        ex.qty = String(+(a + b).toFixed(2));
+      } else {
+        const converted = convertQty(conversions, units, ex.ref_id ?? it.ref_id, unit, b, ex.unit);
+        if (converted != null) {
+          ex.qty = String(+(a + converted).toFixed(2));
+        } else {
+          ex.qty = `${ex.qty} ${ex.unit} + ${it.quantity} ${unit}`.trim();
+          ex.unit = '';
+        }
+      }
       if (it.comment && it.comment !== ex.comment) ex.comment = ex.comment ? ex.comment + ' ; ' + it.comment : it.comment;
     }),
   );

@@ -12,7 +12,7 @@ import { fmtNum, batchFactor } from '@/lib/recipe-plan';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
-import { formatTime, formatDate } from '@/lib/format';
+import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
@@ -165,7 +165,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const times = effectiveTimes(recipe);
-  const merged = mergeIngredients(recipe);
+  const merged = mergeIngredients(recipe, conversions, units);
   const days = planningDays(steps);
   const dLabel = (offset: number | null | undefined) => dayLabel(offset);
 
@@ -297,6 +297,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <span>
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
+              {recipe.updated_at && recipe.updated_at !== recipe.created_at && (
+                <>
+                  <span className="w-1 h-1 bg-outline-variant rounded-full" />
+                  <span>Dernière modification le {formatDateHeure(recipe.updated_at)}</span>
+                </>
+              )}
             </div>
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
