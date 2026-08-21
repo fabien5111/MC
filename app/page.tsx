@@ -120,10 +120,12 @@ export default async function HomePage() {
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
-                    {featured.hero_image_url || defaultPhoto ? (
+                    {featured.hero_card_url || defaultPhoto ? (
+                      // `hero_card_url` (~480 px) — cf. lib/recipes.ts CARD_SELECT,
+                      // qui ne sélectionne plus la pleine définition.
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                       <img
-                        src={featured.hero_image_url || defaultPhoto!}
+                        src={featured.hero_card_url || defaultPhoto!}
                         alt={featured.title}
                         className="w-full h-full object-cover"
                       />

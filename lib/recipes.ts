@@ -14,16 +14,30 @@ import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conver
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
 // `hero_card_url` (~480 px, générée à l'enregistrement de la recette —
-// CreerForm, lib/images.ts) est ce que les cartes affichent réellement
-// (RecipeCardLayout, SuggestionCard, CarnetContent) : `hero_image_url`, en
-// pleine définition (jusqu'à 1400 px, data-URL), n'est conservée dans cette
-// sélection qu'en repli pour les recettes pas encore rétro-remplies — sans
-// lui, une grille de 25 cartes peut transporter plusieurs Mo pour rien. Absent
-// de `lib/database.types.ts` (colonne ajoutée par migration, types non encore
-// régénérés) : même contournement que `hero_thumb_url` (lib/profile.ts).
+// CreerForm, lib/images.ts) est la seule image que cette sélection transporte.
+//
+// `hero_image_url`, en pleine définition (jusqu'à 1400 px, data-URL), y a été
+// conservée un temps en repli pour les recettes pas encore rétro-remplies.
+// Mesurée sur la base, elle pesait 4804 kB contre 848 kB pour les vignettes —
+// 5,7 fois le poids utile, sérialisé dans le payload RSC de tout écran à
+// cartes sans jamais être affiché dès lors que la vignette existe (le carnet
+// atteignait 6,57 Mo). Le rétro-remplissage (Admin → Photos) étant passé,
+// aucune recette n'en dépendait plus : le repli est retiré.
+//
+// Conséquence à connaître : une recette qui aurait une photo sans vignette
+// affiche désormais la photo par défaut du site, pas sa photo. C'est le
+// rétro-remplissage qui la rattrape, plus un repli dans cette requête — le
+// prix à payer pour ne pas transporter la pleine définition des 46 autres.
+//
+// `avatar_url` part pour la même raison : aucun gabarit de carte ne l'affiche
+// (seul RecipeComments montre un avatar, avec sa propre requête).
+//
+// `hero_card_url` est absente de `lib/database.types.ts` (colonne ajoutée par
+// migration, types non encore régénérés) : même contournement que
+// `hero_thumb_url` (lib/profile.ts).
 export const CARD_SELECT =
-  'id, title, description, hero_image_url, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
-  'profiles!recipes_author_id_fkey(full_name, avatar_url, username), recipe_types(name), difficulties(name, level), ' +
+  'id, title, description, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
+  'profiles!recipes_author_id_fkey(full_name, username), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
@@ -31,7 +45,6 @@ export type RecipeCard = Pick<
   | 'id'
   | 'title'
   | 'description'
-  | 'hero_image_url'
   | 'author_id'
   | 'prep_time'
   | 'cook_time'
@@ -42,7 +55,7 @@ export type RecipeCard = Pick<
   | 'created_at'
 > & {
   hero_card_url: string | null;
-  profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
+  profiles: { full_name: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];

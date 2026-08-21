@@ -29,10 +29,10 @@ export function SuggestionCard({
     <div className="relative group">
       <Link href={`/recette/${r.id}`} className="cursor-pointer block">
         <div className="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant relative">
-          {r.hero_card_url || r.hero_image_url || defaultPhoto ? (
-            // `hero_card_url` plutôt que la pleine définition — cf. RecipeCardLayout.
+          {r.hero_card_url || defaultPhoto ? (
+            // `hero_card_url` seule, jamais la pleine définition — cf. RecipeCardLayout.
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-            <img src={r.hero_card_url || r.hero_image_url || defaultPhoto!} alt={r.title} className="w-full h-full object-cover" />
+            <img src={r.hero_card_url || defaultPhoto!} alt={r.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-on-surface-variant bg-surface-container">
               <span className="material-symbols-outlined text-4xl">cake</span>

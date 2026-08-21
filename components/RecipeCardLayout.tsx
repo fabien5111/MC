@@ -45,15 +45,13 @@ export function RecipeCardLayout({
     <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
-          {r.hero_card_url || r.hero_image_url || defaultPhoto ? (
+          {r.hero_card_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              // `hero_card_url` (~480 px) plutôt que `hero_image_url` (pleine
-              // définition, jusqu'à 1400 px) : cette carte n'affiche jamais
-              // l'image à plus de sa taille propre. Repli sur la pleine
-              // définition pour une recette pas encore rétro-remplie (cf.
-              // lib/recipes.ts CARD_SELECT).
-              src={r.hero_card_url || r.hero_image_url || defaultPhoto!}
+              // `hero_card_url` (~480 px) seule, jamais `hero_image_url`
+              // (pleine définition, jusqu'à 1400 px) : cf. lib/recipes.ts
+              // CARD_SELECT, qui ne la sélectionne plus.
+              src={r.hero_card_url || defaultPhoto!}
               alt={r.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
