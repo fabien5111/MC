@@ -14,7 +14,15 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 4 s. Un
+// filet plus court (500 ms) traite spécifiquement le cas d'une navigation
+// qui n'en est pas une : lien ciblant l'URL de départ après une redirection
+// serveur, ou recherche resoumise à l'identique — voir `start()`.
+//
+// `console.debug('[spinner-timing]', …)` : instrumentation temporaire pour
+// mesurer la durée réelle de l'overlay par déclencheur (aide à trancher la
+// question « le spinner ralentit-il la page » sans deviner). À retirer une
+// fois la mesure faite sur dev.jepatisse.com.
 //
 // Le départ est détecté sur `click` (souris, clavier) et, pour les pointeurs
 // tactiles, dès le relâchement du doigt : sur certains navigateurs mobiles,
@@ -40,6 +48,7 @@ export function NavigationSpinner() {
   const [visible, setVisible] = useState(false);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sameUrlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // URL effectivement rendue par React (et non celle de `history`, que le
   // navigateur met à jour avant même d'émettre `popstate`) : sert à savoir,
@@ -51,20 +60,37 @@ export function NavigationSpinner() {
   // déclencheur pour le même geste (le `click` qui suit un tapotement) ne
   // relance le délai d'affichage depuis le début.
   const pending = useRef(false);
+  // Horodatage et URL de départ au moment de l'armement, uniquement pour
+  // l'instrumentation ci-dessous (durée réellement affichée par déclencheur).
+  const armedAt = useRef<number | null>(null);
+  const armedFromUrl = useRef<string | null>(null);
+  const shown = useRef(false);
 
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
+    if (sameUrlTimer.current) clearTimeout(sameUrlTimer.current);
     pending.current = false;
+  };
+
+  const logTiming = (reason: string) => {
+    if (armedAt.current === null) return;
+    const elapsed = Math.round(performance.now() - armedAt.current);
+    console.debug(
+      `[spinner-timing] ${reason} — ${elapsed}ms depuis ${armedFromUrl.current}` +
+        (shown.current ? ' (overlay affiché)' : ' (jamais affiché, <120ms)'),
+    );
   };
 
   // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
   // chaîne : `search` est un objet recréé à chaque rendu, donc inutilisable
   // tel quel comme dépendance.
   useEffect(() => {
+    const wasPending = pending.current;
     committedUrlRef.current = committedUrl;
     clearTimers();
     setVisible(false);
+    if (wasPending) logTiming('navigation-committed');
   }, [committedUrl]);
 
   useEffect(() => {
@@ -72,11 +98,34 @@ export function NavigationSpinner() {
       if (pending.current) return;
       clearTimers();
       pending.current = true;
-      showTimer.current = setTimeout(() => setVisible(true), 120);
+      armedAt.current = performance.now();
+      armedFromUrl.current = committedUrlRef.current;
+      shown.current = false;
+      showTimer.current = setTimeout(() => {
+        setVisible(true);
+        shown.current = true;
+      }, 120);
+      // Filet court : une navigation qui n'en est pas une (lien ciblant l'URL
+      // de départ après une redirection serveur, recherche resoumise à
+      // l'identique) ne produit aucun changement de `pathname`/`searchParams`
+      // — rien ne masquerait alors l'overlay avant le filet de sécurité.
+      // `history` est mis à jour par Next dès le déclenchement de la
+      // navigation, avant même le rendu : si l'URL du navigateur est encore
+      // celle de départ passé ce délai, il n'y a pas de page différente en
+      // cours de chargement.
+      sameUrlTimer.current = setTimeout(() => {
+        const current = window.location.pathname + window.location.search;
+        if (current === armedFromUrl.current) {
+          logTiming('same-url');
+          clearTimers();
+          setVisible(false);
+        }
+      }, 500);
       safetyTimer.current = setTimeout(() => {
+        logTiming('safety-timeout');
         setVisible(false);
         pending.current = false;
-      }, 8000);
+      }, 4000);
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
@@ -101,9 +150,17 @@ export function NavigationSpinner() {
 
     const onClick = (e: MouseEvent) => {
       // On ignore les clics « augmentés » (nouvel onglet, sélection…).
-      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.button !== 0) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if (isInternalNavigation(e.target)) start();
+      if (!isInternalNavigation(e.target)) return;
+      // Écouteur en capture : il reçoit l'événement avant tout gestionnaire
+      // React porté par l'ancre elle-même (ex. une navigation interceptée
+      // pour un défilement en page). `defaultPrevented` n'est donc fiable
+      // qu'une fois la diffusion de l'événement terminée — on le relit après
+      // coup plutôt qu'ici, où il vaut toujours `false`.
+      setTimeout(() => {
+        if (!e.defaultPrevented) start();
+      }, 0);
     };
 
     // Tactile : on suit le geste pour distinguer un tapotement d'un début de

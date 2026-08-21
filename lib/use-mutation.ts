@@ -26,7 +26,7 @@
 // en lecture seule, aucune écriture n'est émise (message explicite + trace
 // dans le journal d'audit). Les écritures abouties d'une session en mode
 // « modification » sont, elles, tracées.
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
@@ -61,6 +61,22 @@ export function useMutation() {
   // spinner couvre enfin toute l'opération, écriture ET resynchronisation.
   const [pending, startTransition] = useTransition();
 
+  // Instrumentation temporaire — voir NavigationSpinner.tsx : mesure séparé-
+  // ment le temps d'écriture réseau et celui de la resynchronisation
+  // (`router.refresh()`), pour savoir laquelle des deux domine la durée
+  // pendant laquelle `busy` garde l'overlay affiché. La durée de la
+  // resynchronisation ne peut se mesurer qu'en observant `pending` repasser
+  // à `false` — un minuteur posé dans le callback de `startTransition` ne
+  // couvrirait que le tick suivant, pas le rendu réel, souvent bien plus
+  // long. À retirer une fois la mesure faite sur dev.jepatisse.com.
+  const refreshTiming = useRef<{ start: number; label: string } | null>(null);
+  useEffect(() => {
+    if (pending || !refreshTiming.current) return;
+    const { start, label } = refreshTiming.current;
+    refreshTiming.current = null;
+    console.debug(`[mutation-timing] ${label} — resynchro ${Math.round(performance.now() - start)}ms`);
+  }, [pending]);
+
   // Renvoie true si l'écriture a réussi — permet à l'appelant d'annuler une
   // mise à jour optimiste en cas d'échec.
   const mutate = useCallback(
@@ -75,18 +91,31 @@ export function useMutation() {
         return false;
       }
       if (options.confirm && !(await dialog.confirm(options.confirm))) return false;
+      const label = options.errorLabel ?? options.confirm ?? 'Écriture';
+      const writeStart = performance.now();
       setWriting(true);
       try {
         const res = await write();
-        if (!res) return false; // abandon volontaire
+        const writeMs = Math.round(performance.now() - writeStart);
+        if (!res) {
+          console.debug(`[mutation-timing] ${label} — abandon après ${writeMs}ms`);
+          return false; // abandon volontaire
+        }
         if (res.error) {
+          console.debug(`[mutation-timing] ${label} — erreur après ${writeMs}ms`);
           dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
           return false;
         }
         if (impersonation) {
           logImpersonationAction('write', options.errorLabel ?? options.confirm ?? 'Écriture');
         }
-        if (options.refresh !== false) startTransition(() => router.refresh());
+        if (options.refresh !== false) {
+          console.debug(`[mutation-timing] ${label} — écriture ${writeMs}ms, resynchro lancée`);
+          refreshTiming.current = { start: performance.now(), label };
+          startTransition(() => router.refresh());
+        } else {
+          console.debug(`[mutation-timing] ${label} — écriture ${writeMs}ms (sans resynchro)`);
+        }
         return true;
       } catch (e) {
         dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
@@ -106,7 +135,10 @@ export function useMutation() {
   // s'éteint et les modifications n'apparaissent qu'une seconde plus tard.
   // Le parent, lui, reste monté — c'est donc à lui de porter le
   // rafraîchissement, et le `busy` qui va avec.
-  const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
+  const refresh = useCallback(() => {
+    refreshTiming.current = { start: performance.now(), label: 'refresh() explicite' };
+    startTransition(() => router.refresh());
+  }, [router]);
 
   return { busy: writing || pending, mutate, refresh };
 }
