@@ -297,7 +297,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <span>
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
-              {recipe.updated_at && recipe.updated_at !== recipe.created_at && (
+              {recipe.updated_at && (
                 <>
                   <span className="w-1 h-1 bg-outline-variant rounded-full" />
                   <span>Dernière modification le {formatDateHeure(recipe.updated_at)}</span>
