@@ -30,7 +30,7 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
@@ -177,21 +177,32 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   });
 }
 
-// Fusion des lignes d'ingrédients identiques (nom + unité + commentaire) de
-// toutes les étapes, quantités numériques additionnées — même logique que
-// `mergeIngredientsRecap` de RelectureEditor : le commentaire fait partie de
-// la clé de fusion, sinon « crème liquide, chaude » et « crème liquide,
-// froide » (ou « chocolat noir 66 % » / « chocolat noir 54 % » porté par le
-// commentaire plutôt que le nom) fusionneraient leurs quantités en un total
-// sans usage réel.
-function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+// Fusion des lignes d'ingrédients identiques (nom + commentaire) de toutes
+// les étapes, quantités additionnées — même logique que `mergeIngredientsRecap`
+// de RelectureEditor : le commentaire fait partie de la clé de fusion, sinon
+// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
+// 66 % » / « chocolat noir 54 % » porté par le commentaire plutôt que le nom)
+// fusionneraient leurs quantités en un total sans usage réel.
+//
+// Deux lignes de même ingrédient saisies dans des unités différentes (300 g
+// d'œufs sur une étape, 1 unité sur une autre) sont converties vers l'unité
+// de la première rencontrée grâce à la table de référence (`convertQty`),
+// pour n'afficher qu'une seule ligne au lieu de deux. Sans conversion connue
+// entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
+// toutes lettres plutôt que perdue.
+function mergeRecapLines(
+  steps: StepState[],
+  conversions: ConversionRef[],
+  units: Unit[],
+  ingredientRefIds: IngredientRefOption[],
+): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
   const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
   steps.forEach((st, si) =>
     st.ings.forEach((i) => {
       const name = i.name.trim();
       if (!name) return;
       const note = i.comment.trim();
-      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase() + '|' + note.toLowerCase();
+      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
         merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
@@ -200,8 +211,22 @@ function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit:
       ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qty).replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-      else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+      if (isNaN(a) || isNaN(b)) {
+        ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+        return;
+      }
+      if (ex.unit.trim().toLowerCase() === i.unit.trim().toLowerCase()) {
+        ex.qty = String(+(a + b).toFixed(2));
+        return;
+      }
+      const refId = resolveIngredientRefId(name, ingredientRefIds);
+      const converted = convertQty(conversions, units, refId, i.unit, b, ex.unit);
+      if (converted != null) {
+        ex.qty = String(+(a + converted).toFixed(2));
+      } else {
+        ex.qty = `${ex.qty} ${ex.unit} + ${i.qty} ${i.unit}`.trim();
+        ex.unit = '';
+      }
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
@@ -699,7 +724,10 @@ export function CreerForm({
     });
     return days;
   }, [steps, allSameDay]);
-  const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
+  const ingredientsRecap = useMemo(
+    () => mergeRecapLines(steps, conversions, units, ingredientRefIds),
+    [steps, conversions, units, ingredientRefIds],
+  );
 
   // `keepStatus` : bouton « Enregistrer » de l'admin qui corrige la recette
   // d'un membre (cf. `editingOtherAuthor`) — enregistre le contenu sans

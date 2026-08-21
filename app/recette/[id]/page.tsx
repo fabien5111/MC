@@ -165,7 +165,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const steps = [...(recipe.recipe_steps || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const times = effectiveTimes(recipe);
-  const merged = mergeIngredients(recipe);
+  const merged = mergeIngredients(recipe, conversions, units);
   const days = planningDays(steps);
   const dLabel = (offset: number | null | undefined) => dayLabel(offset);
 
