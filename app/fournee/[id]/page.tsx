@@ -5,6 +5,7 @@ import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getAllergensWithPicto } from '@/lib/recipes';
 import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
+import { Header } from '@/components/Header';
 import { BatchView } from '@/components/batch/BatchView';
 
 type Params = {
@@ -89,17 +90,22 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const shoppingLists = shoppingListsRaw.map((l) => ({ id: l.id, name: l.name }));
 
   return (
-    <BatchView
-      batch={batch}
-      baseRecipe={baseRecipe}
-      units={units}
-      unitTips={unitTips}
-      conversions={conversions}
-      shoppingLists={shoppingLists}
-      allergenRefs={allergenRefs}
-      lecture={lecture === '1'}
-      initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
-      myReview={myReview}
-    />
+    <>
+      {/* Même bandeau que le reste du site (auparavant un en-tête maison,
+          propre à BatchView) — rattachée à « En cuisine » (lib/nav.ts). */}
+      <Header current="cuisine" />
+      <BatchView
+        batch={batch}
+        baseRecipe={baseRecipe}
+        units={units}
+        unitTips={unitTips}
+        conversions={conversions}
+        shoppingLists={shoppingLists}
+        allergenRefs={allergenRefs}
+        lecture={lecture === '1'}
+        initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
+        myReview={myReview}
+      />
+    </>
   );
 }

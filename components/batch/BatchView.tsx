@@ -266,17 +266,6 @@ export function BatchView({
 
   return (
     <>
-      <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
-        <div className="max-w-[900px] mx-auto flex justify-between items-center px-margin-mobile py-3">
-          <Link className="maryse-logo-font text-3xl text-primary leading-none" href="/">
-            Je pâtisse !
-          </Link>
-          <Link href="/en-cuisine" className="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1">
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span> Mes fournées
-          </Link>
-        </div>
-      </header>
-
       <div className="max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
