@@ -35,10 +35,12 @@ import {
 import {
   buildShingles,
   jaccardIndex,
+  coverageRatio,
   longestCommonWordRun,
   contextWindow,
   similarityFlag,
   combineFlags,
+  COVERAGE_ROUGE_PCT,
 } from '@/lib/ai/similarity';
 import {
   extractSignaturePhrases,
@@ -61,9 +63,11 @@ import {
 export const maxDuration = 60;
 
 // §6.4 : la recherche externe est coûteuse, on l'évite si l'étape 2 a déjà
-// trouvé une correspondance rédactionnelle forte sur le site — même logique
-// reprise pour la couche B ci-dessous.
-const EXTERNAL_SEARCH_SKIP_THRESHOLD = 70;
+// trouvé une correspondance littérale forte sur le site — même logique
+// reprise pour la couche B ci-dessous. Aligné sur le seuil rouge du drapeau
+// (une seule constante, cf. lib/ai/similarity.ts) : inutile de chercher plus
+// loin une fois la copie déjà caractérisée.
+const EXTERNAL_SEARCH_SKIP_THRESHOLD = COVERAGE_ROUGE_PCT;
 
 // Seuil de présélection des candidats couche B (Jaccard sur les ingrédients
 // canoniques, couche C) : volontairement bas — c'est le jugement Claude qui
@@ -218,8 +222,16 @@ export async function POST(req: Request) {
     // qu'un balayage du corpus (recipe_shingle_index, maintenu à la
     // publication/dépublication — voir /api/reindex-recette). Best-effort —
     // une erreur ici ne doit pas invalider la modération déjà obtenue.
+    // `editorialMax` n'agrège que les correspondances littérales (couche A,
+    // et couche « exacte » de la recherche externe) : seul ce qui est une
+    // copie mesurée ou jugée mot pour mot fait monter le drapeau (§8 révisé).
+    // Une reformulation détectée (couche B, correspondance externe « proche »
+    // ou « faible ») reste affichée à l'admin (`matches`) mais n'y contribue
+    // jamais — la réécriture d'une recette est légale.
     let editorialMax = 0;
     let structuralMax = 0;
+    const isLiteralMatch = (m: { detection_method: string | null }) =>
+      m.detection_method === 'shingles' || m.detection_method === 'web_exacte';
     let matches: {
       source_type: string;
       source_recipe_id: string;
@@ -254,9 +266,12 @@ export async function POST(req: Request) {
       }[];
 
       const scored = indexCandidates
-        .map((c) => ({ c, jaccard: jaccardIndex(candidateShingles, new Set(c.shingles)) }))
-        .filter((s) => s.jaccard > 0)
-        .sort((a, b) => b.jaccard - a.jaccard)
+        // Couverture (part du texte SOUMIS retrouvée mot pour mot dans la
+        // source), pas Jaccard : Jaccard sous-évalue une recette courte
+        // entièrement recopiée à l'intérieur d'une source bien plus longue.
+        .map((c) => ({ c, coverage: coverageRatio(candidateShingles, new Set(c.shingles)) }))
+        .filter((s) => s.coverage > 0)
+        .sort((a, b) => b.coverage - a.coverage)
         .slice(0, 5); // top 5, convention reprise de la recherche externe (§6.4)
 
       // Les titres ne sont pas dans l'index (pas nécessaires à la
@@ -292,7 +307,7 @@ export async function POST(req: Request) {
           source_type: 'interne',
           source_recipe_id: s.c.recipe_id,
           source_title: titleById.get(s.c.recipe_id) ?? null,
-          editorial_score: pct(s.jaccard),
+          editorial_score: pct(s.coverage),
           structural_score: pct(structScore),
           longest_common_sequence: seq.length,
           matched_excerpts: excerpts,
@@ -385,9 +400,13 @@ export async function POST(req: Request) {
       }
     }
 
-    editorialMax = matches.reduce((max, m) => Math.max(max, m.editorial_score), 0);
+    // Recalculé après la couche B : `editorialMax` ne reprend que les
+    // correspondances littérales, jamais un score de reformulation jugée
+    // ('embedding') — sinon une reformulation légale pourrait à la fois
+    // durcir le drapeau et empêcher, ci-dessous, la recherche externe de
+    // s'exécuter alors qu'aucune copie littérale n'a encore été établie.
+    editorialMax = matches.reduce((max, m) => Math.max(max, isLiteralMatch(m) ? m.editorial_score : 0), 0);
     structuralMax = matches.reduce((max, m) => Math.max(max, m.structural_score), 0);
-    const longestSequence = matches.reduce((max, m) => Math.max(max, m.longest_common_sequence ?? 0), 0);
 
     // Coût réel (§9), calculé appel par appel plutôt qu'à partir du seul total
     // de tokens de `call.usage` : modération/couche B (MODERATION_MODEL) et
@@ -455,10 +474,14 @@ export async function POST(req: Request) {
               structural_score: 0,
               longest_common_sequence: null,
               matched_excerpts: [{ extrait_soumis: m.phrase, extrait_source: m.extrait, commun: m.phrase }],
-              detection_method: null,
+              // Seule la confiance « exacte » (texte quasi mot pour mot) est
+              // une copie littérale ; « proche »/« faible » sont des
+              // reformulations jugées par le modèle — légales, jamais
+              // comptées dans le drapeau (cf. `isLiteralMatch`).
+              detection_method: m.confiance === 'exacte' ? 'web_exacte' : 'web_reformulation',
             }));
             await matchTable(admin).insert(rows);
-            editorialMax = Math.max(editorialMax, ...rows.map((r) => r.editorial_score));
+            editorialMax = Math.max(editorialMax, ...rows.filter(isLiteralMatch).map((r) => r.editorial_score));
             externalMatchCount = rows.length;
           }
         }
@@ -468,7 +491,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const flag = combineFlags(moderationFlag(verified.verdict), similarityFlag(editorialMax, longestSequence));
+    const flag = combineFlags(moderationFlag(verified.verdict), similarityFlag(editorialMax));
 
     await analysisTable(admin)
       .update({

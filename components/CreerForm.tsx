@@ -937,7 +937,12 @@ export function CreerForm({
       // soumission pour publication publique, et rejoué si le contenu d'une
       // recette déjà publique change. Ne bloque jamais la soumission — la
       // route écrit son propre statut d'échec si l'appel IA rate (§10).
-      if (finalStatus === 'pending' || editRecipe?.status === 'published') {
+      // Jamais pour un administrateur : sa publication court-circuite déjà la
+      // file de validation humaine (finalStatus ci-dessus), et le panneau
+      // d'analyse (RecipesManager) ne s'affiche que pour les recettes en
+      // attente/refusées — une analyse déclenchée ici resterait invisible,
+      // consommant des tokens sans jamais être consultée.
+      if (!isAdmin && (finalStatus === 'pending' || editRecipe?.status === 'published')) {
         fetch('/api/moderation-recette', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },

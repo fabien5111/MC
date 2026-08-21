@@ -36,6 +36,20 @@ export function jaccardIndex(a: Set<string>, b: Set<string>): number {
   return union > 0 ? inter / union : 0;
 }
 
+// Couverture, pas Jaccard : quelle part des shingles de `candidate` se
+// retrouve mot pour mot dans `source`, rapportée à `candidate` seul plutôt
+// qu'à l'union des deux ensembles. Jaccard sous-évalue une copie totale d'une
+// recette courte à l'intérieur d'une recette source bien plus longue (le
+// dénominateur grossit avec la source sans rapport avec ce qui a été copié) ;
+// la couverture répond directement à la question posée par le drapeau (§8
+// révisé) : « quelle part de LA RECETTE SOUMISE est recopiée mot pour mot ? »
+export function coverageRatio(candidate: Set<string>, source: Set<string>): number {
+  if (!candidate.size || !source.size) return 0;
+  let inter = 0;
+  for (const s of candidate) if (source.has(s)) inter++;
+  return inter / candidate.size;
+}
+
 // Plus longue suite de mots consécutifs commune à deux textes (programmation
 // dynamique en une ligne de tableau, O(longueurs) en mémoire) : la preuve la
 // plus convaincante pour l'administrateur (§6.3 : « 34 mots consécutifs
@@ -106,20 +120,20 @@ export function combineFlags(...flags: Flag[]): Flag {
   return flags.reduce((worst, f) => (FLAG_RANK[f] > FLAG_RANK[worst] ? f : worst), 'vert' as Flag);
 }
 
-// Valeurs de départ proposées par la spec (§8), à rendre configurables une
-// fois observées les premières semaines d'usage réel — en dur pour ce lot.
-export const EDITORIAL_ROUGE_PCT = 70;
-export const EDITORIAL_ORANGE_PCT = 40;
-export const SEQUENCE_ROUGE_WORDS = 25;
-export const SEQUENCE_ORANGE_WORDS = 20;
+// Révisé : la réécriture d'une recette (mêmes idées, phrases différentes)
+// est légale et ne doit jamais durcir le drapeau — seule la copie littérale,
+// mesurée (jamais un jugement IA de reformulation), y contribue. Le drapeau
+// se lit donc directement comme « quelle part de la recette est recopiée mot
+// pour mot ? » (`coverageRatio` ci-dessus), pas comme un indice de proximité
+// générale entre deux textes.
+export const COVERAGE_ROUGE_PCT = 50;
+export const COVERAGE_ORANGE_PCT = 25;
 
-// §8 : rouge si similarité rédactionnelle ≥ 70 % OU séquence commune ≥ 25
-// mots ; orange si 40-69 % OU séquence ≥ 20 mots ; vert sinon. Le score
-// rédactionnel restitué (`editorialScorePercent`) est l'indice de Jaccard sur
-// les shingles, en pourcentage — seul signal disponible tant que la couche B
-// (embeddings, hors périmètre de ce lot) n'existe pas.
-export function similarityFlag(editorialScorePercent: number, longestSequenceWords: number): Flag {
-  if (editorialScorePercent >= EDITORIAL_ROUGE_PCT || longestSequenceWords >= SEQUENCE_ROUGE_WORDS) return 'rouge';
-  if (editorialScorePercent >= EDITORIAL_ORANGE_PCT || longestSequenceWords >= SEQUENCE_ORANGE_WORDS) return 'orange';
+// §8 (révisé) : rouge si au moins la moitié du texte de la recette soumise
+// est retrouvée mot pour mot dans une source ; orange si un quart à la
+// moitié ; vert sinon.
+export function similarityFlag(coveragePercent: number): Flag {
+  if (coveragePercent >= COVERAGE_ROUGE_PCT) return 'rouge';
+  if (coveragePercent >= COVERAGE_ORANGE_PCT) return 'orange';
   return 'vert';
 }
