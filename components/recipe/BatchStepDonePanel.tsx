@@ -282,8 +282,19 @@ export function BatchStepDonePanel({
         onChange={toggleDone}
         className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
       />
-      Réalisée
+      Réalisée partiellement ou complètement
     </label>
+  );
+
+  // Affiché uniquement quand l'étape vient d'être (ou est déjà) cochée : au
+  // survol, chaque ligne d'ingrédient/sous-étape porte déjà un `title`
+  // explicatif, mais un `title` ne se découvre pas — ce bandeau rend le geste
+  // visible sans avoir à survoler chaque case une à une.
+  const partialHint = step.done && (
+    <p className="font-body-md text-[12px] text-on-surface-variant italic">
+      Les ingrédients et sous-étapes déjà pris en compte sont grisés et barrés — décochez ceux que vous voulez
+      conserver dans les courses et le déroulé.
+    </p>
   );
 
   // Note personnelle : bloc distinct du texte de la recette (description,
@@ -521,6 +532,7 @@ export function BatchStepDonePanel({
   const lists = (
     <>
       {noteBlock}
+      {partialHint}
       {ingredientsBlock}
       {substepsBlock}
     </>
