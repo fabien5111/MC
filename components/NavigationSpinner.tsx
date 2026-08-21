@@ -14,10 +14,20 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 //    de recherche (role="search"), ou un retour/avant du navigateur ;
 //  - l'arrivée : le changement de `pathname` / `searchParams` (page rendue).
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
-// instantanée ; un filet de sécurité masque l'overlay au bout de 4 s. Un
-// filet plus court (500 ms) traite spécifiquement le cas d'une navigation
-// qui n'en est pas une : lien ciblant l'URL de départ après une redirection
-// serveur, ou recherche resoumise à l'identique — voir `start()`.
+// instantanée ; un filet de sécurité masque l'overlay au bout de 4 s.
+//
+// Piège vérifié dans les sources de Next (`HistoryUpdater`,
+// app-router.js) : `window.history.pushState` — donc `window.location` — n'est
+// posé qu'au commit du routeur, exactement en même temps que `pathname` /
+// `searchParams` changent, jamais avant. Il est donc impossible de détecter
+// « cette navigation n'aboutira à aucun changement d'URL » en comparant
+// `window.location` à l'URL de départ pendant l'attente : sur une route sans
+// cache (`force-dynamic`, ex. `/carnet`) ou simplement lente, `window.location`
+// reste celle de départ tant que le nouveau rendu n'est pas revenu — un tel
+// filet éteindrait le spinner sur une navigation bien réelle, juste lente.
+// (Une tentative en ce sens a été revertée pour cette raison — cf. historique
+// git.) Le cas « lien ciblant l'URL de départ après une redirection serveur »
+// reste donc couvert par le seul filet de sécurité à 4 s.
 //
 // `console.debug('[spinner-timing]', …)` : instrumentation temporaire pour
 // mesurer la durée réelle de l'overlay par déclencheur (aide à trancher la
@@ -48,7 +58,6 @@ export function NavigationSpinner() {
   const [visible, setVisible] = useState(false);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sameUrlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // URL effectivement rendue par React (et non celle de `history`, que le
   // navigateur met à jour avant même d'émettre `popstate`) : sert à savoir,
@@ -69,7 +78,6 @@ export function NavigationSpinner() {
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
-    if (sameUrlTimer.current) clearTimeout(sameUrlTimer.current);
     pending.current = false;
   };
 
@@ -105,22 +113,6 @@ export function NavigationSpinner() {
         setVisible(true);
         shown.current = true;
       }, 120);
-      // Filet court : une navigation qui n'en est pas une (lien ciblant l'URL
-      // de départ après une redirection serveur, recherche resoumise à
-      // l'identique) ne produit aucun changement de `pathname`/`searchParams`
-      // — rien ne masquerait alors l'overlay avant le filet de sécurité.
-      // `history` est mis à jour par Next dès le déclenchement de la
-      // navigation, avant même le rendu : si l'URL du navigateur est encore
-      // celle de départ passé ce délai, il n'y a pas de page différente en
-      // cours de chargement.
-      sameUrlTimer.current = setTimeout(() => {
-        const current = window.location.pathname + window.location.search;
-        if (current === armedFromUrl.current) {
-          logTiming('same-url');
-          clearTimers();
-          setVisible(false);
-        }
-      }, 500);
       safetyTimer.current = setTimeout(() => {
         logTiming('safety-timeout');
         setVisible(false);
