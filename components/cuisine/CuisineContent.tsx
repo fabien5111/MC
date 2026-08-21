@@ -435,7 +435,12 @@ export function CuisineContent({
                 <div key={p.id} className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                      <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                      {p.recipes?.hero_thumb_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                        <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                      )}
                     </div>
                     <div>
                       <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
@@ -492,7 +497,12 @@ export function CuisineContent({
                   <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
                     <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                        {p.recipes?.hero_thumb_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                          <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
@@ -632,6 +642,7 @@ export function CuisineContent({
 function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
   const { done, total, currentTitle } = batch.progress;
   const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
+  const image = batch.recipes?.hero_thumb_url;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
@@ -639,7 +650,12 @@ function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
           tenu au-dessus d'un plan de travail, c'est l'avancement qui sert,
           pas l'illustration. */}
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-container md:h-20 md:w-20">
-        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+          <img src={image} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+        )}
       </div>
 
       <div className="min-w-0 flex-1">

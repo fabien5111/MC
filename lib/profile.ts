@@ -49,15 +49,19 @@ export type BatchListRow = {
     cook_time: number | null;
     cook_temp: number | null;
   }[];
-  // Pas d'image ici : ces listes n'affichent qu'une vignette (56-64 px), or
-  // `hero_image_url` est une data-URL pleine définition (jusqu'à 1400 px) —
-  // la sélectionner pour chaque fournée listée gonflait le payload RSC de
-  // plusieurs centaines de Ko sans bénéfice visuel. Les cartes retombent sur
-  // l'icône par défaut (cf. CuisineContent). L'image pleine définition reste
-  // chargée normalement sur la fiche d'une fournée (BATCH_FULL_SELECT).
+  // `hero_thumb_url`, jamais `hero_image_url` : ces listes n'affichent qu'une
+  // vignette (56-64 px), or `hero_image_url` est une data-URL pleine
+  // définition (jusqu'à 1400 px) — la sélectionner pour chaque fournée
+  // listée gonflait le payload RSC de plusieurs centaines de Ko sans
+  // bénéfice visuel. `hero_thumb_url` (~96 px, générée à l'enregistrement de
+  // la recette — CreerForm, lib/images.ts) pèse quelques Ko ; `null` pour une
+  // recette pas encore rétro-remplie retombe sur l'icône par défaut (cf.
+  // CuisineContent). L'image pleine définition reste chargée normalement sur
+  // la fiche d'une fournée (BATCH_FULL_SELECT).
   recipes: {
     id: string;
     title: string | null;
+    hero_thumb_url: string | null;
     prep_time: number | null;
     total_time: number | null;
   } | null;
@@ -110,7 +114,7 @@ export async function getBatches(
   let query = supabase
     .from('batches')
     .select(
-      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
+      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
     )
     .eq('user_id', userId);
   query = scope === 'actives' ? query.eq('status', 'planifiee') : query.in('status', ['terminee', 'abandonnee']);
@@ -128,6 +132,7 @@ export async function getBatches(
 // joindre, l'état vit directement sur `batches` (`date_debut` renseignée,
 // `date_fin` encore nulle).
 export type ActiveBatchRow = Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
+  recipes: { hero_thumb_url: string | null } | null;
   // Avancement constaté, calculé depuis `batch_steps` : nombre d'étapes
   // cochées, total, et titre de la première étape restante.
   //
@@ -145,13 +150,14 @@ export async function getActiveBatches(userId: string): Promise<ActiveBatchRow[]
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('batches')
-    .select('id, recipe_title, date_debut, degustation_at, batch_steps(title, order_index, done)')
+    .select('id, recipe_title, date_debut, degustation_at, recipes(hero_thumb_url), batch_steps(title, order_index, done)')
     .eq('user_id', userId)
     .eq('status', 'planifiee')
     .not('date_debut', 'is', null)
     .order('date_debut', { ascending: false });
   if (error) console.error('getActiveBatches:', error.message);
   const rows = (data as unknown as (Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
+    recipes: { hero_thumb_url: string | null } | null;
     batch_steps: { title: string | null; order_index: number; done: boolean }[];
   })[]) ?? [];
   return rows.map((r) => {

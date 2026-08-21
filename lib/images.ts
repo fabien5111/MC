@@ -98,6 +98,24 @@ function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// Miniature (bornée en largeur) depuis une image déjà en data-URL — pour les
+// listes qui n'affichent qu'une vignette de quelques dizaines de pixels
+// (fournées d'« En cuisine ») sans transporter l'image pleine définition
+// (`hero_image_url`, jusqu'à 1400 px). Utilisée à la fois à l'enregistrement
+// d'une recette (CreerForm) et par le rétro-remplissage admin des recettes
+// déjà en base (RecipeThumbnailBackfill) : une seule implémentation, un seul
+// format, pour que les deux chemins produisent des miniatures identiques.
+export async function resizeDataUrlToThumb(
+  src: string,
+  maxWidth = 96,
+  mime: 'image/jpeg' | 'image/webp' = 'image/jpeg',
+  quality = 0.75,
+): Promise<string> {
+  const img = await chargerImageDepuisSrc(src);
+  const scale = Math.min(1, maxWidth / img.width);
+  return dessiner(img, img.width * scale, img.height * scale, mime, quality);
+}
+
 /**
  * Facteur d'échelle pour qu'un contenu `contentW × contentH` tienne en
  * entier dans un cadre `frameW × frameH` (l'inverse d'un « cover » qui

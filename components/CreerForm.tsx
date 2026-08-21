@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { resizeDataUrlToThumb } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
@@ -788,6 +789,13 @@ export function CreerForm({
       // pour la navigation post-enregistrement, cf. plus bas).
       if (keepStatus) finalStatus = editRecipe?.status || 'draft';
 
+      // Miniature dédiée (~96 px) : recalculée à chaque enregistrement plutôt
+      // que suivie via un état séparé — un redimensionnement est instantané,
+      // pister « la photo a-t-elle changé » l'est moins. Sert les listes de
+      // fournées d'« En cuisine », qui n'ont besoin que d'une vignette sans
+      // transporter `hero_image_url` en pleine définition (cf. CuisineContent).
+      const heroThumb = hero ? await resizeDataUrlToThumb(hero) : null;
+
       const payload = {
         title: capitalizeSentences(title.trim()),
         description: capitalizeSentences(description.trim()) || null,
@@ -811,6 +819,7 @@ export function CreerForm({
         cook_time: gmin(cook),
         total_time: gmin(total),
         hero_image_url: hero,
+        hero_thumb_url: heroThumb,
         hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
       };
@@ -822,14 +831,19 @@ export function CreerForm({
       // création — y compris après une erreur en cours d'enregistrement.
       let recipeId = editingId ?? createdIdRef.current;
       if (recipeId) {
-        const { error } = await supabase.from('recipes').update(payload).eq('id', recipeId);
+        // `as never` : `hero_thumb_url` est absent de lib/database.types.ts
+        // tant que la migration qui l'ajoute n'a pas été appliquée puis
+        // régénérée (npm run gen:types, cf. CLAUDE.md) — la colonne existe
+        // en base et l'écriture est correcte, seul le typage généré est en
+        // retard. À retirer une fois les types régénérés.
+        const { error } = await supabase.from('recipes').update(payload as never).eq('id', recipeId);
         if (error) throw error;
         await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId);
         await supabase.from('recipe_utensils').delete().eq('recipe_id', recipeId);
         await supabase.from('ingredient_groups').delete().eq('recipe_id', recipeId);
         await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId);
       } else {
-        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id }).select('id').single();
+        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id } as never).select('id').single();
         if (error || !data) throw error || new Error('Création refusée');
         recipeId = data.id;
         createdIdRef.current = data.id;
