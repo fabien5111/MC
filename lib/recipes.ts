@@ -158,6 +158,7 @@ export type RecipeFull = {
   // dès que `moderation_note` change). `null` en même temps que `moderation_note`.
   moderation_note_at: string | null;
   created_at: string | null;
+  updated_at: string | null;
   rating_avg: number | null;
   rating_count: number | null;
   measure_type: string | null;

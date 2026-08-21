@@ -651,13 +651,22 @@ export function RelectureEditor({
         k === si ? { ...sp, ings: [...sp.ings, { key: nextKey(), imported: null, nom: '', qte: '', unite: '', note: '', allergen: [] }] } : sp,
       ),
     );
-  const delIng = (si: number, ii: number) =>
+  const delIng = async (si: number, ii: number) => {
+    const label = sps[si]?.ings[ii]?.nom.trim();
+    const msg = label ? `Supprimer l'ingrédient « ${label} » ?` : 'Supprimer cet ingrédient ?';
+    if (!(await dialog.confirm(msg))) return;
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, ings: sp.ings.filter((_, j) => j !== ii) } : sp)));
+  };
   // ── Ustensiles (liste unique au niveau de la recette) ──
   const patchUtensil = (mi: number, patch: Partial<MatRow>) =>
     setUtensils((prev) => prev.map((m, j) => (j === mi ? { ...m, ...patch } : m)));
   const addUtensil = () => setUtensils((prev) => [...prev, { key: nextKey(), nom: '', commentaire: '' }]);
-  const delUtensil = (mi: number) => setUtensils((prev) => prev.filter((_, j) => j !== mi));
+  const delUtensil = async (mi: number) => {
+    const label = utensils[mi]?.nom.trim();
+    const msg = label ? `Supprimer l'ustensile « ${label} » ?` : 'Supprimer cet ustensile ?';
+    if (!(await dialog.confirm(msg))) return;
+    setUtensils((prev) => prev.filter((_, j) => j !== mi));
+  };
   const addEtape = (si: number) =>
     setSps((prev) =>
       prev.map((sp, k) => (k === si ? { ...sp, etapes: [...sp.etapes, { key: nextKey(), imported: null, texte: '' }] } : sp)),
