@@ -301,7 +301,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               {recipe.updated_at && recipe.updated_at !== recipe.created_at && (
                 <>
                   <span className="w-1 h-1 bg-outline-variant rounded-full" />
-                  <span>Dernière modification le {formatDateHeure(recipe.updated_at)}</span>
+                  <span className="text-[12px] font-normal">Dernière modification le {formatDateHeure(recipe.updated_at)}</span>
                 </>
               )}
             </div>
