@@ -62,7 +62,7 @@ export function RecipeCardLayout({
             </div>
           )}
         </div>
-        <div className="p-6">
+        <div className="px-6 pt-6">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 min-w-0">
               {(r.difficulties?.level || 0) > 0 && (
@@ -94,19 +94,27 @@ export function RecipeCardLayout({
           </h3>
           <p className="text-sm text-on-surface-variant line-clamp-2 min-h-[2.5rem] mb-4">{r.description || ''}</p>
           {allergens}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary">
-              {r.profiles?.full_name || ''}
-              {r.profiles?.author_ratings?.[0]?.rating_avg != null && (
-                <span className="ml-1">
-                  (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={12} compact />)
-                </span>
-              )}
-            </span>
-            <StarRating value={r.rating_avg} count={r.rating_count} size={12} className="text-xs" />
-          </div>
         </div>
       </Link>
+
+      {/* Auteur + notes — hors du lien vers la recette (sinon <a> imbriqué
+          dans <a> pour le lien vers le profil), même padding horizontal que
+          le contenu ci-dessus. */}
+      <div className="px-6 pb-6 flex items-center justify-between">
+        <span className="text-xs text-secondary">
+          {r.profiles && (
+            <Link href={`/u/${r.profiles.username || r.author_id}`} prefetch={false} className="hover:text-primary hover:underline">
+              {r.profiles.full_name || ''}
+            </Link>
+          )}
+          {r.profiles?.author_ratings?.[0]?.rating_avg != null && (
+            <span className="ml-1">
+              (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={12} compact />)
+            </span>
+          )}
+        </span>
+        <StarRating value={r.rating_avg} count={r.rating_count} size={12} className="text-xs" />
+      </div>
 
       {/* Contrôles superposés — frères du lien, positionnés sur l'image. */}
       <FavoriteHeart recipeId={r.id} initialFav={isFav} />

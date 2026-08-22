@@ -215,7 +215,18 @@ export default async function HomePage() {
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">person</span>
                       <span className="font-label-md text-label-md text-on-surface">
-                        {featured.profiles?.full_name || ''}
+                        {featured.profiles && (
+                          // `relative z-10` : au-dessus du lien plein cadre de la
+                          // section (cf. plus bas), sinon le clic sur le nom
+                          // renverrait vers la recette au lieu du profil.
+                          <Link
+                            href={`/u/${featured.profiles.username || featured.author_id}`}
+                            prefetch={false}
+                            className="relative z-10 hover:text-primary hover:underline"
+                          >
+                            {featured.profiles.full_name || ''}
+                          </Link>
+                        )}
                         {featured.profiles?.author_ratings?.[0]?.rating_avg != null && (
                           <span className="ml-1.5">
                             (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={16} compact />)
