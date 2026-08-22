@@ -162,6 +162,15 @@ export function BatchView({
   // que le statut « en cours » ne soit revenu du serveur.
   const [resuming, startResume] = useTransition();
 
+  // Force le haut de page à l'arrivée sur une fournée : `switchMode` gère
+  // déjà le passage Préparer/Cuisiner en cours de session, mais l'arrivée
+  // directe (lien depuis /en-cuisine, retour navigateur…) peut restaurer une
+  // position de scroll d'une visite précédente de cette URL. Une seule fois
+  // au montage, avant toute restauration native du navigateur.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
   // Avis sur la recette d'origine. Volontairement indépendant de `readOnly`
   // ET de `lecture` : une fournée terminée est toujours en lecture seule pour
@@ -1124,18 +1133,21 @@ function StepCookCard({
   // sous-étape suivante qui le mentionne encore.
   const subIngredientsBySubstep = substepIngredientsBySubstep(substeps, ingredients);
 
-  // Coche automatiquement le titre de l'étape dès que tous ses ingrédients et
-  // sous-étapes (non exclus) sont cochés — évite un clic redondant une fois
-  // le détail entièrement traité. Ne fait jamais l'inverse (décocher un
-  // ingrédient ou une sous-étape ne décoche pas l'étape) : cf. CLAUDE.md
-  // « une étape n'est jamais retirée du déroulé ».
-  useEffect(() => {
+  // Coche automatiquement le titre de l'étape dès qu'on vient de cocher le
+  // dernier ingrédient ou la dernière sous-étape restants — jamais en continu
+  // (un `useEffect` recalculé à chaque rendu recochait l'étape aussitôt après
+  // qu'on l'ait décochée à la main, puisque ses ingrédients/sous-étapes
+  // restaient cochés, eux). Se déclenche donc uniquement depuis les gestes de
+  // coche ci-dessous, jamais l'inverse : décocher un ingrédient ou une
+  // sous-étape ne décoche pas l'étape (cf. CLAUDE.md « une étape n'est jamais
+  // retirée du déroulé »).
+  function maybeAutoCheckStep(justDoneIngredientIds: Set<number>, justDoneSubstepIds: Set<number>) {
     if (readOnly || s.done) return;
     if (ingredients.length === 0 && substeps.length === 0) return;
-    if (ingredients.every((it) => it.done) && substeps.every((su) => su.done)) {
-      onToggleStep(s.id, true);
-    }
-  });
+    const allIngDone = ingredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
+    const allSubDone = substeps.every((su) => su.done || justDoneSubstepIds.has(su.id));
+    if (allIngDone && allSubDone) onToggleStep(s.id, true);
+  }
 
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
@@ -1161,7 +1173,17 @@ function StepCookCard({
             const conv = ingredientConversionText(conversions, units, ing.ref_id, ing.unit, ing.quantity ?? ing.quantity_text);
             const struck = ing.done ? ' line-through opacity-50' : '';
             const checkbox = (
-              <input type="checkbox" checked={ing.done} disabled={readOnly} onChange={(ev) => onToggleIng(ing.id, ev.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0" />
+              <input
+                type="checkbox"
+                checked={ing.done}
+                disabled={readOnly}
+                onChange={(ev) => {
+                  const checked = ev.target.checked;
+                  onToggleIng(ing.id, checked);
+                  if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
+                }}
+                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+              />
             );
             const realInput = (
               <input
@@ -1220,7 +1242,10 @@ function StepCookCard({
                     onChange={(ev) => {
                       const checked = ev.target.checked;
                       onToggleSub(su.id, checked);
-                      if (checked) subIngredients.forEach((it) => onToggleIng(it.id, true));
+                      if (checked) {
+                        subIngredients.forEach((it) => onToggleIng(it.id, true));
+                        maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
+                      }
                     }}
                     className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
                   />
