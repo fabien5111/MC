@@ -303,7 +303,7 @@ function ingredientHeadWords(name: string): { head: string; rest: string[] } {
   return { head: head || '', rest };
 }
 
-export type SubstepMatchIngredient = Pick<BatchIngredientRow, 'id' | 'name' | 'comment' | 'quantity' | 'quantity_text' | 'unit' | 'ref_id'>;
+export type SubstepMatchIngredient = Pick<BatchIngredientRow, 'id' | 'name' | 'comment' | 'commentaire' | 'quantity' | 'quantity_text' | 'unit' | 'ref_id'>;
 
 export function substepIngredientMatches(substepText: string, stepIngredients: SubstepMatchIngredient[]): SubstepMatchIngredient[] {
   if (!substepText || stepIngredients.length === 0) return [];
@@ -351,10 +351,10 @@ export function substepIngredientMatches(substepText: string, stepIngredients: S
 // Le lait versé dans la casserole à la première sous-étape est le même lait
 // que celui qu'on y plonge la gousse de vanille puis qu'on reverse plus loin
 // — ce n'est pas une nouvelle quantité à peser à chaque mention, donc pas une
-// nouvelle ligne à chaque fois. Une sous-étape déjà cochée n'affiche rien
-// (comme substepIngredientMatches côté appelant) et ne réserve donc aucun
-// ingrédient : si sa mention réapparaît plus loin dans une sous-étape non
-// cochée, elle s'affiche là.
+// nouvelle ligne à chaque fois. Cocher une sous-étape ne fait plus
+// disparaître ses ingrédients : ils restent affichés (simplement barrés côté
+// rendu), pour que l'utilisateur garde sous les yeux ce qu'il vient de
+// manipuler au lieu de le voir s'effacer.
 export function substepIngredientsBySubstep(
   substeps: Pick<BatchSubstepRow, 'id' | 'texte' | 'done'>[],
   stepIngredients: SubstepMatchIngredient[],
@@ -362,10 +362,6 @@ export function substepIngredientsBySubstep(
   const shown = new Set<number>();
   const result = new Map<number, SubstepMatchIngredient[]>();
   for (const su of substeps) {
-    if (su.done) {
-      result.set(su.id, []);
-      continue;
-    }
     const matches = substepIngredientMatches(su.texte, stepIngredients).filter((it) => !shown.has(it.id));
     matches.forEach((it) => shown.add(it.id));
     result.set(su.id, matches);
