@@ -290,7 +290,10 @@ export function BatchView({
           </span>
         </div>
         <p className="text-on-surface-variant text-sm mb-4">
-          {[dateTxt ? `Fournée du ${dateTxt}` : '', batch.factor && Number(batch.factor) !== 1 ? `× ${String(batch.factor).replace('.', ',')}` : batch.adjust_label || '']
+          {[
+            dateTxt ? `Fournée du ${dateTxt}` : '',
+            mode === 'preparer' ? (batch.factor && Number(batch.factor) !== 1 ? `× ${String(batch.factor).replace('.', ',')}` : batch.adjust_label || '') : '',
+          ]
             .filter(Boolean)
             .join(' — ')}
         </p>
