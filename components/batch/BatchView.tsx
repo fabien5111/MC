@@ -893,7 +893,16 @@ function CuisinerView({
             onClick: () => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
           },
         ]),
-    { id: 'quitter', icon: 'logout', label: 'Quitter', variant: 'outline', onClick: () => router.push('/en-cuisine') },
+    {
+      id: 'quitter',
+      icon: 'logout',
+      label: 'Quitter',
+      variant: 'outline',
+      onClick: () => {
+        setBusy(true);
+        router.push('/en-cuisine');
+      },
+    },
   ];
 
   return (
