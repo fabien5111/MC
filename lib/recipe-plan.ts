@@ -246,6 +246,100 @@ export function remainingStepTimes(s: StepDoneFlags & Pick<BatchStepRow, 'prep_t
   return { prep_time: null, wait_time: null, cook_time: null };
 }
 
+// ── Ingrédients d'une sous-étape (mode Cuisiner) ────────────────────────
+// Le texte d'une sous-étape (« Faire chauffer la crème ») ne pointe vers
+// aucune ligne d'ingrédient : c'est du texte libre saisi dans l'éditeur de
+// recette. On le rapproche ici des ingrédients de LA MÊME étape (jamais de
+// toute la fournée : le champ de recherche minuscule est ce qui rend
+// l'heuristique fiable) pour afficher leur quantité en mode Cuisiner, sans
+// avoir à rouvrir la liste d'ingrédients pendant la cuisson.
+//
+// Heuristique volontairement stricte, pas de l'IA : le texte d'un ingrédient
+// (« Farine T45 ») et celui d'une sous-étape (« Fariner le moule ») ne
+// concordent jamais mot à mot dans ce sens-là — verbaliser un ingrédient
+// n'est pas une racine qu'on sait retrouver sans deviner. On ne matche donc
+// que le sens inverse, fiable : le premier mot significatif du NOM de
+// l'ingrédient (sa « tête ») apparaît tel quel, en mot entier, dans le texte
+// de la sous-étape. Jamais en sous-chaîne (même piège que « con » dans
+// « Constance », cf. lib/pseudo.ts) : « Farine » matche « Farine T45 », mais
+// « Fariner le moule » ne matche rien.
+//
+// Deux ingrédients de l'étape peuvent partager la même tête (« Chocolat
+// noir » / « Chocolat au lait », « Sucre » / « Sucre glace ») : on tente
+// alors de départager avec les mots suivants du nom et l'info
+// complémentaire (`comment` : « à chauffer », « chaude »...). Si un seul
+// ingrédient ressort du lot, on l'affiche ; **sinon, la sous-étape entière
+// n'affiche rien** — un ingrédient mal identifié afficherait la mauvaise
+// quantité en pleine cuisson, ce qui est pire qu'une absence.
+const SUBSTEP_MATCH_STOPWORDS = new Set([
+  'a', 'au', 'aux', 'avec', 'ce', 'ces', 'cette', 'dans', 'de', 'des', 'du', 'en',
+  'et', 'l', 'la', 'le', 'les', 'pour', 'sa', 'ses', 'son', 'sur', 'un', 'une',
+]);
+
+// Normalisation partagée par le nom d'ingrédient et le texte de la
+// sous-étape : accents, casse, « œ », ponctuation — même famille que
+// `normAllergen` (lib/recipe-view.ts) et le filtre local de lib/pseudo.ts.
+function substepMatchWords(s: string): string[] {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/œ/g, 'oe')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    .filter((w) => w.length > 1 && !SUBSTEP_MATCH_STOPWORDS.has(w));
+}
+
+// Premier mot significatif du nom (la « tête »), et les suivants (les
+// qualificatifs, utilisés uniquement pour départager une tête ambiguë).
+function ingredientHeadWords(name: string): { head: string; rest: string[] } {
+  const [head, ...rest] = substepMatchWords(name);
+  return { head: head || '', rest };
+}
+
+export type SubstepMatchIngredient = Pick<BatchIngredientRow, 'id' | 'name' | 'comment' | 'quantity' | 'quantity_text' | 'unit'>;
+
+export function substepIngredientMatches(substepText: string, stepIngredients: SubstepMatchIngredient[]): SubstepMatchIngredient[] {
+  if (!substepText || stepIngredients.length === 0) return [];
+  const textWords = new Set(substepMatchWords(substepText));
+  if (textWords.size === 0) return [];
+
+  // Un mot de tête trop court (« ail », « riz »…) resterait au-dessus du
+  // seuil des mots vides mais produirait trop de faux positifs sur un texte
+  // libre — on exige 3 lettres au moins.
+  const candidates = stepIngredients.filter((it) => ingredientHeadWords(it.name).head.length > 2 && textWords.has(ingredientHeadWords(it.name).head));
+  if (candidates.length === 0) return [];
+
+  const byHead = new Map<string, SubstepMatchIngredient[]>();
+  for (const it of candidates) {
+    const head = ingredientHeadWords(it.name).head;
+    byHead.set(head, [...(byHead.get(head) || []), it]);
+  }
+
+  const result: SubstepMatchIngredient[] = [];
+  for (const group of byHead.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+    // Tête partagée par plusieurs ingrédients de l'étape : départage par les
+    // qualificatifs du nom et l'info complémentaire. Un seul gagnant net,
+    // sinon silence total sur la sous-étape (jamais un choix au hasard).
+    const scored = group.map((it) => {
+      const { rest } = ingredientHeadWords(it.name);
+      const words = new Set([...rest, ...substepMatchWords(it.comment || '')]);
+      let score = 0;
+      for (const w of words) if (textWords.has(w)) score++;
+      return { it, score };
+    });
+    const maxScore = Math.max(...scored.map((s) => s.score));
+    const winners = maxScore > 0 ? scored.filter((s) => s.score === maxScore) : [];
+    if (winners.length !== 1) return [];
+    result.push(winners[0].it);
+  }
+  return result;
+}
+
 // ── Étape déplacée ─────────────────────────────────────────────────────
 // La fournée porte le jour choisi (`day_offset`) et le jour d'origine de la
 // recette (`base_day_offset`, figé à la matérialisation) : afficher les deux

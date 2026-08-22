@@ -46,6 +46,7 @@ import {
   mergedRowQtyText,
   remainingStepTimes,
   stepFullyDone,
+  substepIngredientMatches,
   type BatchFull,
   type BatchIngredientRow,
   type BatchJalon,
@@ -1181,15 +1182,35 @@ function StepCookCard({
 
       {substeps.length > 0 ? (
         <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
-          {substeps.map((su) => (
-            <li key={su.id} className="flex flex-col gap-1.5">
-              <label className="flex items-start gap-3">
-                <input type="checkbox" checked={su.done} disabled={readOnly} onChange={(ev) => onToggleSub(su.id, ev.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
-                <span className={`font-body-md text-[14px] leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
-              </label>
-              <input type="text" placeholder="note sur cette sous-étape" disabled={readOnly} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
-            </li>
-          ))}
+          {substeps.map((su) => {
+            // Ingrédients de l'étape que le texte de cette sous-étape semble
+            // nommer (cf. lib/recipe-plan.ts substepIngredientMatches) —
+            // silencieux dès le moindre doute, jamais un rapprochement faux.
+            const subIngredients = su.done ? [] : substepIngredientMatches(su.texte, ingredients);
+            return (
+              <li key={su.id} className="flex flex-col gap-1.5">
+                <label className="flex items-start gap-3">
+                  <input type="checkbox" checked={su.done} disabled={readOnly} onChange={(ev) => onToggleSub(su.id, ev.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
+                  <span className={`font-body-md text-[14px] leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+                </label>
+                {subIngredients.length > 0 && (
+                  <ul className="ml-9 flex flex-col gap-0.5">
+                    {subIngredients.map((it) => {
+                      const qtyTxt = [it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '', it.unit ? shortUnitLbl(it.unit) : ''].filter(Boolean).join(' ');
+                      return (
+                        <li key={it.id} className="text-[12px] font-label-md text-on-surface-variant">
+                          {it.name}
+                          {qtyTxt && <> — {qtyTxt}</>}
+                          {it.comment && <span className="italic"> ({it.comment})</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <input type="text" placeholder="note sur cette sous-étape" disabled={readOnly} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
+              </li>
+            );
+          })}
         </ul>
       ) : (
         s.description && <div className="px-4 pb-3 font-body-md text-[14px] leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
