@@ -25,6 +25,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
+import { getPublicProfileStats } from '@/lib/public-profile';
+import { StarRating } from '@/components/StarRating';
 
 const BANNER_FALLBACK =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
@@ -71,6 +73,10 @@ export default async function HomePage() {
   // la section ne disparaît jamais de l'accueil.
   const defaultPhoto = banners.recipe_default_photo || null;
   const featured = activeFeatured ?? recipes[0] ?? null;
+  // Note de l'auteur de la recette mise en avant — ne peut pas rejoindre le
+  // Promise.all ci-dessus, elle dépend de `featured.author_id` qui n'est
+  // connu qu'une fois `activeFeatured`/`recipes` résolus.
+  const featuredAuthorStats = featured ? await getPublicProfileStats(featured.author_id) : null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
   // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
@@ -182,6 +188,23 @@ export default async function HomePage() {
                     {featured.description || ''}
                   </p>
                   <div className="flex flex-wrap gap-8 mb-10">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">person</span>
+                      <span className="font-label-md text-label-md text-on-surface">
+                        {featured.profiles?.full_name || ''}
+                        {featuredAuthorStats?.ratingAvg != null && (
+                          <span className="ml-1.5">
+                            (<StarRating value={featuredAuthorStats.ratingAvg} size={14} starsOnly />)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <StarRating
+                      value={featured.rating_avg}
+                      count={featured.rating_count}
+                      size={18}
+                      className="font-label-md text-label-md"
+                    />
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">schedule</span>
                       <span className="font-label-md text-label-md text-on-surface">

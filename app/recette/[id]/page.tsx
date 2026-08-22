@@ -238,14 +238,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
               <span className="bg-surface-container-highest text-primary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest">
                 {recipe.is_public === false ? 'Privée' : 'Publique'}
               </span>
-              {(recipe.rating_count || 0) > 0 && (
-                <StarRating
-                  value={Number(recipe.rating_avg || 0)}
-                  count={recipe.rating_count}
-                  size={16}
-                  className="font-label-md text-label-md"
-                />
-              )}
+              <StarRating
+                value={recipe.rating_avg}
+                count={recipe.rating_count}
+                size={16}
+                className="font-label-md text-label-md"
+              />
               <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 <ShareButton title={recipe.title} recipeId={recipe.id} ownerId={recipe.author_id} isOwner={isOwner} shareInfo={shareInfo} />

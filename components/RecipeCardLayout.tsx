@@ -96,7 +96,7 @@ export function RecipeCardLayout({
           {allergens}
           <div className="flex items-center justify-between">
             <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
-            {r.rating_avg != null && <StarRating value={Number(r.rating_avg)} size={12} className="text-xs" />}
+            <StarRating value={r.rating_avg} count={r.rating_count} size={12} className="text-xs" />
           </div>
         </div>
       </Link>
