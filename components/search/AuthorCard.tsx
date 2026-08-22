@@ -4,6 +4,7 @@
 // circulaire, nom, bio courte, nombre de recettes publiées et note d'auteur.
 import Link from 'next/link';
 import type { AuthorResult } from '@/lib/search';
+import { StarRating } from '@/components/StarRating';
 
 export function AuthorCard({ author }: { author: AuthorResult }) {
   // Le nom d'utilisateur choisi sert de lien s'il existe (forme partageable),
@@ -34,7 +35,7 @@ export function AuthorCard({ author }: { author: AuthorResult }) {
         <span>
           {author.recipe_count} recette{author.recipe_count > 1 ? 's' : ''}
         </span>
-        {author.rating_avg != null && <span>{Number(author.rating_avg).toFixed(1)} ★</span>}
+        {author.rating_avg != null && <StarRating value={Number(author.rating_avg)} size={12} />}
       </div>
     </Link>
   );

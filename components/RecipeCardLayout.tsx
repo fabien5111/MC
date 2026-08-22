@@ -9,6 +9,7 @@ import { effectiveTimes } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
+import { StarRating } from '@/components/StarRating';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function RecipeCardLayout({
@@ -95,9 +96,7 @@ export function RecipeCardLayout({
           {allergens}
           <div className="flex items-center justify-between">
             <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
-            <span className="text-xs text-secondary">
-              {r.rating_avg ? `${Number(r.rating_avg).toFixed(1)} ★` : ''}
-            </span>
+            {r.rating_avg != null && <StarRating value={Number(r.rating_avg)} size={12} className="text-xs" />}
           </div>
         </div>
       </Link>

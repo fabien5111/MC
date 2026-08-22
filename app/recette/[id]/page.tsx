@@ -32,6 +32,7 @@ import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
 import { RecipeComments } from '@/components/recipe/RecipeComments';
+import { StarRating } from '@/components/StarRating';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -238,10 +239,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {recipe.is_public === false ? 'Privée' : 'Publique'}
               </span>
               {(recipe.rating_count || 0) > 0 && (
-                <span className="flex items-center gap-1.5 font-label-md text-label-md text-primary">
-                  <span className="font-bold">{Number(recipe.rating_avg || 0).toFixed(1)}/5</span>
-                  <span className="text-on-surface-variant opacity-70">({recipe.rating_count})</span>
-                </span>
+                <StarRating
+                  value={Number(recipe.rating_avg || 0)}
+                  count={recipe.rating_count}
+                  size={16}
+                  className="font-label-md text-label-md"
+                />
               )}
               <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
