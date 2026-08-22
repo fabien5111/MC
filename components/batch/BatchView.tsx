@@ -1152,32 +1152,20 @@ function StepCookCard({
                 className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-[10rem]"
               />
             );
-            if (conv) {
-              return (
-                <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
-                  <label className="flex items-center gap-3">
-                    {checkbox}
-                    <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
-                  </label>
-                  <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
-                    prévu {prevTxt} <span className="text-[12px]">({conv})</span>
-                  </span>
-                  <div className="flex items-center gap-3 ml-9 flex-wrap">
-                    {realInput}
-                    <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
-                    {commentInput}
-                  </div>
-                </li>
-              );
-            }
             return (
-              <li key={ing.id} className="flex items-center gap-3 py-2.5 border-b border-outline-variant/30 flex-wrap">
-                {checkbox}
-                <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
-                <span className={`font-label-md text-label-md text-on-surface-variant whitespace-nowrap${struck}`}>prévu {prevTxt}</span>
-                {realInput}
-                <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
-                {commentInput}
+              <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
+                <label className="flex items-center gap-3">
+                  {checkbox}
+                  <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
+                </label>
+                <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
+                  prévu {prevTxt} {conv && <span className="text-[12px]">({conv})</span>}
+                </span>
+                <div className="flex items-center gap-3 ml-9 flex-wrap">
+                  {realInput}
+                  <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
+                  {commentInput}
+                </div>
               </li>
             );
           })}
