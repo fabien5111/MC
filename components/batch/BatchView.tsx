@@ -863,8 +863,7 @@ function CuisinerView({
   const deg = batch.degustation_at
     ? new Date(batch.degustation_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : null;
-  const nbEtapes = batch.batch_steps.length;
-  const meta = [deg ? `Dégustation prévue ${deg}` : '', `${jalons.length} jalon${jalons.length > 1 ? 's' : ''} · ${nbEtapes} étape${nbEtapes > 1 ? 's' : ''}`].filter(Boolean).join(' — ');
+  const meta = deg ? `Dégustation prévue ${deg}` : '';
 
   const showResume = batch.status !== 'planifiee';
   const tocSteps = useMemo(() => jalons.map((j, ji) => ({ key: String(ji), title: jalonLabel(j) })), [jalons]);
@@ -912,7 +911,7 @@ function CuisinerView({
           atteignables même pour une fournée sans étape. */}
       <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="none" />
 
-      <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
+      {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
       {batch.notes && (
         <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
