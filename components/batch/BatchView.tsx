@@ -202,6 +202,7 @@ export function BatchView({
       const url = new URL(window.location.href);
       url.searchParams.set('mode', m);
       window.history.replaceState(null, '', url);
+      window.scrollTo(0, 0);
     }
     if (m === 'cuisiner') enterCuisiner();
     else setMode('preparer');
