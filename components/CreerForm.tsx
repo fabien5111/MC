@@ -908,9 +908,15 @@ export function CreerForm({
 
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
-        const desc = st.description.trim();
-        // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
-        const subs = st.subSteps ? st.subSteps.map((t) => capitalizeSentences(fixOeufLigature(t.trim()))).filter(Boolean) : [];
+        // Mode liste actif → sous-étapes conservées ; sinon découpage
+        // automatique à l'enregistrement si l'auteur ne l'a pas fait à la
+        // main et que le texte contient plusieurs puces (une seule « puce »
+        // détectée = simple paragraphe, on laisse le texte libre intact).
+        const autoSplit = st.subSteps === null ? splitSousEtapes(st.description) : null;
+        const subs = (st.subSteps ?? (autoSplit && autoSplit.length > 1 ? autoSplit : []))
+          .map((t) => capitalizeSentences(fixOeufLigature(t.trim())))
+          .filter(Boolean);
+        const desc = subs.length ? '' : st.description.trim();
         const lines = st.ings
           .map((l, i) => {
             const name = capitalizeSentences(fixOeufLigature(l.name.trim()));
