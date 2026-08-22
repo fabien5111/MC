@@ -702,7 +702,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                       </div>
                     ) : null}
                     {s.tips && (
-                      <details className="group border border-outline-variant">
+                      <details className="group border border-outline-variant" open>
                         <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
                           <span className="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
                           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>

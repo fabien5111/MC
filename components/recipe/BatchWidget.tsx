@@ -342,7 +342,12 @@ export function BatchWidget({
       }
     }
 
-    factor = Math.round(factor * 1000) / 1000;
+    // 6 décimales (et non 3) : avec un facteur trop arrondi, le rendement
+    // recalculé (base × facteur, cf. BatchView `adjustedYield`) dérive
+    // visiblement de la quantité demandée (260 g de base × 1,538 → 399,88 g
+    // au lieu des 400 g voulus). 6 décimales absorbe cet écart pour tout
+    // rendement de base réaliste, une fois réaffiché arrondi à 2 décimales.
+    factor = Math.round(factor * 1e6) / 1e6;
     return { factor, label, moldCoefs };
   }
 
