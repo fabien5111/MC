@@ -1138,8 +1138,7 @@ function StepCookCard({
                 disabled={readOnly}
                 defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
                 onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
-                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center"
-                style={{ width: '5rem' }}
+                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center w-14 sm:w-20 shrink-0"
               />
             );
             const commentInput = (
@@ -1149,7 +1148,7 @@ function StepCookCard({
                 disabled={readOnly}
                 defaultValue={ing.commentaire || ''}
                 onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
-                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-[10rem]"
+                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem]"
               />
             );
             return (
@@ -1161,9 +1160,9 @@ function StepCookCard({
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
                   prévu {prevTxt} {conv && <span className="text-[12px]">({conv})</span>}
                 </span>
-                <div className="flex items-center gap-3 ml-9 flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
-                  <span className="text-sm text-on-surface-variant">{ing.unit || ''}</span>
+                  <span className="text-sm text-on-surface-variant shrink-0">{ing.unit || ''}</span>
                   {commentInput}
                 </div>
               </li>
