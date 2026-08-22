@@ -35,9 +35,14 @@ type Recipe = Database['public']['Tables']['recipes']['Row'];
 // `hero_card_url` est absente de `lib/database.types.ts` (colonne ajoutée par
 // migration, types non encore régénérés) : même contournement que
 // `hero_thumb_url` (lib/profile.ts).
+// `author_ratings(rating_avg, rated_recipes)` embarquée sous `profiles` : la
+// vue expose une FK synthétique vers `profiles` (même contrainte que
+// `recipes.author_id`, cf. lib/database.types.ts), ce qui suffit à PostgREST
+// pour l'embarquer sans requête séparée — la note de l'auteur voyage avec la
+// carte au lieu d'un aller-retour par recette affichée.
 export const CARD_SELECT =
   'id, title, description, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
-  'profiles!recipes_author_id_fkey(full_name, username), recipe_types(name), difficulties(name, level), ' +
+  'profiles!recipes_author_id_fkey(full_name, username, author_ratings(rating_avg, rated_recipes)), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
@@ -55,7 +60,11 @@ export type RecipeCard = Pick<
   | 'created_at'
 > & {
   hero_card_url: string | null;
-  profiles: { full_name: string | null; username: string | null } | null;
+  profiles: {
+    full_name: string | null;
+    username: string | null;
+    author_ratings: { rating_avg: number | null; rated_recipes: number | null }[];
+  } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];

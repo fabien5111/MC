@@ -25,7 +25,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
-import { getPublicProfileStats } from '@/lib/public-profile';
 import { StarRating } from '@/components/StarRating';
 
 const BANNER_FALLBACK =
@@ -73,10 +72,6 @@ export default async function HomePage() {
   // la section ne disparaît jamais de l'accueil.
   const defaultPhoto = banners.recipe_default_photo || null;
   const featured = activeFeatured ?? recipes[0] ?? null;
-  // Note de l'auteur de la recette mise en avant — ne peut pas rejoindre le
-  // Promise.all ci-dessus, elle dépend de `featured.author_id` qui n'est
-  // connu qu'une fois `activeFeatured`/`recipes` résolus.
-  const featuredAuthorStats = featured ? await getPublicProfileStats(featured.author_id) : null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
   // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
@@ -189,23 +184,6 @@ export default async function HomePage() {
                   </p>
                   <div className="flex flex-wrap gap-8 mb-10">
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-primary">person</span>
-                      <span className="font-label-md text-label-md text-on-surface">
-                        {featured.profiles?.full_name || ''}
-                        {featuredAuthorStats?.ratingAvg != null && (
-                          <span className="ml-1.5">
-                            (<StarRating value={featuredAuthorStats.ratingAvg} size={14} starsOnly />)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <StarRating
-                      value={featured.rating_avg}
-                      count={featured.rating_count}
-                      size={18}
-                      className="font-label-md text-label-md"
-                    />
-                    <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">schedule</span>
                       <span className="font-label-md text-label-md text-on-surface">
                         {formatTime(featuredTimes!.total || featuredTimes!.prep)}
@@ -232,7 +210,26 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
-                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
+                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-8 -mt-4" iconClassName="w-7 h-7" />
+                  <div className="flex flex-wrap items-center gap-8">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">person</span>
+                      <span className="font-label-md text-label-md text-on-surface">
+                        {featured.profiles?.full_name || ''}
+                        {featured.profiles?.author_ratings?.[0]?.rating_avg != null && (
+                          <span className="ml-1.5">
+                            (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={14} starsOnly />)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <StarRating
+                      value={featured.rating_avg}
+                      count={featured.rating_count}
+                      size={18}
+                      className="font-label-md text-label-md"
+                    />
+                  </div>
                 </div>
               </div>
               <Link

@@ -95,7 +95,14 @@ export function RecipeCardLayout({
           <p className="text-sm text-on-surface-variant line-clamp-2 min-h-[2.5rem] mb-4">{r.description || ''}</p>
           {allergens}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
+            <span className="text-xs text-secondary">
+              {r.profiles?.full_name || ''}
+              {r.profiles?.author_ratings?.[0]?.rating_avg != null && (
+                <span className="ml-1">
+                  (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={10} starsOnly />)
+                </span>
+              )}
+            </span>
             <StarRating value={r.rating_avg} count={r.rating_count} size={12} className="text-xs" />
           </div>
         </div>
