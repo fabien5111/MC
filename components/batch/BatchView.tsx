@@ -1133,6 +1133,13 @@ function StepCookCard({
         </span>
       </label>
 
+      {s.tips && (
+        <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
+          <div className="font-body-md text-sm italic whitespace-pre-line">{s.tips}</div>
+        </div>
+      )}
+
       {ingredients.length > 0 && (
         <ul className="px-4 pb-2">
           {ingredients.map((ing) => {
@@ -1199,10 +1206,12 @@ function StepCookCard({
                   <ul className="ml-9 flex flex-col gap-0.5">
                     {subIngredients.map((it) => {
                       const qtyTxt = [it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '', it.unit ? shortUnitLbl(it.unit) : ''].filter(Boolean).join(' ');
+                      const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantity_text);
                       return (
                         <li key={it.id} className="text-[12px] font-label-md text-on-surface-variant">
                           {it.name}
                           {qtyTxt && <> — {qtyTxt}</>}
+                          {conv && <> ({conv})</>}
                           {it.comment && <span className="italic"> ({it.comment})</span>}
                         </li>
                       );
@@ -1221,13 +1230,6 @@ function StepCookCard({
       {s.video_url && (
         <div className="px-4 pb-3">
           <StepVideoPlayer url={s.video_url} />
-        </div>
-      )}
-
-      {s.tips && (
-        <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
-          <div className="font-body-md text-sm italic whitespace-pre-line">{s.tips}</div>
         </div>
       )}
 

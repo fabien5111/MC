@@ -303,7 +303,7 @@ function ingredientHeadWords(name: string): { head: string; rest: string[] } {
   return { head: head || '', rest };
 }
 
-export type SubstepMatchIngredient = Pick<BatchIngredientRow, 'id' | 'name' | 'comment' | 'quantity' | 'quantity_text' | 'unit'>;
+export type SubstepMatchIngredient = Pick<BatchIngredientRow, 'id' | 'name' | 'comment' | 'quantity' | 'quantity_text' | 'unit' | 'ref_id'>;
 
 export function substepIngredientMatches(substepText: string, stepIngredients: SubstepMatchIngredient[]): SubstepMatchIngredient[] {
   if (!substepText || stepIngredients.length === 0) return [];
