@@ -1124,6 +1124,19 @@ function StepCookCard({
   // sous-étape suivante qui le mentionne encore.
   const subIngredientsBySubstep = substepIngredientsBySubstep(substeps, ingredients);
 
+  // Coche automatiquement le titre de l'étape dès que tous ses ingrédients et
+  // sous-étapes (non exclus) sont cochés — évite un clic redondant une fois
+  // le détail entièrement traité. Ne fait jamais l'inverse (décocher un
+  // ingrédient ou une sous-étape ne décoche pas l'étape) : cf. CLAUDE.md
+  // « une étape n'est jamais retirée du déroulé ».
+  useEffect(() => {
+    if (readOnly || s.done) return;
+    if (ingredients.length === 0 && substeps.length === 0) return;
+    if (ingredients.every((it) => it.done) && substeps.every((su) => su.done)) {
+      onToggleStep(s.id, true);
+    }
+  });
+
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
@@ -1220,7 +1233,7 @@ function StepCookCard({
                       const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantity_text);
                       return (
                         <li key={it.id} className="flex flex-col gap-1">
-                          <span className="text-[12px] font-label-md text-on-surface-variant">
+                          <span className={`text-[12px] font-label-md text-on-surface-variant${su.done ? ' line-through opacity-50' : ''}`}>
                             {it.name}
                             {qtyTxt && <> — {qtyTxt}</>}
                             {conv && <> ({conv})</>}
