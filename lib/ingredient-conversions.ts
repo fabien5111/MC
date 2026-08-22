@@ -29,11 +29,11 @@ export function resolveIngredientRefId(name: string, refs: IngredientRefOption[]
 const normUnit = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-// Abrège « unité(s) » en « un » dans le texte de conversion affiché (ex.
-// « ≈ 10,68 un ») — un raccourci d'affichage uniquement : n'affecte ni
-// l'unité stockée en base, ni les listes déroulantes qui utilisent le même
-// nom complet ailleurs dans l'application.
-const shortUnitLbl = (name: string): string => (name === 'unité(s)' ? 'un' : name);
+// Abrège « unité(s) » en « un » pour l'affichage (texte de conversion,
+// unité affichée en mode Cuisiner…) — un raccourci d'affichage uniquement :
+// n'affecte ni l'unité stockée en base, ni les listes déroulantes qui
+// utilisent le même nom complet ailleurs dans l'application.
+export const shortUnitLbl = (name: string): string => (name === 'unité(s)' ? 'un' : name);
 
 // Quantité d'une ligne d'ingrédient, en nombre : accepte un texte fusionné
 // non purement numérique (ex. « 1 + 2 », « 1 pincée ») en le rejetant plutôt

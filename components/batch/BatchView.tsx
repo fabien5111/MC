@@ -29,7 +29,7 @@ import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
-import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import {
@@ -1128,7 +1128,7 @@ function StepCookCard({
       {ingredients.length > 0 && (
         <ul className="px-4 pb-2">
           {ingredients.map((ing) => {
-            const prevTxt = [ing.quantity != null ? fmtNum(ing.quantity) : ing.quantity_text || '', ing.unit].filter(Boolean).join(' ');
+            const prevTxt = [ing.quantity != null ? fmtNum(ing.quantity) : ing.quantity_text || '', ing.unit ? shortUnitLbl(ing.unit) : ''].filter(Boolean).join(' ');
             const conv = ingredientConversionText(conversions, units, ing.ref_id, ing.unit, ing.quantity ?? ing.quantity_text);
             const struck = ing.done ? ' line-through opacity-50' : '';
             const checkbox = (
@@ -1168,7 +1168,7 @@ function StepCookCard({
                 </span>
                 <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
-                  <span className="text-sm text-on-surface-variant shrink-0">{ing.unit || ''}</span>
+                  <span className="text-sm text-on-surface-variant shrink-0">{ing.unit ? shortUnitLbl(ing.unit) : ''}</span>
                   {commentInput}
                 </div>
               </li>
@@ -1178,7 +1178,7 @@ function StepCookCard({
       )}
 
       {substeps.length > 0 ? (
-        <ul className="px-4 pb-3 flex flex-col gap-4">
+        <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
           {substeps.map((su) => (
             <li key={su.id} className="flex flex-col gap-1.5">
               <label className="flex items-start gap-3">
