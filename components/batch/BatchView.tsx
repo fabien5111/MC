@@ -921,13 +921,13 @@ function CuisinerView({
       {!readOnly && (
         <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="max-w-[900px] mx-auto flex gap-3">
-            <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-1 bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">flag</span> Marquer ma fournée comme terminée
+            <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-[2] bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">flag</span> Marquer comme terminé
             </button>
             <button
               type="button"
               onClick={() => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.')}
-              className="border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
+              className="flex-[1] border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
             >
               Annuler ma fournée
             </button>
