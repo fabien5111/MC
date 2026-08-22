@@ -29,6 +29,12 @@ export function resolveIngredientRefId(name: string, refs: IngredientRefOption[]
 const normUnit = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
+// Abrège « unité(s) » en « un » pour l'affichage (texte de conversion,
+// unité affichée en mode Cuisiner…) — un raccourci d'affichage uniquement :
+// n'affecte ni l'unité stockée en base, ni les listes déroulantes qui
+// utilisent le même nom complet ailleurs dans l'application.
+export const shortUnitLbl = (name: string): string => (name === 'unité(s)' ? 'un' : name);
+
 // Quantité d'une ligne d'ingrédient, en nombre : accepte un texte fusionné
 // non purement numérique (ex. « 1 + 2 », « 1 pincée ») en le rejetant plutôt
 // qu'en n'en lisant que le premier nombre, ce qui donnerait une conversion
@@ -68,14 +74,14 @@ export function ingredientConversionText(
   if (forward && forward.from_quantity) {
     const toUnit = units.find((u) => u.id === forward.to_unit_id);
     const value = toUnit ? (qty * forward.to_quantity) / forward.from_quantity : null;
-    if (toUnit && value != null && isFinite(value) && value > 0) return `≈ ${fmtNum(value)} ${toUnit.name}`;
+    if (toUnit && value != null && isFinite(value) && value > 0) return `≈ ${fmtNum(value)} ${shortUnitLbl(toUnit.name)}`;
   }
 
   const reverse = conversions.find((c) => c.ingredient_ref_id === refId && c.to_unit_id === unit.id);
   if (reverse && reverse.to_quantity) {
     const fromUnit = units.find((u) => u.id === reverse.from_unit_id);
     const value = fromUnit ? (qty * reverse.from_quantity) / reverse.to_quantity : null;
-    if (fromUnit && value != null && isFinite(value) && value > 0) return `≈ ${fmtNum(value)} ${fromUnit.name}`;
+    if (fromUnit && value != null && isFinite(value) && value > 0) return `≈ ${fmtNum(value)} ${shortUnitLbl(fromUnit.name)}`;
   }
 
   return null;
