@@ -60,7 +60,7 @@ const numify = (v: unknown): number | null => {
   return isNaN(n) ? null : n;
 };
 const fmtHeure = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const fmtJour = (d: Date) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const fmtJour = (d: Date) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 function fmtDuree(ms: number): string {
   const min = Math.max(0, Math.round(ms / MIN));
   const j = Math.floor(min / 1440);
@@ -1040,7 +1040,7 @@ function CuisinerBody({
               <span className="flex-1 min-w-0">
                 <span className="font-label-md text-label-md text-primary block">
                   {j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J'}
-                  {dt ? ' — ' + fmtJour(dt) : ''}
+                  {dt ? ` (${fmtJour(dt)})` : ''}
                 </span>
                 <span className="text-[12px] text-on-surface-variant">
                   {target ? `À démarrer vers ${fmtHeure(target)} · ` : ''}
