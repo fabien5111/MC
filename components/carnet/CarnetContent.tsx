@@ -245,7 +245,7 @@ function MineCard({
       </Link>
       <Link
         href={`/recette/${r.id}?planifier=1`}
-        title="Planifier cette recette"
+        title="Lancer une fournée"
         prefetch={false}
         className="absolute right-[9rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
       >
@@ -355,7 +355,7 @@ function OtherCard({
       </Link>
       <Link
         href={`/recette/${r.id}?planifier=1`}
-        title="Planifier cette recette"
+        title="Lancer une fournée"
         prefetch={false}
         className="absolute right-14 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
       >
