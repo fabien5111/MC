@@ -25,6 +25,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
+import { StarRating } from '@/components/StarRating';
 
 const BANNER_FALLBACK =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
@@ -209,7 +210,37 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
-                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
+                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-8 -mt-4" iconClassName="w-7 h-7" />
+                  <div className="flex flex-wrap items-center gap-8">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">person</span>
+                      <span className="font-label-md text-label-md text-on-surface">
+                        {featured.profiles && (
+                          // `relative z-10` : au-dessus du lien plein cadre de la
+                          // section (cf. plus bas), sinon le clic sur le nom
+                          // renverrait vers la recette au lieu du profil.
+                          <Link
+                            href={`/u/${featured.profiles.username || featured.author_id}`}
+                            prefetch={false}
+                            className="relative z-10 hover:text-primary hover:underline"
+                          >
+                            {featured.profiles.full_name || ''}
+                          </Link>
+                        )}
+                        {featured.profiles?.author_ratings?.[0]?.rating_avg != null && (
+                          <span className="ml-1.5">
+                            (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={16} compact />)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <StarRating
+                      value={featured.rating_avg}
+                      count={featured.rating_count}
+                      size={18}
+                      className="font-label-md text-label-md"
+                    />
+                  </div>
                 </div>
               </div>
               <Link
