@@ -36,7 +36,7 @@ export function AuthorCard({ author }: { author: AuthorResult }) {
           {author.recipe_count} recette{author.recipe_count > 1 ? 's' : ''}
         </span>
         {author.rating_avg != null && (
-          <span>(<StarRating value={author.rating_avg} size={12} starsOnly />)</span>
+          <span>(<StarRating value={author.rating_avg} size={12} compact />)</span>
         )}
       </div>
     </Link>

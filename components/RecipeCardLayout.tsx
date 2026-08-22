@@ -99,7 +99,7 @@ export function RecipeCardLayout({
               {r.profiles?.full_name || ''}
               {r.profiles?.author_ratings?.[0]?.rating_avg != null && (
                 <span className="ml-1">
-                  (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={10} starsOnly />)
+                  (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={12} compact />)
                 </span>
               )}
             </span>

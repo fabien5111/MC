@@ -218,7 +218,7 @@ export default async function HomePage() {
                         {featured.profiles?.full_name || ''}
                         {featured.profiles?.author_ratings?.[0]?.rating_avg != null && (
                           <span className="ml-1.5">
-                            (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={14} starsOnly />)
+                            (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={16} compact />)
                           </span>
                         )}
                       </span>
