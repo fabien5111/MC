@@ -175,6 +175,8 @@ export function BatchView({
   // fournée n'est jamais resynchronisée après sa création, donc une
   // correction ultérieure de la recette de base ne lui parvient pas — ce
   // bandeau le signale plutôt que de laisser la divergence silencieuse.
+  // Affiché uniquement en mode Préparer : en Cuisiner, la décision est déjà
+  // prise et le rappeler n'aide plus, seulement distrait.
   const baseModifiedSince = !!(baseRecipe?.updatedAt && new Date(baseRecipe.updatedAt) > new Date(batch.created_at || 0));
 
   async function enterCuisiner() {
@@ -293,7 +295,7 @@ export function BatchView({
             .join(' — ')}
         </p>
 
-        {baseModifiedSince && (
+        {mode === 'preparer' && baseModifiedSince && (
           <div className="mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
             <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
             <p className="font-body-md text-sm text-on-surface">
@@ -872,23 +874,35 @@ function CuisinerView({
   );
   // Symétrique du bouton « Passer en mode Cuisiner » du rail Préparer : le
   // rail reste visible pendant le défilement, contrairement aux deux
-  // pastilles du haut de page.
+  // pastilles du haut de page. Fin de session (terminer/annuler) et sortie
+  // y rejoignent les mêmes actions — même mécanisme que « Supprimer la
+  // fournée » côté Préparer, visible à la fois dans le rail desktop et le
+  // tiroir mobile : ça remplace l'ancienne barre fixe en bas d'écran, propre
+  // à cette vue et absente du reste de l'application.
   const tocActions: TocAction[] = [
     { id: 'switch-preparer', icon: 'tune', label: 'Passer en mode Préparer', variant: 'outline-strong', onClick: () => onSwitchMode('preparer') },
+    ...(readOnly
+      ? []
+      : [
+          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: () => endSession('terminee', 'Terminer cette fournée ?') },
+          {
+            id: 'annuler',
+            icon: 'cancel',
+            label: 'Annuler ma fournée',
+            variant: 'outline-danger' as const,
+            onClick: () => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
+          },
+        ]),
+    { id: 'quitter', icon: 'logout', label: 'Quitter', variant: 'outline', onClick: () => router.push('/en-cuisine') },
   ];
 
   return (
     <>
-      {jalons.length > 0 && (
-        <RecipeToc
-          sections={tocSections}
-          steps={tocSteps}
-          actions={tocActions}
-          onNavigateToStep={expandJalon}
-          mobile="drawer"
-          mobileInset={readOnly ? 'none' : 'action-bar'}
-        />
-      )}
+      {/* Toujours monté, même sans jalon : le menu porte aussi la fin de
+          session (terminer/annuler) et la sortie, qui doivent rester
+          atteignables même pour une fournée sans étape. */}
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="none" />
+
       <p className="text-on-surface-variant text-sm mb-6">{meta}</p>
 
       {batch.notes && (
@@ -917,23 +931,6 @@ function CuisinerView({
       </div>
 
       {batch.status !== 'planifiee' && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
-
-      {!readOnly && (
-        <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant p-3 z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
-          <div className="max-w-[900px] mx-auto flex gap-3">
-            <button type="button" onClick={() => endSession('terminee', 'Terminer cette fournée ?')} className="flex-[2] bg-primary text-on-primary py-3.5 rounded-full font-label-md text-label-md flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">flag</span> Marquer comme terminé
-            </button>
-            <button
-              type="button"
-              onClick={() => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.')}
-              className="flex-[1] border border-error text-error px-6 py-3.5 rounded-full font-label-md text-label-md"
-            >
-              Annuler ma fournée
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -1114,7 +1111,7 @@ function StepCookCard({
       <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
         <input type="checkbox" checked={s.done} disabled={readOnly} onChange={(ev) => onToggleStep(s.id, ev.target.checked)} className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
         <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[20px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+          <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
         </span>
       </label>
@@ -1155,10 +1152,10 @@ function StepCookCard({
               <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
                 <label className="flex items-center gap-3">
                   {checkbox}
-                  <span className={`font-body-md flex-1 min-w-0${struck}`}>{ing.name}</span>
+                  <span className={`font-body-md text-[14px] flex-1 min-w-0${struck}`}>{ing.name}</span>
                 </label>
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
-                  prévu {prevTxt} {conv && <span className="text-[12px]">({conv})</span>}
+                  prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
                 </span>
                 <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
@@ -1177,14 +1174,14 @@ function StepCookCard({
             <li key={su.id} className="flex flex-col gap-1.5">
               <label className="flex items-start gap-3">
                 <input type="checkbox" checked={su.done} disabled={readOnly} onChange={(ev) => onToggleSub(su.id, ev.target.checked)} className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
-                <span className={`font-body-md text-body-md leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+                <span className={`font-body-md text-[14px] leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
               </label>
               <input type="text" placeholder="note sur cette sous-étape" disabled={readOnly} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
             </li>
           ))}
         </ul>
       ) : (
-        s.description && <div className="px-4 pb-3 font-body-md text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        s.description && <div className="px-4 pb-3 font-body-md text-[14px] leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
       )}
 
       {s.video_url && (
