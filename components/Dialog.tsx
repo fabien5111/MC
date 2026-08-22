@@ -12,13 +12,13 @@ type ChoiceOption = { label: string; value: string; variant?: 'primary' | 'defau
 
 type DialogState =
   | { kind: 'alert'; message: string; resolve: () => void }
-  | { kind: 'confirm'; message: string; resolve: (ok: boolean) => void }
+  | { kind: 'confirm'; message: string; okLabel: string; cancelLabel: string; resolve: (ok: boolean) => void }
   | { kind: 'prompt'; message: string; value: string; required: boolean; resolve: (value: string | null) => void }
   | { kind: 'choice'; message: string; options: ChoiceOption[]; resolve: (value: string | null) => void };
 
 type DialogApi = {
   alert: (message: string) => Promise<void>;
-  confirm: (message: string) => Promise<boolean>;
+  confirm: (message: string, opts?: { okLabel?: string; cancelLabel?: string }) => Promise<boolean>;
   // Saisie libre (motif de refus, §9 « Rejeter avec motif ») — résout à
   // `null` sur annulation, à la chaîne saisie sinon. `required` bloque la
   // validation tant que le champ est vide (un motif de refus vide n'a pas
@@ -41,7 +41,16 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     [],
   );
   const confirmFn = useCallback(
-    (message: string) => new Promise<boolean>((resolve) => setState({ kind: 'confirm', message, resolve })),
+    (message: string, opts?: { okLabel?: string; cancelLabel?: string }) =>
+      new Promise<boolean>((resolve) =>
+        setState({
+          kind: 'confirm',
+          message,
+          okLabel: opts?.okLabel ?? 'Confirmer',
+          cancelLabel: opts?.cancelLabel ?? 'Annuler',
+          resolve,
+        }),
+      ),
     [],
   );
   const promptFn = useCallback(
@@ -158,7 +167,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                     onClick={() => respond(false)}
                     className="px-4 py-2 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors"
                   >
-                    Annuler
+                    {state.kind === 'confirm' ? state.cancelLabel : 'Annuler'}
                   </button>
                 )}
                 <button
@@ -168,7 +177,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                   onClick={() => respond(true)}
                   className="px-5 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  {state.kind === 'alert' ? 'OK' : 'Confirmer'}
+                  {state.kind === 'alert' ? 'OK' : state.kind === 'confirm' ? state.okLabel : 'Confirmer'}
                 </button>
               </div>
             )}
