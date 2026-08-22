@@ -279,6 +279,11 @@ const SUBSTEP_MATCH_STOPWORDS = new Set([
 // Normalisation partagée par le nom d'ingrédient et le texte de la
 // sous-étape : accents, casse, « œ », ponctuation — même famille que
 // `normAllergen` (lib/recipe-view.ts) et le filtre local de lib/pseudo.ts.
+// Un « s » final est retiré (pluriel régulier français) pour que « jaunes
+// d'œufs » (sous-étape) rapproche « Jaune d'œuf » (ingrédient) sans les
+// obliger à s'accorder ; les deux côtés passant par la même normalisation,
+// un mot déjà identique (singulier des deux côtés, ou pluriel invariable
+// comme « pois ») continue de matcher tel quel.
 function substepMatchWords(s: string): string[] {
   return s
     .toLowerCase()
@@ -287,7 +292,8 @@ function substepMatchWords(s: string): string[] {
     .replace(/œ/g, 'oe')
     .replace(/[^a-z0-9]+/g, ' ')
     .split(' ')
-    .filter((w) => w.length > 1 && !SUBSTEP_MATCH_STOPWORDS.has(w));
+    .filter((w) => w.length > 1 && !SUBSTEP_MATCH_STOPWORDS.has(w))
+    .map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
 }
 
 // Premier mot significatif du nom (la « tête »), et les suivants (les
@@ -336,6 +342,33 @@ export function substepIngredientMatches(substepText: string, stepIngredients: S
     const winners = maxScore > 0 ? scored.filter((s) => s.score === maxScore) : [];
     if (winners.length !== 1) return [];
     result.push(winners[0].it);
+  }
+  return result;
+}
+
+// Applique substepIngredientMatches à toutes les sous-étapes d'une étape,
+// dans l'ordre, en ne gardant chaque ingrédient qu'à sa PREMIÈRE apparition.
+// Le lait versé dans la casserole à la première sous-étape est le même lait
+// que celui qu'on y plonge la gousse de vanille puis qu'on reverse plus loin
+// — ce n'est pas une nouvelle quantité à peser à chaque mention, donc pas une
+// nouvelle ligne à chaque fois. Une sous-étape déjà cochée n'affiche rien
+// (comme substepIngredientMatches côté appelant) et ne réserve donc aucun
+// ingrédient : si sa mention réapparaît plus loin dans une sous-étape non
+// cochée, elle s'affiche là.
+export function substepIngredientsBySubstep(
+  substeps: Pick<BatchSubstepRow, 'id' | 'texte' | 'done'>[],
+  stepIngredients: SubstepMatchIngredient[],
+): Map<number, SubstepMatchIngredient[]> {
+  const shown = new Set<number>();
+  const result = new Map<number, SubstepMatchIngredient[]>();
+  for (const su of substeps) {
+    if (su.done) {
+      result.set(su.id, []);
+      continue;
+    }
+    const matches = substepIngredientMatches(su.texte, stepIngredients).filter((it) => !shown.has(it.id));
+    matches.forEach((it) => shown.add(it.id));
+    result.set(su.id, matches);
   }
   return result;
 }

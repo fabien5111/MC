@@ -46,7 +46,7 @@ import {
   mergedRowQtyText,
   remainingStepTimes,
   stepFullyDone,
-  substepIngredientMatches,
+  substepIngredientsBySubstep,
   type BatchFull,
   type BatchIngredientRow,
   type BatchJalon,
@@ -1117,6 +1117,11 @@ function StepCookCard({
     times.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}` : s.cook_temp ? `CUISSON ${s.cook_temp} °C` : '',
   ].filter(Boolean);
   const substeps = [...s.batch_substeps].filter((su) => !batchSubstepExcluded(s, su)).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
+  // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
+  // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
+  // sous-étape suivante qui le mentionne encore.
+  const subIngredientsBySubstep = substepIngredientsBySubstep(substeps, ingredients);
 
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
@@ -1183,10 +1188,7 @@ function StepCookCard({
       {substeps.length > 0 ? (
         <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
           {substeps.map((su) => {
-            // Ingrédients de l'étape que le texte de cette sous-étape semble
-            // nommer (cf. lib/recipe-plan.ts substepIngredientMatches) —
-            // silencieux dès le moindre doute, jamais un rapprochement faux.
-            const subIngredients = su.done ? [] : substepIngredientMatches(su.texte, ingredients);
+            const subIngredients = subIngredientsBySubstep.get(su.id) || [];
             return (
               <li key={su.id} className="flex flex-col gap-1.5">
                 <label className="flex items-start gap-3">
