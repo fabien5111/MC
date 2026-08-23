@@ -2297,7 +2297,7 @@ export function CreerForm({
 
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
             <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
             <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
           </div>
@@ -2328,7 +2328,7 @@ export function CreerForm({
 
         {/* Difficulté & temps globaux */}
         <section id="sec-difficulte" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
             <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Difficulté &amp; temps</h2>
             <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
           </div>
@@ -2415,7 +2415,7 @@ export function CreerForm({
 
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
             <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
             <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
           </div>
