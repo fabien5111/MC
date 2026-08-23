@@ -672,12 +672,20 @@ function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
         )}
       </div>
 
-      <Link
-        href={`/fournee/${batch.id}`}
-        className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:w-auto"
-      >
-        <span className="material-symbols-outlined text-[18px]">play_arrow</span> Reprendre
-      </Link>
+      <div className="flex w-full shrink-0 gap-2 md:w-auto">
+        <Link
+          href={`/fournee/${batch.id}?mode=preparer`}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill border border-primary px-4 py-2.5 font-label-md text-label-md text-primary transition-all hover:bg-primary/5 active:scale-95 md:flex-none"
+        >
+          <span className="material-symbols-outlined text-[18px]">tune</span> Préparer
+        </Link>
+        <Link
+          href={`/fournee/${batch.id}?mode=cuisiner`}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:flex-none"
+        >
+          <span className="material-symbols-outlined text-[18px]">skillet</span> Cuisiner
+        </Link>
+      </div>
     </div>
   );
 }

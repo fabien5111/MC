@@ -75,7 +75,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveBatchRow[] }) {
             return (
               <div key={s.id} className="w-full shrink-0 px-0.5">
                 <Link
-                  href="/en-cuisine"
+                  href={`/fournee/${s.id}?mode=cuisiner`}
                   className="flex flex-col sm:flex-row sm:items-center gap-4 border border-primary/35 bg-surface-container-low rounded-xl p-5 hover:shadow-lg transition-all"
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">

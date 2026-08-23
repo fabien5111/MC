@@ -446,7 +446,7 @@ export function BatchStepDonePanel({
                     moveSubstep(dragSubstep, idx);
                     setDragSubstep(null);
                   }}
-                  className={`flex gap-3 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
+                  className={`flex gap-1.5 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
                 >
                   <span
                     draggable
