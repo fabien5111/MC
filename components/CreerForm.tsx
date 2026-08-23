@@ -2202,7 +2202,12 @@ export function CreerForm({
 
                   <details open className="group border-b border-outline-variant">
                     <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
-                      Conseils &amp; Astuces de l&apos;étape
+                      <span>
+                        Conseils &amp; Astuces de l&apos;étape{' '}
+                        <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
+                          (Ces informations seront affichées lors de la réalisation de la recette)
+                        </span>
+                      </span>
                       <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                     </summary>
                     <div className="pb-6">
