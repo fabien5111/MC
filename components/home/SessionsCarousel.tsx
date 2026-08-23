@@ -8,9 +8,9 @@
 // `getActiveBatches`, jamais par heure de démarrage) — ce composant ne
 // fait qu'afficher l'ordre reçu.
 //
-// Toute la carte mène à `/en-cuisine` : depuis l'accueil, on choisit d'abord
-// laquelle reprendre plutôt que de retomber directement en plein milieu
-// d'une préparation.
+// Deux boutons Préparer/Cuisiner par carte, comme sur `/en-cuisine`
+// (`ActiveBatchCard`) : chacun ouvre directement la fournée dans le bon
+// mode, sans passer par l'écran générique.
 //
 // Pas de décompte (« dans 12 min ») : le modèle ne porte aucun ancrage
 // horaire par étape. « Étape X sur Y · titre de l'étape » dit ce que l'on
@@ -74,10 +74,7 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveBatchRow[] }) {
             const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : 'Fournée démarrée';
             return (
               <div key={s.id} className="w-full shrink-0 px-0.5">
-                <Link
-                  href={`/fournee/${s.id}?mode=cuisiner`}
-                  className="flex flex-col sm:flex-row sm:items-center gap-4 border border-primary/35 bg-surface-container-low rounded-xl p-5 hover:shadow-lg transition-all"
-                >
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 border border-primary/35 bg-surface-container-low rounded-xl p-5 hover:shadow-lg transition-all">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <span className="relative flex h-2.5 w-2.5 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50 motion-reduce:hidden" />
@@ -103,10 +100,21 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveBatchRow[] }) {
                       )}
                     </div>
                   </div>
-                  <span className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap shrink-0 self-start sm:self-auto tracking-wide">
-                    <span className="material-symbols-outlined text-[18px]">play_arrow</span> Reprendre
-                  </span>
-                </Link>
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <Link
+                      href={`/fournee/${s.id}?mode=preparer`}
+                      className="flex items-center gap-1.5 border border-primary text-primary px-4 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap hover:bg-primary/5 transition-colors tracking-wide"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">tune</span> Préparer
+                    </Link>
+                    <Link
+                      href={`/fournee/${s.id}?mode=cuisiner`}
+                      className="flex items-center gap-1.5 bg-primary text-on-primary px-4 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap hover:shadow-lg transition-all tracking-wide"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">skillet</span> Cuisiner
+                    </Link>
+                  </div>
+                </div>
               </div>
             );
           })}

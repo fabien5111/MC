@@ -1257,21 +1257,13 @@ function StepCookCard({
                       const qtyTxt = [it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '', it.unit ? shortUnitLbl(it.unit) : ''].filter(Boolean).join(' ');
                       const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantity_text);
                       return (
-                        <li key={it.id} className="flex flex-col gap-1">
+                        <li key={it.id}>
                           <span className={`text-[12px] font-label-md text-on-surface-variant${su.done ? ' line-through opacity-50' : ''}`}>
                             {it.name}
                             {qtyTxt && <> — {qtyTxt}</>}
                             {conv && <> ({conv})</>}
                             {it.comment && <span className="italic"> ({it.comment})</span>}
                           </span>
-                          <input
-                            type="text"
-                            placeholder="note (ex : trop sec, viser +10 g)"
-                            disabled={readOnly}
-                            defaultValue={it.commentaire || ''}
-                            onBlur={(ev) => onIngComment(it.id, ev.target.value)}
-                            className="border border-outline-variant rounded px-2 py-1 font-body-md text-[12px] max-w-xs"
-                          />
                         </li>
                       );
                     })}
