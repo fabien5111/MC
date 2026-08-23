@@ -43,7 +43,7 @@ export function RecipeCardLayout({
   // Planifier (right-14).
   const planPos = isOwner ? 'right-[6.25rem]' : 'right-14';
   return (
-    <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
+    <article className="group relative h-full flex flex-col bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
           {r.hero_card_url || defaultPhoto ? (
@@ -93,14 +93,21 @@ export function RecipeCardLayout({
             {r.title}
           </h3>
           <p className="text-sm text-on-surface-variant line-clamp-2 min-h-[2.5rem] mb-4">{r.description || ''}</p>
-          {allergens}
+          {/* Hauteur réservée que la recette porte des allergènes ou non —
+              sinon une carte sans allergène est plus courte que sa voisine et
+              casse l'alignement des cartes d'une même rangée (cf. mt-auto
+              sur le pied ci-dessous, qui a besoin de cette hauteur stable). */}
+          <div className="min-h-[1.75rem]">{allergens}</div>
         </div>
       </Link>
 
       {/* Auteur + notes — hors du lien vers la recette (sinon <a> imbriqué
           dans <a> pour le lien vers le profil), même padding horizontal que
-          le contenu ci-dessus. */}
-      <div className="px-6 pb-6 flex items-center justify-between">
+          le contenu ci-dessus. `mt-auto` (avec `h-full flex flex-col` sur
+          `article`) ancre le pied en bas de carte : les cartes d'une même
+          rangée, étirées à la même hauteur par leur conteneur flex/grid,
+          affichent alors toutes leur pied au même niveau. */}
+      <div className="px-6 pb-6 flex items-center justify-between mt-auto">
         <span className="text-xs text-secondary">
           {r.profiles && (
             <Link href={`/u/${r.profiles.username || r.author_id}`} prefetch={false} className="hover:text-primary hover:underline">

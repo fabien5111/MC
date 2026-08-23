@@ -12,11 +12,13 @@ import { RailSection, ROW_CARD } from '@/components/home/RailSection';
 import { SessionsCarousel } from '@/components/home/SessionsCarousel';
 import { GuestIntro } from '@/components/home/GuestIntro';
 import { GuestCta } from '@/components/home/GuestCta';
+import { ArticleCard } from '@/components/blog/ArticleCard';
 import { getRecipes, withAllergenNames, getAllergensWithPicto } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
 import { getActiveBatches } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
+import { getPublishedArticles, getArticleCategories } from '@/lib/blog';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -51,22 +53,35 @@ const FALLBACK_CATEGORIES = [
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes, allergenRefs] =
-    await Promise.all([
-      getRecipes({ limit: 12 }),
-      getActiveFeaturedRecipe(),
-      getFavoriteIds(),
-      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile', 'recipe_default_photo']),
-      getHomeCategories(),
-      getActiveAds(['home_top', 'home_mid']),
-      // Réservées au membre — inutile de les demander à un visiteur.
-      user ? getActiveBatches(user.id) : Promise.resolve([]),
-      user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
-      // Table de référence chargée une seule fois pour toute la page — les
-      // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
-      // withAllergenNames), le picto est résolu au rendu (RecipeCardClient).
-      getAllergensWithPicto(),
-    ]);
+  const [
+    recipes,
+    activeFeatured,
+    favIds,
+    banners,
+    homeCategories,
+    ads,
+    activeSessions,
+    followedRecipes,
+    allergenRefs,
+    articlesPage,
+    articleCategories,
+  ] = await Promise.all([
+    getRecipes({ limit: 12 }),
+    getActiveFeaturedRecipe(),
+    getFavoriteIds(),
+    getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile', 'recipe_default_photo']),
+    getHomeCategories(),
+    getActiveAds(['home_top', 'home_mid']),
+    // Réservées au membre — inutile de les demander à un visiteur.
+    user ? getActiveBatches(user.id) : Promise.resolve([]),
+    user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
+    // Table de référence chargée une seule fois pour toute la page — les
+    // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
+    // withAllergenNames), le picto est résolu au rendu (RecipeCardClient).
+    getAllergensWithPicto(),
+    getPublishedArticles(1),
+    getArticleCategories(),
+  ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
   // la section ne disparaît jamais de l'accueil.
@@ -83,6 +98,8 @@ export default async function HomePage() {
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
       : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
   const latest = withAllergenNames(recipes);
+  const latestArticles = articlesPage.items;
+  const articleCategoryNames = new Map(articleCategories.map((c) => [c.slug, c.name]));
 
   return (
     <>
@@ -335,6 +352,17 @@ export default async function HomePage() {
                   defaultPhoto={defaultPhoto}
                   allergenRefs={allergenRefs}
                 />
+              </div>
+            ))}
+          </RailSection>
+        )}
+
+        {/* Derniers articles du blog */}
+        {latestArticles.length > 0 && (
+          <RailSection title="Derniers articles du blog" viewAllHref="/blog" viewAllLabel="Tout voir">
+            {latestArticles.map((a) => (
+              <div key={a.id} data-row-card className={ROW_CARD}>
+                <ArticleCard article={a} categoryName={a.category ? articleCategoryNames.get(a.category) : undefined} />
               </div>
             ))}
           </RailSection>

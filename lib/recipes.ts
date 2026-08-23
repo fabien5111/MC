@@ -81,10 +81,15 @@ export async function getRecipes(opts: {
 } = {}): Promise<RecipeCard[]> {
   const { limit = 12, offset = 0, status = 'published', authorId = null, typeId = null } = opts;
   const supabase = await createClient();
+  // `is_public` explicite : sans ce filtre, la RLS laisse passer les propres
+  // recettes privées de l'utilisateur connecté (elle n'écarte que celles
+  // d'autrui) — un auteur voyait ainsi ses recettes privées remonter dans son
+  // propre accueil ou parmi les « autres recettes » d'une fiche.
   let q = supabase
     .from('recipes')
     .select(CARD_SELECT)
     .eq('status', status)
+    .eq('is_public', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
   if (authorId) q = q.eq('author_id', authorId);
