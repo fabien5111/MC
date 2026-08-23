@@ -116,3 +116,56 @@ export function convertQty(
 
   return null;
 }
+
+export type WeightEstimate = {
+  // Arrondi au gramme — c'est une estimation, pas une pesée.
+  grams: number;
+  // Noms des ingrédients dont le poids n'a pas pu être compté (pas de
+  // conversion vers g/kg enregistrée pour eux) : à lister explicitement,
+  // jamais à passer sous silence — un total qui les omet sans le dire
+  // laisserait croire à une somme exhaustive.
+  unconverted: string[];
+};
+
+// Poids estimé d'un ensemble de lignes d'ingrédients (typiquement celles
+// d'une étape de fournée), utilisé pour proposer un coefficient lors du
+// remplacement d'une étape par une recette (cf. StepExpandDialog) — une
+// étape, contrairement à un ingrédient, ne porte aucune quantité cible.
+//
+// Une ligne déjà en g ou kg est comptée directement. Toute autre unité
+// (ml, unité(s), pincée…) n'est comptée QUE si l'ingrédient est référencé et
+// qu'une conversion vers « g » est enregistrée pour LUI dans le référentiel
+// (`convertQty`, même mécanisme que l'affichage « ≈ 100 g » de l'éditeur
+// d'ingrédients) — jamais une densité générique (« 1 ml = 1 g ») qui serait
+// fausse selon l'ingrédient (crème, huile, alcool…). Une ligne qui ne peut
+// pas être convertie sort du total et rejoint `unconverted`.
+export function estimateWeightGrams(
+  ingredients: { name: string; quantity: number | null; unit: string | null; ref_id: number | null }[],
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): WeightEstimate {
+  let grams = 0;
+  const unconverted: string[] = [];
+  for (const it of ingredients) {
+    if (it.quantity == null || it.quantity <= 0 || !it.unit) {
+      if (it.name) unconverted.push(it.name);
+      continue;
+    }
+    const key = normUnit(it.unit);
+    if (key === 'g') {
+      grams += it.quantity;
+      continue;
+    }
+    if (key === 'kg') {
+      grams += it.quantity * 1000;
+      continue;
+    }
+    const inGrams = convertQty(conversions, units, it.ref_id, it.unit, it.quantity, 'g');
+    if (inGrams != null && inGrams > 0) {
+      grams += inGrams;
+      continue;
+    }
+    if (it.name) unconverted.push(it.name);
+  }
+  return { grams: Math.round(grams), unconverted };
+}

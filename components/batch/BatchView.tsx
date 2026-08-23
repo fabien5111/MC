@@ -540,7 +540,14 @@ function PreparerView({
     <div className="flex flex-col gap-8">
       <LoadingOverlay visible={busyReplace} label="Modification en cours…" />
       {replacingStep && (
-        <StepExpandDialog batch={batch} step={replacingStep} onClose={() => setReplacingStep(null)} onDone={refreshReplace} />
+        <StepExpandDialog
+          batch={batch}
+          step={replacingStep}
+          conversions={conversions}
+          units={units}
+          onClose={() => setReplacingStep(null)}
+          onDone={refreshReplace}
+        />
       )}
       <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="none" />
 
