@@ -1215,13 +1215,16 @@ export function RelectureEditor({
       {/* `mobile="drawer"` : même bascule que /creer et que la fiche recette —
           sous 700 px, le bouton flottant porte le sommaire et ces actions, à la
           place de la barre d'actions fixe qui occupait le bas de l'écran sans
-          donner accès aux sections. Pas de `mobileInset` : /relecture ne monte
-          pas la barre de navigation basse. */}
+          donner accès aux sections. `mobileInset="nav"` : /relecture monte la
+          barre de navigation basse (cf. app/relecture/[id]/page.tsx), le
+          bouton doit se relever au-dessus plutôt que de se poser sur sa fente
+          Profil. */}
       <RecipeToc
         sections={RELECTURE_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandSp}
         mobile="drawer"
+        mobileInset="nav"
         actions={[
           {
             id: 'create',
