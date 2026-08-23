@@ -1246,7 +1246,7 @@ export function CreerForm({
             />
           </div>
           <div className="lg:col-span-7 space-y-8">
-            <div className="flex items-center justify-between py-4 border-b border-outline-variant">
+            <div className="flex flex-col items-start gap-3 py-4 border-b border-outline-variant sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
                 <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
                 <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
@@ -1918,7 +1918,44 @@ export function CreerForm({
                             ))}
                           </select>
                           <div className="basis-full xl:hidden" />
-                          <div className="flex-1 min-w-0">
+                          {/* Commentaire avant Allergènes sous `xl` (ordre visuel
+                              seulement, via `order-*`). Le commentaire précède
+                              Allergènes dans le DOM (recopié ici plutôt que
+                              laissé après, pour rester lisible) : sur desktop, où
+                              les deux ordres visuels s'inversent (Allergènes
+                              puis Commentaire, comme avant ce changement),
+                              `xl:order-*` doit donc être fixé explicitement sur
+                              les deux blocs — un simple `xl:order-none` (qui
+                              revient à 0 des deux côtés) les départagerait par
+                              leur position DOM, dans le mauvais sens. */}
+                          <div className="flex-1 min-w-0 order-1 xl:order-2">
+                            <textarea
+                              value={g.comment}
+                              onChange={(e) => {
+                                patchIng(si, ii, { comment: e.target.value });
+                                autoGrow(e.target);
+                              }}
+                              ref={autoGrow}
+                              onKeyDown={(e) => {
+                                // Tab (sans Maj) depuis le dernier champ de la dernière
+                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
+                                // placer le curseur (sur le libellé, désormais premier).
+                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
+                                  e.preventDefault();
+                                  addIng(si);
+                                  setTimeout(() => {
+                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
+                                    names[names.length - 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
+                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                              rows={1}
+                              placeholder="Commentaire (optionnel)"
+                            />
+                          </div>
+                          <div className="basis-full xl:hidden order-2" />
+                          <div className="flex-1 min-w-0 order-3 xl:order-1">
                             <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                               Allergènes
                             </span>
@@ -1973,41 +2010,11 @@ export function CreerForm({
                               )}
                             </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            {/* Miroir invisible du libellé « Allergènes » de la
-                                colonne voisine : sans lui, le champ commentaire
-                                (sans libellé au-dessus) remonte plus haut que
-                                le select/les puces d'allergènes en dessous de
-                                `xl`, malgré `items-center`. */}
-                            <span aria-hidden className="xl:hidden block invisible font-label-md text-[10px] uppercase tracking-widest mb-1">
-                              Allergènes
-                            </span>
-                            <textarea
-                              value={g.comment}
-                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
-                              onKeyDown={(e) => {
-                                // Tab (sans Maj) depuis le dernier champ de la dernière
-                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
-                                // placer le curseur (sur le libellé, désormais premier).
-                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
-                                  e.preventDefault();
-                                  addIng(si);
-                                  setTimeout(() => {
-                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
-                                    names[names.length - 1]?.focus();
-                                  }, 0);
-                                }
-                              }}
-                              className="editorial-input text-on-surface w-full resize-y"
-                              rows={1}
-                              placeholder="Commentaire (optionnel)"
-                            />
-                          </div>
                           <button
                             type="button"
                             title="Supprimer"
                             onClick={() => delIng(si, ii)}
-                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0"
+                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
