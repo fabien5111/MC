@@ -19,7 +19,7 @@
 // Restent en `router.replace()` les deux contrôles qui ne peuvent pas être des
 // liens : la saisie libre (débouncée, une frappe n'est pas un clic) et le
 // menu de tri.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -40,10 +40,15 @@ export function CarnetToolbar({
   params,
   counts,
   statusCounts,
+  shareButton,
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
   statusCounts: Record<string, number>;
+  // Même instance de ShareBookButton que la ligne de titre (app/carnet/page.tsx),
+  // simplement rejouée ici pour la ligne mobile « Partager + recherche » —
+  // évite de faire remonter ownerId/bookSharesGiven jusqu'à ce composant.
+  shareButton?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,38 +85,105 @@ export function CarnetToolbar({
   // (cf. app/carnet/page.tsx).
   const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub';
 
+  const selectClassName =
+    'cursor-pointer rounded-pill border border-outline-variant bg-surface-container-low px-3 py-2 text-[13px] font-semibold text-on-surface-variant outline-none focus:ring-1 focus:ring-primary';
+
   return (
     <div className="border-y border-outline-variant py-5">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
-        <div className="flex flex-wrap gap-2">
-          {SCOPES.map((s) => {
-            const active = params.scope === s;
-            return (
-              <Link
-                key={s}
-                href={hrefFor({
-                  ...params,
-                  scope: s,
-                  // Le statut n'existe pas sur les recettes des autres : on le
-                  // remet à « Tous » en y entrant, sinon un filtre invisible
-                  // resterait actif (même règle que `parseCarnetParams`).
-                  statut: s === 'fav' || s === 'sub' ? 'all' : params.statut,
-                })}
-                scroll={false}
-                aria-current={active ? 'true' : undefined}
-                className={`whitespace-nowrap rounded-pill px-4 py-1.5 font-label-md text-[12.5px] transition-all ${
-                  active
-                    ? 'bg-primary text-on-primary'
-                    : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
-                }`}
-              >
-                {SCOPE_LABELS[s]} <span className="opacity-60">{counts[s] ?? 0}</span>
-              </Link>
-            );
-          })}
+      {/* Desktop (>= md) : pastilles cliquables inchangées. */}
+      <div className="hidden md:block">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div className="flex flex-wrap gap-2">
+            {SCOPES.map((s) => {
+              const active = params.scope === s;
+              return (
+                <Link
+                  key={s}
+                  href={hrefFor({
+                    ...params,
+                    scope: s,
+                    // Le statut n'existe pas sur les recettes des autres : on le
+                    // remet à « Tous » en y entrant, sinon un filtre invisible
+                    // resterait actif (même règle que `parseCarnetParams`).
+                    statut: s === 'fav' || s === 'sub' ? 'all' : params.statut,
+                  })}
+                  scroll={false}
+                  aria-current={active ? 'true' : undefined}
+                  className={`whitespace-nowrap rounded-pill px-4 py-1.5 font-label-md text-[12.5px] transition-all ${
+                    active
+                      ? 'bg-primary text-on-primary'
+                      : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {SCOPE_LABELS[s]} <span className="opacity-60">{counts[s] ?? 0}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="ml-auto flex items-center gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  if (timer.current) clearTimeout(timer.current);
+                  timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
+                }}
+                placeholder="Chercher dans mon carnet…"
+                className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
+              />
+              <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">
+                search
+              </span>
+            </div>
+            <select
+              value={params.tri}
+              onChange={(e) => navigate({ ...params, tri: e.target.value as CarnetParams['tri'] })}
+              className="cursor-pointer border-none bg-transparent text-[13px] font-semibold text-on-surface-variant focus:ring-0"
+            >
+              {SORT_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {SORT_LABELS[k]}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        {showStatusBar && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4">
+            <span className="mr-1 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+              Statut
+            </span>
+            {STATUSES.map((s) => {
+              const active = params.statut === s;
+              return (
+                <Link
+                  key={s}
+                  href={hrefFor({ ...params, statut: s })}
+                  scroll={false}
+                  aria-current={active ? 'true' : undefined}
+                  className={`whitespace-nowrap rounded-pill px-3 py-1 font-label-md text-[12px] transition-all ${
+                    active ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+                >
+                  {STATUS_LABELS[s]}
+                  {s !== 'all' && <span className="opacity-60"> {statusCounts[s] ?? 0}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Mobile (< md) : Partager + recherche sur une ligne, portée et statut
+          en listes déroulantes sur l'autre — tout centré (les pastilles
+          prennent trop de place sur cette largeur). */}
+      <div className="flex flex-col items-center gap-4 md:hidden">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {shareButton}
           <div className="relative">
             <input
               type="text"
@@ -122,7 +194,7 @@ export function CarnetToolbar({
                 timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
               }}
               placeholder="Chercher dans mon carnet…"
-              className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
+              className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
             />
             <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">
               search
@@ -131,7 +203,7 @@ export function CarnetToolbar({
           <select
             value={params.tri}
             onChange={(e) => navigate({ ...params, tri: e.target.value as CarnetParams['tri'] })}
-            className="cursor-pointer border-none bg-transparent text-[13px] font-semibold text-on-surface-variant focus:ring-0"
+            className={selectClassName}
           >
             {SORT_KEYS.map((k) => (
               <option key={k} value={k}>
@@ -140,32 +212,43 @@ export function CarnetToolbar({
             ))}
           </select>
         </div>
-      </div>
 
-      {showStatusBar && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4">
-          <span className="mr-1 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-            Statut
-          </span>
-          {STATUSES.map((s) => {
-            const active = params.statut === s;
-            return (
-              <Link
-                key={s}
-                href={hrefFor({ ...params, statut: s })}
-                scroll={false}
-                aria-current={active ? 'true' : undefined}
-                className={`whitespace-nowrap rounded-pill px-3 py-1 font-label-md text-[12px] transition-all ${
-                  active ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                {STATUS_LABELS[s]}
-                {s !== 'all' && <span className="opacity-60"> {statusCounts[s] ?? 0}</span>}
-              </Link>
-            );
-          })}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <select
+            value={params.scope}
+            onChange={(e) => {
+              const scope = e.target.value as CarnetParams['scope'];
+              navigate({
+                ...params,
+                scope,
+                statut: scope === 'fav' || scope === 'sub' ? 'all' : params.statut,
+              });
+            }}
+            className={selectClassName}
+          >
+            {SCOPES.map((s) => (
+              <option key={s} value={s}>
+                {SCOPE_LABELS[s]} ({counts[s] ?? 0})
+              </option>
+            ))}
+          </select>
+
+          {showStatusBar && (
+            <select
+              value={params.statut}
+              onChange={(e) => navigate({ ...params, statut: e.target.value as CarnetParams['statut'] })}
+              className={selectClassName}
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                  {s !== 'all' ? ` (${statusCounts[s] ?? 0})` : ''}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

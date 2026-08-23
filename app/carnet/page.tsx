@@ -81,8 +81,13 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               sont masquées »). Importer avant Créer : l'import est le geste
               d'entrée dominant pour un carnet neuf. */}
           {!readOnly && (
-            <div className="flex items-center gap-3">
-              <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
+            <div className="flex w-full items-center justify-center gap-3 md:w-auto md:justify-start">
+              {/* Masqué ici en mobile : sur cette largeur, le bouton rejoint
+                  la zone recherche dans CarnetToolbar (même instance de
+                  composant dupliquée, cf. CarnetToolbar.tsx). */}
+              <div className="hidden md:flex">
+                <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
+              </div>
               <Link
                 href="/importer"
                 prefetch={false}
@@ -105,6 +110,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             params={params}
             counts={counts}
             statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
+            shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} /> : null}
           />
           <CarnetContent
             key={carnetParamsToQueryString(params)}
