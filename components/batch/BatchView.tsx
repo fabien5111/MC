@@ -25,6 +25,7 @@ import { BatchReview } from '@/components/batch/BatchReview';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
+import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
@@ -39,6 +40,8 @@ import {
   batchFactor,
   batchIngredientExcluded,
   batchStepIsExpansion,
+  batchStepIsStepReplacement,
+  batchStepReplaced,
   batchSubstepExcluded,
   expansionSource,
   groupBatchStepsByDay,
@@ -46,6 +49,7 @@ import {
   mergedRowQtyText,
   remainingStepTimes,
   stepFullyDone,
+  stepReplacementSource,
   substepIngredientsBySubstep,
   type BatchFull,
   type BatchIngredientRow,
@@ -418,6 +422,10 @@ function PreparerView({
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
+  // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
+  // motif que `expanding` dans BatchIngredientsEditor.
+  const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
+  const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
   const adjustedYield = ((): string | null => {
@@ -460,6 +468,50 @@ function PreparerView({
   }, [batch.batch_steps]);
   const dLabel = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : `JOUR J${offset > 0 ? ' − ' + offset : ''}`);
 
+  // Défait le remplacement d'une étape par une recette : les étapes insérées
+  // (et tout ce qu'elles portent) sont retirées, puis l'étape reprend sa
+  // place — elle n'a jamais été modifiée entre-temps, seulement marquée.
+  // Même motif que `cancelExpansion` dans BatchIngredientsEditor (utensiles
+  // conservés s'ils servent encore ailleurs, ou s'ils appartiennent à la
+  // recette de base de la fournée elle-même).
+  async function cancelStepReplacement(step: BatchStepRow) {
+    const subRecipeId = step.replaced_by_recipe_id;
+    const stepIds = batch.batch_steps.filter((s) => s.source_replaced_step_id === step.id).map((s) => s.id);
+    const stillUsed =
+      batch.batch_steps.some((s) => s.id !== step.id && s.replaced_by_recipe_id === subRecipeId) ||
+      batch.batch_ingredients.some((it) => it.expanded_into_recipe_id === subRecipeId);
+    const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== batch.recipe_id;
+    const supabase = createClient();
+    await mutateReplace(
+      async () => {
+        if (stepIds.length || dropUtensils) {
+          const results = await Promise.all([
+            ...(stepIds.length
+              ? [supabase.from('batch_ingredients').delete().in('batch_step_id', stepIds), supabase.from('batch_substeps').delete().in('batch_step_id', stepIds)]
+              : []),
+            ...(dropUtensils ? [supabase.from('batch_utensils').delete().eq('batch_id', batch.id).eq('source_recipe_id', subRecipeId)] : []),
+          ]);
+          const failed = results.find((r) => r.error);
+          if (failed) return failed;
+        }
+        if (stepIds.length) {
+          const del = await supabase.from('batch_steps').delete().in('id', stepIds);
+          if (del.error) return del;
+        }
+        // `replaced_by_recipe_id` absente de lib/database.types.ts tant que la
+        // migration n'a pas été régénérée (npm run gen:types).
+        return (supabase as any).from('batch_steps').update({ replaced_by_recipe_id: null }).eq('id', step.id);
+      },
+      {
+        confirm:
+          `Annuler le remplacement de « ${step.title || 'cette étape'} » ?\n\n` +
+          (stepIds.length ? `${stepIds.length} étape${stepIds.length > 1 ? 's' : ''} seront retirées du déroulé. ` : '') +
+          "L'étape revient dans le déroulé normal.",
+        errorLabel: 'Annulation impossible',
+      },
+    );
+  }
+
   // Sommaire de navigation (rail fixe à gauche, cf. RecipeToc) : mêmes
   // sections que la fiche recette, plus « Liste de courses » (positionnée
   // désormais sous les ingrédients, cf. plus bas) — une section absente de
@@ -486,6 +538,10 @@ function PreparerView({
 
   return (
     <div className="flex flex-col gap-8">
+      <LoadingOverlay visible={busyReplace} label="Modification en cours…" />
+      {replacingStep && (
+        <StepExpandDialog batch={batch} step={replacingStep} onClose={() => setReplacingStep(null)} onDone={refreshReplace} />
+      )}
       <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="none" />
 
       <p className="font-body-md text-[12px] text-on-surface-variant">
@@ -636,26 +692,69 @@ function PreparerView({
           {sortedSteps.map((s, i) => {
             const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
             const fully = stepFullyDone(s, ingredientsOfStep, s.batch_substeps);
-            const added = batchStepIsExpansion(s);
+            // Une étape remplacée est barrée en rouge comme une suppression
+            // (même convention que l'ingrédient remplacé, cf. bandeau de
+            // légende plus haut) : elle ne sera jamais réalisée telle quelle.
+            // Une étape insérée (par éclatement d'ingrédient OU par
+            // remplacement d'une autre étape) reste en vert, « Ajoutée ».
+            const replaced = batchStepReplaced(s);
+            const added = batchStepIsExpansion(s) || batchStepIsStepReplacement(s);
+            const insertedFrom = batchStepIsExpansion(s) ? expansionSource(batch, s) : stepReplacementSource(batch, s);
             const stepTitle = (
-              <h4 className={`font-headline-md text-headline-md ${fully ? 'text-on-surface-variant line-through' : added ? 'text-green-700' : 'text-primary'}`}>
-                {i + 1}. {s.title || 'Étape ' + (i + 1)}
+              <div className="flex flex-col gap-1">
+                <h4
+                  className={`font-headline-md text-headline-md flex items-center gap-2 ${
+                    replaced ? 'text-error line-through' : fully ? 'text-on-surface-variant line-through' : added ? 'text-green-700' : 'text-primary'
+                  }`}
+                >
+                  <span>
+                    {i + 1}. {s.title || 'Étape ' + (i + 1)}
+                  </span>
+                  {!s.done && !replaced && (
+                    <button
+                      type="button"
+                      onClick={() => setReplacingStep(s)}
+                      title="Remplacer cette étape par une recette (la fabriquer à partir d'une autre recette)"
+                      className="no-print font-normal text-primary hover:opacity-70"
+                    >
+                      <span className="material-symbols-outlined text-[18px] align-middle">swap_horiz</span>
+                    </button>
+                  )}
+                </h4>
                 {added && (
-                  <span className="block font-body-md text-[12px] text-green-700 font-normal mt-1">
+                  <span className="font-body-md text-[12px] text-green-700 font-normal">
                     Ajouté —{' '}
-                    {(() => {
-                      const from = expansionSource(batch, s);
-                      return from ? (
-                        <Link href={`/recette/${from.id}`} className="underline underline-offset-2 hover:opacity-70">
-                          {from.title}
-                        </Link>
-                      ) : (
-                        'sous-recette'
-                      );
-                    })()}
+                    {insertedFrom ? (
+                      <Link href={`/recette/${insertedFrom.id}`} className="underline underline-offset-2 hover:opacity-70">
+                        {insertedFrom.title}
+                      </Link>
+                    ) : (
+                      'sous-recette'
+                    )}
                   </span>
                 )}
-              </h4>
+                {replaced && (
+                  <span className="font-body-md text-[12px] text-error flex items-center gap-1.5 flex-wrap font-normal">
+                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                    Remplacée — fabriquée à partir de{' '}
+                    {s.replaced_recipe ? (
+                      <Link href={`/recette/${s.replaced_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                        {s.replaced_recipe.title}
+                      </Link>
+                    ) : (
+                      <span className="italic">une recette qui n’est plus accessible</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => cancelStepReplacement(s)}
+                      title="Annuler le remplacement et retirer les étapes ajoutées"
+                      className="no-print text-primary hover:opacity-70"
+                    >
+                      <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
+                    </button>
+                  </span>
+                )}
+              </div>
             );
             const times = remainingStepTimes(s);
             const stepTotal = (times.prep_time || 0) + (times.wait_time || 0) + (times.cook_time || 0);
@@ -679,7 +778,7 @@ function PreparerView({
             return (
               <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28 flex flex-col gap-6">
                 <BatchStepDonePanel
-                  collapsible={fully}
+                  collapsible={fully || replaced}
                   title={stepTitle}
                   meta={stepMeta}
                   step={s}

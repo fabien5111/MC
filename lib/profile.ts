@@ -194,19 +194,27 @@ export async function getBatch(id: number): Promise<BatchFull | null> {
   const batch = (data as unknown as BatchFull | null) ?? null;
   if (!batch) return null;
 
-  // Titres des sous-recettes qui remplacent un ingrédient (cf. CLAUDE.md
-  // « Fournées »). Requête séparée plutôt que jointure imbriquée : elle n'a
-  // lieu que si la fournée comporte au moins un remplacement, et son échec ne
-  // coûte que le libellé du lien — la fournée reste affichable, elle est
-  // autonome. Une recette devenue illisible (dépubliée, supprimée) laisse
-  // simplement `expanded_recipe` à null.
-  const ids = [...new Set(batch.batch_ingredients.map((it) => it.expanded_into_recipe_id).filter((v): v is string => !!v))];
+  // Titres des sous-recettes qui remplacent un ingrédient OU une étape entière
+  // (cf. CLAUDE.md « Fournées »). Requête séparée plutôt que jointure
+  // imbriquée : elle n'a lieu que si la fournée comporte au moins un
+  // remplacement, et son échec ne coûte que le libellé du lien — la fournée
+  // reste affichable, elle est autonome. Une recette devenue illisible
+  // (dépubliée, supprimée) laisse simplement `expanded_recipe` / `replaced_recipe` à null.
+  const ids = [
+    ...new Set([
+      ...batch.batch_ingredients.map((it) => it.expanded_into_recipe_id).filter((v): v is string => !!v),
+      ...batch.batch_steps.map((s) => s.replaced_by_recipe_id).filter((v): v is string => !!v),
+    ]),
+  ];
   if (!ids.length) return batch;
   const { data: recipes, error: recipesError } = await supabase.from('recipes').select('id, title').in('id', ids);
   if (recipesError) console.error('getBatch (sous-recettes):', recipesError.message);
   const byId = new Map((recipes ?? []).map((r) => [r.id, { id: r.id, title: r.title }]));
   batch.batch_ingredients.forEach((it) => {
     it.expanded_recipe = it.expanded_into_recipe_id ? (byId.get(it.expanded_into_recipe_id) ?? null) : null;
+  });
+  batch.batch_steps.forEach((s) => {
+    s.replaced_recipe = s.replaced_by_recipe_id ? (byId.get(s.replaced_by_recipe_id) ?? null) : null;
   });
   return batch;
 }
