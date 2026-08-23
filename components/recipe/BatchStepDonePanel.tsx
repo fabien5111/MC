@@ -473,7 +473,7 @@ export function BatchStepDonePanel({
                       className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-1"
                     />
                   ) : (
-                    <span className={`shrink-0 ${su.added ? 'text-green-700' : 'text-primary'}`}>–</span>
+                    <span className="shrink-0 w-5" />
                   )}
                   <span className={`flex-1 min-w-0 ${tone}`}>{su.texte}</span>
                   {su.added && (
