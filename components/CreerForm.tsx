@@ -1600,7 +1600,7 @@ export function CreerForm({
 
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
           <ul className="space-y-4">
             {utensils.map((u, i) => (
               <li key={u.key} className="flex items-start gap-4 group">
@@ -2263,7 +2263,7 @@ export function CreerForm({
             couvre cette section et la suivante (dégustation et conservation),
             qui se suivent immédiatement. */}
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
             ref={autoGrow}
             value={tips}
@@ -2279,7 +2279,7 @@ export function CreerForm({
 
         {/* Conseils de dégustation et de conservation */}
         <section className="space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
           <textarea
             ref={autoGrow}
             value={servingAdvice}
@@ -2298,7 +2298,7 @@ export function CreerForm({
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
             <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
           </div>
           <div className="bg-surface-container-high p-gutter rounded">
@@ -2329,7 +2329,7 @@ export function CreerForm({
         {/* Difficulté & temps globaux */}
         <section id="sec-difficulte" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Difficulté &amp; temps</h2>
             <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
           </div>
 
@@ -2416,7 +2416,7 @@ export function CreerForm({
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
           <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
             <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
           </div>
           <div className="max-w-2xl">
