@@ -2041,7 +2041,7 @@ export function CreerForm({
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">
                       DESCRIPTION{' '}
-                      <span className="italic normal-case font-body-md text-on-surface-variant">
+                      <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                         (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
                       </span>
                     </label>
@@ -2066,7 +2066,7 @@ export function CreerForm({
                             className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
                           >
                             <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes{' '}
-                            <span className="italic normal-case font-body-md text-on-surface-variant">
+                            <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                               (Permet de suivre plus précisément le déroulé de la recette lors de l&apos;exécution)
                             </span>
                           </button>
