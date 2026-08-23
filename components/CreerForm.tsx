@@ -1698,7 +1698,7 @@ export function CreerForm({
               }}
               className={`scroll-mt-28${dragStep === si ? ' opacity-50' : ''}`}
             >
-              <div className="flex items-center gap-4 border-b border-primary pb-4">
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
                 <span
                   className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
@@ -1712,24 +1712,35 @@ export function CreerForm({
                   drag_indicator
                 </span>
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
-                <input
-                  value={st.title}
-                  onChange={(e) => patchStep(si, { title: e.target.value })}
-                  className="flex-grow editorial-input font-headline-md text-headline-md text-primary"
-                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
-                  type="text"
-                />
-                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">add_row_above</span>
                 </button>
-                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">{st.collapsed ? 'expand_more' : 'expand_less'}</span>
                 </button>
                 {steps.length > 1 && (
-                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0">
+                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0 md:order-2">
                     <span className="material-symbols-outlined">delete</span>
                   </button>
                 )}
+                {/* Sous `md`, le titre passe sur sa propre ligne pleine largeur
+                    (poignée + numéro + actions ne lui laissent quasiment plus
+                    de place) : `order-1` sur le titre (et le séparateur
+                    `basis-full` juste avant) le renvoient après le groupe
+                    poignée/numéro/actions, resté à `order-0` par défaut. Les
+                    boutons d'action passent eux-mêmes à `md:order-2` : sans ça,
+                    leur position DOM (après le titre) les renverrait après lui
+                    à partir de `md`, alors que l'ancien rendu les plaçait après
+                    un titre resté sur la même ligne — `order-1` (titre) <
+                    `md:order-2` (actions) republie exactement cet ordre. */}
+                <div className="basis-full order-1 md:hidden" />
+                <input
+                  value={st.title}
+                  onChange={(e) => patchStep(si, { title: e.target.value })}
+                  className="flex-grow order-1 editorial-input font-headline-md font-medium text-[20px] leading-[28px] md:text-headline-md text-primary"
+                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
+                  type="text"
+                />
               </div>
 
               {!st.collapsed && (
@@ -1896,7 +1907,7 @@ export function CreerForm({
                           <input
                             value={g.qty}
                             onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
-                            className="w-20 editorial-input text-on-surface"
+                            className="w-16 xl:w-20 editorial-input text-on-surface"
                             type="text"
                             placeholder="Qté"
                           />
