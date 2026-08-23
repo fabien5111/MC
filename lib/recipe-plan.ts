@@ -359,12 +359,46 @@ export function substepIngredientsBySubstep(
   substeps: Pick<BatchSubstepRow, 'id' | 'texte' | 'done'>[],
   stepIngredients: SubstepMatchIngredient[],
 ): Map<number, SubstepMatchIngredient[]> {
-  const shown = new Set<number>();
+  // Sous-étapes candidates pour chaque ingrédient, calculées indépendamment
+  // les unes des autres (comme avant : `substepIngredientMatches` voit tout
+  // `stepIngredients` à chaque appel) — nécessaire pour pouvoir comparer
+  // ci-dessous plusieurs sous-étapes candidates avant de choisir laquelle
+  // affiche l'ingrédient.
+  const rawBySubstep = new Map<number, SubstepMatchIngredient[]>();
+  for (const su of substeps) rawBySubstep.set(su.id, substepIngredientMatches(su.texte, stepIngredients));
+
+  // Sous-étape retenue pour chaque ingrédient. Un même nom (« Eau ») peut être
+  // mentionné dans plusieurs sous-étapes qui n'ont rien à voir (réhydrater la
+  // gélatine, puis faire le sirop) : sans indice, on garde la première
+  // mention, comme avant. Mais si l'ingrédient porte un commentaire de
+  // recette (« pour sirop ») qui recoupe le texte d'UNE SEULE des sous-étapes
+  // candidates, ce commentaire tranche — il dit explicitement à quelle
+  // sous-étape cette occurrence appartient.
+  const target = new Map<number, number>();
+  for (const it of stepIngredients) {
+    const candidates = substeps.filter((su) => rawBySubstep.get(su.id)!.some((m) => m.id === it.id));
+    if (candidates.length === 0) continue;
+    let winner = candidates[0];
+    if (candidates.length > 1) {
+      const commentWords = new Set(substepMatchWords(it.comment || ''));
+      if (commentWords.size > 0) {
+        const scored = candidates.map((su) => {
+          const textWords = new Set(substepMatchWords(su.texte));
+          let score = 0;
+          for (const w of commentWords) if (textWords.has(w)) score++;
+          return { su, score };
+        });
+        const maxScore = Math.max(...scored.map((s) => s.score));
+        const winners = maxScore > 0 ? scored.filter((s) => s.score === maxScore) : [];
+        if (winners.length === 1) winner = winners[0].su;
+      }
+    }
+    target.set(it.id, winner.id);
+  }
+
   const result = new Map<number, SubstepMatchIngredient[]>();
   for (const su of substeps) {
-    const matches = substepIngredientMatches(su.texte, stepIngredients).filter((it) => !shown.has(it.id));
-    matches.forEach((it) => shown.add(it.id));
-    result.set(su.id, matches);
+    result.set(su.id, (rawBySubstep.get(su.id) || []).filter((it) => target.get(it.id) === su.id));
   }
   return result;
 }

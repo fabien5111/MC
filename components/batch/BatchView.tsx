@@ -1212,7 +1212,10 @@ function StepCookCard({
               <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
                 <label className="flex items-center gap-3">
                   {checkbox}
-                  <span className={`font-body-md text-[14px] flex-1 min-w-0${struck}`}>{ing.name}</span>
+                  <span className={`font-body-md text-[14px] flex-1 min-w-0${struck}`}>
+                    {ing.name}
+                    {ing.comment && <span className="italic text-on-surface-variant"> ({ing.comment})</span>}
+                  </span>
                 </label>
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
                   prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
