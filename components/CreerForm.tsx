@@ -1134,13 +1134,16 @@ export function CreerForm({
           flottant reprend le sommaire *et* ces actions — c'est ce qui a
           remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
           navigation entre sections et mangeait trois rangées de boutons sur un
-          téléphone. `mobileInset` reste à sa valeur par défaut : /creer ne
-          monte pas la barre de navigation basse. */}
+          téléphone. `mobileInset="nav"` : /creer monte la barre de navigation
+          basse (cf. app/creer/page.tsx), le bouton doit se relever au-dessus
+          plutôt que de se poser sur sa fente Profil (même motif que la fiche
+          recette). */}
       <RecipeToc
         sections={CREER_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandStep}
         mobile="drawer"
+        mobileInset="nav"
         actions={
           editingOtherAuthor
             ? // Admin qui corrige la recette d'un membre : pas de statut à
