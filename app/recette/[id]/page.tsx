@@ -198,9 +198,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   return (
     <>
-      <div className="no-print">
-      <Header />
-      </div>
+      <Header className="no-print" />
       <div className="no-print max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
         <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
           <Link className="hover:text-primary" href="/">
