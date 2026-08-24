@@ -22,6 +22,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ComponentResolver } from '@/components/projets/ComponentResolver';
+import { QuantitiesStep, RecapStep } from '@/components/projets/ProjectQuantities';
 import { clearComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import {
   COMPONENT_ROLES,
@@ -39,6 +40,7 @@ import {
 } from '@/lib/projects';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
+import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 
 type MoldType = { id: number; name: string; forme: string | null };
 
@@ -60,10 +62,17 @@ export function ProjectWizard({
   project,
   moldTypes,
   units,
+  conversions,
+  unitRefs,
 }: {
   project: ProjectFull;
   moldTypes: MoldType[];
   units: string[];
+  // Table de conversions et unités de référence : servent au récapitulatif,
+  // qui consolide les ingrédients avec la fonction de la fiche recette
+  // (`mergeIngredients`) plutôt qu'avec une seconde implémentation.
+  conversions: ConversionRef[];
+  unitRefs: UnitRef[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -107,6 +116,14 @@ export function ProjectWizard({
   const [proposal, setProposal] = useState<ProposedStructure | null>(null);
 
   const [resolving, setResolving] = useState<ProjectComponent | null>(null);
+
+  // Format visé, tel qu'il est effectivement enregistré sur la recette — et
+  // non tel que l'écran 2 l'affiche : c'est lui qui sert au calcul des
+  // coefficients et à la description passée à l'IA.
+  const formeCible = moldTypes.find((m) => m.id === project.mold_type_id)?.forme ?? null;
+  const formatLabel =
+    [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
+    (project.servings ? `${project.servings} parts` : 'format libre');
 
   const moldsForFormat = moldTypes.filter((m) => {
     const forme = PROJECT_FORMATS[format].forme;
@@ -646,8 +663,42 @@ export function ProjectWizard({
             <button type="button" onClick={() => router.push('/carnet?scope=proj')} className={btnGhost}>
               Terminer plus tard
             </button>
+            <button type="button" onClick={() => goStep(5)} className={btnPrimary}>
+              Continuer
+            </button>
           </div>
         </section>
+      )}
+
+      {step === 5 && (
+        <>
+          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} />
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+            <button type="button" onClick={() => goStep(4)} className={btnGhost}>
+              Retour
+            </button>
+            <button type="button" onClick={() => goStep(6)} className={btnPrimary}>
+              Voir le récapitulatif
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 6 && (
+        <>
+          <RecapStep project={project} formatLabel={formatLabel} conversions={conversions} unitRefs={unitRefs} />
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+            <button type="button" onClick={() => goStep(5)} className={btnGhost}>
+              Retour
+            </button>
+            <button type="button" onClick={() => router.push('/carnet?scope=proj')} className={btnGhost}>
+              Terminer plus tard
+            </button>
+          </div>
+          <p className="mt-3 text-[12px] text-on-surface-variant">
+            La validation du projet et la fournée d’essai arrivent avec les lots suivants.
+          </p>
+        </>
       )}
 
       {resolving && (

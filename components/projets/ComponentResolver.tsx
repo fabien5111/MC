@@ -47,7 +47,7 @@ type Trouvee = { id: string; title: string; author: string | null; kind: Compone
 const COPY_SELECT = `
   id, title, author_id,
   profiles!recipes_author_id_fkey(full_name),
-  ingredient_groups(order_index, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
+  ingredient_groups(order_index, scaling_mode, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
   recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index)
 `;
 
@@ -227,6 +227,7 @@ export function ComponentResolver({
       {
         title: component.name,
         description: '',
+        scaling_mode: null,
         sous_etapes: null,
         prep_time: null,
         cook_time: null,
@@ -443,7 +444,8 @@ export function ComponentResolver({
                   {
                     title: '',
                     description: '',
-                    sous_etapes: null,
+                    scaling_mode: null,
+        sous_etapes: null,
                     prep_time: null,
                     cook_time: null,
                     wait_time: null,

@@ -5,6 +5,7 @@ import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull } from '@/lib/projects-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
+import { getIngredientConversions } from '@/lib/recipes';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -25,7 +26,14 @@ export default async function ProjetPage({ params }: Params) {
   // chaque geste, une session « en tant que » en lecture seule n'y entre pas.
   await requireWritableSession();
 
-  const [project, moldTypes, units] = await Promise.all([getProjectFull(id), getMoldTypes(), getUnits()]);
+  const [project, moldTypes, units, conversions] = await Promise.all([
+    getProjectFull(id),
+    getMoldTypes(),
+    getUnits(),
+    // Table de conversions : sert au récapitulatif (étape 6), qui consolide
+    // les ingrédients des composants avec la fonction de la fiche recette.
+    getIngredientConversions(),
+  ]);
 
   // `getProjectFull` ne rend que ce que la RLS laisse voir, et seulement si
   // la recette est bien un projet. La propriété est donc déjà tenue ; ce
@@ -44,7 +52,13 @@ export default async function ProjetPage({ params }: Params) {
         <h1 className="mb-8 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
-        <ProjectWizard project={project} moldTypes={moldTypes} units={units.map((u) => u.name)} />
+        <ProjectWizard
+          project={project}
+          moldTypes={moldTypes}
+          units={units.map((u) => u.name)}
+          conversions={conversions}
+          unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
+        />
       </main>
       <Footer />
       <MobileNav />

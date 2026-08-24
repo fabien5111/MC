@@ -645,6 +645,30 @@ essais et la validation arrivent par lots successifs.
   `/api/recipes/picker` plutôt que fusionnées : c'est la portée qui a répondu
   qui décide du `source_kind`, donc du crédit d'auteur. La pertinence est
   obtenue en pré-remplissant la recherche avec le nom du composant.
+- **Les quantités ne sont pas recalculées ici, elles réutilisent la
+  machinerie des fournées** (étape 5) : rapport des volumes ou des surfaces
+  entre le moule de la recette source et le format visé (`moldMetrics`), puis
+  application ligne par ligne selon le `scaling_mode` du groupe
+  (`scalingCoef`) — une pâte à foncer suit la surface, un appareil suit le
+  volume. Le `scaling_mode` de la recette source est donc **copié** avec le
+  composant : le perdre ferait recalculer de travers tout ce qui n'est pas
+  proportionnel au volume. Quand la géométrie ne tranche pas (pas de moule sur
+  la source, composant proposé par l'IA ou saisi à la main), l'écran bascule
+  sur `/api/scale-recipe`, la route d'ajustement en texte libre déjà en place,
+  qui rend le coefficient **et** son explication en une phrase (§6.4).
+- **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
+  jamais la quantité affichée — que multiplie tout ajustement : sans ça,
+  changer deux fois le coefficient multiplierait deux fois. Exactement le rôle
+  de `batch_ingredients.base_quantity` côté fournée. Une ligne **modifiée à la
+  main** voit sa `base_quantity` effacée : elle sort définitivement du recalcul
+  global, comme une ligne `added` d'une fournée que `rescaleBatchIngredients`
+  ne touche jamais. La colonne reste vide pour toutes les recettes ordinaires —
+  seul le mode projet l'écrit.
+- **Le récapitulatif consolide avec `mergeIngredients`**, la fonction de la
+  fiche recette, et non une seconde implémentation : elle sait fusionner deux
+  lignes du même ingrédient exprimées dans des unités différentes via la table
+  de conversions, ce qui compte d'autant plus que les composants viennent de
+  recettes différentes.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.

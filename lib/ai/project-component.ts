@@ -94,6 +94,10 @@ export function normaliseComponentRecipe(obj: unknown, maxSteps = 6): GeneratedC
 
     steps.push({
       title,
+      // Aucun mode d'échelle : une préparation proposée par l'IA n'a pas de
+      // recette source d'où le tenir. Le comportement par défaut
+      // (proportionnel) s'applique.
+      scaling_mode: null,
       description,
       sous_etapes: null,
       prep_time: minutes(s.prep_min),

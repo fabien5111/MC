@@ -29,6 +29,13 @@ type Supabase = ReturnType<typeof createClient>;
 const BLOCK = 100;
 export const MAX_STEPS_PER_COMPONENT = BLOCK;
 
+// Quantité saisie → nombre, ou `null` si elle n'est pas chiffrée
+// (« 1 pincée », « QS »). Même lecture souple que lib/recipe-plan.ts.
+function numify(v: unknown): number | null {
+  const n = parseFloat(String(v ?? '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
 type StepRow = { id: number; order_index: number | null; component_id: number | null };
 type GroupRow = { id: number; order_index: number | null };
 
@@ -121,7 +128,15 @@ export async function writeComponentContent(
     // l'appariement du modèle (cf. en-tête).
     const { data: groupRow, error: groupErr } = await supabase
       .from('ingredient_groups')
-      .insert({ recipe_id: recipeId, name: titre || `Étape ${i + 1}`, order_index: order } as never)
+      .insert({
+        recipe_id: recipeId,
+        name: titre || `Étape ${i + 1}`,
+        order_index: order,
+        // Repris de la recette source : c'est ce mode qui décide, à
+        // l'ajustement, qu'une pâte à foncer suive la surface et un appareil
+        // le volume (`scalingCoef`).
+        scaling_mode: st.scaling_mode,
+      } as never)
       .select('id')
       .single();
     if (groupErr || !groupRow) throw groupErr ?? new Error('Groupe refusé');
@@ -131,6 +146,11 @@ export async function writeComponentContent(
         group_id: groupRow.id,
         name: it.name.trim(),
         quantity: it.quantity,
+        // Valeur de base, figée à la copie : c'est elle que multiplie tout
+        // ajustement ultérieur. Sans elle, changer deux fois le coefficient
+        // multiplierait deux fois — la dérive silencieuse que
+        // `batch_ingredients.base_quantity` évite déjà côté fournée.
+        base_quantity: numify(it.quantity),
         unit: it.unit,
         comment: it.comment,
         allergen: it.allergen,
@@ -192,4 +212,49 @@ export async function resequenceProjectSteps(supabase: Supabase, recipeId: strin
       if (gErr) throw gErr;
     }
   }
+}
+
+// ── Quantités ─────────────────────────────────────────────────────────────
+
+// Applique un coefficient à toutes les lignes recalculables d'un composant.
+//
+// La quantité est TOUJOURS recalculée depuis `base_quantity`, jamais depuis la
+// quantité affichée : sinon changer deux fois le coefficient multiplierait
+// deux fois. C'est exactement ce que fait `rescaleBatchIngredients` sur une
+// fournée, et pour la même raison.
+//
+// Le coefficient effectif d'une ligne dépend du `scaling_mode` de son groupe
+// (`scalingCoef`) : « aucun » fige la quantité, « fonçage » suit la surface,
+// le reste suit le volume. Ignorer ce mode remettrait à l'échelle du sel et
+// de la gélatine comme de la crème.
+export async function applyComponentScale(
+  supabase: Supabase,
+  lines: { id: number; baseQuantity: number | null; scalingMode: string | null }[],
+  factor: number,
+  moldCoefs: { surface: number; volume: number } | null,
+  coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
+  texte: (base: number | null, coef: number) => string | null,
+) {
+  for (const l of lines) {
+    // Ligne non chiffrée (« 1 pincée ») ou modifiée à la main : jamais
+    // recalculée — même doctrine que les lignes `added` d'une fournée.
+    if (l.baseQuantity == null) continue;
+    const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
+    const q = texte(l.baseQuantity, coef);
+    const { error } = await supabase.from('ingredients').update({ quantity: q } as never).eq('id', l.id);
+    if (error) throw error;
+  }
+}
+
+// Modification d'UNE ligne à la main (spec §6.3) : les autres ne bougent pas,
+// et cette ligne sort du recalcul global — `base_quantity` est effacée, ce qui
+// la rend invisible à `applyComponentScale`. Sans ça, le prochain changement
+// de coefficient écraserait silencieusement la valeur voulue par
+// l'utilisateur.
+export async function setLineQuantity(supabase: Supabase, lineId: number, quantity: string | null) {
+  const { error } = await supabase
+    .from('ingredients')
+    .update({ quantity: quantity && quantity.trim() ? quantity.trim() : null, base_quantity: null } as never)
+    .eq('id', lineId);
+  if (error) throw error;
 }
