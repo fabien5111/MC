@@ -186,14 +186,27 @@ export function StepExpandDialog({
     [stepIngredients, conversions, units, ingredientDensities],
   );
 
+  // Rendement de la recette choisie exprimé en grammes, s'il est annoncé en
+  // g ou kg (codes de `recipes.yield_unit`, cf. lib/recipe-view.ts
+  // UNITS_LBL) — seul cas où le poids estimé de l'étape permet de déduire un
+  // coefficient par défaut, comme pour un ingrédient remplacé. Le champ reste
+  // un coefficient ordinaire, modifiable dans tous les cas : ceci ne sert
+  // qu'à proposer une valeur de départ.
+  function recipeYieldGrams(rec: Pick<RecipeSource, 'measure_type' | 'yield_qty' | 'yield_unit'>): number | null {
+    if (rec.measure_type !== 'units') return null;
+    const qty = num(rec.yield_qty);
+    if (qty == null || qty <= 0) return null;
+    if (rec.yield_unit === 'g') return qty;
+    if (rec.yield_unit === 'kg') return qty * 1000;
+    return null;
+  }
+
   // Charge le contenu de la recette choisie et prépare les valeurs par
   // défaut : étapes posées juste avant l'étape remplacée (qui reste ensuite
-  // affichée barrée, à sa place), dans leur ordre. Coefficient : si la
-  // recette de remplacement annonce un rendement en g/kg, proposé à partir du
-  // poids estimé de l'étape ; sinon initialisé au facteur d'ajustement déjà
-  // appliqué à la fournée.
-  const [wantWeightStr, setWantWeightStr] = useState('');
-
+  // affichée barrée, à sa place), dans leur ordre. Coefficient proposé à
+  // partir du poids estimé de l'étape si la recette annonce un rendement en
+  // g/kg, sinon initialisé au facteur d'ajustement déjà appliqué à la
+  // fournée — dans tous les cas, une valeur de départ modifiable.
   async function selectRecipe(item: PickerItem) {
     setLoading(true);
     const { data, error } = await createClient().from('recipes').select(RECIPE_SOURCE_SELECT).eq('id', item.id).maybeSingle();
@@ -209,9 +222,10 @@ export function StepExpandDialog({
     }
     const steps = [...rec.recipe_steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     const defaultAnchor = replacedIndex > 0 ? sortedBatchSteps[replacedIndex - 1].order_index : null;
+    const yieldGrams = recipeYieldGrams(rec);
+    const defaultCoef = weightEstimate.grams > 0 && yieldGrams ? Math.round((weightEstimate.grams / yieldGrams) * 1000) / 1000 : batchFactor(batch);
     setSource(rec);
-    setCoefStr(fmtNum(batchFactor(batch)));
-    setWantWeightStr(weightEstimate.grams > 0 ? String(weightEstimate.grams) : '');
+    setCoefStr(fmtNum(defaultCoef));
     setPlacements(
       steps.map((s) => {
         const suggested = suggestedExpansionDay(step.day_offset ?? 0, s.day_offset || 0);
@@ -221,29 +235,10 @@ export function StepExpandDialog({
     setStage('setup');
   }
 
-  // Rendement de la recette choisie exprimé en grammes, s'il est annoncé en
-  // g ou kg (codes de `recipes.yield_unit`, cf. lib/recipe-view.ts
-  // UNITS_LBL) — seul cas où le poids estimé de l'étape permet de déduire un
-  // coefficient automatiquement, comme pour un ingrédient remplacé.
-  const sourceYieldGrams = useMemo(() => {
-    if (!source || source.measure_type !== 'units') return null;
-    const qty = num(source.yield_qty);
-    if (qty == null || qty <= 0) return null;
-    if (source.yield_unit === 'g') return qty;
-    if (source.yield_unit === 'kg') return qty * 1000;
-    return null;
-  }, [source]);
-  const byWeight = sourceYieldGrams != null;
-
   const factor = useMemo(() => {
-    if (byWeight) {
-      const want = num(wantWeightStr);
-      if (!want || want <= 0 || !sourceYieldGrams) return 0;
-      return Math.round((want / sourceYieldGrams) * 1000) / 1000;
-    }
     const c = num(coefStr);
     return c && c > 0 ? Math.round(c * 1000) / 1000 : 0;
-  }, [byWeight, wantWeightStr, sourceYieldGrams, coefStr]);
+  }, [coefStr]);
 
   const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor }) : null), [source, factor]);
 
@@ -268,7 +263,7 @@ export function StepExpandDialog({
       return;
     }
     if (factor <= 0) {
-      dialog.alert(byWeight ? 'Indiquez une quantité à produire valide.' : 'Indiquez un coefficient valide.');
+      dialog.alert('Indiquez un coefficient valide.');
       return;
     }
     const orders = computeInsertOrderIndexes(batchOrders, placements.map((p) => p.anchor));
@@ -487,42 +482,34 @@ export function StepExpandDialog({
             <div className="flex flex-col gap-2">
               <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
                 Remplacer l&apos;étape : <span className="font-semibold text-primary">{step.title || 'sans titre'}</span>
-                {byWeight ? (
+                {weightEstimate.grams > 0 ? (
                   <>
-                    {' '}— quantité :{' '}
-                    <input
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={wantWeightStr}
-                      onChange={(e) => setWantWeightStr(e.target.value)}
-                      className={INPUT}
-                      style={{ width: '6rem', display: 'inline-block' }}
-                    />{' '}
-                    g
+                    {' '}(poids estimé : <span className="font-semibold">≈ {weightEstimate.grams} g</span>
+                    {weightEstimate.unconverted.length > 0 ? ', estimation partielle' : ''})
                   </>
-                ) : (
-                  <>
-                    {' '}— coefficient :{' '}
-                    <input
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={coefStr}
-                      onChange={(e) => setCoefStr(e.target.value)}
-                      className={INPUT}
-                      style={{ width: '5rem', display: 'inline-block' }}
-                    />
-                  </>
-                )}{' '}
-                par la recette : <span className="font-semibold text-primary">{source.title}</span>
-                {byWeight && (
-                  <>
-                    {' '}
-                    (produit {source.yield_qty} {UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''})
-                  </>
-                )}
+                ) : weightEstimate.unconverted.length > 0 ? (
+                  <> (poids non estimable)</>
+                ) : null}
                 .
+              </p>
+              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                par la recette : <span className="font-semibold text-primary">{source.title}</span> — coefficient :{' '}
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={coefStr}
+                  onChange={(e) => setCoefStr(e.target.value)}
+                  className={INPUT}
+                  style={{ width: '5rem', display: 'inline-block' }}
+                />{' '}
+                (
+                {source.yield_desc
+                  ? `la recette fournit ${source.yield_desc} de base`
+                  : source.yield_qty
+                    ? `la recette fournit ${source.yield_qty} ${UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''} de base`.trim()
+                    : 'rendement non précisé'}
+                ).
               </p>
               <button
                 type="button"
@@ -536,35 +523,11 @@ export function StepExpandDialog({
               </button>
             </div>
 
-            {/* Coefficient déduit — affiché dès qu'il a pu être défini à
-                partir du poids estimé, pour que la valeur retenue soit
-                toujours visible, jamais seulement calculée en silence. */}
-            {byWeight && factor > 0 && (
-              <p className="font-body-md text-sm text-primary">
-                Coefficient déduit du poids estimé : quantités de la recette multipliées par {fmtNum(factor)}.
-              </p>
-            )}
-            {!byWeight && (
-              <p className="font-body-md text-sm text-on-surface-variant">
-                {source.yield_desc
-                  ? `La recette produit : ${source.yield_desc}`
-                  : source.yield_qty
-                    ? `La recette produit ${source.yield_qty} ${UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''}`.trim()
-                    : 'Cette recette n’annonce pas de rendement chiffré.'}
-              </p>
-            )}
-
-            {/* Poids estimé de l'étape remplacée, et — quand l'estimation
-                est incomplète ou impossible — les ingrédients en cause avec
-                leur quantité dans l'étape, pour que l'utilisateur puisse les
-                prendre en compte à la main en choisissant son coefficient.
-                Toujours qualifiée d'estimation (cf. estimateWeightGrams). */}
-            {weightEstimate.grams > 0 && (
-              <p className="font-body-md text-sm text-on-surface-variant">
-                Poids estimé de l&apos;étape remplacée : <span className="text-primary font-semibold">≈ {weightEstimate.grams} g</span>
-                {weightEstimate.unconverted.length > 0 ? ' (estimation partielle — voir ci-dessous).' : '.'}
-              </p>
-            )}
+            {/* Ingrédients en cause quand l'estimation est incomplète ou
+                impossible, avec leur quantité dans l'étape, pour que
+                l'utilisateur puisse les prendre en compte à la main en
+                choisissant son coefficient. Toujours qualifiée d'estimation
+                (cf. estimateWeightGrams). */}
             {weightEstimate.unconverted.length > 0 && (
               <div className="border border-outline-variant rounded-lg p-4 flex flex-col gap-2 bg-surface-container">
                 <p className="font-body-md text-sm text-on-surface-variant italic">
