@@ -2123,8 +2123,12 @@ export function CreerForm({
                               drag_indicator
                             </span>
                             <textarea
+                              ref={autoGrow}
                               value={t}
-                              onChange={(e) => patchSubstep(si, idx, e.target.value)}
+                              onChange={(e) => {
+                                patchSubstep(si, idx, e.target.value);
+                                autoGrow(e.target);
+                              }}
                               onKeyDown={(e) => {
                                 // Entrée → nouvelle sous-étape juste après, focus dessus.
                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -2137,7 +2141,7 @@ export function CreerForm({
                                 }
                               }}
                               data-substep-step={si}
-                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                               placeholder="Sous-étape…"
                               rows={2}
                             />
