@@ -1246,7 +1246,7 @@ export function CreerForm({
             />
           </div>
           <div className="lg:col-span-7 space-y-8">
-            <div className="flex items-center justify-between py-4 border-b border-outline-variant">
+            <div className="flex flex-col items-start gap-3 py-4 border-b border-outline-variant sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
                 <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
                 <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
@@ -1600,7 +1600,7 @@ export function CreerForm({
 
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
           <ul className="space-y-4">
             {utensils.map((u, i) => (
               <li key={u.key} className="flex items-start gap-4 group">
@@ -1698,7 +1698,7 @@ export function CreerForm({
               }}
               className={`scroll-mt-28${dragStep === si ? ' opacity-50' : ''}`}
             >
-              <div className="flex items-center gap-4 border-b border-primary pb-4">
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
                 <span
                   className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
@@ -1712,24 +1712,35 @@ export function CreerForm({
                   drag_indicator
                 </span>
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
-                <input
-                  value={st.title}
-                  onChange={(e) => patchStep(si, { title: e.target.value })}
-                  className="flex-grow editorial-input font-headline-md text-headline-md text-primary"
-                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
-                  type="text"
-                />
-                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">add_row_above</span>
                 </button>
-                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">{st.collapsed ? 'expand_more' : 'expand_less'}</span>
                 </button>
                 {steps.length > 1 && (
-                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0">
+                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0 md:order-2">
                     <span className="material-symbols-outlined">delete</span>
                   </button>
                 )}
+                {/* Sous `md`, le titre passe sur sa propre ligne pleine largeur
+                    (poignée + numéro + actions ne lui laissent quasiment plus
+                    de place) : `order-1` sur le titre (et le séparateur
+                    `basis-full` juste avant) le renvoient après le groupe
+                    poignée/numéro/actions, resté à `order-0` par défaut. Les
+                    boutons d'action passent eux-mêmes à `md:order-2` : sans ça,
+                    leur position DOM (après le titre) les renverrait après lui
+                    à partir de `md`, alors que l'ancien rendu les plaçait après
+                    un titre resté sur la même ligne — `order-1` (titre) <
+                    `md:order-2` (actions) republie exactement cet ordre. */}
+                <div className="basis-full order-1 md:hidden" />
+                <input
+                  value={st.title}
+                  onChange={(e) => patchStep(si, { title: e.target.value })}
+                  className="flex-grow order-1 editorial-input font-headline-md font-medium text-[20px] leading-[28px] md:text-headline-md text-primary"
+                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
+                  type="text"
+                />
               </div>
 
               {!st.collapsed && (
@@ -1896,7 +1907,7 @@ export function CreerForm({
                           <input
                             value={g.qty}
                             onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
-                            className="w-20 editorial-input text-on-surface"
+                            className="w-16 xl:w-20 editorial-input text-on-surface"
                             type="text"
                             placeholder="Qté"
                           />
@@ -1918,7 +1929,44 @@ export function CreerForm({
                             ))}
                           </select>
                           <div className="basis-full xl:hidden" />
-                          <div className="flex-1 min-w-0">
+                          {/* Commentaire avant Allergènes sous `xl` (ordre visuel
+                              seulement, via `order-*`). Le commentaire précède
+                              Allergènes dans le DOM (recopié ici plutôt que
+                              laissé après, pour rester lisible) : sur desktop, où
+                              les deux ordres visuels s'inversent (Allergènes
+                              puis Commentaire, comme avant ce changement),
+                              `xl:order-*` doit donc être fixé explicitement sur
+                              les deux blocs — un simple `xl:order-none` (qui
+                              revient à 0 des deux côtés) les départagerait par
+                              leur position DOM, dans le mauvais sens. */}
+                          <div className="flex-1 min-w-0 order-1 xl:order-2">
+                            <textarea
+                              value={g.comment}
+                              onChange={(e) => {
+                                patchIng(si, ii, { comment: e.target.value });
+                                autoGrow(e.target);
+                              }}
+                              ref={autoGrow}
+                              onKeyDown={(e) => {
+                                // Tab (sans Maj) depuis le dernier champ de la dernière
+                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
+                                // placer le curseur (sur le libellé, désormais premier).
+                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
+                                  e.preventDefault();
+                                  addIng(si);
+                                  setTimeout(() => {
+                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
+                                    names[names.length - 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
+                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                              rows={1}
+                              placeholder="Commentaire (optionnel)"
+                            />
+                          </div>
+                          <div className="basis-full xl:hidden order-2" />
+                          <div className="flex-1 min-w-0 order-3 xl:order-1">
                             <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                               Allergènes
                             </span>
@@ -1973,41 +2021,11 @@ export function CreerForm({
                               )}
                             </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            {/* Miroir invisible du libellé « Allergènes » de la
-                                colonne voisine : sans lui, le champ commentaire
-                                (sans libellé au-dessus) remonte plus haut que
-                                le select/les puces d'allergènes en dessous de
-                                `xl`, malgré `items-center`. */}
-                            <span aria-hidden className="xl:hidden block invisible font-label-md text-[10px] uppercase tracking-widest mb-1">
-                              Allergènes
-                            </span>
-                            <textarea
-                              value={g.comment}
-                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
-                              onKeyDown={(e) => {
-                                // Tab (sans Maj) depuis le dernier champ de la dernière
-                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
-                                // placer le curseur (sur le libellé, désormais premier).
-                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
-                                  e.preventDefault();
-                                  addIng(si);
-                                  setTimeout(() => {
-                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
-                                    names[names.length - 1]?.focus();
-                                  }, 0);
-                                }
-                              }}
-                              className="editorial-input text-on-surface w-full resize-y"
-                              rows={1}
-                              placeholder="Commentaire (optionnel)"
-                            />
-                          </div>
                           <button
                             type="button"
                             title="Supprimer"
                             onClick={() => delIng(si, ii)}
-                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0"
+                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
@@ -2041,7 +2059,7 @@ export function CreerForm({
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">
                       DESCRIPTION{' '}
-                      <span className="italic normal-case font-body-md text-on-surface-variant">
+                      <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                         (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
                       </span>
                     </label>
@@ -2066,7 +2084,7 @@ export function CreerForm({
                             className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
                           >
                             <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes{' '}
-                            <span className="italic normal-case font-body-md text-on-surface-variant">
+                            <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                               (Permet de suivre plus précisément le déroulé de la recette lors de l&apos;exécution)
                             </span>
                           </button>
@@ -2105,8 +2123,12 @@ export function CreerForm({
                               drag_indicator
                             </span>
                             <textarea
+                              ref={autoGrow}
                               value={t}
-                              onChange={(e) => patchSubstep(si, idx, e.target.value)}
+                              onChange={(e) => {
+                                patchSubstep(si, idx, e.target.value);
+                                autoGrow(e.target);
+                              }}
                               onKeyDown={(e) => {
                                 // Entrée → nouvelle sous-étape juste après, focus dessus.
                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -2119,7 +2141,7 @@ export function CreerForm({
                                 }
                               }}
                               data-substep-step={si}
-                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                               placeholder="Sous-étape…"
                               rows={2}
                             />
@@ -2202,7 +2224,12 @@ export function CreerForm({
 
                   <details open className="group border-b border-outline-variant">
                     <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
-                      Conseils &amp; Astuces de l&apos;étape
+                      <span>
+                        Conseils &amp; Astuces de l&apos;étape{' '}
+                        <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
+                          (Ces informations seront affichées lors de la réalisation de la recette)
+                        </span>
+                      </span>
                       <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                     </summary>
                     <div className="pb-6">
@@ -2240,7 +2267,7 @@ export function CreerForm({
             couvre cette section et la suivante (dégustation et conservation),
             qui se suivent immédiatement. */}
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
             ref={autoGrow}
             value={tips}
@@ -2256,7 +2283,7 @@ export function CreerForm({
 
         {/* Conseils de dégustation et de conservation */}
         <section className="space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
           <textarea
             ref={autoGrow}
             value={servingAdvice}
@@ -2274,8 +2301,8 @@ export function CreerForm({
 
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
             <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
           </div>
           <div className="bg-surface-container-high p-gutter rounded">
@@ -2305,8 +2332,8 @@ export function CreerForm({
 
         {/* Difficulté & temps globaux */}
         <section id="sec-difficulte" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Difficulté &amp; temps</h2>
             <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
           </div>
 
@@ -2392,8 +2419,8 @@ export function CreerForm({
 
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
             <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
           </div>
           <div className="max-w-2xl">
