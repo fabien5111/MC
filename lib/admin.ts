@@ -823,6 +823,43 @@ export async function getUnknownUtensils(): Promise<UnknownItem[]> {
   );
 }
 
+// ── Ingrédients en volume sans masse volumique de référence ──────────────
+// Distinct des « inconnus » ci-dessus : ces ingrédients SONT déjà référencés
+// (`ingredients.ref_id` non nul) — c'est `ingredient_refs.density_g_per_ml`
+// qui manque, colonne utilisée pour estimer le poids d'une étape en volume
+// au remplacement par une recette (cf. lib/ingredient-conversions.ts
+// `estimateWeightGrams`, CLAUDE.md « Fournées »). Réutilise `UnknownItem` /
+// `groupUnknownRows` : même forme de ligne (nom, recette, étape), seule la
+// RPC source diffère (`admin_volume_ingredients_missing_density`).
+//
+// Filtré sur `recipes.status = 'published'` (privée ou publique, jamais
+// brouillon/en attente/refusée) : décision produit — la recette doit être
+// publiée pour que l'écart compte, cf. échange avec l'utilisateur. Pas
+// d'action de rattachement ici (l'ingrédient est déjà référencé) : la fiche
+// pointe simplement vers Admin → Gestion des listes pour renseigner la
+// valeur.
+export async function getVolumeIngredientsMissingDensity(): Promise<UnknownItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_volume_ingredients_missing_density' as never);
+  if (error) {
+    console.error('getVolumeIngredientsMissingDensity:', error.message);
+    return [];
+  }
+  return groupUnknownRows(
+    (data as unknown as {
+      name: string;
+      recipe_id: string;
+      recipe_title: string;
+      step_name: string | null;
+      step_order: number | null;
+      author_name: string | null;
+      author_id: string | null;
+      recipe_status: string | null;
+      is_public: boolean | null;
+    }[]) ?? [],
+  );
+}
+
 // Éléments explicitement exclus du rattachement (l'admin ne veut pas les
 // ajouter à la référence) — table `admin_ignored_refs`, jamais lue/écrite en
 // direct depuis le client : uniquement via ces RPC SECURITY DEFINER, qui

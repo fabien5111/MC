@@ -127,20 +127,37 @@ export type WeightEstimate = {
   unconverted: string[];
 };
 
+// Unités de volume reconnues, en ml — conversion physique universelle (1 L =
+// 100 cl = 1000 ml, vrai pour n'importe quel liquide), donc codée en dur ici
+// plutôt que via le référentiel `ingredient_conversions` (qui, lui, porte des
+// équivalences propres à UN ingrédient, ex. « 1 œuf = 50 g »).
+const VOLUME_TO_ML: Record<string, number> = { ml: 1, cl: 10, l: 1000 };
+
 // Poids estimé d'un ensemble de lignes d'ingrédients (typiquement celles
 // d'une étape de fournée), utilisé pour proposer un coefficient lors du
 // remplacement d'une étape par une recette (cf. StepExpandDialog) — une
 // étape, contrairement à un ingrédient, ne porte aucune quantité cible.
 //
-// Une ligne déjà en g ou kg est comptée directement. Toute autre unité
-// (ml, unité(s), pincée…) n'est comptée QUE si l'ingrédient est référencé et
-// qu'une conversion vers « g » est enregistrée pour LUI dans le référentiel
-// (`convertQty`, même mécanisme que l'affichage « ≈ 100 g » de l'éditeur
-// d'ingrédients) — jamais une densité générique (« 1 ml = 1 g ») qui serait
-// fausse selon l'ingrédient (crème, huile, alcool…). Une ligne qui ne peut
-// pas être convertie sort du total et rejoint `unconverted`.
+// Une ligne déjà en g ou kg est comptée directement. Une ligne dans une autre
+// unité n'est comptée que dans cet ordre de priorité :
+//   1. une conversion enregistrée pour CET ingrédient dans le référentiel
+//      (`convertQty`, même mécanisme que l'affichage « ≈ 100 g » de
+//      l'éditeur d'ingrédients) — la plus précise, elle prime toujours ;
+//   2. à défaut, pour une unité de volume (ml/cl/l) et un ingrédient
+//      référencé portant une `density_g_per_ml` (Admin → Gestion des listes
+//      → Ingrédients) : poids = volume converti en ml × densité.
+// Jamais de densité générique (« 1 ml = 1 g ») appliquée par défaut — ce
+// serait faux selon l'ingrédient (crème, huile, alcool…). Une ligne qui ne
+// peut être convertie par aucun des deux moyens sort du total et rejoint
+// `unconverted`.
 export function estimateWeightGrams(
-  ingredients: { name: string; quantity: number | null; unit: string | null; ref_id: number | null }[],
+  ingredients: {
+    name: string;
+    quantity: number | null;
+    unit: string | null;
+    ref_id: number | null;
+    ingredient_refs?: { density_g_per_ml: number | null } | null;
+  }[],
   conversions: ConversionRef[],
   units: UnitRef[],
 ): WeightEstimate {
@@ -163,6 +180,12 @@ export function estimateWeightGrams(
     const inGrams = convertQty(conversions, units, it.ref_id, it.unit, it.quantity, 'g');
     if (inGrams != null && inGrams > 0) {
       grams += inGrams;
+      continue;
+    }
+    const mlPerUnit = VOLUME_TO_ML[key];
+    const density = it.ingredient_refs?.density_g_per_ml;
+    if (mlPerUnit != null && density != null && density > 0) {
+      grams += it.quantity * mlPerUnit * density;
       continue;
     }
     if (it.name) unconverted.push(it.name);

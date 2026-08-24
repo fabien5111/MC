@@ -158,7 +158,11 @@ export type BatchStepRow = Database['public']['Tables']['batch_steps']['Row'] & 
 };
 export type BatchSubstepRow = Database['public']['Tables']['batch_substeps']['Row'];
 export type BatchIngredientRow = Database['public']['Tables']['batch_ingredients']['Row'] & {
-  ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
+  // `density_g_per_ml` absente de lib/database.types.ts tant que la
+  // migration n'a pas été régénérée (npm run gen:types) — même motif que
+  // `review_status` plus bas. Sert au poids estimé d'une étape en volume
+  // (cf. lib/ingredient-conversions.ts `estimateWeightGrams`).
+  ingredient_refs?: { url: string | null; allergens: AllergenRef | null; density_g_per_ml: number | null } | null;
   // Sous-recette qui remplace cet ingrédient (« je fais moi-même mon
   // praliné ») — cf. « Ingrédient remplacé par une sous-recette » plus bas.
   // Renseignée après coup par `getPlan` (et non par une jointure imbriquée,
@@ -575,7 +579,7 @@ export function stepReplacementSource(batch: BatchFull, step: Pick<BatchStepRow,
 export const BATCH_FULL_SELECT = `
   *,
   batch_steps(*, batch_substeps(*)),
-  batch_ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip))),
+  batch_ingredients(*, ingredient_refs(url, density_g_per_ml, allergens(id, name, picto, tooltip))),
   batch_utensils(*)
 `;
 

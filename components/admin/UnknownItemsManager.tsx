@@ -302,6 +302,61 @@ function AddUtensilPanel({ item, onClose }: { item: UnknownItem; onClose: () => 
   );
 }
 
+// Ingrédients déjà référencés, saisis en volume (ml/cl/l) dans une recette
+// publiée, mais sans masse volumique enregistrée pour eux dans le
+// référentiel — cf. lib/admin.ts `getVolumeIngredientsMissingDensity`.
+// Distinct de `Section` : l'ingrédient est déjà rattaché à la référence, il
+// n'y a donc rien à « ajouter » ni à « exclure » ici, seulement un renvoi
+// vers l'écran où renseigner la valeur manquante.
+function VolumeDensitySection({ items }: { items: UnknownItem[] }) {
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div className="p-6 border-b border-outline-variant">
+        <h3 className="font-headline-md text-lg font-semibold">
+          Ingrédients en volume sans masse volumique{' '}
+          <span className="text-on-surface-variant font-normal text-sm">({items.length})</span>
+        </h3>
+        <p className="text-xs text-on-surface-variant mt-0.5">
+          Ingrédients déjà référencés, saisis en volume (ml/cl/l) dans une recette publiée (privée ou publique), sans masse
+          volumique enregistrée pour eux — renseignez-la depuis{' '}
+          <Link href="/admin/listes" className="text-secondary hover:text-primary underline underline-offset-2">
+            Gestion des listes → Ingrédients
+          </Link>{' '}
+          pour qu&apos;ils comptent dans l&apos;estimation de poids au remplacement d&apos;une étape par une recette.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-surface-container-low border-b border-outline-variant">
+              <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ingrédient</th>
+              <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Recettes concernées</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant">
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-6 py-10 text-center text-on-surface-variant text-sm">
+                  Rien à signaler.
+                </td>
+              </tr>
+            ) : (
+              items.map((it) => (
+                <tr key={it.name.toLowerCase()} className="hover:bg-surface-container-low transition-colors align-top">
+                  <td className="px-6 py-4 text-sm font-semibold text-on-surface whitespace-nowrap">{it.name}</td>
+                  <td className="px-6 py-4">
+                    <RecipeLinks recipes={it.recipes} />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // Éléments exclus (repliable, replié par défaut) : rester visible plutôt que
 // disparaître silencieusement — une exclusion se fait en un clic depuis les
 // tableaux ci-dessus, elle doit pouvoir se défaire aussi facilement.
@@ -363,11 +418,13 @@ function IgnoredSection({ items, onRestore }: { items: IgnoredRef[]; onRestore: 
 export function UnknownItemsManager({
   ingredients,
   utensils,
+  volumeMissingDensity,
   ignored,
   allergens,
 }: {
   ingredients: UnknownItem[];
   utensils: UnknownItem[];
+  volumeMissingDensity: UnknownItem[];
   ignored: IgnoredRef[];
   allergens: { id: number; name: string }[];
 }) {
@@ -402,6 +459,7 @@ export function UnknownItemsManager({
         onAdd={setAddingUtensil}
         onExclude={(item) => exclude('utensil', item)}
       />
+      <VolumeDensitySection items={volumeMissingDensity} />
       <IgnoredSection items={ignored} onRestore={restore} />
       {addingIngredient && <AddIngredientPanel item={addingIngredient} allergens={allergens} onClose={() => setAddingIngredient(null)} />}
       {addingUtensil && <AddUtensilPanel item={addingUtensil} onClose={() => setAddingUtensil(null)} />}
