@@ -258,3 +258,62 @@ export async function setLineQuantity(supabase: Supabase, lineId: number, quanti
     .eq('id', lineId);
   if (error) throw error;
 }
+
+// ── Promotion des quantités d'un essai (spec §7.4) ────────────────────────
+//
+// « Depuis un essai, l'utilisateur peut appliquer ses quantités au projet,
+// qui deviennent les quantités de référence. »
+//
+// L'appariement ligne de fournée → ingrédient du projet passe par
+// `batch_steps.source_step_id` : la fournée sait de quelle étape de la
+// recette elle est issue, l'étape donne son groupe d'ingrédients (par
+// `order_index`, l'appariement du modèle), et le nom fait le reste à
+// l'intérieur du groupe. S'appuyer sur le seul nom aurait confondu deux
+// « Sucre » appartenant à deux composants différents.
+//
+// La quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
+// réellement fonctionné devient la référence, et un futur changement de
+// format repartira de là plutôt que des quantités théoriques d'origine.
+export async function promoteTrialQuantities(
+  supabase: Supabase,
+  recipeId: string,
+  lines: { name: string; realQuantity: number | null; sourceStepId: number | null }[],
+  texte: (base: number | null, coef: number) => string | null,
+): Promise<number> {
+  const retenues = lines.filter((l) => l.realQuantity != null && l.sourceStepId != null);
+  if (!retenues.length) return 0;
+
+  const { steps, groups } = await readLayout(supabase, recipeId);
+  const groupByIndex = new Map<number, number>();
+  groups.forEach((g) => groupByIndex.set(g.order_index ?? -1, g.id));
+  const groupParStep = new Map<number, number>();
+  steps.forEach((s) => {
+    const g = groupByIndex.get(s.order_index ?? -1);
+    if (g != null) groupParStep.set(s.id, g);
+  });
+
+  const groupIds = [...new Set(retenues.map((l) => groupParStep.get(l.sourceStepId!)).filter((g): g is number => g != null))];
+  if (!groupIds.length) return 0;
+
+  const { data, error } = await supabase.from('ingredients').select('id, group_id, name').in('group_id', groupIds);
+  if (error) throw error;
+  const cible = new Map<string, number>();
+  for (const it of (data ?? []) as { id: number; group_id: number | null; name: string }[]) {
+    cible.set(`${it.group_id}|${(it.name || '').trim().toLowerCase()}`, it.id);
+  }
+
+  let appliquees = 0;
+  for (const l of retenues) {
+    const groupId = groupParStep.get(l.sourceStepId!);
+    if (groupId == null) continue;
+    const id = cible.get(`${groupId}|${(l.name || '').trim().toLowerCase()}`);
+    if (id == null) continue;
+    const { error: upErr } = await supabase
+      .from('ingredients')
+      .update({ quantity: texte(l.realQuantity!, 1), base_quantity: l.realQuantity } as never)
+      .eq('id', id);
+    if (upErr) throw upErr;
+    appliquees++;
+  }
+  return appliquees;
+}

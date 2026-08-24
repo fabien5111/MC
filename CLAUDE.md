@@ -669,6 +669,24 @@ essais et la validation arrivent par lots successifs.
   lignes du même ingrédient exprimées dans des unités différentes via la table
   de conversions, ce qui compte d'autant plus que les composants viennent de
   recettes différentes.
+- **Un essai est une fournée du projet**, jamais un objet de plus (§7). Les
+  fournées portent déjà les quantités réellement utilisées
+  (`batch_ingredients.real_quantity`), les notes du jour J
+  (`batches.commentaire_global`), l'avancement et la filiation d'un essai au
+  suivant (`batches.source_plan_id`) : une table d'essais aurait dupliqué tout
+  cela et créé une seconde source de vérité sur « combien j'ai vraiment mis ».
+  Seul le verdict manquait — `batches.trial_verdict` (`to_review` / `ok` /
+  `validated`). La fournée d'essai est créée avec le **même moteur** que celle
+  d'une recette ordinaire (`lib/batch-write.ts`, extrait de `BatchWidget` pour
+  être partagé), avec un facteur de **1** : les quantités du projet sont déjà
+  celles du format visé, un second coefficient les fausserait.
+- **Promouvoir les quantités d'un essai** (§7.4) apparie les lignes par
+  `batch_steps.source_step_id` → étape du projet → son groupe d'ingrédients
+  (par `order_index`) → le nom à l'intérieur du groupe. S'appuyer sur le seul
+  nom confondrait deux « Sucre » appartenant à deux composants différents. La
+  quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
+  réellement fonctionné devient la référence, et un futur changement de format
+  repart de là.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.

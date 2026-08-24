@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
-import { getProjectFull } from '@/lib/projects-data';
+import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
-import { getIngredientConversions } from '@/lib/recipes';
+import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -26,13 +26,18 @@ export default async function ProjetPage({ params }: Params) {
   // chaque geste, une session « en tant que » en lecture seule n'y entre pas.
   await requireWritableSession();
 
-  const [project, moldTypes, units, conversions] = await Promise.all([
+  const [project, moldTypes, units, conversions, recipe, trials] = await Promise.all([
     getProjectFull(id),
     getMoldTypes(),
     getUnits(),
     // Table de conversions : sert au récapitulatif (étape 6), qui consolide
     // les ingrédients des composants avec la fonction de la fiche recette.
     getIngredientConversions(),
+    // Recette du projet telle que le moteur de fournée la lit : une fournée
+    // d'essai passe exactement par le même chemin que celle d'une recette
+    // ordinaire (cf. lib/batch-write.ts).
+    getRecipeFull(id),
+    getProjectTrials(id),
   ]);
 
   // `getProjectFull` ne rend que ce que la RLS laisse voir, et seulement si
@@ -58,6 +63,8 @@ export default async function ProjetPage({ params }: Params) {
           units={units.map((u) => u.name)}
           conversions={conversions}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
+          recipe={recipe}
+          trials={trials}
         />
       </main>
       <Footer />

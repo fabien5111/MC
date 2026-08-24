@@ -23,6 +23,7 @@ import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { QuantitiesStep, RecapStep } from '@/components/projets/ProjectQuantities';
+import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { clearComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import {
   COMPONENT_ROLES,
@@ -41,6 +42,8 @@ import {
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
+import type { ProjectTrial } from '@/lib/projects-data';
+import type { RecipeFull } from '@/lib/recipes';
 
 type MoldType = { id: number; name: string; forme: string | null };
 
@@ -64,6 +67,8 @@ export function ProjectWizard({
   units,
   conversions,
   unitRefs,
+  recipe,
+  trials,
 }: {
   project: ProjectFull;
   moldTypes: MoldType[];
@@ -73,6 +78,10 @@ export function ProjectWizard({
   // (`mergeIngredients`) plutôt qu'avec une seconde implémentation.
   conversions: ConversionRef[];
   unitRefs: UnitRef[];
+  // Recette du projet, pour la fournée d'essai (étape 6). `null` si elle n'a
+  // pas pu être lue — le bloc des essais est alors simplement absent.
+  recipe: RecipeFull | null;
+  trials: ProjectTrial[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -687,6 +696,15 @@ export function ProjectWizard({
       {step === 6 && (
         <>
           <RecapStep project={project} formatLabel={formatLabel} conversions={conversions} unitRefs={unitRefs} />
+          {recipe && (
+            <div className="mt-6">
+              <ProjectTrials
+                recipe={recipe}
+                trials={trials}
+                unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)}
+              />
+            </div>
+          )}
           <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
             <button type="button" onClick={() => goStep(5)} className={btnGhost}>
               Retour
@@ -696,7 +714,7 @@ export function ProjectWizard({
             </button>
           </div>
           <p className="mt-3 text-[12px] text-on-surface-variant">
-            La validation du projet et la fournée d’essai arrivent avec les lots suivants.
+            La validation du projet arrive avec le lot suivant.
           </p>
         </>
       )}
