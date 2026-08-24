@@ -82,6 +82,7 @@ export function StepExpandDialog({
   step,
   conversions,
   units,
+  ingredientDensities,
   onClose,
   onDone,
 }: {
@@ -93,6 +94,10 @@ export function StepExpandDialog({
   // remplacée (cf. `estimateWeightGrams`).
   conversions: ConversionRef[];
   units: UnitRef[];
+  // Masse volumique par nom d'ingrédient (lib/recipes.ts
+  // `getIngredientDensities`) — repli quand la ligne d'ingrédient de la
+  // fournée n'a pas de `ref_id` propre (cf. `estimateWeightGrams`).
+  ingredientDensities: { name: string; density_g_per_ml: number }[];
   onClose: () => void;
   // Écriture aboutie — le parent resynchronise la fiche.
   onDone: () => void | Promise<void>;
@@ -176,7 +181,10 @@ export function StepExpandDialog({
   // étape (contrairement à un ingrédient). Ne dépend pas de la recette
   // choisie — calculé une fois pour toute la fenêtre.
   const stepIngredients = useMemo(() => batch.batch_ingredients.filter((it) => it.batch_step_id === step.id), [batch.batch_ingredients, step.id]);
-  const weightEstimate = useMemo(() => estimateWeightGrams(stepIngredients, conversions, units), [stepIngredients, conversions, units]);
+  const weightEstimate = useMemo(
+    () => estimateWeightGrams(stepIngredients, conversions, units, ingredientDensities),
+    [stepIngredients, conversions, units, ingredientDensities],
+  );
 
   // Charge le contenu de la recette choisie et prépare les valeurs par
   // défaut : étapes posées juste avant l'étape remplacée (qui reste ensuite

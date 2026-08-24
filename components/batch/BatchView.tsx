@@ -128,6 +128,7 @@ export function BatchView({
   units,
   unitTips,
   conversions,
+  ingredientDensities,
   shoppingLists,
   allergenRefs,
   lecture,
@@ -139,6 +140,10 @@ export function BatchView({
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Masse volumique par nom d'ingrédient — repli de `estimateWeightGrams`
+  // (StepExpandDialog) quand la ligne n'a pas de `ref_id` propre, cf.
+  // lib/recipes.ts `getIngredientDensities`.
+  ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
   lecture: boolean;
@@ -375,6 +380,7 @@ export function BatchView({
             units={units}
             unitTips={unitTips}
             conversions={conversions}
+            ingredientDensities={ingredientDensities}
             shoppingLists={shoppingLists}
             allergenRefs={allergenRefs}
             readOnly={readOnly}
@@ -404,6 +410,7 @@ function PreparerView({
   units,
   unitTips,
   conversions,
+  ingredientDensities,
   shoppingLists,
   allergenRefs,
   readOnly,
@@ -415,6 +422,7 @@ function PreparerView({
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
   readOnly: boolean;
@@ -545,6 +553,7 @@ function PreparerView({
           step={replacingStep}
           conversions={conversions}
           units={units}
+          ingredientDensities={ingredientDensities}
           onClose={() => setReplacingStep(null)}
           onDone={refreshReplace}
         />

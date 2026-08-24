@@ -303,6 +303,30 @@ export const getIngredientRefsList = cache(async (): Promise<IngredientRefOption
   return (data ?? []).filter((r) => r.name);
 });
 
+// Masse volumique (g/ml) des ingrédients référencés, par NOM — utilisée en
+// repli par `estimateWeightGrams` (lib/ingredient-conversions.ts) quand la
+// ligne d'ingrédient d'une fournée n'a pas de `ref_id` propre. `ref_id` n'est
+// résolu qu'à l'enregistrement de la recette (`resolveIngredientRefId`,
+// correspondance exacte de nom) : un ingrédient référencé APRÈS ce moment-là
+// reste sans `ref_id` sur les lignes déjà saisies, alors même que son nom
+// correspond désormais à une entrée du référentiel — même piège que celui
+// déjà documenté pour « Ingrédients inconnus » (lib/admin.ts : « Ne pas se
+// fier à ref_id IS NULL seul »). Ne renvoie que les entrées avec une densité
+// renseignée : la table entière n'a pas d'intérêt ici.
+export const getIngredientDensities = cache(async (): Promise<{ name: string; density_g_per_ml: number }[]> => {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ingredient_refs')
+    .select('name, density_g_per_ml')
+    .not('density_g_per_ml', 'is', null);
+  if (error) {
+    console.error('getIngredientDensities:', error.message);
+    return [];
+  }
+  return ((data ?? []) as { name: string | null; density_g_per_ml: number | null }[])
+    .filter((r): r is { name: string; density_g_per_ml: number } => !!r.name && r.density_g_per_ml != null);
+});
+
 // Attache la liste des NOMS d'allergènes à un lot de cartes — jamais leurs
 // pictos. Les pictos (data-URL, ~6 kB chacun en moyenne) sont résolus au
 // rendu, à partir d'une table de référence (getAllergensWithPicto) chargée

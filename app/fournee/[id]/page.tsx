@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
-import { getIngredientConversions, getAllergensWithPicto } from '@/lib/recipes';
+import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
 import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
@@ -75,9 +75,10 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
     getUnits(),
     getIngredientConversions(),
+    getIngredientDensities(),
     getShoppingLists(batch.user_id!),
     getBaseRecipeInfo(batch.recipe_id),
     getAllergensWithPicto(),
@@ -100,6 +101,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
         units={units}
         unitTips={unitTips}
         conversions={conversions}
+        ingredientDensities={ingredientDensities}
         shoppingLists={shoppingLists}
         allergenRefs={allergenRefs}
         lecture={lecture === '1'}

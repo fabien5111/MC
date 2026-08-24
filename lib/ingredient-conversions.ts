@@ -143,9 +143,14 @@ const VOLUME_TO_ML: Record<string, number> = { ml: 1, cl: 10, l: 1000 };
 //   1. une conversion enregistrée pour CET ingrédient dans le référentiel
 //      (`convertQty`, même mécanisme que l'affichage « ≈ 100 g » de
 //      l'éditeur d'ingrédients) — la plus précise, elle prime toujours ;
-//   2. à défaut, pour une unité de volume (ml/cl/l) et un ingrédient
-//      référencé portant une `density_g_per_ml` (Admin → Gestion des listes
-//      → Ingrédients) : poids = volume converti en ml × densité.
+//   2. à défaut, pour une unité de volume (ml/cl/l) et une `density_g_per_ml`
+//      trouvée pour cet ingrédient (Admin → Gestion des listes →
+//      Ingrédients) : poids = volume converti en ml × densité. La densité de
+//      la ligne (jointe via `ref_id`) prime ; si la ligne n'a pas de `ref_id`
+//      propre (résolu une seule fois, à l'enregistrement de la recette — un
+//      ingrédient référencé après coup n'est jamais rattrapé automatiquement,
+//      cf. lib/admin.ts « Ne pas se fier à ref_id IS NULL seul »), on
+//      retombe sur `densityByName`, un rapprochement par nom.
 // Jamais de densité générique (« 1 ml = 1 g ») appliquée par défaut — ce
 // serait faux selon l'ingrédient (crème, huile, alcool…). Une ligne qui ne
 // peut être convertie par aucun des deux moyens sort du total et rejoint
@@ -160,7 +165,11 @@ export function estimateWeightGrams(
   }[],
   conversions: ConversionRef[],
   units: UnitRef[],
+  // Masse volumique par nom d'ingrédient (lib/recipes.ts
+  // `getIngredientDensities`), pour les lignes sans `ref_id` propre.
+  densities?: { name: string; density_g_per_ml: number }[],
 ): WeightEstimate {
+  const densityByName = new Map((densities ?? []).map((d) => [normUnit(d.name), d.density_g_per_ml]));
   let grams = 0;
   const unconverted: string[] = [];
   for (const it of ingredients) {
@@ -183,7 +192,7 @@ export function estimateWeightGrams(
       continue;
     }
     const mlPerUnit = VOLUME_TO_ML[key];
-    const density = it.ingredient_refs?.density_g_per_ml;
+    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(normUnit(it.name));
     if (mlPerUnit != null && density != null && density > 0) {
       grams += it.quantity * mlPerUnit * density;
       continue;
