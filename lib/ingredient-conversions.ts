@@ -120,11 +120,13 @@ export function convertQty(
 export type WeightEstimate = {
   // Arrondi au gramme — c'est une estimation, pas une pesée.
   grams: number;
-  // Noms des ingrédients dont le poids n'a pas pu être compté (pas de
-  // conversion vers g/kg enregistrée pour eux) : à lister explicitement,
-  // jamais à passer sous silence — un total qui les omet sans le dire
-  // laisserait croire à une somme exhaustive.
-  unconverted: string[];
+  // Ingrédients dont le poids n'a pas pu être compté (pas de conversion vers
+  // g/kg enregistrée pour eux), avec leur quantité et unité telles que
+  // saisies dans l'étape — pour que l'utilisateur puisse les prendre en
+  // compte à la main. À lister explicitement, jamais à passer sous silence :
+  // un total qui les omet sans le dire laisserait croire à une somme
+  // exhaustive.
+  unconverted: { name: string; quantity: number | null; unit: string | null }[];
 };
 
 // Unités de volume reconnues, en ml — conversion physique universelle (1 L =
@@ -171,10 +173,10 @@ export function estimateWeightGrams(
 ): WeightEstimate {
   const densityByName = new Map((densities ?? []).map((d) => [normUnit(d.name), d.density_g_per_ml]));
   let grams = 0;
-  const unconverted: string[] = [];
+  const unconverted: WeightEstimate['unconverted'] = [];
   for (const it of ingredients) {
     if (it.quantity == null || it.quantity <= 0 || !it.unit) {
-      if (it.name) unconverted.push(it.name);
+      if (it.name) unconverted.push({ name: it.name, quantity: it.quantity, unit: it.unit });
       continue;
     }
     const key = normUnit(it.unit);
@@ -197,7 +199,7 @@ export function estimateWeightGrams(
       grams += it.quantity * mlPerUnit * density;
       continue;
     }
-    if (it.name) unconverted.push(it.name);
+    if (it.name) unconverted.push({ name: it.name, quantity: it.quantity, unit: it.unit });
   }
   return { grams: Math.round(grams), unconverted };
 }

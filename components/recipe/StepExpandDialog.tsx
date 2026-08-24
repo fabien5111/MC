@@ -480,66 +480,113 @@ export function StepExpandDialog({
           </div>
         ) : source ? (
           <div className="p-6 flex flex-col gap-6">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="font-headline-md text-headline-md text-primary">{source.title}</span>
+            {/* Phrase unique : quelle étape, quelle quantité (ou quel
+                coefficient, faute de rendement chiffré), par quelle recette
+                — le rendement de la recette entre parenthèses est le seul
+                repère pour juger si la quantité saisie est plausible. */}
+            <div className="flex flex-col gap-2">
+              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                Remplacer l&apos;étape : <span className="font-semibold text-primary">{step.title || 'sans titre'}</span>
+                {byWeight ? (
+                  <>
+                    {' '}— quantité :{' '}
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={wantWeightStr}
+                      onChange={(e) => setWantWeightStr(e.target.value)}
+                      className={INPUT}
+                      style={{ width: '6rem', display: 'inline-block' }}
+                    />{' '}
+                    g
+                  </>
+                ) : (
+                  <>
+                    {' '}— coefficient :{' '}
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={coefStr}
+                      onChange={(e) => setCoefStr(e.target.value)}
+                      className={INPUT}
+                      style={{ width: '5rem', display: 'inline-block' }}
+                    />
+                  </>
+                )}{' '}
+                par la recette : <span className="font-semibold text-primary">{source.title}</span>
+                {byWeight && (
+                  <>
+                    {' '}
+                    (produit {source.yield_qty} {UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''})
+                  </>
+                )}
+                .
+              </p>
               <button
                 type="button"
                 onClick={() => {
                   setSource(null);
                   setStage('search');
                 }}
-                className="font-label-md text-[12px] text-primary hover:underline flex items-center gap-1"
+                className="self-start font-label-md text-[12px] text-primary hover:underline flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[16px]">arrow_back</span>Changer de recette
               </button>
             </div>
 
-            {/* Poids estimé de l'étape remplacée : faute de quantité cible
-                propre à une étape (contrairement à un ingrédient), c'est le
-                seul repère pour choisir le coefficient. Toujours qualifiée
-                d'estimation, et jamais silencieuse sur ce qu'elle ne compte
-                pas (cf. estimateWeightGrams). */}
-            {weightEstimate.grams > 0 ? (
+            {/* Coefficient déduit — affiché dès qu'il a pu être défini à
+                partir du poids estimé, pour que la valeur retenue soit
+                toujours visible, jamais seulement calculée en silence. */}
+            {byWeight && factor > 0 && (
+              <p className="font-body-md text-sm text-primary">
+                Coefficient déduit du poids estimé : quantités de la recette multipliées par {fmtNum(factor)}.
+              </p>
+            )}
+            {!byWeight && (
               <p className="font-body-md text-sm text-on-surface-variant">
-                Poids estimé de l&apos;étape remplacée :{' '}
-                <span className="text-primary font-semibold">≈ {weightEstimate.grams} g</span>
-                {weightEstimate.unconverted.length > 0 && (
-                  <> (estimation partielle — hors {weightEstimate.unconverted.join(', ')})</>
-                )}
-                .
+                {source.yield_desc
+                  ? `La recette produit : ${source.yield_desc}`
+                  : source.yield_qty
+                    ? `La recette produit ${source.yield_qty} ${UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''}`.trim()
+                    : 'Cette recette n’annonce pas de rendement chiffré.'}
               </p>
-            ) : weightEstimate.unconverted.length > 0 ? (
-              <p className="font-body-md text-sm text-on-surface-variant italic">
-                Poids non estimable pour cette étape (aucun ingrédient converti en grammes : {weightEstimate.unconverted.join(', ')}).
-              </p>
-            ) : null}
+            )}
 
-            {/* Coefficient — déduit du poids estimé si la recette de
-                remplacement annonce un rendement en g/kg, sinon saisi à la
-                main. */}
-            <div className="flex flex-col gap-3">
-              <span className={LBL}>{byWeight ? 'Quantité à produire' : 'Coefficient'}</span>
-              {byWeight ? (
-                <div className="flex flex-wrap items-end gap-4">
-                  <input type="number" min={0} step="any" value={wantWeightStr} onChange={(e) => setWantWeightStr(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
-                  <span className="font-body-md text-sm text-on-surface-variant pb-2">
-                    g (la recette en produit {source.yield_qty} {UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''})
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-end gap-4">
-                  <input type="number" min={0} step="any" value={coefStr} onChange={(e) => setCoefStr(e.target.value)} className={INPUT} style={{ width: '7rem' }} />
-                  <span className="font-body-md text-sm text-on-surface-variant pb-2">
-                    {source.yield_desc
-                      ? `La recette produit : ${source.yield_desc}`
-                      : source.yield_qty
-                        ? `La recette produit ${source.yield_qty} ${UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''}`.trim()
-                        : 'Cette recette n’annonce pas de rendement chiffré.'}
-                  </span>
-                </div>
-              )}
-              {factor > 0 && <p className="font-body-md text-sm text-primary">Quantités de la recette multipliées par {fmtNum(factor)}.</p>}
-            </div>
+            {/* Poids estimé de l'étape remplacée, et — quand l'estimation
+                est incomplète ou impossible — les ingrédients en cause avec
+                leur quantité dans l'étape, pour que l'utilisateur puisse les
+                prendre en compte à la main en choisissant son coefficient.
+                Toujours qualifiée d'estimation (cf. estimateWeightGrams). */}
+            {weightEstimate.grams > 0 && (
+              <p className="font-body-md text-sm text-on-surface-variant">
+                Poids estimé de l&apos;étape remplacée : <span className="text-primary font-semibold">≈ {weightEstimate.grams} g</span>
+                {weightEstimate.unconverted.length > 0 ? ' (estimation partielle — voir ci-dessous).' : '.'}
+              </p>
+            )}
+            {weightEstimate.unconverted.length > 0 && (
+              <div className="border border-outline-variant rounded-lg p-4 flex flex-col gap-2 bg-surface-container">
+                <p className="font-body-md text-sm text-on-surface-variant italic">
+                  {weightEstimate.grams > 0
+                    ? 'Ingrédients non pris en compte dans cette estimation (poids inconnu) :'
+                    : 'Poids non estimable pour cette étape — ingrédients dont le poids est inconnu :'}
+                </p>
+                <ul className="font-body-md text-sm text-on-surface list-disc pl-5">
+                  {weightEstimate.unconverted.map((u, i) => (
+                    <li key={i}>
+                      {u.name}
+                      {u.quantity != null || u.unit ? (
+                        <>
+                          {' '}
+                          — {u.quantity != null ? fmtNum(u.quantity) : ''} {u.unit || ''}
+                        </>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Positionnement de chaque étape */}
             <div className="flex flex-col gap-3">
