@@ -406,3 +406,27 @@ export function scaledQuantityText(base: number | null, coef: number): string | 
   if (base == null) return null;
   return String(Math.round(base * coef * 100) / 100).replace('.', ',');
 }
+
+// ── Validation (spec §8) ──────────────────────────────────────────────────
+
+// Raisons qui empêchent de valider un projet — vide si la validation est
+// possible. Toujours calculé côté client ET reposé côté serveur au moment de
+// l'insertion : un projet reste modifiable depuis plusieurs onglets, la
+// vérification affichée peut être périmée de quelques secondes.
+export function projectValidationBlockers(project: {
+  measure_type: string | null;
+  components: { name: string; resolved: boolean }[];
+}): string[] {
+  const blockers: string[] = [];
+  if (!project.measure_type) blockers.push('Le format du projet n’est pas renseigné.');
+  if (!project.components.length) blockers.push('Le projet n’a aucun composant.');
+  const nonResolus = project.components.filter((c) => !c.resolved);
+  if (nonResolus.length) {
+    blockers.push(
+      `${nonResolus.length} composant${nonResolus.length > 1 ? 's ne sont' : ' n’est'} pas résolu${
+        nonResolus.length > 1 ? 's' : ''
+      } : ${nonResolus.map((c) => c.name).join(', ')}.`,
+    );
+  }
+  return blockers;
+}

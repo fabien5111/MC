@@ -24,7 +24,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { QuantitiesStep, RecapStep } from '@/components/projets/ProjectQuantities';
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
-import { clearComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import { clearComponentContent, resequenceProjectSteps, writeAssemblyStep } from '@/lib/projects-write';
 import {
   COMPONENT_ROLES,
   COMPONENT_SOURCE_LABELS,
@@ -35,6 +35,7 @@ import {
   WIZARD_STEPS,
   formatYieldDesc,
   nextComponentPosition,
+  projectValidationBlockers,
   type ComponentSourceKind,
   type ProjectFormat,
   type WizardStep,
@@ -256,6 +257,35 @@ export function ProjectWizard({
     }
     await goStep(3);
     router.refresh();
+  }
+
+  // ── Validation (spec §8) ────────────────────────────────────────────────
+  async function valider() {
+    const blockers = projectValidationBlockers({ measure_type: project.measure_type, components: project.components });
+    if (blockers.length) {
+      dialog.alert(`Le projet ne peut pas encore être validé :\n\n${blockers.join('\n')}`);
+      return;
+    }
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        try {
+          await writeAssemblyStep(
+            supabase,
+            project.id,
+            ordered.map((c) => ({ name: c.name, role: c.role })),
+          );
+        } catch (e) {
+          return { error: { message: (e as Error).message } };
+        }
+        // `status` ne bouge pas : la validation rend le projet utilisable
+        // comme une recette (§8.2), elle ne le publie pas. Publier reste un
+        // geste séparé, dans l'éditeur classique ou depuis la fiche.
+        return supabase.from('recipes').update({ project_stage: 'ready' } as never).eq('id', project.id);
+      },
+      { errorLabel: 'Validation du projet', refresh: false },
+    );
+    if (ok) router.push(`/recette/${project.id}`);
   }
 
   // ── Étape 3 : structure ────────────────────────────────────────────────
@@ -713,8 +743,15 @@ export function ProjectWizard({
               Terminer plus tard
             </button>
           </div>
+
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+            <button type="button" onClick={() => void valider()} disabled={busy} className={btnPrimary}>
+              Valider le projet
+            </button>
+          </div>
           <p className="mt-3 text-[12px] text-on-surface-variant">
-            La validation du projet arrive avec le lot suivant.
+            La validation ne copie ni ne migre rien : le projet devient une recette ordinaire du carnet, sans perdre
+            ses fournées d’essai. Vous pourrez le repasser en brouillon tant que vous ne l’avez pas publié.
           </p>
         </>
       )}

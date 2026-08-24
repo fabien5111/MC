@@ -298,3 +298,38 @@ export async function getProjectTrials(recipeId: string): Promise<ProjectTrial[]
     lines: parBatch.get(b.id) ?? [],
   }));
 }
+
+// ── Marquage sur la fiche recette (spec §8.4, §9) ─────────────────────────
+//
+// Réduit à ce que la fiche affiche : crédits et rôle, jamais l'avancement du
+// dialogue (`recipe_projects` reste hors de cette lecture). RLS : lecture
+// publique quand la recette est publiée, propriétaire sinon — la policy
+// `recipe_project_components_credits_publics` fait tout le travail, cette
+// fonction ne fait qu'une lecture simple.
+export type ProjectCredit = {
+  name: string;
+  role: string | null;
+  sourceRecipeId: string | null;
+  sourceTitle: string | null;
+  sourceAuthorName: string | null;
+};
+
+export async function getProjectCredits(recipeId: string): Promise<ProjectCredit[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipe_project_components')
+    .select('position, name, role, source_recipe_id, source_title, source_author_name')
+    .eq('recipe_id', recipeId)
+    .order('position');
+  if (error) {
+    console.error('getProjectCredits:', error.message);
+    return [];
+  }
+  return (data ?? []).map((c) => ({
+    name: c.name,
+    role: c.role,
+    sourceRecipeId: c.source_recipe_id,
+    sourceTitle: c.source_title,
+    sourceAuthorName: c.source_author_name,
+  }));
+}

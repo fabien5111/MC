@@ -47,6 +47,7 @@ export function ProjectTrials({
   recipe,
   trials,
   unresolved,
+  canLaunch = true,
 }: {
   // Recette du projet, telle que le moteur de fournée la lit. C'est la même
   // lecture que sur une fiche recette : aucun chemin particulier au projet.
@@ -55,6 +56,12 @@ export function ProjectTrials({
   // Composants encore non résolus : la fournée reste autorisée (spec §12),
   // mais l'utilisateur doit savoir qu'elle sera incomplète.
   unresolved: string[];
+  // Faux sur la fiche recette d'un projet VALIDÉ (spec §7.5, « l'historique
+  // reste consultable ») : lancer une fournée y passe déjà par le geste
+  // normal de la fiche (BatchWidget) — proposer un second bouton « essai »
+  // ferait deux portes d'entrée pour le même geste. Seuls l'historique, la
+  // comparaison et la promotion des quantités restent affichés.
+  canLaunch?: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -208,17 +215,20 @@ export function ProjectTrials({
       <LoadingOverlay visible={busy || travail} />
       <h3 className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">Essais</h3>
       <p className="mb-4 text-[13px] text-on-surface-variant">
-        Une fournée d’essai se cuisine comme n’importe quelle autre. À la fin, notez ce que vous avez réellement mis :
-        ces quantités pourront devenir celles du projet.
+        {canLaunch
+          ? 'Une fournée d’essai se cuisine comme n’importe quelle autre. À la fin, notez ce que vous avez réellement mis : ces quantités pourront devenir celles du projet.'
+          : 'Notez ce que vous avez réellement mis à chaque fournée cuisinée : ces quantités pourront devenir celles de la recette.'}
       </p>
 
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <label className="font-label-md text-[12px] text-outline">DATE DE DÉGUSTATION</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={champ} />
-        <button type="button" onClick={() => void lancerEssai()} disabled={busy || travail} className={btnPrimary}>
-          Lancer une fournée d’essai
-        </button>
-      </div>
+      {canLaunch && (
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <label className="font-label-md text-[12px] text-outline">DATE DE DÉGUSTATION</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={champ} />
+          <button type="button" onClick={() => void lancerEssai()} disabled={busy || travail} className={btnPrimary}>
+            Lancer une fournée d’essai
+          </button>
+        </div>
+      )}
 
       {trials.length === 0 ? (
         <p className="text-[13px] italic text-on-surface-variant">Aucun essai pour l’instant.</p>

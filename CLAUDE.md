@@ -687,6 +687,36 @@ essais et la validation arrivent par lots successifs.
   quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
   réellement fonctionné devient la référence, et un futur changement de format
   repart de là.
+- **Validation** (§8) : `projectValidationBlockers()` (`lib/projects.ts`)
+  liste ce qui bloque — format non renseigné, composant non résolu — recalculé
+  côté client à l'affichage ET reposé côté serveur avant l'écriture (un projet
+  reste modifiable depuis plusieurs onglets). Aucun essai n'est requis. La
+  validation écrit une **section d'assemblage final** (`writeAssemblyStep`,
+  `lib/projects-write.ts`) — une étape ordinaire sans `component_id`,
+  positionnée après tous les blocs de composants, listant leur ordre — puis
+  bascule `project_stage` à `ready`. **`status` ne bouge pas** : la validation
+  rend le projet utilisable comme une recette, elle ne la publie pas. Idempo-
+  tente : revalider après un retour en brouillon remplace l'assemblage
+  précédent (repéré par `component_id is null`) plutôt que d'en empiler un
+  second.
+- **Réversibilité** (§8.5, `ProjectMarking`) : repasser en brouillon
+  (`project_stage: 'ready' → 'wizard'`) est possible tant que la recette n'est
+  pas `status = 'published'`. Un projet **dissous**, lui, n'a plus de bouton :
+  il n'a plus de composants à retrouver dans le dialogue.
+- **Marquage sur la fiche** (§8.4, `ProjectMarking`) : discret, affiché pour
+  `ready` **et** `dissolved` — les crédits d'auteur (§9) survivent à la
+  dissolution, seule la vue par composants (liée aux étapes) s'y perd. La
+  liste des crédits (`getProjectCredits`) est protégée par la policy RLS
+  « propriétaire ou recette publiée » posée au socle : rien à refiltrer côté
+  application. Un lien vers une recette source supprimée ou dépubliée reste
+  affiché en texte (le nom de l'auteur ne disparaît jamais), `sourceRecipeId`
+  devenant `null` par la FK `ON DELETE SET NULL`.
+- **Essais après validation** (§7.5) : `ProjectTrials` est réutilisé tel quel
+  sur la fiche recette (propriétaire uniquement), avec `canLaunch={false}` —
+  lancer une fournée y passe déjà par le geste normal de la fiche
+  (`BatchWidget`) ; en proposer un second aurait fait deux portes d'entrée
+  pour le même geste. Seuls l'historique, la comparaison et la promotion des
+  quantités restent affichés.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
-import { isProjectDraft } from '@/lib/projects';
+import { isProjectDraft, isProjectRecipe } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -14,6 +14,7 @@ import { fmtNum, batchFactor } from '@/lib/recipe-plan';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
+import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -34,6 +35,8 @@ import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
 import { RecipeComments } from '@/components/recipe/RecipeComments';
+import { ProjectMarking } from '@/components/projets/ProjectMarking';
+import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { StarRating } from '@/components/StarRating';
 
 type Params = {
@@ -95,6 +98,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // Mes fournées terminées sur cette recette — propres au visiteur connecté
   // (RLS `owns_plan()`), quel que soit l'auteur de la recette.
   const completedBatches = user ? await getRecipeCompletedBatches(user.id, recipe.id) : [];
+
+  // Mode projet : crédits toujours chargés (la policy RLS filtre déjà à
+  // « propriétaire ou recette publiée » — cf. lib/projects-data.ts) ;
+  // essais uniquement pour le propriétaire, la RLS de `batches` les
+  // masquerait de toute façon à un visiteur, mais autant ne pas les demander.
+  const isProject = isProjectRecipe(recipe);
+  const [projectCredits, projectTrials] = isProject
+    ? await Promise.all([getProjectCredits(recipe.id), isOwner ? getProjectTrials(recipe.id) : Promise.resolve([])])
+    : [[], []];
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -313,6 +325,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 </>
               )}
             </div>
+            {isProject && (
+              <ProjectMarking
+                recipeId={recipe.id}
+                stage={recipe.project_stage}
+                isOwner={isOwner}
+                isPublished={recipe.status === 'published'}
+                credits={projectCredits}
+              />
+            )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
                 {tags.map((n) => (
@@ -329,6 +350,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
           <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} isAdmin={userIsAdmin} />
+          {isProject && isOwner && (
+            // Historique des essais (spec §7.5 : reste consultable après
+            // validation) — `canLaunch={false}` : lancer une fournée passe
+            // déjà par le geste normal ci-dessus (BatchWidget), pas par une
+            // seconde porte d'entrée.
+            <div className="no-print mt-6">
+              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} />
+            </div>
+          )}
           </div>
 
           {/* Mes fournées terminées — historique personnel, replié par

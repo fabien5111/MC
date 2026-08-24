@@ -317,3 +317,48 @@ export async function promoteTrialQuantities(
   }
   return appliquees;
 }
+
+// ── Assemblage final (spec §8.3) ──────────────────────────────────────────
+//
+// « Une section d'assemblage final est ajoutée, reprenant l'ordre des
+// composants. » Une étape ordinaire, sans `component_id`, positionnée après
+// tous les blocs de composants (`resequenceProjectSteps` place déjà les
+// étapes sans composant en dernier) — rien de plus à inventer côté moteur de
+// fournée, qui la lit comme n'importe quelle étape.
+//
+// Écrite à la validation, jamais avant : avant l'étape 6 la structure peut
+// encore bouger, une section d'assemblage prématurée listerait des
+// composants qui n'existent plus. Idempotente : une revalidation (après un
+// retour en brouillon) remplace l'assemblage précédent plutôt que d'en
+// empiler un second.
+export async function writeAssemblyStep(
+  supabase: Supabase,
+  recipeId: string,
+  components: { name: string; role: string | null }[],
+) {
+  // Toute étape sans composant est, par construction, un assemblage d'une
+  // validation précédente (`writeComponentContent` pose toujours un
+  // `component_id` non nul) : on la retire avant d'écrire la nouvelle.
+  const { data: anciennes, error: selErr } = await supabase
+    .from('recipe_steps')
+    .select('id')
+    .eq('recipe_id', recipeId)
+    .is('component_id', null);
+  if (selErr) throw selErr;
+  if (anciennes?.length) {
+    const { error } = await supabase.from('recipe_steps').delete().in('id', anciennes.map((s) => s.id));
+    if (error) throw error;
+  }
+
+  const description = components.map((c, i) => `${i + 1}. ${c.name}${c.role ? ` (${c.role})` : ''}`).join('\n');
+  const order = components.length * BLOCK;
+  const { error } = await supabase.from('recipe_steps').insert({
+    recipe_id: recipeId,
+    component_id: null,
+    step_number: order + 1,
+    order_index: order,
+    title: 'Assemblage',
+    description: `Dans l’ordre, du bas vers le haut :\n${description}`,
+  } as never);
+  if (error) throw error;
+}
