@@ -51,10 +51,15 @@ app/                    Pages et routes (App Router)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
+├── projets/[id]/       Mode projet — parcours guidé (intention → format →
+│                       structure → recettes des composants)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
+│   ├── projet/           POST — création d'un projet (recette + satellites)
+│   ├── projet/structure/ POST — format visé + composants proposés (IA)
+│   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
@@ -613,6 +618,33 @@ essais et la validation arrivent par lots successifs.
   le crédit « pâte sucrée de X » serait invisible aux visiteurs de la fiche.
   Filtré par la RLS, jamais par le composant — même doctrine que
   `RecipeComments`.
+- **Le parcours guidé enregistre à chaque geste**, jamais à la fin
+  (`/projets/[id]`, `ProjectWizard`) : l'étape courante vit dans
+  `recipe_projects.wizard_step`, et la liste des composants n'est **jamais**
+  tenue en état local — elle vient du rendu serveur, chaque modification écrit
+  puis resynchronise (`useMutation`). Un miroir local aurait divergé de la base
+  au premier échec d'écriture, sur un objet qui se construit en plusieurs
+  sessions et parfois sur plusieurs appareils.
+- **Trois chemins de résolution, un seul écrivain.** Copie d'une recette
+  existante, proposition de l'IA, saisie à la main : les trois produisent la
+  même forme intermédiaire (`ComponentStepDraft`, `lib/projects.ts`) que
+  `writeComponentContent` (`lib/projects-write.ts`) est seul à écrire. Sans ce
+  pivot, chaque source réinventerait son insertion, avec trois occasions de
+  rompre l'appariement étape ↔ groupe d'ingrédients.
+- **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
+  évite de renuméroter tout le projet à chaque rattachement. Seuls un
+  déplacement ou une suppression redistribuent les blocs
+  (`resequenceProjectSteps`). **Supprimer un composant passe obligatoirement
+  par `clearComponentContent`** : les groupes d'ingrédients ne portent pas de
+  `component_id` (ils s'apparient par `order_index`), donc supprimer les étapes
+  seules laisserait des groupes orphelins qui se rattacheraient à l'étape d'un
+  AUTRE composant à la première redistribution — les ingrédients d'une
+  préparation réapparaîtraient sous une autre.
+- **L'ordre des sources est imposé** (§5) : carnet → favoris → pâtissiers
+  suivis → IA. Les trois portées sont donc interrogées **séparément** via
+  `/api/recipes/picker` plutôt que fusionnées : c'est la portée qui a répondu
+  qui décide du `source_kind`, donc du crédit d'auteur. La pertinence est
+  obtenue en pré-remplissant la recherche avec le nom du composant.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
@@ -778,6 +810,17 @@ principales :
   `/api/import-url`. `maxDuration = 60 s`.
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`.
+- `POST /api/projet/structure` — déduit d'une intention en texte libre le
+  format visé ET la liste ordonnée des composants. Un seul appel pour les deux
+  (la même phrase porte l'un et l'autre ; deux appels feraient payer deux fois
+  la même lecture, avec le risque qu'ils se contredisent), même si
+  l'utilisateur, lui, garde deux écrans. **Best-effort** : clé absente, panne
+  ou réponse illisible → proposition vide, le dialogue reste utilisable
+  entièrement à la main. `maxDuration = 30 s`.
+- `POST /api/projet/composant` — propose une recette de base pour un composant
+  (§5.4). L'échec est ici **remonté**, contrairement à la route précédente :
+  l'utilisateur a explicitement demandé une proposition, il doit savoir qu'elle
+  n'est pas venue. `maxDuration = 60 s`.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

@@ -12,6 +12,12 @@
 // directement en base (cf. CLAUDE.md), une page de résultats en pèserait
 // plusieurs mégaoctets.
 //
+// Portées : « mes recettes » / « mes favoris » / « pâtissiers suivis » /
+// « toutes ». Les trois premières servent aussi le mode projet, où la spec
+// impose l'ordre carnet → favoris → suivis : l'appelant interroge alors une
+// portée à la fois pour savoir de laquelle vient chaque résultat (c'est ce
+// qui détermine le crédit d'auteur du composant).
+//
 // Lecture seule, RLS appliquée via la session.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -47,6 +53,14 @@ export async function GET(req: Request) {
   // ordinaire et reste proposé.
   if (scopes.has('mine') && user) {
     branches.push(`and(author_id.eq.${user.id},or(kind.eq.simple,project_stage.neq.wizard))`);
+  }
+  // Recettes des pâtissiers suivis (spec §5.3). Toujours publiées : c'est
+  // déjà tout ce que la RLS laisse voir d'un auteur qu'on suit, le filtre
+  // n'est ici que pour ne pas dépendre d'elle sur ce point.
+  if (scopes.has('followed') && user) {
+    const { data: suivis } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
+    const ids = (suivis ?? []).map((f) => f.following_id);
+    if (ids.length) branches.push(`and(author_id.in.(${ids.join(',')}),status.eq.published)`);
   }
   if (scopes.has('fav') && user) {
     const { data: favs } = await supabase.from('favorites').select('recipe_id').eq('user_id', user.id);

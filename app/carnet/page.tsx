@@ -17,6 +17,7 @@ import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
+import { NewProjectButton } from '@/components/projets/NewProjectButton';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -89,6 +90,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden md:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
               </div>
+              <NewProjectButton />
               <Link
                 href="/importer"
                 prefetch={false}
