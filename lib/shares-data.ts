@@ -10,6 +10,7 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAllergenNames } from '@/lib/recipes';
+import { isProjectDraft } from '@/lib/projects';
 import type {
   BookShareGiven,
   BookShareReceived,
@@ -179,14 +180,23 @@ export const getSharedWithMeRecipes = cache(async (userId: string): Promise<Shar
 
   const { data, error } = await supabase
     .from('recipes')
-    .select(`${CARD_SELECT}, status`)
+    .select(`${CARD_SELECT}, status, kind, project_stage`)
     .or(branches.join(','))
     .order('created_at', { ascending: false });
   if (error) {
     console.error('getSharedWithMeRecipes:', error.message);
     return [];
   }
-  const rows = (data as unknown as (RecipeCard & { status: string | null })[]) ?? [];
+  // Un partage de carnet « brouillons compris » couvre tout ce que son
+  // propriétaire écrit — y compris ses projets en cours, qui n'ont rien à
+  // faire chez quelqu'un d'autre tant qu'ils ne sont pas validés (spec §10 :
+  // « un brouillon n'est accessible qu'à son auteur »). Filtré ici et non en
+  // SQL : la requête n'est pas paginée, et un `not.eq` sur une colonne
+  // nullable écarterait aussi les lignes à `null`, c'est-à-dire toutes les
+  // recettes ordinaires.
+  const rows = (
+    (data as unknown as (RecipeCard & { status: string | null; kind: string; project_stage: string | null })[]) ?? []
+  ).filter((r) => !isProjectDraft(r));
   const withNames = withAllergenNames(rows);
   return withNames.map((r) => ({
     recipe: r,

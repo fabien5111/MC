@@ -29,6 +29,7 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
   shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
+  proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
 type SearchParams = { searchParams: Promise<Record<string, string | string[] | undefined>> };

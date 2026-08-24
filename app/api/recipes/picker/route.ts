@@ -16,11 +16,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
+import { isProjectDraft } from '@/lib/projects';
 
 const MAX_LIMIT = 30;
 
 const SELECT =
-  'id, title, status, is_public, author_id, measure_type, yield_qty, yield_unit, yield_desc, ' +
+  'id, title, status, is_public, author_id, kind, project_stage, measure_type, yield_qty, yield_unit, yield_desc, ' +
   'prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name), recipe_types(name), difficulties(name, level), ' +
   'recipe_steps(prep_time, cook_time, wait_time)';
@@ -39,7 +40,14 @@ export async function GET(req: Request) {
   // plutôt qu'une requête sans filtre, qui ramènerait tout le catalogue.
   const branches: string[] = [];
   if (scopes.has('all')) branches.push('status.eq.published');
-  if (scopes.has('mine') && user) branches.push(`author_id.eq.${user.id}`);
+  // `mine` est la seule portée qui laisse passer des brouillons, donc la seule
+  // par où un projet en cours pourrait entrer : un chantier n'est pas une
+  // sous-recette (ses composants peuvent être non résolus et ses quantités ne
+  // sont que des points de départ). Un projet validé, lui, est une recette
+  // ordinaire et reste proposé.
+  if (scopes.has('mine') && user) {
+    branches.push(`and(author_id.eq.${user.id},or(kind.eq.simple,project_stage.neq.wizard))`);
+  }
   if (scopes.has('fav') && user) {
     const { data: favs } = await supabase.from('favorites').select('recipe_id').eq('user_id', user.id);
     const ids = (favs ?? []).map((f) => f.recipe_id);
@@ -58,5 +66,11 @@ export async function GET(req: Request) {
     console.error('recipes/picker:', error.message);
     return NextResponse.json({ items: [], erreur: error.message }, { status: 500 });
   }
-  return NextResponse.json({ items: data ?? [] });
+  // Filet côté serveur pour la portée « favoris », qui passe par une liste
+  // d'identifiants sans filtre SQL : mettre un projet en cours en favori est
+  // censé être impossible (spec §10), mais rien en base ne l'empêche.
+  const items = ((data as unknown as { kind?: string | null; project_stage?: string | null }[]) ?? []).filter(
+    (r) => !isProjectDraft(r),
+  );
+  return NextResponse.json({ items });
 }

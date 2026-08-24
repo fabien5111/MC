@@ -19,6 +19,7 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
+import { isProjectDraft } from '@/lib/projects';
 import type { CarnetItem } from '@/lib/carnet';
 import type { AllergenRef } from '@/lib/recipes';
 
@@ -216,11 +217,18 @@ function MineCard({
   allergenRefs: AllergenRef[];
 }) {
   const r = item.recipe;
+  // Projet en cours : il ne s'ouvre pas comme une recette (sa fiche n'existe
+  // pas encore — c'est le parcours guidé qui la construit), il ne se met pas
+  // en favori (spec §10) et il ne se modifie pas dans l'éditeur classique,
+  // qui le dissoudrait. Reste la suppression, seul geste que la spec lui
+  // reconnaît (§12).
+  const projet = isProjectDraft(r);
+  const href = projet ? `/projets/${r.id}` : `/recette/${r.id}`;
   const st = STATUS[r.status] || STATUS.draft;
   const times = effectiveTimes(r);
   return (
     <div className="group relative border border-outline-variant bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
-      <Link href={`/recette/${r.id}`} className="block">
+      <Link href={href} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
           {r.hero_card_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -236,30 +244,40 @@ function MineCard({
             </div>
           )}
           <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
-            <span className={`${st.badge} rounded px-2 py-1 font-label-md text-[10px] text-white`}>{st.label}</span>
-            <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">
-              {r.is_public === false ? 'Privée' : 'Publique'}
-            </span>
+            {projet ? (
+              <span className="rounded bg-primary px-2 py-1 font-label-md text-[10px] text-on-primary">Projet en cours</span>
+            ) : (
+              <>
+                <span className={`${st.badge} rounded px-2 py-1 font-label-md text-[10px] text-white`}>{st.label}</span>
+                <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">
+                  {r.is_public === false ? 'Privée' : 'Publique'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </Link>
-      <Link
-        href={`/recette/${r.id}?planifier=1`}
-        title="Lancer une fournée"
-        prefetch={false}
-        className="absolute right-[9rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-      >
-        <PlanBadgeIcon />
-      </Link>
-      <Link
-        href={`/creer?id=${r.id}`}
-        title="Modifier"
-        prefetch={false}
-        className="absolute right-[6.25rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-      >
-        <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
-      </Link>
-      <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-14" />
+      {!projet && (
+        <>
+          <Link
+            href={`/recette/${r.id}?planifier=1`}
+            title="Lancer une fournée"
+            prefetch={false}
+            className="absolute right-[9rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+          >
+            <PlanBadgeIcon />
+          </Link>
+          <Link
+            href={`/creer?id=${r.id}`}
+            title="Modifier"
+            prefetch={false}
+            className="absolute right-[6.25rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+          >
+            <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+          </Link>
+          <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-14" />
+        </>
+      )}
       <button
         type="button"
         title="Supprimer"
@@ -288,7 +306,7 @@ function MineCard({
             {formatTime(times.total || times.prep)}
           </span>
         </div>
-        <Link href={`/recette/${r.id}`}>
+        <Link href={href}>
           <h3 className="mb-2 font-headline-md text-xl text-on-surface transition-colors group-hover:text-primary">
             {r.title}
           </h3>

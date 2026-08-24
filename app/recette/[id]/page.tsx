@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
+import { isProjectDraft } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -49,6 +51,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
   const { planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
+
+  // Projet en cours : sa fiche n'existe pas encore — c'est le parcours guidé
+  // qui la construit. On renvoie donc vers cet écran plutôt que d'afficher
+  // une recette à moitié écrite (spec §10). Un projet validé, lui, s'affiche
+  // ici comme n'importe quelle recette. (`/projets/[id]` arrive avec le lot
+  // suivant ; rien ne peut créer de projet d'ici là, ce chemin est donc
+  // inatteignable dans ce lot.)
+  if (recipe && isProjectDraft(recipe)) redirect(`/projets/${id}`);
 
   if (!recipe) {
     return (

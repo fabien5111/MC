@@ -539,6 +539,84 @@ d'en créer une nouvelle.
   `#sec-commentaires`, uniquement les `approved` — filtré par la RLS, pas
   par le composant).
 
+## Mode projet (socle)
+
+Troisième mode de création, à côté de la saisie manuelle et de l'import IA :
+composer un dessert à partir de plusieurs recettes de base (pâte sucrée,
+crème d'amande, insert…), les dimensionner, les mettre au point sur des
+fournées d'essai, puis figer le tout en une recette du carnet. **Seul le
+socle de données est en place** — le parcours guidé, les quantités, les
+essais et la validation arrivent par lots successifs.
+
+- **Un projet est une recette dès sa création**, pas une entité séparée
+  convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
+  de source, et la validation impliquerait une migration d'identifiants qui
+  casserait le lien avec les fournées déjà réalisées. La validation n'est
+  donc qu'un changement d'état, sans copie ni changement d'`id`.
+- **Deux axes indépendants sur `recipes`, à ne jamais confondre** :
+  `status` (modération : `draft` → `pending` → `published`/`rejected`, qui
+  existe depuis toujours) et `kind` + `project_stage` (mode projet). Une
+  recette peut être un projet finalisé et non publié. En particulier,
+  `status = 'draft'` — le brouillon affiché dans le carnet sous
+  « Brouillons » — n'a rien à voir avec `project_stage = 'wizard'`.
+- **`isProjectDraft()` (`lib/projects.ts`) est le seul prédicat
+  d'étanchéité.** Un projet **en cours** (`wizard`) ne doit apparaître nulle
+  part où l'on liste des recettes, hors de la portée « Projets » du carnet ;
+  un projet **validé ou dissous** est une recette ordinaire, que rien ne doit
+  distinguer. C'est ce qui réduit la surface du filtrage à quatre points —
+  partout ailleurs, le filtre `status = 'published'` déjà en place
+  (recherche, accueil, profils publics, abonnements, taxonomies, compteurs
+  admin) suffit, un projet en cours étant un brouillon :
+  - `lib/carnet.ts` — portée « Projets », exclue de toutes les autres et de
+    `counts.all` (« Tout » cesse d'être littéralement tout : c'est le prix,
+    assumé, du cloisonnement) ;
+  - `/api/recipes/picker` — un chantier n'est pas une sous-recette : ses
+    composants peuvent être non résolus et ses quantités ne sont que des
+    points de départ ;
+  - `lib/shares-data.ts` — un partage de carnet « brouillons compris » ne
+    doit pas emporter les projets en cours de son propriétaire ;
+  - `/recette/[id]` et `/creer` — redirigés vers le parcours guidé.
+- **`lib/projects.ts` (pur) / `lib/projects-data.ts` (base, server-only)** :
+  même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
+  client tirerait `next/headers` et casserait le build.
+- **Le format vit sur `recipes`, jamais dans une table satellite** :
+  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. C'est
+  de là que `BatchWidget` tire les coefficients surface/volume que
+  `scalingCoef` applique ; un format rangé ailleurs couperait le mode projet
+  de toute la machinerie d'ajustement, qu'on veut réutiliser telle quelle.
+  `recipe_projects` ne porte donc que ce qui n'a pas de foyer : l'intention
+  en texte libre et l'étape courante du dialogue.
+- **Un composant est une copie, jamais une référence vivante** (même doctrine
+  que les fournées) : ses étapes et ses ingrédients sont écrits dans les
+  `recipe_steps` / `ingredient_groups` / `ingredients` **du projet**, et
+  `recipe_steps.component_id` dit à quel composant chaque étape appartient —
+  le niveau de regroupement qui manquait au modèle, où une étape est appariée
+  à un seul groupe d'ingrédients par son `order_index`. Pas de `snapshot`
+  jsonb : le moteur de fournée (`materializeBatch`) lit les tables
+  relationnelles, une copie en jsonb lui serait invisible et imposerait un
+  second moteur — exactement ce que « un projet est une recette » évite.
+- **Dissolution assumée dans `/creer`.** `CreerForm` supprime puis réinsère
+  toutes les étapes à chaque enregistrement : tous les `component_id`
+  disparaissent. Plutôt que d'interdire l'éditeur à une recette de projet (ce
+  qui la priverait des photos, ustensiles, tags et moules — alors qu'elle
+  doit s'utiliser exactement comme une recette saisie à la main), on
+  l'annonce : bandeau à l'ouverture, confirmation à l'enregistrement, puis
+  `project_stage = 'dissolved'`. **La vue par composants est perdue, les
+  composants ne le sont pas** : §9 est un engagement vis-à-vis d'auteurs
+  tiers, il ne doit pas suffire d'ouvrir puis d'enregistrer une recette pour
+  la blanchir de ses emprunts. Un projet **en cours**, lui, n'entre pas dans
+  `/creer` du tout : il y perdrait sa structure avant même d'exister.
+- **RLS en deux temps** : `recipe_projects` (intention, avancement) est
+  strictement privée — policy `_proprietaire` sur `owns_recipe()` + les trois
+  `impersonation_ro_*` du motif des tables `batch_*`. `recipe_project_components`
+  ajoute une **lecture publique quand la recette est publiée** : sans elle,
+  le crédit « pâte sucrée de X » serait invisible aux visiteurs de la fiche.
+  Filtré par la RLS, jamais par le composant — même doctrine que
+  `RecipeComments`.
+- **`duplicate_recipe` recopie les composants** et la correspondance ancien →
+  nouveau composant sur les étapes : un duplicata est une vraie variante du
+  projet. Sans ça, dupliquer puis publier effaçait les crédits.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
@@ -667,6 +745,7 @@ principales :
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
+| Projets | `recipe_projects`, `recipe_project_components` (+ `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |

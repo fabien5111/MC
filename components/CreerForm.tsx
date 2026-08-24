@@ -25,6 +25,7 @@ import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/Rec
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { isProjectRecipe, isProjectDissolved } from '@/lib/projects';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -292,6 +293,15 @@ export function CreerForm({
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
+
+  // Recette issue du mode projet dont les composants tiennent encore à leurs
+  // étapes (`recipe_steps.component_id`). L'enregistrement qui suit va les
+  // détruire : ce formulaire supprime puis réinsère toutes les étapes, donc
+  // tous les identifiants changent — c'est la même corruption silencieuse que
+  // l'ancien modèle `planning.overrides`, à ceci près qu'ici elle est assumée
+  // et annoncée. La vue par composants est perdue ; les composants eux-mêmes,
+  // donc les crédits d'auteur, restent en base (cf. lib/projects.ts).
+  const projetIntact = isProjectRecipe(editRecipe) && !isProjectDissolved(editRecipe);
   // Dépliés par défaut en création, repliés en modification — l'auteur qui
   // reprend une recette déjà rédigée connaît déjà l'éditeur.
   const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
@@ -769,6 +779,16 @@ export function CreerForm({
       if (!(await dialog.confirm('Votre recette sera soumise à la validation d\'un modérateur avant d\'apparaître publiquement sur le site. Continuer ?')))
         return;
     }
+    // Prévenir avant l'enregistrement, pas après : une fois les étapes
+    // réinsérées, il n'y a plus rien à rattacher.
+    if (projetIntact) {
+      const ok = await dialog.confirm(
+        'Cette recette a été composée en mode projet. L’enregistrer ici dissoudra ses composants : ' +
+          'la vue par composants et l’historique de composition ne seront plus affichés. ' +
+          'Les crédits des auteurs dont vous avez repris une recette sont conservés. Continuer ?',
+      );
+      if (!ok) return;
+    }
     busyRef.current = true;
     setBusy(true);
     const supabase = createClient();
@@ -862,6 +882,10 @@ export function CreerForm({
         hero_card_url: heroCard,
         hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
+        // Dissolution effective (cf. `projetIntact`). `kind` reste `project` :
+        // la recette garde ses composants et ses crédits, elle perd seulement
+        // le rattachement de ses étapes.
+        ...(projetIntact ? { project_stage: 'dissolved' } : {}),
       };
 
       // Recette à mettre à jour : celle ouverte en édition, ou celle créée
@@ -1211,6 +1235,17 @@ export function CreerForm({
       {statusBadge && (
         <div className="no-print flex items-center gap-4 flex-wrap mb-4">
           <span className={`${statusBadge.cls} px-3 py-1 font-label-md text-[10px] uppercase tracking-widest`}>{statusBadge.label}</span>
+        </div>
+      )}
+
+      {projetIntact && (
+        <div className="no-print mb-8 flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low px-5 py-3 text-on-surface">
+          <span className="material-symbols-outlined text-[20px] shrink-0 text-primary">account_tree</span>
+          <p className="font-body-md text-[13px]">
+            <span className="font-semibold">Recette composée en mode projet.</span> L’enregistrer depuis cet éditeur
+            dissoudra ses composants : la vue par composants ne sera plus affichée. Les crédits des auteurs dont vous
+            avez repris une recette sont conservés.
+          </p>
         </div>
       )}
 

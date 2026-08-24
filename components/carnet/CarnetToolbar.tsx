@@ -83,7 +83,14 @@ export function CarnetToolbar({
   // de carnet, ou partage direct sans restriction de statut) — ses
   // compteurs viennent alors de `sharedStatusCounts`, pas de `statusCounts`
   // (cf. app/carnet/page.tsx).
-  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub';
+  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub' && params.scope !== 'proj';
+
+  // « Projets » n'apparaît que s'il y a quelque chose à y voir : une pastille
+  // vide en permanence coûterait de la place à tous les carnets pour une
+  // portée que la plupart n'utiliseront jamais. Elle reste affichée si elle
+  // est la portée active, sinon on ne pourrait plus en sortir depuis le
+  // sélecteur mobile.
+  const scopes = SCOPES.filter((s) => s !== 'proj' || params.scope === 'proj' || (counts.proj ?? 0) > 0);
 
   const selectClassName =
     'cursor-pointer rounded-pill border border-outline-variant bg-surface-container-low px-3 py-2 text-[13px] font-semibold text-on-surface-variant outline-none focus:ring-1 focus:ring-primary';
@@ -94,7 +101,7 @@ export function CarnetToolbar({
       <div className="hidden md:block">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
           <div className="flex flex-wrap gap-2">
-            {SCOPES.map((s) => {
+            {scopes.map((s) => {
               const active = params.scope === s;
               return (
                 <Link
@@ -105,7 +112,7 @@ export function CarnetToolbar({
                     // Le statut n'existe pas sur les recettes des autres : on le
                     // remet à « Tous » en y entrant, sinon un filtre invisible
                     // resterait actif (même règle que `parseCarnetParams`).
-                    statut: s === 'fav' || s === 'sub' ? 'all' : params.statut,
+                    statut: s === 'fav' || s === 'sub' || s === 'proj' ? 'all' : params.statut,
                   })}
                   scroll={false}
                   aria-current={active ? 'true' : undefined}
@@ -221,12 +228,12 @@ export function CarnetToolbar({
               navigate({
                 ...params,
                 scope,
-                statut: scope === 'fav' || scope === 'sub' ? 'all' : params.statut,
+                statut: scope === 'fav' || scope === 'sub' || scope === 'proj' ? 'all' : params.statut,
               });
             }}
             className={selectClassName}
           >
-            {SCOPES.map((s) => (
+            {scopes.map((s) => (
               <option key={s} value={s}>
                 {SCOPE_LABELS[s]} ({counts[s] ?? 0})
               </option>
