@@ -498,16 +498,15 @@ function PreparerView({
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
       ...(sortedSteps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
       ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
-      ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
-      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste complète des ingrédients', icon: 'checklist', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
-    ],
-    after: [
       ...(batch.recipe_tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
       ...(batch.recipe_serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
+      ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
+      ...(merged.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
+      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
+    after: [],
   };
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
   const actions: TocAction[] = [
@@ -642,6 +641,24 @@ function PreparerView({
         </div>
       )}
 
+      {batch.recipe_tips && (
+        <div id="sec-conseils" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
+          <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
+            <span className="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette
+          </h3>
+          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{batch.recipe_tips}</p>
+        </div>
+      )}
+
+      {batch.recipe_serving_advice && (
+        <div id="sec-degustation" className="scroll-mt-28 bg-surface-container-low border border-outline-variant p-8 rounded-xl">
+          <h3 className="font-headline-md text-headline-md text-primary mb-3 flex items-center gap-3">
+            <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
+          </h3>
+          <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{batch.recipe_serving_advice}</p>
+        </div>
+      )}
+
       {batch.batch_utensils.length > 0 && (
         <div id="sec-ustensiles" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Ustensiles nécessaires</h3>
@@ -664,21 +681,16 @@ function PreparerView({
         </div>
       )}
 
-      {batch.batch_ingredients.length > 0 && (
-        <div id="sec-ingredients" className="scroll-mt-28">
-          <h3 className="font-headline-md text-headline-md text-primary mb-4">Ingrédients</h3>
-          <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
-        </div>
-      )}
-
-      {/* Liste complète des ingrédients — vue d'ensemble en lecture seule
+      {/* Liste totale des ingrédients — vue d'ensemble en lecture seule
           (mêmes lignes fusionnées que la liste de courses ci-dessous, cf.
           `mergeBatchIngredients`), distincte de la section « Ingrédients »
-          ci-dessus qui reste groupée par étape pour porter l'édition
-          (coefficient, remplacement, ajout). */}
+          plus bas qui reste groupée par étape pour porter l'édition
+          (coefficient, remplacement, ajout). Remontée au-dessus : c'est la
+          vue de référence, l'édition par étape est une action secondaire
+          (repliée par défaut, cf. plus bas). */}
       {merged.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
-          <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste complète des ingrédients</h3>
+          <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
           <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
             {merged.map((r) => {
               const qtyTxt = mergedRowQtyText(r);
@@ -707,9 +719,9 @@ function PreparerView({
         </div>
       )}
 
-      {/* Liste de courses — sous les ingrédients : c'est leur suite directe
-          une fois qu'on a fini de les ajuster, pas une information à
-          retrouver plus haut sur la fiche. */}
+      {/* Liste de courses — sous la liste totale des ingrédients : c'est sa
+          suite directe une fois qu'on a fini de les ajuster, pas une
+          information à retrouver plus haut sur la fiche. */}
       {merged.length > 0 && (
         <div id="sec-courses" className="scroll-mt-28">
           <ShoppingWidget
@@ -720,6 +732,23 @@ function PreparerView({
             conversions={conversions}
             units={units}
           />
+        </div>
+      )}
+
+      {/* Ingrédients groupés par étape : porte l'édition (coefficient,
+          remplacement par une recette, ajout par étape), déjà consultable en
+          lecture seule dans la liste totale ci-dessus et dans le déroulé des
+          étapes plus bas — repliée par défaut pour ne pas doubler ces deux
+          vues à l'écran. */}
+      {batch.batch_ingredients.length > 0 && (
+        <div id="sec-ingredients" className="scroll-mt-28">
+          <details className="group">
+            <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
+              <h3 className="font-headline-md text-headline-md text-primary">Ingrédients</h3>
+              <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+            </summary>
+            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
+          </details>
         </div>
       )}
 
@@ -796,24 +825,6 @@ function PreparerView({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {batch.recipe_tips && (
-        <div id="sec-conseils" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
-          <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
-            <span className="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette
-          </h3>
-          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{batch.recipe_tips}</p>
-        </div>
-      )}
-
-      {batch.recipe_serving_advice && (
-        <div id="sec-degustation" className="scroll-mt-28 bg-surface-container-low border border-outline-variant p-8 rounded-xl">
-          <h3 className="font-headline-md text-headline-md text-primary mb-3 flex items-center gap-3">
-            <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
-          </h3>
-          <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{batch.recipe_serving_advice}</p>
         </div>
       )}
     </div>
