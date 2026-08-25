@@ -501,9 +501,9 @@ function PreparerView({
       ...(batch.recipe_tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
       ...(batch.recipe_serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
       ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [],
@@ -683,12 +683,15 @@ function PreparerView({
 
       {/* Liste totale des ingrédients — vue d'ensemble en lecture seule
           (mêmes lignes fusionnées que la liste de courses ci-dessous, cf.
-          `mergeBatchIngredients`), distincte de la section « Ingrédients »
-          plus bas qui reste groupée par étape pour porter l'édition
-          (coefficient, remplacement, ajout). Remontée au-dessus : c'est la
-          vue de référence, l'édition par étape est une action secondaire
-          (repliée par défaut, cf. plus bas). */}
-      {merged.length > 0 && (
+          `mergeBatchIngredients`), distincte de la section « Ingrédients
+          ajustés » plus bas qui reste groupée par étape pour porter
+          l'édition (coefficient, remplacement, ajout). Remontée au-dessus :
+          c'est la vue de référence, l'édition par étape est une action
+          secondaire (repliée par défaut, cf. plus bas). Affichée dès qu'il y
+          a des ingrédients dans la fournée, même si `merged` est vide
+          (tout exclu ou retiré) : sinon elle disparaîtrait aux côtés d'une
+          section « Ingrédients ajustés » qui, elle, resterait visible. */}
+      {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
           <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
@@ -721,8 +724,9 @@ function PreparerView({
 
       {/* Liste de courses — sous la liste totale des ingrédients : c'est sa
           suite directe une fois qu'on a fini de les ajuster, pas une
-          information à retrouver plus haut sur la fiche. */}
-      {merged.length > 0 && (
+          information à retrouver plus haut sur la fiche. Même condition
+          d'affichage que la liste totale ci-dessus (cf. commentaire). */}
+      {batch.batch_ingredients.length > 0 && (
         <div id="sec-courses" className="scroll-mt-28">
           <ShoppingWidget
             recipeTitle={batch.recipe_title || 'Fournée'}
@@ -735,7 +739,7 @@ function PreparerView({
         </div>
       )}
 
-      {/* Ingrédients groupés par étape : porte l'édition (coefficient,
+      {/* Ingrédients ajustés, groupés par étape : porte l'édition (coefficient,
           remplacement par une recette, ajout par étape), déjà consultable en
           lecture seule dans la liste totale ci-dessus et dans le déroulé des
           étapes plus bas — repliée par défaut pour ne pas doubler ces deux
@@ -744,7 +748,7 @@ function PreparerView({
         <div id="sec-ingredients" className="scroll-mt-28">
           <details className="group">
             <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
-              <h3 className="font-headline-md text-headline-md text-primary">Ingrédients</h3>
+              <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
               <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
             </summary>
             <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
