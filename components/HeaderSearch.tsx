@@ -85,16 +85,30 @@ export function HeaderSearch({
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => (wide ? setOpen((o) => !o) : router.push('/recherche'))}
-        aria-label="Rechercher"
-        aria-expanded={wide ? open : undefined}
-        className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
-      >
-        search
-      </button>
+      {wide ? (
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="Rechercher"
+          aria-expanded={open}
+          className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
+        >
+          search
+        </button>
+      ) : (
+        // Un vrai lien, et non `router.push()` dans un bouton : NavigationSpinner
+        // n'arme le fouet que sur un clic de lien interne ou la soumission d'un
+        // formulaire `role="search"` (cf. son propre commentaire) — un simple
+        // bouton programmatique lui reste invisible.
+        <Link
+          href="/recherche"
+          aria-label="Rechercher"
+          className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
+        >
+          search
+        </Link>
+      )}
 
       {/* Panneau de recherche : glisse sous le menu, sur toute la largeur.
           Ancré au <header> (sticky = bloc conteneur des enfants absolus).
