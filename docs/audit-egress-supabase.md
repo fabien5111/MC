@@ -300,6 +300,87 @@ la garantie réelle, côté base.
 
 ---
 
+## 5-bis. Mesure de référence (« avant »), 25/08/2026
+
+Relevé `pg_stat_statements` (top 20, filtre `%pgrst_source%`) pris **avant
+tout déploiement**. Il complète le tableau agrégé du § 1 de la spec en
+nommant chaque requête.
+
+**Fenêtre non réinitialisée, et antérieure à la migration « Fournées ».**
+Deux indices concordants : les compteurs `profiles` (5 572 / 4 306) sont
+identiques au chiffre près à ceux cités par la spec ; et `public.executions`
+totalise 1 462 appels alors qu'**aucun code du dépôt n'interroge cette
+table** — seul `executions_legacy` est lu
+(`app/execution/[id]/page.tsx:20`). La fenêtre contient donc du trafic
+produit par une version antérieure de l'application. Elle vaut comme
+**baseline de cadrage**, pas comme mesure d'un parcours.
+
+| Requête | Appels | Chantier |
+|---|---:|---|
+| `profiles.role` | 5 572 | 3 |
+| `profiles.*` | 4 306 | 3 |
+| `tags` (`+ category_picto`) | 3 930 | 2 |
+| `impersonation_sessions` | 3 871 | 4 |
+| `favorites.recipe_id` | 3 557 | *(hors spec, cf. ci-dessous)* |
+| `allergens` (picto, tooltip) | 2 932 | 2 |
+| `units.*` | 2 513 | 2 |
+| `shopping_lists` + items imbriqués | 2 444 | 5 |
+| `mold_types.*` | 2 128 | 2 |
+| `site_settings` (1) | 1 580 | 2 |
+| `allergens` (2) | 1 493 | 2 |
+| `executions.id` | 1 462 | *(code mort / version antérieure)* |
+| `tags` (2) | 1 435 | 2 |
+| `ingredient_conversions` | 1 390 | 2 |
+| `site_settings` (2) | 1 322 | 2 |
+| `difficulties.*` | 1 278 | 2 |
+| `tags` (`id, name, slug`) | 1 050 | 2 |
+| `batches.id` | 995 | — |
+| `ingredient_refs.name` | 962 | 2 et 5 |
+| `utensils.name` | 907 | 2 et 5 |
+| **Total top 20** | **~45 127** | |
+
+### Ce que la mesure change dans les priorités
+
+| Chantier | Appels mesurés | Part du top 20 |
+|---|---:|---:|
+| **2 — Référentiels** | **22 920** | **51 %** |
+| 3 — Profil | 9 878 | 22 % |
+| 4 — Impersonation | 3 871 | 8,6 % |
+| **2 + 3 + 4** | **36 669** | **81 %** |
+
+Détail du chantier 2 : `tags` 6 415 (trois requêtes distinctes) · `allergens`
+4 425 (deux) · `site_settings` 2 902 (deux) · `units` 2 513 · `mold_types`
+2 128 · `ingredient_conversions` 1 390 · `difficulties` 1 278 ·
+`ingredient_refs` 962 · `utensils` 907.
+
+**Le chantier 2 pèse à lui seul plus que les chantiers 3, 4 et 5 réunis.** Le
+classement du § 6 est donc confirmé par la mesure, et non plus seulement
+estimé.
+
+### Le chemin chaud, nommé
+
+`app/recette/[id]/page.tsx:65` charge **cinq tables de référence** dans un
+seul `Promise.all` — `units`, `mold_types`, `allergens`, `ingredient_conversions`,
+`site_settings` — auxquelles s'ajoute `tags` via le `Header`. Soit **six
+requêtes de référentiel par consultation de fiche recette**, pour des données
+qui ne changent pas d'une semaine à l'autre. C'est le multiplicateur principal,
+et le chantier 2 le ramène à zéro après premier chargement.
+
+### `favorites` — poste non prévu par la spec
+
+`getFavoriteIds()` (`lib/favorites.ts:6`) est appelé par cinq pages
+(`app/page.tsx:71`, `recherche:60`, `carnet:59`, `u/[handle]:49`,
+`recette/[id]:67`) : 3 557 appels, soit **plus que l'impersonation**. La spec
+le range dans « données utilisateur » sans le traiter.
+
+Il ne relève pas du chantier 2 — la donnée est propre à l'utilisateur et
+change à chaque clic sur un cœur — mais il est justiciable d'un `cache()`
+React (déduplication intra-rendu, gratuite) et, surtout, d'un rapatriement
+ciblé : les pages n'ont besoin que des favoris **parmi les recettes
+affichées**, pas de la liste complète. À verser au chantier 5.
+
+---
+
 ## 6. Ordre d'exécution recommandé
 
 L'ordre 1 → 4 de la spec reste valable, avec une réserve : **le chantier 1
