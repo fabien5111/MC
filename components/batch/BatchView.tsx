@@ -42,6 +42,7 @@ import {
   batchSubstepExcluded,
   expansionSource,
   groupBatchStepsByDay,
+  mergeAllBatchIngredients,
   mergeBatchIngredients,
   mergedRowQtyText,
   remainingStepTimes,
@@ -433,6 +434,11 @@ function PreparerView({
 
   const sortedSteps = [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index);
   const merged = mergeBatchIngredients(batch);
+  // Liste totale : garde les ingrédients d'une étape déjà réalisée (seuls les
+  // retirés/remplacés disparaissent) — contrairement à `merged`, qui exclut
+  // aussi le « déjà pris en compte » pour rester une liste de courses fidèle
+  // à ce qu'il reste à acheter.
+  const allIngredients = mergeAllBatchIngredients(batch);
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -681,21 +687,20 @@ function PreparerView({
         </div>
       )}
 
-      {/* Liste totale des ingrédients — vue d'ensemble en lecture seule
-          (mêmes lignes fusionnées que la liste de courses ci-dessous, cf.
-          `mergeBatchIngredients`), distincte de la section « Ingrédients
-          ajustés » plus bas qui reste groupée par étape pour porter
-          l'édition (coefficient, remplacement, ajout). Remontée au-dessus :
-          c'est la vue de référence, l'édition par étape est une action
-          secondaire (repliée par défaut, cf. plus bas). Affichée dès qu'il y
-          a des ingrédients dans la fournée, même si `merged` est vide
-          (tout exclu ou retiré) : sinon elle disparaîtrait aux côtés d'une
-          section « Ingrédients ajustés » qui, elle, resterait visible. */}
+      {/* Liste totale des ingrédients — vue d'ensemble en lecture seule,
+          référence complète de la fournée (`mergeAllBatchIngredients`) :
+          contrairement à la liste de courses juste en dessous (`merged`),
+          une étape déjà réalisée n'y retire pas ses ingrédients — seuls les
+          retirés ou remplacés par une sous-recette disparaissent. Distincte
+          de la section « Ingrédients ajustés » plus bas, qui reste groupée
+          par étape pour porter l'édition (coefficient, remplacement, ajout).
+          Affichée dès qu'il y a des ingrédients dans la fournée, même si
+          tout est déjà réalisé. */}
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
           <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-            {merged.map((r) => {
+            {allIngredients.map((r) => {
               const qtyTxt = mergedRowQtyText(r);
               const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
               const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);

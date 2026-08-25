@@ -623,27 +623,39 @@ export function batchUtensilsAsRecipeUtensils(utensils: BatchUtensilRow[]): Reci
 // (nom + unité) additionnés, lignes supprimées exclues.
 export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
 
-export function mergeBatchIngredients(batch: BatchFull): MergedBatchRow[] {
+function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
   const rows: (MergedBatchRow & { key: string })[] = [];
-  const excluded = excludedInBatch(batch);
-  batch.batch_ingredients
-    .filter((it) => it.name && !excluded(it))
-    .forEach((it) => {
-      const unit = it.unit || '';
-      const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
-      let r = rows.find((x) => x.key === key);
-      if (!r) {
-        r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null, ref_id: it.ref_id ?? null };
-        rows.push(r);
-      }
-      if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);
-      if (it.base_quantity != null) r.orig = round2((r.orig || 0) + it.base_quantity);
-      else if (it.quantity_text) r.origTxt.push(it.quantity_text);
-      if (it.added) r.added = true;
-      if (it.comment && it.comment !== r.comment) r.comment = r.comment ? r.comment + ' ; ' + it.comment : it.comment;
-    });
+  items.forEach((it) => {
+    const unit = it.unit || '';
+    const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+    let r = rows.find((x) => x.key === key);
+    if (!r) {
+      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null, ref_id: it.ref_id ?? null };
+      rows.push(r);
+    }
+    if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);
+    if (it.base_quantity != null) r.orig = round2((r.orig || 0) + it.base_quantity);
+    else if (it.quantity_text) r.origTxt.push(it.quantity_text);
+    if (it.added) r.added = true;
+    if (it.comment && it.comment !== r.comment) r.comment = r.comment ? r.comment + ' ; ' + it.comment : it.comment;
+  });
   rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return rows.map(({ key: _key, ...r }) => r);
+}
+
+export function mergeBatchIngredients(batch: BatchFull): MergedBatchRow[] {
+  const excluded = excludedInBatch(batch);
+  return mergeIngredientRows(batch.batch_ingredients.filter((it) => it.name && !excluded(it)));
+}
+
+// Liste totale (référence complète de la fournée) : contrairement à
+// `mergeBatchIngredients` (liste de courses — ce qu'il reste à acheter), une
+// étape marquée « déjà réalisée » n'en retire pas ses ingrédients ici. Seules
+// les lignes retirées à la main ou remplacées par une sous-recette
+// disparaissent : elles ne font plus partie de la fournée, alors qu'un
+// ingrédient « déjà pris en compte » en fait toujours partie.
+export function mergeAllBatchIngredients(batch: BatchFull): MergedBatchRow[] {
+  return mergeIngredientRows(batch.batch_ingredients.filter((it) => it.name && !it.removed && it.expanded_into_recipe_id == null));
 }
 
 export function mergedRowQtyText(r: MergedBatchRow): string {
