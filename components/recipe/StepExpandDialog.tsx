@@ -523,6 +523,24 @@ export function StepExpandDialog({
               </button>
             </div>
 
+            {/* Cuisson dans l'étape remplacée : le poids estimé additionne
+                les ingrédients CRUS, alors qu'une cuisson fait perdre de
+                l'eau. L'erreur a un sens connu — le poids réel est plus
+                faible, donc le coefficient proposé est surévalué — et le dire
+                vaut mieux que de laisser croire à une équivalence exacte.
+                Affiché seulement quand un poids a pu être estimé : sans
+                chiffre, il n'y a rien à nuancer. */}
+            {(step.cook_time || 0) > 0 && weightEstimate.grams > 0 && (
+              <div className="border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
+                <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
+                <p className="font-body-md text-sm text-on-surface">
+                  Cette étape comporte une cuisson ({formatTime(step.cook_time)}) : le poids estimé additionne les ingrédients
+                  crus, alors qu&apos;une cuisson fait perdre de l&apos;eau. Le poids réellement obtenu sera inférieur — le
+                  coefficient proposé est donc probablement surévalué.
+                </p>
+              </div>
+            )}
+
             {/* Ingrédients en cause quand l'estimation est incomplète ou
                 impossible, avec leur quantité dans l'étape, pour que
                 l'utilisateur puisse les prendre en compte à la main en
