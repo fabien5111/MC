@@ -523,20 +523,22 @@ export function StepExpandDialog({
               </button>
             </div>
 
-            {/* Cuisson dans l'étape remplacée : le poids estimé additionne
-                les ingrédients CRUS, alors qu'une cuisson fait perdre de
-                l'eau. L'erreur a un sens connu — le poids réel est plus
-                faible, donc le coefficient proposé est surévalué — et le dire
-                vaut mieux que de laisser croire à une équivalence exacte.
-                Affiché seulement quand un poids a pu être estimé : sans
-                chiffre, il n'y a rien à nuancer. */}
-            {(step.cook_time || 0) > 0 && weightEstimate.grams > 0 && (
+            {/* Cuisson dans l'étape remplacée : une cuisson fait perdre de
+                l'eau, donc le poids réel est inférieur à la somme des
+                ingrédients crus. Affiché dès que l'étape a un temps de
+                cuisson, MÊME sans poids estimé (ingrédients non convertis,
+                ou tous en unité inconnue) : l'utilisateur doit connaître le
+                risque de perte pour juger lui-même du coefficient, pas
+                seulement quand on a pu chiffrer l'écart. Le membre de phrase
+                sur le coefficient ne s'affiche que si un poids a
+                effectivement été estimé — sans chiffre, rien à nuancer. */}
+            {(step.cook_time || 0) > 0 && (
               <div className="border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
                 <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
                 <p className="font-body-md text-sm text-on-surface">
-                  Cette étape comporte une cuisson ({formatTime(step.cook_time)}) : le poids estimé additionne les ingrédients
-                  crus, alors qu&apos;une cuisson fait perdre de l&apos;eau. Le poids réellement obtenu sera inférieur — le
-                  coefficient proposé est donc probablement surévalué.
+                  Cette étape comporte une cuisson ({formatTime(step.cook_time)}) : une cuisson fait perdre de l&apos;eau, donc le
+                  poids réellement obtenu est inférieur à la somme des ingrédients crus.
+                  {weightEstimate.grams > 0 && ' Le coefficient proposé ci-dessus est donc probablement surévalué.'}
                 </p>
               </div>
             )}
