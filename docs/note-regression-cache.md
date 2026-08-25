@@ -1,12 +1,12 @@
-# Note de régression — cache des données de référence
+# Note de régression — cache et déduplication des lectures
 
 **Livrable 4** de la spécification « Réduction de la consommation egress
-Supabase », volet *invalidation de cache*. À conserver : ce sont les règles que
-tout développement ultérieur doit respecter pour ne pas réintroduire le
-problème — ou en créer un pire, celui de la donnée périmée.
+Supabase ». À conserver : ce sont les règles que tout développement ultérieur
+doit respecter pour ne pas réintroduire le problème — ou en créer un pire,
+celui de la donnée périmée.
 
-Portée : chantier 2 (`lib/data/reference.ts`). Les volets *sessions* et
-*propagation des rôles* seront écrits avec les chantiers 3 et 4.
+Portée : chantier 2 (§ 1 à 3, `lib/data/reference.ts`) et chantier 3 (§ 4,
+`lib/auth.ts`). Le volet *sessions* sera écrit avec le chantier 4.
 
 ---
 
@@ -101,3 +101,67 @@ bannière est un état normal du site.
 - **`lib/data/reference.ts` importe `next/headers`** (via le client à cookies
   du repli) : il ne doit jamais être importé par un Client Component. Le build
   échoue si ça arrive — c'est le garde-fou, il suffit de ne pas le contourner.
+
+
+---
+
+## 4. Profil et rôle (chantier 3)
+
+### Ce qui a changé
+
+`getRole()` ne fait plus de requête : il **dérive** de `getProfile()`. Les deux
+visaient la même ligne de `profiles` — l'une ne prenait que `role`, l'autre
+tout le reste — et chacune portait son propre `cache()` React, si bien qu'elles
+ne se dédupliquaient jamais entre elles. `Header` appelait précisément les deux
+(`getProfile` pour l'avatar, `isManager` pour le lien back-office), ce qui
+reproduisait le doublon sur **chaque page du site** : 5 572 + 4 306 appels au
+relevé du 25/08/2026.
+
+### Règle 4 — `getProfile()` est le seul accesseur du profil courant
+
+Ne jamais rajouter de `supabase.from('profiles')` visant l'utilisateur courant.
+`getProfile`, `getRole`, `isAdmin`, `isManager` sont mémoïsés par requête et
+partagent désormais **une seule** lecture. Une lecture directe ajoutée ailleurs
+recrée exactement le doublon que ce chantier a supprimé — c'est ce qui était
+arrivé à `/api/admin/*`, `getAdminImpersonationAccess` et `aChoisiSonPseudo`,
+tous ramenés sur l'accesseur unique.
+
+Les lectures de `profiles` qui visent **quelqu'un d'autre** (recherche de
+membres, profil public, disponibilité d'un pseudo) restent des requêtes à part
+entière : ce n'est pas la même ligne, il n'y a rien à dédupliquer.
+
+### Règle 5 — Pas de `select('*')` sur `profiles`
+
+Les colonnes sont énumérées (`PROFILE_COLUMNS`, `lib/auth.ts`). La liste couvre
+exactement le type `Row` : le comportement est identique. Ce qu'on gagne est
+ailleurs — `profiles` porte **trois colonnes d'image en data-URL**
+(`avatar_url`, `banner_url`, `cover_url`) et cette ligne est lue à chaque rendu
+de page par le `Header`. Avec `select('*')`, toute colonne lourde ajoutée à la
+table rejoindrait silencieusement le payload de tout le site ; ici il faut
+l'écrire, donc le décider.
+
+### À verser au chantier 5
+
+`Header` et `MobileNav` lisent le profil complet à chaque page alors qu'ils
+n'en utilisent que `avatar_url` (via `resolveAvatarUrl`). Ils rapatrient donc
+`banner_url` et `cover_url` — deux data-URL — pour rien, sur toutes les pages
+du site. À noter : **`cover_url` n'est lu nulle part dans le code applicatif**.
+
+Le correctif n'est pas gratuit et sort du périmètre du chantier 3 : un
+accesseur allégé pour le chrome ferait deux lectures sur `/reglages`, seule
+page qui a besoin du profil complet **et** du `Header`. À arbitrer sur mesure
+d'octets, pas d'intuition.
+
+### Cible non faite — le rôle dans le JWT
+
+La spec (§ 6) prévoit à terme d'injecter `role` dans le token via un *Custom
+Access Token Hook* Supabase, ce qui supprimerait la lecture plutôt que de la
+dédupliquer. **Non fait**, délibérément : cela touche au schéma (seule entorse
+prévue au non-objectif « ne pas toucher au schéma »), exige une configuration
+côté tableau de bord Supabase, et surtout change la sémantique de propagation —
+un changement de rôle ne prendrait effet qu'au rafraîchissement du token, ce
+qui impose d'invalider les sessions lors d'un changement de rôle admin.
+
+À traiter comme un chantier à part entière, avec sa propre mesure. La
+déduplication ci-dessus ramène déjà le poste de ~9 900 appels à une lecture par
+rendu de page.

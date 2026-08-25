@@ -3,6 +3,7 @@
 // client ; même séparation que `ideas.ts` / `ideas-data.ts`). Importer ce
 // module depuis un composant client casserait le build : il tire
 // `lib/supabase/server`, donc `next/headers`.
+import { getProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { withImpersonationSchema, type ImpersonationClient } from '@/lib/impersonation-types';
@@ -168,7 +169,9 @@ export async function enregistrerPseudo(
 // avoir été rempli par le trigger `handle_new_user` avec le nom du compte
 // Google, que son porteur n'a jamais choisi d'afficher publiquement.
 export async function aChoisiSonPseudo(userId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('username').eq('id', userId).maybeSingle();
-  return !!data?.username;
+  // Via l'accesseur unique du profil (mémoïsé par requête) : c'était une
+  // troisième lecture de la même ligne sur le chemin `/choix-pseudo`, où
+  // `requireUser` charge déjà le profil. Cf. lib/auth.ts.
+  const profile = await getProfile(userId);
+  return !!profile?.username;
 }

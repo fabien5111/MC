@@ -17,7 +17,7 @@
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, getProfile } from '@/lib/auth';
 import {
   isImpersonationMode,
   withImpersonationSchema,
@@ -87,13 +87,11 @@ export async function requireWritableSession(): Promise<void> {
 // Niveau de droit d'impersonation d'un admin (hérité par les sessions qu'il
 // ouvre). Défaut prudent : lecture seule.
 export async function getAdminImpersonationAccess(adminId: string): Promise<ImpersonationMode> {
-  const supabase = withImpersonationSchema(await createClient());
-  const { data } = await supabase
-    .from('profiles')
-    .select('impersonation_access')
-    .eq('id', adminId)
-    .maybeSingle();
-  return isImpersonationMode(data?.impersonation_access) ? data.impersonation_access : 'read_only';
+  // Via l'accesseur unique du profil (mémoïsé par requête) : la route qui
+  // appelle cette fonction a déjà lu le profil de l'admin pour vérifier son
+  // rôle, cette lecture-ci est donc gratuite. Cf. lib/auth.ts.
+  const profile = await getProfile(adminId);
+  return isImpersonationMode(profile?.impersonation_access) ? profile.impersonation_access : 'read_only';
 }
 
 export type ImpersonationSessionWithEvents = ImpersonationSessionRow & {

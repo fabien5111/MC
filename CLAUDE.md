@@ -139,6 +139,15 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   connecté. Tolérant aux pannes : une erreur Supabase transitoire ne bloque pas
   le site, le contrôle fin restant assuré dans chaque page (`requireUser`,
   `requireAdmin`).
+- **`getProfile()` est le seul accesseur du profil courant** (`lib/auth.ts`) :
+  `getRole` / `isAdmin` / `isManager` en dérivent, sans requête propre. Les deux
+  lectures d'origine visaient la même ligne (`select role` et `select *`) avec
+  chacune son `cache()` React — elles ne se dédupliquaient donc jamais, et le
+  `Header` appelait les deux sur chaque page (9 878 requêtes au relevé du
+  25/08/2026). Ne pas rajouter de lecture directe de `profiles` visant
+  l'utilisateur courant ; les colonnes sont énumérées (`PROFILE_COLUMNS`), la
+  table portant trois colonnes d'image en data-URL. Cf.
+  `docs/note-regression-cache.md`.
 - Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
   `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
   (`member`, `null`…) vaut membre ordinaire.
