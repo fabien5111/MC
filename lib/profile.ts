@@ -240,11 +240,8 @@ export async function getRecipeCompletedBatches(userId: string, recipeId: string
   return rows.sort((a, b) => (b.date_fin ?? b.planned_date ?? '').localeCompare(a.date_fin ?? a.planned_date ?? ''));
 }
 
-export async function getUnits(): Promise<Unit[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.from('units').select('*').order('name');
-  return data ?? [];
-}
+// Unités : servies par le cache de `lib/data/reference.ts`.
+export { getUnits } from '@/lib/data/reference';
 
 // Pastille « En cuisine » (Header, MobileNav) : présence d'une fournée en
 // cours de cuisson, sans chiffre — le compte se lit dans l'écran. `head`

@@ -655,6 +655,37 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Données de référence (cache)
+
+Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
+`mold_types`, `allergens`, `ingredient_refs`, `utensils`,
+`ingredient_conversions`) et les clés publiques de `site_settings` sont servis
+par **`lib/data/reference.ts`**, jamais lus directement. Ils pesaient 22 920
+requêtes sur le relevé du 25/08/2026, soit 51 % du trafic REST — la fiche
+recette à elle seule en chargeait cinq, plus `tags` via le `Header`.
+
+- **Trois couches** : `unstable_cache` (cache serveur partagé entre requêtes
+  et entre visiteurs, avec étiquettes — Next 15.1, pas la directive `use
+  cache`), `cache()` React par-dessus (déduplication intra-rendu), et un repli
+  non mis en cache sur le client à cookies. Motif éprouvé dans `lib/blog.ts`.
+- **Une lecture par table, plusieurs formes en sortie.** `getTags`,
+  `getHomeCategories` et `getTagBySlug` partagent une seule lecture ; idem pour
+  les deux formes d'`allergens` et les trois d'`ingredient_refs`. Ne pas
+  rajouter d'accesseur qui interroge la base — c'est ce qui avait produit les
+  doublons. `lib/taxonomy.ts`, `lib/imports.ts` etc. ne sont plus que des
+  ré-exports.
+- **Toute écriture invalide son étiquette**, sinon la valeur reste périmée
+  jusqu'à 24 h : `revalidateReference('units')` (`lib/revalidate-reference.ts`)
+  **avant** `router.refresh()` — ce dernier seul relirait la valeur en cache.
+- **Lecture au rôle `anon`** (`unstable_cache` interdit les cookies) : ne
+  jamais y faire passer une donnée dépendant de l'utilisateur. Et comme une RLS
+  qui refuse renvoie zéro ligne plutôt qu'une erreur, **un référentiel vide est
+  traité comme un symptôme, jamais comme un résultat** — il n'est pas mis en
+  cache et la lecture est refaite avec la session. `site_settings` excepté :
+  n'avoir aucune bannière est normal.
+
+Règles complètes et pièges : `docs/note-regression-cache.md`.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
