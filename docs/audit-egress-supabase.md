@@ -151,21 +151,65 @@ d'autocomplétion — **pas les 30 000 annoncés**, qui reposaient sur un
 diagnostic infirmé. Si le compteur bouge peu, ce n'est donc pas que la méthode
 de mesure est mauvaise : c'est le résultat attendu, et il oriente vers 1-bis.
 
-### 1.6 Suite proposée (chantier 1-bis, à arbitrer)
+### 1.6 Chantier 1-bis — fait
 
-1. **Supprimer le second `getUser()`** : ne pas appeler
-   `getImpersonationContext()` inconditionnellement dans le layout racine
-   (cf. chantier 4), ou faire descendre l'utilisateur du middleware vers le
-   rendu par un en-tête de requête.
-2. **Sortir du middleware sur prefetch** : tester
-   `next-router-prefetch === '1'` **avant** `getUser()`. Attention : le
-   middleware n'écrirait alors plus de cookie rafraîchi sur ces réponses —
-   à valider, c'est une modification à risque, pas un réglage.
-3. Envisager `getClaims()` (`@supabase/ssr` 0.12) à la place de `getUser()`
-   dans le middleware : vérification locale de la signature JWT, **zéro**
-   aller-retour GoTrue. C'est le levier de loin le plus puissant sur ce poste.
+Les trois pistes ouvertes ici ont été traitées, deux par du code et une par
+constat.
 
----
+**1. Le second `getUser()` a disparu — sans travail supplémentaire.** Il venait
+de `app/layout.tsx` → `getImpersonationContext()` → `getCurrentUser()`. Le
+portillon du chantier 4 (cookie témoin) rend la main **avant** cet appel pour
+tout membre ordinaire. Il ne reste qu'un `getUser()` par rendu, celui du
+`Header`, partagé par tout l'arbre via `cache()` React.
+
+**2. `getClaims()` remplace `getUser()` dans le middleware.** La vérification
+de signature se fait localement contre le JWKS du projet, récupéré une fois
+puis gardé dans un registre **de processus** (`GLOBAL_JWKS`, indexé par
+`storageKey`) — prévu par `auth-js` pour les environnements à mémoire partagée
+type Lambda. Coût réseau nul une fois l'instance chaude, là où `getUser()`
+payait un aller-retour GoTrue (et ses quatre lectures `sessions` /
+`identities` / `mfa_amr_claims` / `users`) sur **chaque** requête, prefetch RSC
+compris.
+
+Trois points vérifiés dans le code de `@supabase/auth-js` 2.110.7 avant
+d'écrire la ligne :
+
+- **Le rafraîchissement est préservé** : `getClaims()` appelle `getSession()`,
+  dont `__loadSession` teste l'expiration et rafraîchit, en reposant les
+  cookies par l'adaptateur du middleware. C'est exactement le chemin
+  qu'empruntait `getUser()` — la mise en garde du § 4 de la spec est
+  respectée.
+- **Repli automatique** : si l'algorithme est symétrique (`HS*`, l'ancien
+  secret partagé) ou s'il n'y a pas de `kid`, la signature n'est pas
+  vérifiable sans le secret et `getClaims()` retombe de lui-même sur
+  `getUser()`. Le comportement reste juste, simplement sans gain.
+- **Condition du gain** : le projet Supabase doit être passé aux **clés de
+  signature asymétriques** (ECC/RSA), ce qui se règle dans le tableau de bord
+  (Authentication → JWT Keys). Tant que ce n'est pas fait, le changement est
+  un non-événement — ni gain, ni risque.
+
+**3. La sortie du middleware sur prefetch n'a pas été faite, délibérément.**
+C'était la piste la plus risquée (le middleware n'écrirait plus de cookie
+rafraîchi sur ces réponses), et `getClaims()` lui retire sa raison d'être :
+un prefetch ne coûte plus d'aller-retour réseau.
+
+### 1.7 Ce que ça change au chemin critique
+
+Appels d'authentification réseau par rendu de page, pour un membre ordinaire :
+
+| | Avant | Après |
+|---|---:|---:|
+| Middleware | 1 (`getUser`) | 0 (`getClaims`, JWKS en cache) |
+| Layout (impersonation) | 1 (`getUser`) + 1 requête table | 0 |
+| `Header` | 1 (`getUser`) | 1 (`getUser`) |
+| **Total** | **3** | **1** |
+
+Le `getUser()` restant est conservé exprès : c'est lui qui interroge réellement
+le serveur d'authentification, et donc qui voit une session révoquée avant
+l'expiration de son token. Le middleware, lui, ne fait qu'aiguiller vers
+`/connexion` ; lui faire confiance à un JWT signé et non expiré est sans
+conséquence, le contrôle fin des pages privées restant assuré par
+`requireUser()`.
 
 ## 2. Chantier 2 — Cache des données de référence
 

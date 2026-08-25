@@ -6,7 +6,8 @@ doit respecter pour ne pas réintroduire le problème — ou en créer un pire,
 celui de la donnée périmée.
 
 Portée : chantier 2 (§ 1 à 3, `lib/data/reference.ts`), chantier 3 (§ 4,
-`lib/auth.ts`) et chantier 4 (§ 5, impersonation).
+`lib/auth.ts`), chantier 4 (§ 5, impersonation) et chantier 1-bis (§ 6,
+sessions).
 
 ---
 
@@ -226,3 +227,46 @@ une session qui n'existe pas.
 - **Le membre se déconnecte normalement** : même chose, ≤ 60 min.
 - **Un autre compte se connecte sur ce navigateur** : la requête est toujours
   clefée sur l'utilisateur courant, elle ne trouve rien. Aucune fuite possible.
+
+
+---
+
+## 6. Sessions et vérification du JWT (chantier 1-bis)
+
+### Règle 7 — Deux niveaux de vérification, à ne pas confondre
+
+| Où | Appel | Ce qu'il prouve |
+|---|---|---|
+| `middleware.ts` | `getClaims()` | le JWT est **signé par Supabase et non expiré** (vérification locale) |
+| Pages privées, routes | `getUser()` via `getCurrentUser()` | la session est **encore valide côté serveur d'authentification** |
+
+Le middleware ne fait qu'aiguiller vers `/connexion`. Le contrôle qui compte —
+`requireUser()`, `requireAdmin()`, les routes `/api` — passe par
+`getCurrentUser()`, qui appelle toujours `getUser()`.
+
+**Ne pas « optimiser » `getCurrentUser()` en `getClaims()`.** Le gain serait
+d'un aller-retour par rendu, le coût serait qu'une session révoquée
+(déconnexion sur un autre appareil, compte supprimé, mot de passe changé)
+resterait acceptée jusqu'à l'expiration de son token — soit une heure par
+défaut. C'est un arbitrage de sécurité, pas une optimisation ; s'il doit être
+fait un jour, ce sera une décision explicite, pas un effet de bord.
+
+### Le gain dépend d'un réglage hors du dépôt
+
+`getClaims()` ne vérifie localement que si le projet Supabase utilise des
+**clés de signature asymétriques** (ECC/RSA). Sur l'ancien secret partagé
+(HS256), il retombe tout seul sur `getUser()` : le code est correct, mais le
+gain est nul. La bascule se fait dans le tableau de bord Supabase
+(Authentication → JWT Keys).
+
+Symptôme si l'oubli passe inaperçu : les compteurs GoTrue (`sessions`,
+`identities`, `mfa_amr_claims`, `users`) ne baissent pas après déploiement,
+alors que les compteurs REST se sont effondrés.
+
+### Ce qui n'a pas été fait, et pourquoi
+
+Sortir du middleware sur les prefetch RSC (`next-router-prefetch`) était la
+piste la plus risquée du chantier : le middleware n'écrirait plus de cookie
+rafraîchi sur ces réponses, avec un risque de sessions perdues difficile à
+reproduire. `getClaims()` lui retire sa raison d'être — un prefetch ne coûte
+plus d'aller-retour réseau. À ne pas ressortir sans une raison neuve.
