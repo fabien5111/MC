@@ -1,12 +1,19 @@
 'use client';
-// Loupe de recherche du bandeau haut (Client Component). Au clic, une zone de
-// saisie glisse en dessous du menu (panneau pleine largeur). La saisie validée
-// (Entrée ou bouton) redirige vers la page de résultats `/recherche?q=…`.
+// Loupe de recherche du bandeau haut (Client Component).
 //
-// Le panneau porte aussi l'accès aux critères avancés et une ligne de
+// Desktop (≥ 1024 px) : au clic, une zone de saisie glisse en dessous du menu
+// (panneau pleine largeur), avec l'accès aux critères avancés et une ligne de
 // suggestions. Ces suggestions sont contextuelles — ce sont les catégories
 // promues par l'admin sur l'accueil (tags `show_on_home`), résolues côté
 // serveur par `Header` : jamais une liste codée en dur dans ce composant.
+//
+// Mobile (< 1024 px) : le clic mène directement à l'écran `/recherche`, qui
+// porte sa propre expérience mobile (champ en tête de page + tiroir de
+// critères `BottomSheet`). Le panneau glissant n'y fonctionne pas : le focus
+// automatique du champ ouvre le clavier virtuel, qui recouvre le lien
+// « Critères avancés » et les suggestions empilés dessous (mise en page
+// `flex-col` sous 640 px) — parfois le champ lui-même selon le défilement au
+// moment du clic, l'en-tête n'étant sticky qu'à partir de 1024 px.
 //
 // L'indicateur de chargement (fouet) pendant la navigation est géré
 // globalement par NavigationSpinner (app/layout.tsx), qui détecte la
@@ -30,6 +37,17 @@ export function HeaderSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Bascule à 1024 px (`lg`) : même seuil que la colonne/tiroir de
+  // `/recherche` (cf. `SearchFiltersPanel`).
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setWide(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   // Focus automatique du champ à l'ouverture du panneau.
   useEffect(() => {
@@ -70,9 +88,9 @@ export function HeaderSearch({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (wide ? setOpen((o) => !o) : router.push('/recherche'))}
         aria-label="Rechercher"
-        aria-expanded={open}
+        aria-expanded={wide ? open : undefined}
         className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
       >
         search
