@@ -124,13 +124,6 @@ export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> 
   return withAllergenNames(rows);
 }
 
-export async function getRecipe(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('recipes').select('*').eq('id', id).maybeSingle();
-  if (error) console.error('getRecipe:', error.message);
-  return data;
-}
-
 // Recette complète avec toutes ses jointures (porté de getRecipe du db.js).
 // Typée souplement : les jointures profondes ne s'infèrent pas proprement.
 export type RecipeStepView = {

@@ -6,8 +6,8 @@ doit respecter pour ne pas réintroduire le problème — ou en créer un pire,
 celui de la donnée périmée.
 
 Portée : chantier 2 (§ 1 à 3, `lib/data/reference.ts`), chantier 3 (§ 4,
-`lib/auth.ts`), chantier 4 (§ 5, impersonation) et chantier 1-bis (§ 6,
-sessions).
+`lib/auth.ts`), chantier 4 (§ 5, impersonation), chantier 1-bis (§ 6,
+sessions) et chantier 5 (§ 7, payloads).
 
 ---
 
@@ -270,3 +270,53 @@ piste la plus risquée du chantier : le middleware n'écrirait plus de cookie
 rafraîchi sur ces réponses, avec un risque de sessions perdues difficile à
 reproduire. `getClaims()` lui retire sa raison d'être — un prefetch ne coûte
 plus d'aller-retour réseau. À ne pas ressortir sans une raison neuve.
+
+
+---
+
+## 7. Payloads et lectures en série (chantier 5)
+
+### Règle 8 — Un accesseur de liste ne ramène pas les enfants que la vue n'affiche pas
+
+`getShoppingLists` ramène ses articles (`id, checked`) parce que la vue en
+calcule un avancement. `getShoppingListNames` ne ramène rien parce qu'un
+sélecteur n'affiche que des noms. Deux vues, deux accesseurs.
+
+Le piège est de réutiliser l'accesseur riche « puisqu'il existe » et de filtrer
+en JavaScript : c'est ce que faisait la fiche recette, qui tirait tous les
+articles de toutes les listes du membre pour afficher une liste déroulante.
+Filtrer après coup ne coûte rien en code et beaucoup en réseau — et ça ne se
+voit pas à la lecture du composant, seulement à celle de l'accesseur.
+
+### Règle 9 — Les lectures du chrome sont sur le chemin critique de tout le site
+
+`Header` et `MobileNav` sont rendus sur **chaque** page. Une lecture ajoutée là
+est une lecture ajoutée partout, et un `await` de plus est un aller-retour de
+plus avant que quoi que ce soit ne s'affiche.
+
+Y ajouter quelque chose : le mettre dans le `Promise.all` existant, jamais à la
+suite. Ce qui ne dépend pas de la session part avec `getCurrentUser()`, pas
+après.
+
+### Ce que « moins de requêtes » ne veut pas dire
+
+Le nombre de requêtes et le temps de chargement sont deux problèmes distincts,
+et ce chantier l'a montré :
+
+- Dix requêtes dans un `Promise.all` coûtent **un** aller-retour ; trois
+  requêtes enchaînées en coûtent **trois**. Le chantier 2 a supprimé 22 920
+  requêtes, mais l'essentiel était déjà parallèle — c'était un problème de
+  facture, pas de vitesse.
+- À l'inverse, la parallélisation ci-dessus ne supprime **aucune** requête et
+  se voit directement au chargement.
+
+Ne pas confondre les deux en lisant les compteurs après déploiement.
+
+### `select('*')` : ce qui reste, et pourquoi
+
+Il en subsiste dans `lib/admin.ts`, `lib/admin-blog.ts`, `lib/impersonation.ts`
+et `lib/imports.ts` : écrans de back-office, volume négligeable. Ce n'est pas
+un oubli. La règle utile n'est pas « bannir `select('*')` partout » mais
+**« pas de `select('*')` sur une table lue à chaque rendu, ni sur une table qui
+porte des colonnes d'image en data-URL »** — `profiles` et `recipes` cochent
+les deux cases.

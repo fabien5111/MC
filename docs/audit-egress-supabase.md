@@ -321,28 +321,91 @@ la garantie réelle, côté base.
 
 ---
 
-## 5. Chantier 5 — Audit des payloads
+## 5. Chantier 5 — Audit des payloads — fait
 
-**Confirmé en partie.**
+Les quatre points de la spec, traités ou écartés avec leur raison.
 
-- **`select('*')`** — 15 occurrences, dont sur des tables de référence :
-  `lib/auth.ts:58` (`profiles`), `lib/profile.ts:245` (`units`),
-  `lib/taxonomy.ts:69` (`difficulties`), `lib/admin.ts:20` (`mold_types`),
-  `lib/impersonation.ts:109`, `lib/recipes.ts:131` (`recipes`),
-  `lib/admin-blog.ts:49,61,68`, `lib/blog.ts:118,175`, `lib/imports.ts:32`,
-  `lib/admin.ts:458,529`.
-- **Pagination absente** sur `ingredient_refs` (`lib/imports.ts:40,51`,
-  `lib/recipes.ts:298`) et `utensils` (`lib/imports.ts:71`) — confirmé, aucun
-  `range()` ni `limit()`.
-- **`shopping_lists`** : à instrumenter au moment du chantier 5 (le poids de
-  la jointure imbriquée n'est pas mesurable statiquement).
-- **Polling / Realtime — infirmé, rien à corriger.** Aucun abonnement Realtime
-  (`.channel(` : 0 occurrence), aucun `onAuthStateChange`. Les deux seuls
-  `setInterval` sont dans `components/admin/BlogEditor.tsx:272,279` et ne
-  déclenchent **aucune** requête Supabase (compteur d'affichage local). Le
-  compteur Realtime à 0 du dashboard est donc confirmé par le code.
+### 1. `shopping_lists` — fait, et la vraie cause était ailleurs
 
----
+La spec décrit « une jointure imbriquée avec `select *` ». Ce n'était pas
+exact : `getShoppingLists` (`lib/profile.ts`) restreignait déjà sa jointure à
+`id, checked`, les deux colonnes du décompte d'avancement.
+
+Le gaspillage était en amont, sur le **plus consulté** des trois appelants :
+`app/recette/[id]/page.tsx` appelait `getShoppingLists()` puis n'en gardait que
+`{ id, name }` — il rapatriait donc **tous les articles de toutes les listes**
+du membre pour peupler une liste déroulante de noms. Dix listes de quarante
+articles, c'est quatre cents lignes traversées pour rien, à chaque consultation
+de fiche.
+
+Correction : `getShoppingListNames(userId)`, sans jointure. Colonnes énumérées
+des deux côtés de la jointure dans la vue détail (`lib/shopping.ts`), où tout
+est réellement affiché.
+
+### 2. `select('*')` — traité là où ça compte, laissé ailleurs, dit franchement
+
+Supprimé sur `profiles` (chantier 3), `units`, `difficulties`, `mold_types`
+(chantier 2) et `shopping_lists` — c'est-à-dire sur **tout ce que le top 20
+contenait**.
+
+Reste en place, délibérément :
+
+- **`lib/admin.ts`, `lib/admin-blog.ts`, `lib/impersonation.ts:120`,
+  `lib/imports.ts:32`** — écrans de back-office et lecture d'un import à la
+  fois. Volume négligeable, et énumérer les colonnes de tables que personne ne
+  lit en boucle ajoute du risque sans gain.
+- **`select('*', { count: 'exact', head: true })`** (`lib/admin.ts:68-70`) —
+  ce n'en est pas un : `head: true` ne renvoie aucune ligne, c'est un compteur.
+- **`lib/blog.ts`** — déjà servi par `unstable_cache`.
+- **`recipes`** — la spec en fait un **non-objectif** explicite (§ 3 :
+  « optimiser les requêtes sur `recipes` : elles ne sont pas en cause »), et le
+  relevé lui donne raison : aucune requête `recipes` dans le top 20.
+
+**Une exception traitée quand même** : `getRecipe(id)` faisait un `select('*')`
+sur `recipes` — 42 colonnes dont **cinq d'image**, `hero_image_original_url`
+comprise, soit l'objet le plus lourd de la base. La fonction était **exportée
+mais jamais appelée** (la fiche utilise `getRecipeFull`). Supprimée : du code
+mort qui porte ce piège finit tôt ou tard copié-collé. Récupérable dans
+l'historique git si besoin.
+
+### 3. Pagination de `ingredient_refs` / `utensils` — rendue sans objet
+
+Le constat de la spec était juste : ces deux tables étaient lues sans `limit()`
+ni `range()`. Mais **y appliquer une pagination serait maintenant une
+régression** : ce sont des listes d'autocomplétion, une liste tronquée ne
+propose plus certains ingrédients. Et depuis le chantier 2, elles sont lues une
+fois par fenêtre de validité, plus à chaque requête — le problème que la
+pagination devait résoudre a été résolu autrement.
+
+**Ce qui reste, et qui n'est pas un problème d'egress** : `getIngredientRefNames`
+descend la table entière dans le payload RSC envoyé au navigateur, pour
+l'autocomplétion de l'éditeur. À quelques centaines d'ingrédients c'est sans
+conséquence ; à quelques milliers, il faudra basculer sur la recherche serveur
+— la route `/api/ingredients` existe déjà et fait exactement ça. C'est une
+question de produit, pas de facture Supabase.
+
+### 4. Polling et Realtime — infirmé, rien à corriger
+
+Aucun abonnement Realtime (`.channel(` : 0 occurrence), aucun
+`onAuthStateChange`. Les deux seuls `setInterval`
+(`components/admin/BlogEditor.tsx:272,279`) ne déclenchent aucune requête
+Supabase. Le compteur Realtime à 0 du tableau de bord est confirmé par le code.
+
+### 5. Hors spec — les lectures en série du chemin critique
+
+Découvert en traitant le reste, et sans rapport avec le nombre de requêtes :
+plusieurs lectures indépendantes étaient enchaînées en `await` successifs, donc
+payées en allers-retours cumulés plutôt qu'en un seul.
+
+| Fichier | Avant | Après |
+|---|---:|---:|
+| `components/Header.tsx` | 5 en série | 2 vagues |
+| `components/MobileNav.tsx` | 4 en série | 2 vagues |
+| `app/recette/[id]/page.tsx` (2ᵉ vague) | 4 en série | 1 vague |
+
+Le chrome (`Header`, `MobileNav`) est rendu sur **chaque** page : ses lectures
+sont sur le chemin critique de tout le site. C'est le seul lot de ce chantier
+qui se voie directement en temps de chargement.
 
 ## 5-bis. Mesure de référence (« avant »), 25/08/2026
 
