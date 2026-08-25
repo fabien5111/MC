@@ -50,13 +50,49 @@ export async function requireUser(next?: string): Promise<User> {
   return user;
 }
 
+// Colonnes du profil, énumérées plutôt que `select('*')`.
+//
+// La liste couvre exactement le type `Row` — le comportement est donc
+// identique à celui de `select('*')`. Ce qu'on gagne est ailleurs : `profiles`
+// porte trois colonnes d'image en data-URL (`avatar_url`, `banner_url`,
+// `cover_url`) et cette ligne est lue à chaque rendu de page par le `Header`.
+// Avec `select('*')`, toute colonne lourde ajoutée à la table rejoindrait
+// silencieusement le payload de tout le site ; ici il faut l'écrire.
+const PROFILE_COLUMN_LIST = [
+  'id', 'email', 'full_name', 'username',
+  'avatar_url', 'banner_url', 'cover_url', 'bio', 'notes',
+  'role', 'plan', 'status', 'provider', 'is_admin', 'is_demo', 'impersonation_access',
+  'followers_count', 'following_count', 'created_at',
+  'website', 'website_url', 'instagram', 'instagram_url',
+  'facebook_url', 'youtube_url', 'tiktok_url', 'pinterest_url',
+] as const satisfies readonly (keyof Profile)[];
+
+// `satisfies` ci-dessus attrape une colonne **inexistante** (faute de frappe) ;
+// ce type-ci attrape une colonne **oubliée**. Les deux comptent, et la seconde
+// est la plus vicieuse : `select()` est une chaîne, donc un nom erroné ne
+// produit aucune erreur de compilation — seulement une erreur PostgREST au
+// runtime, un profil `null`, et un membre renvoyé sur /choix-pseudo alors qu'il
+// a déjà un pseudo.
+//
+// Conséquence voulue : ajouter une colonne à `profiles` puis régénérer les
+// types (`npm run gen:types`) casse la compilation ici tant qu'on n'a pas
+// tranché si elle a sa place dans une ligne lue à chaque rendu de page.
+type ColonnesProfilManquantes = Exclude<keyof Profile, (typeof PROFILE_COLUMN_LIST)[number]>;
+
+const PROFILE_COLUMNS: [ColonnesProfilManquantes] extends [never] ? string : never =
+  PROFILE_COLUMN_LIST.join(', ');
+
 // Profil applicatif (table profiles) de l'utilisateur donné.
-// Mémoïsé par requête (React cache) : Header et la page appelante partagent
-// un seul appel au lieu d'en refaire un chacun.
+//
+// **Accesseur unique du profil.** Mémoïsé par requête (React cache) : le
+// Header, la barre mobile et la page appelante partagent un seul appel. Ne pas
+// rajouter de lecture directe de `profiles` ailleurs — c'est ce qui avait
+// produit deux requêtes pour la même ligne à chaque rendu (5 572 appels
+// `select role` + 4 306 `select *` au relevé du 25/08/2026).
 export const getProfile = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-  return data ?? null;
+  const { data } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle();
+  return (data as Profile | null) ?? null;
 });
 
 // Rôles applicatifs, portés par `profiles.role` (colonne texte de la base
@@ -74,13 +110,20 @@ export const getProfile = cache(async (userId: string): Promise<Profile | null> 
 // Une valeur inconnue est traitée comme la plus restrictive.
 export type AppRole = 'admin' | 'gestionnaire' | 'membre';
 
-// Rôle de l'utilisateur donné. Mémoïsé par requête (React cache) : les gardes
-// de page, le Header et la barre latérale d'admin partagent un seul appel.
+// Rôle de l'utilisateur donné.
+//
+// **Dérivé de `getProfile`, plus jamais lu par une requête à part.** Les deux
+// visaient la même ligne : l'une ne prenait que `role`, l'autre tout le reste,
+// et chacune portait son propre `cache()` — elles ne se dédupliquaient donc
+// jamais entre elles. `Header` appelait précisément les deux
+// (`getProfile` pour l'avatar, `isManager` pour le lien back-office), ce qui
+// reproduisait le doublon sur chaque page du site.
+//
+// Une valeur inconnue est traitée comme la plus restrictive.
 export const getRole = cache(async (userId: string): Promise<AppRole> => {
-  const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
-  if (data?.role === 'admin') return 'admin';
-  if (data?.role === 'gestionnaire') return 'gestionnaire';
+  const profile = await getProfile(userId);
+  if (profile?.role === 'admin') return 'admin';
+  if (profile?.role === 'gestionnaire') return 'gestionnaire';
   return 'membre';
 });
 

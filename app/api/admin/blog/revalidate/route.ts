@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { isManager } from '@/lib/auth';
 import { BLOG_TAG, articleTag } from '@/lib/blog';
 
 export async function POST(req: Request) {
@@ -23,8 +24,10 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Non connecté.' }, { status: 401 });
 
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  if (me?.role !== 'admin' && me?.role !== 'gestionnaire') {
+  // Rôle via l'accesseur unique (mémoïsé) plutôt qu'une lecture directe de
+  // `profiles` : c'est la dispersion de ces lectures qui produisait deux
+  // requêtes pour la même ligne (cf. lib/auth.ts).
+  if (!(await isManager(user.id))) {
     return NextResponse.json({ erreur: 'Réservé au back-office.' }, { status: 403 });
   }
 

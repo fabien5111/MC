@@ -34,6 +34,7 @@ import { ingredientConversionText, resolveIngredientRefId, convertQty, type Conv
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -448,7 +449,14 @@ export function CreerForm({
   // refresh, lui, resynchronise les listes de référence rendues côté serveur —
   // sans quoi le libellé créé disparaîtrait en revenant sur l'éditeur, et
   // n'apparaîtrait pas dans le back-office des listes.
-  const refreshRefs = () => router.refresh();
+  // Invalide aussi le cache serveur des référentiels (lib/data/reference.ts) :
+  // `router.refresh()` seul re-rend la page, mais le Server Component relirait
+  // la même valeur en cache et le libellé créé resterait invisible jusqu'au
+  // délai de validité (jusqu'à 24 h selon la table).
+  const refreshRefs = (table: string) => {
+    void revalidateReference(table);
+    router.refresh();
+  };
 
   async function addUtensilRef(name: string) {
     const clean = name.trim();
@@ -458,7 +466,7 @@ export function CreerForm({
     setRefBusy(null);
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
-    refreshRefs();
+    refreshRefs('utensils');
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -476,7 +484,7 @@ export function CreerForm({
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
-    refreshRefs();
+    refreshRefs('ingredient_refs');
   }
 
   // Repli du menu déroulant de tags au clic en dehors.
@@ -525,7 +533,7 @@ export function CreerForm({
     setNewTagName('');
     setTagPickerOpen(false);
     markDirty();
-    refreshRefs();
+    refreshRefs('tags');
   }
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);

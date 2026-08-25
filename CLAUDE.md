@@ -139,6 +139,15 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   connecté. Tolérant aux pannes : une erreur Supabase transitoire ne bloque pas
   le site, le contrôle fin restant assuré dans chaque page (`requireUser`,
   `requireAdmin`).
+- **`getProfile()` est le seul accesseur du profil courant** (`lib/auth.ts`) :
+  `getRole` / `isAdmin` / `isManager` en dérivent, sans requête propre. Les deux
+  lectures d'origine visaient la même ligne (`select role` et `select *`) avec
+  chacune son `cache()` React — elles ne se dédupliquaient donc jamais, et le
+  `Header` appelait les deux sur chaque page (9 878 requêtes au relevé du
+  25/08/2026). Ne pas rajouter de lecture directe de `profiles` visant
+  l'utilisateur courant ; les colonnes sont énumérées (`PROFILE_COLUMNS`), la
+  table portant trois colonnes d'image en data-URL. Cf.
+  `docs/note-regression-cache.md`.
 - Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
   `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
   (`member`, `null`…) vaut membre ordinaire.
@@ -259,9 +268,23 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
   membre remplace la sienne.
 - **Session active** = ligne de `impersonation_sessions` visant l'utilisateur
   courant (`started_at` non nul, `ended_at` nul, non expirée — TTL 60 min).
-  Pas de cookie dédié : le mode ne peut donc pas être désactivé côté
-  navigateur, et la même condition est réutilisée en SQL par
-  `public.is_read_only_session()` dans les policies RLS d'écriture.
+  C'est la table qui décide, jamais le navigateur, et la même condition est
+  réutilisée en SQL par `public.is_read_only_session()` dans les policies RLS
+  d'écriture — c'est là qu'est la garantie réelle.
+- **Cookie témoin `mc_imp`** (`IMPERSONATION_COOKIE`) : posé par
+  `/auth/impersonation`, retiré par `/api/impersonation/end`, calé sur
+  `expires_at`. **Indice d'aiguillage négatif, jamais source de vérité** :
+  absent → on n'interroge pas la table ; présent → elle tranche avec
+  exactement les mêmes prédicats qu'avant. Sa valeur est opaque (`'1'`) : rien
+  à y lire, rien à falsifier. Sans lui, `impersonation_sessions` était lue à
+  **chaque rendu de page pour 100 % des membres** (3 871 requêtes au relevé du
+  25/08/2026) pour un cas qui ne concerne qu'une poignée de sessions
+  d'administration.
+  Nuance à connaître, par rapport à la doctrine antérieure (« pas de cookie
+  dédié ») : le supprimer — il est `httpOnly`, donc hors de portée d'un script
+  — ferait disparaître le bandeau et les gardes **client**. Ça ne débride rien
+  pour autant : la RLS lit la table en SQL et refuse les écritures. On y perd
+  un message clair, pas une protection.
 - **Bandeau persistant** (`components/ImpersonationBanner.tsx`) monté dans le
   layout racine ; `ImpersonationProvider` expose le mode aux composants
   client.
@@ -654,6 +677,37 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   (donc masquée) tant que `author_ratings.rated_recipes` est à 0 — sans ça,
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
+
+## Données de référence (cache)
+
+Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
+`mold_types`, `allergens`, `ingredient_refs`, `utensils`,
+`ingredient_conversions`) et les clés publiques de `site_settings` sont servis
+par **`lib/data/reference.ts`**, jamais lus directement. Ils pesaient 22 920
+requêtes sur le relevé du 25/08/2026, soit 51 % du trafic REST — la fiche
+recette à elle seule en chargeait cinq, plus `tags` via le `Header`.
+
+- **Trois couches** : `unstable_cache` (cache serveur partagé entre requêtes
+  et entre visiteurs, avec étiquettes — Next 15.1, pas la directive `use
+  cache`), `cache()` React par-dessus (déduplication intra-rendu), et un repli
+  non mis en cache sur le client à cookies. Motif éprouvé dans `lib/blog.ts`.
+- **Une lecture par table, plusieurs formes en sortie.** `getTags`,
+  `getHomeCategories` et `getTagBySlug` partagent une seule lecture ; idem pour
+  les deux formes d'`allergens` et les trois d'`ingredient_refs`. Ne pas
+  rajouter d'accesseur qui interroge la base — c'est ce qui avait produit les
+  doublons. `lib/taxonomy.ts`, `lib/imports.ts` etc. ne sont plus que des
+  ré-exports.
+- **Toute écriture invalide son étiquette**, sinon la valeur reste périmée
+  jusqu'à 24 h : `revalidateReference('units')` (`lib/revalidate-reference.ts`)
+  **avant** `router.refresh()` — ce dernier seul relirait la valeur en cache.
+- **Lecture au rôle `anon`** (`unstable_cache` interdit les cookies) : ne
+  jamais y faire passer une donnée dépendant de l'utilisateur. Et comme une RLS
+  qui refuse renvoie zéro ligne plutôt qu'une erreur, **un référentiel vide est
+  traité comme un symptôme, jamais comme un résultat** — il n'est pas mis en
+  cache et la lecture est refaite avec la session. `site_settings` excepté :
+  n'avoir aucune bannière est normal.
+
+Règles complètes et pièges : `docs/note-regression-cache.md`.
 
 ## Base de données (Supabase / PostgreSQL)
 

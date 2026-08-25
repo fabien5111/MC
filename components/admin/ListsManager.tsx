@@ -16,6 +16,7 @@ import { useDialog } from '@/components/Dialog';
 import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type Entry = Record<string, unknown>;
 
@@ -100,6 +101,9 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
       delete: () => { eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }> };
     };
     await mutate(() => q.delete().eq('id', id), { confirm: `Supprimer « ${label} » ?` });
+    // Le référentiel supprimé est en cache serveur (lib/data/reference.ts) :
+    // sans invalidation, il resterait proposé jusqu'à 24 h selon la table.
+    void revalidateReference(table);
   }
 
   return (
@@ -469,6 +473,9 @@ function EntryForm({
       setBusy(false);
       return;
     }
+    // Idem : l'entrée créée ou modifiée doit sortir du cache serveur avant que
+    // `onSaved()` ne provoque la relecture côté serveur.
+    await revalidateReference(table);
     onSaved();
   }
 
