@@ -825,19 +825,24 @@ export async function getUnknownUtensils(): Promise<UnknownItem[]> {
 
 // ── Ingrédients en volume sans masse volumique de référence ──────────────
 // Distinct des « inconnus » ci-dessus : ces ingrédients SONT déjà référencés
-// (`ingredients.ref_id` non nul) — c'est `ingredient_refs.density_g_per_ml`
-// qui manque, colonne utilisée pour estimer le poids d'une étape en volume
-// au remplacement par une recette (cf. lib/ingredient-conversions.ts
-// `estimateWeightGrams`, CLAUDE.md « Fournées »). Réutilise `UnknownItem` /
-// `groupUnknownRows` : même forme de ligne (nom, recette, étape), seule la
-// RPC source diffère (`admin_volume_ingredients_missing_density`).
+// — rapprochés par NOM (pas par `ingredients.ref_id`, qui n'est résolu qu'à
+// l'enregistrement de la recette et n'est jamais rattrapé après coup, cf.
+// « Ne pas se fier à ref_id IS NULL seul » plus haut) — c'est
+// `ingredient_refs.density_g_per_ml` qui manque, colonne utilisée pour
+// estimer le poids d'une étape en volume au remplacement par une recette
+// (cf. lib/ingredient-conversions.ts `estimateWeightGrams`, CLAUDE.md
+// « Fournées »). Réutilise `UnknownItem` / `groupUnknownRows` : même forme
+// de ligne (nom, recette, étape), seule la RPC source diffère
+// (`admin_volume_ingredients_missing_density`).
 //
-// Filtré sur `recipes.status = 'published'` (privée ou publique, jamais
-// brouillon/en attente/refusée) : décision produit — la recette doit être
-// publiée pour que l'écart compte, cf. échange avec l'utilisateur. Pas
-// d'action de rattachement ici (l'ingrédient est déjà référencé) : la fiche
-// pointe simplement vers Admin → Gestion des listes pour renseigner la
-// valeur.
+// Toutes les recettes remontent, brouillon compris (contrairement à un
+// premier réglage sur `status = 'published'`) : une fournée peut être
+// lancée dès un brouillon, sans attendre la publication — l'écart compte
+// dès cet instant. Le statut de chaque recette est affiché en étiquette
+// devant son titre (`RecipeStatusBadge`, UnknownItemsManager.tsx) pour
+// rester visible malgré ce périmètre élargi. Pas d'action de rattachement
+// ici (l'ingrédient est déjà référencé) : la fiche pointe simplement vers
+// Admin → Gestion des listes pour renseigner la valeur.
 export async function getVolumeIngredientsMissingDensity(): Promise<UnknownItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('admin_volume_ingredients_missing_density' as never);

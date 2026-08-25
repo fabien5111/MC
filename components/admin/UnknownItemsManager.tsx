@@ -42,17 +42,34 @@ function statusNote(status: string | null, isPublic: boolean | null): string | n
   return parts.length ? parts.join(', ') : null;
 }
 
-function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
+// Étiquette de statut compacte, affichée EN AVANT du titre de la recette
+// plutôt que dans la note entre parenthèses — utile quand le statut doit
+// sauter aux yeux (ex. bloc « Ingrédients en volume sans masse volumique »,
+// qui remonte aussi les brouillons : on peut lancer une fournée depuis un
+// brouillon, donc l'écart n'attend pas la publication). Mêmes couleurs que
+// `StatusBadge` (StepExpandDialog.tsx) — un seul vocabulaire visuel de
+// statut de recette dans toute l'application.
+function RecipeStatusBadge({ status, isPublic }: { status: string | null; isPublic: boolean | null }) {
+  const cls = 'px-1.5 py-0.5 font-label-md text-[9px] uppercase tracking-widest rounded shrink-0 mr-1.5';
+  if (status === 'draft') return <span className={`${cls} bg-secondary text-white`}>Brouillon</span>;
+  if (status === 'pending') return <span className={`${cls} bg-secondary text-white`}>En attente</span>;
+  if (status === 'rejected') return <span className={`${cls} bg-error text-white`}>Refusée</span>;
+  if (isPublic === false) return <span className={`${cls} bg-surface-container-highest text-primary`}>Privée</span>;
+  return <span className={`${cls} bg-green-700 text-white`}>Publiée</span>;
+}
+
+function RecipeLinks({ recipes, showStatusBadge = false }: { recipes: UnknownItem['recipes']; showStatusBadge?: boolean }) {
   return (
     <span className="flex flex-wrap gap-x-2 gap-y-1">
       {recipes.map((r, i) => {
         const note = statusNote(r.status, r.isPublic);
         return (
           <span key={`${r.id}:${r.step ?? ''}`} className="text-xs">
+            {showStatusBadge && <RecipeStatusBadge status={r.status} isPublic={r.isPublic} />}
             <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
               {r.title}
             </Link>
-            {note && <span className="text-on-surface-variant"> ({note})</span>}
+            {!showStatusBadge && note && <span className="text-on-surface-variant"> ({note})</span>}
             {r.author ? (
               r.authorId ? (
                 <>
@@ -317,12 +334,14 @@ function VolumeDensitySection({ items }: { items: UnknownItem[] }) {
           <span className="text-on-surface-variant font-normal text-sm">({items.length})</span>
         </h3>
         <p className="text-xs text-on-surface-variant mt-0.5">
-          Ingrédients déjà référencés, saisis en volume (ml/cl/l) dans une recette publiée (privée ou publique), sans masse
-          volumique enregistrée pour eux — renseignez-la depuis{' '}
+          Ingrédients déjà référencés, saisis en volume (ml/cl/l), sans masse volumique enregistrée pour eux — renseignez-la
+          depuis{' '}
           <Link href="/admin/listes" className="text-secondary hover:text-primary underline underline-offset-2">
             Gestion des listes → Ingrédients
           </Link>{' '}
-          pour qu&apos;ils comptent dans l&apos;estimation de poids au remplacement d&apos;une étape par une recette.
+          pour qu&apos;ils comptent dans l&apos;estimation de poids au remplacement d&apos;une étape par une recette. Toutes
+          les recettes sont remontées, brouillon compris : une fournée peut être lancée dès un brouillon, sans attendre la
+          publication — le statut de chacune est rappelé devant son titre.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -345,7 +364,7 @@ function VolumeDensitySection({ items }: { items: UnknownItem[] }) {
                 <tr key={it.name.toLowerCase()} className="hover:bg-surface-container-low transition-colors align-top">
                   <td className="px-6 py-4 text-sm font-semibold text-on-surface whitespace-nowrap">{it.name}</td>
                   <td className="px-6 py-4">
-                    <RecipeLinks recipes={it.recipes} />
+                    <RecipeLinks recipes={it.recipes} showStatusBadge />
                   </td>
                 </tr>
               ))
