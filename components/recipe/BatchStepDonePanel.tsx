@@ -553,12 +553,16 @@ export function BatchStepDonePanel({
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
       <div className="flex flex-col gap-3 border-b border-outline pb-4">
-        {title}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            {dayControl}
-            {meta}
-          </div>
+        {/* Case + chevron sur la même ligne que le titre, jamais couplés aux
+            badges de date/temps (dayControl/meta) : ces badges peuvent à eux
+            seuls remplir la largeur et passer sur une seconde ligne (étape
+            avec cuisson + attente + total, ex. étape remplacée), ce qui
+            reléguait la case sur une troisième ligne isolée. Ancrés en haut
+            (items-start) : un titre sur plusieurs lignes (étape ajoutée ou
+            remplacée, avec sa mention verte/rouge en dessous) ne doit pas
+            centrer la case sur toute sa hauteur. */}
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="min-w-0">{title}</div>
           <div className="no-print flex items-center gap-3 shrink-0">
             {doneToggle}
             {collapsible && (
@@ -572,6 +576,10 @@ export function BatchStepDonePanel({
               </button>
             )}
           </div>
+        </div>
+        <div className="flex items-center flex-wrap gap-3 min-w-0">
+          {dayControl}
+          {meta}
         </div>
       </div>
       {open && (
