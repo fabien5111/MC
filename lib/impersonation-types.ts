@@ -14,6 +14,20 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 
 // Niveau de droit d'un admin lorsqu'il se connecte en tant qu'un membre.
+// Cookie témoin d'une session « en tant que ».
+//
+// **Indice d'aiguillage, jamais source de vérité.** La ligne
+// `impersonation_sessions` reste seule à décider (cf. lib/impersonation.ts) :
+// le cookie ne sert qu'à savoir s'il vaut la peine de l'interroger. Absent →
+// on ne requête pas ; présent → la table tranche, avec exactement les mêmes
+// prédicats qu'avant. Sa valeur est donc opaque (`'1'`) : il n'y a rien à y
+// lire, et rien à falsifier.
+//
+// `httpOnly` : aucun script de la page ne peut le supprimer. La garantie
+// réelle reste la RLS (`public.is_read_only_session()`), qui lit la table en
+// SQL et refuse les écritures quoi qu'il arrive côté navigateur.
+export const IMPERSONATION_COOKIE = 'mc_imp';
+
 export type ImpersonationMode = 'read_only' | 'write';
 
 export const IMPERSONATION_MODES: ImpersonationMode[] = ['read_only', 'write'];

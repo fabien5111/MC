@@ -15,10 +15,12 @@
 // débrider en supprimant un cookie, et la même condition est réutilisable en
 // SQL par la RLS (fonction `public.is_read_only_session()`).
 import { cache } from 'react';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser, getProfile } from '@/lib/auth';
 import {
+  IMPERSONATION_COOKIE,
   isImpersonationMode,
   withImpersonationSchema,
   type ImpersonationMode,
@@ -44,6 +46,17 @@ export type ImpersonationContext = {
 // appliquée (table absente) ou si Supabase renvoie une erreur, on renvoie null
 // plutôt que de casser le rendu de tout le site.
 export const getImpersonationContext = cache(async (): Promise<ImpersonationContext | null> => {
+  // Portillon : sans cookie témoin, aucune session « en tant que » n'a été
+  // ouverte sur ce navigateur — inutile d'interroger la table. C'est tout
+  // l'objet du chantier 4 : `impersonation_sessions` était lue à chaque rendu
+  // de page pour 100 % des membres (3 871 appels au relevé du 25/08/2026),
+  // alors qu'elle ne concerne qu'une poignée de sessions d'administration.
+  //
+  // Le cookie n'autorise rien : il ne fait qu'ouvrir la vérification. Tout ce
+  // qui suit est inchangé, et la RLS reste la garantie réelle.
+  const cookieStore = await cookies();
+  if (!cookieStore.get(IMPERSONATION_COOKIE)) return null;
+
   const user = await getCurrentUser();
   if (!user) return null;
 

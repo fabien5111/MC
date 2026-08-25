@@ -268,9 +268,23 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
   membre remplace la sienne.
 - **Session active** = ligne de `impersonation_sessions` visant l'utilisateur
   courant (`started_at` non nul, `ended_at` nul, non expirée — TTL 60 min).
-  Pas de cookie dédié : le mode ne peut donc pas être désactivé côté
-  navigateur, et la même condition est réutilisée en SQL par
-  `public.is_read_only_session()` dans les policies RLS d'écriture.
+  C'est la table qui décide, jamais le navigateur, et la même condition est
+  réutilisée en SQL par `public.is_read_only_session()` dans les policies RLS
+  d'écriture — c'est là qu'est la garantie réelle.
+- **Cookie témoin `mc_imp`** (`IMPERSONATION_COOKIE`) : posé par
+  `/auth/impersonation`, retiré par `/api/impersonation/end`, calé sur
+  `expires_at`. **Indice d'aiguillage négatif, jamais source de vérité** :
+  absent → on n'interroge pas la table ; présent → elle tranche avec
+  exactement les mêmes prédicats qu'avant. Sa valeur est opaque (`'1'`) : rien
+  à y lire, rien à falsifier. Sans lui, `impersonation_sessions` était lue à
+  **chaque rendu de page pour 100 % des membres** (3 871 requêtes au relevé du
+  25/08/2026) pour un cas qui ne concerne qu'une poignée de sessions
+  d'administration.
+  Nuance à connaître, par rapport à la doctrine antérieure (« pas de cookie
+  dédié ») : le supprimer — il est `httpOnly`, donc hors de portée d'un script
+  — ferait disparaître le bandeau et les gardes **client**. Ça ne débride rien
+  pour autant : la RLS lit la table en SQL et refuse les écritures. On y perd
+  un message clair, pas une protection.
 - **Bandeau persistant** (`components/ImpersonationBanner.tsx`) monté dans le
   layout racine ; `ImpersonationProvider` expose le mode aux composants
   client.

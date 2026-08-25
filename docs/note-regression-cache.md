@@ -5,8 +5,8 @@ Supabase ». À conserver : ce sont les règles que tout développement ultérie
 doit respecter pour ne pas réintroduire le problème — ou en créer un pire,
 celui de la donnée périmée.
 
-Portée : chantier 2 (§ 1 à 3, `lib/data/reference.ts`) et chantier 3 (§ 4,
-`lib/auth.ts`). Le volet *sessions* sera écrit avec le chantier 4.
+Portée : chantier 2 (§ 1 à 3, `lib/data/reference.ts`), chantier 3 (§ 4,
+`lib/auth.ts`) et chantier 4 (§ 5, impersonation).
 
 ---
 
@@ -165,3 +165,64 @@ qui impose d'invalider les sessions lors d'un changement de rôle admin.
 À traiter comme un chantier à part entière, avec sa propre mesure. La
 déduplication ci-dessus ramène déjà le poste de ~9 900 appels à une lecture par
 rendu de page.
+
+
+---
+
+## 5. Impersonation (chantier 4)
+
+### Ce qui a changé
+
+`impersonation_sessions` était interrogée à **chaque rendu de page**, pour tout
+membre connecté, depuis le layout racine — 3 871 appels au relevé, pour un cas
+qui ne concerne qu'une poignée de sessions d'administration. Un cookie témoin
+`mc_imp` conditionne désormais la requête.
+
+### Pourquoi pas le critère proposé par la spec
+
+La spec (§ 7) proposait de conditionner à `role === 'admin'`. **C'est faux
+ici** : la *cible* d'une impersonation est un membre ordinaire, pas un admin —
+la ligne vise `target_user_id`. Ce critère aurait sauté la vérification pour
+exactement les comptes qu'elle protège, c'est-à-dire désactivé le bridage
+lecture seule côté client. C'est l'« alternative complémentaire » de la même
+section qui était la bonne.
+
+### Règle 6 — Le cookie aiguille, la table décide, la RLS garantit
+
+Trois niveaux, à ne pas confondre :
+
+| | Rôle | Peut-on s'en passer ? |
+|---|---|---|
+| Cookie `mc_imp` | dit s'il vaut la peine d'interroger la table | oui, au prix d'une requête par page |
+| Ligne `impersonation_sessions` | décide du mode (`read_only` / `write`) | non — c'est la logique applicative |
+| `public.is_read_only_session()` (RLS) | refuse les écritures en SQL | non — **c'est la sécurité** |
+
+Ne jamais inverser cet ordre. En particulier : **ne pas faire du cookie une
+source de vérité** (y stocker le mode, l'id de session, une date). Sa valeur est
+opaque (`'1'`) exprès — il n'y a rien à y lire, donc rien à falsifier.
+
+### Ce que ça coûte, dit franchement
+
+Supprimer le cookie (il est `httpOnly`, donc hors de portée d'un script : il
+faut les outils de développement) fait disparaître le bandeau et lève les
+gardes **client** (`useMutation`, `useWriteGuard`, `requireWritableSession`).
+Les écritures partent alors — et sont refusées par la RLS. On y perd un message
+clair au profit d'une erreur, pas une protection. Et la personne qui opère cette
+fenêtre est l'admin lui-même, qui n'y gagne rien.
+
+C'est un écart assumé avec la doctrine antérieure (« pas de cookie dédié : le
+mode ne peut pas être désactivé côté navigateur »), corrigée dans `CLAUDE.md`
+plutôt que laissée à faux.
+
+### Cas limites, tous inoffensifs par construction
+
+Le cookie n'ouvre qu'une vérification : il ne peut donc jamais faire croire à
+une session qui n'existe pas.
+
+- **L'admin clôture la session depuis `/admin/membres`** (pas depuis le
+  bandeau) : le cookie survit dans le navigateur du membre, mais la table
+  répond « aucune session ». Comportement correct, au prix d'une requête par
+  page jusqu'à expiration — soit le comportement d'avant ce chantier.
+- **Le membre se déconnecte normalement** : même chose, ≤ 60 min.
+- **Un autre compte se connecte sur ce navigateur** : la requête est toujours
+  clefée sur l'utilisateur courant, elle ne trouve rien. Aucune fuite possible.
