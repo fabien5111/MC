@@ -460,6 +460,35 @@ function PreparerView({
   }, [batch.batch_steps]);
   const dLabel = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : `JOUR J${offset > 0 ? ' − ' + offset : ''}`);
 
+  // Planning de préparation (aperçu jour par jour, même pattern que la fiche
+  // recette — cf. `sec-planning` sur /recette/[id]). Un jalon « Dégustation »
+  // est toujours ajouté au jour J pour clôturer la frise, même quand toute la
+  // fournée tient en une seule journée : le bloc est alors masqué à
+  // l'impression (`no-print`) puisqu'il n'apporte plus rien, mais reste à
+  // l'écran par cohérence avec le reste de la fiche.
+  const planningDays = (() => {
+    const jalons = groupBatchStepsByDay(batch.batch_steps);
+    const rows = jalons.map((j) => ({
+      offset: j.offset,
+      items: j.steps.map((s) => {
+        const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
+        return {
+          key: s.id,
+          title: s.title || '',
+          fully: stepFullyDone(s, ingredientsOfStep, s.batch_substeps),
+          added: batchStepIsExpansion(s),
+        };
+      }),
+    }));
+    let jourJ = rows.find((r) => r.offset === 0);
+    if (!jourJ) {
+      jourJ = { offset: 0, items: [] };
+      rows.push(jourJ);
+    }
+    jourJ.items = [...jourJ.items, { key: -1, title: 'Dégustation', fully: false, added: false }];
+    return rows;
+  })();
+
   // Sommaire de navigation (rail fixe à gauche, cf. RecipeToc) : mêmes
   // sections que la fiche recette, plus « Liste de courses » (positionnée
   // désormais sous les ingrédients, cf. plus bas) — une section absente de
@@ -467,6 +496,7 @@ function PreparerView({
   const tocSections: TocSections = {
     before: [
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
+      ...(sortedSteps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
       ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
@@ -534,6 +564,32 @@ function PreparerView({
           <AllergenPictosView items={allergenItems} className="justify-center pt-4 border-t border-outline-variant/40" iconClassName="w-8 h-8" />
         )}
       </div>
+
+      {/* Planning de préparation — sans intérêt à l'impression quand toutes
+          les étapes tombent le même jour (un seul jalon à afficher) : masqué
+          dans ce cas, conservé à l'écran. Même bloc que la fiche recette. */}
+      {sortedSteps.length > 0 && (
+        <div id="sec-planning" className={`scroll-mt-28 ${planningDays.length <= 1 ? 'no-print ' : ''}py-10 border-y border-outline-variant`}>
+          <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
+          <div className="relative flex flex-col md:flex-row gap-8">
+            <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+            {planningDays.map((d, i) => (
+              <div key={d.offset} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
+                {d.items.map((it) => (
+                  <p
+                    key={it.key}
+                    className={`font-body-md text-body-md font-semibold ${it.fully ? 'text-on-surface-variant line-through' : it.added ? 'text-green-700' : ''}`}
+                  >
+                    {it.title}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recette d'origine — absente si la recette de base n'est plus
           accessible (supprimée/dépubliée), même repli que le bandeau
@@ -611,6 +667,42 @@ function PreparerView({
         <div id="sec-ingredients" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Ingrédients</h3>
           <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
+        </div>
+      )}
+
+      {/* Liste complète des ingrédients — vue d'ensemble en lecture seule
+          (mêmes lignes fusionnées que la liste de courses ci-dessous, cf.
+          `mergeBatchIngredients`), distincte de la section « Ingrédients »
+          ci-dessus qui reste groupée par étape pour porter l'édition
+          (coefficient, remplacement, ajout). */}
+      {merged.length > 0 && (
+        <div id="sec-ingredients-complets" className="scroll-mt-28">
+          <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste complète des ingrédients</h3>
+          <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+            {merged.map((r) => {
+              const qtyTxt = mergedRowQtyText(r);
+              const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
+              const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
+              return (
+                <li
+                  key={r.name + '|' + r.unit}
+                  className="border-b border-outline-variant/30 py-2"
+                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                >
+                  <span className={`font-label-md text-label-md whitespace-nowrap ${r.added ? 'text-green-700' : 'text-primary'}`}>
+                    {qtyTxt}
+                    {qtyTxt && r.unit ? ' ' : ''}
+                    {r.unit ? (tip ? <span className="unit-tip" title={tip}>{r.unit}</span> : r.unit) : null}
+                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                  </span>
+                  <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
+                    {r.name}
+                    {r.comment && <span className="text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
