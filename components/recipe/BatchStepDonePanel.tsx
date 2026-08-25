@@ -101,6 +101,17 @@ export function BatchStepDonePanel({
   const [dragSubstep, setDragSubstep] = useState<number | null>(null);
   // Repliée par défaut si repliable ; sinon toujours dépliée (étape active).
   const [open, setOpen] = useState(!collapsible);
+  // Bascule sur repliée dès que l'étape DEVIENT repliable en cours de
+  // session (ex. remplacement par une recette venant d'aboutir) : l'état
+  // initial de `open` n'est lu qu'au montage, or ce composant reste monté
+  // (même `key`) à travers le `router.refresh()` qui suit l'écriture — sans
+  // cet effet, une étape ouverte au moment du remplacement resterait
+  // dépliée malgré son nouveau statut. Ne force rien tant que `collapsible`
+  // ne change pas de valeur : un dépliage manuel sur une étape déjà
+  // repliable n'est donc jamais écrasé par un rendu qui ne change rien.
+  useEffect(() => {
+    if (collapsible) setOpen(false);
+  }, [collapsible]);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
   // router.refresh() n'ait fini de resynchroniser les props — état local mis
   // à jour au succès de la mutation pour que les cases changent en même temps
