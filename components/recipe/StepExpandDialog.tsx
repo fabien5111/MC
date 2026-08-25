@@ -30,7 +30,6 @@ import { formatTime } from '@/lib/format';
 import { UNITS_LBL, dayLabel, effectiveTimes } from '@/lib/recipe-view';
 import { estimateWeightGrams, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import {
-  batchFactor,
   computeInsertOrderIndexes,
   fmtNum,
   materializeBatch,
@@ -162,6 +161,9 @@ export function StepExpandDialog({
   // ── Étape 2 : coefficient + positionnement ─────────────────────────────
   const [source, setSource] = useState<RecipeSource | null>(null);
   const [coefStr, setCoefStr] = useState('1');
+  // Quantité à produire, dans l'unité de rendement de la recette choisie —
+  // utilisée à la place de `coefStr` quand `yieldInfo` existe (cf. plus bas).
+  const [qtyStr, setQtyStr] = useState('');
   const [placements, setPlacements] = useState<Placement[]>([]);
 
   const sortedBatchSteps = useMemo(() => [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index), [batch.batch_steps]);
@@ -186,27 +188,27 @@ export function StepExpandDialog({
     [stepIngredients, conversions, units, ingredientDensities],
   );
 
-  // Rendement de la recette choisie exprimé en grammes, s'il est annoncé en
-  // g ou kg (codes de `recipes.yield_unit`, cf. lib/recipe-view.ts
-  // UNITS_LBL) — seul cas où le poids estimé de l'étape permet de déduire un
-  // coefficient par défaut, comme pour un ingrédient remplacé. Le champ reste
-  // un coefficient ordinaire, modifiable dans tous les cas : ceci ne sert
-  // qu'à proposer une valeur de départ.
-  function recipeYieldGrams(rec: Pick<RecipeSource, 'measure_type' | 'yield_qty' | 'yield_unit'>): number | null {
-    if (rec.measure_type !== 'units') return null;
-    const qty = num(rec.yield_qty);
+  // Rendement chiffré de la recette choisie (measure_type « units » avec une
+  // quantité numérique) : seul cas où on peut demander directement une
+  // quantité à produire, dans l'unité propre de la recette, et en déduire le
+  // coefficient — sinon (moule, dimensions, rien de chiffré) la saisie reste
+  // un coefficient brut.
+  const yieldInfo = useMemo(() => {
+    if (!source || source.measure_type !== 'units') return null;
+    const qty = num(source.yield_qty);
     if (qty == null || qty <= 0) return null;
-    if (rec.yield_unit === 'g') return qty;
-    if (rec.yield_unit === 'kg') return qty * 1000;
-    return null;
-  }
+    return { qty, unit: source.yield_unit };
+  }, [source]);
 
   // Charge le contenu de la recette choisie et prépare les valeurs par
   // défaut : étapes posées juste avant l'étape remplacée (qui reste ensuite
-  // affichée barrée, à sa place), dans leur ordre. Coefficient proposé à
-  // partir du poids estimé de l'étape si la recette annonce un rendement en
-  // g/kg, sinon initialisé au facteur d'ajustement déjà appliqué à la
-  // fournée — dans tous les cas, une valeur de départ modifiable.
+  // affichée barrée, à sa place), dans leur ordre. Quantité à produire
+  // proposée à partir du poids estimé de l'étape si la recette annonce un
+  // rendement en g/kg (seule unité comparable à un poids) ; sinon la
+  // quantité — ou le coefficient, faute de rendement chiffré — part du
+  // rendement de base de la recette (coefficient ×1) plutôt que d'une valeur
+  // sans lien avec la recette choisie (ex. le facteur de la fournée, qui n'a
+  // rien à voir avec CETTE sous-recette).
   async function selectRecipe(item: PickerItem) {
     setLoading(true);
     const { data, error } = await createClient().from('recipes').select(RECIPE_SOURCE_SELECT).eq('id', item.id).maybeSingle();
@@ -222,10 +224,18 @@ export function StepExpandDialog({
     }
     const steps = [...rec.recipe_steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     const defaultAnchor = replacedIndex > 0 ? sortedBatchSteps[replacedIndex - 1].order_index : null;
-    const yieldGrams = recipeYieldGrams(rec);
-    const defaultCoef = weightEstimate.grams > 0 && yieldGrams ? Math.round((weightEstimate.grams / yieldGrams) * 1000) / 1000 : batchFactor(batch);
+    const recQty = num(rec.yield_qty);
+    const hasYield = rec.measure_type === 'units' && recQty != null && recQty > 0;
+    let defaultQty = '';
+    if (hasYield) {
+      defaultQty =
+        weightEstimate.grams > 0 && (rec.yield_unit === 'g' || rec.yield_unit === 'kg')
+          ? fmtNum(rec.yield_unit === 'kg' ? weightEstimate.grams / 1000 : weightEstimate.grams)
+          : fmtNum(recQty as number);
+    }
     setSource(rec);
-    setCoefStr(fmtNum(defaultCoef));
+    setQtyStr(defaultQty);
+    setCoefStr('1');
     setPlacements(
       steps.map((s) => {
         const suggested = suggestedExpansionDay(step.day_offset ?? 0, s.day_offset || 0);
@@ -236,9 +246,14 @@ export function StepExpandDialog({
   }
 
   const factor = useMemo(() => {
+    if (yieldInfo) {
+      const want = num(qtyStr);
+      if (!want || want <= 0) return 0;
+      return Math.round((want / yieldInfo.qty) * 1000) / 1000;
+    }
     const c = num(coefStr);
     return c && c > 0 ? Math.round(c * 1000) / 1000 : 0;
-  }, [coefStr]);
+  }, [yieldInfo, qtyStr, coefStr]);
 
   const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor }) : null), [source, factor]);
 
@@ -263,7 +278,7 @@ export function StepExpandDialog({
       return;
     }
     if (factor <= 0) {
-      dialog.alert('Indiquez un coefficient valide.');
+      dialog.alert(yieldInfo ? 'Indiquez une quantité à produire valide.' : 'Indiquez un coefficient valide.');
       return;
     }
     const orders = computeInsertOrderIndexes(batchOrders, placements.map((p) => p.anchor));
@@ -475,70 +490,37 @@ export function StepExpandDialog({
           </div>
         ) : source ? (
           <div className="p-6 flex flex-col gap-6">
-            {/* Phrase unique : quelle étape, quelle quantité (ou quel
-                coefficient, faute de rendement chiffré), par quelle recette
-                — le rendement de la recette entre parenthèses est le seul
-                repère pour juger si la quantité saisie est plausible. */}
-            <div className="flex flex-col gap-2">
-              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
-                Remplacer l&apos;étape : <span className="font-semibold text-primary">{step.title || 'sans titre'}</span>
-                {weightEstimate.grams > 0 ? (
-                  <>
-                    {' '}(poids estimé : <span className="font-semibold">≈ {weightEstimate.grams} g</span>
-                    {weightEstimate.unconverted.length > 0 ? ', estimation partielle' : ''})
-                  </>
-                ) : weightEstimate.unconverted.length > 0 ? (
-                  <> (poids non estimable)</>
-                ) : null}
-                .
-              </p>
-              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
-                par la recette : <span className="font-semibold text-primary">{source.title}</span> — coefficient :{' '}
-                <input
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={coefStr}
-                  onChange={(e) => setCoefStr(e.target.value)}
-                  className={INPUT}
-                  style={{ width: '5rem', display: 'inline-block' }}
-                />{' '}
-                (
-                {source.yield_desc
-                  ? `la recette fournit ${source.yield_desc} de base`
-                  : source.yield_qty
-                    ? `la recette fournit ${source.yield_qty} ${UNITS_LBL[source.yield_unit || ''] || source.yield_unit || ''} de base`.trim()
-                    : 'rendement non précisé'}
-                ).
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSource(null);
-                  setStage('search');
-                }}
-                className="self-start font-label-md text-[12px] text-primary hover:underline flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_back</span>Changer de recette
-              </button>
-            </div>
+            {/* Étape remplacée seule : information, aucune saisie ici — sa
+                quantité (le poids estimé) est un repère pour juger de la
+                recette et de la quantité choisies plus bas, pas une valeur
+                qu'on ajuste directement. */}
+            <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
+              Remplacer l&apos;étape : <span className="font-semibold text-primary">{step.title || 'sans titre'}</span>
+              {weightEstimate.grams > 0 ? (
+                <>
+                  {' '}(poids estimé : <span className="font-semibold">≈ {weightEstimate.grams} g</span>
+                  {weightEstimate.unconverted.length > 0 ? ', estimation partielle' : ''})
+                </>
+              ) : weightEstimate.unconverted.length > 0 ? (
+                <> (poids non estimable)</>
+              ) : null}
+              .
+            </p>
 
             {/* Cuisson dans l'étape remplacée : une cuisson fait perdre de
                 l'eau, donc le poids réel est inférieur à la somme des
                 ingrédients crus. Affiché dès que l'étape a un temps de
                 cuisson, MÊME sans poids estimé (ingrédients non convertis,
                 ou tous en unité inconnue) : l'utilisateur doit connaître le
-                risque de perte pour juger lui-même du coefficient, pas
-                seulement quand on a pu chiffrer l'écart. Le membre de phrase
-                sur le coefficient ne s'affiche que si un poids a
-                effectivement été estimé — sans chiffre, rien à nuancer. */}
+                risque de perte pour juger lui-même de la quantité à
+                produire, pas seulement quand on a pu chiffrer l'écart. */}
             {(step.cook_time || 0) > 0 && (
               <div className="border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
                 <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
                 <p className="font-body-md text-sm text-on-surface">
                   Cette étape comporte une cuisson ({formatTime(step.cook_time)}) : une cuisson fait perdre de l&apos;eau, donc le
                   poids réellement obtenu est inférieur à la somme des ingrédients crus.
-                  {weightEstimate.grams > 0 && ' Le coefficient proposé ci-dessus est donc probablement surévalué.'}
+                  {weightEstimate.grams > 0 && ' Le poids ci-dessus est donc probablement surévalué.'}
                 </p>
               </div>
             )}
@@ -546,8 +528,8 @@ export function StepExpandDialog({
             {/* Ingrédients en cause quand l'estimation est incomplète ou
                 impossible, avec leur quantité dans l'étape, pour que
                 l'utilisateur puisse les prendre en compte à la main en
-                choisissant son coefficient. Toujours qualifiée d'estimation
-                (cf. estimateWeightGrams). */}
+                choisissant sa quantité à produire (ou son coefficient).
+                Toujours qualifiée d'estimation (cf. estimateWeightGrams). */}
             {weightEstimate.unconverted.length > 0 && (
               <div className="border border-outline-variant rounded-lg p-4 flex flex-col gap-2 bg-surface-container">
                 <p className="font-body-md text-sm text-on-surface-variant italic">
@@ -570,6 +552,64 @@ export function StepExpandDialog({
                 </ul>
               </div>
             )}
+
+            {/* Recette de remplacement : quantité à produire dans l'unité de
+                son propre rendement (préremplie à partir du poids estimé
+                ci-dessus quand c'est possible, sinon au rendement de base —
+                coefficient ×1), avec le coefficient qui en découle affiché en
+                clair. Faute de rendement chiffré, la saisie reste un
+                coefficient brut. */}
+            <div className="flex flex-col gap-2">
+              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                par la recette : <span className="font-semibold text-primary">{source.title}</span> —{' '}
+                {yieldInfo ? (
+                  <>
+                    quantité :{' '}
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={qtyStr}
+                      onChange={(e) => setQtyStr(e.target.value)}
+                      className={INPUT}
+                      style={{ width: '5rem', display: 'inline-block' }}
+                    />{' '}
+                    {UNITS_LBL[yieldInfo.unit || ''] || yieldInfo.unit || ''}
+                    {factor > 0 && <> — coefficient × {fmtNum(factor)}</>}
+                  </>
+                ) : (
+                  <>
+                    coefficient :{' '}
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={coefStr}
+                      onChange={(e) => setCoefStr(e.target.value)}
+                      className={INPUT}
+                      style={{ width: '5rem', display: 'inline-block' }}
+                    />
+                  </>
+                )}{' '}
+                (
+                {source.yield_desc
+                  ? `la recette fournit ${source.yield_desc} de base`
+                  : yieldInfo
+                    ? `la recette fournit ${yieldInfo.qty} ${UNITS_LBL[yieldInfo.unit || ''] || yieldInfo.unit || ''} de base`
+                    : 'rendement non précisé'}
+                ).
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSource(null);
+                  setStage('search');
+                }}
+                className="self-start font-label-md text-[12px] text-primary hover:underline flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_back</span>Changer de recette
+              </button>
+            </div>
 
             {/* Positionnement de chaque étape */}
             <div className="flex flex-col gap-3">
