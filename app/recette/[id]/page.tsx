@@ -179,6 +179,16 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const times = effectiveTimes(recipe);
   const merged = mergeIngredients(recipe, conversions, units);
+  // Étapes où apparaît chaque ingrédient de la liste complète : un groupe
+  // d'ingrédients partage son `order_index` avec l'étape qu'il alimente
+  // (même appariement que `groupsByOrder` ci-dessus, ingrédients « de
+  // l'étape »), d'où cette table de correspondance order_index → étape,
+  // construite sur `steps` déjà trié pour que l'index corresponde à
+  // l'ancre `sec-etape-N` posée plus bas sur la page.
+  const stepByGroupOrder = new Map<number, { title: string; anchor: string }>();
+  steps.forEach((s, i) => {
+    stepByGroupOrder.set(s.order_index || 0, { title: s.title || `Étape ${i + 1}`, anchor: `sec-etape-${i + 1}` });
+  });
   const days = planningDays(steps);
   const dLabel = (offset: number | null | undefined) => dayLabel(offset);
 
@@ -563,7 +573,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               bas, dans chaque étape (« Ingrédients de l'étape »). */}
           {merged.length > 0 && (
             <div id="sec-ingredients" className="scroll-mt-28 mb-12">
-              <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
+              <h3 className="font-headline-md text-headline-md text-primary mb-8">Liste complète des ingrédients</h3>
               {/* La colonne du nom est en `minmax(0,1fr)`, jamais en
                   `max-content` : une colonne `max-content` ne peut pas
                   rétrécir, donc un nom long (« Levure sèche de boulanger — ou
@@ -571,30 +581,48 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   et mettait toute la page en défilement horizontal sur
                   mobile. */}
               <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-                {merged.map((m, k) => (
-                  <li
-                    key={k}
-                    className="border-b border-outline-variant/30 py-2"
-                    style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                  >
-                    <span className="font-label-md text-label-md text-primary">
-                      <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
-                    </span>
-                    <span className="font-body-md text-body-md break-words">
-                      {m.url ? (
-                        <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                          {m.name}
-                        </a>
-                      ) : (
-                        m.name
-                      )}
-                      {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
-                      {m.allergen && (
-                        <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {m.allergen})</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
+                {merged.map((m, k) => {
+                  const stepsFor = (m.groupOrders || [])
+                    .map((o) => stepByGroupOrder.get(o))
+                    .filter((s): s is { title: string; anchor: string } => !!s);
+                  return (
+                    <li
+                      key={k}
+                      className="border-b border-outline-variant/30 py-2"
+                      style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                    >
+                      <span className="font-label-md text-label-md text-primary">
+                        <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
+                      </span>
+                      <span className="font-body-md text-body-md break-words">
+                        {m.url ? (
+                          <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                            {m.name}
+                          </a>
+                        ) : (
+                          m.name
+                        )}
+                        {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
+                        {m.allergen && (
+                          <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {m.allergen})</span>
+                        )}
+                        {stepsFor.length > 0 && (
+                          <span className="no-print flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                            {stepsFor.map((s) => (
+                              <a
+                                key={s.anchor}
+                                href={`#${s.anchor}`}
+                                className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary"
+                              >
+                                {s.title}
+                              </a>
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               <div className="no-print">
