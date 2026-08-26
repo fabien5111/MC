@@ -16,6 +16,7 @@ import { useDialog } from '@/components/Dialog';
 import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/lib/admin-lists-config';
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type Entry = Record<string, unknown>;
 
@@ -40,6 +41,20 @@ function shortUrl(raw: string): string {
   }
 }
 
+// Libellé d'une entrée : le premier champ de sa section, résolu via refTable
+// s'il s'agit d'une référence (ex. l'ingrédient d'une règle de conversion)
+// plutôt que d'afficher l'id brut. Les moules ne déclarent pas de `fields`
+// (formulaire spécifique), d'où le repli sur `name`.
+function entryLabel(e: Entry, s: Section, data: Record<string, Entry[]>): string {
+  const f = s.fields[0];
+  if (!f) return String(e.name ?? e.id);
+  if (f.refTable) {
+    const linked = (data[f.refTable] || []).find((x) => String(x.id) === String(e[f.key]));
+    return linked ? String(linked.name) : String(e[f.key]);
+  }
+  return String(e[f.key] ?? e.id);
+}
+
 export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]>; moldTypes: MoldType[] }) {
   const router = useRouter();
   const { mutate } = useMutation();
@@ -61,27 +76,15 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
     if (!activeKey || !section) return [];
     let entries = data[activeKey] || [];
     if (isMolds && moldTypeFilter !== null) entries = entries.filter((e) => e.type_id === moldTypeFilter);
+    // La recherche porte sur le seul libellé de l'entrée, jamais sur ses autres
+    // colonnes : chercher « lait » dans les ingrédients doit rendre le lait, pas
+    // tous ceux dont l'allergène est « lait » (beurre, chocolat au lait…). Le
+    // libellé étant résolu via refTable, une règle de conversion se cherche par
+    // le nom de son ingrédient et non par son id.
     const q = search.toLowerCase();
-    if (q) {
-      entries = entries.filter((e) =>
-        isMolds ? String(e.name || '').toLowerCase().includes(q) : section.fields.some((f) => String(e[f.key] || '').toLowerCase().includes(q)),
-      );
-    }
+    if (q) entries = entries.filter((e) => entryLabel(e, section, data).toLowerCase().includes(q));
     return entries;
   }, [activeKey, section, isMolds, moldTypeFilter, search, data]);
-
-  // Libellé d'une entrée pour la confirmation de suppression : le premier
-  // champ, résolu via refTable s'il s'agit d'une référence (ex. l'ingrédient
-  // d'une règle de conversion) plutôt que d'afficher l'id brut.
-  function entryLabel(e: Entry, s: Section): string {
-    const f = s.fields[0];
-    if (!f) return String(e.id);
-    if (f.refTable) {
-      const linked = (data[f.refTable] || []).find((x) => String(x.id) === String(e[f.key]));
-      return linked ? String(linked.name) : String(e[f.key]);
-    }
-    return String(e[f.key] ?? e.id);
-  }
 
   function selectList(key: string) {
     if (activeKey === key) {
@@ -98,6 +101,9 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
       delete: () => { eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }> };
     };
     await mutate(() => q.delete().eq('id', id), { confirm: `Supprimer « ${label} » ?` });
+    // Le référentiel supprimé est en cache serveur (lib/data/reference.ts) :
+    // sans invalidation, il resterait proposé jusqu'à 24 h selon la table.
+    void revalidateReference(table);
   }
 
   return (
@@ -346,7 +352,7 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
                             <span className="material-symbols-outlined text-xl">edit_note</span>
                           </button>
                           <button
-                            onClick={() => del(activeKey!, e.id, isMolds ? String(e.name) : entryLabel(e, section))}
+                            onClick={() => del(activeKey!, e.id, entryLabel(e, section, data))}
                             className="p-2 hover:bg-error/10 rounded text-on-surface-variant hover:text-error"
                             title="Supprimer"
                           >
@@ -467,6 +473,9 @@ function EntryForm({
       setBusy(false);
       return;
     }
+    // Idem : l'entrée créée ou modifiée doit sortir du cache serveur avant que
+    // `onSaved()` ne provoque la relecture côté serveur.
+    await revalidateReference(table);
     onSaved();
   }
 

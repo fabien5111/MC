@@ -5,11 +5,9 @@
 // absentes de schema.sql (utensils, ingredient_refs, executions…) : la base
 // live a divergé. On régénérera les types avec `npm run gen:types` au moment
 // de porter recette.html ; d'ici là ces retours restent volontairement souples.
-import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { cardAllergenNames } from '@/lib/recipe-view';
-import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
@@ -124,13 +122,6 @@ export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> 
   }
   const rows = (data as unknown as (RecipeCard & { status: string; is_public: boolean })[]) ?? [];
   return withAllergenNames(rows);
-}
-
-export async function getRecipe(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('recipes').select('*').eq('id', id).maybeSingle();
-  if (error) console.error('getRecipe:', error.message);
-  return data;
 }
 
 // Recette complète avec toutes ses jointures (porté de getRecipe du db.js).
@@ -259,49 +250,15 @@ export async function getPublishedRecipeIds(): Promise<string[]> {
   return (data ?? []).map((r) => r.id);
 }
 
-// Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
-// visuel d'un allergène saisi en texte libre dans une recette (rapprochement
-// par nom). Mémoïsé par requête (React cache) : plusieurs cartes sur une même
-// page ne déclenchent qu'une seule lecture.
-export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('allergens').select('id, name, picto, tooltip').order('name');
-  if (error) {
-    console.error('getAllergensWithPicto:', error.message);
-    return [];
-  }
-  return (data ?? []).filter((a) => a.name);
-});
-
-// Table de référence des conversions d'ingrédients (ex. 1 œuf = 50 g), gérée
-// dans Admin → Listes. Mémoïsée par requête (React cache), au même titre que
-// getAllergensWithPicto : une seule lecture pour toutes les lignes
-// d'ingrédients affichées sur une page.
-export const getIngredientConversions = cache(async (): Promise<ConversionRef[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('ingredient_conversions')
-    .select('ingredient_ref_id, from_quantity, from_unit_id, to_quantity, to_unit_id');
-  if (error) {
-    console.error('getIngredientConversions:', error.message);
-    return [];
-  }
-  return data ?? [];
-});
-
-// Ingrédients de référence (id + libellé) : sert à rapprocher un article
-// saisi à la main (sans `ref_id` propre) de la table de référence, pour
-// bénéficier des conversions d'ingrédients — cf. ShoppingItems.tsx,
-// CreerForm.tsx.
-export const getIngredientRefsList = cache(async (): Promise<IngredientRefOption[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('ingredient_refs').select('id, name').order('name');
-  if (error) {
-    console.error('getIngredientRefsList:', error.message);
-    return [];
-  }
-  return (data ?? []).filter((r) => r.name);
-});
+// Référentiels (allergènes, conversions, ingrédients de référence) : servis
+// par le cache de `lib/data/reference.ts`, ré-exportés ici pour ne pas toucher
+// les sites d'appel. Ne pas y rajouter de lecture directe — c'est ce qui avait
+// produit deux requêtes `allergens` et trois `ingredient_refs` distinctes.
+export {
+  getAllergensWithPicto,
+  getIngredientConversions,
+  getIngredientRefsList,
+} from '@/lib/data/reference';
 
 // Masse volumique (g/ml) des ingrédients référencés, par NOM — utilisée en
 // repli par `estimateWeightGrams` (lib/ingredient-conversions.ts) quand la

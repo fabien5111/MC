@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
-import { modeLabel } from '@/lib/impersonation-types';
+import { IMPERSONATION_COOKIE, modeLabel } from '@/lib/impersonation-types';
 
 function fail(origin: string, motif: string) {
   return NextResponse.redirect(`${origin}/connexion?error=${motif}`);
@@ -79,7 +79,27 @@ export async function GET(request: Request) {
     )}`,
   });
 
+  // Cookie témoin : il dit seulement « une session en tant que a été ouverte
+  // sur ce navigateur, va vérifier ». Sans lui, `getImpersonationContext()`
+  // n'interroge plus `impersonation_sessions` du tout — c'est ce qui retire
+  // cette requête du chemin de rendu de 100 % des membres ordinaires.
+  //
+  // Sa durée de vie est calée sur celle de la session d'audit : au-delà, la
+  // ligne serait de toute façon ignorée (`expires_at`), le cookie n'a donc
+  // aucune raison de lui survivre. `httpOnly` : aucun script ne peut le
+  // retirer. Et le retirer ne débriderait rien — la RLS
+  // (`public.is_read_only_session()`) lit la table en SQL, pas le cookie.
+  const restant = Math.ceil((new Date(session.expires_at).getTime() - Date.now()) / 1000);
+  const response = NextResponse.redirect(`${origin}/carnet`);
+  response.cookies.set(IMPERSONATION_COOKIE, '1', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: Math.max(restant, 0),
+  });
+
   // Atterrissage sur le carnet du membre : c'est de là que l'on voit ce
   // qu'il a, ce pour quoi une session « en tant que » est ouverte.
-  return NextResponse.redirect(`${origin}/carnet`);
+  return response;
 }

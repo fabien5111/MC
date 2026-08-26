@@ -14,15 +14,8 @@ export type Mold = Database['public']['Tables']['molds']['Row'] & {
   mold_types: { name: string } | null;
 };
 
-export async function getMoldTypes(): Promise<MoldType[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('mold_types')
-    .select('*')
-    .eq('status', 'published')
-    .order('name');
-  return data ?? [];
-}
+// Types de moule : servis par le cache de `lib/data/reference.ts`.
+export { getMoldTypes } from '@/lib/data/reference';
 
 export async function getMolds(): Promise<Mold[]> {
   const supabase = await createClient();

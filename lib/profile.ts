@@ -168,15 +168,38 @@ export async function getActiveBatches(userId: string): Promise<ActiveBatchRow[]
   });
 }
 
+// Listes de courses **avec** de quoi calculer leur avancement (« 12/30 »).
+// La jointure imbriquée ne ramène que `id` et `checked` : ce sont les deux
+// seules colonnes dont le décompte a besoin, jamais le libellé ni la quantité
+// des articles.
 export async function getShoppingLists(userId: string): Promise<ShoppingListSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('shopping_lists')
-    .select('*, shopping_list_items(id, checked)')
+    .select('id, name, user_id, created_at, shopping_list_items(id, checked)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getShoppingLists:', error.message);
   return (data as unknown as ShoppingListSummary[]) ?? [];
+}
+
+// Listes de courses **sans** leurs articles : de quoi remplir un sélecteur
+// (« Ajouter à une liste » sur la fiche recette), rien de plus.
+//
+// La fiche recette appelait `getShoppingLists` puis n'en gardait que
+// `{ id, name }` — elle rapatriait donc tous les articles de toutes les
+// listes du membre pour afficher une liste déroulante de noms. Dix listes de
+// quarante articles, c'est quatre cents lignes traversées pour rien, sur la
+// page la plus consultée du site.
+export async function getShoppingListNames(userId: string): Promise<{ id: number; name: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('shopping_lists')
+    .select('id, name')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) console.error('getShoppingListNames:', error.message);
+  return data ?? [];
 }
 
 // L'en-tête d'une fournée (ligne `batches` seule, sans son contenu) — utilisé
@@ -248,22 +271,26 @@ export async function getRecipeCompletedBatches(userId: string, recipeId: string
   return rows.sort((a, b) => (b.date_fin ?? b.planned_date ?? '').localeCompare(a.date_fin ?? a.planned_date ?? ''));
 }
 
-export async function getUnits(): Promise<Unit[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.from('units').select('*').order('name');
-  return data ?? [];
-}
+// Unités : servies par le cache de `lib/data/reference.ts`.
+export { getUnits } from '@/lib/data/reference';
 
 // Pastille « En cuisine » (Header, MobileNav) : présence d'une fournée en
 // cours de cuisson, sans chiffre — le compte se lit dans l'écran. `head`
 // évite de charger la moindre ligne, un simple `count` suffit.
 export async function hasActiveBatches(userId: string): Promise<boolean> {
   const supabase = await createClient();
-  const { count } = await supabase
+  // « Au moins une », pas « combien » : `limit(1)` s'arrête à la première
+  // ligne trouvée, là où `count: 'exact'` faisait un COMPTE complet des
+  // fournées correspondantes pour n'en garder que le signe. Sans effet
+  // aujourd'hui — personne n'a mille fournées planifiées — mais c'est une
+  // lecture faite à **chaque rendu de page**, autant qu'elle ne dépende pas
+  // du volume.
+  const { data } = await supabase
     .from('batches')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('user_id', userId)
     .eq('status', 'planifiee')
-    .not('date_debut', 'is', null);
-  return !!count && count > 0;
+    .not('date_debut', 'is', null)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
 }

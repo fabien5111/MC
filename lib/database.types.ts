@@ -419,9 +419,11 @@ export type Database = {
           note_position: string
           order_index: number
           prep_time: number | null
+          replaced_by_recipe_id: string | null
           scaling_mode: string | null
           source_ingredient_id: number | null
           source_recipe_id: string | null
+          source_replaced_step_id: number | null
           source_step_id: number | null
           tips: string | null
           title: string | null
@@ -445,9 +447,11 @@ export type Database = {
           note_position?: string
           order_index: number
           prep_time?: number | null
+          replaced_by_recipe_id?: string | null
           scaling_mode?: string | null
           source_ingredient_id?: number | null
           source_recipe_id?: string | null
+          source_replaced_step_id?: number | null
           source_step_id?: number | null
           tips?: string | null
           title?: string | null
@@ -471,9 +475,11 @@ export type Database = {
           note_position?: string
           order_index?: number
           prep_time?: number | null
+          replaced_by_recipe_id?: string | null
           scaling_mode?: string | null
           source_ingredient_id?: number | null
           source_recipe_id?: string | null
+          source_replaced_step_id?: number | null
           source_step_id?: number | null
           tips?: string | null
           title?: string | null
@@ -482,6 +488,20 @@ export type Database = {
           wait_time?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_steps_replaced_by_recipe_id_fkey"
+            columns: ["replaced_by_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_steps_source_replaced_step_id_fkey"
+            columns: ["source_replaced_step_id"]
+            isOneToOne: false
+            referencedRelation: "batch_steps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "plan_steps_planning_id_fkey"
             columns: ["batch_id"]
@@ -621,6 +641,9 @@ export type Database = {
           recipe_tips: string | null
           recipe_title: string | null
           recipe_video_url: string | null
+          review_dismissed: boolean
+          review_rejection_reason: string | null
+          review_status: string
           source_plan_id: number | null
           status: string
           tags_text: string[] | null
@@ -658,6 +681,9 @@ export type Database = {
           recipe_tips?: string | null
           recipe_title?: string | null
           recipe_video_url?: string | null
+          review_dismissed?: boolean
+          review_rejection_reason?: string | null
+          review_status?: string
           source_plan_id?: number | null
           status?: string
           tags_text?: string[] | null
@@ -695,6 +721,9 @@ export type Database = {
           recipe_tips?: string | null
           recipe_title?: string | null
           recipe_video_url?: string | null
+          review_dismissed?: boolean
+          review_rejection_reason?: string | null
+          review_status?: string
           source_plan_id?: number | null
           status?: string
           tags_text?: string[] | null
@@ -768,33 +797,52 @@ export type Database = {
       }
       comments: {
         Row: {
+          ai_reason: string | null
+          ai_score: number | null
+          batch_id: number | null
           content: string
           created_at: string | null
           id: number
           rating: number | null
           recipe_id: string | null
+          rejection_reason: string | null
           status: string | null
           user_id: string | null
         }
         Insert: {
+          ai_reason?: string | null
+          ai_score?: number | null
+          batch_id?: number | null
           content: string
           created_at?: string | null
           id?: number
           rating?: number | null
           recipe_id?: string | null
+          rejection_reason?: string | null
           status?: string | null
           user_id?: string | null
         }
         Update: {
+          ai_reason?: string | null
+          ai_score?: number | null
+          batch_id?: number | null
           content?: string
           created_at?: string | null
           id?: number
           rating?: number | null
           recipe_id?: string | null
+          rejection_reason?: string | null
           status?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_recipe_id_fkey"
             columns: ["recipe_id"]
@@ -1059,7 +1107,7 @@ export type Database = {
           degustation_at: string | null
           id: number
           mep_done: boolean
-          planning_id: number
+          planning_id: number | null
           status: string
           user_id: string
         }
@@ -1071,7 +1119,7 @@ export type Database = {
           degustation_at?: string | null
           id?: number
           mep_done?: boolean
-          planning_id: number
+          planning_id?: number | null
           status?: string
           user_id: string
         }
@@ -1083,7 +1131,7 @@ export type Database = {
           degustation_at?: string | null
           id?: number
           mep_done?: boolean
-          planning_id?: number
+          planning_id?: number | null
           status?: string
           user_id?: string
         }
@@ -1574,6 +1622,7 @@ export type Database = {
           allergen: string | null
           allergen_id: number | null
           created_at: string | null
+          density_g_per_ml: number | null
           id: number
           name: string
           status: string | null
@@ -1584,6 +1633,7 @@ export type Database = {
           allergen?: string | null
           allergen_id?: number | null
           created_at?: string | null
+          density_g_per_ml?: number | null
           id?: number
           name: string
           status?: string | null
@@ -1594,6 +1644,7 @@ export type Database = {
           allergen?: string | null
           allergen_id?: number | null
           created_at?: string | null
+          density_g_per_ml?: number | null
           id?: number
           name?: string
           status?: string | null
@@ -1929,6 +1980,120 @@ export type Database = {
           },
         ]
       }
+      recipe_project_components: {
+        Row: {
+          created_at: string
+          id: number
+          manually_adjusted: boolean
+          name: string
+          position: number
+          recipe_id: string
+          resolved: boolean
+          role: string | null
+          scale_factor: number | null
+          scale_reason: string | null
+          source_author_id: string | null
+          source_author_name: string | null
+          source_kind: string
+          source_recipe_id: string | null
+          source_title: string | null
+          target_quantity: number | null
+          target_unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          manually_adjusted?: boolean
+          name: string
+          position: number
+          recipe_id: string
+          resolved?: boolean
+          role?: string | null
+          scale_factor?: number | null
+          scale_reason?: string | null
+          source_author_id?: string | null
+          source_author_name?: string | null
+          source_kind?: string
+          source_recipe_id?: string | null
+          source_title?: string | null
+          target_quantity?: number | null
+          target_unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          manually_adjusted?: boolean
+          name?: string
+          position?: number
+          recipe_id?: string
+          resolved?: boolean
+          role?: string | null
+          scale_factor?: number | null
+          scale_reason?: string | null
+          source_author_id?: string | null
+          source_author_name?: string | null
+          source_kind?: string
+          source_recipe_id?: string | null
+          source_title?: string | null
+          target_quantity?: number | null
+          target_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_project_components_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_project_components_source_author_id_fkey"
+            columns: ["source_author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_project_components_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_projects: {
+        Row: {
+          created_at: string
+          intent: string | null
+          recipe_id: string
+          updated_at: string
+          wizard_step: number
+        }
+        Insert: {
+          created_at?: string
+          intent?: string | null
+          recipe_id: string
+          updated_at?: string
+          wizard_step?: number
+        }
+        Update: {
+          created_at?: string
+          intent?: string | null
+          recipe_id?: string
+          updated_at?: string
+          wizard_step?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_projects_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: true
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_rejection_history: {
         Row: {
           analysis_id: number | null
@@ -2135,6 +2300,7 @@ export type Database = {
       }
       recipe_steps: {
         Row: {
+          component_id: number | null
           cook_temp: number | null
           cook_time: number | null
           day_offset: number | null
@@ -2151,6 +2317,7 @@ export type Database = {
           wait_time: number | null
         }
         Insert: {
+          component_id?: number | null
           cook_temp?: number | null
           cook_time?: number | null
           day_offset?: number | null
@@ -2167,6 +2334,7 @@ export type Database = {
           wait_time?: number | null
         }
         Update: {
+          component_id?: number | null
           cook_temp?: number | null
           cook_time?: number | null
           day_offset?: number | null
@@ -2183,6 +2351,13 @@ export type Database = {
           wait_time?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recipe_steps_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_project_components"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipe_steps_recipe_id_fkey"
             columns: ["recipe_id"]
@@ -2307,17 +2482,21 @@ export type Database = {
           fts: unknown
           global_tips: string | null
           has_hero_image: boolean
+          hero_card_url: string | null
           hero_image_ai_retouched: boolean
           hero_image_original_url: string | null
           hero_image_url: string | null
+          hero_thumb_url: string | null
           id: string
           is_public: boolean | null
+          kind: string
           measure_type: string | null
           moderation_note: string | null
           moderation_note_at: string | null
           mold_dims: Json | null
           mold_type_id: number | null
           prep_time: number | null
+          project_stage: string | null
           rating_avg: number | null
           rating_count: number | null
           serving_advice: string | null
@@ -2347,17 +2526,21 @@ export type Database = {
           fts?: unknown
           global_tips?: string | null
           has_hero_image?: boolean
+          hero_card_url?: string | null
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
           hero_image_url?: string | null
+          hero_thumb_url?: string | null
           id?: string
           is_public?: boolean | null
+          kind?: string
           measure_type?: string | null
           moderation_note?: string | null
           moderation_note_at?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
+          project_stage?: string | null
           rating_avg?: number | null
           rating_count?: number | null
           serving_advice?: string | null
@@ -2387,17 +2570,21 @@ export type Database = {
           fts?: unknown
           global_tips?: string | null
           has_hero_image?: boolean
+          hero_card_url?: string | null
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
           hero_image_url?: string | null
+          hero_thumb_url?: string | null
           id?: string
           is_public?: boolean | null
+          kind?: string
           measure_type?: string | null
           moderation_note?: string | null
           moderation_note_at?: string | null
           mold_dims?: Json | null
           mold_type_id?: number | null
           prep_time?: number | null
+          project_stage?: string | null
           rating_avg?: number | null
           rating_count?: number | null
           serving_advice?: string | null
@@ -2783,6 +2970,20 @@ export type Database = {
           utensil_id: number
         }[]
       }
+      admin_volume_ingredients_missing_density: {
+        Args: never
+        Returns: {
+          author_id: string
+          author_name: string
+          is_public: boolean
+          name: string
+          recipe_id: string
+          recipe_status: string
+          recipe_title: string
+          step_name: string
+          step_order: number
+        }[]
+      }
       can_view_shared_recipe: {
         Args: { p_recipe_id: string }
         Returns: boolean
@@ -2826,6 +3027,7 @@ export type Database = {
       }
       owns_execution: { Args: { p_execution_id: number }; Returns: boolean }
       owns_plan: { Args: { p_planning_id: number }; Returns: boolean }
+      owns_recipe: { Args: { p_recipe_id: string }; Returns: boolean }
       search_advanced_recipes:
         | {
             Args: {

@@ -7,7 +7,7 @@ données, authentification).
 ## Repères pour travailler sur ce dépôt
 
 - **Production** : la branche `main` est déployée automatiquement sur Vercel
-  (projet `mc-snowy`). Ne pousser sur `main` que du code vérifié.
+  (projet `mc`). Ne pousser sur `main` que du code vérifié.
 - **Vérification** avant tout push : `npm run typecheck` (et `npm run build`
   pour les changements structurels).
 - **Langue** : code commenté en français, UI en français ; les messages de
@@ -34,7 +34,7 @@ données, authentification).
 | Backend | **Supabase** (PostgreSQL, Auth, RLS) | — |
 | Client Supabase | `@supabase/supabase-js` + `@supabase/ssr` (auth par cookies) | 2.x / 0.12 |
 | IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` (structuration) / `claude-sonnet-5` (lecture de photos) |
-| Hébergement | **Vercel** (fonctions serverless, projet `mc-snowy`) | Node 22.x |
+| Hébergement | **Vercel** (fonctions serverless, projet `mc`, région Francfort) | Node 22.x |
 
 ## Architecture
 
@@ -131,6 +131,23 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 ## Authentification
 
 - Supabase Auth par **cookies** (`@supabase/ssr`), vérifiable côté serveur.
+- **Deux niveaux de vérification, à ne pas confondre.** `getCurrentUser()`
+  (`lib/auth.ts`) et le middleware lisent les claims du JWT, **vérifiés
+  localement** (`getClaims()`, signature ES256 contre le JWKS du projet) :
+  aucun aller-retour vers le serveur d'authentification. Un `getUser()` en
+  coûtait onze instructions SQL côté GoTrue, à chaque rendu de page — ~65 % du
+  trafic base restant une fois les référentiels mis en cache. Contrepartie
+  assumée : une session révoquée reste acceptée jusqu'à l'expiration de son
+  jeton (TTL réglé dans Supabase → Authentication → Sessions). Le back-office
+  refuse cette fenêtre : ses trois gardes passent par `getVerifiedUser()`, qui
+  interroge réellement le serveur. Un seul `getUser()` existe dans tout le
+  site, dans `getAuthUser()` — ne pas en ajouter. Cf.
+  `docs/note-regression-cache.md`.
+- **Campagnes publicitaires (`ads`) en cache** comme un référentiel
+  (`lib/ads.ts`), avec la **date du jour dans la clé** : sans elle, une
+  campagne programmée n'apparaîtrait qu'à l'expiration du cache et une campagne
+  terminée continuerait de s'afficher. Invalidation depuis `/admin/partenaires`
+  via `revalidateReference('ads')`.
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
   **OAuth Google** (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/reglages`,
@@ -139,6 +156,15 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   connecté. Tolérant aux pannes : une erreur Supabase transitoire ne bloque pas
   le site, le contrôle fin restant assuré dans chaque page (`requireUser`,
   `requireAdmin`).
+- **`getProfile()` est le seul accesseur du profil courant** (`lib/auth.ts`) :
+  `getRole` / `isAdmin` / `isManager` en dérivent, sans requête propre. Les deux
+  lectures d'origine visaient la même ligne (`select role` et `select *`) avec
+  chacune son `cache()` React — elles ne se dédupliquaient donc jamais, et le
+  `Header` appelait les deux sur chaque page (9 878 requêtes au relevé du
+  25/08/2026). Ne pas rajouter de lecture directe de `profiles` visant
+  l'utilisateur courant ; les colonnes sont énumérées (`PROFILE_COLUMNS`), la
+  table portant trois colonnes d'image en data-URL. Cf.
+  `docs/note-regression-cache.md`.
 - Rôles applicatifs dans `profiles.role` : `admin` (accès complet) et
   `gestionnaire` (back-office restreint) — voir ci-dessous. Toute autre valeur
   (`member`, `null`…) vaut membre ordinaire.
@@ -259,9 +285,23 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
   membre remplace la sienne.
 - **Session active** = ligne de `impersonation_sessions` visant l'utilisateur
   courant (`started_at` non nul, `ended_at` nul, non expirée — TTL 60 min).
-  Pas de cookie dédié : le mode ne peut donc pas être désactivé côté
-  navigateur, et la même condition est réutilisée en SQL par
-  `public.is_read_only_session()` dans les policies RLS d'écriture.
+  C'est la table qui décide, jamais le navigateur, et la même condition est
+  réutilisée en SQL par `public.is_read_only_session()` dans les policies RLS
+  d'écriture — c'est là qu'est la garantie réelle.
+- **Cookie témoin `mc_imp`** (`IMPERSONATION_COOKIE`) : posé par
+  `/auth/impersonation`, retiré par `/api/impersonation/end`, calé sur
+  `expires_at`. **Indice d'aiguillage négatif, jamais source de vérité** :
+  absent → on n'interroge pas la table ; présent → elle tranche avec
+  exactement les mêmes prédicats qu'avant. Sa valeur est opaque (`'1'`) : rien
+  à y lire, rien à falsifier. Sans lui, `impersonation_sessions` était lue à
+  **chaque rendu de page pour 100 % des membres** (3 871 requêtes au relevé du
+  25/08/2026) pour un cas qui ne concerne qu'une poignée de sessions
+  d'administration.
+  Nuance à connaître, par rapport à la doctrine antérieure (« pas de cookie
+  dédié ») : le supprimer — il est `httpOnly`, donc hors de portée d'un script
+  — ferait disparaître le bandeau et les gardes **client**. Ça ne débride rien
+  pour autant : la RLS lit la table en SQL et refuse les écritures. On y perd
+  un message clair, pas une protection.
 - **Bandeau persistant** (`components/ImpersonationBanner.tsx`) monté dans le
   layout racine ; `ImpersonationProvider` expose le mode aux composants
   client.
@@ -655,6 +695,37 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Données de référence (cache)
+
+Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
+`mold_types`, `allergens`, `ingredient_refs`, `utensils`,
+`ingredient_conversions`) et les clés publiques de `site_settings` sont servis
+par **`lib/data/reference.ts`**, jamais lus directement. Ils pesaient 22 920
+requêtes sur le relevé du 25/08/2026, soit 51 % du trafic REST — la fiche
+recette à elle seule en chargeait cinq, plus `tags` via le `Header`.
+
+- **Trois couches** : `unstable_cache` (cache serveur partagé entre requêtes
+  et entre visiteurs, avec étiquettes — Next 15.1, pas la directive `use
+  cache`), `cache()` React par-dessus (déduplication intra-rendu), et un repli
+  non mis en cache sur le client à cookies. Motif éprouvé dans `lib/blog.ts`.
+- **Une lecture par table, plusieurs formes en sortie.** `getTags`,
+  `getHomeCategories` et `getTagBySlug` partagent une seule lecture ; idem pour
+  les deux formes d'`allergens` et les trois d'`ingredient_refs`. Ne pas
+  rajouter d'accesseur qui interroge la base — c'est ce qui avait produit les
+  doublons. `lib/taxonomy.ts`, `lib/imports.ts` etc. ne sont plus que des
+  ré-exports.
+- **Toute écriture invalide son étiquette**, sinon la valeur reste périmée
+  jusqu'à 24 h : `revalidateReference('units')` (`lib/revalidate-reference.ts`)
+  **avant** `router.refresh()` — ce dernier seul relirait la valeur en cache.
+- **Lecture au rôle `anon`** (`unstable_cache` interdit les cookies) : ne
+  jamais y faire passer une donnée dépendant de l'utilisateur. Et comme une RLS
+  qui refuse renvoie zéro ligne plutôt qu'une erreur, **un référentiel vide est
+  traité comme un symptôme, jamais comme un résultat** — il n'est pas mis en
+  cache et la lecture est refaite avec la session. `site_settings` excepté :
+  n'avoir aucune bannière est normal.
+
+Règles complètes et pièges : `docs/note-regression-cache.md`.
+
 ## Base de données (Supabase / PostgreSQL)
 
 Types générés dans `lib/database.types.ts` (source de vérité). Tables
@@ -730,16 +801,26 @@ Modèle local : `.env.local.example` → `.env.local`.
 
 ## Déploiement
 
-- **Vercel**, projet unique `mc-snowy`, branche de production `main`, racine
-  du dépôt (framework preset **Next.js**, Node **22.x** — voir `DEPLOY.md`).
-  Tous les domaines ci-dessous appartiennent à ce même projet — un déploiement
-  sur `main` les met donc tous à jour automatiquement.
+- **Vercel**, projet **`mc`** (anciennement `mc-snowy`), branche de production
+  `main`, racine du dépôt (framework preset **Next.js**, Node **22.x** — voir
+  `DEPLOY.md`). Tous les domaines ci-dessous appartiennent à ce projet — un
+  déploiement sur `main` les met donc tous à jour automatiquement.
+- **Région des fonctions : Francfort**, la même que le projet Supabase. Elles
+  étaient à Washington : chaque requête base traversait l'Atlantique, et une
+  page en enchaîne plusieurs — dont certaines en série (cf.
+  `docs/audit-egress-supabase.md`). Un changement de région n'a d'effet
+  qu'après **redéploiement**.
+- **Un second projet Vercel, `dev_jp`, déploie le même dépôt** sur
+  `mc-oqp7.vercel.app`, sans domaine propre. Chaque push construit donc deux
+  fois, et cette URL sert une copie publiquement joignable du site sur la
+  **même** base Supabase. À détacher du dépôt s'il n'a plus d'usage.
 - Les variables `NEXT_PUBLIC_*` étant inlinées au build, tout changement
   nécessite un redéploiement **sans cache de build**.
 - Côté Supabase : Site URL + Redirect URLs (`https://<domaine>/**`) dans
   Authentication → URL Configuration.
-- **Domaines** : `jepatisse.com` (et `www.jepatisse.com`) est le futur
-  domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
+- **Domaines** : `www.jepatisse.com` est le domaine canonique — `jepatisse.com`
+  y redirige (308), `jepatisse.fr` et `www.jepatisse.fr` aussi (301). C'est le
+  futur domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
   visiteurs, ne pas le prendre pour cible lors d'une vérification en
   production. **`dev.jepatisse.com`** est l'URL de production réelle à ce
   stade, réservée aux testeurs (accès restreint) : c'est elle qu'il faut

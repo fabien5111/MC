@@ -449,13 +449,28 @@ export function CuisineContent({
                     </div>
                   </Link>
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    <Link
-                      href={`/fournee/${p.id}`}
-                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">play_arrow</span>
-                      <span className="hidden sm:inline">Cuisiner</span>
-                    </Link>
+                    {/* Deux entrées, comme sur une fournée en cours et dans la
+                        vue « Par jour » : Préparer (ajuster, cocher ce qui est
+                        déjà fait) reste accessible sans passer par Cuisiner,
+                        qui pose `date_debut` au premier affichage. */}
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/fournee/${p.id}?mode=preparer`}
+                        title="Préparer"
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-outline-variant px-3 py-1.5 font-label-md text-[11px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">tune</span>
+                        <span className="hidden sm:inline">Préparer</span>
+                      </Link>
+                      <Link
+                        href={`/fournee/${p.id}`}
+                        title="Cuisiner"
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">play_arrow</span>
+                        <span className="hidden sm:inline">Cuisiner</span>
+                      </Link>
+                    </div>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"

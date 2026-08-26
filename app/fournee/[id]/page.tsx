@@ -6,6 +6,7 @@ import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto
 import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { BatchView } from '@/components/batch/BatchView';
 
 type Params = {
@@ -108,6 +109,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
         initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
         myReview={myReview}
       />
+      <MobileNav current="cuisine" />
     </>
   );
 }

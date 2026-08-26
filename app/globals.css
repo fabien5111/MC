@@ -78,6 +78,14 @@ img {
     border-color: #300a12; /* primary */
   }
 }
+/* Champs plus compacts sur mobile : gagner un peu de place sur les écrans
+   étroits, où le formulaire de création (titre, ingrédients, étapes…)
+   partage sa largeur avec un nombre de champs plus serré que sur desktop. */
+@media (max-width: 767px) {
+  .editorial-input {
+    padding: 6px 10px;
+  }
+}
 /* Champ relié à une <datalist> (suggestions d'ingrédient/ustensile — éditeur
    de recette, relecture d'import, liste de courses…) : Chrome/Edge dessinent
    une flèche identique à celle d'un <select>, qui laisse croire à tort à une

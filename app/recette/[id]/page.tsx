@@ -7,7 +7,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getActiveAds } from '@/lib/ads';
-import { getUnits, getShoppingLists, getRecipeCompletedBatches } from '@/lib/profile';
+import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
 import { fmtNum, batchFactor } from '@/lib/recipe-plan';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
@@ -75,16 +75,28 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getApprovedComments(recipe.id),
   ]);
   const isOwner = !!user && recipe.author_id === user.id;
-  // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
-  // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
-  // RLS `recipes_partagees`).
-  const shareInfo = isOwner ? await getRecipeShareInfo(recipe.id, recipe.author_id, recipe.status) : undefined;
-  // Admin : débloque le mode d'ajustement des quantités par IA dans la création d'une fournée.
-  const userIsAdmin = user ? await isAdmin(user.id) : false;
-  const shoppingLists = user ? (await getShoppingLists(user.id)).map((l) => ({ id: l.id, name: l.name })) : [];
-  // Mes fournées terminées sur cette recette — propres au visiteur connecté
-  // (RLS `owns_plan()`), quel que soit l'auteur de la recette.
-  const completedBatches = user ? await getRecipeCompletedBatches(user.id, recipe.id) : [];
+
+  // Seconde vague : tout ce qui dépend de `user`, donc impossible à mettre
+  // dans le `Promise.all` ci-dessus. En revanche ces quatre lectures ne
+  // dépendent pas les unes des autres — enchaînées en `await` successifs,
+  // elles coûtaient quatre allers-retours en série sur la page la plus
+  // consultée du site.
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches] = await Promise.all([
+    // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
+    // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
+    // RLS `recipes_partagees`).
+    isOwner ? getRecipeShareInfo(recipe.id, recipe.author_id, recipe.status) : Promise.resolve(undefined),
+    // Admin : débloque le mode d'ajustement des quantités par IA dans la
+    // création d'une fournée. Gratuit depuis le chantier 3 : dérivé du profil
+    // déjà chargé par le `Header` (mémoïsation par requête).
+    user ? isAdmin(user.id) : Promise.resolve(false),
+    // Noms seuls : le sélecteur « Ajouter à une liste » n'affiche que ça, il
+    // n'a aucune raison de tirer les articles de toutes les listes.
+    user ? getShoppingListNames(user.id) : Promise.resolve([]),
+    // Mes fournées terminées sur cette recette — propres au visiteur connecté
+    // (RLS `owns_plan()`), quel que soit l'auteur de la recette.
+    user ? getRecipeCompletedBatches(user.id, recipe.id) : Promise.resolve([]),
+  ]);
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;

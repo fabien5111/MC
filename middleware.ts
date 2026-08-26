@@ -56,7 +56,15 @@ export const config = {
   // (stable depuis Next 15.5).
   runtime: 'nodejs',
   matcher: [
-    // Toutes les routes sauf assets statiques et fichiers d'image.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Toutes les routes sauf assets statiques, fichiers d'image et `/api/*`.
+    //
+    // `/api/*` en est exclu parce que le middleware n'y apportait rien :
+    // `PROTECTED_PREFIXES` (lib/supabase/middleware.ts) ne contient aucun
+    // préfixe d'API — chaque route s'authentifie elle-même — et la bascule
+    // `COMING_SOON` ci-dessus saute déjà `/api`. Le seul effet du passage
+    // était donc un `getUser()` supplémentaire par appel, en pure perte, et
+    // doublé sur les routes appelées à la frappe (autocomplétion des
+    // ingrédients, des membres, compte de résultats de la recherche…).
+    '/((?!api/|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf)$).*)',
   ],
 };
