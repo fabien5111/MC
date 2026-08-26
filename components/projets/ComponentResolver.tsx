@@ -102,10 +102,16 @@ export function ComponentResolver({
       const reponses = await Promise.all(
         PORTEES.map((p) =>
           fetch(`/api/recipes/picker?scopes=${p.scope}&q=${q}&limit=10`)
-            .then((r) => (r.ok ? r.json() : { items: [] }))
-            .catch(() => ({ items: [] })),
+            // Une erreur reste visible (message d'alerte) plutôt que
+            // silencieusement transformée en « aucun résultat » — sans quoi
+            // une vraie panne de la recherche se lit exactement comme une
+            // recherche sans correspondance, impossible à distinguer.
+            .then(async (r) => (r.ok ? r.json() : Promise.reject(await r.json().catch(() => ({})))))
+            .catch((e) => ({ erreur: e?.erreur, items: [] })),
         ),
       );
+      const erreur = reponses.find((rep) => rep?.erreur)?.erreur;
+      if (erreur) dialog.alert(`La recherche a échoué : ${erreur}`);
       // Concaténation dans l'ordre des portées, dédoublonnée : une recette de
       // mon carnet que j'ai aussi mise en favori reste créditée « Mon
       // carnet », la portée la plus proche de moi.
@@ -123,7 +129,7 @@ export function ComponentResolver({
     } finally {
       setChargement(false);
     }
-  }, [terme]);
+  }, [terme, dialog]);
 
   // Première ouverture : la recherche part du nom du composant. C'est la
   // façon la plus directe de tenir l'exigence de pertinence de la spec (§5)

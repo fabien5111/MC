@@ -126,6 +126,8 @@ export function ProjectWizard({
   const [proposal, setProposal] = useState<ProposedStructure | null>(null);
 
   const [resolving, setResolving] = useState<ProjectComponent | null>(null);
+  // Réordonnancement de la structure (étape 3) par glisser-déposer.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Format visé, tel qu'il est effectivement enregistré sur la recette — et
   // non tel que l'écran 2 l'affiche : c'est lui qui sert au calcul des
@@ -361,43 +363,41 @@ export function ProjectWizard({
     );
   }
 
-  // Réordonnancement : échange des positions de deux voisins. `position` est
-  // un `numeric`, mais on garde des entiers consécutifs tant qu'on ne fait
-  // qu'échanger — l'intercalation servira à l'insertion fine.
-  async function move(c: ProjectComponent, sens: -1 | 1) {
-    const ordered = [...project.components].sort((a, b) => a.position - b.position);
-    const i = ordered.findIndex((x) => x.id === c.id);
-    const j = i + sens;
-    if (i < 0 || j < 0 || j >= ordered.length) return;
-    const autre = ordered[j];
-    // Ordre des composants APRÈS l'échange : les étapes du projet doivent se
-    // lire dans l'ordre d'assemblage, donc leurs blocs d'`order_index` sont
-    // redistribués dans la foulée (et les groupes d'ingrédients suivent leurs
-    // étapes — sinon l'appariement se romprait au premier déplacement).
-    const apres = [...ordered];
-    apres[i] = autre;
-    apres[j] = c;
+  // Réordonnancement par glisser-déposer (poignée, pas de flèches — même
+  // convention que la liste des étapes dans l'éditeur classique,
+  // components/CreerForm.tsx). Renumérote TOUS les composants de 1 à n dans
+  // le nouvel ordre plutôt que d'échanger deux positions : un déplacement de
+  // bout en bout de liste n'est qu'un cas particulier, pas un cas à part.
+  //
+  // Les étapes du projet doivent se lire dans l'ordre d'assemblage, donc
+  // leurs blocs d'`order_index` sont redistribués dans la foulée (et les
+  // groupes d'ingrédients suivent leurs étapes — sinon l'appariement se
+  // romprait au premier déplacement).
+  async function reorder(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    const depart = [...project.components].sort((a, b) => a.position - b.position);
+    const [deplace] = depart.splice(fromIndex, 1);
+    depart.splice(toIndex, 0, deplace);
+
     await mutate(
       async () => {
         const supabase = createClient();
-        const { error } = await supabase
-          .from('recipe_project_components')
-          .update({ position: autre.position } as never)
-          .eq('id', c.id);
-        if (error) return { error };
-        const { error: err2 } = await supabase
-          .from('recipe_project_components')
-          .update({ position: c.position } as never)
-          .eq('id', autre.id);
-        if (err2) return { error: err2 };
+        for (let i = 0; i < depart.length; i++) {
+          if (depart[i].position === i + 1) continue;
+          const { error } = await supabase
+            .from('recipe_project_components')
+            .update({ position: i + 1 } as never)
+            .eq('id', depart[i].id);
+          if (error) return { error };
+        }
         try {
-          await resequenceProjectSteps(supabase, project.id, apres.map((x) => x.id));
+          await resequenceProjectSteps(supabase, project.id, depart.map((x) => x.id));
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
         return { error: null };
       },
-      { errorLabel: 'Déplacement' },
+      { errorLabel: 'Réordonnancement' },
     );
   }
 
@@ -589,8 +589,33 @@ export function ProjectWizard({
               {ordered.map((c, i) => (
                 <li
                   key={c.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3"
+                  onDragOver={(e) => {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    void reorder(dragIndex, i);
+                    setDragIndex(null);
+                  }}
+                  className={`flex flex-wrap items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3${
+                    dragIndex === i ? ' opacity-50' : ''
+                  }`}
                 >
+                  <span
+                    className="material-symbols-outlined shrink-0 cursor-grab text-outline-variant select-none active:cursor-grabbing"
+                    title="Glisser pour réordonner"
+                    draggable
+                    onDragStart={(e) => {
+                      setDragIndex(i);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragEnd={() => setDragIndex(null)}
+                  >
+                    drag_indicator
+                  </span>
                   <span className="font-label-md text-[12px] text-outline">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate font-body-md text-[15px] text-on-surface">{c.name}</span>
                   <select
@@ -609,18 +634,6 @@ export function ProjectWizard({
                     )}
                   </select>
                   <span className="flex items-center gap-1">
-                    <button type="button" onClick={() => move(c, -1)} disabled={i === 0} title="Monter" className="p-1 disabled:opacity-30">
-                      <span className="material-symbols-outlined text-[20px] text-primary">arrow_upward</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(c, 1)}
-                      disabled={i === ordered.length - 1}
-                      title="Descendre"
-                      className="p-1 disabled:opacity-30"
-                    >
-                      <span className="material-symbols-outlined text-[20px] text-primary">arrow_downward</span>
-                    </button>
                     <button type="button" onClick={() => renameComponent(c)} title="Renommer" className="p-1">
                       <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
                     </button>

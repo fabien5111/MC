@@ -50,17 +50,25 @@ export async function GET(req: Request) {
   // par où un projet en cours pourrait entrer : un chantier n'est pas une
   // sous-recette (ses composants peuvent être non résolus et ses quantités ne
   // sont que des points de départ). Un projet validé, lui, est une recette
-  // ordinaire et reste proposé.
-  if (scopes.has('mine') && user) {
-    branches.push(`and(author_id.eq.${user.id},or(kind.eq.simple,project_stage.neq.wizard))`);
-  }
-  // Recettes des pâtissiers suivis (spec §5.3). Toujours publiées : c'est
-  // déjà tout ce que la RLS laisse voir d'un auteur qu'on suit, le filtre
-  // n'est ici que pour ne pas dépendre d'elle sur ce point.
+  // ordinaire et reste proposé — l'exclusion se fait plus bas, en mémoire
+  // (`isProjectDraft`), pas ici : un filtre `and(...,or(...))` imbriqué dans
+  // le `.or()` combiné ci-dessous s'est révélé produire une requête qui ne
+  // renvoyait plus aucun résultat (silencieusement, côté appelant — cf.
+  // ComponentResolver). Une branche simple, plus le filtre en mémoire déjà en
+  // place pour toutes les portées, obtient le même résultat sans ce risque.
+  if (scopes.has('mine') && user) branches.push(`author_id.eq.${user.id}`);
+  // Recettes des pâtissiers suivis (spec §5.3). Le filtre sur le statut se
+  // fait dans CETTE requête séparée (comme pour les favoris juste en dessous),
+  // jamais dans la branche du `.or()` combiné, pour la même raison que
+  // ci-dessus.
   if (scopes.has('followed') && user) {
     const { data: suivis } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
     const ids = (suivis ?? []).map((f) => f.following_id);
-    if (ids.length) branches.push(`and(author_id.in.(${ids.join(',')}),status.eq.published)`);
+    if (ids.length) {
+      const { data: pubs } = await supabase.from('recipes').select('id').in('author_id', ids).eq('status', 'published');
+      const pubIds = (pubs ?? []).map((r) => r.id);
+      if (pubIds.length) branches.push(`id.in.(${pubIds.join(',')})`);
+    }
   }
   if (scopes.has('fav') && user) {
     const { data: favs } = await supabase.from('favorites').select('recipe_id').eq('user_id', user.id);
