@@ -5,7 +5,10 @@
 // : accès non typé par cast local, comme lib/featured.ts. Tant que la table est
 // absente, les requêtes échouent proprement et les emplacements restent vides —
 // le site n'est jamais cassé par une migration pas encore passée.
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
+import { REFERENCE_TAG, referenceTag } from '@/lib/data/reference';
 import {
   EMPTY_AD_STATS,
   todayStr,
@@ -39,7 +42,7 @@ const ADMIN_COLS =
 // qui permet d'attendre la requête), donc renvoyé par une fonction asynchrone
 // il serait déroulé par `await` et rendrait le résultat au lieu du
 // constructeur de requête.
-function adsTable(supabase: Awaited<ReturnType<typeof createClient>>): AdsQuery {
+function adsTable(supabase: { from: (table: never) => unknown }): AdsQuery {
   return supabase.from('ads' as never) as unknown as AdsQuery;
 }
 
@@ -55,11 +58,12 @@ function adsTable(supabase: Awaited<ReturnType<typeof createClient>>): AdsQuery 
  * jamais d'aléatoire, qui provoquerait un désaccord d'hydratation entre le
  * rendu serveur et le navigateur.
  */
-export async function getActiveAds(slots: AdSlotKey[]): Promise<AdsBySlot> {
-  if (slots.length === 0) return {};
-  const today = todayStr();
-
-  const { data, error } = await adsTable(await createClient())
+async function fetchActiveAds(
+  supabase: { from: (table: never) => unknown },
+  slots: AdSlotKey[],
+  today: string,
+): Promise<AdsBySlot> {
+  const { data, error } = await adsTable(supabase)
     .select(PUBLIC_COLS)
     .in('slot', slots)
     .eq('active', true)
@@ -70,16 +74,64 @@ export async function getActiveAds(slots: AdSlotKey[]): Promise<AdsBySlot> {
     .order('start_date', { ascending: false })
     .order('id', { ascending: true });
 
-  if (error) {
-    console.error('getActiveAds:', error.message);
-    return {};
-  }
+  // Lève plutôt que de renvoyer `{}` : ce qui lève n'est pas mis en cache par
+  // `unstable_cache`, alors qu'un `{}` d'erreur y resterait figé une heure —
+  // c'est-à-dire une heure sans aucune campagne sur tout le site. L'appelant
+  // rattrape et retombe sur le comportement d'avant.
+  if (error) throw new Error(error.message);
 
   const bySlot: AdsBySlot = {};
   for (const ad of (data as unknown as Ad[]) ?? []) {
     (bySlot[ad.slot] ??= []).push(ad);
   }
   return bySlot;
+}
+
+// Campagnes du jour, mises en cache — 21 appels par parcours au relevé du
+// 25/08/2026, deuxième poste derrière le profil. Les campagnes changent
+// rarement : `ads` se comporte comme un référentiel, et relève du même
+// traitement (cf. lib/data/reference.ts), à trois différences près.
+//
+// 1. **La date est dans la clé de cache.** La requête filtre sur
+//    `start_date`/`end_date` : sans ça, une campagne programmée pour demain
+//    n'apparaîtrait qu'à l'expiration du cache, et une campagne terminée
+//    continuerait de s'afficher. Avec `today` dans la clé, le changement de
+//    jour crée mécaniquement une nouvelle entrée.
+// 2. **Une entrée par jeu d'emplacements**, et non une entrée globale : les
+//    visuels sont des data-URL, et une entrée de cache trop volumineuse n'est
+//    tout simplement pas mémorisée par Next. Trois jeux existent dans le site
+//    (accueil, recherche, fiche recette), donc trois entrées par jour.
+// 3. **`{}` est un résultat légitime** (aucune campagne en cours), à la
+//    différence d'un référentiel vide — d'où l'absence de garde sur le vide.
+//
+// Lecture au rôle `anon` : les encarts sont affichés aux visiteurs déconnectés
+// sur l'accueil, la table est donc lisible publiquement — même démonstration
+// que pour les référentiels.
+export async function getActiveAds(slots: AdSlotKey[]): Promise<AdsBySlot> {
+  if (slots.length === 0) return {};
+  const today = todayStr();
+  const cle = [...slots].sort().join(',');
+
+  const lireEnCache = unstable_cache(
+    () => fetchActiveAds(createPublicClient(), slots, today),
+    ['ads', today, cle],
+    { revalidate: 3600, tags: [REFERENCE_TAG, referenceTag('ads')] },
+  );
+
+  try {
+    return await lireEnCache();
+  } catch {
+    // Repli non mis en cache, avec la session de l'appelant : comportement
+    // d'avant ce cache. Couvre aussi le cas où la table `ads` n'existe pas
+    // encore (cf. en-tête de fichier) — les emplacements restent vides, le
+    // site n'est jamais cassé.
+    try {
+      return await fetchActiveAds(await createClient(), slots, today);
+    } catch (err) {
+      console.error('getActiveAds:', err);
+      return {};
+    }
+  }
 }
 
 /** Toutes les campagnes (administration) : passées, en cours, à venir, inactives. */

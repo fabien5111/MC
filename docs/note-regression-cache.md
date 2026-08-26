@@ -235,21 +235,40 @@ une session qui n'existe pas.
 
 ### Règle 7 — Deux niveaux de vérification, à ne pas confondre
 
-| Où | Appel | Ce qu'il prouve |
-|---|---|---|
-| `middleware.ts` | `getClaims()` | le JWT est **signé par Supabase et non expiré** (vérification locale) |
-| Pages privées, routes | `getUser()` via `getCurrentUser()` | la session est **encore valide côté serveur d'authentification** |
+| Où | Appel | Ce qu'il prouve | Coût |
+|---|---|---|---|
+| `middleware.ts`, `getCurrentUser()` | `getClaims()` | le JWT est **signé par Supabase et non expiré** (vérification locale) | nul |
+| `getVerifiedUser()` (back-office) | `getUser()` | la session est **encore valide côté serveur d'authentification** | ~11 instructions SQL |
 
-Le middleware ne fait qu'aiguiller vers `/connexion`. Le contrôle qui compte —
-`requireUser()`, `requireAdmin()`, les routes `/api` — passe par
-`getCurrentUser()`, qui appelle toujours `getUser()`.
+**Ce que coûtait vraiment `getUser()`.** Le relevé du 25/08/2026, après mise en
+cache des référentiels, l'a chiffré : un seul appel déclenche onze instructions
+côté GoTrue — `BEGIN`, quatre `SET`, les lectures de `sessions`, `users`,
+`identities`, `mfa_factors`, `mfa_amr_claims`, puis `COMMIT`. À un appel par
+rendu de page, l'authentification pesait **~65 % de tout le trafic base
+restant**. C'est ce qui a motivé la conversion de `getCurrentUser()`.
 
-**Ne pas « optimiser » `getCurrentUser()` en `getClaims()`.** Le gain serait
-d'un aller-retour par rendu, le coût serait qu'une session révoquée
-(déconnexion sur un autre appareil, compte supprimé, mot de passe changé)
-resterait acceptée jusqu'à l'expiration de son token — soit une heure par
-défaut. C'est un arbitrage de sécurité, pas une optimisation ; s'il doit être
-fait un jour, ce sera une décision explicite, pas un effet de bord.
+**Ce qu'on a accepté en échange.** Une session révoquée — déconnexion sur un
+autre appareil, compte supprimé, mot de passe changé — reste acceptée jusqu'à
+l'expiration de son jeton d'accès. La fenêtre vaut exactement le TTL configuré
+dans Supabase (Authentication → Sessions) : la réduire réduit la fenêtre.
+
+**Là où cette fenêtre est refusée** : le back-office. Les trois gardes
+(`requireAdmin`, `requireManager`, `requireFullAdmin`) passent par
+`requireBackOfficeUser()`, qui appelle `getVerifiedUser()`. Un accès
+administrateur retiré prend donc effet immédiatement.
+
+### Règle 7 bis — Un seul `getUser()` dans tout le site
+
+`lib/auth.ts` ne contient qu'**un** `supabase.auth.getUser()`, dans
+`getAuthUser()` (privé, mémoïsé). `getVerifiedUser()` et `getUserIdentities()`
+en dérivent. Deux accesseurs portant chacun leur `cache()` auraient produit
+deux appels pour la même session — le doublon exact que la déduplication du
+profil avait supprimé (§ 4).
+
+Besoin d'un attribut de l'utilisateur ailleurs ? S'il est dans le JWT (`sub`,
+`email`, `user_metadata`, `app_metadata`), il est déjà sur `SessionUser`,
+gratuitement. Sinon — `identities` en est le seul cas aujourd'hui — passer par
+un accesseur dérivé de `getAuthUser()`, jamais par un `getUser()` de plus.
 
 ### Le gain dépend d'un réglage hors du dépôt
 
