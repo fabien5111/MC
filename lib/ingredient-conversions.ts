@@ -116,3 +116,90 @@ export function convertQty(
 
   return null;
 }
+
+export type WeightEstimate = {
+  // Arrondi au gramme — c'est une estimation, pas une pesée.
+  grams: number;
+  // Ingrédients dont le poids n'a pas pu être compté (pas de conversion vers
+  // g/kg enregistrée pour eux), avec leur quantité et unité telles que
+  // saisies dans l'étape — pour que l'utilisateur puisse les prendre en
+  // compte à la main. À lister explicitement, jamais à passer sous silence :
+  // un total qui les omet sans le dire laisserait croire à une somme
+  // exhaustive.
+  unconverted: { name: string; quantity: number | null; unit: string | null }[];
+};
+
+// Unités de volume reconnues, en ml — conversion physique universelle (1 L =
+// 100 cl = 1000 ml, vrai pour n'importe quel liquide), donc codée en dur ici
+// plutôt que via le référentiel `ingredient_conversions` (qui, lui, porte des
+// équivalences propres à UN ingrédient, ex. « 1 œuf = 50 g »).
+const VOLUME_TO_ML: Record<string, number> = { ml: 1, cl: 10, l: 1000 };
+
+// Poids estimé d'un ensemble de lignes d'ingrédients (typiquement celles
+// d'une étape de fournée), utilisé pour proposer un coefficient lors du
+// remplacement d'une étape par une recette (cf. StepExpandDialog) — une
+// étape, contrairement à un ingrédient, ne porte aucune quantité cible.
+//
+// Une ligne déjà en g ou kg est comptée directement. Une ligne dans une autre
+// unité n'est comptée que dans cet ordre de priorité :
+//   1. une conversion enregistrée pour CET ingrédient dans le référentiel
+//      (`convertQty`, même mécanisme que l'affichage « ≈ 100 g » de
+//      l'éditeur d'ingrédients) — la plus précise, elle prime toujours ;
+//   2. à défaut, pour une unité de volume (ml/cl/l) et une `density_g_per_ml`
+//      trouvée pour cet ingrédient (Admin → Gestion des listes →
+//      Ingrédients) : poids = volume converti en ml × densité. La densité de
+//      la ligne (jointe via `ref_id`) prime ; si la ligne n'a pas de `ref_id`
+//      propre (résolu une seule fois, à l'enregistrement de la recette — un
+//      ingrédient référencé après coup n'est jamais rattrapé automatiquement,
+//      cf. lib/admin.ts « Ne pas se fier à ref_id IS NULL seul »), on
+//      retombe sur `densityByName`, un rapprochement par nom.
+// Jamais de densité générique (« 1 ml = 1 g ») appliquée par défaut — ce
+// serait faux selon l'ingrédient (crème, huile, alcool…). Une ligne qui ne
+// peut être convertie par aucun des deux moyens sort du total et rejoint
+// `unconverted`.
+export function estimateWeightGrams(
+  ingredients: {
+    name: string;
+    quantity: number | null;
+    unit: string | null;
+    ref_id: number | null;
+    ingredient_refs?: { density_g_per_ml: number | null } | null;
+  }[],
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  // Masse volumique par nom d'ingrédient (lib/recipes.ts
+  // `getIngredientDensities`), pour les lignes sans `ref_id` propre.
+  densities?: { name: string; density_g_per_ml: number }[],
+): WeightEstimate {
+  const densityByName = new Map((densities ?? []).map((d) => [normUnit(d.name), d.density_g_per_ml]));
+  let grams = 0;
+  const unconverted: WeightEstimate['unconverted'] = [];
+  for (const it of ingredients) {
+    if (it.quantity == null || it.quantity <= 0 || !it.unit) {
+      if (it.name) unconverted.push({ name: it.name, quantity: it.quantity, unit: it.unit });
+      continue;
+    }
+    const key = normUnit(it.unit);
+    if (key === 'g') {
+      grams += it.quantity;
+      continue;
+    }
+    if (key === 'kg') {
+      grams += it.quantity * 1000;
+      continue;
+    }
+    const inGrams = convertQty(conversions, units, it.ref_id, it.unit, it.quantity, 'g');
+    if (inGrams != null && inGrams > 0) {
+      grams += inGrams;
+      continue;
+    }
+    const mlPerUnit = VOLUME_TO_ML[key];
+    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(normUnit(it.name));
+    if (mlPerUnit != null && density != null && density > 0) {
+      grams += it.quantity * mlPerUnit * density;
+      continue;
+    }
+    if (it.name) unconverted.push({ name: it.name, quantity: it.quantity, unit: it.unit });
+  }
+  return { grams: Math.round(grams), unconverted };
+}

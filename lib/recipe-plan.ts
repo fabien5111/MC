@@ -142,10 +142,27 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
 }
 
 // ── Lignes des tables batch_* ───────────────────────────────────────────
-export type BatchStepRow = Database['public']['Tables']['batch_steps']['Row'];
+export type BatchStepRow = Database['public']['Tables']['batch_steps']['Row'] & {
+  // Recette qui remplace cette étape (« je fais ma pâte sucrée à partir
+  // d'une autre recette ») — cf. « Étape remplacée par une recette » plus
+  // bas. Renseignée après coup par `getBatch` (même motif que
+  // `expanded_recipe` sur `BatchIngredientRow`, cf. plus haut), `null` si
+  // l'étape n'est pas remplacée ou si la recette n'est plus lisible.
+  // `replaced_by_recipe_id` / `source_replaced_step_id` sont absentes de
+  // lib/database.types.ts tant que la migration n'a pas été régénérée
+  // (npm run gen:types) ; `BATCH_FULL_SELECT` (`*`) les renvoie déjà, seul
+  // le typage est en retard.
+  replaced_by_recipe_id: string | null;
+  source_replaced_step_id: number | null;
+  replaced_recipe?: { id: string; title: string } | null;
+};
 export type BatchSubstepRow = Database['public']['Tables']['batch_substeps']['Row'];
 export type BatchIngredientRow = Database['public']['Tables']['batch_ingredients']['Row'] & {
-  ingredient_refs?: { url: string | null; allergens: AllergenRef | null } | null;
+  // `density_g_per_ml` absente de lib/database.types.ts tant que la
+  // migration n'a pas été régénérée (npm run gen:types) — même motif que
+  // `review_status` plus bas. Sert au poids estimé d'une étape en volume
+  // (cf. lib/ingredient-conversions.ts `estimateWeightGrams`).
+  ingredient_refs?: { url: string | null; allergens: AllergenRef | null; density_g_per_ml: number | null } | null;
   // Sous-recette qui remplace cet ingrédient (« je fais moi-même mon
   // praliné ») — cf. « Ingrédient remplacé par une sous-recette » plus bas.
   // Renseignée après coup par `getPlan` (et non par une jointure imbriquée,
@@ -193,27 +210,32 @@ export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
 // toutes sortent du déroulé avec l'étape, mais l'une d'elles peut rester
 // utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
 // déjà fait).
-type StepDoneFlags = Pick<BatchStepRow, 'done'>;
+type StepDoneFlags = Pick<BatchStepRow, 'done' | 'replaced_by_recipe_id'>;
 type IngredientDoneFlags = Pick<BatchIngredientRow, 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'>;
 type SubstepDoneFlags = Pick<BatchSubstepRow, 'excluded_when_done'>;
 
 // Un ingrédient sort du parcours (courses, mise en place) s'il a été retiré à
 // la main, s'il a été remplacé par une sous-recette (on ne l'achète plus : on
-// le fabrique, cf. plus bas), ou si son étape est faite et qu'il n'a pas été
-// explicitement conservé.
+// le fabrique, cf. plus bas), si son ÉTAPE a elle-même été remplacée par une
+// recette (cf. « Étape remplacée par une recette » plus bas — toute la ligne
+// sort, sans exception ligne par ligne : contrairement à `done`, ce n'est pas
+// « déjà fait », l'étape ne sera jamais réalisée telle quelle), ou si son
+// étape est faite et qu'il n'a pas été explicitement conservé.
 export function batchIngredientExcluded(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
   if (ing.removed) return true;
   if (ing.expanded_into_recipe_id != null) return true;
+  if (step.replaced_by_recipe_id != null) return true;
   return step.done && ing.excluded_when_done;
 }
 
 // Même règle pour une sous-étape, sans notion de suppression manuelle
 // (`batch_substeps` n'a pas de colonne `removed`).
 export function batchSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags): boolean {
+  if (step.replaced_by_recipe_id != null) return true;
   return step.done && sub.excluded_when_done;
 }
 
-const NO_STEP: StepDoneFlags = { done: false };
+const NO_STEP: StepDoneFlags = { done: false, replaced_by_recipe_id: null };
 
 // Prédicat lié à une fournée donnée : une ligne d'ingrédient ne porte que son
 // `batch_step_id`, jamais son étape entière — utilisé par mergeBatchIngredients,
@@ -502,6 +524,49 @@ export function suggestedExpansionDay(consumingDayOffset: number, subStepDayOffs
   return Math.max(0, consumingDayOffset) + Math.max(0, subStepDayOffset);
 }
 
+// ── Étape remplacée par une recette ────────────────────────────────────
+// « J'ai une pâte sucrée dans ma recette, mais je veux la faire à partir
+// d'une autre recette » — même principe que le remplacement d'un ingrédient
+// ci-dessus, transposé à une étape entière : les étapes de la recette de
+// remplacement sont insérées dans le déroulé de la fournée, à la position et
+// au(x) jour(s) choisis.
+//
+// Deux colonnes portent le lien, sur le même modèle que
+// `expanded_into_recipe_id` / `source_ingredient_id` :
+//   • `batch_steps.replaced_by_recipe_id` : l'étape remplacée pointe la
+//     recette de remplacement. Elle reste affichée (barrée, avec le lien)
+//     mais toute sa ligne — et celle de ses ingrédients et sous-étapes —
+//     sort des courses et de la mise en place (cf. `batchIngredientExcluded`
+//     / `batchSubstepExcluded` ci-dessus) : elle ne sera jamais réalisée
+//     telle quelle.
+//   • `batch_steps.source_replaced_step_id` : les étapes insérées pointent
+//     l'étape remplacée (et non `source_step_id`, qui désigne déjà l'étape
+//     D'ORIGINE dans la recette source). C'est ce lien qui permet de
+//     reconnaître une étape ajoutée pour la teinter en vert, au même titre
+//     qu'une étape venue de l'éclatement d'un ingrédient.
+//
+// Remplacer une étape déjà cochée `done` n'a pas de sens (elle est déjà
+// réalisée telle quelle) : le déclencheur reste masqué dans ce cas côté
+// composant (BatchView), il n'y a pas de garde supplémentaire ici.
+export function batchStepReplaced(s: Pick<BatchStepRow, 'replaced_by_recipe_id'>): boolean {
+  return s.replaced_by_recipe_id != null;
+}
+
+// Étape issue du remplacement d'une AUTRE étape par une recette (et non de
+// l'éclatement d'un ingrédient, ni de la recette de base).
+export function batchStepIsStepReplacement(s: Pick<BatchStepRow, 'source_replaced_step_id'>): boolean {
+  return s.source_replaced_step_id != null;
+}
+
+// Recette de remplacement dont provient une étape insérée, retrouvée via
+// l'étape remplacée (`batch_steps.source_replaced_step_id`) — même motif que
+// `expansionSource` pour un ingrédient éclaté.
+export function stepReplacementSource(batch: BatchFull, step: Pick<BatchStepRow, 'source_replaced_step_id'>): { id: string; title: string } | null {
+  if (step.source_replaced_step_id == null) return null;
+  const original = batch.batch_steps.find((s) => s.id === step.source_replaced_step_id);
+  return original?.replaced_recipe ?? null;
+}
+
 // Sélection complète d'une fournée, à utiliser par lib/profile.ts (getPlan).
 //
 // `expanded_recipe` (titre de la sous-recette qui remplace un ingrédient)
@@ -514,7 +579,7 @@ export function suggestedExpansionDay(consumingDayOffset: number, subStepDayOffs
 export const BATCH_FULL_SELECT = `
   *,
   batch_steps(*, batch_substeps(*)),
-  batch_ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip))),
+  batch_ingredients(*, ingredient_refs(url, density_g_per_ml, allergens(id, name, picto, tooltip))),
   batch_utensils(*)
 `;
 

@@ -258,6 +258,7 @@ export {
   getAllergensWithPicto,
   getIngredientConversions,
   getIngredientRefsList,
+  getIngredientDensities,
 } from '@/lib/data/reference';
 
 // Attache la liste des NOMS d'allergènes à un lot de cartes — jamais leurs

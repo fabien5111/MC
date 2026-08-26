@@ -249,13 +249,15 @@ export const getAllergenRefs = async (): Promise<{ id: number; name: string }[]>
 // ingredient_refs — une lecture, trois formes
 // ---------------------------------------------------------------------------
 
-type IngredientRefRow = { id: number; name: string; allergen: string | null };
+type IngredientRefRow = { id: number; name: string; allergen: string | null; density_g_per_ml: number | null };
 
 const lireIngredientRefs = referenceAccessor<IngredientRefRow>({
   table: 'ingredient_refs',
   revalidate: HEURE,
+  // `density_g_per_ml` : cast `as any` tant que la migration n'a pas été
+  // régénérée (npm run gen:types), même motif que `review_status` ailleurs.
   query: async (sb) =>
-    lignes(await sb.from('ingredient_refs').select('id, name, allergen').order('name')),
+    lignes(await (sb as any).from('ingredient_refs').select('id, name, allergen, density_g_per_ml').order('name')),
 });
 
 // Ingrédients de référence (id + libellé) : rapproche un article saisi à la
@@ -277,6 +279,19 @@ export const getIngredientRefAllergens = async (): Promise<Record<string, string
   }
   return map;
 };
+
+// Masse volumique (g/ml) des ingrédients référencés, par NOM — utilisée en
+// repli par `estimateWeightGrams` (lib/ingredient-conversions.ts) quand une
+// ligne d'ingrédient de fournée n'a pas de `ref_id` propre (résolu une seule
+// fois, à l'enregistrement de la recette — un ingrédient référencé après
+// coup n'est jamais rattrapé automatiquement, cf. « Ne pas se fier à ref_id
+// IS NULL seul », lib/admin.ts). Ne renvoie que les entrées avec une densité
+// renseignée : la table entière n'a pas d'intérêt ici. Dérivée de la même
+// lecture que les trois accesseurs ci-dessus, jamais une requête séparée.
+export const getIngredientDensities = async (): Promise<{ name: string; density_g_per_ml: number }[]> =>
+  (await lireIngredientRefs())
+    .filter((r): r is IngredientRefRow & { density_g_per_ml: number } => !!r.name && r.density_g_per_ml != null)
+    .map(({ name, density_g_per_ml }) => ({ name, density_g_per_ml }));
 
 // ---------------------------------------------------------------------------
 // utensils
