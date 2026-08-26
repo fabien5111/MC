@@ -73,7 +73,22 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
 // que de rester sur deux lignes séparées de la liste. Sans conversion connue
 // entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
 // toutes lettres plutôt que perdue.
-export type MergedIngredient = { name: string; qty: string; unit: string; comment: string | null; ref_id: number | null };
+export type MergedIngredient = {
+  name: string;
+  qty: string;
+  unit: string;
+  comment: string | null;
+  ref_id: number | null;
+  url: string | null;
+  allergen: string | null;
+  // `order_index` des groupes d'ingrédients d'origine (dédoublonnés) — un
+  // groupe partage son `order_index` avec l'étape qu'il alimente (même
+  // appariement que `groupsByOrder` en consultation), ce qui permet de
+  // retrouver les étapes où l'ingrédient apparaît sans requête ni jointure
+  // supplémentaire. Optionnel : les autres constructions de `MergedIngredient`
+  // (fournées, mise en forme sans cette donnée) n'ont pas à le renseigner.
+  groupOrders?: number[];
+};
 export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
@@ -81,9 +96,12 @@ export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[
       if (!it.name) return;
       const unit = it.unit || '';
       const key = it.name.toLowerCase();
+      const url = it.ingredient_refs?.url || it.url || null;
+      const allergen = it.ingredient_refs?.allergens?.name || it.allergen || null;
+      const groupOrder = g.order_index || 0;
       const ex = merged.find((m) => m.key === key);
       if (!ex) {
-        merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null, ref_id: it.ref_id ?? null });
+        merged.push({ key, name: it.name, qty: it.quantity || '', unit, comment: it.comment || null, ref_id: it.ref_id ?? null, url, allergen, groupOrders: [groupOrder] });
         return;
       }
       const a = parseFloat(String(ex.qty).replace(',', '.'));
@@ -102,10 +120,13 @@ export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[
         }
       }
       if (it.comment && it.comment !== ex.comment) ex.comment = ex.comment ? ex.comment + ' ; ' + it.comment : it.comment;
+      if (!ex.url && url) ex.url = url;
+      if (allergen && allergen !== ex.allergen) ex.allergen = ex.allergen ? ex.allergen + ', ' + allergen : allergen;
+      if (!ex.groupOrders!.includes(groupOrder)) ex.groupOrders!.push(groupOrder);
     }),
   );
   merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit, comment, ref_id }) => ({ name, qty, unit, comment, ref_id }));
+  return merged.map(({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }) => ({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }));
 }
 
 // ── Moules : dimensions par forme + métriques (volume / surface) ──
