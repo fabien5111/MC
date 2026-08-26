@@ -191,7 +191,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       ...(recipe.description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
       ...(steps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
       ...(utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
-      ...(groups.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(merged.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
       ...(steps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [
@@ -556,86 +556,48 @@ export default async function RecettePage({ params, searchParams }: Params) {
             </div>
           )}
 
-          {/* Ingrédients */}
-          {groups.length > 0 && (
+          {/* Ingrédients — liste complète de la recette (fusion des groupes par
+              étape, quantités additionnées), avec la mise en forme reprise du
+              détail par étape (quantité en gras, lien, commentaire et
+              allergène). Le détail groupe par groupe reste consultable plus
+              bas, dans chaque étape (« Ingrédients de l'étape »). */}
+          {merged.length > 0 && (
             <div id="sec-ingredients" className="scroll-mt-28 mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-8">Ingrédients</h3>
+              {/* La colonne du nom est en `minmax(0,1fr)`, jamais en
+                  `max-content` : une colonne `max-content` ne peut pas
+                  rétrécir, donc un nom long (« Levure sèche de boulanger — ou
+                  levure fraîche ») élargissait la grille au-delà du viewport
+                  et mettait toute la page en défilement horizontal sur
+                  mobile. */}
+              <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+                {merged.map((m, k) => (
+                  <li
+                    key={k}
+                    className="border-b border-outline-variant/30 py-2"
+                    style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                  >
+                    <span className="font-label-md text-label-md text-primary">
+                      <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
+                    </span>
+                    <span className="font-body-md text-body-md break-words">
+                      {m.url ? (
+                        <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                          {m.name}
+                        </a>
+                      ) : (
+                        m.name
+                      )}
+                      {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
+                      {m.allergen && (
+                        <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {m.allergen})</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
               <div className="no-print">
-                <div className="space-y-10">
-                  {groups.map((g) => (
-                    <div key={g.id}>
-                      <h4 className="font-label-md text-label-md text-secondary border-b border-outline-variant pb-2 mb-4">
-                        {g.name || ''}
-                      </h4>
-                      {/* La colonne du nom est en `minmax(0,1fr)`, jamais en
-                          `max-content` : une colonne `max-content` ne peut pas
-                          rétrécir, donc un nom long (« Levure sèche de
-                          boulanger — ou levure fraîche ») élargissait la grille
-                          au-delà du viewport et mettait toute la page en
-                          défilement horizontal sur mobile. */}
-                      <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-                        {[...(g.ingredients || [])]
-                          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-                          .map((it) => {
-                            const url = it.ingredient_refs?.url || it.url;
-                            return (
-                              <li
-                                key={it.id}
-                                className="border-b border-outline-variant/30 py-2"
-                                style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                              >
-                                <span className="font-label-md text-label-md text-primary">
-                                  <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />
-                                </span>
-                                <span className="font-body-md text-body-md break-words">
-                                  {url ? (
-                                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                                      {it.name}
-                                    </a>
-                                  ) : (
-                                    it.name
-                                  )}
-                                  {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                                  {it.allergen && (
-                                    <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {it.allergen})</span>
-                                  )}
-                                </span>
-                              </li>
-                            );
-                          })}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {merged.length > 0 && (
-                <details className="group border border-outline-variant mt-12">
-                  <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                    <span className="font-label-md text-label-md text-primary">LISTE COMPLÈTE DES INGRÉDIENTS</span>
-                    <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-                  </summary>
-                  <div className="p-4 bg-white">
-                    <ul className="grid grid-cols-[minmax(0,16rem)_max-content] gap-x-3 sm:gap-x-6 print:gap-x-6">
-                      {merged.map((m, k) => (
-                        <li key={k} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                          <span className="font-body-md text-body-md break-words">
-                            <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                            {m.name}
-                            {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
-                          </span>
-                          <span className="font-label-md text-label-md text-primary">
-                            <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </details>
-              )}
-
-              {merged.length > 0 && (
-                <div className="no-print">
                 <ShoppingWidget
                   recipeTitle={recipe.title}
                   ingredients={merged}
@@ -644,8 +606,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   conversions={conversions}
                   units={units}
                 />
-                </div>
-              )}
+              </div>
             </div>
           )}
 
