@@ -7,7 +7,7 @@ données, authentification).
 ## Repères pour travailler sur ce dépôt
 
 - **Production** : la branche `main` est déployée automatiquement sur Vercel
-  (projet `mc-snowy`). Ne pousser sur `main` que du code vérifié.
+  (projet `mc`). Ne pousser sur `main` que du code vérifié.
 - **Vérification** avant tout push : `npm run typecheck` (et `npm run build`
   pour les changements structurels).
 - **Langue** : code commenté en français, UI en français ; les messages de
@@ -34,7 +34,7 @@ données, authentification).
 | Backend | **Supabase** (PostgreSQL, Auth, RLS) | — |
 | Client Supabase | `@supabase/supabase-js` + `@supabase/ssr` (auth par cookies) | 2.x / 0.12 |
 | IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` (structuration) / `claude-sonnet-5` (lecture de photos) |
-| Hébergement | **Vercel** (fonctions serverless, projet `mc-snowy`) | Node 22.x |
+| Hébergement | **Vercel** (fonctions serverless, projet `mc`, région Francfort) | Node 22.x |
 
 ## Architecture
 
@@ -801,16 +801,26 @@ Modèle local : `.env.local.example` → `.env.local`.
 
 ## Déploiement
 
-- **Vercel**, projet unique `mc-snowy`, branche de production `main`, racine
-  du dépôt (framework preset **Next.js**, Node **22.x** — voir `DEPLOY.md`).
-  Tous les domaines ci-dessous appartiennent à ce même projet — un déploiement
-  sur `main` les met donc tous à jour automatiquement.
+- **Vercel**, projet **`mc`** (anciennement `mc-snowy`), branche de production
+  `main`, racine du dépôt (framework preset **Next.js**, Node **22.x** — voir
+  `DEPLOY.md`). Tous les domaines ci-dessous appartiennent à ce projet — un
+  déploiement sur `main` les met donc tous à jour automatiquement.
+- **Région des fonctions : Francfort**, la même que le projet Supabase. Elles
+  étaient à Washington : chaque requête base traversait l'Atlantique, et une
+  page en enchaîne plusieurs — dont certaines en série (cf.
+  `docs/audit-egress-supabase.md`). Un changement de région n'a d'effet
+  qu'après **redéploiement**.
+- **Un second projet Vercel, `dev_jp`, déploie le même dépôt** sur
+  `mc-oqp7.vercel.app`, sans domaine propre. Chaque push construit donc deux
+  fois, et cette URL sert une copie publiquement joignable du site sur la
+  **même** base Supabase. À détacher du dépôt s'il n'a plus d'usage.
 - Les variables `NEXT_PUBLIC_*` étant inlinées au build, tout changement
   nécessite un redéploiement **sans cache de build**.
 - Côté Supabase : Site URL + Redirect URLs (`https://<domaine>/**`) dans
   Authentication → URL Configuration.
-- **Domaines** : `jepatisse.com` (et `www.jepatisse.com`) est le futur
-  domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
+- **Domaines** : `www.jepatisse.com` est le domaine canonique — `jepatisse.com`
+  y redirige (308), `jepatisse.fr` et `www.jepatisse.fr` aussi (301). C'est le
+  futur domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
   visiteurs, ne pas le prendre pour cible lors d'une vérification en
   production. **`dev.jepatisse.com`** est l'URL de production réelle à ce
   stade, réservée aux testeurs (accès restreint) : c'est elle qu'il faut
