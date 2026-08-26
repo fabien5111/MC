@@ -271,11 +271,18 @@ export { getUnits } from '@/lib/data/reference';
 // évite de charger la moindre ligne, un simple `count` suffit.
 export async function hasActiveBatches(userId: string): Promise<boolean> {
   const supabase = await createClient();
-  const { count } = await supabase
+  // « Au moins une », pas « combien » : `limit(1)` s'arrête à la première
+  // ligne trouvée, là où `count: 'exact'` faisait un COMPTE complet des
+  // fournées correspondantes pour n'en garder que le signe. Sans effet
+  // aujourd'hui — personne n'a mille fournées planifiées — mais c'est une
+  // lecture faite à **chaque rendu de page**, autant qu'elle ne dépende pas
+  // du volume.
+  const { data } = await supabase
     .from('batches')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('user_id', userId)
     .eq('status', 'planifiee')
-    .not('date_debut', 'is', null);
-  return !!count && count > 0;
+    .not('date_debut', 'is', null)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
 }

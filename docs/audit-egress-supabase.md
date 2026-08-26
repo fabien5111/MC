@@ -488,6 +488,115 @@ affichées**, pas de la liste complète. À verser au chantier 5.
 
 ---
 
+## 5-ter. Mesure « après » — livrable 3
+
+Deux parcours de référence complets (§ 9 de la spec), sur `dev.jepatisse.com`,
+après chauffe et remise à zéro : l'un après le déploiement des chantiers 1 à 5,
+l'autre après le cache des campagnes et la lecture locale du JWT.
+
+### Précaution de lecture
+
+**Les totaux bruts ne sont pas comparables entre eux.** La mesure de référence
+(§ 5-bis) est un cumul sur un cycle de facturation ; celles-ci sont des
+parcours uniques. Et les deux parcours n'ont pas la même longueur : `profiles`
+et `hasActiveBatches` valant tous deux ~1 par rendu de page, ils donnent le
+compte de rendus — **23** pour le premier, **17** pour le second.
+
+Tout ce qui suit est donc **normalisé par rendu**. C'est la seule grandeur qui
+se compare.
+
+### Résultats
+
+| | Après chantiers 1–5 | Après campagnes + JWT |
+|---|---:|---:|
+| Rendus de page | 23 | 17 |
+| Requêtes REST par rendu | 8,1 | 7,5 |
+| Lectures d'authentification par rendu | 6,6 | **1,6** |
+| **Instructions base par rendu** | **14,7** | **9,1** |
+
+**−38 % d'instructions par rendu**, et la part de l'authentification tombe de
+**45 % à 18 %** du trafic total.
+
+### Ce qui a disparu
+
+| Poste | Référence (§ 5-bis) | Après |
+|---|---:|---|
+| Référentiels (9 tables) | 22 920 — 51 % | **absents des deux relevés** |
+| `profiles` | 9 878 — **deux** requêtes distinctes | **une seule** |
+| `impersonation_sessions` | 3 871 | **0** |
+| `ads` | 21 par parcours | **0** |
+| Lectures GoTrue | 151 par parcours | **28** |
+
+Le détail du bloc d'authentification, qui est le plus parlant :
+
+| Table | Avant | Après |
+|---|---:|---:|
+| `identities`, `users`, `mfa_factors` | 31 | **6** |
+| `sessions`, `mfa_amr_claims` | 29 | **5** |
+
+Et surtout, **la nature du coût a changé** : c'était un `getUser()` par rendu,
+donc proportionnel à la navigation ; ce sont désormais des événements bornés —
+la connexion, un clic sur un cœur, une visite du back-office. Les douze appels
+`getUser()` côté navigateur ont été vérifiés un par un : aucun ne s'exécute au
+montage d'un composant, tous sont dans des gestionnaires d'interaction.
+
+### Critères d'acceptation de la spec (§ 9)
+
+| Critère | Seuil | Résultat |
+|---|---|---|
+| Référentiels après premier chargement | 0 | ✅ 0 |
+| `impersonation_sessions`, non-admin | 0 | ✅ 0 |
+| Requêtes Auth internes par parcours | ≤ 10 | ✅ 5–6 |
+| Requêtes sur `profiles` | ≤ 1 par parcours | ❌ 17 — voir ci-dessous |
+
+**Le quatrième critère n'est pas atteignable tel qu'il est écrit**, et il vaut
+mieux le dire que le maquiller. Le profil porte l'avatar affiché dans l'en-tête
+de **chaque** page : c'est une donnée par utilisateur, lue à chaque rendu. La
+ramener à une lecture par parcours supposerait de la mettre en cache entre les
+requêtes — or `unstable_cache` lit au rôle `anon`, on servirait donc le profil
+d'un membre hors RLS. Ce ne serait pas une optimisation, ce serait une faille.
+
+Ce que le critère visait réellement — supprimer le doublon — est atteint :
+**une requête par rendu au lieu de deux**.
+
+### Ce qui reste, et pourquoi
+
+Les deux premiers postes sont désormais `profiles` (17) et `hasActiveBatches`
+(16) : le **chrome**, une lecture chacun par rendu, 31 % du top 20. Le reste
+est de la donnée réellement propre à la page.
+
+`hasActiveBatches` a été ramené à un test d'existence (`limit(1)` au lieu d'un
+`count: 'exact'`), mais **l'aller-retour n'a pas été supprimé, délibérément**.
+La clé étrangère `batches.user_id → profiles.id` existe, une jointure imbriquée
+dans `getProfile` serait donc techniquement possible — et c'est un mauvais
+marché :
+
+- elle coupterait l'accesseur le plus appelé du site à une pastille cosmétique ;
+- le filtrage d'une ressource imbriquée non-`!inner` a un comportement qui
+  dépend de la version de PostgREST. S'il filtrait la ligne parente, tout
+  membre sans fournée planifiée verrait son profil renvoyer `null` — donc
+  serait redirigé vers `/choix-pseudo`. C'est exactement la panne contre
+  laquelle `PROFILE_COLUMNS` est protégé par deux gardes de compilation.
+
+Le gain (une lecture `head` sans aucune ligne renvoyée, déjà parallélisée, donc
+sans latence ajoutée) ne justifie pas ce risque.
+
+### Le juge de paix est ailleurs
+
+Ces parcours mesurent une structure, pas une facture. Le critère réel de la
+spec reste **Organization → Usage → Egress** sur les trois jours suivant le
+déploiement : le plancher quotidien doit descendre **sous 30 Mo/jour** (il
+était à 150–250).
+
+S'il y reste, la cause n'est pas l'application. Ces relevés en portent déjà la
+trace : malgré la consigne d'isolation, une dizaine d'instructions parasites
+(`set pg_stat_statements.track = none`, `information_schema`,
+`select exists(select from auth.users)`) trahissent un onglet du tableau de
+bord Supabase resté ouvert. La spec comptait 474 chargements de l'éditeur SQL
+sur la période de référence.
+
+---
+
 ## 6. Ordre d'exécution recommandé
 
 L'ordre 1 → 4 de la spec reste valable, avec une réserve : **le chantier 1
