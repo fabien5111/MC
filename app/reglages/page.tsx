@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { requireUser, getProfile, isAdmin } from '@/lib/auth';
+import { requireUser, getProfile, isAdmin, getUserIdentities, accountProvider } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -50,7 +50,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       id: user.id,
       full_name: fallbackName,
       email: user.email ?? null,
-      provider: user.app_metadata?.provider ?? null,
+      provider: accountProvider(user),
     });
     profile = await getProfile(user.id);
   }
@@ -59,7 +59,11 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   // Un compte lié à Google n'a pas forcément de mot de passe — présent
   // uniquement si une identité e-mail existe (inscription directe, ou compte
   // Google ayant ensuite lié un mot de passe).
-  const hasPassword = user.identities ? user.identities.some((i) => i.provider === 'email') : true;
+  // `identities` n'est pas dans le JWT : cet appel-ci interroge réellement le
+  // serveur d'authentification (cf. lib/auth.ts `getUserIdentities`). C'est
+  // assumé pour cet écran, qui est rare — ne pas le reproduire ailleurs.
+  const identities = await getUserIdentities();
+  const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
   const [followCounts, following, bookSharesGiven, recipeSharesGiven] = await Promise.all([
     getFollowCounts(user.id),

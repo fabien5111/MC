@@ -7,7 +7,7 @@
 // L'écriture se fait avec la clé service_role (lib/pseudo-data.ts), le
 // navigateur n'écrit jamais `full_name` / `username` lui-même.
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, accountProvider } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { enregistrerPseudo, verifierPseudoComplet } from '@/lib/pseudo-data';
 import { PSEUDO_MAX_LENGTH } from '@/lib/pseudo';
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     validation.pseudo,
     validation.slug,
     user.email ?? null,
-    user.app_metadata?.provider ?? null,
+    accountProvider(user),
   );
   if (!ecriture.ok) return NextResponse.json({ ok: false, message: ecriture.message });
 

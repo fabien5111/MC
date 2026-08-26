@@ -131,6 +131,23 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
 ## Authentification
 
 - Supabase Auth par **cookies** (`@supabase/ssr`), vérifiable côté serveur.
+- **Deux niveaux de vérification, à ne pas confondre.** `getCurrentUser()`
+  (`lib/auth.ts`) et le middleware lisent les claims du JWT, **vérifiés
+  localement** (`getClaims()`, signature ES256 contre le JWKS du projet) :
+  aucun aller-retour vers le serveur d'authentification. Un `getUser()` en
+  coûtait onze instructions SQL côté GoTrue, à chaque rendu de page — ~65 % du
+  trafic base restant une fois les référentiels mis en cache. Contrepartie
+  assumée : une session révoquée reste acceptée jusqu'à l'expiration de son
+  jeton (TTL réglé dans Supabase → Authentication → Sessions). Le back-office
+  refuse cette fenêtre : ses trois gardes passent par `getVerifiedUser()`, qui
+  interroge réellement le serveur. Un seul `getUser()` existe dans tout le
+  site, dans `getAuthUser()` — ne pas en ajouter. Cf.
+  `docs/note-regression-cache.md`.
+- **Campagnes publicitaires (`ads`) en cache** comme un référentiel
+  (`lib/ads.ts`), avec la **date du jour dans la clé** : sans elle, une
+  campagne programmée n'apparaîtrait qu'à l'expiration du cache et une campagne
+  terminée continuerait de s'afficher. Invalidation depuis `/admin/partenaires`
+  via `revalidateReference('ads')`.
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
   **OAuth Google** (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/reglages`,
