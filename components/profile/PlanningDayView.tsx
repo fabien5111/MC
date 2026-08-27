@@ -80,14 +80,31 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     if (!ok) setList(prev);
   }
 
+  // Un avis existe-t-il déjà pour cette recette, déposé depuis une AUTRE
+  // fournée ? Même condition que `reviewEligible` dans BatchView, lue
+  // directement sur `comments` : la RLS n'y autorise un membre qu'à voir SA
+  // PROPRE ligne (quel que soit son statut) ou les lignes `approved` de tout
+  // le monde — filtrer par `user_id` donne donc bien « mon » avis, jamais
+  // celui d'un autre. Best-effort : une erreur ou un réseau indisponible ne
+  // doit pas empêcher de proposer l'avis, seulement risquer de le proposer à
+  // tort une fois.
+  async function alreadyReviewed(recipeId: string, batchId: number): Promise<boolean> {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user.id;
+    if (!userId) return false;
+    const { data, error } = await supabase.from('comments').select('batch_id').eq('recipe_id', recipeId).eq('user_id', userId).maybeSingle();
+    if (error) return false;
+    return !!data && data.batch_id !== batchId;
+  }
+
   // Propose de terminer la fournée dès que toutes SES étapes sont cochées
   // (toutes fournées confondues sur cet écran, pas seulement celles du jour
-  // affiché) puis, si accepté, de laisser un avis sur la recette — mêmes
-  // actions et messages que `BatchView.proposeFinish` (mode Cuisiner d'une
-  // fournée). Pas de vérification ici de l'éligibilité réelle à un avis
-  // (recette encore accessible, pas déjà notée depuis une autre fournée) :
-  // cette liste ne charge pas ces informations pour chaque fournée, la
-  // question posée à tort n'a simplement aucun effet sur la fiche fournée.
+  // affiché) puis, si un avis est encore possible sur la recette d'origine,
+  // de laisser une note et un commentaire — mêmes actions et messages que
+  // `BatchView.proposeFinish` (mode Cuisiner d'une fournée).
   async function proposeFinish(batchRow: BatchListRow) {
     const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
     if (!wantsFinish) {
@@ -99,6 +116,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     });
     if (!ok) return;
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
+    if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
     if (wantsReview) router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
     else dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
