@@ -1,7 +1,14 @@
 # Déploiement sur Vercel
 
-Le dépôt est la racine du projet Vercel `mc-snowy` — pas de sous-dossier
+Le dépôt est la racine du projet Vercel **`mc`** (anciennement `mc-snowy` —
+le domaine `mc-snowy.vercel.app` en garde la trace) : pas de sous-dossier
 `Root Directory` à configurer, Vercel détecte Next.js directement.
+
+**Région des fonctions : Francfort**, la même que le projet Supabase. Ce n'est
+pas cosmétique : les fonctions étaient à Washington, ce qui faisait traverser
+l'Atlantique à **chaque** requête base. Une page en enchaîne plusieurs, dont
+certaines en série. Un changement de région ne prend effet qu'au
+**redéploiement**.
 
 ## Variables d'environnement
 
@@ -59,9 +66,24 @@ Dans le **dashboard Supabase → Authentication → URL Configuration** :
   bucket ni de CDN d'images à configurer.
 - **Types Supabase** : voir `README.md` (section « Types de la base ») pour
   régénérer `lib/database.types.ts`.
-- **Domaines** : `jepatisse.com`, `www.jepatisse.com`, `dev.jepatisse.com` et
-  `mc-snowy.vercel.app` sont tous des domaines **Production** du même projet
-  — un seul déploiement les met tous à jour. `COMING_SOON=true` (scopée
-  Production) affiche donc la page d'attente sur les quatre par défaut ;
+- **Domaines du projet `mc`** — tous en **Production**, un seul déploiement
+  les met tous à jour :
+
+  | Domaine | Rôle |
+  |---|---|
+  | `www.jepatisse.com` | canonique |
+  | `jepatisse.com` | 308 → `www.jepatisse.com` |
+  | `jepatisse.fr`, `www.jepatisse.fr` | 301 → `www.jepatisse.com` |
+  | `dev.jepatisse.com` | URL réelle des testeurs |
+  | `mc-snowy.vercel.app` | domaine Vercel d'origine |
+
+  `COMING_SOON=true` (scopée Production) affiche la page d'attente sur tous ;
   `middleware.ts` exempte spécifiquement `dev.jepatisse.com` (comparaison sur
   `Host`) pour que les testeurs gardent accès au site réel.
+
+- **Un second projet Vercel, `dev_jp`, déploie le même dépôt.** Il ne porte
+  aucun domaine propre, seulement `mc-oqp7.vercel.app`. Conséquences à
+  connaître : chaque push construit **deux fois**, et cette URL sert une copie
+  publiquement joignable du site, branchée sur la **même** base Supabase.
+  Vérifier que `COMING_SOON` y est bien positionnée, ou détacher le projet du
+  dépôt s'il n'a plus d'usage.

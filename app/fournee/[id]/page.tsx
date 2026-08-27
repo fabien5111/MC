@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
-import { getIngredientConversions, getAllergensWithPicto } from '@/lib/recipes';
+import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
 import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { BatchView } from '@/components/batch/BatchView';
 
 type Params = {
@@ -75,9 +76,10 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
     getUnits(),
     getIngredientConversions(),
+    getIngredientDensities(),
     getShoppingLists(batch.user_id!),
     getBaseRecipeInfo(batch.recipe_id),
     getAllergensWithPicto(),
@@ -92,20 +94,29 @@ export default async function FourneePage({ params, searchParams }: Params) {
   return (
     <>
       {/* Même bandeau que le reste du site (auparavant un en-tête maison,
-          propre à BatchView) — rattachée à « En cuisine » (lib/nav.ts). */}
-      <Header current="cuisine" />
-      <BatchView
-        batch={batch}
-        baseRecipe={baseRecipe}
-        units={units}
-        unitTips={unitTips}
-        conversions={conversions}
-        shoppingLists={shoppingLists}
-        allergenRefs={allergenRefs}
-        lecture={lecture === '1'}
-        initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
-        myReview={myReview}
-      />
+          propre à BatchView) — rattachée à « En cuisine » (lib/nav.ts).
+          `no-print` : même traitement que la fiche recette. */}
+      <Header current="cuisine" className="no-print" />
+      {/* `<main>` : sans lui, le bouton Imprimer n'expand aucun `<details>`
+          replié (`usePrintDetailsExpansion` cible `main details`) et les
+          règles CSS d'impression scopées à `main` (pleine largeur, une seule
+          colonne) restent sans effet — même structure que /recette/[id]. */}
+      <main>
+        <BatchView
+          batch={batch}
+          baseRecipe={baseRecipe}
+          units={units}
+          unitTips={unitTips}
+          conversions={conversions}
+          ingredientDensities={ingredientDensities}
+          shoppingLists={shoppingLists}
+          allergenRefs={allergenRefs}
+          lecture={lecture === '1'}
+          initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
+          myReview={myReview}
+        />
+      </main>
+      <MobileNav current="cuisine" />
     </>
   );
 }

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -647,6 +647,7 @@ export type Database = {
           source_plan_id: number | null
           status: string
           tags_text: string[] | null
+          trial_verdict: string | null
           updated_at: string
           user_id: string | null
           user_note: string | null
@@ -687,6 +688,7 @@ export type Database = {
           source_plan_id?: number | null
           status?: string
           tags_text?: string[] | null
+          trial_verdict?: string | null
           updated_at?: string
           user_id?: string | null
           user_note?: string | null
@@ -727,6 +729,7 @@ export type Database = {
           source_plan_id?: number | null
           status?: string
           tags_text?: string[] | null
+          trial_verdict?: string | null
           updated_at?: string
           user_id?: string | null
           user_note?: string | null
@@ -1664,6 +1667,7 @@ export type Database = {
       ingredients: {
         Row: {
           allergen: string | null
+          base_quantity: number | null
           comment: string | null
           group_id: number | null
           id: number
@@ -1676,6 +1680,7 @@ export type Database = {
         }
         Insert: {
           allergen?: string | null
+          base_quantity?: number | null
           comment?: string | null
           group_id?: number | null
           id?: number
@@ -1688,6 +1693,7 @@ export type Database = {
         }
         Update: {
           allergen?: string | null
+          base_quantity?: number | null
           comment?: string | null
           group_id?: number | null
           id?: number

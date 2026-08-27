@@ -25,6 +25,8 @@ import { BatchReview } from '@/components/batch/BatchReview';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
+import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
+import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
@@ -39,13 +41,17 @@ import {
   batchFactor,
   batchIngredientExcluded,
   batchStepIsExpansion,
+  batchStepIsStepReplacement,
+  batchStepReplaced,
   batchSubstepExcluded,
   expansionSource,
   groupBatchStepsByDay,
+  mergeAllBatchIngredients,
   mergeBatchIngredients,
   mergedRowQtyText,
   remainingStepTimes,
   stepFullyDone,
+  stepReplacementSource,
   substepIngredientsBySubstep,
   type BatchFull,
   type BatchIngredientRow,
@@ -124,6 +130,7 @@ export function BatchView({
   units,
   unitTips,
   conversions,
+  ingredientDensities,
   shoppingLists,
   allergenRefs,
   lecture,
@@ -135,6 +142,10 @@ export function BatchView({
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Masse volumique par nom d'ingrédient — repli de `estimateWeightGrams`
+  // (StepExpandDialog) quand la ligne n'a pas de `ref_id` propre, cf.
+  // lib/recipes.ts `getIngredientDensities`.
+  ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
   lecture: boolean;
@@ -180,6 +191,38 @@ export function BatchView({
   // Seule l'impersonation lecture seule reste bloquante (garde réelle,
   // revérifiée côté serveur par la route avec la propriété de la fournée).
   const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly;
+
+  // Un avis sera effectivement proposable une fois la fournée marquée
+  // terminée : mêmes conditions que `canReview` (sans le statut, qu'on
+  // s'apprête justement à poser) plus l'unicité « un avis par recette et par
+  // membre » — sinon la proposition automatique poserait une question dont la
+  // réponse « oui » n'affiche rien (cf. CLAUDE.md « Avis sur une recette »).
+  const reviewEligible = !!batch.recipe_id && !batch.review_dismissed && !impersonationReadOnly && (!myReview || myReview.batch_id === batch.id);
+
+  // Écriture partagée « marquer comme terminée » : rail Préparer, rail
+  // Cuisiner et proposition automatique une fois toutes les étapes cochées
+  // (cf. `CuisinerView.proposeFinish`) l'appellent tous les trois, chacun
+  // avec son propre message de confirmation.
+  async function finishBatch(): Promise<boolean> {
+    if (readOnly) return false;
+    const fin = new Date().toISOString();
+    setBusy(true);
+    const { error } = await createClient().from('batches').update({ status: 'terminee', date_fin: fin }).eq('id', batch.id);
+    setBusy(false);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      return false;
+    }
+    setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
+    router.refresh();
+    return true;
+  }
+
+  async function markTerminee() {
+    if (!(await dialog.confirm('Terminer cette fournée ?'))) return;
+    const ok = await finishBatch();
+    if (ok) window.scrollTo(0, 0);
+  }
 
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une
@@ -279,7 +322,7 @@ export function BatchView({
 
   return (
     <>
-      <div className="max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
+      <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
@@ -287,6 +330,9 @@ export function BatchView({
           <span className="flex items-center gap-3">
             <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
+            </span>
+            <span className="no-print">
+              <PrintButton />
             </span>
             {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
               <button
@@ -310,7 +356,7 @@ export function BatchView({
         </p>
 
         {mode === 'preparer' && baseModifiedSince && (
-          <div className="mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
+          <div className="no-print mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
             <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
             <p className="font-body-md text-sm text-on-surface">
               La recette de base a été modifiée depuis la création de cette fournée
@@ -343,20 +389,22 @@ export function BatchView({
         )}
 
         <div className="flex items-center gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => switchMode('preparer')}
-            className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'preparer' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
-          >
-            Préparer
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('cuisiner')}
-            className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
-          >
-            Cuisiner
-          </button>
+          <span className="no-print flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => switchMode('preparer')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'preparer' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+            >
+              Préparer
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('cuisiner')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+            >
+              Cuisiner
+            </button>
+          </span>
           {all.length > 0 && (
             <span className="ml-auto font-label-md text-[12px] text-on-surface-variant">
               {done} / {all.length} étapes
@@ -371,11 +419,13 @@ export function BatchView({
             units={units}
             unitTips={unitTips}
             conversions={conversions}
+            ingredientDensities={ingredientDensities}
             shoppingLists={shoppingLists}
             allergenRefs={allergenRefs}
             readOnly={readOnly}
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
+            onMarkTerminee={markTerminee}
           />
         ) : (
           <CuisinerView
@@ -386,6 +436,9 @@ export function BatchView({
             units={units}
             setBusy={setBusy}
             onSwitchMode={switchMode}
+            onMarkTerminee={markTerminee}
+            finishBatch={finishBatch}
+            reviewEligible={reviewEligible}
           />
         )}
       </div>
@@ -400,24 +453,32 @@ function PreparerView({
   units,
   unitTips,
   conversions,
+  ingredientDensities,
   shoppingLists,
   allergenRefs,
   readOnly,
   onDelete,
   onSwitchMode,
+  onMarkTerminee,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
   readOnly: boolean;
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  onMarkTerminee: () => void;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
+  // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
+  // motif que `expanding` dans BatchIngredientsEditor.
+  const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
+  const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
   const adjustedYield = ((): string | null => {
@@ -433,6 +494,11 @@ function PreparerView({
 
   const sortedSteps = [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index);
   const merged = mergeBatchIngredients(batch);
+  // Liste totale : garde les ingrédients d'une étape déjà réalisée (seuls les
+  // retirés/remplacés disparaissent) — contrairement à `merged`, qui exclut
+  // aussi le « déjà pris en compte » pour rester une liste de courses fidèle
+  // à ce qu'il reste à acheter.
+  const allIngredients = mergeAllBatchIngredients(batch);
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -460,6 +526,79 @@ function PreparerView({
   }, [batch.batch_steps]);
   const dLabel = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : `JOUR J${offset > 0 ? ' − ' + offset : ''}`);
 
+  // Défait le remplacement d'une étape par une recette : les étapes insérées
+  // (et tout ce qu'elles portent) sont retirées, puis l'étape reprend sa
+  // place — elle n'a jamais été modifiée entre-temps, seulement marquée.
+  // Même motif que `cancelExpansion` dans BatchIngredientsEditor (utensiles
+  // conservés s'ils servent encore ailleurs, ou s'ils appartiennent à la
+  // recette de base de la fournée elle-même).
+  async function cancelStepReplacement(step: BatchStepRow) {
+    const subRecipeId = step.replaced_by_recipe_id;
+    const stepIds = batch.batch_steps.filter((s) => s.source_replaced_step_id === step.id).map((s) => s.id);
+    const stillUsed =
+      batch.batch_steps.some((s) => s.id !== step.id && s.replaced_by_recipe_id === subRecipeId) ||
+      batch.batch_ingredients.some((it) => it.expanded_into_recipe_id === subRecipeId);
+    const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== batch.recipe_id;
+    const supabase = createClient();
+    await mutateReplace(
+      async () => {
+        if (stepIds.length || dropUtensils) {
+          const results = await Promise.all([
+            ...(stepIds.length
+              ? [supabase.from('batch_ingredients').delete().in('batch_step_id', stepIds), supabase.from('batch_substeps').delete().in('batch_step_id', stepIds)]
+              : []),
+            ...(dropUtensils ? [supabase.from('batch_utensils').delete().eq('batch_id', batch.id).eq('source_recipe_id', subRecipeId)] : []),
+          ]);
+          const failed = results.find((r) => r.error);
+          if (failed) return failed;
+        }
+        if (stepIds.length) {
+          const del = await supabase.from('batch_steps').delete().in('id', stepIds);
+          if (del.error) return del;
+        }
+        // `replaced_by_recipe_id` absente de lib/database.types.ts tant que la
+        // migration n'a pas été régénérée (npm run gen:types).
+        return (supabase as any).from('batch_steps').update({ replaced_by_recipe_id: null }).eq('id', step.id);
+      },
+      {
+        confirm:
+          `Annuler le remplacement de « ${step.title || 'cette étape'} » ?\n\n` +
+          (stepIds.length ? `${stepIds.length} étape${stepIds.length > 1 ? 's' : ''} seront retirées du déroulé. ` : '') +
+          "L'étape revient dans le déroulé normal.",
+        errorLabel: 'Annulation impossible',
+      },
+    );
+  }
+
+  // Planning de préparation (aperçu jour par jour, même pattern que la fiche
+  // recette — cf. `sec-planning` sur /recette/[id]). Un jalon « Dégustation »
+  // est toujours ajouté au jour J pour clôturer la frise, même quand toute la
+  // fournée tient en une seule journée : le bloc est alors masqué à
+  // l'impression (`no-print`) puisqu'il n'apporte plus rien, mais reste à
+  // l'écran par cohérence avec le reste de la fiche.
+  const planningDays = (() => {
+    const jalons = groupBatchStepsByDay(batch.batch_steps);
+    const rows = jalons.map((j) => ({
+      offset: j.offset,
+      items: j.steps.map((s) => {
+        const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
+        return {
+          key: s.id,
+          title: s.title || '',
+          fully: stepFullyDone(s, ingredientsOfStep, s.batch_substeps),
+          added: batchStepIsExpansion(s),
+        };
+      }),
+    }));
+    let jourJ = rows.find((r) => r.offset === 0);
+    if (!jourJ) {
+      jourJ = { offset: 0, items: [] };
+      rows.push(jourJ);
+    }
+    jourJ.items = [...jourJ.items, { key: -1, title: 'Dégustation', fully: false, added: false }];
+    return rows;
+  })();
+
   // Sommaire de navigation (rail fixe à gauche, cf. RecipeToc) : mêmes
   // sections que la fiche recette, plus « Liste de courses » (positionnée
   // désormais sous les ingrédients, cf. plus bas) — une section absente de
@@ -467,28 +606,50 @@ function PreparerView({
   const tocSections: TocSections = {
     before: [
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
+      ...(sortedSteps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
       ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
-      ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
-      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients', icon: 'egg_alt', level: 1 as const }] : []),
-      ...(merged.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
-    ],
-    after: [
       ...(batch.recipe_tips ? [{ id: 'sec-conseils', label: 'Conseils de la recette', icon: 'lightbulb', level: 1 as const }] : []),
       ...(batch.recipe_serving_advice ? [{ id: 'sec-degustation', label: 'Dégustation et conservation', icon: 'restaurant', level: 1 as const }] : []),
+      ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
+      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
+      ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
+    after: [],
   };
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
   const actions: TocAction[] = [
     { id: 'switch-cuisiner', icon: 'skillet', label: 'Passer en mode Cuisiner', variant: 'outline-strong', onClick: () => onSwitchMode('cuisiner') },
-    ...(readOnly ? [] : [{ id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger' as const, onClick: onDelete }]),
+    ...(readOnly
+      ? []
+      : [
+          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: onMarkTerminee },
+          { id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger' as const, onClick: onDelete },
+        ]),
   ];
 
   return (
     <div className="flex flex-col gap-8">
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="none" />
+      <LoadingOverlay visible={busyReplace} label="Modification en cours…" />
+      {replacingStep && (
+        <StepExpandDialog
+          batch={batch}
+          step={replacingStep}
+          conversions={conversions}
+          units={units}
+          ingredientDensities={ingredientDensities}
+          onClose={() => setReplacingStep(null)}
+          onDone={refreshReplace}
+        />
+      )}
+      {/* `mobileInset="nav"` : /fournee/[id] monte la barre de navigation basse
+          du site (`<MobileNav current="cuisine" />`) — sans ce réglage, le
+          bouton flottant du tiroir se pose dessous elle (z-index inférieur)
+          et devient inatteignable au clic sur mobile. */}
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="nav" />
 
-      <p className="font-body-md text-[12px] text-on-surface-variant">
+      <p className="no-print font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
         d&apos;un ingrédient que vous fabriquez vous-même), <span className="text-error line-through">barré en rouge</span> ce
         que vous avez retiré ou remplacé par une recette, <span className="text-on-surface-variant line-through">barré en gris</span>{' '}
@@ -497,21 +658,47 @@ function PreparerView({
 
       <BatchNotes batchId={batch.id} notes={batch.user_note} />
 
-      {/* Bloc technique */}
+      {/* Photo principale — remontée au-dessus du bloc technique (même ordre
+          que la fiche recette), plutôt qu'après la description plus bas. */}
+      {baseRecipe?.heroImageUrl && (
+        <div className="print-hero relative w-full aspect-[16/9] overflow-hidden rounded-xl border border-outline-variant">
+          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+          <img src={baseRecipe.heroImageUrl} alt={batch.recipe_title || ''} className="w-full h-full object-cover" />
+          {baseRecipe.heroImageAiRetouched && <AiPhotoBadge />}
+        </div>
+      )}
+
+      {/* Bloc technique — quantité produite, difficulté et allergènes sur une
+          même ligne à l'impression (sinon empilés en trois blocs distincts,
+          comme à l'écran), polices réduites via les marqueurs `print-fs-*`
+          (cf. CLAUDE.md, même principe que la fiche recette). Regroupement en
+          une seule ligne posé sur un conteneur `print:flex` englobant, sans
+          toucher à la structure ni aux classes de chaque bloc à l'écran :
+          `AllergenPictosView` garde son propre séparateur (bordure du haut) à
+          l'écran, simplement neutralisé à l'impression (`print:border-0`). */}
       <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-6 rounded-xl space-y-6">
-        <div className="flex flex-wrap justify-evenly items-start gap-y-6 gap-x-4">
-          {yInfo && (
-            <div className="flex flex-col gap-1 items-center text-center">
-              <span className={LBL_CLS}>{yInfo.label}</span>
-              <span className="font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
-              {adjustedYield && <span className="font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
-            </div>
-          )}
-          {batch.difficulty_name && (
-            <div className="flex flex-col gap-1 items-center text-center">
-              <span className={LBL_CLS}>Difficulté</span>
-              <span className="font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
-            </div>
+        <div className="print:flex print:flex-nowrap print:items-center print:justify-center print:gap-x-6 space-y-6 print:space-y-0">
+          <div className="flex flex-wrap print:flex-nowrap justify-evenly items-start print:items-center gap-y-6 gap-x-4 print:gap-x-6">
+            {yInfo && (
+              <div className="flex flex-col gap-1 items-center text-center">
+                <span className={`${LBL_CLS} print-fs-9`}>{yInfo.label}</span>
+                <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
+                {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
+              </div>
+            )}
+            {batch.difficulty_name && (
+              <div className="flex flex-col gap-1 items-center text-center">
+                <span className={`${LBL_CLS} print-fs-9`}>Difficulté</span>
+                <span className="print-fs-9 font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
+              </div>
+            )}
+          </div>
+          {allergenItems.length > 0 && (
+            <AllergenPictosView
+              items={allergenItems}
+              className="justify-center pt-4 border-t border-outline-variant/40 print:pt-0 print:border-0 print:mt-0"
+              iconClassName="w-8 h-8 print:w-5 print:h-5"
+            />
           )}
         </div>
         {batch.yield_notes && (
@@ -520,7 +707,7 @@ function PreparerView({
               type="button"
               onClick={() => setNotesOpen((v) => !v)}
               aria-expanded={notesOpen}
-              className="flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
+              className="no-print flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
             >
               <span className="material-symbols-outlined text-[16px]">{notesOpen ? 'expand_less' : 'expand_more'}</span>
               Complément d&apos;informations sur les quantités (recette de base)
@@ -530,17 +717,43 @@ function PreparerView({
             )}
           </div>
         )}
-        {allergenItems.length > 0 && (
-          <AllergenPictosView items={allergenItems} className="justify-center pt-4 border-t border-outline-variant/40" iconClassName="w-8 h-8" />
-        )}
       </div>
+
+      {/* Planning de préparation — sans intérêt à l'impression quand toutes
+          les étapes tombent le même jour (un seul jalon à afficher) : masqué
+          dans ce cas, conservé à l'écran. Même bloc que la fiche recette. */}
+      {sortedSteps.length > 0 && (
+        <div id="sec-planning" className={`scroll-mt-28 ${planningDays.length <= 1 ? 'no-print ' : ''}py-10 border-y border-outline-variant`}>
+          <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
+          {/* `print:flex-row` : côte à côte comme à l'écran large, plutôt
+              qu'empilé — et polices réduites (`print-fs-9`), même principe
+              que le reste de l'impression. */}
+          <div className="relative flex flex-col md:flex-row print:flex-row gap-8 print:gap-3">
+            <div className="hidden md:block print:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+            {planningDays.map((d, i) => (
+              <div key={d.offset} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
+                <div className="w-10 h-10 print:w-6 print:h-6 print:text-[11px] rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                <span className="print-fs-9 font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
+                {d.items.map((it) => (
+                  <p
+                    key={it.key}
+                    className={`print-fs-9 font-body-md text-body-md font-semibold ${it.fully ? 'text-on-surface-variant line-through' : it.added ? 'text-green-700' : ''}`}
+                  >
+                    {it.title}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recette d'origine — absente si la recette de base n'est plus
           accessible (supprimée/dépubliée), même repli que le bandeau
           d'avertissement plus haut. Même pattern que la signature de la
           fiche recette (avatar + nom vers /u/[handle]). */}
       {baseRecipe && (
-        <div className="flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
+        <div className="no-print flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
           <Link href={`/recette/${baseRecipe.id}`} className="text-primary underline underline-offset-2 hover:text-secondary">
             Voir la recette d&apos;origine
           </Link>
@@ -573,15 +786,25 @@ function PreparerView({
           <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
             <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
           </h3>
-          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed">{batch.recipe_description}</p>
+          <p className="print-fs-11 font-body-lg text-body-lg italic opacity-90 leading-relaxed">{batch.recipe_description}</p>
         </div>
       )}
 
-      {baseRecipe?.heroImageUrl && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden rounded-xl border border-outline-variant">
-          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-          <img src={baseRecipe.heroImageUrl} alt={batch.recipe_title || ''} className="w-full h-full object-cover" />
-          {baseRecipe.heroImageAiRetouched && <AiPhotoBadge />}
+      {batch.recipe_tips && (
+        <div id="sec-conseils" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
+          <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
+            <span className="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette
+          </h3>
+          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{batch.recipe_tips}</p>
+        </div>
+      )}
+
+      {batch.recipe_serving_advice && (
+        <div id="sec-degustation" className="scroll-mt-28 bg-surface-container-low border border-outline-variant p-8 rounded-xl">
+          <h3 className="font-headline-md text-headline-md text-primary mb-3 flex items-center gap-3">
+            <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
+          </h3>
+          <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{batch.recipe_serving_advice}</p>
         </div>
       )}
 
@@ -600,33 +823,87 @@ function PreparerView({
                   ) : (
                     u.name
                   )}
-                  {u.comment && <span className="text-on-surface-variant text-sm italic"> — {u.comment}</span>}
+                  {u.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {u.comment}</span>}
                 </li>
               ))}
           </ul>
         </div>
       )}
 
+      {/* Liste totale des ingrédients — vue d'ensemble en lecture seule,
+          référence complète de la fournée (`mergeAllBatchIngredients`) :
+          contrairement à la liste de courses juste en dessous (`merged`),
+          une étape déjà réalisée n'y retire pas ses ingrédients — seuls les
+          retirés ou remplacés par une sous-recette disparaissent. Distincte
+          de la section « Ingrédients ajustés » plus bas, qui reste groupée
+          par étape pour porter l'édition (coefficient, remplacement, ajout).
+          Affichée dès qu'il y a des ingrédients dans la fournée, même si
+          tout est déjà réalisé. */}
       {batch.batch_ingredients.length > 0 && (
-        <div id="sec-ingredients" className="scroll-mt-28">
-          <h3 className="font-headline-md text-headline-md text-primary mb-4">Ingrédients</h3>
-          <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
+        <div id="sec-ingredients-complets" className="scroll-mt-28">
+          <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
+          <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+            {allIngredients.map((r) => {
+              const qtyTxt = mergedRowQtyText(r);
+              const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
+              const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
+              return (
+                <li
+                  key={r.name + '|' + r.unit}
+                  className="border-b border-outline-variant/30 py-2"
+                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                >
+                  <span className={`font-label-md text-label-md whitespace-nowrap ${r.added ? 'text-green-700' : 'text-primary'}`}>
+                    {qtyTxt}
+                    {qtyTxt && r.unit ? ' ' : ''}
+                    {r.unit ? (tip ? <span className="unit-tip" title={tip}>{r.unit}</span> : r.unit) : null}
+                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                  </span>
+                  <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
+                    {r.name}
+                    {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
-      {/* Liste de courses — sous les ingrédients : c'est leur suite directe
-          une fois qu'on a fini de les ajuster, pas une information à
-          retrouver plus haut sur la fiche. */}
-      {merged.length > 0 && (
-        <div id="sec-courses" className="scroll-mt-28">
+      {/* Liste de courses — sous la liste totale des ingrédients : c'est sa
+          suite directe une fois qu'on a fini de les ajuster, pas une
+          information à retrouver plus haut sur la fiche. Même condition
+          d'affichage que la liste totale ci-dessus (cf. commentaire). */}
+      {batch.batch_ingredients.length > 0 && (
+        <div id="sec-courses" className="no-print scroll-mt-28">
           <ShoppingWidget
             recipeTitle={batch.recipe_title || 'Fournée'}
-            ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id }))}
+            ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id, url: null, allergen: null }))}
             lists={shoppingLists}
             isLoggedIn
             conversions={conversions}
             units={units}
           />
+        </div>
+      )}
+
+      {/* Ingrédients ajustés, groupés par étape : porte l'édition (coefficient,
+          remplacement par une recette, ajout par étape), déjà consultable en
+          lecture seule dans la liste totale ci-dessus et dans le déroulé des
+          étapes plus bas — repliée par défaut pour ne pas doubler ces deux
+          vues à l'écran. `no-print` : c'est une interface d'édition (boutons,
+          champs) sans intérêt sur papier, déjà couverte pour l'impression par
+          la liste totale ci-dessus, qui exclut déjà les lignes retirées ou
+          remplacées. */}
+      {batch.batch_ingredients.length > 0 && (
+        <div id="sec-ingredients" className="no-print scroll-mt-28">
+          <details className="group">
+            <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
+              <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
+              <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+            </summary>
+            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
+          </details>
         </div>
       )}
 
@@ -636,26 +913,69 @@ function PreparerView({
           {sortedSteps.map((s, i) => {
             const ingredientsOfStep = batch.batch_ingredients.filter((it) => it.batch_step_id === s.id);
             const fully = stepFullyDone(s, ingredientsOfStep, s.batch_substeps);
-            const added = batchStepIsExpansion(s);
+            // Une étape remplacée est barrée en rouge comme une suppression
+            // (même convention que l'ingrédient remplacé, cf. bandeau de
+            // légende plus haut) : elle ne sera jamais réalisée telle quelle.
+            // Une étape insérée (par éclatement d'ingrédient OU par
+            // remplacement d'une autre étape) reste en vert, « Ajoutée ».
+            const replaced = batchStepReplaced(s);
+            const added = batchStepIsExpansion(s) || batchStepIsStepReplacement(s);
+            const insertedFrom = batchStepIsExpansion(s) ? expansionSource(batch, s) : stepReplacementSource(batch, s);
             const stepTitle = (
-              <h4 className={`font-headline-md text-headline-md ${fully ? 'text-on-surface-variant line-through' : added ? 'text-green-700' : 'text-primary'}`}>
-                {i + 1}. {s.title || 'Étape ' + (i + 1)}
+              <div className="flex flex-col gap-1">
+                <h4
+                  className={`font-headline-md text-headline-md flex items-center gap-2 ${
+                    replaced ? 'text-error line-through' : fully ? 'text-on-surface-variant line-through' : added ? 'text-green-700' : 'text-primary'
+                  }`}
+                >
+                  <span>
+                    {i + 1}. {s.title || 'Étape ' + (i + 1)}
+                  </span>
+                  {!s.done && !replaced && (
+                    <button
+                      type="button"
+                      onClick={() => setReplacingStep(s)}
+                      title="Remplacer cette étape par une recette (la fabriquer à partir d'une autre recette)"
+                      className="no-print font-normal text-primary hover:opacity-70"
+                    >
+                      <span className="material-symbols-outlined text-[18px] align-middle">swap_horiz</span>
+                    </button>
+                  )}
+                </h4>
                 {added && (
-                  <span className="block font-body-md text-[12px] text-green-700 font-normal mt-1">
+                  <span className="font-body-md text-[12px] text-green-700 font-normal">
                     Ajouté —{' '}
-                    {(() => {
-                      const from = expansionSource(batch, s);
-                      return from ? (
-                        <Link href={`/recette/${from.id}`} className="underline underline-offset-2 hover:opacity-70">
-                          {from.title}
-                        </Link>
-                      ) : (
-                        'sous-recette'
-                      );
-                    })()}
+                    {insertedFrom ? (
+                      <Link href={`/recette/${insertedFrom.id}`} className="underline underline-offset-2 hover:opacity-70">
+                        {insertedFrom.title}
+                      </Link>
+                    ) : (
+                      'sous-recette'
+                    )}
                   </span>
                 )}
-              </h4>
+                {replaced && (
+                  <span className="font-body-md text-[12px] text-error flex items-center gap-1.5 flex-wrap font-normal">
+                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                    Remplacée — fabriquée à partir de{' '}
+                    {s.replaced_recipe ? (
+                      <Link href={`/recette/${s.replaced_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                        {s.replaced_recipe.title}
+                      </Link>
+                    ) : (
+                      <span className="italic">une recette qui n’est plus accessible</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => cancelStepReplacement(s)}
+                      title="Annuler le remplacement et retirer les étapes ajoutées"
+                      className="no-print text-primary hover:opacity-70"
+                    >
+                      <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
+                    </button>
+                  </span>
+                )}
+              </div>
             );
             const times = remainingStepTimes(s);
             const stepTotal = (times.prep_time || 0) + (times.wait_time || 0) + (times.cook_time || 0);
@@ -677,9 +997,13 @@ function PreparerView({
             );
             const photos = baseRecipe && s.source_step_id ? baseRecipe.stepPhotosBySourceStepId[s.source_step_id] || [] : [];
             return (
-              <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28 flex flex-col gap-6">
+              // `print:hidden` sur une étape remplacée : elle ne sera jamais
+              // réalisée telle quelle (fabriquée à partir d'une sous-recette
+              // à la place, déjà insérée dans le déroulé) — inutile sur
+              // papier, comme un ingrédient supprimé ou remplacé.
+              <div key={s.id} id={`etape-${s.id}`} className={`scroll-mt-28 flex flex-col gap-6${replaced ? ' print:hidden' : ''}`}>
                 <BatchStepDonePanel
-                  collapsible={fully}
+                  collapsible={fully || replaced}
                   title={stepTitle}
                   meta={stepMeta}
                   step={s}
@@ -705,24 +1029,6 @@ function PreparerView({
           })}
         </div>
       )}
-
-      {batch.recipe_tips && (
-        <div id="sec-conseils" className="scroll-mt-28 bg-primary p-8 text-white rounded-xl">
-          <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
-            <span className="material-symbols-outlined">auto_awesome</span>Conseils et astuces de la recette
-          </h3>
-          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed whitespace-pre-line">{batch.recipe_tips}</p>
-        </div>
-      )}
-
-      {batch.recipe_serving_advice && (
-        <div id="sec-degustation" className="scroll-mt-28 bg-surface-container-low border border-outline-variant p-8 rounded-xl">
-          <h3 className="font-headline-md text-headline-md text-primary mb-3 flex items-center gap-3">
-            <span className="material-symbols-outlined">restaurant</span>Dégustation et conservation
-          </h3>
-          <p className="font-body-lg text-body-lg italic text-on-surface-variant leading-relaxed whitespace-pre-line">{batch.recipe_serving_advice}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -736,6 +1042,9 @@ function CuisinerView({
   units,
   setBusy,
   onSwitchMode,
+  onMarkTerminee,
+  finishBatch,
+  reviewEligible,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -744,6 +1053,13 @@ function CuisinerView({
   units: UnitRef[];
   setBusy: (b: boolean) => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  // Rail Cuisiner : même écriture que le rail Préparer, cf. BatchView.
+  onMarkTerminee: () => void;
+  // Écriture nue (sans confirmation), pour la proposition automatique
+  // ci-dessous qui pose déjà sa propre question.
+  finishBatch: () => Promise<boolean>;
+  // Un avis est-il encore possible sur cette fournée une fois terminée ?
+  reviewEligible: boolean;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -785,10 +1101,33 @@ function CuisinerView({
     if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
+  // Propose de terminer la fournée une fois toutes les étapes cochées, puis —
+  // si la réponse est oui — de laisser un avis sur la recette (cf. CLAUDE.md
+  // « Avis sur une recette »). `finishBatch` est appelé nu (sans reconfirmer,
+  // la question du dessus en tient déjà lieu) ; `onMarkTerminee`, lui, garde
+  // sa propre confirmation pour l'usage depuis le rail.
+  async function proposeFinish() {
+    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
+    if (!wantsFinish) {
+      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
+      return;
+    }
+    const ok = await finishBatch();
+    if (!ok || !reviewEligible) return;
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    if (wantsReview) {
+      setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    } else {
+      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+    }
+  }
+
   function toggleStep(id: number, checked: boolean) {
     updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null });
     if (checked) {
       setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      const allDone = batch.batch_steps.length > 0 && batch.batch_steps.every((s) => (s.id === id ? true : s.done));
+      if (allDone && batch.status === 'planifiee' && !readOnly) proposeFinish();
     }
   }
 
@@ -844,18 +1183,21 @@ function CuisinerView({
     }, 800);
   }
 
-  async function endSession(status: 'terminee' | 'abandonnee', message: string) {
+  // Seul l'abandon reste géré ici : « terminer » passe désormais par
+  // `onMarkTerminee` (BatchView), partagé avec le rail Préparer et la
+  // proposition automatique de `proposeFinish` ci-dessus.
+  async function abandonBatch(message: string) {
     if (readOnly) return;
     if (!(await dialog.confirm(message))) return;
     const fin = new Date().toISOString();
     setBusy(true);
-    const { error } = await createClient().from('batches').update({ status, date_fin: fin }).eq('id', batch.id);
+    const { error } = await createClient().from('batches').update({ status: 'abandonnee', date_fin: fin }).eq('id', batch.id);
     setBusy(false);
     if (error) {
       dialog.alert('Erreur : ' + error.message);
       return;
     }
-    setBatch((prev) => ({ ...prev, status, date_fin: fin }));
+    setBatch((prev) => ({ ...prev, status: 'abandonnee', date_fin: fin }));
     wakeLock.current?.release?.().catch(() => {});
     window.scrollTo(0, 0);
     router.refresh();
@@ -897,13 +1239,13 @@ function CuisinerView({
     ...(readOnly
       ? []
       : [
-          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: () => endSession('terminee', 'Terminer cette fournée ?') },
+          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: onMarkTerminee },
           {
             id: 'annuler',
             icon: 'cancel',
             label: 'Annuler ma fournée',
             variant: 'outline-danger' as const,
-            onClick: () => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
+            onClick: () => abandonBatch('Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
           },
         ]),
     {
@@ -922,8 +1264,9 @@ function CuisinerView({
     <>
       {/* Toujours monté, même sans jalon : le menu porte aussi la fin de
           session (terminer/annuler) et la sortie, qui doivent rester
-          atteignables même pour une fournée sans étape. */}
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="none" />
+          atteignables même pour une fournée sans étape. `mobileInset="nav"` :
+          même raison que dans PreparerView, cf. son commentaire. */}
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageToDataUrl } from '@/lib/images';
 import { useDialog } from '@/components/Dialog';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type Device = 'web' | 'tablette' | 'mobile';
 
@@ -52,8 +53,10 @@ function BannerCard({
         .upsert({ key: key(config.device), value: dataUrl });
       if (error) throw error;
       setUrl(dataUrl);
-      // La bannière est lue côté serveur par l'accueil : sans invalidation,
-      // elle n'y apparaît qu'après un rechargement complet.
+      // La bannière est lue côté serveur par l'accueil, et désormais servie
+      // depuis le cache de `lib/data/reference.ts` : `router.refresh()` seul
+      // relirait la valeur en cache. Invalider l'étiquette d'abord.
+      await revalidateReference('site_settings');
       router.refresh();
       setStatus('Bannière enregistrée ✓');
     } catch (e) {

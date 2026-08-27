@@ -16,8 +16,10 @@
 // jour-là.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
@@ -33,9 +35,27 @@ const dateLabel = (iso: string): string =>
 // serveur identique au premier, pour rien.
 export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
+  const router = useRouter();
+  // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
+  // renvoi vers la fiche fournée après « je veux laisser un avis » est un
+  // `router.push` déclenché par du code, pas un lien — `NavigationSpinner`
+  // ne le voit donc pas (cf. CLAUDE.md « Spinner »). Jamais remis à `false` :
+  // la navigation démonte ce composant.
+  const [navigating, setNavigating] = useState(false);
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
+  // Fournées dont la question « toutes les étapes sont cochées » a déjà été
+  // posée (acceptée ou refusée) : sans ça, une fournée entièrement cochée
+  // mais toujours `planifiee` (refus de la terminer) bascule instantanément
+  // dans le groupe replié « Journées terminées » (cf. `fullyDoneBatchIds`
+  // ci-dessous), qui repose sur la même condition « toutes les étapes sont
+  // cochées ». La case cochée disparaissait alors de la vue au moment même
+  // où la question était posée — l'utilisateur la retrouvait décochée en
+  // apparence (en fait juste hors de vue) et ne revoyait plus la question au
+  // recochage puisqu'elle restait, elle, dans ce groupe replié.
+  const [pendingFinish, setPendingFinish] = useState<Set<number>>(new Set());
 
   const groups = groupPlanningStepsByDate(list);
 
@@ -76,6 +96,66 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     if (!ok) setList(prev);
   }
 
+  // Un avis existe-t-il déjà pour cette recette, déposé depuis une AUTRE
+  // fournée ? Même condition que `reviewEligible` dans BatchView, lue
+  // directement sur `comments` : la RLS n'y autorise un membre qu'à voir SA
+  // PROPRE ligne (quel que soit son statut) ou les lignes `approved` de tout
+  // le monde — filtrer par `user_id` donne donc bien « mon » avis, jamais
+  // celui d'un autre. Best-effort : une erreur ou un réseau indisponible ne
+  // doit pas empêcher de proposer l'avis, seulement risquer de le proposer à
+  // tort une fois.
+  async function alreadyReviewed(recipeId: string, batchId: number): Promise<boolean> {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user.id;
+    if (!userId) return false;
+    const { data, error } = await supabase.from('comments').select('batch_id').eq('recipe_id', recipeId).eq('user_id', userId).maybeSingle();
+    if (error) return false;
+    return !!data && data.batch_id !== batchId;
+  }
+
+  // Propose de terminer la fournée dès que toutes SES étapes sont cochées
+  // (toutes fournées confondues sur cet écran, pas seulement celles du jour
+  // affiché) puis, si un avis est encore possible sur la recette d'origine,
+  // de laisser une note et un commentaire — mêmes actions et messages que
+  // `BatchView.proposeFinish` (mode Cuisiner d'une fournée).
+  async function proposeFinish(batchRow: BatchListRow) {
+    // Posé avant même la confirmation : la question apparaît sur le même
+    // rendu que la case tout juste cochée, donc `fullyDoneBatchIds` doit déjà
+    // exclure cette fournée pour que sa journée ne s'efface pas sous le
+    // dialogue (cf. déclaration de `pendingFinish` plus haut).
+    setPendingFinish((prev) => new Set(prev).add(batchRow.id));
+    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
+    if (!wantsFinish) {
+      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
+      return;
+    }
+    const ok = await mutate(() => createClient().from('batches').update({ status: 'terminee', date_fin: new Date().toISOString() }).eq('id', batchRow.id), {
+      errorLabel: 'Fin de la fournée impossible',
+    });
+    if (!ok) {
+      // Échec de l'écriture : redevient une fournée « tout coché » ordinaire,
+      // qui reproposera la question au prochain cochage.
+      setPendingFinish((prev) => {
+        const next = new Set(prev);
+        next.delete(batchRow.id);
+        return next;
+      });
+      return;
+    }
+    setList((prev) => prev.filter((p) => p.id !== batchRow.id));
+    if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    if (wantsReview) {
+      setNavigating(true);
+      router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
+    } else {
+      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+    }
+  }
+
   // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
   // seule source de vérité (`batch_steps.done`), la même que sur la fiche et
   // en mode Cuisiner.
@@ -86,7 +166,15 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
       errorLabel: 'Modification non enregistrée',
       refresh: false,
     });
-    if (!ok) setList(prev);
+    if (!ok) {
+      setList(prev);
+      return;
+    }
+    if (!checked) return;
+    const batchRow = list.find((p) => p.batch_steps.some((s) => s.id === stepId));
+    if (!batchRow || batchRow.status !== 'planifiee' || batchRow.batch_steps.length === 0) return;
+    const allDone = batchRow.batch_steps.every((s) => (s.id === stepId ? true : s.done));
+    if (allDone) proposeFinish(batchRow);
   }
 
   if (groups.length === 0) {
@@ -103,7 +191,9 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   // une journée de préparation intermédiaire (dont les étapes sont cochées)
   // basculait en « terminée » alors que la recette continue sur d'autres
   // jours, la faisant disparaître du planning actif à tort.
-  const fullyDoneBatchIds = new Set(list.filter((p) => p.batch_steps.every((s) => s.done)).map((p) => p.id));
+  const fullyDoneBatchIds = new Set(
+    list.filter((p) => p.batch_steps.every((s) => s.done) && !pendingFinish.has(p.id)).map((p) => p.id),
+  );
   const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && fullyDoneBatchIds.has(it.planId));
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
@@ -137,48 +227,53 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                     moveStep(g.date, fromIdx, idx);
                     setDragId(null);
                   }}
-                  className={`flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap${dragId === it.stepId ? ' opacity-50' : ''}`}
+                  className={`flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30 last:border-0${dragId === it.stepId ? ' opacity-50' : ''}`}
                 >
-                  <span
-                    draggable
-                    onDragStart={(e) => {
-                      setDragId(it.stepId);
-                      e.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragEnd={() => setDragId(null)}
-                    title="Glisser pour réordonner cette étape dans sa journée"
-                    className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
-                  >
-                    drag_indicator
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={it.done}
-                    onChange={(e) => toggleDone(it.stepId, e.target.checked)}
-                    title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
-                    className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
-                  />
-                  <Link
-                    href={`/fournee/${it.planId}?mode=preparer`}
-                    className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0 hover:underline"
-                  >
-                    {it.recipeTitle}
-                  </Link>
-                  {/* Pas de lien si la fournée a été supprimée depuis
-                      (recipeId absent, recipeTitle dénormalisé prend le
-                      relais pour l'affichage — cf. CLAUDE.md). */}
+                  {/* Trois lignes fixes, sur tous les appareils (pas
+                      seulement un repli mobile) : nom de la recette, nom de
+                      l'étape (case à cocher collée devant, jamais solidaire
+                      du titre de la recette au-dessus), puis le temps. */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        setDragId(it.stepId);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => setDragId(null)}
+                      title="Glisser pour réordonner cette étape dans sa journée"
+                      className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                    >
+                      drag_indicator
+                    </span>
+                    <Link
+                      href={`/fournee/${it.planId}?mode=preparer`}
+                      className="font-label-md text-[11px] text-secondary uppercase tracking-widest hover:underline"
+                    >
+                      {it.recipeTitle}
+                    </Link>
+                  </div>
                   {(() => {
                     const href = `/fournee/${it.planId}#etape-${it.stepId}`;
                     const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
                     const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return (
-                      <Link href={href} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
-                        {numberSpan}
-                        {titleSpan}
-                      </Link>
+                      <div className="flex items-center gap-1.5 pl-[26px]">
+                        <input
+                          type="checkbox"
+                          checked={it.done}
+                          onChange={(e) => toggleDone(it.stepId, e.target.checked)}
+                          title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
+                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                        />
+                        <Link href={href} className="flex items-baseline gap-1.5 hover:underline">
+                          {numberSpan}
+                          {titleSpan}
+                        </Link>
+                      </div>
                     );
                   })()}
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap pl-[26px]">
                     {badges.map((b, k) => (
                       <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">
                         {b}
@@ -197,7 +292,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
+      <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
       {pendingGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
           <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>

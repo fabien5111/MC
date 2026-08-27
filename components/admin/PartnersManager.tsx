@@ -19,6 +19,7 @@ import { useDialog } from '@/components/Dialog';
 import { formatDate } from '@/lib/format';
 import { resizeImageToDataUrl, isAcceptedImage, isHeic } from '@/lib/images';
 import { AD_SLOTS, adSlotConfig, adStatus, type AdRow, type AdSlotKey } from '@/lib/ads-config';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type AdsTable = {
   insert: (values: unknown) => PromiseLike<{ error: { message: string } | null }>;
@@ -50,17 +51,33 @@ export function PartnersManager({ items }: { items: AdRow[] }) {
     [items, filter],
   );
 
+  // Les campagnes diffusables sont en cache serveur (lib/ads.ts) : sans
+  // invalidation, une campagne supprimée ou désactivée continuerait de
+  // s'afficher jusqu'à une heure. Invalider AVANT la resynchronisation portée
+  // par `mutate`, sinon le rendu serveur relit la valeur en cache.
   async function del(row: AdRow) {
-    await mutate(() => adsTable().delete().eq('id', row.id), {
-      confirm: `Supprimer la publicité « ${row.name} » ? Cette action est définitive.`,
-      errorLabel: 'Suppression impossible',
-    });
+    await mutate(
+      async () => {
+        const r = await adsTable().delete().eq('id', row.id);
+        await revalidateReference('ads');
+        return r;
+      },
+      {
+        confirm: `Supprimer la publicité « ${row.name} » ? Cette action est définitive.`,
+        errorLabel: 'Suppression impossible',
+      },
+    );
   }
 
   async function toggleActive(row: AdRow) {
-    await mutate(() => adsTable().update({ active: !row.active }).eq('id', row.id), {
-      errorLabel: 'Modification impossible',
-    });
+    await mutate(
+      async () => {
+        const r = await adsTable().update({ active: !row.active }).eq('id', row.id);
+        await revalidateReference('ads');
+        return r;
+      },
+      { errorLabel: 'Modification impossible' },
+    );
   }
 
   return (
@@ -293,7 +310,13 @@ function AdForm({
     // `refresh: false` : le tiroir se démonte dès onSaved(), c'est au parent
     // (toujours monté) de porter la resynchronisation.
     const ok = await mutate(
-      () => (entry ? adsTable().update(payload).eq('id', entry.id) : adsTable().insert(payload)),
+      async () => {
+        const r = entry ? await adsTable().update(payload).eq('id', entry.id) : await adsTable().insert(payload);
+        // Idem : le cache des campagnes doit tomber avant que le parent ne
+        // resynchronise (cf. `del` / `toggleActive` plus haut).
+        await revalidateReference('ads');
+        return r;
+      },
       { refresh: false, errorLabel: 'Enregistrement impossible' },
     );
     if (ok) onSaved();

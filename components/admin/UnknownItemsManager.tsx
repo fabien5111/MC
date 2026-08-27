@@ -42,17 +42,34 @@ function statusNote(status: string | null, isPublic: boolean | null): string | n
   return parts.length ? parts.join(', ') : null;
 }
 
-function RecipeLinks({ recipes }: { recipes: UnknownItem['recipes'] }) {
+// Étiquette de statut compacte, affichée EN AVANT du titre de la recette
+// plutôt que dans la note entre parenthèses — utile quand le statut doit
+// sauter aux yeux (ex. bloc « Ingrédients en volume sans masse volumique »,
+// qui remonte aussi les brouillons : on peut lancer une fournée depuis un
+// brouillon, donc l'écart n'attend pas la publication). Mêmes couleurs que
+// `StatusBadge` (StepExpandDialog.tsx) — un seul vocabulaire visuel de
+// statut de recette dans toute l'application.
+function RecipeStatusBadge({ status, isPublic }: { status: string | null; isPublic: boolean | null }) {
+  const cls = 'px-1.5 py-0.5 font-label-md text-[9px] uppercase tracking-widest rounded shrink-0 mr-1.5';
+  if (status === 'draft') return <span className={`${cls} bg-secondary text-white`}>Brouillon</span>;
+  if (status === 'pending') return <span className={`${cls} bg-secondary text-white`}>En attente</span>;
+  if (status === 'rejected') return <span className={`${cls} bg-error text-white`}>Refusée</span>;
+  if (isPublic === false) return <span className={`${cls} bg-surface-container-highest text-primary`}>Privée</span>;
+  return <span className={`${cls} bg-green-700 text-white`}>Publiée</span>;
+}
+
+function RecipeLinks({ recipes, showStatusBadge = false }: { recipes: UnknownItem['recipes']; showStatusBadge?: boolean }) {
   return (
     <span className="flex flex-wrap gap-x-2 gap-y-1">
       {recipes.map((r, i) => {
         const note = statusNote(r.status, r.isPublic);
         return (
           <span key={`${r.id}:${r.step ?? ''}`} className="text-xs">
+            {showStatusBadge && <RecipeStatusBadge status={r.status} isPublic={r.isPublic} />}
             <Link href={`/recette/${r.id}`} target="_blank" className="text-secondary hover:text-primary underline underline-offset-2">
               {r.title}
             </Link>
-            {note && <span className="text-on-surface-variant"> ({note})</span>}
+            {!showStatusBadge && note && <span className="text-on-surface-variant"> ({note})</span>}
             {r.author ? (
               r.authorId ? (
                 <>
@@ -302,6 +319,63 @@ function AddUtensilPanel({ item, onClose }: { item: UnknownItem; onClose: () => 
   );
 }
 
+// Ingrédients déjà référencés, saisis en volume (ml/cl/l) dans une recette
+// publiée, mais sans masse volumique enregistrée pour eux dans le
+// référentiel — cf. lib/admin.ts `getVolumeIngredientsMissingDensity`.
+// Distinct de `Section` : l'ingrédient est déjà rattaché à la référence, il
+// n'y a donc rien à « ajouter » ni à « exclure » ici, seulement un renvoi
+// vers l'écran où renseigner la valeur manquante.
+function VolumeDensitySection({ items }: { items: UnknownItem[] }) {
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div className="p-6 border-b border-outline-variant">
+        <h3 className="font-headline-md text-lg font-semibold">
+          Ingrédients en volume sans masse volumique{' '}
+          <span className="text-on-surface-variant font-normal text-sm">({items.length})</span>
+        </h3>
+        <p className="text-xs text-on-surface-variant mt-0.5">
+          Ingrédients déjà référencés, saisis en volume (ml/cl/l), sans masse volumique enregistrée pour eux — renseignez-la
+          depuis{' '}
+          <Link href="/admin/listes" className="text-secondary hover:text-primary underline underline-offset-2">
+            Gestion des listes → Ingrédients
+          </Link>{' '}
+          pour qu&apos;ils comptent dans l&apos;estimation de poids au remplacement d&apos;une étape par une recette. Toutes
+          les recettes sont remontées, brouillon compris : une fournée peut être lancée dès un brouillon, sans attendre la
+          publication — le statut de chacune est rappelé devant son titre.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-surface-container-low border-b border-outline-variant">
+              <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ingrédient</th>
+              <th className="px-6 py-4 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Recettes concernées</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant">
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-6 py-10 text-center text-on-surface-variant text-sm">
+                  Rien à signaler.
+                </td>
+              </tr>
+            ) : (
+              items.map((it) => (
+                <tr key={it.name.toLowerCase()} className="hover:bg-surface-container-low transition-colors align-top">
+                  <td className="px-6 py-4 text-sm font-semibold text-on-surface whitespace-nowrap">{it.name}</td>
+                  <td className="px-6 py-4">
+                    <RecipeLinks recipes={it.recipes} showStatusBadge />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // Éléments exclus (repliable, replié par défaut) : rester visible plutôt que
 // disparaître silencieusement — une exclusion se fait en un clic depuis les
 // tableaux ci-dessus, elle doit pouvoir se défaire aussi facilement.
@@ -363,11 +437,13 @@ function IgnoredSection({ items, onRestore }: { items: IgnoredRef[]; onRestore: 
 export function UnknownItemsManager({
   ingredients,
   utensils,
+  volumeMissingDensity,
   ignored,
   allergens,
 }: {
   ingredients: UnknownItem[];
   utensils: UnknownItem[];
+  volumeMissingDensity: UnknownItem[];
   ignored: IgnoredRef[];
   allergens: { id: number; name: string }[];
 }) {
@@ -402,6 +478,7 @@ export function UnknownItemsManager({
         onAdd={setAddingUtensil}
         onExclude={(item) => exclude('utensil', item)}
       />
+      <VolumeDensitySection items={volumeMissingDensity} />
       <IgnoredSection items={ignored} onRestore={restore} />
       {addingIngredient && <AddIngredientPanel item={addingIngredient} allergens={allergens} onClose={() => setAddingIngredient(null)} />}
       {addingUtensil && <AddUtensilPanel item={addingUtensil} onClose={() => setAddingUtensil(null)} />}

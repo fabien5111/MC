@@ -8,6 +8,7 @@
 // admin de la fenêtre courante.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getProfile } from '@/lib/auth';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { IMPERSONATION_TTL_MINUTES, getAdminImpersonationAccess } from '@/lib/impersonation';
 import { modeLabel } from '@/lib/impersonation-types';
@@ -19,7 +20,10 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
 
-  const { data: me } = await supabase.from('profiles').select('role, email').eq('id', user.id).maybeSingle();
+  // Profil via l'accesseur unique (mémoïsé) : il porte `role` ET `email`, les
+  // deux dont cette route a besoin. Cf. lib/auth.ts — plus de lecture directe
+  // de `profiles` dispersée dans le code.
+  const me = await getProfile(user.id);
   if (me?.role !== 'admin') {
     return NextResponse.json({ erreur: 'Réservé aux administrateurs.' }, { status: 403 });
   }

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
 import { useDialog } from '@/components/Dialog';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 const KEY = 'recipe_default_photo';
 
@@ -24,8 +25,10 @@ export function RecipeDefaultPhotoManager({ initialUrl }: { initialUrl: string |
       const { error } = await supabase.from('site_settings').upsert({ key: KEY, value: dataUrl });
       if (error) throw error;
       setUrl(dataUrl);
-      // Lue côté serveur par les cartes recette : sans invalidation, elle n'y
-      // apparaît qu'après un rechargement complet (même motif que BannerManager).
+      // Lue côté serveur par les cartes recette, et désormais servie depuis le
+      // cache de `lib/data/reference.ts` : `router.refresh()` seul relirait la
+      // valeur en cache. Invalider l'étiquette d'abord, re-rendre ensuite.
+      await revalidateReference('site_settings');
       router.refresh();
       setStatus('Photo enregistrée ✓');
     } catch (e) {
@@ -45,6 +48,7 @@ export function RecipeDefaultPhotoManager({ initialUrl }: { initialUrl: string |
       const { error } = await supabase.from('site_settings').upsert({ key: KEY, value: null });
       if (error) throw error;
       setUrl(null);
+      await revalidateReference('site_settings');
       router.refresh();
       setStatus('');
     } catch (e) {

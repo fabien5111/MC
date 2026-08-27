@@ -22,6 +22,7 @@ import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { useDialog } from '@/components/Dialog';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -524,7 +525,14 @@ export function RelectureEditor({
   // refresh, lui, resynchronise les listes de référence rendues côté serveur —
   // sans quoi le libellé créé disparaîtrait en revenant sur cet écran, et
   // n'apparaîtrait pas dans le back-office des listes.
-  const refreshRefs = () => router.refresh();
+  // Invalide aussi le cache serveur des référentiels (lib/data/reference.ts) :
+  // `router.refresh()` seul re-rend la page, mais le Server Component relirait
+  // la même valeur en cache et le libellé créé resterait invisible jusqu'au
+  // délai de validité (jusqu'à 24 h selon la table).
+  const refreshRefs = (table: string) => {
+    void revalidateReference(table);
+    router.refresh();
+  };
 
   async function addUtensilRef(name: string) {
     const clean = name.trim();
@@ -534,7 +542,7 @@ export function RelectureEditor({
     setRefBusy(null);
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
-    refreshRefs();
+    refreshRefs('utensils');
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -552,7 +560,7 @@ export function RelectureEditor({
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
-    refreshRefs();
+    refreshRefs('ingredient_refs');
   }
 
   // Création d'un tag inexistant dans le référentiel depuis la relecture
@@ -587,7 +595,7 @@ export function RelectureEditor({
     setNewTagName('');
     setTagPickerOpen(false);
     markDirty();
-    refreshRefs();
+    refreshRefs('tags');
   }
   // Dédoublonné par id, même raison que les référentiels ci-dessus (un tag en
   // double produirait deux entrées de même clé React dans le sélecteur).

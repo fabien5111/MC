@@ -254,13 +254,20 @@ export function ImageSlot({
             onChange?.(dataUrl);
             setEditingPhoto(false);
             if (promptAiRetouched) {
+              // `choice` plutôt que `confirm` : le bouton par défaut (focus,
+              // couleur primaire) doit être « Non » — présumer un filigrane
+              // « IA » sur une simple validation de recadrage serait trompeur
+              // pour l'auteur comme pour les lecteurs de la recette.
               dialog
-                .confirm(
+                .choice(
                   "Cette photo a-t-elle été retravaillée avec l'IA ?\n\n" +
                     "Si oui, un filigrane « Photo retravaillée avec l'IA » sera apposé.",
-                  { okLabel: 'Oui', cancelLabel: 'Non' },
+                  [
+                    { label: 'Oui', value: 'oui' },
+                    { label: 'Non', value: 'non', variant: 'primary' },
+                  ],
                 )
-                .then((yes) => onAiRetouchedChange?.(yes));
+                .then((value) => onAiRetouchedChange?.(value === 'oui'));
             }
           }}
         />

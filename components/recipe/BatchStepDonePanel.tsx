@@ -101,6 +101,17 @@ export function BatchStepDonePanel({
   const [dragSubstep, setDragSubstep] = useState<number | null>(null);
   // Repliée par défaut si repliable ; sinon toujours dépliée (étape active).
   const [open, setOpen] = useState(!collapsible);
+  // Bascule sur repliée dès que l'étape DEVIENT repliable en cours de
+  // session (ex. remplacement par une recette venant d'aboutir) : l'état
+  // initial de `open` n'est lu qu'au montage, or ce composant reste monté
+  // (même `key`) à travers le `router.refresh()` qui suit l'écriture — sans
+  // cet effet, une étape ouverte au moment du remplacement resterait
+  // dépliée malgré son nouveau statut. Ne force rien tant que `collapsible`
+  // ne change pas de valeur : un dépliage manuel sur une étape déjà
+  // repliable n'est donc jamais écrasé par un rendu qui ne change rien.
+  useEffect(() => {
+    if (collapsible) setOpen(false);
+  }, [collapsible]);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
   // router.refresh() n'ait fini de resynchroniser les props — état local mis
   // à jour au succès de la mutation pour que les cases changent en même temps
@@ -473,8 +484,12 @@ export function BatchStepDonePanel({
                       className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-1"
                     />
                   ) : (
-                    <span className="shrink-0 w-5" />
+                    <span className="shrink-0 w-5 print:hidden" />
                   )}
+                  {/* Case à cocher sur papier, où il n'y a ni case à cocher
+                      interactive ni case déjà réalisée à distinguer — même
+                      glyphe que les ingrédients de la liste totale. */}
+                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface shrink-0 mt-1 mr-1.5" />
                   <span className={`flex-1 min-w-0 ${tone}`}>{su.texte}</span>
                   {su.added && (
                     <button
@@ -542,12 +557,16 @@ export function BatchStepDonePanel({
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
       <div className="flex flex-col gap-3 border-b border-outline pb-4">
-        {title}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            {dayControl}
-            {meta}
-          </div>
+        {/* Case + chevron sur la même ligne que le titre, jamais couplés aux
+            badges de date/temps (dayControl/meta) : ces badges peuvent à eux
+            seuls remplir la largeur et passer sur une seconde ligne (étape
+            avec cuisson + attente + total, ex. étape remplacée), ce qui
+            reléguait la case sur une troisième ligne isolée. Ancrés en haut
+            (items-start) : un titre sur plusieurs lignes (étape ajoutée ou
+            remplacée, avec sa mention verte/rouge en dessous) ne doit pas
+            centrer la case sur toute sa hauteur. */}
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="min-w-0">{title}</div>
           <div className="no-print flex items-center gap-3 shrink-0">
             {doneToggle}
             {collapsible && (
@@ -561,6 +580,10 @@ export function BatchStepDonePanel({
               </button>
             )}
           </div>
+        </div>
+        <div className="flex items-center flex-wrap gap-3 min-w-0">
+          {dayControl}
+          {meta}
         </div>
       </div>
       {open && (

@@ -15,10 +15,12 @@
 // débrider en supprimant un cookie, et la même condition est réutilisable en
 // SQL par la RLS (fonction `public.is_read_only_session()`).
 import { cache } from 'react';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, getProfile } from '@/lib/auth';
 import {
+  IMPERSONATION_COOKIE,
   isImpersonationMode,
   withImpersonationSchema,
   type ImpersonationMode,
@@ -44,6 +46,17 @@ export type ImpersonationContext = {
 // appliquée (table absente) ou si Supabase renvoie une erreur, on renvoie null
 // plutôt que de casser le rendu de tout le site.
 export const getImpersonationContext = cache(async (): Promise<ImpersonationContext | null> => {
+  // Portillon : sans cookie témoin, aucune session « en tant que » n'a été
+  // ouverte sur ce navigateur — inutile d'interroger la table. C'est tout
+  // l'objet du chantier 4 : `impersonation_sessions` était lue à chaque rendu
+  // de page pour 100 % des membres (3 871 appels au relevé du 25/08/2026),
+  // alors qu'elle ne concerne qu'une poignée de sessions d'administration.
+  //
+  // Le cookie n'autorise rien : il ne fait qu'ouvrir la vérification. Tout ce
+  // qui suit est inchangé, et la RLS reste la garantie réelle.
+  const cookieStore = await cookies();
+  if (!cookieStore.get(IMPERSONATION_COOKIE)) return null;
+
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -87,13 +100,11 @@ export async function requireWritableSession(): Promise<void> {
 // Niveau de droit d'impersonation d'un admin (hérité par les sessions qu'il
 // ouvre). Défaut prudent : lecture seule.
 export async function getAdminImpersonationAccess(adminId: string): Promise<ImpersonationMode> {
-  const supabase = withImpersonationSchema(await createClient());
-  const { data } = await supabase
-    .from('profiles')
-    .select('impersonation_access')
-    .eq('id', adminId)
-    .maybeSingle();
-  return isImpersonationMode(data?.impersonation_access) ? data.impersonation_access : 'read_only';
+  // Via l'accesseur unique du profil (mémoïsé par requête) : la route qui
+  // appelle cette fonction a déjà lu le profil de l'admin pour vérifier son
+  // rôle, cette lecture-ci est donc gratuite. Cf. lib/auth.ts.
+  const profile = await getProfile(adminId);
+  return isImpersonationMode(profile?.impersonation_access) ? profile.impersonation_access : 'read_only';
 }
 
 export type ImpersonationSessionWithEvents = ImpersonationSessionRow & {

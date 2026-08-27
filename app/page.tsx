@@ -24,7 +24,7 @@ import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
-import { getSiteSettings } from '@/lib/site';
+import { getPublicSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
 import { StarRating } from '@/components/StarRating';
@@ -69,7 +69,7 @@ export default async function HomePage() {
     getRecipes({ limit: 12 }),
     getActiveFeaturedRecipe(),
     getFavoriteIds(),
-    getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile', 'recipe_default_photo']),
+    getPublicSiteSettings(),
     getHomeCategories(),
     getActiveAds(['home_top', 'home_mid']),
     // Réservées au membre — inutile de les demander à un visiteur.

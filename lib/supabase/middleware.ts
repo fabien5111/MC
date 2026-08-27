@@ -71,10 +71,44 @@ export async function updateSession(request: NextRequest) {
   });
 
   try {
-    // IMPORTANT : ne rien exécuter entre createServerClient et getUser (rafraîchit le token).
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // IMPORTANT : ne rien exécuter entre createServerClient et cet appel (il
+    // rafraîchit le token et réécrit les cookies de session).
+    //
+    // `getClaims()` plutôt que `getUser()` : ce dernier interroge le serveur
+    // d'authentification à **chaque** appel, et le middleware s'exécute sur
+    // chaque requête — navigations, mais aussi prefetch RSC de `<Link>`. Un
+    // `getUser()` déclenche côté GoTrue les lectures de `sessions`,
+    // `identities`, `mfa_amr_claims` et `users` : c'est le poste à ~37 000
+    // appels du relevé du 25/08/2026.
+    //
+    // `getClaims()` vérifie la signature du JWT **localement** contre le JWKS
+    // du projet, récupéré une fois puis mis en cache dans un registre de
+    // processus (`GLOBAL_JWKS`, partagé entre tous les clients d'une même
+    // instance Lambda). Coût réseau : nul, une fois l'instance chaude.
+    //
+    // Trois choses à savoir :
+    //
+    // 1. **Le rafraîchissement est préservé.** `getClaims()` appelle
+    //    `getSession()` en interne, qui rafraîchit un token expiré et le
+    //    repose en cookies par l'adaptateur ci-dessus — exactement le chemin
+    //    qu'empruntait `getUser()`. C'est la mise en garde du § 4 de la spec,
+    //    et elle est respectée.
+    // 2. **Le gain suppose des clés de signature asymétriques** (ECC/RSA) côté
+    //    projet Supabase. Sur l'ancien secret partagé (HS256), la signature
+    //    n'est pas vérifiable sans le secret : `getClaims()` retombe alors
+    //    tout seul sur `getUser()`. Le comportement reste juste, simplement
+    //    sans gain — la bascule se fait dans le tableau de bord Supabase
+    //    (Authentication → JWT Keys).
+    // 3. **Ce que ça ne voit plus** : une session révoquée avant l'expiration
+    //    de son token (déconnexion ailleurs, compte supprimé) reste acceptée
+    //    ici jusqu'à échéance. C'est acceptable parce que ce contrôle-ci ne
+    //    fait qu'aiguiller vers /connexion : le contrôle fin des pages privées
+    //    passe par `requireUser()` → `getCurrentUser()`, qui appelle toujours
+    //    `getUser()` et interroge donc bien le serveur d'authentification.
+    const { data } = await supabase.auth.getClaims();
+    // Seule la présence d'une session compte ici : le middleware aiguille, il
+    // n'a besoin d'aucun attribut de l'utilisateur.
+    const estConnecte = !!data?.claims;
 
     const { pathname } = request.nextUrl;
     const isProtected = PROTECTED_PREFIXES.some(
@@ -88,7 +122,7 @@ export async function updateSession(request: NextRequest) {
     // navigation effective doit produire cette redirection.
     const isPrefetch = request.headers.get('next-router-prefetch') === '1';
 
-    if (!user && isProtected && !isPrefetch) {
+    if (!estConnecte && isProtected && !isPrefetch) {
       const url = request.nextUrl.clone();
       url.pathname = '/connexion';
       url.searchParams.set('next', pathname);

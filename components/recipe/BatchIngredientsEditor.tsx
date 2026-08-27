@@ -17,7 +17,15 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import type { Unit } from '@/lib/profile';
-import { fmtNum, batchIngredientExpanded, batchStepIsExpansion, type BatchFull, type BatchIngredientRow } from '@/lib/recipe-plan';
+import {
+  fmtNum,
+  batchIngredientExpanded,
+  batchStepIsExpansion,
+  batchStepIsStepReplacement,
+  batchStepReplaced,
+  type BatchFull,
+  type BatchIngredientRow,
+} from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 
@@ -246,7 +254,13 @@ export function BatchIngredientsEditor({
                 déjà réglé là-bas. */}
             <h4
               className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${
-                step.done ? 'text-on-surface-variant line-through' : batchStepIsExpansion(step) ? 'text-green-700' : 'text-secondary'
+                step.done
+                  ? 'text-on-surface-variant line-through'
+                  : batchStepReplaced(step)
+                    ? 'text-error line-through'
+                    : batchStepIsExpansion(step) || batchStepIsStepReplacement(step)
+                      ? 'text-green-700'
+                      : 'text-secondary'
               }`}
             >
               {step.title || ''}
@@ -263,8 +277,12 @@ export function BatchIngredientsEditor({
                 {rows.map((row) => {
                   const key = `${step.id}:${row.id}`;
                   const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  // `removed` prime toujours sur l'exclusion « déjà fait ».
-                  const excludedByStep = step.done && row.excluded_when_done;
+                  // `removed` prime toujours sur l'exclusion « déjà fait ». Une
+                  // étape remplacée (cf. BatchView) exclut aussi toutes ses
+                  // lignes, quel que soit `excluded_when_done` — même rendu
+                  // grisé que « déjà fait », l'exclusion n'étant pas propre à
+                  // la ligne mais à l'étape entière.
+                  const excludedByStep = (step.done && row.excluded_when_done) || batchStepReplaced(step);
                   // Ligne remplacée par une sous-recette : barrée en rouge,
                   // comme une suppression — elle ne s'achète plus, la mention
                   // verte en dessous dit où elle est fabriquée à la place.
@@ -329,7 +347,7 @@ export function BatchIngredientsEditor({
                                 >
                                   <span className="material-symbols-outlined text-[18px]">edit</span>
                                 </button>
-                                {!row.removed && (
+                                {!row.removed && !batchStepReplaced(step) && (
                                   <button
                                     type="button"
                                     onClick={() => setExpanding(row)}

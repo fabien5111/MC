@@ -1,16 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireFullAdmin } from '@/lib/auth';
-import { getUnknownIngredients, getUnknownUtensils, getIgnoredRefs, getListEntries } from '@/lib/admin';
+import { getUnknownIngredients, getUnknownUtensils, getVolumeIngredientsMissingDensity, getIgnoredRefs, getListEntries } from '@/lib/admin';
 import { UnknownItemsManager } from '@/components/admin/UnknownItemsManager';
 
 export const metadata: Metadata = { title: 'Éléments inconnus | Admin — Je pâtisse !' };
 
 export default async function AdminInconnusPage() {
   await requireFullAdmin(); // rattachement aux référentiels : admin complet
-  const [ingredients, utensils, ignored, allergensRaw] = await Promise.all([
+  const [ingredients, utensils, volumeMissingDensity, ignored, allergensRaw] = await Promise.all([
     getUnknownIngredients(),
     getUnknownUtensils(),
+    getVolumeIngredientsMissingDensity(),
     getIgnoredRefs(),
     getListEntries('allergens', 'name'),
   ]);
@@ -24,7 +25,13 @@ export default async function AdminInconnusPage() {
           <span className="material-symbols-outlined text-sm">arrow_back</span> Tableau de bord
         </Link>
       </header>
-      <UnknownItemsManager ingredients={ingredients} utensils={utensils} ignored={ignored} allergens={allergens} />
+      <UnknownItemsManager
+        ingredients={ingredients}
+        utensils={utensils}
+        volumeMissingDensity={volumeMissingDensity}
+        ignored={ignored}
+        allergens={allergens}
+      />
     </>
   );
 }
