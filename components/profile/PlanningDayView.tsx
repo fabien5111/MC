@@ -40,6 +40,16 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
+  // Fournées dont la question « toutes les étapes sont cochées » a déjà été
+  // posée (acceptée ou refusée) : sans ça, une fournée entièrement cochée
+  // mais toujours `planifiee` (refus de la terminer) bascule instantanément
+  // dans le groupe replié « Journées terminées » (cf. `fullyDoneBatchIds`
+  // ci-dessous), qui repose sur la même condition « toutes les étapes sont
+  // cochées ». La case cochée disparaissait alors de la vue au moment même
+  // où la question était posée — l'utilisateur la retrouvait décochée en
+  // apparence (en fait juste hors de vue) et ne revoyait plus la question au
+  // recochage puisqu'elle restait, elle, dans ce groupe replié.
+  const [pendingFinish, setPendingFinish] = useState<Set<number>>(new Set());
 
   const groups = groupPlanningStepsByDate(list);
 
@@ -106,6 +116,11 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   // de laisser une note et un commentaire — mêmes actions et messages que
   // `BatchView.proposeFinish` (mode Cuisiner d'une fournée).
   async function proposeFinish(batchRow: BatchListRow) {
+    // Posé avant même la confirmation : la question apparaît sur le même
+    // rendu que la case tout juste cochée, donc `fullyDoneBatchIds` doit déjà
+    // exclure cette fournée pour que sa journée ne s'efface pas sous le
+    // dialogue (cf. déclaration de `pendingFinish` plus haut).
+    setPendingFinish((prev) => new Set(prev).add(batchRow.id));
     const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
     if (!wantsFinish) {
       dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
@@ -114,7 +129,16 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     const ok = await mutate(() => createClient().from('batches').update({ status: 'terminee', date_fin: new Date().toISOString() }).eq('id', batchRow.id), {
       errorLabel: 'Fin de la fournée impossible',
     });
-    if (!ok) return;
+    if (!ok) {
+      // Échec de l'écriture : redevient une fournée « tout coché » ordinaire,
+      // qui reproposera la question au prochain cochage.
+      setPendingFinish((prev) => {
+        const next = new Set(prev);
+        next.delete(batchRow.id);
+        return next;
+      });
+      return;
+    }
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
     if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
@@ -157,7 +181,9 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   // une journée de préparation intermédiaire (dont les étapes sont cochées)
   // basculait en « terminée » alors que la recette continue sur d'autres
   // jours, la faisant disparaître du planning actif à tort.
-  const fullyDoneBatchIds = new Set(list.filter((p) => p.batch_steps.every((s) => s.done)).map((p) => p.id));
+  const fullyDoneBatchIds = new Set(
+    list.filter((p) => p.batch_steps.every((s) => s.done) && !pendingFinish.has(p.id)).map((p) => p.id),
+  );
   const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && fullyDoneBatchIds.has(it.planId));
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
