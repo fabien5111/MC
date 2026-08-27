@@ -94,21 +94,28 @@ export default async function FourneePage({ params, searchParams }: Params) {
   return (
     <>
       {/* Même bandeau que le reste du site (auparavant un en-tête maison,
-          propre à BatchView) — rattachée à « En cuisine » (lib/nav.ts). */}
-      <Header current="cuisine" />
-      <BatchView
-        batch={batch}
-        baseRecipe={baseRecipe}
-        units={units}
-        unitTips={unitTips}
-        conversions={conversions}
-        ingredientDensities={ingredientDensities}
-        shoppingLists={shoppingLists}
-        allergenRefs={allergenRefs}
-        lecture={lecture === '1'}
-        initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
-        myReview={myReview}
-      />
+          propre à BatchView) — rattachée à « En cuisine » (lib/nav.ts).
+          `no-print` : même traitement que la fiche recette. */}
+      <Header current="cuisine" className="no-print" />
+      {/* `<main>` : sans lui, le bouton Imprimer n'expand aucun `<details>`
+          replié (`usePrintDetailsExpansion` cible `main details`) et les
+          règles CSS d'impression scopées à `main` (pleine largeur, une seule
+          colonne) restent sans effet — même structure que /recette/[id]. */}
+      <main>
+        <BatchView
+          batch={batch}
+          baseRecipe={baseRecipe}
+          units={units}
+          unitTips={unitTips}
+          conversions={conversions}
+          ingredientDensities={ingredientDensities}
+          shoppingLists={shoppingLists}
+          allergenRefs={allergenRefs}
+          lecture={lecture === '1'}
+          initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
+          myReview={myReview}
+        />
+      </main>
       <MobileNav current="cuisine" />
     </>
   );

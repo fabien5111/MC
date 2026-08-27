@@ -728,9 +728,14 @@ body {
   }
   /* Superpositions flottantes (overlay de chargement, bandeau
      d'impersonation, sommaire de l'éditeur) : elles se répéteraient sur
-     chaque page ou recouvriraient le contenu. */
+     chaque page ou recouvriraient le contenu. `.recipe-toc-fab` (bouton
+     flottant du tiroir mobile) est une superposition à part entière : sa
+     position fixe vient de sa propre règle CSS, pas de la classe utilitaire
+     `.fixed`, donc pas couverte par elle — sans cette ligne, le bouton
+     restait visible (et cliquable en apparence) sur la page imprimée. */
   .fixed,
-  .recipe-toc {
+  .recipe-toc,
+  .recipe-toc-fab {
     display: none !important;
   }
   /* Le rail se masque juste au-dessus, mais la marge qui lui réservait de la

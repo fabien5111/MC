@@ -484,8 +484,12 @@ export function BatchStepDonePanel({
                       className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-1"
                     />
                   ) : (
-                    <span className="shrink-0 w-5" />
+                    <span className="shrink-0 w-5 print:hidden" />
                   )}
+                  {/* Case à cocher sur papier, où il n'y a ni case à cocher
+                      interactive ni case déjà réalisée à distinguer — même
+                      glyphe que les ingrédients de la liste totale. */}
+                  <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface shrink-0 mt-1 mr-1.5" />
                   <span className={`flex-1 min-w-0 ${tone}`}>{su.texte}</span>
                   {su.added && (
                     <button

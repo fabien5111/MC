@@ -356,7 +356,7 @@ export function BatchView({
         </p>
 
         {mode === 'preparer' && baseModifiedSince && (
-          <div className="mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
+          <div className="no-print mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
             <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">info</span>
             <p className="font-body-md text-sm text-on-surface">
               La recette de base a été modifiée depuis la création de cette fournée
@@ -389,20 +389,22 @@ export function BatchView({
         )}
 
         <div className="flex items-center gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => switchMode('preparer')}
-            className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'preparer' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
-          >
-            Préparer
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('cuisiner')}
-            className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
-          >
-            Cuisiner
-          </button>
+          <span className="no-print flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => switchMode('preparer')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'preparer' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+            >
+              Préparer
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('cuisiner')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+            >
+              Cuisiner
+            </button>
+          </span>
           {all.length > 0 && (
             <span className="ml-auto font-label-md text-[12px] text-on-surface-variant">
               {done} / {all.length} étapes
@@ -647,7 +649,7 @@ function PreparerView({
           et devient inatteignable au clic sur mobile. */}
       <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="nav" />
 
-      <p className="font-body-md text-[12px] text-on-surface-variant">
+      <p className="no-print font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
         d&apos;un ingrédient que vous fabriquez vous-même), <span className="text-error line-through">barré en rouge</span> ce
         que vous avez retiré ou remplacé par une recette, <span className="text-on-surface-variant line-through">barré en gris</span>{' '}
@@ -656,21 +658,37 @@ function PreparerView({
 
       <BatchNotes batchId={batch.id} notes={batch.user_note} />
 
-      {/* Bloc technique */}
+      {/* Bloc technique — quantité produite, difficulté et allergènes sur une
+          même ligne à l'impression (sinon empilés en trois blocs distincts,
+          comme à l'écran), polices réduites via les marqueurs `print-fs-*`
+          (cf. CLAUDE.md, même principe que la fiche recette). Regroupement en
+          une seule ligne posé sur un conteneur `print:flex` englobant, sans
+          toucher à la structure ni aux classes de chaque bloc à l'écran :
+          `AllergenPictosView` garde son propre séparateur (bordure du haut) à
+          l'écran, simplement neutralisé à l'impression (`print:border-0`). */}
       <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-6 rounded-xl space-y-6">
-        <div className="flex flex-wrap justify-evenly items-start gap-y-6 gap-x-4">
-          {yInfo && (
-            <div className="flex flex-col gap-1 items-center text-center">
-              <span className={LBL_CLS}>{yInfo.label}</span>
-              <span className="font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
-              {adjustedYield && <span className="font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
-            </div>
-          )}
-          {batch.difficulty_name && (
-            <div className="flex flex-col gap-1 items-center text-center">
-              <span className={LBL_CLS}>Difficulté</span>
-              <span className="font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
-            </div>
+        <div className="print:flex print:flex-nowrap print:items-center print:justify-center print:gap-x-6 space-y-6 print:space-y-0">
+          <div className="flex flex-wrap print:flex-nowrap justify-evenly items-start print:items-center gap-y-6 gap-x-4 print:gap-x-6">
+            {yInfo && (
+              <div className="flex flex-col gap-1 items-center text-center">
+                <span className={`${LBL_CLS} print-fs-9`}>{yInfo.label}</span>
+                <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
+                {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
+              </div>
+            )}
+            {batch.difficulty_name && (
+              <div className="flex flex-col gap-1 items-center text-center">
+                <span className={`${LBL_CLS} print-fs-9`}>Difficulté</span>
+                <span className="print-fs-9 font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
+              </div>
+            )}
+          </div>
+          {allergenItems.length > 0 && (
+            <AllergenPictosView
+              items={allergenItems}
+              className="justify-center pt-4 border-t border-outline-variant/40 print:pt-0 print:border-0 print:mt-0"
+              iconClassName="w-8 h-8 print:w-5 print:h-5"
+            />
           )}
         </div>
         {batch.yield_notes && (
@@ -679,7 +697,7 @@ function PreparerView({
               type="button"
               onClick={() => setNotesOpen((v) => !v)}
               aria-expanded={notesOpen}
-              className="flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
+              className="no-print flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
             >
               <span className="material-symbols-outlined text-[16px]">{notesOpen ? 'expand_less' : 'expand_more'}</span>
               Complément d&apos;informations sur les quantités (recette de base)
@@ -689,9 +707,6 @@ function PreparerView({
             )}
           </div>
         )}
-        {allergenItems.length > 0 && (
-          <AllergenPictosView items={allergenItems} className="justify-center pt-4 border-t border-outline-variant/40" iconClassName="w-8 h-8" />
-        )}
       </div>
 
       {/* Planning de préparation — sans intérêt à l'impression quand toutes
@@ -700,16 +715,19 @@ function PreparerView({
       {sortedSteps.length > 0 && (
         <div id="sec-planning" className={`scroll-mt-28 ${planningDays.length <= 1 ? 'no-print ' : ''}py-10 border-y border-outline-variant`}>
           <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
-          <div className="relative flex flex-col md:flex-row gap-8">
-            <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
+          {/* `print:flex-row` : côte à côte comme à l'écran large, plutôt
+              qu'empilé — et polices réduites (`print-fs-9`), même principe
+              que le reste de l'impression. */}
+          <div className="relative flex flex-col md:flex-row print:flex-row gap-8 print:gap-3">
+            <div className="hidden md:block print:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
             {planningDays.map((d, i) => (
               <div key={d.offset} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
-                <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
+                <div className="w-10 h-10 print:w-6 print:h-6 print:text-[11px] rounded-full bg-primary text-white flex items-center justify-center font-bold">{i + 1}</div>
+                <span className="print-fs-9 font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
                 {d.items.map((it) => (
                   <p
                     key={it.key}
-                    className={`font-body-md text-body-md font-semibold ${it.fully ? 'text-on-surface-variant line-through' : it.added ? 'text-green-700' : ''}`}
+                    className={`print-fs-9 font-body-md text-body-md font-semibold ${it.fully ? 'text-on-surface-variant line-through' : it.added ? 'text-green-700' : ''}`}
                   >
                     {it.title}
                   </p>
@@ -725,7 +743,7 @@ function PreparerView({
           d'avertissement plus haut. Même pattern que la signature de la
           fiche recette (avatar + nom vers /u/[handle]). */}
       {baseRecipe && (
-        <div className="flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
+        <div className="no-print flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
           <Link href={`/recette/${baseRecipe.id}`} className="text-primary underline underline-offset-2 hover:text-secondary">
             Voir la recette d&apos;origine
           </Link>
@@ -758,7 +776,7 @@ function PreparerView({
           <h3 className="font-headline-md text-headline-md mb-3 flex items-center gap-3">
             <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
           </h3>
-          <p className="font-body-lg text-body-lg italic opacity-90 leading-relaxed">{batch.recipe_description}</p>
+          <p className="print-fs-11 font-body-lg text-body-lg italic opacity-90 leading-relaxed">{batch.recipe_description}</p>
         </div>
       )}
 
@@ -803,7 +821,7 @@ function PreparerView({
                   ) : (
                     u.name
                   )}
-                  {u.comment && <span className="text-on-surface-variant text-sm italic"> — {u.comment}</span>}
+                  {u.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {u.comment}</span>}
                 </li>
               ))}
           </ul>
@@ -841,7 +859,7 @@ function PreparerView({
                   </span>
                   <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
                     {r.name}
-                    {r.comment && <span className="text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                    {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
                   </span>
                 </li>
               );
@@ -855,7 +873,7 @@ function PreparerView({
           information à retrouver plus haut sur la fiche. Même condition
           d'affichage que la liste totale ci-dessus (cf. commentaire). */}
       {batch.batch_ingredients.length > 0 && (
-        <div id="sec-courses" className="scroll-mt-28">
+        <div id="sec-courses" className="no-print scroll-mt-28">
           <ShoppingWidget
             recipeTitle={batch.recipe_title || 'Fournée'}
             ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id, url: null, allergen: null }))}
@@ -871,9 +889,12 @@ function PreparerView({
           remplacement par une recette, ajout par étape), déjà consultable en
           lecture seule dans la liste totale ci-dessus et dans le déroulé des
           étapes plus bas — repliée par défaut pour ne pas doubler ces deux
-          vues à l'écran. */}
+          vues à l'écran. `no-print` : c'est une interface d'édition (boutons,
+          champs) sans intérêt sur papier, déjà couverte pour l'impression par
+          la liste totale ci-dessus, qui exclut déjà les lignes retirées ou
+          remplacées. */}
       {batch.batch_ingredients.length > 0 && (
-        <div id="sec-ingredients" className="scroll-mt-28">
+        <div id="sec-ingredients" className="no-print scroll-mt-28">
           <details className="group">
             <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
               <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
@@ -974,7 +995,11 @@ function PreparerView({
             );
             const photos = baseRecipe && s.source_step_id ? baseRecipe.stepPhotosBySourceStepId[s.source_step_id] || [] : [];
             return (
-              <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28 flex flex-col gap-6">
+              // `print:hidden` sur une étape remplacée : elle ne sera jamais
+              // réalisée telle quelle (fabriquée à partir d'une sous-recette
+              // à la place, déjà insérée dans le déroulé) — inutile sur
+              // papier, comme un ingrédient supprimé ou remplacé.
+              <div key={s.id} id={`etape-${s.id}`} className={`scroll-mt-28 flex flex-col gap-6${replaced ? ' print:hidden' : ''}`}>
                 <BatchStepDonePanel
                   collapsible={fully || replaced}
                   title={stepTitle}
