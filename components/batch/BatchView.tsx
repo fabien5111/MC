@@ -658,6 +658,16 @@ function PreparerView({
 
       <BatchNotes batchId={batch.id} notes={batch.user_note} />
 
+      {/* Photo principale — remontée au-dessus du bloc technique (même ordre
+          que la fiche recette), plutôt qu'après la description plus bas. */}
+      {baseRecipe?.heroImageUrl && (
+        <div className="print-hero relative w-full aspect-[16/9] overflow-hidden rounded-xl border border-outline-variant">
+          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+          <img src={baseRecipe.heroImageUrl} alt={batch.recipe_title || ''} className="w-full h-full object-cover" />
+          {baseRecipe.heroImageAiRetouched && <AiPhotoBadge />}
+        </div>
+      )}
+
       {/* Bloc technique — quantité produite, difficulté et allergènes sur une
           même ligne à l'impression (sinon empilés en trois blocs distincts,
           comme à l'écran), polices réduites via les marqueurs `print-fs-*`
@@ -777,14 +787,6 @@ function PreparerView({
             <span className="material-symbols-outlined">auto_awesome</span>En quelques mots
           </h3>
           <p className="print-fs-11 font-body-lg text-body-lg italic opacity-90 leading-relaxed">{batch.recipe_description}</p>
-        </div>
-      )}
-
-      {baseRecipe?.heroImageUrl && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden rounded-xl border border-outline-variant">
-          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-          <img src={baseRecipe.heroImageUrl} alt={batch.recipe_title || ''} className="w-full h-full object-cover" />
-          {baseRecipe.heroImageAiRetouched && <AiPhotoBadge />}
         </div>
       )}
 
