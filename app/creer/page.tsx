@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { requireUser, isAdmin } from '@/lib/auth';
+import { isProjectDraft } from '@/lib/projects';
 import { requireWritableSession, getImpersonationContext } from '@/lib/impersonation';
 import { getRecipeFull, getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
@@ -59,6 +61,15 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   // sinon on repart d'un formulaire vierge.
   const owned = editRecipe && (editRecipe.author_id === user.id || admin) ? editRecipe : null;
   const editingOtherAuthor = owned !== null && owned.author_id !== user.id;
+
+  // Un projet en cours ne s'édite pas ici : ses étapes sont rattachées à ses
+  // composants (`recipe_steps.component_id`), et `CreerForm` réécrit toutes
+  // ses étapes à chaque enregistrement (delete + insert), ce qui les
+  // détacherait. C'est le parcours guidé qui l'édite. Un projet VALIDÉ, lui,
+  // reste éditable ici — la recette finale doit s'utiliser exactement comme
+  // une recette saisie à la main (spec §13) —, au prix de la dissolution de
+  // ses composants, annoncée par `CreerForm`.
+  if (owned && isProjectDraft(owned)) redirect(`/projets/${owned.id}`);
 
   // Cadre rouge sur un ingrédient/ustensile hors référentiel : à afficher
   // aussi quand l'admin édite la recette d'un membre en mode « connecté en

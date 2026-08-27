@@ -51,10 +51,15 @@ app/                    Pages et routes (App Router)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
+├── projets/[id]/       Mode projet — parcours guidé (intention → format →
+│                       structure → recettes des composants)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
+│   ├── projet/           POST — création d'un projet (recette + satellites)
+│   ├── projet/structure/ POST — format visé + composants proposés (IA)
+│   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
@@ -579,6 +584,183 @@ d'en créer une nouvelle.
   `#sec-commentaires`, uniquement les `approved` — filtré par la RLS, pas
   par le composant).
 
+## Mode projet (socle)
+
+Troisième mode de création, à côté de la saisie manuelle et de l'import IA :
+composer un dessert à partir de plusieurs recettes de base (pâte sucrée,
+crème d'amande, insert…), les dimensionner, les mettre au point sur des
+fournées d'essai, puis figer le tout en une recette du carnet. **Seul le
+socle de données est en place** — le parcours guidé, les quantités, les
+essais et la validation arrivent par lots successifs.
+
+- **Un projet est une recette dès sa création**, pas une entité séparée
+  convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
+  de source, et la validation impliquerait une migration d'identifiants qui
+  casserait le lien avec les fournées déjà réalisées. La validation n'est
+  donc qu'un changement d'état, sans copie ni changement d'`id`.
+- **Deux axes indépendants sur `recipes`, à ne jamais confondre** :
+  `status` (modération : `draft` → `pending` → `published`/`rejected`, qui
+  existe depuis toujours) et `kind` + `project_stage` (mode projet). Une
+  recette peut être un projet finalisé et non publié. En particulier,
+  `status = 'draft'` — le brouillon affiché dans le carnet sous
+  « Brouillons » — n'a rien à voir avec `project_stage = 'wizard'`.
+- **`isProjectDraft()` (`lib/projects.ts`) est le seul prédicat
+  d'étanchéité.** Un projet **en cours** (`wizard`) ne doit apparaître nulle
+  part où l'on liste des recettes, hors de la portée « Projets » du carnet ;
+  un projet **validé ou dissous** est une recette ordinaire, que rien ne doit
+  distinguer. C'est ce qui réduit la surface du filtrage à quatre points —
+  partout ailleurs, le filtre `status = 'published'` déjà en place
+  (recherche, accueil, profils publics, abonnements, taxonomies, compteurs
+  admin) suffit, un projet en cours étant un brouillon :
+  - `lib/carnet.ts` — portée « Projets », exclue de toutes les autres et de
+    `counts.all` (« Tout » cesse d'être littéralement tout : c'est le prix,
+    assumé, du cloisonnement) ;
+  - `/api/recipes/picker` — un chantier n'est pas une sous-recette : ses
+    composants peuvent être non résolus et ses quantités ne sont que des
+    points de départ ;
+  - `lib/shares-data.ts` — un partage de carnet « brouillons compris » ne
+    doit pas emporter les projets en cours de son propriétaire ;
+  - `/recette/[id]` et `/creer` — redirigés vers le parcours guidé.
+- **`lib/projects.ts` (pur) / `lib/projects-data.ts` (base, server-only)** :
+  même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
+  client tirerait `next/headers` et casserait le build.
+- **Le format vit sur `recipes`, jamais dans une table satellite** :
+  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. C'est
+  de là que `BatchWidget` tire les coefficients surface/volume que
+  `scalingCoef` applique ; un format rangé ailleurs couperait le mode projet
+  de toute la machinerie d'ajustement, qu'on veut réutiliser telle quelle.
+  `recipe_projects` ne porte donc que ce qui n'a pas de foyer : l'intention
+  en texte libre et l'étape courante du dialogue.
+- **Un composant est une copie, jamais une référence vivante** (même doctrine
+  que les fournées) : ses étapes et ses ingrédients sont écrits dans les
+  `recipe_steps` / `ingredient_groups` / `ingredients` **du projet**, et
+  `recipe_steps.component_id` dit à quel composant chaque étape appartient —
+  le niveau de regroupement qui manquait au modèle, où une étape est appariée
+  à un seul groupe d'ingrédients par son `order_index`. Pas de `snapshot`
+  jsonb : le moteur de fournée (`materializeBatch`) lit les tables
+  relationnelles, une copie en jsonb lui serait invisible et imposerait un
+  second moteur — exactement ce que « un projet est une recette » évite.
+- **Dissolution assumée dans `/creer`.** `CreerForm` supprime puis réinsère
+  toutes les étapes à chaque enregistrement : tous les `component_id`
+  disparaissent. Plutôt que d'interdire l'éditeur à une recette de projet (ce
+  qui la priverait des photos, ustensiles, tags et moules — alors qu'elle
+  doit s'utiliser exactement comme une recette saisie à la main), on
+  l'annonce : bandeau à l'ouverture, confirmation à l'enregistrement, puis
+  `project_stage = 'dissolved'`. **La vue par composants est perdue, les
+  composants ne le sont pas** : §9 est un engagement vis-à-vis d'auteurs
+  tiers, il ne doit pas suffire d'ouvrir puis d'enregistrer une recette pour
+  la blanchir de ses emprunts. Un projet **en cours**, lui, n'entre pas dans
+  `/creer` du tout : il y perdrait sa structure avant même d'exister.
+- **RLS en deux temps** : `recipe_projects` (intention, avancement) est
+  strictement privée — policy `_proprietaire` sur `owns_recipe()` + les trois
+  `impersonation_ro_*` du motif des tables `batch_*`. `recipe_project_components`
+  ajoute une **lecture publique quand la recette est publiée** : sans elle,
+  le crédit « pâte sucrée de X » serait invisible aux visiteurs de la fiche.
+  Filtré par la RLS, jamais par le composant — même doctrine que
+  `RecipeComments`.
+- **Le parcours guidé enregistre à chaque geste**, jamais à la fin
+  (`/projets/[id]`, `ProjectWizard`) : l'étape courante vit dans
+  `recipe_projects.wizard_step`, et la liste des composants n'est **jamais**
+  tenue en état local — elle vient du rendu serveur, chaque modification écrit
+  puis resynchronise (`useMutation`). Un miroir local aurait divergé de la base
+  au premier échec d'écriture, sur un objet qui se construit en plusieurs
+  sessions et parfois sur plusieurs appareils.
+- **Trois chemins de résolution, un seul écrivain.** Copie d'une recette
+  existante, proposition de l'IA, saisie à la main : les trois produisent la
+  même forme intermédiaire (`ComponentStepDraft`, `lib/projects.ts`) que
+  `writeComponentContent` (`lib/projects-write.ts`) est seul à écrire. Sans ce
+  pivot, chaque source réinventerait son insertion, avec trois occasions de
+  rompre l'appariement étape ↔ groupe d'ingrédients.
+- **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
+  évite de renuméroter tout le projet à chaque rattachement. Seuls un
+  déplacement ou une suppression redistribuent les blocs
+  (`resequenceProjectSteps`). **Supprimer un composant passe obligatoirement
+  par `clearComponentContent`** : les groupes d'ingrédients ne portent pas de
+  `component_id` (ils s'apparient par `order_index`), donc supprimer les étapes
+  seules laisserait des groupes orphelins qui se rattacheraient à l'étape d'un
+  AUTRE composant à la première redistribution — les ingrédients d'une
+  préparation réapparaîtraient sous une autre.
+- **L'ordre des sources est imposé** (§5) : carnet → favoris → pâtissiers
+  suivis → IA. Les trois portées sont donc interrogées **séparément** via
+  `/api/recipes/picker` plutôt que fusionnées : c'est la portée qui a répondu
+  qui décide du `source_kind`, donc du crédit d'auteur. La pertinence est
+  obtenue en pré-remplissant la recherche avec le nom du composant.
+- **Les quantités ne sont pas recalculées ici, elles réutilisent la
+  machinerie des fournées** (étape 5) : rapport des volumes ou des surfaces
+  entre le moule de la recette source et le format visé (`moldMetrics`), puis
+  application ligne par ligne selon le `scaling_mode` du groupe
+  (`scalingCoef`) — une pâte à foncer suit la surface, un appareil suit le
+  volume. Le `scaling_mode` de la recette source est donc **copié** avec le
+  composant : le perdre ferait recalculer de travers tout ce qui n'est pas
+  proportionnel au volume. Quand la géométrie ne tranche pas (pas de moule sur
+  la source, composant proposé par l'IA ou saisi à la main), l'écran bascule
+  sur `/api/scale-recipe`, la route d'ajustement en texte libre déjà en place,
+  qui rend le coefficient **et** son explication en une phrase (§6.4).
+- **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
+  jamais la quantité affichée — que multiplie tout ajustement : sans ça,
+  changer deux fois le coefficient multiplierait deux fois. Exactement le rôle
+  de `batch_ingredients.base_quantity` côté fournée. Une ligne **modifiée à la
+  main** voit sa `base_quantity` effacée : elle sort définitivement du recalcul
+  global, comme une ligne `added` d'une fournée que `rescaleBatchIngredients`
+  ne touche jamais. La colonne reste vide pour toutes les recettes ordinaires —
+  seul le mode projet l'écrit.
+- **Le récapitulatif consolide avec `mergeIngredients`**, la fonction de la
+  fiche recette, et non une seconde implémentation : elle sait fusionner deux
+  lignes du même ingrédient exprimées dans des unités différentes via la table
+  de conversions, ce qui compte d'autant plus que les composants viennent de
+  recettes différentes.
+- **Un essai est une fournée du projet**, jamais un objet de plus (§7). Les
+  fournées portent déjà les quantités réellement utilisées
+  (`batch_ingredients.real_quantity`), les notes du jour J
+  (`batches.commentaire_global`), l'avancement et la filiation d'un essai au
+  suivant (`batches.source_plan_id`) : une table d'essais aurait dupliqué tout
+  cela et créé une seconde source de vérité sur « combien j'ai vraiment mis ».
+  Seul le verdict manquait — `batches.trial_verdict` (`to_review` / `ok` /
+  `validated`). La fournée d'essai est créée avec le **même moteur** que celle
+  d'une recette ordinaire (`lib/batch-write.ts`, extrait de `BatchWidget` pour
+  être partagé), avec un facteur de **1** : les quantités du projet sont déjà
+  celles du format visé, un second coefficient les fausserait.
+- **Promouvoir les quantités d'un essai** (§7.4) apparie les lignes par
+  `batch_steps.source_step_id` → étape du projet → son groupe d'ingrédients
+  (par `order_index`) → le nom à l'intérieur du groupe. S'appuyer sur le seul
+  nom confondrait deux « Sucre » appartenant à deux composants différents. La
+  quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
+  réellement fonctionné devient la référence, et un futur changement de format
+  repart de là.
+- **Validation** (§8) : `projectValidationBlockers()` (`lib/projects.ts`)
+  liste ce qui bloque — format non renseigné, composant non résolu — recalculé
+  côté client à l'affichage ET reposé côté serveur avant l'écriture (un projet
+  reste modifiable depuis plusieurs onglets). Aucun essai n'est requis. La
+  validation écrit une **section d'assemblage final** (`writeAssemblyStep`,
+  `lib/projects-write.ts`) — une étape ordinaire sans `component_id`,
+  positionnée après tous les blocs de composants, listant leur ordre — puis
+  bascule `project_stage` à `ready`. **`status` ne bouge pas** : la validation
+  rend le projet utilisable comme une recette, elle ne la publie pas. Idempo-
+  tente : revalider après un retour en brouillon remplace l'assemblage
+  précédent (repéré par `component_id is null`) plutôt que d'en empiler un
+  second.
+- **Réversibilité** (§8.5, `ProjectMarking`) : repasser en brouillon
+  (`project_stage: 'ready' → 'wizard'`) est possible tant que la recette n'est
+  pas `status = 'published'`. Un projet **dissous**, lui, n'a plus de bouton :
+  il n'a plus de composants à retrouver dans le dialogue.
+- **Marquage sur la fiche** (§8.4, `ProjectMarking`) : discret, affiché pour
+  `ready` **et** `dissolved` — les crédits d'auteur (§9) survivent à la
+  dissolution, seule la vue par composants (liée aux étapes) s'y perd. La
+  liste des crédits (`getProjectCredits`) est protégée par la policy RLS
+  « propriétaire ou recette publiée » posée au socle : rien à refiltrer côté
+  application. Un lien vers une recette source supprimée ou dépubliée reste
+  affiché en texte (le nom de l'auteur ne disparaît jamais), `sourceRecipeId`
+  devenant `null` par la FK `ON DELETE SET NULL`.
+- **Essais après validation** (§7.5) : `ProjectTrials` est réutilisé tel quel
+  sur la fiche recette (propriétaire uniquement), avec `canLaunch={false}` —
+  lancer une fournée y passe déjà par le geste normal de la fiche
+  (`BatchWidget`) ; en proposer un second aurait fait deux portes d'entrée
+  pour le même geste. Seuls l'historique, la comparaison et la promotion des
+  quantités restent affichés.
+- **`duplicate_recipe` recopie les composants** et la correspondance ancien →
+  nouveau composant sur les étapes : un duplicata est une vraie variante du
+  projet. Sans ça, dupliquer puis publier effaçait les crédits.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
@@ -738,6 +920,7 @@ principales :
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
+| Projets | `recipe_projects`, `recipe_project_components` (+ `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |
@@ -770,6 +953,17 @@ principales :
   `/api/import-url`. `maxDuration = 60 s`.
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`.
+- `POST /api/projet/structure` — déduit d'une intention en texte libre le
+  format visé ET la liste ordonnée des composants. Un seul appel pour les deux
+  (la même phrase porte l'un et l'autre ; deux appels feraient payer deux fois
+  la même lecture, avec le risque qu'ils se contredisent), même si
+  l'utilisateur, lui, garde deux écrans. **Best-effort** : clé absente, panne
+  ou réponse illisible → proposition vide, le dialogue reste utilisable
+  entièrement à la main. `maxDuration = 30 s`.
+- `POST /api/projet/composant` — propose une recette de base pour un composant
+  (§5.4). L'échec est ici **remonté**, contrairement à la route précédente :
+  l'utilisateur a explicitement demandé une proposition, il doit savoir qu'elle
+  n'est pas venue. `maxDuration = 60 s`.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

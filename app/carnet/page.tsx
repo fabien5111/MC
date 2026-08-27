@@ -17,6 +17,7 @@ import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
+import { NewProjectButton } from '@/components/projets/NewProjectButton';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -29,6 +30,7 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
   shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
+  proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
 type SearchParams = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -88,6 +90,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden md:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
               </div>
+              <NewProjectButton />
               <Link
                 href="/importer"
                 prefetch={false}

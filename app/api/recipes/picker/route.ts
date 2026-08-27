@@ -12,15 +12,22 @@
 // directement en base (cf. CLAUDE.md), une page de résultats en pèserait
 // plusieurs mégaoctets.
 //
+// Portées : « mes recettes » / « mes favoris » / « pâtissiers suivis » /
+// « toutes ». Les trois premières servent aussi le mode projet, où la spec
+// impose l'ordre carnet → favoris → suivis : l'appelant interroge alors une
+// portée à la fois pour savoir de laquelle vient chaque résultat (c'est ce
+// qui détermine le crédit d'auteur du composant).
+//
 // Lecture seule, RLS appliquée via la session.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
+import { isProjectDraft } from '@/lib/projects';
 
 const MAX_LIMIT = 30;
 
 const SELECT =
-  'id, title, status, is_public, author_id, measure_type, yield_qty, yield_unit, yield_desc, ' +
+  'id, title, status, is_public, author_id, kind, project_stage, measure_type, yield_qty, yield_unit, yield_desc, ' +
   'prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name), recipe_types(name), difficulties(name, level), ' +
   'recipe_steps(prep_time, cook_time, wait_time)';
@@ -39,7 +46,30 @@ export async function GET(req: Request) {
   // plutôt qu'une requête sans filtre, qui ramènerait tout le catalogue.
   const branches: string[] = [];
   if (scopes.has('all')) branches.push('status.eq.published');
+  // `mine` est la seule portée qui laisse passer des brouillons, donc la seule
+  // par où un projet en cours pourrait entrer : un chantier n'est pas une
+  // sous-recette (ses composants peuvent être non résolus et ses quantités ne
+  // sont que des points de départ). Un projet validé, lui, est une recette
+  // ordinaire et reste proposé — l'exclusion se fait plus bas, en mémoire
+  // (`isProjectDraft`), pas ici : un filtre `and(...,or(...))` imbriqué dans
+  // le `.or()` combiné ci-dessous s'est révélé produire une requête qui ne
+  // renvoyait plus aucun résultat (silencieusement, côté appelant — cf.
+  // ComponentResolver). Une branche simple, plus le filtre en mémoire déjà en
+  // place pour toutes les portées, obtient le même résultat sans ce risque.
   if (scopes.has('mine') && user) branches.push(`author_id.eq.${user.id}`);
+  // Recettes des pâtissiers suivis (spec §5.3). Le filtre sur le statut se
+  // fait dans CETTE requête séparée (comme pour les favoris juste en dessous),
+  // jamais dans la branche du `.or()` combiné, pour la même raison que
+  // ci-dessus.
+  if (scopes.has('followed') && user) {
+    const { data: suivis } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
+    const ids = (suivis ?? []).map((f) => f.following_id);
+    if (ids.length) {
+      const { data: pubs } = await supabase.from('recipes').select('id').in('author_id', ids).eq('status', 'published');
+      const pubIds = (pubs ?? []).map((r) => r.id);
+      if (pubIds.length) branches.push(`id.in.(${pubIds.join(',')})`);
+    }
+  }
   if (scopes.has('fav') && user) {
     const { data: favs } = await supabase.from('favorites').select('recipe_id').eq('user_id', user.id);
     const ids = (favs ?? []).map((f) => f.recipe_id);
@@ -58,5 +88,11 @@ export async function GET(req: Request) {
     console.error('recipes/picker:', error.message);
     return NextResponse.json({ items: [], erreur: error.message }, { status: 500 });
   }
-  return NextResponse.json({ items: data ?? [] });
+  // Filet côté serveur pour la portée « favoris », qui passe par une liste
+  // d'identifiants sans filtre SQL : mettre un projet en cours en favori est
+  // censé être impossible (spec §10), mais rien en base ne l'empêche.
+  const items = ((data as unknown as { kind?: string | null; project_stage?: string | null }[]) ?? []).filter(
+    (r) => !isProjectDraft(r),
+  );
+  return NextResponse.json({ items });
 }

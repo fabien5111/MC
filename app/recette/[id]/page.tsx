@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
+import { isProjectDraft, isProjectRecipe } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
@@ -12,6 +14,7 @@ import { fmtNum, batchFactor } from '@/lib/recipe-plan';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
+import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -32,6 +35,8 @@ import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { type TocSections } from '@/components/recipe/RecipeToc';
 import { RecetteToc } from '@/components/recipe/RecetteToc';
 import { RecipeComments } from '@/components/recipe/RecipeComments';
+import { ProjectMarking } from '@/components/projets/ProjectMarking';
+import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { StarRating } from '@/components/StarRating';
 
 type Params = {
@@ -49,6 +54,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
   const { planifier } = await searchParams;
   const recipe = await getRecipeFull(id);
+
+  // Projet en cours : sa fiche n'existe pas encore — c'est le parcours guidé
+  // qui la construit. On renvoie donc vers cet écran plutôt que d'afficher
+  // une recette à moitié écrite (spec §10). Un projet validé, lui, s'affiche
+  // ici comme n'importe quelle recette. (`/projets/[id]` arrive avec le lot
+  // suivant ; rien ne peut créer de projet d'ici là, ce chemin est donc
+  // inatteignable dans ce lot.)
+  if (recipe && isProjectDraft(recipe)) redirect(`/projets/${id}`);
 
   if (!recipe) {
     return (
@@ -75,13 +88,18 @@ export default async function RecettePage({ params, searchParams }: Params) {
     getApprovedComments(recipe.id),
   ]);
   const isOwner = !!user && recipe.author_id === user.id;
+  // Mode projet : crédits toujours chargés (la policy RLS filtre déjà à
+  // « propriétaire ou recette publiée » — cf. lib/projects-data.ts) ;
+  // essais uniquement pour le propriétaire, la RLS de `batches` les
+  // masquerait de toute façon à un visiteur, mais autant ne pas les demander.
+  const isProject = isProjectRecipe(recipe);
 
-  // Seconde vague : tout ce qui dépend de `user`, donc impossible à mettre
-  // dans le `Promise.all` ci-dessus. En revanche ces quatre lectures ne
-  // dépendent pas les unes des autres — enchaînées en `await` successifs,
-  // elles coûtaient quatre allers-retours en série sur la page la plus
-  // consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches] = await Promise.all([
+  // Seconde vague : tout ce qui dépend de `user` (ou de `isProject`), donc
+  // impossible à mettre dans le `Promise.all` ci-dessus. Ces lectures ne
+  // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
+  // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
+  // en série par lecture sur la page la plus consultée du site.
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -96,6 +114,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
     // Mes fournées terminées sur cette recette — propres au visiteur connecté
     // (RLS `owns_plan()`), quel que soit l'auteur de la recette.
     user ? getRecipeCompletedBatches(user.id, recipe.id) : Promise.resolve([]),
+    isProject ? getProjectCredits(recipe.id) : Promise.resolve([]),
+    isProject && isOwner ? getProjectTrials(recipe.id) : Promise.resolve([]),
   ]);
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
@@ -325,6 +345,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 </>
               )}
             </div>
+            {isProject && (
+              <ProjectMarking
+                recipeId={recipe.id}
+                stage={recipe.project_stage}
+                isOwner={isOwner}
+                isPublished={recipe.status === 'published'}
+                credits={projectCredits}
+              />
+            )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
                 {tags.map((n) => (
@@ -341,6 +370,15 @@ export default async function RecettePage({ params, searchParams }: Params) {
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
           <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} isAdmin={userIsAdmin} />
+          {isProject && isOwner && (
+            // Historique des essais (spec §7.5 : reste consultable après
+            // validation) — `canLaunch={false}` : lancer une fournée passe
+            // déjà par le geste normal ci-dessus (BatchWidget), pas par une
+            // seconde porte d'entrée.
+            <div className="no-print mt-6">
+              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} />
+            </div>
+          )}
           </div>
 
           {/* Mes fournées terminées — historique personnel, replié par

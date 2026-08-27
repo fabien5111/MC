@@ -103,14 +103,23 @@ export async function getRecipes(opts: {
 // reconstituer une union d'identifiants, sans total ni pagination réelle :
 // elles sont retirées plutôt que laissées en doublon d'un chemin plus complet.
 
-export type UserRecipeCard = RecipeCardWithAllergenNames & { status: string; is_public: boolean };
+// `kind` / `project_stage` : marques du mode projet (cf. lib/projects.ts).
+// Chargées ici parce que le carnet est le seul écran qui doit distinguer un
+// projet en cours d'une recette ordinaire — partout ailleurs, un projet en
+// cours est simplement absent (spec §10).
+export type UserRecipeCard = RecipeCardWithAllergenNames & {
+  status: string;
+  is_public: boolean;
+  kind: string;
+  project_stage: string | null;
+};
 
 export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> {
   const supabase = await createClient();
   const query = () =>
     supabase
       .from('recipes')
-      .select(`${CARD_SELECT}, status, is_public`)
+      .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -120,7 +129,8 @@ export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> 
     ({ data, error } = await query());
     if (error) console.error('getUserRecipes (retry):', error.message);
   }
-  const rows = (data as unknown as (RecipeCard & { status: string; is_public: boolean })[]) ?? [];
+  const rows =
+    (data as unknown as (RecipeCard & { status: string; is_public: boolean; kind: string; project_stage: string | null })[]) ?? [];
   return withAllergenNames(rows);
 }
 
@@ -178,6 +188,10 @@ export type RecipeFull = {
   author_id: string;
   is_public: boolean | null;
   status: string | null;
+  // Mode projet — axe indépendant de `status` (cf. lib/projects.ts). `simple`
+  // et `null` pour l'immense majorité des recettes.
+  kind: string;
+  project_stage: string | null;
   // Motif du refus (§9, saisi depuis Admin → Recettes → Refuser), affiché à
   // l'auteur sur sa propre fiche recette. `null` hors statut `rejected`.
   moderation_note: string | null;
