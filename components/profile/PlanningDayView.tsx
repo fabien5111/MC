@@ -151,31 +151,40 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                   >
                     drag_indicator
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={it.done}
-                    onChange={(e) => toggleDone(it.stepId, e.target.checked)}
-                    title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
-                    className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
-                  />
                   <Link
                     href={`/fournee/${it.planId}?mode=preparer`}
                     className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0 hover:underline"
                   >
                     {it.recipeTitle}
                   </Link>
-                  {/* Pas de lien si la fournée a été supprimée depuis
-                      (recipeId absent, recipeTitle dénormalisé prend le
-                      relais pour l'affichage — cf. CLAUDE.md). */}
+                  {/* Case et étape solidaires dans leur propre groupe : sur
+                      mobile, le manque de place fait passer l'étape à la
+                      ligne suivante (`flex-1 min-w-[160px]`) — la case doit
+                      donc rester collée devant son intitulé plutôt que
+                      solidaire du titre de la recette juste au-dessus, sans
+                      quoi elle reste isolée à côté de la poignée de
+                      glisser-déposer. Pas de lien de titre si la fournée a
+                      été supprimée depuis (recipeId absent, recipeTitle
+                      dénormalisé prend le relais pour l'affichage — cf.
+                      CLAUDE.md). */}
                   {(() => {
                     const href = `/fournee/${it.planId}#etape-${it.stepId}`;
                     const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
                     const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return (
-                      <Link href={href} className="flex items-baseline gap-1.5 flex-1 min-w-[160px] hover:underline">
-                        {numberSpan}
-                        {titleSpan}
-                      </Link>
+                      <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                        <input
+                          type="checkbox"
+                          checked={it.done}
+                          onChange={(e) => toggleDone(it.stepId, e.target.checked)}
+                          title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
+                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                        />
+                        <Link href={href} className="flex items-baseline gap-1.5 hover:underline">
+                          {numberSpan}
+                          {titleSpan}
+                        </Link>
+                      </div>
                     );
                   })()}
                   <div className="flex gap-2 flex-wrap">
