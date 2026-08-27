@@ -26,6 +26,7 @@ import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
+import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
@@ -321,7 +322,7 @@ export function BatchView({
 
   return (
     <>
-      <div className="max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
+      <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
@@ -329,6 +330,9 @@ export function BatchView({
           <span className="flex items-center gap-3">
             <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
+            </span>
+            <span className="no-print">
+              <PrintButton />
             </span>
             {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
               <button
@@ -637,7 +641,11 @@ function PreparerView({
           onDone={refreshReplace}
         />
       )}
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="none" />
+      {/* `mobileInset="nav"` : /fournee/[id] monte la barre de navigation basse
+          du site (`<MobileNav current="cuisine" />`) — sans ce réglage, le
+          bouton flottant du tiroir se pose dessous elle (z-index inférieur)
+          et devient inatteignable au clic sur mobile. */}
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="nav" />
 
       <p className="font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
@@ -1229,8 +1237,9 @@ function CuisinerView({
     <>
       {/* Toujours monté, même sans jalon : le menu porte aussi la fin de
           session (terminer/annuler) et la sortie, qui doivent rester
-          atteignables même pour une fournée sans étape. */}
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="none" />
+          atteignables même pour une fournée sans étape. `mobileInset="nav"` :
+          même raison que dans PreparerView, cf. son commentaire. */}
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
