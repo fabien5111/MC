@@ -137,42 +137,38 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                     moveStep(g.date, fromIdx, idx);
                     setDragId(null);
                   }}
-                  className={`flex items-center gap-3 py-2.5 border-b border-outline-variant/30 last:border-0 flex-wrap${dragId === it.stepId ? ' opacity-50' : ''}`}
+                  className={`flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30 last:border-0${dragId === it.stepId ? ' opacity-50' : ''}`}
                 >
-                  <span
-                    draggable
-                    onDragStart={(e) => {
-                      setDragId(it.stepId);
-                      e.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragEnd={() => setDragId(null)}
-                    title="Glisser pour réordonner cette étape dans sa journée"
-                    className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
-                  >
-                    drag_indicator
-                  </span>
-                  <Link
-                    href={`/fournee/${it.planId}?mode=preparer`}
-                    className="font-label-md text-[11px] text-secondary uppercase tracking-widest shrink-0 hover:underline"
-                  >
-                    {it.recipeTitle}
-                  </Link>
-                  {/* Case et étape solidaires dans leur propre groupe : sur
-                      mobile, le manque de place fait passer l'étape à la
-                      ligne suivante (`flex-1 min-w-[160px]`) — la case doit
-                      donc rester collée devant son intitulé plutôt que
-                      solidaire du titre de la recette juste au-dessus, sans
-                      quoi elle reste isolée à côté de la poignée de
-                      glisser-déposer. Pas de lien de titre si la fournée a
-                      été supprimée depuis (recipeId absent, recipeTitle
-                      dénormalisé prend le relais pour l'affichage — cf.
-                      CLAUDE.md). */}
+                  {/* Trois lignes fixes, sur tous les appareils (pas
+                      seulement un repli mobile) : nom de la recette, nom de
+                      l'étape (case à cocher collée devant, jamais solidaire
+                      du titre de la recette au-dessus), puis le temps. */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        setDragId(it.stepId);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => setDragId(null)}
+                      title="Glisser pour réordonner cette étape dans sa journée"
+                      className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                    >
+                      drag_indicator
+                    </span>
+                    <Link
+                      href={`/fournee/${it.planId}?mode=preparer`}
+                      className="font-label-md text-[11px] text-secondary uppercase tracking-widest hover:underline"
+                    >
+                      {it.recipeTitle}
+                    </Link>
+                  </div>
                   {(() => {
                     const href = `/fournee/${it.planId}#etape-${it.stepId}`;
                     const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
                     const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return (
-                      <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                      <div className="flex items-center gap-1.5 pl-[26px]">
                         <input
                           type="checkbox"
                           checked={it.done}
@@ -187,7 +183,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                       </div>
                     );
                   })()}
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap pl-[26px]">
                     {badges.map((b, k) => (
                       <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">
                         {b}
