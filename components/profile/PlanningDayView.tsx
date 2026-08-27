@@ -37,6 +37,12 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
   const router = useRouter();
+  // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
+  // renvoi vers la fiche fournée après « je veux laisser un avis » est un
+  // `router.push` déclenché par du code, pas un lien — `NavigationSpinner`
+  // ne le voit donc pas (cf. CLAUDE.md « Spinner »). Jamais remis à `false` :
+  // la navigation démonte ce composant.
+  const [navigating, setNavigating] = useState(false);
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
@@ -142,8 +148,12 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
     if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
-    if (wantsReview) router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
-    else dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+    if (wantsReview) {
+      setNavigating(true);
+      router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
+    } else {
+      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+    }
   }
 
   // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
@@ -282,7 +292,7 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busy} label="Réorganisation en cours…" />
+      <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
       {pendingGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
           <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>
