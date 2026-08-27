@@ -191,6 +191,38 @@ export function BatchView({
   // revérifiée côté serveur par la route avec la propriété de la fournée).
   const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly;
 
+  // Un avis sera effectivement proposable une fois la fournée marquée
+  // terminée : mêmes conditions que `canReview` (sans le statut, qu'on
+  // s'apprête justement à poser) plus l'unicité « un avis par recette et par
+  // membre » — sinon la proposition automatique poserait une question dont la
+  // réponse « oui » n'affiche rien (cf. CLAUDE.md « Avis sur une recette »).
+  const reviewEligible = !!batch.recipe_id && !batch.review_dismissed && !impersonationReadOnly && (!myReview || myReview.batch_id === batch.id);
+
+  // Écriture partagée « marquer comme terminée » : rail Préparer, rail
+  // Cuisiner et proposition automatique une fois toutes les étapes cochées
+  // (cf. `CuisinerView.proposeFinish`) l'appellent tous les trois, chacun
+  // avec son propre message de confirmation.
+  async function finishBatch(): Promise<boolean> {
+    if (readOnly) return false;
+    const fin = new Date().toISOString();
+    setBusy(true);
+    const { error } = await createClient().from('batches').update({ status: 'terminee', date_fin: fin }).eq('id', batch.id);
+    setBusy(false);
+    if (error) {
+      dialog.alert('Erreur : ' + error.message);
+      return false;
+    }
+    setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
+    router.refresh();
+    return true;
+  }
+
+  async function markTerminee() {
+    if (!(await dialog.confirm('Terminer cette fournée ?'))) return;
+    const ok = await finishBatch();
+    if (ok) window.scrollTo(0, 0);
+  }
+
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une
   // correction ultérieure de la recette de base ne lui parvient pas — ce
@@ -387,6 +419,7 @@ export function BatchView({
             readOnly={readOnly}
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
+            onMarkTerminee={markTerminee}
           />
         ) : (
           <CuisinerView
@@ -397,6 +430,9 @@ export function BatchView({
             units={units}
             setBusy={setBusy}
             onSwitchMode={switchMode}
+            onMarkTerminee={markTerminee}
+            finishBatch={finishBatch}
+            reviewEligible={reviewEligible}
           />
         )}
       </div>
@@ -417,6 +453,7 @@ function PreparerView({
   readOnly,
   onDelete,
   onSwitchMode,
+  onMarkTerminee,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -429,6 +466,7 @@ function PreparerView({
   readOnly: boolean;
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  onMarkTerminee: () => void;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
@@ -577,7 +615,12 @@ function PreparerView({
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
   const actions: TocAction[] = [
     { id: 'switch-cuisiner', icon: 'skillet', label: 'Passer en mode Cuisiner', variant: 'outline-strong', onClick: () => onSwitchMode('cuisiner') },
-    ...(readOnly ? [] : [{ id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger' as const, onClick: onDelete }]),
+    ...(readOnly
+      ? []
+      : [
+          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: onMarkTerminee },
+          { id: 'delete', icon: 'delete', label: 'Supprimer la fournée', variant: 'outline-danger' as const, onClick: onDelete },
+        ]),
   ];
 
   return (
@@ -964,6 +1007,9 @@ function CuisinerView({
   units,
   setBusy,
   onSwitchMode,
+  onMarkTerminee,
+  finishBatch,
+  reviewEligible,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -972,6 +1018,13 @@ function CuisinerView({
   units: UnitRef[];
   setBusy: (b: boolean) => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  // Rail Cuisiner : même écriture que le rail Préparer, cf. BatchView.
+  onMarkTerminee: () => void;
+  // Écriture nue (sans confirmation), pour la proposition automatique
+  // ci-dessous qui pose déjà sa propre question.
+  finishBatch: () => Promise<boolean>;
+  // Un avis est-il encore possible sur cette fournée une fois terminée ?
+  reviewEligible: boolean;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -1013,10 +1066,33 @@ function CuisinerView({
     if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
+  // Propose de terminer la fournée une fois toutes les étapes cochées, puis —
+  // si la réponse est oui — de laisser un avis sur la recette (cf. CLAUDE.md
+  // « Avis sur une recette »). `finishBatch` est appelé nu (sans reconfirmer,
+  // la question du dessus en tient déjà lieu) ; `onMarkTerminee`, lui, garde
+  // sa propre confirmation pour l'usage depuis le rail.
+  async function proposeFinish() {
+    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
+    if (!wantsFinish) {
+      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
+      return;
+    }
+    const ok = await finishBatch();
+    if (!ok || !reviewEligible) return;
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    if (wantsReview) {
+      setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    } else {
+      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+    }
+  }
+
   function toggleStep(id: number, checked: boolean) {
     updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null });
     if (checked) {
       setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      const allDone = batch.batch_steps.length > 0 && batch.batch_steps.every((s) => (s.id === id ? true : s.done));
+      if (allDone && batch.status === 'planifiee' && !readOnly) proposeFinish();
     }
   }
 
@@ -1072,18 +1148,21 @@ function CuisinerView({
     }, 800);
   }
 
-  async function endSession(status: 'terminee' | 'abandonnee', message: string) {
+  // Seul l'abandon reste géré ici : « terminer » passe désormais par
+  // `onMarkTerminee` (BatchView), partagé avec le rail Préparer et la
+  // proposition automatique de `proposeFinish` ci-dessus.
+  async function abandonBatch(message: string) {
     if (readOnly) return;
     if (!(await dialog.confirm(message))) return;
     const fin = new Date().toISOString();
     setBusy(true);
-    const { error } = await createClient().from('batches').update({ status, date_fin: fin }).eq('id', batch.id);
+    const { error } = await createClient().from('batches').update({ status: 'abandonnee', date_fin: fin }).eq('id', batch.id);
     setBusy(false);
     if (error) {
       dialog.alert('Erreur : ' + error.message);
       return;
     }
-    setBatch((prev) => ({ ...prev, status, date_fin: fin }));
+    setBatch((prev) => ({ ...prev, status: 'abandonnee', date_fin: fin }));
     wakeLock.current?.release?.().catch(() => {});
     window.scrollTo(0, 0);
     router.refresh();
@@ -1125,13 +1204,13 @@ function CuisinerView({
     ...(readOnly
       ? []
       : [
-          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: () => endSession('terminee', 'Terminer cette fournée ?') },
+          { id: 'terminer', icon: 'flag', label: 'Marquer comme terminé', variant: 'filled' as const, onClick: onMarkTerminee },
           {
             id: 'annuler',
             icon: 'cancel',
             label: 'Annuler ma fournée',
             variant: 'outline-danger' as const,
-            onClick: () => endSession('abandonnee', 'Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
+            onClick: () => abandonBatch('Annuler cette fournée ?\nLa progression restera consultable dans l’historique.'),
           },
         ]),
     {
