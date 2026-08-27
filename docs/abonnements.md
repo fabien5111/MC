@@ -123,14 +123,14 @@ un droit payant à tous).
   générée depuis la base afficherait sinon des promesses non tenues. Les
   repasser à `visible = true` le jour où la fonctionnalité existe.
 
-Total seedé : **43 fonctionnalités**, 10 sections, 5 limites de stock,
+Total seedé : **44 fonctionnalités**, 10 sections, 5 limites de stock,
 3 quotas de flux.
 
 ---
 
 ## 3. Les seize points de contrôle réels
 
-Sur 43 lignes de grille, 27 valent `OUI` sur les trois plans : elles existent
+Sur 44 lignes de grille, 28 valent `OUI` sur les trois plans : elles existent
 pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) :
 
 | Clé | Type | Rattachement |
