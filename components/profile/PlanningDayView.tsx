@@ -16,8 +16,10 @@
 // jour-là.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
@@ -33,6 +35,8 @@ const dateLabel = (iso: string): string =>
 // serveur identique au premier, pour rien.
 export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
+  const router = useRouter();
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
@@ -76,6 +80,30 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
     if (!ok) setList(prev);
   }
 
+  // Propose de terminer la fournée dès que toutes SES étapes sont cochées
+  // (toutes fournées confondues sur cet écran, pas seulement celles du jour
+  // affiché) puis, si accepté, de laisser un avis sur la recette — mêmes
+  // actions et messages que `BatchView.proposeFinish` (mode Cuisiner d'une
+  // fournée). Pas de vérification ici de l'éligibilité réelle à un avis
+  // (recette encore accessible, pas déjà notée depuis une autre fournée) :
+  // cette liste ne charge pas ces informations pour chaque fournée, la
+  // question posée à tort n'a simplement aucun effet sur la fiche fournée.
+  async function proposeFinish(batchRow: BatchListRow) {
+    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
+    if (!wantsFinish) {
+      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
+      return;
+    }
+    const ok = await mutate(() => createClient().from('batches').update({ status: 'terminee', date_fin: new Date().toISOString() }).eq('id', batchRow.id), {
+      errorLabel: 'Fin de la fournée impossible',
+    });
+    if (!ok) return;
+    setList((prev) => prev.filter((p) => p.id !== batchRow.id));
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    if (wantsReview) router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
+    else dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
+  }
+
   // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
   // seule source de vérité (`batch_steps.done`), la même que sur la fiche et
   // en mode Cuisiner.
@@ -86,7 +114,15 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
       errorLabel: 'Modification non enregistrée',
       refresh: false,
     });
-    if (!ok) setList(prev);
+    if (!ok) {
+      setList(prev);
+      return;
+    }
+    if (!checked) return;
+    const batchRow = list.find((p) => p.batch_steps.some((s) => s.id === stepId));
+    if (!batchRow || batchRow.status !== 'planifiee' || batchRow.batch_steps.length === 0) return;
+    const allDone = batchRow.batch_steps.every((s) => (s.id === stepId ? true : s.done));
+    if (allDone) proposeFinish(batchRow);
   }
 
   if (groups.length === 0) {
