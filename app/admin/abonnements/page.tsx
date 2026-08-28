@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireFullAdmin } from '@/lib/auth';
 import { getAdminGrid } from '@/lib/plans-admin';
+import { getTrialDays } from '@/lib/data/reference';
 import { PlansManager } from '@/components/admin/PlansManager';
 
 export const metadata: Metadata = { title: 'Plans d’abonnement | Admin — Je pâtisse !' };
@@ -10,6 +11,6 @@ export const metadata: Metadata = { title: 'Plans d’abonnement | Admin — Je 
 // Sans cette ligne, l'écran lui serait ouvert (cf. lib/admin-access.ts).
 export default async function AdminAbonnementsPage() {
   await requireFullAdmin();
-  const grid = await getAdminGrid();
-  return <PlansManager grid={grid} />;
+  const [grid, trialDays] = await Promise.all([getAdminGrid(), getTrialDays()]);
+  return <PlansManager grid={grid} trialDays={trialDays} />;
 }

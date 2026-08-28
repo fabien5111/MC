@@ -48,10 +48,12 @@ const nombreOuNull = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export function PlansManager({ grid }: { grid: AdminGrid }) {
+export function PlansManager({ grid, trialDays }: { grid: AdminGrid; trialDays: number }) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
+  const [essaiJours, setEssaiJours] = useState(String(trialDays));
+  const [essaiBusy, setEssaiBusy] = useState(false);
 
   const [identites, setIdentites] = useState<Record<string, Identite>>(() =>
     Object.fromEntries(
@@ -232,9 +234,40 @@ export function PlansManager({ grid }: { grid: AdminGrid }) {
     }
   }
 
+  // Réglage global (§7.2 : « valeur globale, pas par plan ») — séparé de la
+  // grille à dessein : ce n'est pas une version de plan, `site_settings` n'a
+  // pas d'historique ni de garantie de non-régression à faire relire avant
+  // écriture, un simple enregistrement suffit.
+  async function enregistrerEssai() {
+    const n = Number.parseInt(essaiJours, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      dialog.alert("Durée invalide : indiquez un nombre de jours entier supérieur à zéro.");
+      return;
+    }
+    setEssaiBusy(true);
+    try {
+      const { error } = await createClient()
+        .from('site_settings')
+        .upsert({ key: 'subscription_trial_days', value: String(n) });
+      if (error) {
+        dialog.alert('Erreur : ' + error.message);
+        return;
+      }
+      // Lu par `getTrialDays()` via le cache de référence (lib/data/reference.ts) :
+      // sans invalidation, la valeur affichée sur /plans resterait l'ancienne
+      // jusqu'à expiration du cache (COURT, 5 min).
+      await revalidateReference('site_settings');
+      router.refresh();
+    } finally {
+      setEssaiBusy(false);
+    }
+  }
+
   return (
     <div className="p-6 lg:p-10">
-      <LoadingOverlay visible={busy} label="Publication…" />
+      {/* Un seul LoadingOverlay monté à la fois : deux voiles indépendants
+          s'empileraient (cf. CLAUDE.md « Spinner »). */}
+      <LoadingOverlay visible={busy || essaiBusy} label={essaiBusy ? 'Enregistrement…' : 'Publication…'} />
       <div className="mb-2 flex items-center justify-between">
         <h1 className="font-display text-3xl text-primary">Plans d’abonnement</h1>
         <Link
@@ -248,6 +281,31 @@ export function PlansManager({ grid }: { grid: AdminGrid }) {
         Le code technique d’un plan est immuable et n’est jamais montré aux membres : renommer un plan ne
         change aucun droit. Les modifications restent locales tant que vous n’avez pas publié.
       </p>
+
+      <div className="mb-8 flex flex-wrap items-end gap-3 rounded-lg border border-outline-variant bg-surface-container p-4">
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-[13px]">Durée de l’essai gratuit</span>
+          <span className="text-xs text-on-surface-variant">
+            Réglage global, identique pour tous les plans qui proposent un essai.
+          </span>
+        </label>
+        <input
+          type="number"
+          min={1}
+          className="w-24 rounded border border-outline-variant bg-surface p-1.5"
+          value={essaiJours}
+          onChange={(e) => setEssaiJours(e.target.value)}
+        />
+        <span className="text-sm text-on-surface-variant">jours</span>
+        <button
+          type="button"
+          onClick={enregistrerEssai}
+          disabled={essaiBusy || essaiJours === String(trialDays)}
+          className="rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] text-primary hover:bg-surface-container-high disabled:opacity-40"
+        >
+          Enregistrer
+        </button>
+      </div>
 
       {alertes.length > 0 && (
         <div className="mb-8 rounded-lg border border-outline-variant bg-surface-container p-4">
