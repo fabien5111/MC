@@ -30,11 +30,39 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
+import { quotaFailure } from '@/lib/entitlements';
 
 // Forme minimale d'un retour supabase-js. `null` permet d'abandonner sans
 // alerte (ex. redirection vers /connexion faute de session active).
 type WriteResult = { error: { message: string } | null };
 type Write = () => PromiseLike<WriteResult | null>;
+
+// Un refus de quota (`mc_enforce_stock`, `mc_enforce_project_access`, et tout
+// futur trigger du même type) arrive ici comme n'importe quelle erreur
+// Postgres — `useMutation` étant le point de passage unique de toutes les
+// écritures du site, c'est le seul endroit où le traduire compte de le
+// faire une fois pour toutes plutôt que dans chaque appelant.
+//
+// Composer le message éducatif exige la grille et le plan courant
+// (`lib/entitlements-data.ts`, server-only) : d'où l'aller-retour vers
+// /api/quota-message plutôt qu'un appel direct depuis ce hook client.
+// Best-effort : si la traduction échoue, l'erreur brute reste affichée —
+// dégradée, mais jamais un blocage silencieux.
+async function messageEducatif(rawMessage: string): Promise<string | null> {
+  const echec = quotaFailure({ message: rawMessage });
+  if (!echec) return null;
+  try {
+    const r = await fetch('/api/quota-message', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ raw: rawMessage }),
+    });
+    const data = await r.json();
+    return typeof data?.message === 'string' ? data.message : null;
+  } catch {
+    return null;
+  }
+}
 
 export type MutateOptions = {
   // Texte du confirm() préalable ; l'écriture est abandonnée si l'utilisateur
@@ -103,7 +131,8 @@ export function useMutation() {
         }
         if (res.error) {
           console.debug(`[mutation-timing] ${label} — erreur après ${writeMs}ms`);
-          dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
+          const educatif = await messageEducatif(res.error.message);
+          dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
           return false;
         }
         if (impersonation) {
@@ -118,7 +147,9 @@ export function useMutation() {
         }
         return true;
       } catch (e) {
-        dialog.alert(`${options.errorLabel ?? 'Erreur'} : ${(e as Error).message || 'écriture impossible'}`);
+        const brut = (e as Error).message || 'écriture impossible';
+        const educatif = await messageEducatif(brut);
+        dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${brut}`);
         return false;
       } finally {
         // Groupé avec le passage à `pending` par React : `busy` ne retombe pas
