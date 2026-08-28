@@ -1,7 +1,7 @@
 'use client';
 
 // Gestion des membres (porté de admin-membres.html) : stats, filtres, recherche,
-// table (profils inscrits + invitations allowlist), édition (statut/rôle/plan/
+// table (profils inscrits + invitations allowlist), édition (statut/rôle/
 // démo/notes), invitation, suppression. Mutations via le client navigateur.
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,8 +13,11 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
+import { MemberSubscriptionPanel } from '@/components/admin/MemberSubscriptionPanel';
 
-type Filter = 'all' | 'active' | 'pending' | 'disabled' | 'demo';
+// 'trial' : essai en cours (§8.3, filtre par essai) — distinct de `demo`
+// (compte de démonstration), qui n'a rien à voir avec l'abonnement.
+type Filter = 'all' | 'active' | 'pending' | 'disabled' | 'demo' | 'trial';
 
 function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
@@ -59,6 +62,7 @@ export function MembersManager({ members }: { members: Member[] }) {
       rows
         .filter((m) => {
           if (filter === 'demo') return m.is_demo;
+          if (filter === 'trial') return m.subscription?.type === 'TRIAL';
           if (filter === 'all') return true;
           return m.status === filter;
         })
@@ -156,6 +160,7 @@ export function MembersManager({ members }: { members: Member[] }) {
           {chip('pending', 'Invités')}
           {chip('disabled', 'Désactivés')}
           {chip('demo', 'Démo')}
+          {chip('trial', 'Essai en cours')}
         </div>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
@@ -227,7 +232,12 @@ export function MembersManager({ members }: { members: Member[] }) {
                     <td className="px-6 py-4">{accessCell(m)}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 items-start">
-                        {m.plan === 'paid' ? badge('bg-secondary-container text-on-secondary-container', 'Payant') : badge('bg-outline-variant text-on-surface-variant', 'Free')}
+                        {m.subscription
+                          ? badge('bg-secondary-container text-on-secondary-container', `${m.subscription.planCode}${m.subscription.type === 'TRIAL' ? ' · essai' : ''}`)
+                          : badge('bg-outline-variant text-on-surface-variant', m.profileId ? '—' : 'Non inscrit')}
+                        {m.subscription?.trialConsumed && m.subscription.type !== 'TRIAL' && (
+                          <span className="text-[10px] text-on-surface-variant">Essai déjà consommé</span>
+                        )}
                         {m.role === 'admin'
                           ? badge('bg-primary-fixed text-on-primary-fixed', 'Admin')
                           : m.role === 'gestionnaire'
@@ -296,7 +306,6 @@ export function MembersManager({ members }: { members: Member[] }) {
 function InviteCard({ members, onInvited }: { members: Member[]; onInvited: () => void }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('member');
-  const [plan, setPlan] = useState('free');
   const [isDemo, setIsDemo] = useState(false);
   const [notes, setNotes] = useState('');
   const [msg, setMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
@@ -313,9 +322,12 @@ function InviteCard({ members, onInvited }: { members: Member[]; onInvited: () =
       return;
     }
     setBusy(true);
+    // Pas de plan à l'invitation : l'abonnement d'un membre n'existe qu'à
+    // partir de son inscription (trigger `mc_attach_default_plan`), un
+    // invité n'a pas encore de profil pour en porter un.
     const { error } = await createClient()
       .from('allowlist')
-      .insert({ email: e, role, plan, is_demo: isDemo, notes: notes.trim() || null, status: 'pending' });
+      .insert({ email: e, role, is_demo: isDemo, notes: notes.trim() || null, status: 'pending' });
     setBusy(false);
     if (error) {
       setMsg({ type: 'error', text: 'Erreur : ' + error.message });
@@ -352,13 +364,6 @@ function InviteCard({ members, onInvited }: { members: Member[]; onInvited: () =
               <option value="member">Membre</option>
               <option value="gestionnaire">Gestionnaire</option>
               <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1" style={{ minWidth: '130px' }}>
-            <label className={LABEL}>Plan</label>
-            <select value={plan} onChange={(e) => setPlan(e.target.value)} className="w-full border-b border-outline-variant bg-transparent py-2 text-sm focus:outline-none focus:border-primary">
-              <option value="free">Free</option>
-              <option value="paid">Payant</option>
             </select>
           </div>
           <div className="flex items-center gap-3 pb-2">
@@ -410,8 +415,8 @@ function EditPanel({
 }) {
   const [status, setStatus] = useState(member.status);
   const [role, setRole] = useState(member.role);
-  const [plan, setPlan] = useState(member.plan);
   const [isDemo, setIsDemo] = useState(member.is_demo);
+  const [abonnementOuvert, setAbonnementOuvert] = useState(false);
   const [notes, setNotes] = useState(member.notes || '');
   const [impAccess, setImpAccess] = useState<ImpersonationMode>(member.impersonationAccess);
   const [busy, setBusy] = useState(false);
@@ -420,7 +425,7 @@ function EditPanel({
   async function save() {
     setBusy(true);
     const supabase = createClient();
-    const fields = { status, role, plan, is_demo: isDemo, notes: notes.trim() || null };
+    const fields = { status, role, is_demo: isDemo, notes: notes.trim() || null };
     // Les deux lignes sont mises à jour quand elles existent toutes les deux.
     // La fiche affiche en priorité le rôle de l'allowlist (`getAllowlistMembers`)
     // alors que les droits réels se lisent dans `profiles.role` (`lib/auth.ts`) :
@@ -452,6 +457,7 @@ function EditPanel({
     : member.email[0]?.toUpperCase() || '?';
 
   return (
+    <>
     <Panel title={`Modifier — ${member.fullName || member.email}`} onClose={onClose} onSave={save} busy={busy} onDelete={onDelete}>
       <div className="flex items-center gap-4">
         {member.avatarUrl ? (
@@ -501,12 +507,24 @@ function EditPanel({
           </span>
         )}
       </Row>
-      <Row label="Plan">
-        <select value={plan} onChange={(e) => setPlan(e.target.value)} className={FIELD}>
-          <option value="free">Free</option>
-          <option value="paid">Payant</option>
-        </select>
-      </Row>
+      {member.profileId && (
+        <Row label="Abonnement">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-on-surface-variant">
+              {member.subscription
+                ? `${member.subscription.planCode}${member.subscription.type === 'TRIAL' ? ' (essai)' : ''}`
+                : 'Gratuit (par défaut)'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAbonnementOuvert(true)}
+              className="rounded-pill border border-outline-variant px-3 py-1.5 text-[12px] font-semibold text-primary hover:bg-surface-container"
+            >
+              Gérer
+            </button>
+          </div>
+        </Row>
+      )}
       {role === 'admin' && member.profileId && (
         <Row label="Droits en « connecté en tant que »">
           <select value={impAccess} onChange={(e) => setImpAccess(e.target.value as ImpersonationMode)} className={FIELD}>
@@ -549,6 +567,14 @@ function EditPanel({
         </div>
       )}
     </Panel>
+    {abonnementOuvert && member.profileId && (
+      <MemberSubscriptionPanel
+        memberId={member.profileId}
+        memberLabel={member.fullName || member.email}
+        onClose={() => setAbonnementOuvert(false)}
+      />
+    )}
+    </>
   );
 }
 

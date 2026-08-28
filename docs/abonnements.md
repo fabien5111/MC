@@ -179,11 +179,15 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
   changement, et c'est la version SQL qui fait foi puisque c'est elle que les
   triggers appliquent. Les tests (`npm run test`) ne couvrent donc que le pur :
   verdicts, seuils de jauge, diff de versions, contrôle de cohérence, messages.
-- **`profiles.plan` et `allowlist.plan` sont morts** dès le lot 4. Ces deux
-  colonnes (`free` / `paid`) sont aujourd'hui affichées et modifiables dans
-  `/admin/membres` ; elles deviennent une seconde vérité dès que
-  `subscriptions` existe. Elles restent en base, comme
-  `profiles.followers_count`, et ne doivent plus être lues.
+- **`profiles.plan` et `allowlist.plan` sont mortes, décommissionnées au
+  lot 4.** `/admin/membres` affichait et modifiait ces deux colonnes
+  (`free` / `paid`) ; l'écran lit désormais `subscriptions` (badge de plan
+  réel, filtre « Essai en cours ») et la fiche membre écrit exclusivement via
+  les fonctions `mc_admin_*` (motif obligatoire + journal), jamais plus une
+  ligne `plan` directement. Les deux colonnes restent en base, comme
+  `profiles.followers_count`, et ne doivent plus être lues ni écrites — y
+  compris à l'invitation, qui ne pose plus de plan (`allowlist.plan` retombe
+  sur son défaut `free`, sans conséquence puisqu'il n'est plus lu).
 - **`IMPORT_DAILY_QUOTA` reste**, comme garde-fou technique anti-emballement,
   derrière la limite d'abonnement — il borne le coût Anthropic quel que soit
   l'état de la grille.
