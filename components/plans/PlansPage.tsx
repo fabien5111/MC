@@ -175,39 +175,54 @@ export function PlansPage({
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr>
-              <th className="w-1/4 p-4 text-left align-bottom" />
+              <th className="w-1/4 p-4 text-left align-top" />
               {plans.map((p) => {
                 const tarif = annuel ? p.priceYearly : p.priceMonthly;
                 const eco = bascule ? annualSaving(p.priceMonthly, p.priceYearly) : null;
                 return (
-                  <th key={p.code} className="p-4 text-center align-bottom">
-                    <p className="font-label-md text-[17px] text-primary">{p.label}</p>
-                    {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
-                    <p className="mt-3 font-headline-md text-2xl">
-                      {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
-                      {tarif !== null && tarif > 0 && (
-                        <span className="text-sm font-normal text-on-surface-variant">
-                          {' '}
-                          / {annuel ? 'an' : 'mois'}
-                        </span>
-                      )}
-                    </p>
-                    {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
-                    <div className="mt-4">
-                      <BoutonPlan
-                        plan={p}
-                        connecte={connecte}
-                        estCourant={p.code === currentPlanCode}
-                        inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
-                        trialConsumed={trialConsumed}
-                        // Sans tarif configuré pour cette formule, « S'abonner »
-                        // n'a rien à proposer — jamais affiché dans ce cas
-                        // (un essai reste possible, lui, sans moyen de paiement).
-                        aUnTarif={tarif !== null}
-                        onEssayer={() => essayer(p.code)}
-                        onAbonner={() => demander(p.code, annuel ? 'YEARLY' : 'MONTHLY')}
-                        onRetrograder={() => retrograder(p.code)}
-                      />
+                  <th key={p.code} className="p-4 text-center align-top">
+                    {/* `align-top` + colonne flex pleine hauteur plutôt que
+                        `align-bottom` sur toute la cellule : ce dernier
+                        ancrait le bloc entier (titre + accroche + prix +
+                        bouton) par son bas, donc une formule au contenu plus
+                        court (pas d'accroche sur deux lignes, pas de ligne
+                        d'économie) se retrouvait décalée vers le bas — le
+                        titre n'était plus à la même hauteur d'une colonne à
+                        l'autre. `justify-between` garde les titres alignés en
+                        haut tout en gardant les boutons alignés en bas, la
+                        hauteur de ligne étant de toute façon commune aux
+                        trois colonnes. */}
+                    <div className="flex h-full flex-col justify-between">
+                      <div>
+                        <p className="font-label-md text-[17px] text-primary">{p.label}</p>
+                        {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
+                        <p className="mt-3 font-headline-md text-2xl">
+                          {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
+                          {tarif !== null && tarif > 0 && (
+                            <span className="text-sm font-normal text-on-surface-variant">
+                              {' '}
+                              / {annuel ? 'an' : 'mois'}
+                            </span>
+                          )}
+                        </p>
+                        {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
+                      </div>
+                      <div className="mt-4">
+                        <BoutonPlan
+                          plan={p}
+                          connecte={connecte}
+                          estCourant={p.code === currentPlanCode}
+                          inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
+                          trialConsumed={trialConsumed}
+                          // Sans tarif configuré pour cette formule, « S'abonner »
+                          // n'a rien à proposer — jamais affiché dans ce cas
+                          // (un essai reste possible, lui, sans moyen de paiement).
+                          aUnTarif={tarif !== null}
+                          onEssayer={() => essayer(p.code)}
+                          onAbonner={() => demander(p.code, annuel ? 'YEARLY' : 'MONTHLY')}
+                          onRetrograder={() => retrograder(p.code)}
+                        />
+                      </div>
                     </div>
                   </th>
                 );
