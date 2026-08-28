@@ -1872,6 +1872,83 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: number
+          kind: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: never
+          kind: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: never
+          kind?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications_sent: {
+        Row: {
+          id: number
+          notification_type: string
+          sent_at: string
+          subscription_id: number
+          user_id: string
+        }
+        Insert: {
+          id?: never
+          notification_type: string
+          sent_at?: string
+          subscription_id: number
+          user_id: string
+        }
+        Update: {
+          id?: never
+          notification_type?: string
+          sent_at?: string
+          subscription_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_sent_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_features: {
         Row: {
           feature_id: number
@@ -2020,6 +2097,7 @@ export type Database = {
           is_admin: boolean | null
           is_demo: boolean
           notes: string | null
+          notify_email: boolean
           pinterest_url: string | null
           plan: string
           provider: string | null
@@ -2049,6 +2127,7 @@ export type Database = {
           is_admin?: boolean | null
           is_demo?: boolean
           notes?: string | null
+          notify_email?: boolean
           pinterest_url?: string | null
           plan?: string
           provider?: string | null
@@ -2078,6 +2157,7 @@ export type Database = {
           is_admin?: boolean | null
           is_demo?: boolean
           notes?: string | null
+          notify_email?: boolean
           pinterest_url?: string | null
           plan?: string
           provider?: string | null
@@ -3454,6 +3534,38 @@ export type Database = {
           sort_by?: string
         }
         Returns: Json
+      }
+      mc_admin_cancel_subscription: {
+        Args: {
+          p_immediate: boolean
+          p_reason: string
+          p_subscription_id: number
+        }
+        Returns: undefined
+      }
+      mc_admin_extend_subscription: {
+        Args: {
+          p_new_ends_at: string
+          p_reason: string
+          p_subscription_id: number
+        }
+        Returns: undefined
+      }
+      mc_admin_grant_subscription: {
+        Args: {
+          p_ends_at: string
+          p_periodicity: string
+          p_plan_code: string
+          p_reason: string
+          p_starts_at: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      mc_admin_reset_trial: {
+        Args: { p_reason: string; p_user_id: string }
+        Returns: undefined
       }
       mc_anchor_date: {
         Args: { p_anchor: number; p_at: string }
