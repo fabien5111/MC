@@ -17,6 +17,7 @@ import {
   hasYearlyOption,
   isOverLimit,
   lostFeatureLabels,
+  overLimitMessage,
   quotaFailure,
   rightScore,
   upgradeSuggestion,
@@ -309,5 +310,18 @@ describe('fonctionnalités perdues (notifications)', () => {
 
   it('rend une liste vide sans régression', () => {
     expect(lostFeatureLabels({ a: oui }, { a: oui }, grille.features)).toEqual([]);
+  });
+});
+
+describe('message de dépassement post-rétrogradation', () => {
+  it('accorde le pluriel et inclut l’unité', () => {
+    expect(overLimitMessage(3, 1, 'fournées')).toBe(
+      "Vous utilisez 3 sur 1 fournées autorisé. Vous conservez ce qui existe déjà, mais ne pourrez pas en créer de nouveau avant d'être repassé sous la limite.",
+    );
+    expect(overLimitMessage(5, 3, 'listes')).toContain('autorisés.');
+  });
+
+  it('reste correct sans unité', () => {
+    expect(overLimitMessage(2, 1, null)).toContain('sur 1 autorisé.');
   });
 });

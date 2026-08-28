@@ -10,9 +10,11 @@ import { FollowingCard } from '@/components/profile/FollowingCard';
 import { BookSharesCard } from '@/components/profile/BookSharesCard';
 import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
 import { NotificationsPreferenceCard } from '@/components/profile/NotificationsPreferenceCard';
+import { UsageCard } from '@/components/profile/UsageCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { getNotifyEmailPreference } from '@/lib/notifications-data';
+import { getCurrentPlan, getGrid, getUsageReport } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -67,13 +69,17 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail] = await Promise.all([
-    getFollowCounts(user.id),
-    getFollowing(user.id),
-    getBookSharesGiven(user.id),
-    getRecipeSharesGiven(user.id),
-    getNotifyEmailPreference(user.id),
-  ]);
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan] =
+    await Promise.all([
+      getFollowCounts(user.id),
+      getFollowing(user.id),
+      getBookSharesGiven(user.id),
+      getRecipeSharesGiven(user.id),
+      getNotifyEmailPreference(user.id),
+      getUsageReport(user.id),
+      getGrid(),
+      getCurrentPlan(user.id),
+    ]);
 
   return (
     <>
@@ -101,6 +107,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           isAdmin={admin}
           followCounts={followCounts}
         />
+        <UsageCard usage={usage} features={grid.features} currentPlan={currentPlan} />
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />

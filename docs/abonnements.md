@@ -217,6 +217,7 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 | 5c (partiel) | `mode_projet` en lecture seule pour un projet en cours | `/projets/[id]`, `ProjectReadOnly`, `mc_enforce_project_access` |
 | 6 | Page publique des plans, bascule mensuel/annuel, essai, demandes | `/plans`, `lib/trial.ts`, `subscription_requests` |
 | 8 | Cron d'expiration, notifications in-app + e-mail | `/api/cron/abonnements`, `NotificationBell`, `lib/mail.ts` |
+| 7 | Jauges « Mon utilisation » | `/reglages`, `components/profile/UsageCard.tsx` |
 | 9 | Tableau de bord administrateur | `/admin/abonnements/tableau-de-bord` |
 
 ### Objets SQL en place
@@ -240,7 +241,6 @@ Fonctions : `mc_anchor_date`, `mc_period_bounds`, `mc_renewal_anchor`,
 | Lot | Contenu | Note |
 |---|---|---|
 | 5c (reste) | Sept droits binaires (`remplacement_ingredient_par_recette`, `notes_personnelles`, `sous_etapes_sequencement`, `ecran_relecture_import`, `fusion_listes_courses`, `navigation_sans_pub`) | `mode_projet` seul est traité |
-| 7 | Jauges « Mon utilisation » dans `/reglages` ou `/profil` | `getUsageReport` est prête, rien ne l'affiche encore |
 
 ### Une question tranchée, une encore ouverte
 

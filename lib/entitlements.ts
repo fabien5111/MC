@@ -204,6 +204,22 @@ export function lostFeatureLabels(
     .filter((label): label is string => !!label);
 }
 
+// ── Dépassement post-rétrogradation (§9.3, §7.4) ────────────
+
+/**
+ * Message du dépassement consécutif à une rétrogradation — générique,
+ * jamais un texte par fonctionnalité : le même défaut que
+ * `blockingMessage` (§9.4) s'applique ici, la formulation se déduit de la
+ * grille (unité) plutôt que d'être répétée pour chaque limite de stock.
+ */
+export function overLimitMessage(usage: number, limit: number, unit: string | null): string {
+  const suffixe = unit ? ` ${unit}` : '';
+  return (
+    `Vous utilisez ${usage} sur ${limit}${suffixe} autorisé${limit > 1 ? 's' : ''}. ` +
+    `Vous conservez ce qui existe déjà, mais ne pourrez pas en créer de nouveau avant d'être repassé sous la limite.`
+  );
+}
+
 // ── Contrôle de cohérence de la grille (§8.2) ───────────────
 
 export type CoherenceIssue = {
