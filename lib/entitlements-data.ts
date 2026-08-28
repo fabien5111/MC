@@ -232,6 +232,35 @@ export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan 
   };
 });
 
+// ── Page publique des plans ─────────────────────────────────
+
+/** Essai déjà consommé par ce membre — tous plans confondus (§7.2). */
+export const hasConsumedTrial = cache(async (userId: string): Promise<boolean> => {
+  const supabase = await createClient();
+  const { data } = await supabase.from('trials').select('id').eq('user_id', userId).maybeSingle();
+  return !!data;
+});
+
+export type PendingRequest = { id: number; planCode: string; createdAt: string };
+
+/**
+ * Demande d'abonnement en attente de ce membre, s'il y en a une — au plus
+ * une à la fois (index unique `subscription_requests_one_pending`). Sert à
+ * afficher « Demande transmise » plutôt que de laisser cliquer une seconde
+ * fois pour se heurter à la contrainte.
+ */
+export const getPendingRequest = cache(async (userId: string): Promise<PendingRequest | null> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('subscription_requests')
+    .select('id, created_at, plans!inner(code)')
+    .eq('user_id', userId)
+    .eq('status', 'PENDING')
+    .maybeSingle();
+  if (!data) return null;
+  return { id: data.id, planCode: data.plans.code, createdAt: data.created_at };
+});
+
 // ── Quotas de flux ──────────────────────────────────────────
 
 /**
