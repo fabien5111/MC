@@ -16,6 +16,7 @@ import {
   getLimit,
   hasYearlyOption,
   isOverLimit,
+  lostFeatureLabels,
   quotaFailure,
   rightScore,
   upgradeSuggestion,
@@ -293,5 +294,20 @@ describe('refus remontés par la base', () => {
       usage: null,
       limit: null,
     });
+  });
+});
+
+describe('fonctionnalités perdues (notifications)', () => {
+  it('liste uniquement ce qui régresse, avec le libellé de la grille', () => {
+    const avant = { fournees_actives_max: limite(15), mode_projet: oui, import_ia_mensuel: limite(20) };
+    const apres = { fournees_actives_max: limite(2), mode_projet: non, import_ia_mensuel: limite(20) };
+    const labels = lostFeatureLabels(avant, apres, grille.features);
+    expect(labels).toContain('Fournées actives');
+    expect(labels).toContain('Mode projet');
+    expect(labels).not.toContain('Import par IA');
+  });
+
+  it('rend une liste vide sans régression', () => {
+    expect(lostFeatureLabels({ a: oui }, { a: oui }, grille.features)).toEqual([]);
   });
 });

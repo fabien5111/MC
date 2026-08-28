@@ -208,39 +208,39 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 |---|---|---|
 | 0 | Arbitrages, mesure du parc | ce document |
 | 1 | Schéma, RLS, moteur SQL, seeds | base (SQL joué à la main) |
-| 2a | Moteur pur + 29 tests + règle ESLint | `lib/entitlements.ts` |
+| 2a | Moteur pur + tests + règle ESLint | `lib/entitlements.ts` |
 | 2b | Couche de lecture, cache de la grille | `lib/entitlements-data.ts`, `lib/data/reference.ts` |
 | 3 | Back-office de paramétrage des plans | `/admin/abonnements`, `lib/plans-admin.ts` |
+| 4 | Fiche abonnement d'un membre, historique, actions manuelles | `/admin/membres`, `lib/subscriptions-admin.ts`, `mc_admin_*` |
+| 5a | Cinq limites de stock câblées + message éducatif générique | `mc_enforce_stock` attachée, `lib/quota-message-client.ts`, `useMutation` |
 | 5b | Quotas de flux sur les cinq routes IA | `lib/quota-route.ts` + routes |
-| 5c (anticipé) | Lecture seule d'un projet en cours sans `mode_projet` | `/projets/[id]`, `ProjectReadOnly`, `mc_enforce_project_access` |
+| 5c (partiel) | `mode_projet` en lecture seule pour un projet en cours | `/projets/[id]`, `ProjectReadOnly`, `mc_enforce_project_access` |
+| 6 | Page publique des plans, bascule mensuel/annuel, essai, demandes | `/plans`, `lib/trial.ts`, `subscription_requests` |
+| 8 | Cron d'expiration, notifications in-app + e-mail | `/api/cron/abonnements`, `NotificationBell`, `lib/mail.ts` |
+| 9 | Tableau de bord administrateur | `/admin/abonnements/tableau-de-bord` |
 
 ### Objets SQL en place
 
 Tables : `plans`, `plan_versions`, `features`, `plan_features`, `subscriptions`,
-`trials`, `usage_counters`, `admin_events`, `subscription_requests`.
+`trials`, `usage_counters`, `admin_events`, `subscription_requests`,
+`notifications`, `notifications_sent`. Colonne `profiles.notify_email`.
 
 Fonctions : `mc_anchor_date`, `mc_period_bounds`, `mc_renewal_anchor`,
 `mc_effective_rights`, `mc_usage`, `mc_check_quota`, `mc_usage_report`,
-`mc_consume`, `mc_refund`, `mc_enforce_stock`, `mc_start_trial`,
-`mc_publish_plan_version`, `mc_attach_default_plan`.
-
-**`mc_enforce_stock` n'est rattachée à aucune table.** C'est délibéré : posée
-avant les messages d'interface du lot 5a, elle produirait une erreur brute au
-membre. Le lot 5a l'attache aux cinq tables (`recipes`, `favorites`, `batches`,
-`shopping_lists`, `book_shares`) en même temps qu'il pose les blocages
-éducatifs.
+`mc_consume`, `mc_refund`, `mc_enforce_stock` (attachée à `recipes`,
+`favorites`, `batches`, `shopping_lists`, `book_shares`), `mc_start_trial`,
+`mc_publish_plan_version`, `mc_attach_default_plan`,
+`mc_enforce_project_access` (attachée à `recipe_steps`, `ingredient_groups`,
+`ingredients`, `recipe_project_components`, `recipe_projects`, `recipes`),
+`mc_admin_grant_subscription`, `mc_admin_extend_subscription`,
+`mc_admin_cancel_subscription`, `mc_admin_reset_trial`.
 
 ### À faire
 
 | Lot | Contenu | Note |
 |---|---|---|
-| 4 | Fiche abonnement d'un membre, historique, actions manuelles | étend `/admin/membres` ; y retirer le sélecteur `profiles.plan` |
-| 5a | Rattacher `mc_enforce_stock` aux cinq tables + blocage éducatif | |
-| 5c | Sept droits binaires restants + `notes_personnelles` / `sous_etapes_sequencement` en lecture seule | le cas `mode_projet` est traité, ci-dessus |
-| 6 | Page publique des plans, bascule mensuel/annuel, essai | `mc_start_trial` attend `TRIAL_EMAIL_SALT` |
-| 7 | Jauges « Mon utilisation » | `getUsageReport` est prête |
-| 8 | Cron, notifications in-app, e-mail | trois sous-systèmes inexistants |
-| 9 | Tableau de bord | |
+| 5c (reste) | Sept droits binaires (`remplacement_ingredient_par_recette`, `notes_personnelles`, `sous_etapes_sequencement`, `ecran_relecture_import`, `fusion_listes_courses`, `navigation_sans_pub`) | `mode_projet` seul est traité |
+| 7 | Jauges « Mon utilisation » dans `/reglages` ou `/profil` | `getUsageReport` est prête, rien ne l'affiche encore |
 
 ### Une question tranchée, une encore ouverte
 
@@ -260,10 +260,7 @@ membre. Le lot 5a l'attache aux cinq tables (`recipes`, `favorites`, `batches`,
      `recipe_project_components`, `recipe_projects` et `recipes` (colonnes de
      format) tant que la recette est `kind = 'project'` et
      `project_stage = 'wizard'` et que le propriétaire n'a pas le droit — pour
-     qu'un appel direct depuis la console ne contourne pas la page. C'est du
-     lot 5c anticipé, posé ici parce que la règle vient d'être tranchée et
-     que les écritures du parcours guidé sont, comme partout ailleurs, des
-     appels `supabase-js` directs du navigateur.
+     qu'un appel direct depuis la console ne contourne pas la page.
 
    **Portée volontairement stricte** : la validation (`wizard → ready`, §8)
    est elle aussi bloquée — un membre rétrogradé ne peut ni continuer ni
@@ -274,18 +271,113 @@ membre. Le lot 5a l'attache aux cinq tables (`recipes`, `favorites`, `batches`,
    La réversion `ready → wizard` (`ProjectMarking`, §8.5) n'est PAS concernée :
    au moment de ce geste, l'état encore en base est `ready`, pas `wizard`.
 
-   Page publique `/plans` référencée par le lien de l'écran : route à créer
-   au lot 6, nom retenu pour cohérence.
-
 2. **`reordonnancement_etapes` n'a pas de geste identifié** dans le produit.
    La ligne est seedée `visible = false` en attendant.
 
-### Reprise
+## 7. Lot 8 — cron, notifications, e-mail : décisions
+
+### Prestataire retenu : AWS SES en SMTP
+
+Choix du produit, pas le mien : SES exposé en SMTP standard, donc
+`lib/mail.ts` ne connaît rien d'AWS — cinq variables génériques (`SMTP_HOST`,
+`SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`). Changer de
+prestataire un jour ne touchera que l'environnement, jamais le code.
+
+**Best-effort**, même doctrine que la modération IA : SMTP absent ou en panne
+→ l'envoi échoue silencieusement (loggé), jamais un blocage. Un e-mail non
+parti dégrade l'information du membre, il ne doit jamais faire échouer le
+cron qui l'accompagne.
+
+### Le cron ne peut pas être précis à l'heure près
+
+Vercel exécute les crons en UTC. « 03:00 Europe/Paris » n'a pas de traduction
+fixe : 02:00 UTC en hiver (CET), 01:00 UTC en été (CEST). `vercel.json` est
+figé à `02:00 UTC`, ce qui fait réellement tourner le job à 03:00 heure de
+Paris en hiver et 04:00 en été. Assumé : c'est un travail de fond quotidien,
+pas un rendez-vous à l'heure pour un membre — la précision n'a pas de valeur
+ici, contrairement à ce qu'aurait coûté un luxe de précision non tenable.
+
+### Idempotence : réserver plutôt que vérifier-puis-écrire
+
+`claimNotification` (`lib/notifications-data.ts`) fait les deux en une seule
+opération — un `upsert` avec `ignoreDuplicates` sur la contrainte d'unicité
+`(subscription_id, notification_type)` — plutôt qu'un `select` suivi d'un
+`insert`. Même raison que `mc_consume` au lot 1 : un `select` puis un
+`insert` séparés laisseraient une fenêtre où deux exécutions concurrentes du
+cron enverraient chacune leur e-mail. Le critère d'acceptation 7 (« le cron
+exécuté deux fois de suite ne produit pas de notification en double ») est
+donc porté par une contrainte de base, pas par une vérification applicative.
+
+### Fenêtres bornées, pas un balayage complet
+
+Les deux passes de notification ne relisent jamais la table entière :
+l'expiration ne regarde que les sept derniers jours, l'échéance à venir que
+les trois prochains. Une notification qui aurait dû partir mais que ces
+fenêtres ratent — plusieurs jours de cron manqués d'affilée — ne part plus
+jamais. Assumé : un retard de cette ampleur est une anomalie à traiter à la
+main (le cron a de toute façon cessé de tourner pour une autre raison), pas
+un cas que le job doit rattraper indéfiniment au prix d'un balayage complet
+quotidien.
+
+### La règle « moins de 3 jours → seulement J-1 » porte sur la DURÉE, pas sur le jour de lecture
+
+Relire la spécification à la lettre (« un abonnement de moins de 3 jours ne
+doit pas déclencher J-3 et J-1 simultanément ») laissait deux lectures
+possibles. Retenue : la durée TOTALE de l'abonnement (`ends_at − starts_at`)
+décide si le point J-3 existe seulement dans son calendrier — un essai de
+2 jours n'a pas de « moment à 3 jours de la fin » qui tombe après son début,
+donc ce point n'est jamais atteint, jamais notifié. Un abonnement de 14 jours,
+lui, traverse les deux points l'un après l'autre, à des jours différents, et
+reçoit légitimement les deux notifications. La condition
+`dureeTotaleJours >= 3` avant d'autoriser J-3 (dans
+`app/api/cron/abonnements/route.ts`) porte exactement cette règle.
+
+### « Ce qui sera perdu » : deux précisions différentes pour deux moments différents
+
+Avant échéance (J-3/J-1), l'abonnement est encore actif : comparer aux droits
+de la GRILLE COURANTE de son plan est une approximation assumée (un
+avertissement, pas un fait consommé). Après expiration (J+1), la question a
+une vraie réponse et `getRightsForVersion()` lit la version EXACTEMENT
+souscrite — un membre qui a souscrit avant un relèvement de plafond ne doit
+pas se voir annoncer la perte d'un droit qu'il n'a jamais eu.
+
+### Notifications in-app : nouveau sous-système, volontairement minimal
+
+Aucune notion de notification n'existait dans le produit. `notifications`
+(table) + `NotificationBell` (cloche de l'en-tête) couvrent exactement le
+besoin de ce chantier — pas un centre de notifications extensible à toute
+future fonctionnalité du site. Photographie prise au rendu serveur, comme le
+reste du site : pas de canal temps réel, une nouvelle notification apparaît
+à la prochaine navigation.
+
+La création est réservée au serveur (`createAdminClient()`, aucune policy RLS
+d'insertion pour un membre) : personne ne doit pouvoir s'écrire ses propres
+alertes. Seul le marquage comme lue est un geste membre.
+
+### Préférence e-mail : un seul réglage
+
+`profiles.notify_email` (défaut `true`) ne conditionne QUE l'envoi d'e-mail —
+les notifications in-app d'expiration restent affichées quoi qu'il arrive
+(spec §10), puisqu'elles conditionnent l'accès au service. Lu à part de
+`getProfile()` (`getNotifyEmailPreference`, `lib/notifications-data.ts`) :
+l'ajouter à la liste énumérée de `lib/auth.ts` la ferait relire à chaque
+rendu de page pour un réglage qui ne sert qu'à `/reglages` et au cron.
+
+## 8. Reprise
 
 `npm run test` (moteur pur), `npm run typecheck`, `npm run lint` (dont la
 règle anti-`plan === 'PRO'`), `npm run build`.
 
 Toute migration SQL se livre **dans la conversation**, jamais en fichier
 `db/*.sql` — et `npm run gen:types` la suit, sans quoi les nouvelles fonctions
-restent invisibles au typage (c'est pourquoi `mc_publish_plan_version` est
-encore appelée par un cast local dans `PlansManager`).
+et tables restent invisibles au typage (c'est pourquoi `mc_publish_plan_version`,
+`notifications` et `notifications_sent` sont encore appelées par un cast
+local, même motif que `ads` dans `PartnersManager`).
+
+Variables d'environnement à configurer avant mise en production (cf.
+`.env.local.example`) : `TRIAL_EMAIL_SALT` (essai gratuit, lot 6), `CRON_SECRET`
+(tâche planifiée), `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` /
+`MAIL_FROM` (e-mail, AWS SES). Sans elles : l'essai gratuit refuse de démarrer,
+le cron refuse toute requête (503, jamais une route ouverte par défaut), et
+les e-mails ne partent pas silencieusement — rien de tout cela n'empêche le
+reste du site de fonctionner.

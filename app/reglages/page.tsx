@@ -9,8 +9,10 @@ import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
 import { FollowingCard } from '@/components/profile/FollowingCard';
 import { BookSharesCard } from '@/components/profile/BookSharesCard';
 import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
+import { NotificationsPreferenceCard } from '@/components/profile/NotificationsPreferenceCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
+import { getNotifyEmailPreference } from '@/lib/notifications-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -65,11 +67,12 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven] = await Promise.all([
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail] = await Promise.all([
     getFollowCounts(user.id),
     getFollowing(user.id),
     getBookSharesGiven(user.id),
     getRecipeSharesGiven(user.id),
+    getNotifyEmailPreference(user.id),
   ]);
 
   return (
@@ -102,6 +105,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
         <RecipeSharesCard ownerId={user.id} given={recipeSharesGiven} />
+        <NotificationsPreferenceCard userId={user.id} notifyEmail={notifyEmail} />
       </main>
       <Footer />
       <MobileNav />

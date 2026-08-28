@@ -107,6 +107,33 @@ export const getGrid = cache(async (): Promise<Grid> => {
   return { plans, features, rights };
 });
 
+// ── Droits d'une version de plan spécifique ─────────────────
+
+/**
+ * Droits portés par UNE version de plan précise — jamais « la version
+ * courante » (`getGrid()`). Sert exclusivement au calcul « ce que le membre
+ * a réellement perdu » à l'expiration (§10) : la version à laquelle il était
+ * réellement souscrit peut différer de la version courante du même plan si
+ * la grille a changé entre-temps, et c'est celle-là qui doit compter, pas la
+ * grille d'aujourd'hui.
+ */
+export async function getRightsForVersion(planVersionId: number): Promise<Record<string, GridRight>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('plan_features')
+    .select('value, limit_value, unlimited, features!inner(key)')
+    .eq('plan_version_id', planVersionId);
+  const out: Record<string, GridRight> = {};
+  for (const r of data ?? []) {
+    out[r.features.key] = {
+      value: asRightValue(r.value),
+      limitValue: r.limit_value,
+      unlimited: r.unlimited,
+    };
+  }
+  return out;
+}
+
 // ── Droits d'un membre ──────────────────────────────────────
 
 /**

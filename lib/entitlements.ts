@@ -181,6 +181,29 @@ export function diffRights(
   return out.sort((x, y) => x.featureKey.localeCompare(y.featureKey));
 }
 
+// ── Ce qu'un changement de plan fait perdre (notifications, §10) ──
+
+/**
+ * Libellés des fonctionnalités effectivement perdues entre deux jeux de
+ * droits — pour le message d'avertissement avant échéance (« ce qui sera
+ * perdu ») et celui d'expiration (« ce qui change concrètement »), calculés
+ * PAR CE MEMBRE plutôt qu'un texte générique par plan (spec §10).
+ *
+ * Pure réutilisation de `diffRights` : ne réimplémente aucune comparaison,
+ * ne fait que filtrer sur le sens défavorable et résoudre les libellés.
+ */
+export function lostFeatureLabels(
+  before: Record<string, GridRight>,
+  after: Record<string, GridRight>,
+  features: GridFeature[],
+): string[] {
+  const parCle = new Map(features.map((f) => [f.key, f]));
+  return diffRights(before, after)
+    .filter((c) => !c.favorable)
+    .map((c) => parCle.get(c.featureKey)?.label)
+    .filter((label): label is string => !!label);
+}
+
 // ── Contrôle de cohérence de la grille (§8.2) ───────────────
 
 export type CoherenceIssue = {

@@ -16,6 +16,8 @@ import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/a
 import { hasActiveBatches } from '@/lib/profile';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
+import { NotificationBell } from '@/components/NotificationBell';
+import { getRecentNotifications } from '@/lib/notifications-data';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
 
@@ -31,7 +33,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
   // Seconde vague : tout ce qui a besoin de `user.id`. `isManager` dérive du
   // profil depuis le chantier 3 et `getProfile` est mémoïsé par requête — les
   // deux ci-dessous ne produisent donc qu'une seule lecture, pas deux.
-  const [profile, backOffice, sessionEnCours] = user
+  const [profile, backOffice, sessionEnCours, notifications] = user
     ? await Promise.all([
         getProfile(user.id),
         // Accès au back-office (lien « Administration » du tiroir Compte) :
@@ -41,8 +43,9 @@ export async function Header({ current, className }: { current?: NavKey; classNa
         // Pastille d'« En cuisine » : présente dès qu'une session tourne,
         // **sans chiffre** — le compte se lit dans l'écran, pas dans le menu.
         hasActiveBatches(user.id),
+        getRecentNotifications(user.id),
       ])
-    : [null, false, false];
+    : [null, false, false, []];
 
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
   // Suggestions du panneau de recherche : les catégories promues par l'admin
@@ -88,6 +91,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
 
         <div className="flex items-center gap-3 shrink-0">
           <HeaderSearch suggestions={suggestions} />
+          {user && <NotificationBell notifications={notifications} />}
           {user ? (
             <AccountMenuButton
               className="hidden lg:block"
