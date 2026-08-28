@@ -17,16 +17,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { resizeDataUrlToThumb } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { isProjectRecipe, isProjectDissolved } from '@/lib/projects';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
-import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import type { VisibleHelpBlock } from '@/lib/help';
+import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { formatDate } from '@/lib/format';
+import { normLoose } from '@/lib/search-params';
+import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -84,6 +93,17 @@ function splitSousEtapes(description: string): string[] {
 
 let uid = 0;
 const key = () => `k${uid++}`;
+
+// Redimensionne un <textarea> à la hauteur de son contenu — jamais de scroll
+// interne, y compris pour du texte déjà rempli en modification. Fonction
+// simple (pas un hook d'état) : utilisable en `ref` comme en gestionnaire
+// d'événement, y compris à l'intérieur des `.map()` d'étapes/ingrédients où
+// un hook ne serait pas légal (ordre d'appel instable selon leur nombre).
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
 
 // Slug généré depuis un libellé (même règle que le back-office des listes) :
 // la colonne `tags.slug` est NOT NULL et n'est pas saisie dans l'éditeur.
@@ -159,27 +179,66 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
   });
 }
 
-// Fusion des lignes d'ingrédients identiques (nom + unité), quantités numériques additionnées.
-function mergeRecapLines(steps: StepState[]): { name: string; qty: string; unit: string }[] {
-  const merged: { key: string; name: string; qty: string; unit: string }[] = [];
-  steps.forEach((st) =>
+// Fusion des lignes d'ingrédients identiques (nom + commentaire) de toutes
+// les étapes, quantités additionnées — même logique que `mergeIngredientsRecap`
+// de RelectureEditor : le commentaire fait partie de la clé de fusion, sinon
+// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
+// 66 % » / « chocolat noir 54 % » porté par le commentaire plutôt que le nom)
+// fusionneraient leurs quantités en un total sans usage réel.
+//
+// Deux lignes de même ingrédient saisies dans des unités différentes (300 g
+// d'œufs sur une étape, 1 unité sur une autre) sont converties vers l'unité
+// de la première rencontrée grâce à la table de référence (`convertQty`),
+// pour n'afficher qu'une seule ligne au lieu de deux. Sans conversion connue
+// entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
+// toutes lettres plutôt que perdue.
+function mergeRecapLines(
+  steps: StepState[],
+  conversions: ConversionRef[],
+  units: Unit[],
+  ingredientRefIds: IngredientRefOption[],
+): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
+  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
+  steps.forEach((st, si) =>
     st.ings.forEach((i) => {
       const name = i.name.trim();
       if (!name) return;
-      const mkey = name.toLowerCase() + '|' + i.unit.toLowerCase();
+      const note = i.comment.trim();
+      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
       const ex = merged.find((m) => m.key === mkey);
       if (!ex) {
-        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit });
+        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
         return;
       }
+      ex.steps.add(si);
       const a = parseFloat(String(ex.qty).replace(',', '.'));
       const b = parseFloat(String(i.qty).replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b)) ex.qty = String(+(a + b).toFixed(2));
-      else ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+      if (isNaN(a) || isNaN(b)) {
+        ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
+        return;
+      }
+      if (ex.unit.trim().toLowerCase() === i.unit.trim().toLowerCase()) {
+        ex.qty = String(+(a + b).toFixed(2));
+        return;
+      }
+      const refId = resolveIngredientRefId(name, ingredientRefIds);
+      const converted = convertQty(conversions, units, refId, i.unit, b, ex.unit);
+      if (converted != null) {
+        ex.qty = String(+(a + converted).toFixed(2));
+      } else {
+        ex.qty = `${ex.qty} ${ex.unit} + ${i.qty} ${i.unit}`.trim();
+        ex.unit = '';
+      }
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return merged.map(({ name, qty, unit }) => ({ name, qty, unit }));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
+  return merged.map(({ name, qty, unit, note, steps }) => ({
+    name,
+    qty,
+    unit,
+    note,
+    stepIndices: Array.from(steps).sort((a, b) => a - b),
+  }));
 }
 
 export function CreerForm({
@@ -192,9 +251,13 @@ export function CreerForm({
   allergens,
   utensilRefs,
   isAdmin,
+  highlightUnknownRefs,
   editRecipe,
+  editingOtherAuthor,
   conversions,
   ingredientRefIds,
+  initialStep,
+  helpBlocks,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -205,13 +268,44 @@ export function CreerForm({
   allergens: { id: number; name: string }[];
   utensilRefs: string[];
   isAdmin: boolean;
+  // Cadre rouge sur un ingrédient/ustensile hors référentiel : true pour
+  // l'admin dans sa propre session ET pour une session d'impersonation (seul
+  // un admin complet peut en ouvrir une — cf. app/creer/page.tsx). Séparé
+  // d'`isAdmin`, qui reste réservé aux écritures (bouton « Ajouter au
+  // référentiel », publication directe, création de tag).
+  highlightUnknownRefs: boolean;
   editRecipe: RecipeFull | null;
+  // Admin en train d'éditer la recette d'un membre depuis /admin/recettes
+  // (bouton « Modifier ») : affiche un bandeau pour ne pas confondre avec
+  // une recette de l'admin lui-même.
+  editingOtherAuthor?: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
+  // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
+  // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
+  // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
+  initialStep?: number | null;
+  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné,
+  // ni bloc ni vidéo ni page masqués pour l'utilisateur courant) — cf.
+  // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
+  // tout masqué), le composant ne rend alors rien.
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
+
+  // Recette issue du mode projet dont les composants tiennent encore à leurs
+  // étapes (`recipe_steps.component_id`). L'enregistrement qui suit va les
+  // détruire : ce formulaire supprime puis réinsère toutes les étapes, donc
+  // tous les identifiants changent — c'est la même corruption silencieuse que
+  // l'ancien modèle `planning.overrides`, à ceci près qu'ici elle est assumée
+  // et annoncée. La vue par composants est perdue ; les composants eux-mêmes,
+  // donc les crédits d'auteur, restent en base (cf. lib/projects.ts).
+  const projetIntact = isProjectRecipe(editRecipe) && !isProjectDissolved(editRecipe);
+  // Dépliés par défaut en création, repliés en modification — l'auteur qui
+  // reprend une recette déjà rédigée connaît déjà l'éditeur.
+  const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
@@ -220,7 +314,7 @@ export function CreerForm({
   const [sourceUrl, setSourceUrl] = useState(editRecipe?.source_url || '');
   const [videoUrl, setVideoUrl] = useState(editRecipe?.video_url || '');
   const [servingAdvice, setServingAdvice] = useState(editRecipe?.serving_advice || '');
-  const [isPublic, setIsPublic] = useState(editRecipe?.is_public !== false);
+  const [isPublic, setIsPublic] = useState(editRecipe ? editRecipe.is_public !== false : false);
   const [hero, setHero] = useState<string | null>(editRecipe?.hero_image_url ?? null);
   const [heroOriginal, setHeroOriginal] = useState<string | null>(editRecipe?.hero_image_original_url ?? editRecipe?.hero_image_url ?? null);
   const [heroAiRetouched, setHeroAiRetouched] = useState<boolean>(editRecipe?.hero_image_ai_retouched ?? false);
@@ -231,6 +325,8 @@ export function CreerForm({
     () => new Map((editRecipe?.recipe_tags || []).map((t) => [t.tags?.id, t.tags?.name] as [number, string]).filter(([id]) => id != null)),
   );
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
+  const tagPickerRef = useRef<HTMLDivElement>(null);
   // Tags créés à la volée par un admin depuis l'éditeur : complètent la liste
   // serveur pour l'autocomplétion et la sélection, sans recharger la page.
   const [extraTags, setExtraTags] = useState<Tag[]>([]);
@@ -261,6 +357,14 @@ export function CreerForm({
     const us = [...(editRecipe?.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     return us.length ? us.map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })) : [{ key: key(), name: '', comment: '' }];
   });
+  const addUtensil = () => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }]);
+  const delUtensil = async (i: number) => {
+    if (utensils.length <= 1) return;
+    const label = utensils[i]?.name.trim();
+    const msg = label ? `Supprimer l'ustensile « ${label} » ?` : 'Supprimer cet ustensile ?';
+    if (!(await dialog.confirm(msg))) return;
+    setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p));
+  };
 
   const [steps, setSteps] = useState<StepState[]>(() => (editRecipe ? stepsFromRecipe(editRecipe) : [emptyStep()]));
   const [busy, setBusy] = useState(false);
@@ -277,8 +381,9 @@ export function CreerForm({
   // superflue, un faux négatif perdrait une saisie en cours sans prévenir.
   // Couvre les champs contrôlés (texte, bascules, fichiers via ImageSlot) via
   // la délégation `onChange` posée sur le conteneur du formulaire ; les
-  // actions déclenchées par clic seul (tags, difficulté, ajout/suppression de
-  // lignes) n'y sont pas.
+  // actions déclenchées par clic seul (difficulté, ajout/suppression de
+  // lignes) n'y sont pas — sauf les tags, qui appellent `markDirty()`
+  // explicitement (même correctif que RelectureEditor).
   const dirtyRef = useRef(false);
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
@@ -339,6 +444,13 @@ export function CreerForm({
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
+  // Cadre rouge (admin, y compris en impersonation) sur un nom sans
+  // correspondance dans la table de référence — même définition qu'Admin →
+  // Éléments inconnus, pour repérer le rattachement manquant dès la saisie
+  // plutôt qu'après coup sur cet écran séparé.
+  const unknownRefClass = (known: Set<string>, name: string) =>
+    highlightUnknownRefs && name.trim() && !known.has(name.trim().toLowerCase()) ? ' border-2 border-error' : '';
+
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
   // par le client navigateur : la RLS n'autorise l'écriture qu'au rôle admin.
@@ -347,7 +459,14 @@ export function CreerForm({
   // refresh, lui, resynchronise les listes de référence rendues côté serveur —
   // sans quoi le libellé créé disparaîtrait en revenant sur l'éditeur, et
   // n'apparaîtrait pas dans le back-office des listes.
-  const refreshRefs = () => router.refresh();
+  // Invalide aussi le cache serveur des référentiels (lib/data/reference.ts) :
+  // `router.refresh()` seul re-rend la page, mais le Server Component relirait
+  // la même valeur en cache et le libellé créé resterait invisible jusqu'au
+  // délai de validité (jusqu'à 24 h selon la table).
+  const refreshRefs = (table: string) => {
+    void revalidateReference(table);
+    router.refresh();
+  };
 
   async function addUtensilRef(name: string) {
     const clean = name.trim();
@@ -357,7 +476,7 @@ export function CreerForm({
     setRefBusy(null);
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraUtensilRefs((p) => [...p, clean]);
-    refreshRefs();
+    refreshRefs('utensils');
   }
 
   // Ajout d'un ingrédient au référentiel avec ses allergènes (choisis dans la
@@ -375,8 +494,20 @@ export function CreerForm({
     if (error) return void dialog.alert('Erreur : ' + error.message);
     setExtraIngredientRefs((p) => [...p, clean]);
     setExtraRefAllergens((p) => ({ ...p, [clean.toLowerCase()]: allergenCsv || '' }));
-    refreshRefs();
+    refreshRefs('ingredient_refs');
   }
+
+  // Repli du menu déroulant de tags au clic en dehors.
+  useEffect(() => {
+    if (!tagPickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (tagPickerRef.current && !tagPickerRef.current.contains(e.target as Node)) {
+        setTagPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [tagPickerOpen]);
 
   // Création d'un tag inexistant dans le référentiel depuis l'éditeur (admin
   // uniquement — bouton affiché si `isAdmin`). Le tag créé est aussitôt
@@ -389,13 +520,14 @@ export function CreerForm({
   // La création étant réservée aux admins, la publication est immédiate — même
   // règle que pour une recette soumise par un admin (cf. submit()).
   async function addTag(name: string) {
-    const clean = name.trim();
+    const clean = capitalizeSentences(name.trim());
     if (!clean) return;
     const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
     if (existing) {
       setSelectedTags((prev) => new Map(prev).set(existing.id, existing.name));
       setNewTagName('');
       setTagPickerOpen(false);
+      markDirty();
       return;
     }
     setRefBusy(`tags:${clean.toLowerCase()}`);
@@ -410,7 +542,8 @@ export function CreerForm({
     setSelectedTags((prev) => new Map(prev).set(data.id, data.name));
     setNewTagName('');
     setTagPickerOpen(false);
-    refreshRefs();
+    markDirty();
+    refreshRefs('tags');
   }
 
   const moldForme = useMemo(() => moldTypes.find((t) => String(t.id) === moldTypeId)?.forme || null, [moldTypes, moldTypeId]);
@@ -418,6 +551,10 @@ export function CreerForm({
   // double produirait deux entrées de même clé React dans le sélecteur).
   const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
   const remainingTags = useMemo(() => allTags.filter((t) => !selectedTags.has(t.id)), [allTags, selectedTags]);
+  const filteredRemainingTags = useMemo(() => {
+    const q = normLoose(tagSearch.trim());
+    return q ? remainingTags.filter((t) => normLoose(t.name).includes(q)) : remainingTags;
+  }, [remainingTags, tagSearch]);
 
   // ── Somme des temps des étapes : purement informative en édition (affichée à
   // côté des champs manuels), recalculée en direct depuis les étapes saisies.
@@ -437,7 +574,12 @@ export function CreerForm({
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
   const addIng = (si: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: [...st.ings, emptyIng()] } : st)));
-  const delIng = (si: number, ii: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
+  const delIng = async (si: number, ii: number) => {
+    const label = steps[si]?.ings[ii]?.name.trim();
+    const msg = label ? `Supprimer l'ingrédient « ${label} » ?` : 'Supprimer cet ingrédient ?';
+    if (!(await dialog.confirm(msg))) return;
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.filter((_, j) => j !== ii) } : st)));
+  };
   const patchPhoto = (si: number, pi: number, url: string | null) =>
     setSteps((s) =>
       s.map((st, k) =>
@@ -496,6 +638,46 @@ export function CreerForm({
     (i: number) => setSteps((s) => (s[i]?.collapsed ? s.map((st, k) => (k === i ? { ...st, collapsed: false } : st)) : s)),
     [],
   );
+
+  // Lien « voir l'étape » du récapitulatif d'ingrédients, pour un ingrédient
+  // qui n'apparaît que dans une seule étape — même motif que le `goToStep` de
+  // RelectureEditor : déplie l'étape si besoin avant de défiler jusqu'à elle.
+  const [scrollToStepIndex, setScrollToStepIndex] = useState<number | null>(null);
+  const goToStep = useCallback(
+    (i: number) => {
+      expandStep(i);
+      setScrollToStepIndex(i);
+    },
+    [expandStep],
+  );
+  useEffect(() => {
+    if (scrollToStepIndex === null) return;
+    document.getElementById(stepAnchorId(scrollToStepIndex))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScrollToStepIndex(null);
+  }, [scrollToStepIndex]);
+
+  // Repositionnement sur l'étape d'où l'édition a été ouverte (prop
+  // `initialStep`, cf. components/recipe/RecetteToc.tsx) : déplie l'étape
+  // visée puis défile jusqu'à elle, une seule fois au montage — un
+  // changement ultérieur de `initialStep` (il ne varie pas dans la vie du
+  // composant, l'id venant de l'URL initiale) ne doit pas rejouer le saut.
+  useEffect(() => {
+    const index = (initialStep ?? 0) - 1;
+    if (index < 0) return;
+    expandStep(index);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Double frame : laisse React déplier l'étape et le navigateur refaire la
+    // mise en page avant de mesurer la cible (même motif que `navigate` dans
+    // lib/use-toc.ts).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = document.getElementById(stepAnchorId(index));
+        if (!el) return;
+        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: reduce ? 'auto' : 'smooth' });
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Sous-étapes : bascule texte libre ⇄ liste éditable ──
   const [dragSub, setDragSub] = useState<{ si: number; idx: number } | null>(null);
@@ -560,9 +742,18 @@ export function CreerForm({
     });
     return days;
   }, [steps, allSameDay]);
-  const ingredientsRecap = useMemo(() => mergeRecapLines(steps), [steps]);
+  const ingredientsRecap = useMemo(
+    () => mergeRecapLines(steps, conversions, units, ingredientRefIds),
+    [steps, conversions, units, ingredientRefIds],
+  );
 
-  async function submit(status: 'draft' | 'pending', stay = false) {
+  // `keepStatus` : bouton « Enregistrer » de l'admin qui corrige la recette
+  // d'un membre (cf. `editingOtherAuthor`) — enregistre le contenu sans
+  // jamais changer le statut (`draft`/`pending`/`published`/`rejected`)
+  // ni déclencher les confirmations/alertes liées à un changement de statut,
+  // qui n'a pas lieu ici. `status` ne sert alors qu'à choisir la branche de
+  // navigation post-enregistrement (cf. plus bas).
+  async function submit(status: 'draft' | 'pending', stay = false, keepStatus = false) {
     // Verrou posé avant tout `await` : deux clics dans le même tick ne peuvent
     // pas ouvrir deux enregistrements concurrents.
     if (busyRef.current) return;
@@ -582,11 +773,29 @@ export function CreerForm({
         }
       }
     }
-    if (status === 'draft' && editRecipe?.status === 'published') {
+    if (!keepStatus && status === 'draft' && editRecipe?.status === 'published') {
       const msg = isPublic
         ? 'Cette recette est publique et visible par tous. La repasser en brouillon la retirera immédiatement de l\'accueil et des recherches. Continuer ?'
         : 'Cette recette est publiée. La repasser en brouillon la retirera de votre carnet publié. Continuer ?';
       if (!(await dialog.confirm(msg))) return;
+    }
+    // Publication publique par un membre non-admin : reste en file de
+    // validation (cf. `finalStatus` plus bas) tant qu'un admin ne l'a pas
+    // relue. Prévenir avant l'envoi plutôt qu'après évite la surprise d'une
+    // recette qui semble « publiée » mais n'apparaît nulle part sur le site.
+    if (!keepStatus && status === 'pending' && isPublic && !isAdmin) {
+      if (!(await dialog.confirm('Votre recette sera soumise à la validation d\'un modérateur avant d\'apparaître publiquement sur le site. Continuer ?')))
+        return;
+    }
+    // Prévenir avant l'enregistrement, pas après : une fois les étapes
+    // réinsérées, il n'y a plus rien à rattacher.
+    if (projetIntact) {
+      const ok = await dialog.confirm(
+        'Cette recette a été composée en mode projet. L’enregistrer ici dissoudra ses composants : ' +
+          'la vue par composants et l’historique de composition ne seront plus affichés. ' +
+          'Les crédits des auteurs dont vous avez repris une recette sont conservés. Continuer ?',
+      );
+      if (!ok) return;
     }
     busyRef.current = true;
     setBusy(true);
@@ -637,10 +846,26 @@ export function CreerForm({
       // Soumission (« pending ») → file de validation, sauf : recette privée,
       // ou auteur administrateur → publication immédiate sans validation.
       if (status === 'pending' && (!isPublic || isAdmin)) finalStatus = 'published';
+      // Admin qui corrige la recette d'un membre : le statut d'origine ne
+      // doit jamais bouger, quel que soit `status` (choisi ici uniquement
+      // pour la navigation post-enregistrement, cf. plus bas).
+      if (keepStatus) finalStatus = editRecipe?.status || 'draft';
+
+      // Deux dérivés dédiés, recalculés à chaque enregistrement plutôt que
+      // suivis via un état séparé — un redimensionnement est instantané,
+      // pister « la photo a-t-elle changé » l'est moins. Ni l'un ni l'autre ne
+      // transporte `hero_image_url` en pleine définition (cf. CuisineContent
+      // pour le premier, RecipeCardLayout/SuggestionCard/CarnetContent pour
+      // le second) :
+      //  - `heroThumb` (~96 px) sert les listes de fournées d'« En cuisine » ;
+      //  - `heroCard` (~480 px) sert les cartes recette — accueil, recherche,
+      //    carnet, profils, suggestions.
+      const heroThumb = hero ? await resizeDataUrlToThumb(hero) : null;
+      const heroCard = hero ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
 
       const payload = {
-        title: title.trim(),
-        description: description.trim() || null,
+        title: capitalizeSentences(title.trim()),
+        description: capitalizeSentences(description.trim()) || null,
         is_public: isPublic,
         status: finalStatus,
         difficulty_id: diffRow?.id ?? null,
@@ -661,8 +886,14 @@ export function CreerForm({
         cook_time: gmin(cook),
         total_time: gmin(total),
         hero_image_url: hero,
+        hero_thumb_url: heroThumb,
+        hero_card_url: heroCard,
         hero_image_original_url: heroOriginal,
         hero_image_ai_retouched: heroAiRetouched,
+        // Dissolution effective (cf. `projetIntact`). `kind` reste `project` :
+        // la recette garde ses composants et ses crédits, elle perd seulement
+        // le rattachement de ses étapes.
+        ...(projetIntact ? { project_stage: 'dissolved' } : {}),
       };
 
       // Recette à mettre à jour : celle ouverte en édition, ou celle créée
@@ -672,14 +903,20 @@ export function CreerForm({
       // création — y compris après une erreur en cours d'enregistrement.
       let recipeId = editingId ?? createdIdRef.current;
       if (recipeId) {
-        const { error } = await supabase.from('recipes').update(payload).eq('id', recipeId);
+        // `as never` : `hero_thumb_url` et `hero_card_url` sont absentes de
+        // lib/database.types.ts tant que leurs migrations n'ont pas été
+        // appliquées puis régénérées (npm run gen:types, cf. CLAUDE.md) — les
+        // colonnes existent en base et l'écriture est correcte, seul le
+        // typage généré est en retard. À retirer une fois les types
+        // régénérées.
+        const { error } = await supabase.from('recipes').update(payload as never).eq('id', recipeId);
         if (error) throw error;
         await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId);
         await supabase.from('recipe_utensils').delete().eq('recipe_id', recipeId);
         await supabase.from('ingredient_groups').delete().eq('recipe_id', recipeId);
         await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId);
       } else {
-        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id }).select('id').single();
+        const { data, error } = await supabase.from('recipes').insert({ ...payload, author_id: user.id } as never).select('id').single();
         if (error || !data) throw error || new Error('Création refusée');
         recipeId = data.id;
         createdIdRef.current = data.id;
@@ -694,7 +931,7 @@ export function CreerForm({
       }
 
       const utRows = utensils
-        .map((u, i) => ({ recipe_id: recipeId, name: u.name.trim(), comment: u.comment.trim() || null, order_index: i }))
+        .map((u, i) => ({ recipe_id: recipeId, name: capitalizeSentences(u.name.trim()), comment: u.comment.trim() || null, order_index: i }))
         .filter((u) => u.name);
       if (utRows.length) {
         const { error } = await supabase.from('recipe_utensils').insert(utRows);
@@ -703,31 +940,45 @@ export function CreerForm({
 
       for (let gi = 0; gi < steps.length; gi++) {
         const st = steps[gi];
-        const desc = st.description.trim();
-        // Mode liste actif → sous-étapes non vides conservées ; sinon `null`.
-        const subs = st.subSteps ? st.subSteps.map((t) => t.trim()).filter(Boolean) : [];
+        // Mode liste actif → sous-étapes conservées ; sinon découpage
+        // automatique à l'enregistrement si l'auteur ne l'a pas fait à la
+        // main et que le texte contient plusieurs puces (une seule « puce »
+        // détectée = simple paragraphe, on laisse le texte libre intact).
+        const autoSplit = st.subSteps === null ? splitSousEtapes(st.description) : null;
+        const subs = (st.subSteps ?? (autoSplit && autoSplit.length > 1 ? autoSplit : []))
+          .map((t) => capitalizeSentences(fixOeufLigature(t.trim())))
+          .filter(Boolean);
+        const desc = subs.length ? '' : st.description.trim();
         const lines = st.ings
-          .map((l, i) => ({
-            name: l.name.trim(),
-            quantity: l.qty.trim() || null,
-            unit: l.unit || null,
-            comment: l.comment.trim() || null,
-            allergen: l.allergen.length ? l.allergen.join(', ') : null,
-            order_index: i,
-            ref_id: resolveIngredientRefId(l.name, ingredientRefIds),
-          }))
+          .map((l, i) => {
+            const name = capitalizeSentences(fixOeufLigature(l.name.trim()));
+            return {
+              name,
+              quantity: l.qty.trim() || null,
+              unit: l.unit || null,
+              comment: l.comment.trim() || null,
+              allergen: l.allergen.length ? l.allergen.join(', ') : null,
+              order_index: i,
+              ref_id: resolveIngredientRefId(name, ingredientRefIds),
+            };
+          })
           .filter((l) => l.name);
         const photoRows = st.photos.filter((p): p is StepPhoto => !!p);
         const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
         if (!hasContent) continue;
+
+        // Réutilisé pour `recipe_steps.title` et `ingredient_groups.name` :
+        // les deux affichent le même intitulé (fiche recette, planning), une
+        // capitalisation calculée séparément avait divergé entre les deux.
+        const stepTitle = capitalizeSentences(fixOeufLigature(st.title.trim())) || `Étape ${gi + 1}`;
 
         const { data: stepRow, error: stepErr } = await supabase
           .from('recipe_steps')
           .insert({
             recipe_id: recipeId,
             step_number: gi + 1,
-            title: st.title.trim() || `Étape ${gi + 1}`,
-            description: desc || null,
+            title: stepTitle,
+            description: capitalizeSentences(fixOeufLigature(desc)) || null,
             prep_time: gmin(st.prep),
             cook_time: gmin(st.cook),
             cook_temp: gmin(st.temp),
@@ -752,7 +1003,7 @@ export function CreerForm({
         if (lines.length) {
           const { data: grp, error: grpErr } = await supabase
             .from('ingredient_groups')
-            .insert({ recipe_id: recipeId, name: st.title.trim() || `Étape ${gi + 1}`, order_index: gi, scaling_mode: st.scaling })
+            .insert({ recipe_id: recipeId, name: stepTitle, order_index: gi, scaling_mode: st.scaling })
             .select('id')
             .single();
           if (grpErr || !grp) throw grpErr || new Error('Groupe non enregistré');
@@ -761,13 +1012,47 @@ export function CreerForm({
         }
       }
 
+      // Contrôle IA à la validation (§3 et §5 de la spec) : déclenché à la
+      // soumission pour publication publique, et rejoué si le contenu d'une
+      // recette déjà publique change. Ne bloque jamais la soumission — la
+      // route écrit son propre statut d'échec si l'appel IA rate (§10).
+      if (finalStatus === 'pending' || editRecipe?.status === 'published') {
+        fetch('/api/moderation-recette', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ recipeId }),
+        }).catch(() => {});
+      }
+
+      // Maintenance de l'index de similarité (§6.3) : publication (nouveau
+      // contenu à indexer) ou dépublication/modification d'une recette
+      // jusque-là publique (entrée à retirer ou rafraîchir) — la route
+      // détermine laquelle des deux depuis le statut réel en base.
+      if (finalStatus === 'published' || editRecipe?.status === 'published') {
+        fetch('/api/reindex-recette', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ recipeId }),
+        }).catch(() => {});
+      }
+
       if (status !== 'draft') {
+        if (!keepStatus && finalStatus === 'pending') {
+          // Recette publique soumise par un membre non-admin (§ ligne 653 :
+          // seul ce cas reste en `pending`) : sans messagerie interne pour le
+          // signaler autrement, prévenir ici que la validation d'un admin est
+          // nécessaire avant que la recette ne devienne visible.
+          await dialog.alert(
+            "Votre recette a bien été soumise. Elle sera visible publiquement dès qu'un administrateur l'aura validée.",
+          );
+        }
         // Publication / enregistrement définitif : on ouvre la fiche recette.
-        // router.refresh() invalide le Router Cache client avant de naviguer,
-        // pour éviter qu'une visite ultérieure du carnet ou de la fiche
-        // recette ne réutilise un segment mis en cache avant cette écriture.
-        router.refresh();
+        // router.refresh() APRÈS le push (et non avant, cf. PlanWidget.tsx) :
+        // appelé avant, il ne rafraîchit que la route qu'on quitte (/creer) —
+        // la fiche recette, déjà visitée dans la session, resservirait alors
+        // une entrée du cache client antérieure à cette écriture.
         router.push(`/recette/${recipeId}`);
+        router.refresh();
       } else if (stay) {
         // « Enregistrer en brouillon » : on reste sur l'éditeur. Pour une
         // nouvelle recette, on bascule en mode édition (id dans l'URL) afin que
@@ -781,14 +1066,18 @@ export function CreerForm({
           router.refresh();
         } else {
           setAwaitingEditMode(true);
-          router.replace(`/creer?id=${recipeId}`);
+          // `scroll: false` : bascule création → édition, pas une navigation
+          // vers un autre écran — l'auteur reste au même endroit du
+          // formulaire, il ne doit pas se retrouver renvoyé en haut de page.
+          router.replace(`/creer?id=${recipeId}`, { scroll: false });
         }
       } else {
-        // « Enregistrer en brouillon et quitter » : retour au profil.
-        // router.refresh() invalide le Router Cache client avant de naviguer
-        // (cf. commentaire ci-dessus).
-        router.refresh();
+        // « Enregistrer en brouillon et quitter » : retour au carnet.
+        // router.refresh() APRÈS le push (cf. commentaire ci-dessus) : sinon
+        // le carnet, déjà visité dans la session, resservirait ses compteurs
+        // de statut d'avant ce changement (ex. publiée → brouillon).
         router.push('/carnet');
+        router.refresh();
       }
     } catch (e) {
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
@@ -800,26 +1089,53 @@ export function CreerForm({
     }
   }
 
-  // Bouton « Quitter » du rail : aucun enregistrement, avec une confirmation
-  // dès qu'une saisie a été détectée depuis le chargement de l'écran. Retour
-  // à la fiche recette pour une édition (ou une création déjà enregistrée en
-  // brouillon dans cette session) ; à défaut de recette existante, retour au
-  // profil — contrairement au lien « Annuler » ci-dessous, qui revient
-  // toujours au profil.
-  const handleLeave = useCallback(async () => {
-    if (dirtyRef.current && !(await dialog.confirm('Quitter sans enregistrer les modifications en cours ?'))) return;
-    // Pas de reset à false ensuite : on quitte la page, autant garder le
-    // spinner affiché jusqu'à la navigation (cf. DuplicateButton).
+  // Bouton « Quitter » du rail : quitte directement si rien n'a été modifié ;
+  // sinon propose une popup à trois issues (annuler / quitter sans enregistrer
+  // / enregistrer et quitter) — même motif que RelectureEditor.handleLeave.
+  // Retour à la fiche recette pour une édition (ou une création déjà
+  // enregistrée en brouillon dans cette session) ; à défaut de recette
+  // existante, retour au profil — contrairement au lien « Annuler »
+  // ci-dessous, qui revient toujours au profil. Fonction non mémoïsée (comme
+  // `submit`) : un `useCallback` à dépendances fixes figerait `submit` (donc
+  // tout l'état du formulaire) sur sa valeur du tout premier rendu — même
+  // piège que `handleSaveAndLeave` dans RelectureEditor.
+  async function handleLeave() {
+    if (!dirtyRef.current) {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+      return;
+    }
+    const choix = await dialog.choice("Des modifications n'ont pas été enregistrées. Que souhaitez-vous faire ?", [
+      { label: 'Quitter sans enregistrer', value: 'discard' },
+      { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+    ]);
+    if (choix === 'discard') {
+      setLeaving(true);
+      const recipeId = editingId ?? createdIdRef.current;
+      router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
+    } else if (choix === 'save') {
+      await submit('draft', false);
+    }
+    // choix === null (Annuler / Échap) : on reste sur l'écran, rien à faire.
+  }
+
+  // Bouton « Quitter sans enregistrer » du rail, uniquement quand l'admin
+  // corrige la recette d'un membre (`editingOtherAuthor`) : contrairement à
+  // `handleLeave`, aucune popup — le libellé du bouton dit déjà ce qu'il fait,
+  // et il n'y a ici que deux actions possibles (enregistrer / ne pas
+  // enregistrer), pas de statut à choisir entre les deux.
+  function handleDiscardLeave() {
     setLeaving(true);
     const recipeId = editingId ?? createdIdRef.current;
     router.push(recipeId ? `/recette/${recipeId}` : '/carnet');
-  }, [router, editingId, dialog]);
+  }
 
   const scalingOptions =
     measure === 'mold'
       ? [
           ['simple', 'Ajustement selon la taille du moule (volume)'],
-          ['foncage', 'Recouvre une surface (fonçage, glaçage…)'],
+          ['foncage', 'Recouvre une surface (pâte à tarte, glaçage…)'],
           ['aucun', "Pas d'ajustement pour cette étape"],
         ]
       : [
@@ -834,50 +1150,75 @@ export function CreerForm({
     </div>
   );
 
+  // Même étiquette que la fiche recette (app/recette/[id]/page.tsx) : donne
+  // au bloc « Motif du refus » ci-dessous le même repère visuel qu'ailleurs
+  // sur le site, y compris en brouillon (statut inchangé par un enregistrement
+  // en brouillon qui suit un refus).
+  let statusBadge: { label: string; cls: string } | null = null;
+  if (editRecipe?.status === 'pending') statusBadge = { label: 'En attente de validation', cls: 'bg-secondary text-white' };
+  else if (editRecipe?.status === 'draft') statusBadge = { label: 'Brouillon', cls: 'bg-secondary text-white' };
+  else if (editRecipe?.status === 'rejected') statusBadge = { label: 'Publication refusée', cls: 'bg-error text-white' };
+  else if (editRecipe?.status === 'published') statusBadge = { label: 'Publiée', cls: 'bg-green-700 text-white' };
+
   return (
     <>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
           flottant reprend le sommaire *et* ces actions — c'est ce qui a
           remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
           navigation entre sections et mangeait trois rangées de boutons sur un
-          téléphone. `mobileInset` reste à sa valeur par défaut : /creer ne
-          monte pas la barre de navigation basse. */}
+          téléphone. `mobileInset="nav"` : /creer monte la barre de navigation
+          basse (cf. app/creer/page.tsx), le bouton doit se relever au-dessus
+          plutôt que de se poser sur sa fente Profil (même motif que la fiche
+          recette). */}
       <RecipeToc
         sections={CREER_SECTIONS}
         steps={tocSteps}
         onNavigateToStep={expandStep}
         mobile="drawer"
-        actions={[
-          { id: 'leave', icon: 'close', label: 'Quitter sans enregistrer', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
-          {
-            id: 'save',
-            icon: 'save',
-            label: 'Enregistrer en brouillon',
-            variant: 'outline-strong',
-            onClick: () => submit('draft', true),
-            disabled: busy || leaving,
-          },
-          // Sauver *et* quitter : cette action n'existait que dans la barre de
-          // bas d'écran. Elle est montée dans la liste commune pour que sa
-          // suppression ne la fasse pas disparaître du produit — le rail de
-          // bureau y gagne aussi le raccourci.
-          {
-            id: 'save-leave',
-            icon: 'exit_to_app',
-            label: 'Enregistrer en brouillon et quitter',
-            variant: 'outline-strong',
-            onClick: () => submit('draft', false),
-            disabled: busy || leaving,
-          },
-          {
-            id: 'publish',
-            icon: 'send',
-            label: isPublic ? 'Publier la recette' : 'Enregistrer',
-            variant: 'filled',
-            onClick: () => submit('pending'),
-            disabled: busy || leaving,
-          },
-        ]}
+        mobileInset="nav"
+        actions={
+          editingOtherAuthor
+            ? // Admin qui corrige la recette d'un membre : pas de statut à
+              // choisir, seulement enregistrer ou non (cf. `submit(status, stay,
+              // keepStatus)` et `handleDiscardLeave`).
+              [
+                {
+                  id: 'leave',
+                  icon: 'close',
+                  label: 'Quitter sans enregistrer',
+                  variant: 'outline',
+                  onClick: handleDiscardLeave,
+                  disabled: busy || leaving,
+                },
+                {
+                  id: 'save',
+                  icon: 'save',
+                  label: 'Enregistrer',
+                  variant: 'filled',
+                  onClick: () => submit('pending', false, true),
+                  disabled: busy || leaving,
+                },
+              ]
+            : [
+                { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
+                {
+                  id: 'save',
+                  icon: 'save',
+                  label: 'Enregistrer en brouillon',
+                  variant: 'outline-strong',
+                  onClick: () => submit('draft', true),
+                  disabled: busy || leaving,
+                },
+                {
+                  id: 'publish',
+                  icon: 'send',
+                  label: isPublic ? 'Publier la recette' : 'Enregistrer',
+                  variant: 'filled',
+                  onClick: () => submit('pending'),
+                  disabled: busy || leaving,
+                },
+              ]
+        }
       />
 
       <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
@@ -892,10 +1233,52 @@ export function CreerForm({
         </Link>
       </div>
 
+      {editingOtherAuthor && (
+        <div className="no-print flex items-center gap-2 flex-wrap mb-4 bg-primary/10 text-primary px-4 py-2 font-label-md text-label-md">
+          <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+          Vous modifiez la recette de {editRecipe?.profiles?.full_name || editRecipe?.profiles?.username || 'un autre membre'} en tant qu&apos;administrateur.
+        </div>
+      )}
+
+      {statusBadge && (
+        <div className="no-print flex items-center gap-4 flex-wrap mb-4">
+          <span className={`${statusBadge.cls} px-3 py-1 font-label-md text-[10px] uppercase tracking-widest`}>{statusBadge.label}</span>
+        </div>
+      )}
+
+      {projetIntact && (
+        <div className="no-print mb-8 flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low px-5 py-3 text-on-surface">
+          <span className="material-symbols-outlined text-[20px] shrink-0 text-primary">account_tree</span>
+          <p className="font-body-md text-[13px]">
+            <span className="font-semibold">Recette composée en mode projet.</span> L’enregistrer depuis cet éditeur
+            dissoudra ses composants : la vue par composants ne sera plus affichée. Les crédits des auteurs dont vous
+            avez repris une recette sont conservés.
+          </p>
+        </div>
+      )}
+
+      {editRecipe?.moderation_note && (
+        // Même bloc que sur la fiche recette (app/recette/[id]/page.tsx),
+        // placé sous l'étiquette de statut ci-dessus : reste affiché tant que
+        // la recette n'a pas été resoumise (refusée ou repassée en brouillon
+        // depuis un refus) — la resoumission vide `moderation_note` (trigger
+        // SQL `recipes_track_rejection_note`).
+        <div className="no-print mb-8 border border-error/40 bg-error-container/40 text-on-error-container rounded-xl px-5 py-3 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[20px] shrink-0">info</span>
+          <p className="font-body-md text-[13px]">
+            <span className="font-semibold">
+              Motif du refus{editRecipe.moderation_note_at ? ` du ${formatDate(editRecipe.moderation_note_at)}` : ''} :
+            </span>{' '}
+            {editRecipe.moderation_note}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-16" onChange={markDirty}>
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
+            <HelpBlockSlot blockKey="creer.intro" help={help} />
             <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
             <input
               value={title}
@@ -906,16 +1289,33 @@ export function CreerForm({
             />
           </div>
           <div className="lg:col-span-7 space-y-8">
-            <div className="flex items-center justify-between py-4 border-b border-outline-variant">
+            <div className="flex flex-col items-start gap-3 py-4 border-b border-outline-variant sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
                 <span className="font-label-md text-label-md text-primary block">VISIBILITÉ DE LA RECETTE</span>
                 <span className="text-sm text-on-surface-variant">Déterminez si votre création est publique ou privée.</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only peer" />
-                <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container" />
-                <span className="ml-3 font-label-md text-label-md text-primary">{isPublic ? 'Public' : 'Privé'}</span>
-              </label>
+              <div className="flex rounded-full border border-outline-variant overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(false);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${!isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Privée
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublic(true);
+                    markDirty();
+                  }}
+                  className={`px-4 py-1.5 font-label-md text-label-md transition-colors ${isPublic ? 'bg-primary-container text-white' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  Publique
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               <label className="font-label-md text-label-md text-outline uppercase block">Catégories et Tags</label>
@@ -924,7 +1324,10 @@ export function CreerForm({
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+                    onClick={() => {
+                      setSelectedTags((prev) => new Map([...prev].filter(([tid]) => tid !== id)));
+                      markDirty();
+                    }}
                     title="Retirer ce tag"
                     className="px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                   >
@@ -932,33 +1335,53 @@ export function CreerForm({
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 ))}
-                <div className="relative">
+                <div className="relative" ref={tagPickerRef}>
                   <button
                     type="button"
-                    onClick={() => setTagPickerOpen((v) => !v)}
+                    onClick={() => {
+                      setTagPickerOpen((v) => !v);
+                      setTagSearch('');
+                    }}
                     className="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-colors"
                   >
                     + Ajouter un tag
                   </button>
                   {tagPickerOpen && (
-                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg py-2 min-w-[220px] max-h-64 overflow-y-auto">
-                      {remainingTags.length ? (
-                        remainingTags.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
-                              setTagPickerOpen(false);
-                            }}
-                            className="w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors"
-                          >
-                            {t.name}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
-                      )}
+                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg min-w-[220px] max-h-64 flex flex-col overflow-hidden">
+                      <div className="px-2 pt-2 pb-2 shrink-0">
+                        <input
+                          type="text"
+                          value={tagSearch}
+                          onChange={(e) => setTagSearch(e.target.value)}
+                          placeholder="Rechercher un tag…"
+                          autoFocus
+                          className="w-full px-3 py-1.5 text-sm border border-outline-variant rounded-lg focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div className="overflow-y-auto flex-1 min-h-0 pb-2">
+                        {filteredRemainingTags.length ? (
+                          filteredRemainingTags.map((t) => (
+                            <label
+                              key={t.id}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={false}
+                                onChange={(e) => {
+                                  if (!e.target.checked) return;
+                                  setSelectedTags((prev) => new Map(prev).set(t.id, t.name));
+                                  markDirty();
+                                }}
+                                className="accent-primary"
+                              />
+                              {t.name}
+                            </label>
+                          ))
+                        ) : (
+                          <p className="px-4 py-2 text-sm text-on-surface-variant italic">Aucun autre tag disponible</p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -995,10 +1418,14 @@ export function CreerForm({
           <div className="lg:col-span-12">
             <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Description rapide</label>
             <textarea
+              ref={autoGrow}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                autoGrow(e.target);
+              }}
               rows={2}
-              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+              className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
               placeholder="Décrivez votre recette en quelques mots"
             />
           </div>
@@ -1044,6 +1471,8 @@ export function CreerForm({
                   setHero(url);
                   setHeroAiRetouched(false);
                 }}
+                promptAiRetouched
+                onAiRetouchedChange={setHeroAiRetouched}
                 onOriginalChange={setHeroOriginal}
                 onClear={() => {
                   setHero(null);
@@ -1065,11 +1494,13 @@ export function CreerForm({
                   onChange={(e) => setHeroAiRetouched(e.target.checked)}
                   className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
                 />
-                Retravaillée avec l&apos;IA
+                Indication photo retravaillée avec l&apos;IA
               </label>
             )}
           </div>
         </section>
+
+        <HelpBlockSlot blockKey="creer.taille" help={help} />
 
         {/* Métadonnées : quantité produite */}
         <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
@@ -1109,6 +1540,7 @@ export function CreerForm({
                     className="editorial-input font-body-md text-on-surface cursor-pointer appearance-none pr-6"
                   >
                     <option value="unite">Unité(s)</option>
+                    <option value="pers">Pers.</option>
                     <option value="kg">kg</option>
                     <option value="g">g</option>
                     <option value="l">l</option>
@@ -1193,9 +1625,13 @@ export function CreerForm({
                 Complément d&apos;informations sur les quantités
               </label>
               <textarea
+                ref={autoGrow}
                 value={yieldNotes}
-                onChange={(e) => setYieldNotes(e.target.value)}
-                className="editorial-input w-full font-body-md text-on-surface italic"
+                onChange={(e) => {
+                  setYieldNotes(e.target.value);
+                  autoGrow(e.target);
+                }}
+                className="editorial-input w-full font-body-md text-on-surface italic resize-none overflow-hidden"
                 placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
                 rows={3}
               />
@@ -1203,9 +1639,11 @@ export function CreerForm({
           </div>
         </section>
 
+        <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
+
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
           <ul className="space-y-4">
             {utensils.map((u, i) => (
               <li key={u.key} className="flex items-start gap-4 group">
@@ -1214,15 +1652,29 @@ export function CreerForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
                     <input
                       list="dl-utensils"
+                      data-name-utensil
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
-                      className="editorial-input text-on-surface w-full"
+                      className={`editorial-input text-on-surface w-full${unknownRefClass(knownUtensils, u.name)}`}
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
                     <textarea
                       value={u.comment}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      onKeyDown={(e) => {
+                        // Tab (sans Maj) depuis le dernier champ de la dernière
+                        // ligne → ouvrir une nouvelle ligne d'ustensile et y
+                        // placer le curseur (motif identique aux ingrédients).
+                        if (e.key === 'Tab' && !e.shiftKey && i === utensils.length - 1) {
+                          e.preventDefault();
+                          addUtensil();
+                          setTimeout(() => {
+                            const names = document.querySelectorAll<HTMLInputElement>('[data-name-utensil]');
+                            names[names.length - 1]?.focus();
+                          }, 0);
+                        }
+                      }}
                       className="editorial-input text-on-surface w-full resize-y"
                       rows={1}
                       placeholder="Commentaire (optionnel)"
@@ -1243,7 +1695,7 @@ export function CreerForm({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setUtensils((p) => (p.length > 1 ? p.filter((_, k) => k !== i) : p))}
+                  onClick={() => delUtensil(i)}
                   title="Supprimer"
                   className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 mt-1"
                 >
@@ -1254,7 +1706,7 @@ export function CreerForm({
           </ul>
           <button
             type="button"
-            onClick={() => setUtensils((u) => [...u, { key: key(), name: '', comment: '' }])}
+            onClick={addUtensil}
             className="flex items-center gap-2 text-primary font-label-md text-label-md hover:underline"
           >
             <span className="material-symbols-outlined">add</span> Ajouter un ustensile
@@ -1289,7 +1741,7 @@ export function CreerForm({
               }}
               className={`scroll-mt-28${dragStep === si ? ' opacity-50' : ''}`}
             >
-              <div className="flex items-center gap-4 border-b border-primary pb-4">
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
                 <span
                   className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
@@ -1303,28 +1755,40 @@ export function CreerForm({
                   drag_indicator
                 </span>
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
-                <input
-                  value={st.title}
-                  onChange={(e) => patchStep(si, { title: e.target.value })}
-                  className="flex-grow editorial-input font-headline-md text-headline-md text-primary"
-                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
-                  type="text"
-                />
-                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">add_row_above</span>
                 </button>
-                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0">
+                <button type="button" onClick={() => toggleCollapse(si)} title="Replier / déplier l'étape" className="p-1 text-on-surface-variant hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">{st.collapsed ? 'expand_more' : 'expand_less'}</span>
                 </button>
                 {steps.length > 1 && (
-                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0">
+                  <button type="button" onClick={() => delStep(si)} title="Supprimer l'étape" className="p-1 text-error hover:opacity-70 shrink-0 md:order-2">
                     <span className="material-symbols-outlined">delete</span>
                   </button>
                 )}
+                {/* Sous `md`, le titre passe sur sa propre ligne pleine largeur
+                    (poignée + numéro + actions ne lui laissent quasiment plus
+                    de place) : `order-1` sur le titre (et le séparateur
+                    `basis-full` juste avant) le renvoient après le groupe
+                    poignée/numéro/actions, resté à `order-0` par défaut. Les
+                    boutons d'action passent eux-mêmes à `md:order-2` : sans ça,
+                    leur position DOM (après le titre) les renverrait après lui
+                    à partir de `md`, alors que l'ancien rendu les plaçait après
+                    un titre resté sur la même ligne — `order-1` (titre) <
+                    `md:order-2` (actions) republie exactement cet ordre. */}
+                <div className="basis-full order-1 md:hidden" />
+                <input
+                  value={st.title}
+                  onChange={(e) => patchStep(si, { title: e.target.value })}
+                  className="flex-grow order-1 editorial-input font-headline-md font-medium text-[20px] leading-[28px] md:text-headline-md text-primary"
+                  placeholder="Titre de l'étape (ex: Réalisation de la pâte)"
+                  type="text"
+                />
               </div>
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
                     <select
@@ -1411,17 +1875,35 @@ export function CreerForm({
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
-                      <select aria-hidden className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
-                        <option value="">— unité —</option>
-                        {units.map((u) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
+                      {/* Colonne « UNITÉ ». Le libellé est en flux normal,
+                          exactement comme ceux d'« INGRÉDIENTS » et
+                          d'« ALLERGÈNES » : les trois sont alors des boîtes de
+                          même hauteur qu'`items-center` aligne ensemble, et
+                          chacune commence au bord gauche de son champ. Le
+                          superposer au select (grid) le centrait au contraire
+                          dans une boîte de 39 px au lieu de 20 — le demi-pixel
+                          qui en résultait le remontait d'une ligne à l'écran,
+                          et le décalait à droite dès que la colonne s'élargit.
+                          Le select ci-dessous ne sert qu'à réserver la largeur
+                          de la colonne (celle de l'unité la plus longue, cf.
+                          le `width: auto` de la ligne d'ingrédient) : `h-0` le
+                          retire de la hauteur sans toucher à cette largeur. */}
+                      <div className="shrink-0">
+                        <span className="font-label-md text-label-md text-outline">UNITÉ</span>
+                        <div aria-hidden className="h-0 overflow-hidden">
+                          <select className="editorial-input invisible" style={{ width: 'auto' }} tabIndex={-1}>
+                            <option value=""></option>
+                            {units.map((u) => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="hidden xl:contents">
                         <div className="flex-1 min-w-0">
-                          <span className="font-label-md text-label-md text-outline italic">ALLERGÈNES</span>
+                          <span className="font-label-md text-label-md text-outline">ALLERGÈNES</span>
                         </div>
                         <div className="flex-1 min-w-0" />
                         <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
@@ -1458,7 +1940,7 @@ export function CreerForm({
                                   patchIng(si, ii, { name });
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full"
+                              className={`editorial-input text-on-surface w-full${unknownRefClass(knownIngredients, g.name)}`}
                               type="text"
                               placeholder="Ingrédient"
                               autoComplete="off"
@@ -1468,7 +1950,7 @@ export function CreerForm({
                           <input
                             value={g.qty}
                             onChange={(e) => patchIng(si, ii, { qty: e.target.value })}
-                            className="w-20 editorial-input text-on-surface"
+                            className="w-16 xl:w-20 editorial-input text-on-surface"
                             type="text"
                             placeholder="Qté"
                           />
@@ -1482,7 +1964,7 @@ export function CreerForm({
                             // options → colonne alignée.
                             style={{ width: 'auto' }}
                           >
-                            <option value="">— unité —</option>
+                            <option value=""></option>
                             {units.map((u) => (
                               <option key={u.id} value={u.name}>
                                 {u.name}
@@ -1490,7 +1972,44 @@ export function CreerForm({
                             ))}
                           </select>
                           <div className="basis-full xl:hidden" />
-                          <div className="flex-1 min-w-0">
+                          {/* Commentaire avant Allergènes sous `xl` (ordre visuel
+                              seulement, via `order-*`). Le commentaire précède
+                              Allergènes dans le DOM (recopié ici plutôt que
+                              laissé après, pour rester lisible) : sur desktop, où
+                              les deux ordres visuels s'inversent (Allergènes
+                              puis Commentaire, comme avant ce changement),
+                              `xl:order-*` doit donc être fixé explicitement sur
+                              les deux blocs — un simple `xl:order-none` (qui
+                              revient à 0 des deux côtés) les départagerait par
+                              leur position DOM, dans le mauvais sens. */}
+                          <div className="flex-1 min-w-0 order-1 xl:order-2">
+                            <textarea
+                              value={g.comment}
+                              onChange={(e) => {
+                                patchIng(si, ii, { comment: e.target.value });
+                                autoGrow(e.target);
+                              }}
+                              ref={autoGrow}
+                              onKeyDown={(e) => {
+                                // Tab (sans Maj) depuis le dernier champ de la dernière
+                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
+                                // placer le curseur (sur le libellé, désormais premier).
+                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
+                                  e.preventDefault();
+                                  addIng(si);
+                                  setTimeout(() => {
+                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
+                                    names[names.length - 1]?.focus();
+                                  }, 0);
+                                }
+                              }}
+                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                              rows={1}
+                              placeholder="Commentaire (optionnel)"
+                            />
+                          </div>
+                          <div className="basis-full xl:hidden order-2" />
+                          <div className="flex-1 min-w-0 order-3 xl:order-1">
                             <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                               Allergènes
                             </span>
@@ -1545,41 +2064,11 @@ export function CreerForm({
                               )}
                             </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            {/* Miroir invisible du libellé « Allergènes » de la
-                                colonne voisine : sans lui, le champ commentaire
-                                (sans libellé au-dessus) remonte plus haut que
-                                le select/les puces d'allergènes en dessous de
-                                `xl`, malgré `items-center`. */}
-                            <span aria-hidden className="xl:hidden block invisible font-label-md text-[10px] uppercase tracking-widest mb-1">
-                              Allergènes
-                            </span>
-                            <textarea
-                              value={g.comment}
-                              onChange={(e) => patchIng(si, ii, { comment: e.target.value })}
-                              onKeyDown={(e) => {
-                                // Tab (sans Maj) depuis le dernier champ de la dernière
-                                // ligne → ouvrir une nouvelle ligne d'ingrédient et y
-                                // placer le curseur (sur le libellé, désormais premier).
-                                if (e.key === 'Tab' && !e.shiftKey && ii === st.ings.length - 1) {
-                                  e.preventDefault();
-                                  addIng(si);
-                                  setTimeout(() => {
-                                    const names = document.querySelectorAll<HTMLInputElement>(`[data-name-step="${si}"]`);
-                                    names[names.length - 1]?.focus();
-                                  }, 0);
-                                }
-                              }}
-                              className="editorial-input text-on-surface w-full resize-y"
-                              rows={1}
-                              placeholder="Commentaire (optionnel)"
-                            />
-                          </div>
                           <button
                             type="button"
                             title="Supprimer"
                             onClick={() => delIng(si, ii)}
-                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0"
+                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
@@ -1608,10 +2097,12 @@ export function CreerForm({
                     </button>
                   </div>
 
+                  {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}
+
                   <div className="flex flex-col">
                     <label className="font-label-md text-label-md text-outline mb-2">
                       DESCRIPTION{' '}
-                      <span className="italic normal-case font-body-md text-on-surface-variant">
+                      <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                         (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
                       </span>
                     </label>
@@ -1619,9 +2110,13 @@ export function CreerForm({
                       // Mode texte libre : description + bouton d'éclatement.
                       <>
                         <textarea
+                          ref={autoGrow}
                           value={st.description}
-                          onChange={(e) => patchStep(si, { description: e.target.value })}
-                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                          onChange={(e) => {
+                            patchStep(si, { description: e.target.value });
+                            autoGrow(e.target);
+                          }}
+                          className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                           placeholder="Décrivez les gestes techniques avec précision..."
                           rows={8}
                         />
@@ -1632,7 +2127,7 @@ export function CreerForm({
                             className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
                           >
                             <span className="material-symbols-outlined">format_list_bulleted</span> Éclater en sous-étapes{' '}
-                            <span className="italic normal-case font-body-md text-on-surface-variant">
+                            <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                               (Permet de suivre plus précisément le déroulé de la recette lors de l&apos;exécution)
                             </span>
                           </button>
@@ -1671,8 +2166,12 @@ export function CreerForm({
                               drag_indicator
                             </span>
                             <textarea
+                              ref={autoGrow}
                               value={t}
-                              onChange={(e) => patchSubstep(si, idx, e.target.value)}
+                              onChange={(e) => {
+                                patchSubstep(si, idx, e.target.value);
+                                autoGrow(e.target);
+                              }}
                               onKeyDown={(e) => {
                                 // Entrée → nouvelle sous-étape juste après, focus dessus.
                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -1685,7 +2184,7 @@ export function CreerForm({
                                 }
                               }}
                               data-substep-step={si}
-                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors"
+                              className="flex-1 min-h-[3.5rem] bg-surface-container-low border border-outline-variant p-3 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                               placeholder="Sous-étape…"
                               rows={2}
                             />
@@ -1729,6 +2228,8 @@ export function CreerForm({
                             originalSrc={p?.original_url}
                             aiRetouched={p?.ai_retouched}
                             onChange={(url) => patchPhoto(si, pi, url)}
+                            promptAiRetouched
+                            onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                             onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                             onClear={() => patchPhoto(si, pi, null)}
                             shape="rect"
@@ -1746,7 +2247,7 @@ export function CreerForm({
                               onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
                               className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
                             />
-                            Retravaillée avec l&apos;IA
+                            Indication photo retravaillée avec l&apos;IA
                           </label>
                         )}
                       </div>
@@ -1766,14 +2267,23 @@ export function CreerForm({
 
                   <details open className="group border-b border-outline-variant">
                     <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
-                      Conseils &amp; Astuces de l&apos;étape
+                      <span>
+                        Conseils &amp; Astuces de l&apos;étape{' '}
+                        <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
+                          (Ces informations seront affichées lors de la réalisation de la recette)
+                        </span>
+                      </span>
                       <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                     </summary>
                     <div className="pb-6">
                       <textarea
+                        ref={autoGrow}
                         value={st.tips}
-                        onChange={(e) => patchStep(si, { tips: e.target.value })}
-                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors"
+                        onChange={(e) => {
+                          patchStep(si, { tips: e.target.value });
+                          autoGrow(e.target);
+                        }}
+                        className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md italic text-on-surface-variant focus:border-primary outline-none transition-colors resize-none overflow-hidden"
                         placeholder="Une astuce particulière pour cette étape ?"
                         rows={4}
                       />
@@ -1800,11 +2310,15 @@ export function CreerForm({
             couvre cette section et la suivante (dégustation et conservation),
             qui se suivent immédiatement. */}
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
           <textarea
+            ref={autoGrow}
             value={tips}
-            onChange={(e) => setTips(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setTips(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
             rows={4}
           />
@@ -1812,20 +2326,26 @@ export function CreerForm({
 
         {/* Conseils de dégustation et de conservation */}
         <section className="space-y-8">
-          <h2 className="font-headline-lg text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
+          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
           <textarea
+            ref={autoGrow}
             value={servingAdvice}
-            onChange={(e) => setServingAdvice(e.target.value)}
-            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic"
+            onChange={(e) => {
+              setServingAdvice(e.target.value);
+              autoGrow(e.target);
+            }}
+            className="w-full bg-surface-container-low border border-outline-variant p-6 font-body-md text-body-md focus:border-primary outline-none transition-colors italic resize-none overflow-hidden"
             placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
         </section>
 
+        <HelpBlockSlot blockKey="creer.verification" help={help} />
+
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Planning de préparation</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
             <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
           </div>
           <div className="bg-surface-container-high p-gutter rounded">
@@ -1855,8 +2375,8 @@ export function CreerForm({
 
         {/* Difficulté & temps globaux */}
         <section id="sec-difficulte" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Difficulté &amp; temps</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Difficulté &amp; temps</h2>
             <span className="text-sm text-on-surface-variant italic">Le temps saisi manuellement prime ; vide, la somme des étapes est utilisée</span>
           </div>
 
@@ -1938,10 +2458,12 @@ export function CreerForm({
           </div>
         </section>
 
+        <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
+
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
-          <div className="flex justify-between items-end border-b border-primary pb-4">
-            <h2 className="font-headline-lg text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
             <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
           </div>
           <div className="max-w-2xl">
@@ -1955,7 +2477,22 @@ export function CreerForm({
                   const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
                   return (
                     <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                      <span className="font-body-md text-body-md text-on-surface break-words">{m.name}</span>
+                      <span className="font-body-md text-body-md text-on-surface break-words">
+                        {m.name}
+                        {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
+                        {m.stepIndices.length === 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => goToStep(m.stepIndices[0])}
+                            className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            1 étape — {steps[m.stepIndices[0]]?.title || `Étape ${m.stepIndices[0] + 1}`}
+                          </button>
+                        ) : (
+                          <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
+                        )}
+                      </span>
                       <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
                         {[m.qty, m.unit].filter(Boolean).join(' ')}
                         {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}

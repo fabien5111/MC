@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { getImpersonationContext } from '@/lib/impersonation';
+import { IMPERSONATION_COOKIE } from '@/lib/impersonation-types';
 
 export async function POST() {
   const ctx = await getImpersonationContext();
@@ -34,5 +35,11 @@ export async function POST() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
-  return NextResponse.json({ ok: true });
+  // Le cookie témoin part avec elle. Le laisser ne serait pas un trou de
+  // sécurité — la ligne d'audit vient d'être clôturée, la table répondrait
+  // « aucune session » — mais ferait payer une requête inutile à chaque page
+  // jusqu'à son expiration, soit exactement ce que ce chantier supprime.
+  const response = NextResponse.json({ ok: true });
+  response.cookies.delete(IMPERSONATION_COOKIE);
+  return response;
 }

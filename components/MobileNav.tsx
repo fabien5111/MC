@@ -14,7 +14,7 @@
 // l'en-tête bureau complet selon les pages.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, resolveAvatarUrl, isManager } from '@/lib/auth';
-import { hasActiveExecutions } from '@/lib/executions';
+import { hasActiveBatches } from '@/lib/profile';
 import { AccountSheetButton } from '@/components/account/AccountSheetButton';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
@@ -22,12 +22,20 @@ import { DESTINATIONS, type NavKey } from '@/lib/nav';
 const SLOT = 'flex flex-col items-center justify-center';
 
 export async function MobileNav({ current }: { current?: NavKey }) {
+  // Même parallélisation que `Header.tsx` : les deux composants sont rendus
+  // sur chaque page, et leurs lectures étaient en série. La mémoïsation par
+  // requête (`cache()` React) fait que le second des deux ne paie rien — mais
+  // encore faut-il que le premier n'ait pas empilé ses allers-retours.
   const user = await getCurrentUser();
-  const profile = user ? await getProfile(user.id) : null;
-  // Lien « Administration » du tiroir Compte : admin complet ou gestionnaire
-  // (même garde que le lien équivalent de Header.tsx).
-  const backOffice = user ? await isManager(user.id) : false;
-  const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
+  const [profile, backOffice, sessionEnCours] = user
+    ? await Promise.all([
+        getProfile(user.id),
+        // Lien « Administration » du tiroir Compte : admin complet ou
+        // gestionnaire (même garde que le lien équivalent de Header.tsx).
+        isManager(user.id),
+        hasActiveBatches(user.id),
+      ])
+    : [null, false, false];
 
   return (
     // Réserve d'encoche : sans elle, l'indicateur d'accueil des iPhone se pose

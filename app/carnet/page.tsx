@@ -3,15 +3,21 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
+import { getAllergensWithPicto } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
-import { parseCarnetParams, type Scope } from '@/lib/carnet-params';
+import { getBookSharesGiven } from '@/lib/shares-data';
+import { getRecipeDefaultPhoto } from '@/lib/site';
+import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { CarnetProvider } from '@/components/carnet/CarnetProvider';
 import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
+import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
+import { NewProjectButton } from '@/components/projets/NewProjectButton';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -23,6 +29,8 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   mine: 'Aucune recette pour l’instant. Créez-en une ou importez-en une.',
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
+  shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
+  proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
 type SearchParams = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -46,12 +54,19 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts }, favIds, importsEnAttente] = await Promise.all([
-    isReadOnlySession(),
-    getCarnetData(user.id),
-    getFavoriteIds(),
-    countImportsEnAttente(user.id),
-  ]);
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs] =
+    await Promise.all([
+      isReadOnlySession(),
+      getCarnetData(user.id),
+      getFavoriteIds(),
+      countImportsEnAttente(user.id),
+      getBookSharesGiven(user.id),
+      getRecipeDefaultPhoto(),
+      // Table de référence chargée une seule fois pour toute la grille — les
+      // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
+      // withAllergenNames), le picto est résolu au rendu (CarnetContent).
+      getAllergensWithPicto(),
+    ]);
   const filtered = applyCarnetFilters(items, params);
 
   return (
@@ -68,7 +83,14 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               sont masquées »). Importer avant Créer : l'import est le geste
               d'entrée dominant pour un carnet neuf. */}
           {!readOnly && (
-            <div className="flex items-center gap-3">
+            <div className="flex w-full items-center justify-center gap-3 md:w-auto md:justify-start">
+              {/* Masqué ici en mobile : sur cette largeur, le bouton rejoint
+                  la zone recherche dans CarnetToolbar (même instance de
+                  composant dupliquée, cf. CarnetToolbar.tsx). */}
+              <div className="hidden md:flex">
+                <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
+              </div>
+              <NewProjectButton />
               <Link
                 href="/importer"
                 prefetch={false}
@@ -86,17 +108,27 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             </div>
           )}
         </div>
-        <CarnetToolbar params={params} counts={counts} statusCounts={statusCounts} />
-        <CarnetContent
-          items={filtered}
-          favIds={[...favIds]}
-          importsEnAttente={importsEnAttente}
-          emptyMessage={
-            params.q || params.statut !== 'all'
-              ? 'Aucune recette ne correspond à ce filtre.'
-              : EMPTY_MESSAGES[params.scope]
-          }
-        />
+        <CarnetProvider>
+          <CarnetToolbar
+            params={params}
+            counts={counts}
+            statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
+            shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} /> : null}
+          />
+          <CarnetContent
+            key={carnetParamsToQueryString(params)}
+            items={filtered}
+            favIds={[...favIds]}
+            importsEnAttente={importsEnAttente}
+            allergenRefs={allergenRefs}
+            emptyMessage={
+              params.q || params.statut !== 'all'
+                ? 'Aucune recette ne correspond à ce filtre.'
+                : EMPTY_MESSAGES[params.scope]
+            }
+            defaultPhoto={defaultPhoto}
+          />
+        </CarnetProvider>
       </main>
       <Footer />
       <MobileNav current="carnet" />

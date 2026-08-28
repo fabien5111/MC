@@ -13,32 +13,51 @@
 // pré-masquage CSS ni de flash au chargement.
 import Link from 'next/link';
 import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
-import { hasActiveExecutions } from '@/lib/executions';
+import { hasActiveBatches } from '@/lib/profile';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
 
-export async function Header({ current }: { current?: NavKey }) {
-  const user = await getCurrentUser();
-  const profile = user ? await getProfile(user.id) : null;
-  // Accès au back-office (lien « Administration » du tiroir Compte) : admin
-  // complet ou gestionnaire. `/admin` redirige lui-même un gestionnaire vers
-  // son point d'entrée (il n'a pas le tableau de bord).
-  const backOffice = user ? await isManager(user.id) : false;
+export async function Header({ current, className }: { current?: NavKey; className?: string }) {
+  // Le chrome est rendu sur **chaque** page : ses lectures sont sur le chemin
+  // critique de tout le site. Elles étaient enchaînées en `await` successifs,
+  // soit cinq allers-retours en série ; il n'en reste que deux vagues.
+  //
+  // Les catégories ne dépendent pas de la session : elles partent avec la
+  // recherche de l'utilisateur, pas après.
+  const [user, homeCategories] = await Promise.all([getCurrentUser(), getHomeCategories()]);
+
+  // Seconde vague : tout ce qui a besoin de `user.id`. `isManager` dérive du
+  // profil depuis le chantier 3 et `getProfile` est mémoïsé par requête — les
+  // deux ci-dessous ne produisent donc qu'une seule lecture, pas deux.
+  const [profile, backOffice, sessionEnCours] = user
+    ? await Promise.all([
+        getProfile(user.id),
+        // Accès au back-office (lien « Administration » du tiroir Compte) :
+        // admin complet ou gestionnaire. `/admin` redirige lui-même un
+        // gestionnaire vers son point d'entrée (il n'a pas le tableau de bord).
+        isManager(user.id),
+        // Pastille d'« En cuisine » : présente dès qu'une session tourne,
+        // **sans chiffre** — le compte se lit dans l'écran, pas dans le menu.
+        hasActiveBatches(user.id),
+      ])
+    : [null, false, false];
+
   const avatarUrl = user ? resolveAvatarUrl(user, profile) : null;
-  // Pastille d'« En cuisine » : présente dès qu'une session tourne, **sans
-  // chiffre** — le compte se lit dans l'écran, pas dans le menu.
-  const sessionEnCours = user ? await hasActiveExecutions(user.id) : false;
   // Suggestions du panneau de recherche : les catégories promues par l'admin
   // sur l'accueil, jamais une liste codée en dur. Limitées à quatre pour que
   // le panneau reste une ligne.
-  const suggestions = (await getHomeCategories())
-    .slice(0, 4)
-    .map((c) => ({ label: c.name, slug: c.slug }));
+  const suggestions = homeCategories.slice(0, 4).map((c) => ({ label: c.name, slug: c.slug }));
 
   return (
-    <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50">
+    // Figé au défilement uniquement à partir de 1024 px (`lg`) : c'est le
+    // seuil unique du produit (cf. MobileNav.tsx) où l'en-tête bureau prend le
+    // relais de la barre basse mobile. En dessous, l'en-tête défile avec la
+    // page — sticky y ferait doublon avec la barre basse, déjà fixe.
+    <header
+      className={`bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 lg:sticky lg:top-0 z-50${className ? ` ${className}` : ''}`}
+    >
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
         <div className="flex items-center gap-6 xl:gap-10 min-w-0">
           <Link className="maryse-logo-font text-4xl text-primary leading-none whitespace-nowrap shrink-0" href="/">

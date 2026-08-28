@@ -5,17 +5,42 @@
 // absentes de schema.sql (utensils, ingredient_refs, executions…) : la base
 // live a divergé. On régénérera les types avec `npm run gen:types` au moment
 // de porter recette.html ; d'ici là ces retours restent volontairement souples.
-import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
-import { cardAllergenNames, matchAllergenPictos, type AllergenPictoItem } from '@/lib/recipe-view';
-import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
+import { cardAllergenNames } from '@/lib/recipe-view';
 
 type Recipe = Database['public']['Tables']['recipes']['Row'];
 
+// `hero_card_url` (~480 px, générée à l'enregistrement de la recette —
+// CreerForm, lib/images.ts) est la seule image que cette sélection transporte.
+//
+// `hero_image_url`, en pleine définition (jusqu'à 1400 px, data-URL), y a été
+// conservée un temps en repli pour les recettes pas encore rétro-remplies.
+// Mesurée sur la base, elle pesait 4804 kB contre 848 kB pour les vignettes —
+// 5,7 fois le poids utile, sérialisé dans le payload RSC de tout écran à
+// cartes sans jamais être affiché dès lors que la vignette existe (le carnet
+// atteignait 6,57 Mo). Le rétro-remplissage (Admin → Photos) étant passé,
+// aucune recette n'en dépendait plus : le repli est retiré.
+//
+// Conséquence à connaître : une recette qui aurait une photo sans vignette
+// affiche désormais la photo par défaut du site, pas sa photo. C'est le
+// rétro-remplissage qui la rattrape, plus un repli dans cette requête — le
+// prix à payer pour ne pas transporter la pleine définition des 46 autres.
+//
+// `avatar_url` part pour la même raison : aucun gabarit de carte ne l'affiche
+// (seul RecipeComments montre un avatar, avec sa propre requête).
+//
+// `hero_card_url` est absente de `lib/database.types.ts` (colonne ajoutée par
+// migration, types non encore régénérés) : même contournement que
+// `hero_thumb_url` (lib/profile.ts).
+// `author_ratings(rating_avg, rated_recipes)` embarquée sous `profiles` : la
+// vue expose une FK synthétique vers `profiles` (même contrainte que
+// `recipes.author_id`, cf. lib/database.types.ts), ce qui suffit à PostgREST
+// pour l'embarquer sans requête séparée — la note de l'auteur voyage avec la
+// carte au lieu d'un aller-retour par recette affichée.
 export const CARD_SELECT =
-  'id, title, description, hero_image_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
-  'profiles!recipes_author_id_fkey(full_name, avatar_url), recipe_types(name), difficulties(name, level), ' +
+  'id, title, description, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
+  'profiles!recipes_author_id_fkey(full_name, username, author_ratings(rating_avg, rated_recipes)), recipe_types(name), difficulties(name, level), ' +
   'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
 
 export type RecipeCard = Pick<
@@ -23,7 +48,6 @@ export type RecipeCard = Pick<
   | 'id'
   | 'title'
   | 'description'
-  | 'hero_image_url'
   | 'author_id'
   | 'prep_time'
   | 'cook_time'
@@ -33,7 +57,12 @@ export type RecipeCard = Pick<
   | 'rating_count'
   | 'created_at'
 > & {
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
+  hero_card_url: string | null;
+  profiles: {
+    full_name: string | null;
+    username: string | null;
+    author_ratings: { rating_avg: number | null; rated_recipes: number | null }[];
+  } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
@@ -50,10 +79,15 @@ export async function getRecipes(opts: {
 } = {}): Promise<RecipeCard[]> {
   const { limit = 12, offset = 0, status = 'published', authorId = null, typeId = null } = opts;
   const supabase = await createClient();
+  // `is_public` explicite : sans ce filtre, la RLS laisse passer les propres
+  // recettes privées de l'utilisateur connecté (elle n'écarte que celles
+  // d'autrui) — un auteur voyait ainsi ses recettes privées remonter dans son
+  // propre accueil ou parmi les « autres recettes » d'une fiche.
   let q = supabase
     .from('recipes')
     .select(CARD_SELECT)
     .eq('status', status)
+    .eq('is_public', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
   if (authorId) q = q.eq('author_id', authorId);
@@ -69,14 +103,23 @@ export async function getRecipes(opts: {
 // reconstituer une union d'identifiants, sans total ni pagination réelle :
 // elles sont retirées plutôt que laissées en doublon d'un chemin plus complet.
 
-export type UserRecipeCard = RecipeCardWithAllergens & { status: string; is_public: boolean };
+// `kind` / `project_stage` : marques du mode projet (cf. lib/projects.ts).
+// Chargées ici parce que le carnet est le seul écran qui doit distinguer un
+// projet en cours d'une recette ordinaire — partout ailleurs, un projet en
+// cours est simplement absent (spec §10).
+export type UserRecipeCard = RecipeCardWithAllergenNames & {
+  status: string;
+  is_public: boolean;
+  kind: string;
+  project_stage: string | null;
+};
 
 export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> {
   const supabase = await createClient();
   const query = () =>
     supabase
       .from('recipes')
-      .select(`${CARD_SELECT}, status, is_public`)
+      .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -86,15 +129,9 @@ export async function getUserRecipes(userId: string): Promise<UserRecipeCard[]> 
     ({ data, error } = await query());
     if (error) console.error('getUserRecipes (retry):', error.message);
   }
-  const rows = (data as unknown as (RecipeCard & { status: string; is_public: boolean })[]) ?? [];
-  return withAllergenPictos(rows);
-}
-
-export async function getRecipe(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('recipes').select('*').eq('id', id).maybeSingle();
-  if (error) console.error('getRecipe:', error.message);
-  return data;
+  const rows =
+    (data as unknown as (RecipeCard & { status: string; is_public: boolean; kind: string; project_stage: string | null })[]) ?? [];
+  return withAllergenNames(rows);
 }
 
 // Recette complète avec toutes ses jointures (porté de getRecipe du db.js).
@@ -151,7 +188,18 @@ export type RecipeFull = {
   author_id: string;
   is_public: boolean | null;
   status: string | null;
+  // Mode projet — axe indépendant de `status` (cf. lib/projects.ts). `simple`
+  // et `null` pour l'immense majorité des recettes.
+  kind: string;
+  project_stage: string | null;
+  // Motif du refus (§9, saisi depuis Admin → Recettes → Refuser), affiché à
+  // l'auteur sur sa propre fiche recette. `null` hors statut `rejected`.
+  moderation_note: string | null;
+  // Date de ce motif (horodatée par le trigger SQL `recipes_track_rejection_note`
+  // dès que `moderation_note` change). `null` en même temps que `moderation_note`.
+  moderation_note_at: string | null;
   created_at: string | null;
+  updated_at: string | null;
   rating_avg: number | null;
   rating_count: number | null;
   measure_type: string | null;
@@ -202,59 +250,44 @@ export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
   return (data as unknown as RecipeFull | null) ?? null;
 }
 
-// Table de référence des allergènes avec picto + infobulle. Sert à retrouver le
-// visuel d'un allergène saisi en texte libre dans une recette (rapprochement
-// par nom). Mémoïsé par requête (React cache) : plusieurs cartes sur une même
-// page ne déclenchent qu'une seule lecture.
-export const getAllergensWithPicto = cache(async (): Promise<AllergenRef[]> => {
+// Identifiants des recettes publiées — sert uniquement à la commande de
+// réindexation complète (§6.3, /api/reindex-recette) : la similarité
+// interne à la validation lit désormais l'index persisté
+// (recipe_shingle_index), plus le corpus complet à chaque analyse.
+export async function getPublishedRecipeIds(): Promise<string[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from('allergens').select('id, name, picto, tooltip').order('name');
+  const { data, error } = await supabase.from('recipes').select('id').eq('status', 'published');
   if (error) {
-    console.error('getAllergensWithPicto:', error.message);
+    console.error('getPublishedRecipeIds:', error.message);
     return [];
   }
-  return (data ?? []).filter((a) => a.name);
-});
+  return (data ?? []).map((r) => r.id);
+}
 
-// Table de référence des conversions d'ingrédients (ex. 1 œuf = 50 g), gérée
-// dans Admin → Listes. Mémoïsée par requête (React cache), au même titre que
-// getAllergensWithPicto : une seule lecture pour toutes les lignes
-// d'ingrédients affichées sur une page.
-export const getIngredientConversions = cache(async (): Promise<ConversionRef[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('ingredient_conversions')
-    .select('ingredient_ref_id, from_quantity, from_unit_id, to_quantity, to_unit_id');
-  if (error) {
-    console.error('getIngredientConversions:', error.message);
-    return [];
-  }
-  return data ?? [];
-});
+// Référentiels (allergènes, conversions, ingrédients de référence) : servis
+// par le cache de `lib/data/reference.ts`, ré-exportés ici pour ne pas toucher
+// les sites d'appel. Ne pas y rajouter de lecture directe — c'est ce qui avait
+// produit deux requêtes `allergens` et trois `ingredient_refs` distinctes.
+export {
+  getAllergensWithPicto,
+  getIngredientConversions,
+  getIngredientRefsList,
+  getIngredientDensities,
+} from '@/lib/data/reference';
 
-// Ingrédients de référence (id + libellé) : sert à rapprocher un article
-// saisi à la main (sans `ref_id` propre) de la table de référence, pour
-// bénéficier des conversions d'ingrédients — cf. ShoppingItems.tsx,
-// CreerForm.tsx.
-export const getIngredientRefsList = cache(async (): Promise<IngredientRefOption[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('ingredient_refs').select('id, name').order('name');
-  if (error) {
-    console.error('getIngredientRefsList:', error.message);
-    return [];
-  }
-  return (data ?? []).filter((r) => r.name);
-});
-
-// Résout les pictos d'allergènes pour un lot de cartes (une seule lecture de
-// la table de référence). Utile pour les rendus faits hors d'un Server
-// Component (ex. route API de pagination), où l'on ne peut pas s'appuyer sur
-// le composant asynchrone AllergenPictos.
-export type RecipeCardWithAllergens = RecipeCard & { allergenItems: AllergenPictoItem[] };
-export async function withAllergenPictos<T extends Pick<RecipeCard, 'ingredient_groups'>>(
+// Attache la liste des NOMS d'allergènes à un lot de cartes — jamais leurs
+// pictos. Les pictos (data-URL, ~6 kB chacun en moyenne) sont résolus au
+// rendu, à partir d'une table de référence (getAllergensWithPicto) chargée
+// une seule fois par écran, jamais dupliquée par recette : la version
+// précédente (`withAllergenPictos`) inlinait `allergenItems` — pictos inclus —
+// dans chaque recette, et cette table franchissant la frontière Client
+// Component (RecipeCardClient, CarnetContent) était sérialisée en entier dans
+// le payload RSC à chaque occurrence. Motif déjà en place dans BatchView
+// (`allergenRefs` en prop, résolu via `matchAllergenPictos` au rendu) —
+// généralisé ici à toutes les grilles de cartes.
+export type RecipeCardWithAllergenNames = RecipeCard & { allergenNames: string[] };
+export function withAllergenNames<T extends Pick<RecipeCard, 'ingredient_groups'>>(
   recipes: T[],
-): Promise<(T & { allergenItems: AllergenPictoItem[] })[]> {
-  if (!recipes.length) return [];
-  const refs = await getAllergensWithPicto();
-  return recipes.map((r) => ({ ...r, allergenItems: matchAllergenPictos(cardAllergenNames(r), refs) }));
+): (T & { allergenNames: string[] })[] {
+  return recipes.map((r) => ({ ...r, allergenNames: cardAllergenNames(r) }));
 }

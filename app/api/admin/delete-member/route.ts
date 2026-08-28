@@ -7,6 +7,7 @@
 // puis les lignes applicatives restantes.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 
 export async function POST(req: Request) {
@@ -16,8 +17,8 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
 
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  if (me?.role !== 'admin') {
+  // Rôle via l'accesseur unique (mémoïsé), cf. lib/auth.ts.
+  if (!(await isAdmin(user.id))) {
     return NextResponse.json({ erreur: 'Réservé aux administrateurs.' }, { status: 403 });
   }
 

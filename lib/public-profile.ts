@@ -4,7 +4,7 @@
 // écriture, uploads…), qui restent l'affaire de `/reglages`.
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { CARD_SELECT, withAllergenPictos, type RecipeCardWithAllergens } from '@/lib/recipes';
+import { CARD_SELECT, withAllergenNames, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type { Database } from '@/lib/database.types';
 
 export type PublicProfile = Pick<
@@ -56,13 +56,17 @@ export const getPublicProfileStats = cache(async (authorId: string): Promise<Pub
       .select('id', { count: 'exact', head: true })
       .eq('author_id', authorId)
       .eq('status', 'published'),
-    supabase.from('author_ratings').select('rating_avg').eq('author_id', authorId).maybeSingle(),
+    supabase.from('author_ratings').select('rating_avg, rated_recipes').eq('author_id', authorId).maybeSingle(),
   ]);
   if (countRes.error) console.error('getPublicProfileStats (recettes):', countRes.error.message);
   if (ratingRes.error) console.error('getPublicProfileStats (note):', ratingRes.error.message);
+  // `rated_recipes` à 0 : aucune recette notée, `rating_avg` vaut alors 0 sans
+  // qu'aucune note n'ait jamais été donnée — à ne pas confondre avec une
+  // vraie moyenne de 0, qui n'existe pas (les notes vont de 1 à 5).
+  const ratedRecipes = ratingRes.data?.rated_recipes ?? 0;
   return {
     recipeCount: countRes.count ?? 0,
-    ratingAvg: ratingRes.data?.rating_avg ?? null,
+    ratingAvg: ratedRecipes > 0 ? (ratingRes.data?.rating_avg ?? null) : null,
   };
 });
 
@@ -93,7 +97,7 @@ export async function getPublicProfileCategories(authorId: string): Promise<{ na
 export async function getPublicProfileRecipes(
   authorId: string,
   categorySlug?: string,
-): Promise<RecipeCardWithAllergens[]> {
+): Promise<RecipeCardWithAllergenNames[]> {
   const supabase = await createClient();
   let q = supabase.from('recipes').select(CARD_SELECT).eq('author_id', authorId).eq('status', 'published');
   // Filtrer par catégorie impose de passer par la jointure `recipe_tags` :
@@ -113,5 +117,5 @@ export async function getPublicProfileRecipes(
     console.error('getPublicProfileRecipes:', error.message);
     return [];
   }
-  return withAllergenPictos(data as unknown as import('@/lib/recipes').RecipeCard[]);
+  return withAllergenNames(data as unknown as import('@/lib/recipes').RecipeCard[]);
 }

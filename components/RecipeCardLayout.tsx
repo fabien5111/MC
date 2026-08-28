@@ -9,6 +9,7 @@ import { effectiveTimes } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
+import { StarRating } from '@/components/StarRating';
 import type { RecipeCard as RecipeCardData } from '@/lib/recipes';
 
 export function RecipeCardLayout({
@@ -17,6 +18,7 @@ export function RecipeCardLayout({
   isOwner = false,
   showPlan = true,
   allergens,
+  defaultPhoto = null,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
@@ -30,6 +32,9 @@ export function RecipeCardLayout({
   // de la fiche recette) le passent à `false` selon l'état de connexion.
   showPlan?: boolean;
   allergens: ReactNode;
+  // Photo « site_settings.recipe_default_photo », affichée à la place du
+  // pictogramme quand la recette n'a pas de photo.
+  defaultPhoto?: string | null;
 }) {
   const r = recipe;
   const times = effectiveTimes(r);
@@ -38,13 +43,16 @@ export function RecipeCardLayout({
   // Planifier (right-14).
   const planPos = isOwner ? 'right-[6.25rem]' : 'right-14';
   return (
-    <article className="group relative bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
+    <article className="group relative h-full flex flex-col bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
       <Link href={`/recette/${r.id}`} className="block">
         <div className="aspect-[4/3] bg-surface-container overflow-hidden relative">
-          {r.hero_image_url ? (
+          {r.hero_card_url || defaultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
             <img
-              src={r.hero_image_url}
+              // `hero_card_url` (~480 px) seule, jamais `hero_image_url`
+              // (pleine définition, jusqu'à 1400 px) : cf. lib/recipes.ts
+              // CARD_SELECT, qui ne la sélectionne plus.
+              src={r.hero_card_url || defaultPhoto!}
               alt={r.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
@@ -54,7 +62,7 @@ export function RecipeCardLayout({
             </div>
           )}
         </div>
-        <div className="p-6">
+        <div className="px-6 pt-6">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 min-w-0">
               {(r.difficulties?.level || 0) > 0 && (
@@ -85,15 +93,35 @@ export function RecipeCardLayout({
             {r.title}
           </h3>
           <p className="text-sm text-on-surface-variant line-clamp-2 min-h-[2.5rem] mb-4">{r.description || ''}</p>
-          {allergens}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary">{r.profiles?.full_name || ''}</span>
-            <span className="text-xs text-secondary">
-              {r.rating_avg ? `${Number(r.rating_avg).toFixed(1)} ★` : ''}
-            </span>
-          </div>
+          {/* Hauteur réservée que la recette porte des allergènes ou non —
+              sinon une carte sans allergène est plus courte que sa voisine et
+              casse l'alignement des cartes d'une même rangée (cf. mt-auto
+              sur le pied ci-dessous, qui a besoin de cette hauteur stable). */}
+          <div className="min-h-[1.75rem]">{allergens}</div>
         </div>
       </Link>
+
+      {/* Auteur + notes — hors du lien vers la recette (sinon <a> imbriqué
+          dans <a> pour le lien vers le profil), même padding horizontal que
+          le contenu ci-dessus. `mt-auto` (avec `h-full flex flex-col` sur
+          `article`) ancre le pied en bas de carte : les cartes d'une même
+          rangée, étirées à la même hauteur par leur conteneur flex/grid,
+          affichent alors toutes leur pied au même niveau. */}
+      <div className="px-6 pb-6 flex items-center justify-between mt-auto">
+        <span className="text-xs text-secondary">
+          {r.profiles && (
+            <Link href={`/u/${r.profiles.username || r.author_id}`} prefetch={false} className="hover:text-primary hover:underline">
+              {r.profiles.full_name || ''}
+            </Link>
+          )}
+          {r.profiles?.author_ratings?.[0]?.rating_avg != null && (
+            <span className="ml-1">
+              (<StarRating value={r.profiles.author_ratings[0].rating_avg} size={12} compact />)
+            </span>
+          )}
+        </span>
+        <StarRating value={r.rating_avg} count={r.rating_count} size={12} className="text-xs" />
+      </div>
 
       {/* Contrôles superposés — frères du lien, positionnés sur l'image. */}
       <FavoriteHeart recipeId={r.id} initialFav={isFav} />
@@ -110,7 +138,7 @@ export function RecipeCardLayout({
       {showPlan && (
         <Link
           href={`/recette/${r.id}?planifier=1`}
-          title="Planifier cette recette"
+          title="Lancer une fournée"
           prefetch={false}
           className={`absolute top-3 ${planPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
         >

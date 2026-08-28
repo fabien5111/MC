@@ -29,13 +29,16 @@ jobs:
         with:
           node-version: 22
 
+      # Passe par scripts/gen-types.mjs (npm run gen:types) et non par une
+      # redirection directe : le shell tronquerait lib/database.types.ts avant
+      # même de lancer la CLI, si bien qu'un jeton expiré ferait COMMITTER le
+      # message d'erreur JSON à la place des types. Le script n'écrit la cible
+      # qu'une fois la génération réellement aboutie, et sort en échec sinon.
+      # Aucun `npm ci` nécessaire : il ne tire que des modules natifs de Node.
       - name: Générer les types depuis Supabase
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          npx --yes supabase@latest gen types typescript \
-            --project-id acbabqolghhyxksouaye \
-            --schema public > lib/database.types.ts
+        run: npm run gen:types
 
       - name: Committer si le fichier a changé
         run: |

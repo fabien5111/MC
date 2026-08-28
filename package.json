@@ -13,7 +13,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "gen:types": "npx --yes supabase@latest gen types typescript --project-id acbabqolghhyxksouaye --schema public > lib/database.types.ts"
+    "gen:types": "node scripts/gen-types.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

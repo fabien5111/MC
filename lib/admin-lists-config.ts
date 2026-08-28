@@ -108,6 +108,11 @@ export const SECTIONS: Section[] = [
       { key: 'name', label: 'Libellé', required: true },
       { key: 'allergen', label: 'Allergènes', type: 'multiref', refTable: 'allergens', max: 3 },
       { key: 'url', label: 'URL' },
+      // Sert à estimer le poids d'un ingrédient saisi en volume (ml/cl/l)
+      // faute de mesure directe en g/kg — cf. lib/ingredient-conversions.ts
+      // `estimateWeightGrams`, utilisé au remplacement d'une étape par une
+      // recette. Facultatif : la plupart des ingrédients n'en ont pas besoin.
+      { key: 'density_g_per_ml', label: 'Masse volumique (g/ml)', type: 'number' },
       TOOLTIP,
     ],
   },

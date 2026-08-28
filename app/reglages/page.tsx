@@ -1,10 +1,16 @@
 import type { Metadata } from 'next';
-import { requireUser, getProfile, isAdmin } from '@/lib/auth';
+import { requireUser, getProfile, isAdmin, getUserIdentities, accountProvider } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
+import { FollowingCard } from '@/components/profile/FollowingCard';
+import { BookSharesCard } from '@/components/profile/BookSharesCard';
+import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
+import { getFollowCounts, getFollowing } from '@/lib/follows';
+import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -44,12 +50,27 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       id: user.id,
       full_name: fallbackName,
       email: user.email ?? null,
-      provider: user.app_metadata?.provider ?? null,
+      provider: accountProvider(user),
     });
     profile = await getProfile(user.id);
   }
 
   const admin = await isAdmin(user.id);
+  // Un compte lié à Google n'a pas forcément de mot de passe — présent
+  // uniquement si une identité e-mail existe (inscription directe, ou compte
+  // Google ayant ensuite lié un mot de passe).
+  // `identities` n'est pas dans le JWT : cet appel-ci interroge réellement le
+  // serveur d'authentification (cf. lib/auth.ts `getUserIdentities`). C'est
+  // assumé pour cet écran, qui est rare — ne pas le reproduire ailleurs.
+  const identities = await getUserIdentities();
+  const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
+
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven] = await Promise.all([
+    getFollowCounts(user.id),
+    getFollowing(user.id),
+    getBookSharesGiven(user.id),
+    getRecipeSharesGiven(user.id),
+  ]);
 
   return (
     <>
@@ -75,7 +96,12 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           fallbackName={fallbackName}
           fallbackAvatar={fallbackAvatar}
           isAdmin={admin}
+          followCounts={followCounts}
         />
+        {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
+        <FollowingCard userId={user.id} following={following} />
+        <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
+        <RecipeSharesCard ownerId={user.id} given={recipeSharesGiven} />
       </main>
       <Footer />
       <MobileNav />

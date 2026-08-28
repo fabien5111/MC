@@ -1,4 +1,4 @@
-// Badge « Planifier cette recette » des cartes recette (RecipeCardLayout,
+// Badge « Lancer une fournée » des cartes recette (RecipeCardLayout,
 // SuggestionCard, carnet, Recette de la semaine).
 //
 // Ce n'est plus qu'un cadrage du picto partagé (`components/PlanningIcon.tsx`),

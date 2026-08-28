@@ -13,7 +13,14 @@ export async function getShoppingList(id: number): Promise<ShoppingList | null> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('shopping_lists')
-    .select('*, shopping_list_items(*)')
+    // Colonnes énumérées des deux côtés de la jointure (cf. CLAUDE.md) : ici
+    // tout est réellement affiché — c'est la vue détail — mais une colonne
+    // ajoutée plus tard à l'une des deux tables ne rejoindra pas le payload
+    // sans qu'on l'ait décidé.
+    .select(
+      'id, name, user_id, created_at, ' +
+        'shopping_list_items(id, list_id, name, quantity, unit, ref_id, comment, checked, created_at)',
+    )
     .eq('id', id)
     .maybeSingle();
   if (error) console.error('getShoppingList:', error.message);

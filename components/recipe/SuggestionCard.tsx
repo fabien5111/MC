@@ -13,11 +13,14 @@ export function SuggestionCard({
   recipe,
   isFav,
   showPlan = true,
+  defaultPhoto = null,
 }: {
   recipe: RecipeCardData;
   isFav: boolean;
   // Masqué pour un visiteur — planifier suppose une session (cf. RecipeCardLayout).
   showPlan?: boolean;
+  // Photo « site_settings.recipe_default_photo » (cf. RecipeCardLayout).
+  defaultPhoto?: string | null;
 }) {
   const r = recipe;
   const level = (r.difficulties?.name || r.recipe_types?.name || 'Recette').toUpperCase();
@@ -26,9 +29,10 @@ export function SuggestionCard({
     <div className="relative group">
       <Link href={`/recette/${r.id}`} className="cursor-pointer block">
         <div className="aspect-[4/3] mb-4 overflow-hidden border border-outline-variant relative">
-          {r.hero_image_url ? (
+          {r.hero_card_url || defaultPhoto ? (
+            // `hero_card_url` seule, jamais la pleine définition — cf. RecipeCardLayout.
             // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-            <img src={r.hero_image_url} alt={r.title} className="w-full h-full object-cover" />
+            <img src={r.hero_card_url || defaultPhoto!} alt={r.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-on-surface-variant bg-surface-container">
               <span className="material-symbols-outlined text-4xl">cake</span>
@@ -59,7 +63,7 @@ export function SuggestionCard({
       {showPlan && (
         <Link
           href={`/recette/${r.id}?planifier=1`}
-          title="Planifier cette recette"
+          title="Lancer une fournée"
           prefetch={false}
           className="absolute top-3 right-14 z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
         >

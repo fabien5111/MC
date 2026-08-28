@@ -9,6 +9,7 @@ import { useCallback, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { PhotoEditorModal } from '@/components/PhotoEditorModal';
+import { useDialog } from '@/components/Dialog';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
@@ -69,6 +70,15 @@ export type ImageSlotProps = {
    * (zoom/rotation/position) : sans cadre cible connu, rien à ajuster.
    */
   aspectRatio?: number;
+  /**
+   * Demande, juste après la validation d'un recadrage, si la photo a été
+   * retravaillée avec l'IA (avertit qu'un filigrane sera apposé si oui) —
+   * réservé aux photos de recette (hero, étapes), pas à l'avatar/bannière/
+   * couverture de blog ou de liste, qui n'ont pas ce champ.
+   */
+  promptAiRetouched?: boolean;
+  /** Réponse à la question ci-dessus. Requis si `promptAiRetouched`. */
+  onAiRetouchedChange?: (value: boolean) => void;
 };
 
 export function ImageSlot({
@@ -89,7 +99,10 @@ export function ImageSlot({
   editButtonClassName = 'bottom-3 right-3 w-9 h-9',
   aiRetouched = false,
   aspectRatio,
+  promptAiRetouched = false,
+  onAiRetouchedChange,
 }: ImageSlotProps) {
+  const dialog = useDialog();
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const [busy, setBusy] = useState(false);
@@ -240,6 +253,22 @@ export function ImageSlot({
           onSave={(dataUrl) => {
             onChange?.(dataUrl);
             setEditingPhoto(false);
+            if (promptAiRetouched) {
+              // `choice` plutôt que `confirm` : le bouton par défaut (focus,
+              // couleur primaire) doit être « Non » — présumer un filigrane
+              // « IA » sur une simple validation de recadrage serait trompeur
+              // pour l'auteur comme pour les lecteurs de la recette.
+              dialog
+                .choice(
+                  "Cette photo a-t-elle été retravaillée avec l'IA ?\n\n" +
+                    "Si oui, un filigrane « Photo retravaillée avec l'IA » sera apposé.",
+                  [
+                    { label: 'Oui', value: 'oui' },
+                    { label: 'Non', value: 'non', variant: 'primary' },
+                  ],
+                )
+                .then((value) => onAiRetouchedChange?.(value === 'oui'));
+            }
           }}
         />
       )}

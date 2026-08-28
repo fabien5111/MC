@@ -2,13 +2,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 import { matchBlogArticleSlug, isGoneSlug, goneArticleResponse } from './lib/blog-gone';
 
+// Domaine des testeurs, exempté de la page d'attente ci-dessous : depuis que
+// jepatisse.com et dev.jepatisse.com sont deux domaines du même projet
+// Vercel (mc-snowy) — nécessaire pour que dev.jepatisse.com suive `main`
+// automatiquement — `COMING_SOON` (scopée à l'environnement Production) vaut
+// désormais `true` pour les deux. Le tri se fait donc ici, sur `Host`, et non
+// plus par l'environnement Vercel du déploiement.
+const TESTER_HOST = 'dev.jepatisse.com';
+
 export async function middleware(request: NextRequest) {
-  // Domaine de production en attente de lancement : `COMING_SOON` n'est posée
-  // que sur l'environnement Production Vercel (jepatisse.com), jamais sur
-  // Preview (dev.jepatisse.com) — inutile donc de distinguer par `Host` ici.
   // Bascule avant le rafraîchissement de session : la page d'attente n'a rien
   // à faire dépendre d'une session Supabase.
-  if (process.env.COMING_SOON === 'true') {
+  const host = request.headers.get('host')?.split(':')[0].toLowerCase();
+  if (process.env.COMING_SOON === 'true' && host !== TESTER_HOST) {
     const { pathname } = request.nextUrl;
     if (pathname !== '/bientot-disponible' && !pathname.startsWith('/api')) {
       return NextResponse.rewrite(new URL('/bientot-disponible', request.url));
@@ -50,7 +56,15 @@ export const config = {
   // (stable depuis Next 15.5).
   runtime: 'nodejs',
   matcher: [
-    // Toutes les routes sauf assets statiques et fichiers d'image.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Toutes les routes sauf assets statiques, fichiers d'image et `/api/*`.
+    //
+    // `/api/*` en est exclu parce que le middleware n'y apportait rien :
+    // `PROTECTED_PREFIXES` (lib/supabase/middleware.ts) ne contient aucun
+    // préfixe d'API — chaque route s'authentifie elle-même — et la bascule
+    // `COMING_SOON` ci-dessus saute déjà `/api`. Le seul effet du passage
+    // était donc un `getUser()` supplémentaire par appel, en pure perte, et
+    // doublé sur les routes appelées à la frappe (autocomplétion des
+    // ingrédients, des membres, compte de résultats de la recherche…).
+    '/((?!api/|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf)$).*)',
   ],
 };

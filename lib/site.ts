@@ -13,3 +13,13 @@ export async function getSiteSettings(keys: string[]): Promise<Record<string, st
     (data ?? []).map((s) => [s.key, typeof s.value === 'string' ? s.value : String(s.value ?? '')]),
   );
 }
+
+// Photo par défaut des cartes recette (RecipeCardLayout, SuggestionCard,
+// CarnetContent, accueil) quand l'auteur n'a fourni aucune photo.
+//
+// Servie par le cache de `lib/data/reference.ts` : elle était lue sur cinq
+// pages (accueil, recherche, carnet, profil public, fiche recette), ce qui
+// pesait la moitié des 2 902 appels `site_settings` du relevé. `getSiteSettings`
+// ci-dessus reste non mis en cache : seul le back-office l'appelle encore, un
+// écran d'administration ne pèse rien et n'a pas à voir une valeur périmée.
+export { getRecipeDefaultPhoto, getPublicSiteSettings } from '@/lib/data/reference';

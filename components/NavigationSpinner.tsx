@@ -16,6 +16,33 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 // Un léger délai avant l'affichage évite le clignotement sur une navigation
 // instantanée ; un filet de sécurité masque l'overlay au bout de 8 s.
 //
+// DEUX PIÈGES, vérifiés dans les sources de Next, chacun ayant déjà produit
+// une régression (cf. historique git) — ne pas les retenter :
+//
+//  1. `window.location` ne devance PAS le rendu. `HistoryUpdater`
+//     (app-router.js) ne pose `history.pushState` qu'au commit du routeur,
+//     exactement en même temps que `pathname` / `searchParams` changent. On ne
+//     peut donc pas détecter « cette navigation n'aboutira à aucun changement
+//     d'URL » en comparant `window.location` à l'URL de départ pendant
+//     l'attente : sur une route sans cache (`force-dynamic`, ex. `/carnet`) ou
+//     simplement lente, elle reste celle de départ tant que le nouveau rendu
+//     n'est pas revenu. Un tel filet éteint le spinner sur une navigation bien
+//     réelle, juste lente. Le cas « lien ciblant l'URL de départ après une
+//     redirection serveur » reste couvert par le seul filet de sécurité.
+//
+//  2. `defaultPrevented` ne se relit pas après coup. `<Link>` appelle
+//     lui-même `preventDefault()` sur tout lien interne pour faire sa
+//     navigation côté client (link.js `linkClicked`). Le drapeau doit donc
+//     être lu dans la phase de capture, où il ne vaut `true` que si un
+//     gestionnaire extérieur a annulé le clic ; le relire une fois
+//     l'événement diffusé le trouve toujours à `true` et le spinner ne
+//     s'arme plus jamais nulle part. Voir `onClick`.
+//
+// `console.debug('[spinner-timing]', …)` : instrumentation temporaire pour
+// mesurer la durée réelle de l'overlay par déclencheur (aide à trancher la
+// question « le spinner ralentit-il la page » sans deviner). À retirer une
+// fois la mesure faite sur dev.jepatisse.com.
+//
 // Le départ est détecté sur `click` (souris, clavier) et, pour les pointeurs
 // tactiles, dès le relâchement du doigt : sur certains navigateurs mobiles,
 // l'écart entre le tapotement et l'événement `click` synthétique peut
@@ -51,6 +78,11 @@ export function NavigationSpinner() {
   // déclencheur pour le même geste (le `click` qui suit un tapotement) ne
   // relance le délai d'affichage depuis le début.
   const pending = useRef(false);
+  // Horodatage et URL de départ au moment de l'armement, uniquement pour
+  // l'instrumentation ci-dessous (durée réellement affichée par déclencheur).
+  const armedAt = useRef<number | null>(null);
+  const armedFromUrl = useRef<string | null>(null);
+  const shown = useRef(false);
 
   const clearTimers = () => {
     if (showTimer.current) clearTimeout(showTimer.current);
@@ -58,13 +90,24 @@ export function NavigationSpinner() {
     pending.current = false;
   };
 
+  const logTiming = (reason: string) => {
+    if (armedAt.current === null) return;
+    const elapsed = Math.round(performance.now() - armedAt.current);
+    console.debug(
+      `[spinner-timing] ${reason} — ${elapsed}ms depuis ${armedFromUrl.current}` +
+        (shown.current ? ' (overlay affiché)' : ' (jamais affiché, <120ms)'),
+    );
+  };
+
   // Arrivée sur la nouvelle page → on masque l'overlay. La dépendance est une
   // chaîne : `search` est un objet recréé à chaque rendu, donc inutilisable
   // tel quel comme dépendance.
   useEffect(() => {
+    const wasPending = pending.current;
     committedUrlRef.current = committedUrl;
     clearTimers();
     setVisible(false);
+    if (wasPending) logTiming('navigation-committed');
   }, [committedUrl]);
 
   useEffect(() => {
@@ -72,8 +115,18 @@ export function NavigationSpinner() {
       if (pending.current) return;
       clearTimers();
       pending.current = true;
-      showTimer.current = setTimeout(() => setVisible(true), 120);
+      armedAt.current = performance.now();
+      armedFromUrl.current = committedUrlRef.current;
+      shown.current = false;
+      showTimer.current = setTimeout(() => {
+        setVisible(true);
+        shown.current = true;
+      }, 120);
+      // 8 s : `/carnet` (force-dynamic, jamais de cache) est mesurée autour
+      // de 5 s sur une connexion ordinaire. Un filet plus court éteindrait le
+      // fouet avant l'arrivée de la page, c'est-à-dire pile là où il sert.
       safetyTimer.current = setTimeout(() => {
+        logTiming('safety-timeout');
         setVisible(false);
         pending.current = false;
       }, 8000);
@@ -101,6 +154,15 @@ export function NavigationSpinner() {
 
     const onClick = (e: MouseEvent) => {
       // On ignore les clics « augmentés » (nouvel onglet, sélection…).
+      // `defaultPrevented` est lu ICI, dans la phase de capture, et surtout
+      // PAS après la diffusion de l'événement : `<Link>` appelle lui-même
+      // `preventDefault()` sur tout lien interne pour faire sa navigation
+      // côté client (next/dist/client/app-dir/link.js). Relire le drapeau
+      // après coup le trouve donc toujours à `true`, sur absolument toutes
+      // les navigations du site — le spinner ne s'arme alors plus jamais.
+      // (Tentative revertée pour cette raison, cf. historique git.) En
+      // capture, il ne vaut `true` que si un gestionnaire extérieur a déjà
+      // annulé le clic avant nous.
       if (e.defaultPrevented || e.button !== 0) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (isInternalNavigation(e.target)) start();

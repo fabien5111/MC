@@ -78,6 +78,29 @@ img {
     border-color: #300a12; /* primary */
   }
 }
+/* Champs plus compacts sur mobile : gagner un peu de place sur les écrans
+   étroits, où le formulaire de création (titre, ingrédients, étapes…)
+   partage sa largeur avec un nombre de champs plus serré que sur desktop. */
+@media (max-width: 767px) {
+  .editorial-input {
+    padding: 6px 10px;
+  }
+}
+/* Champ relié à une <datalist> (suggestions d'ingrédient/ustensile — éditeur
+   de recette, relecture d'import, liste de courses…) : Chrome/Edge dessinent
+   une flèche identique à celle d'un <select>, qui laisse croire à tort à une
+   liste fermée alors qu'il s'agit d'un texte libre. Règle globale sur
+   `input[list]` plutôt que dupliquée par classe d'écran (`.editorial-input`,
+   `champ`, `FIELD`…), pour ne pas la refaire à chaque nouvel écran. On masque
+   l'indicateur natif ; les suggestions au clavier restent inchangées.
+   `display: none` (solution habituellement citée) reste sans effet sur les
+   versions de Chrome testées ici — seul `opacity: 0` supprime réellement le
+   rendu de la flèche ; `-webkit-list-button` est ciblé en plus par précaution
+   pour les moteurs qui exposeraient l'icône via cet autre pseudo-élément. */
+input[list]::-webkit-calendar-picker-indicator,
+input[list]::-webkit-list-button {
+  opacity: 0;
+}
 /* ---- Sommaire de navigation de l'éditeur de recette ----------------------
    Rail vertical fixé au bord gauche (components/recipe/RecipeToc.tsx). Valeurs
    reprises telles quelles de la maquette (nvelle_fonct/creer.html) : largeurs,
@@ -705,9 +728,14 @@ body {
   }
   /* Superpositions flottantes (overlay de chargement, bandeau
      d'impersonation, sommaire de l'éditeur) : elles se répéteraient sur
-     chaque page ou recouvriraient le contenu. */
+     chaque page ou recouvriraient le contenu. `.recipe-toc-fab` (bouton
+     flottant du tiroir mobile) est une superposition à part entière : sa
+     position fixe vient de sa propre règle CSS, pas de la classe utilitaire
+     `.fixed`, donc pas couverte par elle — sans cette ligne, le bouton
+     restait visible (et cliquable en apparence) sur la page imprimée. */
   .fixed,
-  .recipe-toc {
+  .recipe-toc,
+  .recipe-toc-fab {
     display: none !important;
   }
   /* Le rail se masque juste au-dessus, mais la marge qui lui réservait de la

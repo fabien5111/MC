@@ -13,6 +13,7 @@ import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getDifficulties, getTags } from '@/lib/taxonomy';
 import { getMoldTypes } from '@/lib/admin';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { RelectureEditor } from '@/components/RelectureEditor';
@@ -28,7 +29,7 @@ export default async function RelecturePage({ params }: Params) {
   const { id } = await params;
   const numId = Number(id);
 
-  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin, conversions, ingredientRefIds] = await Promise.all([
+  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin, conversions, ingredientRefIds, helpBlocks] = await Promise.all([
     Number.isFinite(numId) ? getImport(numId) : Promise.resolve(null),
     getUnits(),
     getIngredientRefNames(),
@@ -41,6 +42,7 @@ export default async function RelecturePage({ params }: Params) {
     isAdmin(user.id),
     getIngredientConversions(),
     getIngredientRefsList(),
+    getVisibleHelpBlocks('relecture', user.id),
   ]);
 
   return (
@@ -76,6 +78,7 @@ export default async function RelecturePage({ params }: Params) {
             isAdmin={admin}
             conversions={conversions}
             ingredientRefIds={ingredientRefIds}
+            helpBlocks={helpBlocks}
           />
         )}
       </main>

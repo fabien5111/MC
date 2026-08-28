@@ -1,9 +1,9 @@
 'use client';
 
-// « Remplacer un ingrédient par une recette » — sur la fiche d'une recette
-// planifiée : le praliné acheté devient le praliné qu'on fabrique, à partir
-// d'une autre recette de l'application dont les étapes viennent s'insérer
-// dans le déroulé du plan.
+// « Remplacer un ingrédient par une recette » — sur la fiche d'une fournée :
+// le praliné acheté devient le praliné qu'on fabrique, à partir d'une autre
+// recette de l'application dont les étapes viennent s'insérer dans le
+// déroulé de la fournée.
 //
 // Le parcours se fait en deux temps dans une seule fenêtre :
 //   1. « Quelle recette ? » — recherche par titre sur trois portées
@@ -11,12 +11,12 @@
 //   2. « Combien, et où ? » — quantité à produire (→ coefficient) puis
 //      position et jour de chacune des étapes à insérer.
 //
-// L'écriture est séquentielle (chaque `plan_step` doit exister avant ses
-// sous-étapes et ses ingrédients) et annulée en bloc au moindre échec : un
-// plan à moitié éclaté serait pire que pas d'éclatement du tout. Le contenu
-// inséré est une copie, comme le reste du plan — la sous-recette peut évoluer
-// ou disparaître ensuite sans rien changer ici (cf. CLAUDE.md « Recettes
-// planifiées »).
+// L'écriture est séquentielle (chaque `batch_step` doit exister avant ses
+// sous-étapes et ses ingrédients) et annulée en bloc au moindre échec : une
+// fournée à moitié éclatée serait pire que pas d'éclatement du tout. Le
+// contenu inséré est une copie, comme le reste de la fournée — la
+// sous-recette peut évoluer ou disparaître ensuite sans rien changer ici
+// (cf. CLAUDE.md « Fournées »).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -27,13 +27,13 @@ import { UNITS_LBL, dayLabel, effectiveTimes } from '@/lib/recipe-view';
 import {
   computeInsertOrderIndexes,
   fmtNum,
-  materializePlan,
-  planDayLabel,
+  materializeBatch,
+  batchDayLabel,
   suggestedExpansionDay,
-  PLAN_SOURCE_SELECT,
-  type PlanFull,
-  type PlanIngredientRow,
-  type PlanSourceRecipe,
+  RECIPE_SOURCE_SELECT,
+  type BatchFull,
+  type BatchIngredientRow,
+  type RecipeSource,
 } from '@/lib/recipe-plan';
 
 // Une recette proposée par la recherche. Volontairement sans vignette : les
@@ -80,18 +80,17 @@ const INPUT = 'border border-outline-variant rounded px-3 py-2 bg-white font-bod
 const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
 
 export function IngredientExpandDialog({
-  plan,
+  batch,
   row,
   onClose,
   onDone,
 }: {
-  plan: PlanFull;
+  batch: BatchFull;
   // Ligne d'ingrédient à remplacer (jamais déjà remplacée : le déclencheur
-  // disparaît dans ce cas, cf. PlanIngredientsEditor).
-  row: PlanIngredientRow;
+  // disparaît dans ce cas, cf. BatchIngredientsEditor).
+  row: BatchIngredientRow;
   onClose: () => void;
-  // Écriture aboutie — le parent enchaîne sur la proposition de suppression
-  // des sessions en cours, figées avant ce changement.
+  // Écriture aboutie — le parent resynchronise l'éditeur.
   onDone: () => void | Promise<void>;
 }) {
   const { mutate, busy } = useMutation();
@@ -177,46 +176,47 @@ export function IngredientExpandDialog({
   }
 
   // ── Étape 2 : quantité + positionnement ────────────────────────────────
-  const [source, setSource] = useState<PlanSourceRecipe | null>(null);
+  const [source, setSource] = useState<RecipeSource | null>(null);
   const [wantQty, setWantQty] = useState('');
   const [coefStr, setCoefStr] = useState('1');
   const [placements, setPlacements] = useState<Placement[]>([]);
 
-  const sortedPlanSteps = useMemo(() => [...plan.plan_steps].sort((a, b) => a.order_index - b.order_index), [plan.plan_steps]);
-  const planOrders = useMemo(() => sortedPlanSteps.map((s) => s.order_index), [sortedPlanSteps]);
-  // Étape du plan qui utilise l'ingrédient : sert de repère par défaut (les
-  // sous-étapes se posent juste avant) et de base au calcul du jour.
-  const consumingIndex = sortedPlanSteps.findIndex((s) => s.id === row.step_id);
-  const consuming = consumingIndex >= 0 ? sortedPlanSteps[consumingIndex] : null;
+  const sortedBatchSteps = useMemo(() => [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index), [batch.batch_steps]);
+  const batchOrders = useMemo(() => sortedBatchSteps.map((s) => s.order_index), [sortedBatchSteps]);
+  // Étape de la fournée qui utilise l'ingrédient : sert de repère par défaut
+  // (les sous-étapes se posent juste avant) et de base au calcul du jour.
+  const consumingIndex = sortedBatchSteps.findIndex((s) => s.id === row.batch_step_id);
+  const consuming = consumingIndex >= 0 ? sortedBatchSteps[consumingIndex] : null;
 
-  // Jours proposés : ceux déjà utilisés par le plan, plus deux d'anticipation
-  // — une sous-recette demande souvent d'attaquer plus tôt que la recette.
+  // Jours proposés : ceux déjà utilisés par la fournée, plus deux
+  // d'anticipation — une sous-recette demande souvent d'attaquer plus tôt que
+  // la recette.
   const dayOptions = useMemo(() => {
-    const used = plan.plan_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
+    const used = batch.batch_steps.flatMap((s) => [Math.max(0, s.day_offset || 0), Math.max(0, s.base_day_offset ?? 0)]);
     const max = Math.max(0, ...used) + 2;
     return Array.from({ length: max + 1 }, (_, i) => i);
-  }, [plan.plan_steps]);
+  }, [batch.batch_steps]);
 
-  const dayText = (offset: number) => (plan.planned_date ? planDayLabel(offset, plan.planned_date) : dayLabel(offset));
+  const dayText = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : dayLabel(offset));
 
   // Charge le contenu de la recette choisie (RLS via la session) et prépare
   // les valeurs par défaut : quantité visée = celle de l'ingrédient remplacé,
   // étapes posées juste avant celle qui le consomme, dans leur ordre.
   async function selectRecipe(item: PickerItem) {
     setLoading(true);
-    const { data, error } = await createClient().from('recipes').select(PLAN_SOURCE_SELECT).eq('id', item.id).maybeSingle();
+    const { data, error } = await createClient().from('recipes').select(RECIPE_SOURCE_SELECT).eq('id', item.id).maybeSingle();
     setLoading(false);
     if (error || !data) {
       dialog.alert('Recette illisible : ' + (error?.message || 'contenu introuvable'));
       return;
     }
-    const rec = data as unknown as PlanSourceRecipe;
+    const rec = data as unknown as RecipeSource;
     if (!(rec.recipe_steps || []).length) {
       dialog.alert(`« ${rec.title} » n'a aucune étape : il n'y a rien à insérer dans le déroulé.`);
       return;
     }
     const steps = [...rec.recipe_steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-    const defaultAnchor = consumingIndex > 0 ? sortedPlanSteps[consumingIndex - 1].order_index : null;
+    const defaultAnchor = consumingIndex > 0 ? sortedBatchSteps[consumingIndex - 1].order_index : null;
     setSource(rec);
     setWantQty(row.quantity != null ? fmtNum(row.quantity) : rec.yield_qty || '');
     setCoefStr('1');
@@ -246,15 +246,16 @@ export function IngredientExpandDialog({
   }, [source, byQuantity, wantQty, coefStr, sourceYield]);
 
   // Aperçu : exactement ce qui sera écrit (même fonction que la
-  // matérialisation d'un plan), pour que le résumé ne puisse pas diverger.
-  const mat = useMemo(() => (source && factor > 0 ? materializePlan(source, { factor }) : null), [source, factor]);
+  // matérialisation d'une fournée), pour que le résumé ne puisse pas
+  // diverger.
+  const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor }) : null), [source, factor]);
 
-  // Un ustensile déjà présent dans le plan n'est pas dupliqué.
+  // Un ustensile déjà présent dans la fournée n'est pas dupliqué.
   const utensilsToAdd = useMemo(() => {
     if (!mat) return [];
-    const known = new Set(plan.plan_utensils.map((u) => u.name.toLowerCase().trim()));
+    const known = new Set(batch.batch_utensils.map((u) => u.name.toLowerCase().trim()));
     return mat.utensils.filter((u) => u.name && !known.has(u.name.toLowerCase().trim()));
-  }, [mat, plan.plan_utensils]);
+  }, [mat, batch.batch_utensils]);
 
   const addedTime = mat ? mat.steps.reduce((n, s) => n + (s.prep_time || 0) + (s.wait_time || 0) + (s.cook_time || 0), 0) : 0;
   const addedIngredients = mat ? mat.steps.reduce((n, s) => n + s.ingredients.length, 0) : 0;
@@ -276,7 +277,7 @@ export function IngredientExpandDialog({
       dialog.alert(byQuantity ? 'Indiquez une quantité à produire valide.' : 'Indiquez un coefficient valide.');
       return;
     }
-    const orders = computeInsertOrderIndexes(planOrders, placements.map((p) => p.anchor));
+    const orders = computeInsertOrderIndexes(batchOrders, placements.map((p) => p.anchor));
     const supabase = createClient();
     const createdSteps: number[] = [];
     const createdUtensils: number[] = [];
@@ -285,16 +286,17 @@ export function IngredientExpandDialog({
       async () => {
         try {
           // Toutes les étapes en une seule requête : contrairement à la
-          // matérialisation d'un plan entier (PlanWidget), elles ne dépendent
-          // pas les unes des autres — seules leurs sous-étapes et leurs
-          // ingrédients ont besoin des `id` générés. Une insertion par étape
-          // coûtait trois allers-retours réseau par étape ; le tout tient
-          // désormais en cinq requêtes, quel que soit le nombre d'étapes.
+          // matérialisation d'une fournée entière (BatchWidget), elles ne
+          // dépendent pas les unes des autres — seules leurs sous-étapes et
+          // leurs ingrédients ont besoin des `id` générés. Une insertion par
+          // étape coûtait trois allers-retours réseau par étape ; le tout
+          // tient désormais en cinq requêtes, quel que soit le nombre
+          // d'étapes.
           const { data: stepRows, error: stepErr } = await supabase
-            .from('plan_steps')
+            .from('batch_steps')
             .insert(
               mat.steps.map((st, i) => ({
-                planning_id: plan.id,
+                batch_id: batch.id,
                 order_index: orders[i],
                 day_offset: placements[i].day,
                 // Le « jour d'origine » d'une étape insérée est le jour
@@ -331,17 +333,17 @@ export function IngredientExpandDialog({
           };
 
           const substeps = mat.steps.flatMap((st) =>
-            st.substeps.map((texte, k) => ({ step_id: stepIdOf(st.source_step_id), order_index: k, texte })),
+            st.substeps.map((texte, k) => ({ batch_step_id: stepIdOf(st.source_step_id), order_index: k, texte })),
           );
           if (substeps.length) {
-            const { error } = await supabase.from('plan_substeps').insert(substeps);
+            const { error } = await supabase.from('batch_substeps').insert(substeps);
             if (error) throw error;
           }
 
           const ingredients = mat.steps.flatMap((st) =>
             st.ingredients.map((it) => ({
-              planning_id: plan.id,
-              step_id: stepIdOf(st.source_step_id),
+              batch_id: batch.id,
+              batch_step_id: stepIdOf(st.source_step_id),
               order_index: it.order_index,
               ref_id: it.ref_id,
               name: it.name,
@@ -353,23 +355,23 @@ export function IngredientExpandDialog({
               url: it.url,
               allergen: it.allergen,
               source_recipe_id: source.id,
-              // Ligne absente de la recette du plan : vert à l'affichage, et
-              // surtout jamais reprise par un réajustement global du facteur
-              // (cf. lib/recipe-plan.ts).
+              // Ligne absente de la recette de la fournée : vert à
+              // l'affichage, et surtout jamais reprise par un réajustement
+              // global du facteur (cf. lib/recipe-plan.ts).
               added: true,
             })),
           );
           if (ingredients.length) {
-            const { error } = await supabase.from('plan_ingredients').insert(ingredients);
+            const { error } = await supabase.from('batch_ingredients').insert(ingredients);
             if (error) throw error;
           }
 
           if (utensilsToAdd.length) {
             const { data, error } = await supabase
-              .from('plan_utensils')
+              .from('batch_utensils')
               .insert(
                 utensilsToAdd.map((u) => ({
-                  planning_id: plan.id,
+                  batch_id: batch.id,
                   order_index: u.order_index,
                   name: u.name,
                   comment: u.comment,
@@ -385,7 +387,7 @@ export function IngredientExpandDialog({
           // En dernier : tant que la ligne n'est pas marquée, l'éclatement
           // n'a pas eu lieu du point de vue de la fiche — un échec en amont
           // se rattrape donc par la seule suppression de ce qui a été inséré.
-          const { error } = await supabase.from('plan_ingredients').update({ expanded_into_recipe_id: source.id }).eq('id', row.id);
+          const { error } = await supabase.from('batch_ingredients').update({ expanded_into_recipe_id: source.id }).eq('id', row.id);
           if (error) throw error;
           return { error: null };
         } catch (e) {
@@ -595,7 +597,7 @@ export function IngredientExpandDialog({
                           style={{ minWidth: '16rem' }}
                         >
                           <option value="">Tout au début du déroulé</option>
-                          {sortedPlanSteps.map((s, k) => (
+                          {sortedBatchSteps.map((s, k) => (
                             <option key={s.id} value={s.order_index}>
                               Après {k + 1}. {s.title || `Étape ${k + 1}`}
                             </option>
@@ -633,7 +635,7 @@ export function IngredientExpandDialog({
                     {utensilsToAdd.length > 1 ? 's' : ''}
                   </>
                 )}{' '}
-                s’ajouteront au plan{addedTime > 0 ? `, soit ${formatTime(addedTime)} de plus` : ''}. « {row.name} » sortira de la liste
+                s’ajouteront à la fournée{addedTime > 0 ? `, soit ${formatTime(addedTime)} de plus` : ''}. « {row.name} » sortira de la liste
                 de courses et de la mise en place.
               </p>
             )}
@@ -668,11 +670,11 @@ export function IngredientExpandDialog({
 async function rollback(supabase: ReturnType<typeof createClient>, stepIds: number[], utensilIds: number[]) {
   try {
     if (stepIds.length) {
-      await supabase.from('plan_ingredients').delete().in('step_id', stepIds);
-      await supabase.from('plan_substeps').delete().in('step_id', stepIds);
-      await supabase.from('plan_steps').delete().in('id', stepIds);
+      await supabase.from('batch_ingredients').delete().in('batch_step_id', stepIds);
+      await supabase.from('batch_substeps').delete().in('batch_step_id', stepIds);
+      await supabase.from('batch_steps').delete().in('id', stepIds);
     }
-    if (utensilIds.length) await supabase.from('plan_utensils').delete().in('id', utensilIds);
+    if (utensilIds.length) await supabase.from('batch_utensils').delete().in('id', utensilIds);
   } catch {
     // Le message d'erreur d'origine reste le plus utile : un échec du
     // nettoyage ne doit pas le masquer.

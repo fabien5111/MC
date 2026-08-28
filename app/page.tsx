@@ -12,19 +12,22 @@ import { RailSection, ROW_CARD } from '@/components/home/RailSection';
 import { SessionsCarousel } from '@/components/home/SessionsCarousel';
 import { GuestIntro } from '@/components/home/GuestIntro';
 import { GuestCta } from '@/components/home/GuestCta';
-import { getRecipes, withAllergenPictos } from '@/lib/recipes';
+import { ArticleCard } from '@/components/blog/ArticleCard';
+import { getRecipes, withAllergenNames, getAllergensWithPicto } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
 import { getActiveFeaturedRecipe } from '@/lib/featured';
-import { getActiveExecutions } from '@/lib/executions';
+import { getActiveBatches } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
+import { getPublishedArticles, getArticleCategories } from '@/lib/blog';
 import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getCurrentUser } from '@/lib/auth';
-import { getSiteSettings } from '@/lib/site';
+import { getPublicSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
+import { StarRating } from '@/components/StarRating';
 
 const BANNER_FALLBACK =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWeNG5dnk3GpfRdI3BMu2wvpe1eUt5K5j4DZt53I7Jx0zMq45AVhzce1OfSlpt6j83PTaXbYLAjsZFNWJ4mU_1itgi3GleQq4xpOS-EKQhutvgXT9r42BDT5K4vLrYdOOLSCiiIRyV51i1DZaYyUsOT8m223Rm6Vmf_ELF7Sr1Xi3lvPhXPZ3Pad5MeF3WwazJ9YK4k7RwDKt_CTEUaAvQWvzENmSue9skiUg3GxO-nPbBSeFD-AA--vZMdoJ07NYFqWe5S04cERU';
@@ -50,21 +53,39 @@ const FALLBACK_CATEGORIES = [
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const [recipes, activeFeatured, favIds, banners, homeCategories, ads, activeSessions, followedRecipes] =
-    await Promise.all([
-      getRecipes({ limit: 12 }),
-      getActiveFeaturedRecipe(),
-      getFavoriteIds(),
-      getSiteSettings(['banner_home_web', 'banner_home_tablette', 'banner_home_mobile']),
-      getHomeCategories(),
-      getActiveAds(['home_top', 'home_mid']),
-      // Réservées au membre — inutile de les demander à un visiteur.
-      user ? getActiveExecutions(user.id) : Promise.resolve([]),
-      user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
-    ]);
+  const [
+    recipes,
+    activeFeatured,
+    favIds,
+    banners,
+    homeCategories,
+    ads,
+    activeSessions,
+    followedRecipes,
+    allergenRefs,
+    articlesPage,
+    articleCategories,
+  ] = await Promise.all([
+    getRecipes({ limit: 12 }),
+    getActiveFeaturedRecipe(),
+    getFavoriteIds(),
+    getPublicSiteSettings(),
+    getHomeCategories(),
+    getActiveAds(['home_top', 'home_mid']),
+    // Réservées au membre — inutile de les demander à un visiteur.
+    user ? getActiveBatches(user.id) : Promise.resolve([]),
+    user ? getFollowedRecipes(user.id, 12) : Promise.resolve([]),
+    // Table de référence chargée une seule fois pour toute la page — les
+    // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
+    // withAllergenNames), le picto est résolu au rendu (RecipeCardClient).
+    getAllergensWithPicto(),
+    getPublishedArticles(1),
+    getArticleCategories(),
+  ]);
   // Repli sur la recette la plus récente si aucune plage de mise en avant ne
   // couvre aujourd'hui (ou si la recette programmée n'est plus publique) —
   // la section ne disparaît jamais de l'accueil.
+  const defaultPhoto = banners.recipe_default_photo || null;
   const featured = activeFeatured ?? recipes[0] ?? null;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
@@ -76,7 +97,9 @@ export default async function HomePage() {
     homeCategories.length
       ? homeCategories.map((c) => ({ icon: null, picto: c.category_picto, label: c.name, slug: c.slug }))
       : FALLBACK_CATEGORIES.map((c) => ({ icon: c.icon, picto: null, label: c.label, slug: null }));
-  const latest = await withAllergenPictos(recipes);
+  const latest = withAllergenNames(recipes);
+  const latestArticles = articlesPage.items;
+  const articleCategoryNames = new Map(articleCategories.map((c) => [c.slug, c.name]));
 
   return (
     <>
@@ -119,10 +142,12 @@ export default async function HomePage() {
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
-                    {featured.hero_image_url ? (
+                    {featured.hero_card_url || defaultPhoto ? (
+                      // `hero_card_url` (~480 px) — cf. lib/recipes.ts CARD_SELECT,
+                      // qui ne sélectionne plus la pleine définition.
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                       <img
-                        src={featured.hero_image_url}
+                        src={featured.hero_card_url || defaultPhoto!}
                         alt={featured.title}
                         className="w-full h-full object-cover"
                       />
@@ -155,7 +180,7 @@ export default async function HomePage() {
                   {user && (
                     <Link
                       href={`/recette/${featured.id}?planifier=1`}
-                      title="Planifier cette recette"
+                      title="Lancer une fournée"
                       prefetch={false}
                       className={`absolute top-6 ${featuredPlanPos} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform`}
                     >
@@ -202,7 +227,37 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
-                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-10 -mt-4" iconClassName="w-7 h-7" />
+                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-8 -mt-4" iconClassName="w-7 h-7" />
+                  <div className="flex flex-wrap items-center gap-8">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">person</span>
+                      <span className="font-label-md text-label-md text-on-surface">
+                        {featured.profiles && (
+                          // `relative z-10` : au-dessus du lien plein cadre de la
+                          // section (cf. plus bas), sinon le clic sur le nom
+                          // renverrait vers la recette au lieu du profil.
+                          <Link
+                            href={`/u/${featured.profiles.username || featured.author_id}`}
+                            prefetch={false}
+                            className="relative z-10 hover:text-primary hover:underline"
+                          >
+                            {featured.profiles.full_name || ''}
+                          </Link>
+                        )}
+                        {featured.profiles?.author_ratings?.[0]?.rating_avg != null && (
+                          <span className="ml-1.5">
+                            (<StarRating value={featured.profiles.author_ratings[0].rating_avg} size={16} compact />)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <StarRating
+                      value={featured.rating_avg}
+                      count={featured.rating_count}
+                      size={18}
+                      className="font-label-md text-label-md"
+                    />
+                  </div>
                 </div>
               </div>
               <Link
@@ -278,7 +333,7 @@ export default async function HomePage() {
           <RailSection title="Chez les pâtissiers que vous suivez" viewAllHref="/carnet?scope=sub" viewAllLabel="Tout voir">
             {followedRecipes.map((r) => (
               <div key={r.id} data-row-card className={ROW_CARD}>
-                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} />
+                <RecipeCardClient recipe={r} isFav={favIds.has(r.id)} defaultPhoto={defaultPhoto} allergenRefs={allergenRefs} />
               </div>
             ))}
           </RailSection>
@@ -294,7 +349,20 @@ export default async function HomePage() {
                   isFav={favIds.has(r.id)}
                   isOwner={!!user && r.author_id === user.id}
                   showPlan={!!user}
+                  defaultPhoto={defaultPhoto}
+                  allergenRefs={allergenRefs}
                 />
+              </div>
+            ))}
+          </RailSection>
+        )}
+
+        {/* Derniers articles du blog */}
+        {latestArticles.length > 0 && (
+          <RailSection title="Derniers articles du blog" viewAllHref="/blog" viewAllLabel="Tout voir">
+            {latestArticles.map((a) => (
+              <div key={a.id} data-row-card className={ROW_CARD}>
+                <ArticleCard article={a} categoryName={a.category ? articleCategoryNames.get(a.category) : undefined} />
               </div>
             ))}
           </RailSection>

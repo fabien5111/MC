@@ -62,7 +62,8 @@ export function navKeyForPath(pathname: string): NavKey | undefined {
   if (
     pathname.startsWith('/en-cuisine') ||
     pathname.startsWith('/courses') ||
-    pathname.startsWith('/execution')
+    pathname.startsWith('/execution') ||
+    pathname.startsWith('/fournee')
   )
     return 'cuisine';
   return undefined;

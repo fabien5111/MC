@@ -297,12 +297,21 @@ export const getRelatedArticles = (slug: string, category: string | null): Promi
 // Affichage
 // ---------------------------------------------------------------------------
 
+// `timeZone` explicite obligatoire : cette fonction est appelée depuis
+// BlogList (Client Component) et son rendu s'exécute donc une première fois
+// côté serveur (Vercel, en UTC) puis se ré-hydrate côté navigateur (fuseau du
+// visiteur). Sans fuseau fixé, `toLocaleDateString` prend celui du runtime
+// qui l'exécute — un article publié entre 22 h et minuit heure française
+// change alors de jour calendaire selon qui calcule (UTC vs Europe/Paris),
+// React détecte le texte différent et abandonne l'hydratation (erreur #418),
+// cassant au passage toute interactivité de la page (dont NavigationSpinner).
 export function formatArticleDate(iso: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
