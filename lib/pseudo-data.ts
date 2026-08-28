@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { withImpersonationSchema, type ImpersonationClient } from '@/lib/impersonation-types';
 import { callClaude, parseStrictJson, PSEUDO_MODERATION_MODEL } from '@/lib/ai/claude';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import {
   buildPseudoModerationContent,
   parsePseudoModeration,
@@ -78,9 +79,14 @@ export async function suggestionPseudoLibre(base: string): Promise<string> {
 // on autorise. Bloquer une inscription sur une panne de l'API Anthropic
 // reviendrait à fermer le site ; le filet local de `lib/pseudo.ts` et la
 // modération humaine couvrent le résidu.
-export async function pseudoModereParIA(pseudo: string): Promise<boolean> {
+// `userId` : connu pour une modification (`/choix-pseudo`, `/reglages`),
+// absent pour une inscription par e-mail — au moment de ce contrôle, le
+// compte n'existe pas encore, donc pas de session. Le journal accepte un
+// `user_id` nul (charge de GESTION, jamais imputée à un membre).
+export async function pseudoModereParIA(pseudo: string, userId?: string): Promise<boolean> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return true;
+  const { sink, appels } = collecteurAppelsIa();
   try {
     const { text } = await callClaude(
       apiKey,
@@ -90,6 +96,7 @@ export async function pseudoModereParIA(pseudo: string): Promise<boolean> {
       PSEUDO_MODERATION_MODEL,
       'disabled',
       PSEUDO_MODERATION_SYSTEM_PROMPT,
+      sink,
     );
     const verdict = parsePseudoModeration(parseStrictJson(text));
     if (!verdict.autorise) {
@@ -104,6 +111,8 @@ export async function pseudoModereParIA(pseudo: string): Promise<boolean> {
   } catch (e) {
     console.error('[pseudo] contrôle IA indisponible, pseudo autorisé par défaut :', (e as Error).message);
     return true;
+  } finally {
+    void enregistrerAppelsIa('moderation_pseudo', userId ?? null, appels);
   }
 }
 
@@ -129,7 +138,7 @@ export async function verifierPseudoComplet(
   if (!(await pseudoDisponible(validation.pseudo, validation.slug, exclureId))) {
     return { ok: false, message: `Le pseudo « ${validation.pseudo} » est déjà pris.` };
   }
-  if ((options?.avecIA ?? true) && !(await pseudoModereParIA(validation.pseudo))) {
+  if ((options?.avecIA ?? true) && !(await pseudoModereParIA(validation.pseudo, exclureId))) {
     return { ok: false, message: PSEUDO_REFUS };
   }
   return validation;

@@ -6,6 +6,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildScanContenu, normaliseScanResultat } from '@/lib/ai/idea-duplicates';
 import { getIdeaCandidatesForScan, getIdeaSummaries } from '@/lib/ideas-data';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 60;
 
@@ -25,9 +26,19 @@ export async function POST() {
   const candidates = await getIdeaCandidatesForScan();
   if (candidates.length < 2) return NextResponse.json({ paires: [] });
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
     // 3000 tokens : jusqu'à 20 paires avec leur raison tient largement dedans.
-    const raw = await callClaude(apiKey, buildScanContenu(candidates), 3000, 50_000);
+    const raw = await callClaude(
+      apiKey,
+      buildScanContenu(candidates),
+      3000,
+      50_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
+    );
     const paires = normaliseScanResultat(parseStrictJson(raw.text), new Set(candidates.map((c) => c.id)));
     if (!paires.length) return NextResponse.json({ paires: [] });
 
@@ -53,5 +64,7 @@ export async function POST() {
       { erreur: `La détection a échoué : ${(e as Error).message || 'réessayez dans un instant.'}` },
       { status: 502 },
     );
+  } finally {
+    void enregistrerAppelsIa('idee_doublon_admin', user.id, appels);
   }
 }

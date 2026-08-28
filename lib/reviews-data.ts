@@ -19,6 +19,7 @@ import {
   COMMENT_MODERATION_PROMPT_VERSION,
   COMMENT_MODERATION_SYSTEM_PROMPT,
 } from '@/lib/ai/comment-moderation';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { validateReview } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
 
@@ -124,6 +125,7 @@ export async function submitOrUpdateReview(
   let aiReason: string | null = null;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey && texte) {
+    const { sink, appels } = collecteurAppelsIa();
     try {
       const { text } = await callClaude(
         apiKey,
@@ -133,6 +135,7 @@ export async function submitOrUpdateReview(
         COMMENT_MODERATION_MODEL,
         'disabled',
         COMMENT_MODERATION_SYSTEM_PROMPT,
+        sink,
       );
       const verdict = parseCommentModeration(parseStrictJson(text));
       aiScore = verdict.score;
@@ -140,6 +143,10 @@ export async function submitOrUpdateReview(
       console.log(`[avis] score IA (${COMMENT_MODERATION_PROMPT_VERSION}) fournée #${batch.id} : ${aiScore} — ${aiReason}`);
     } catch (e) {
       console.error('[avis] contrôle IA indisponible :', (e as Error).message);
+    } finally {
+      // Charge de GESTION : le membre qui dépose l'avis n'en supporte pas le
+      // coût, c'est le site qui s'impose ce contrôle.
+      void enregistrerAppelsIa('moderation_avis', userId, appels, { table: 'batches', id: batch.id });
     }
   }
 

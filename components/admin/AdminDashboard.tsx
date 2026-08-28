@@ -8,7 +8,8 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { AdminRecipeRow, AiCosts, AiCostCategory, AiCostSummary } from '@/lib/admin';
+import type { AdminRecipeRow, AiCosts, AiCostCategory, AiCostSummary, AiUsageOverview } from '@/lib/admin';
+import { formatUsd } from '@/lib/ai/cost';
 
 // Montants déjà convertis côté serveur (le taux €/$ est une variable
 // d'environnement serveur) : ici, formatage seul.
@@ -35,10 +36,12 @@ export function AdminDashboard({
   stats,
   pending,
   aiCosts,
+  iaOverview,
 }: {
   stats: { totalRecipes: number; pendingRecipes: number; pendingComments: number };
   pending: AdminRecipeRow[];
   aiCosts: AiCosts;
+  iaOverview: AiUsageOverview;
 }) {
   const { mutate } = useMutation();
   const sb = () => createClient();
@@ -67,6 +70,57 @@ export function AdminDashboard({
             <p className="font-headline-lg text-primary">{c.value}</p>
           </Link>
         ))}
+      </section>
+
+      {/* Coût IA — vue d'ensemble (journal `ai_usage`) : membres (usage du
+          site) vs gestion (modération que le site s'impose à lui-même),
+          mois courant et cumul depuis l'origine. Complète le détail par
+          poste ci-dessous, qui reste sur les tables historiques. */}
+      <section className="mb-12">
+        <h2 className="font-headline-md text-primary flex items-center gap-3 mb-6">
+          <span className="material-symbols-outlined">query_stats</span> Coût IA — membres / gestion
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+          {(
+            [
+              { label: 'Coût membres', mois: iaOverview.membreMoisCourant, total: iaOverview.membreTotal },
+              { label: 'Coût de gestion (modération)', mois: iaOverview.gestionMoisCourant, total: iaOverview.gestionTotal },
+              { label: 'Coût global', mois: iaOverview.globalMoisCourant, total: iaOverview.globalTotal },
+            ] as const
+          ).map((c) => (
+            <div key={c.label} className="bg-surface-container-low border border-tertiary/10 p-6 rounded-xl">
+              <h3 className="font-label-md text-on-surface-variant uppercase tracking-widest text-xs mb-2">{c.label}</h3>
+              <p className="font-headline-lg text-primary">{formatUsd(c.mois)}</p>
+              <p className="text-xs text-on-surface-variant mt-1">ce mois-ci · {formatUsd(c.total)} au total</p>
+            </div>
+          ))}
+        </div>
+        {iaOverview.parMois.length > 1 && (
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto mt-6">
+            <table className="w-full text-left border-collapse min-w-[560px]">
+              <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
+                <tr>
+                  <th className="px-8 py-3 font-semibold uppercase tracking-wider text-xs">Mois</th>
+                  <th className="px-8 py-3 font-semibold uppercase tracking-wider text-xs">Membres</th>
+                  <th className="px-8 py-3 font-semibold uppercase tracking-wider text-xs">Gestion</th>
+                  <th className="px-8 py-3 font-semibold uppercase tracking-wider text-xs">Global</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
+                {iaOverview.parMois.map((m) => (
+                  <tr key={m.mois} className="hover:bg-surface-container-low transition-colors">
+                    <td className="px-8 py-3">
+                      {new Date(m.mois).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                    </td>
+                    <td className="px-8 py-3">{formatUsd(m.membre)}</td>
+                    <td className="px-8 py-3">{formatUsd(m.gestion)}</td>
+                    <td className="px-8 py-3 font-medium">{formatUsd(m.global)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* Coût IA — mesuré depuis la consommation réelle renvoyée par l'API,

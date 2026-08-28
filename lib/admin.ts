@@ -437,11 +437,16 @@ export type Member = {
   // Droit d'impersonation hérité par les sessions « connecté en tant que »
   // ouvertes par ce membre — n'a de sens que pour un admin.
   impersonationAccess: ImpersonationMode;
+  // Consommation IA (imputation `membre` uniquement — jamais la modération).
+  // `null` pour un membre qui n'a encore fait aucun appel : distinct de 0,
+  // qui signifierait « a consommé, pour un coût nul ».
+  coutIaMois: number | null;
+  coutIaTotal: number | null;
 };
 
 export async function getAllowlistMembers(): Promise<Member[]> {
   const supabase = withImpersonationSchema(await createClient());
-  const [{ data: profiles }, { data: allowlist }, { data: recipes }] = await Promise.all([
+  const [{ data: profiles }, { data: allowlist }, { data: recipes }, coutsIa] = await Promise.all([
     supabase
       .from('profiles')
       .select(
@@ -450,6 +455,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
     supabase.from('recipes').select('author_id'),
+    getAiUsageParMembre(),
   ]);
 
   const recipeMap: Record<string, number> = {};
@@ -484,6 +490,8 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       fullName: p.full_name,
       recipeCount: recipeMap[p.id] || 0,
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
+      coutIaMois: coutsIa.get(p.id)?.coutMois ?? null,
+      coutIaTotal: coutsIa.get(p.id)?.coutTotal ?? null,
     };
   });
 
@@ -508,6 +516,9 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       recipeCount: 0,
       // Pas encore de profil : la valeur par défaut s'appliquera à l'inscription.
       impersonationAccess: 'read_only',
+      // Pas encore de compte : aucun appel IA possible.
+      coutIaMois: null,
+      coutIaTotal: null,
     }));
 
   return [...registered, ...pending];
@@ -690,6 +701,192 @@ export async function getAiCosts(): Promise<AiCosts> {
     ensemble: fusion([importCat, verifCat, ajustCat]),
     tauxEur: TAUX_EUR_AFFICHE,
   };
+}
+
+// ── Coût IA — journal unifié (`ai_usage`) ─────────────────────────────
+// Remplace progressivement `getAiCosts` ci-dessus : une ligne par appel
+// (succès ET échec), classée par `imputation` (`membre` / `gestion`)
+// plutôt que par table d'origine — c'est ce qui permet de répondre
+// séparément à « combien coûte tel membre » et « combien coûte la
+// modération du site », plutôt que trois catégories techniques.
+//
+// `ai_usage_mensuel` / `ai_usage_par_membre` ne sont pas encore dans
+// lib/database.types.ts tant que la migration n'a pas été appliquée puis
+// régénérée — même motif que `recipe_analysis` ci-dessus.
+
+export type CoutMensuel = {
+  /** Premier jour du mois, format ISO (AAAA-MM-01). */
+  mois: string;
+  membre: number;
+  gestion: number;
+  global: number;
+};
+
+export type AiUsageOverview = {
+  /** Un point par mois où au moins un appel a eu lieu, le plus récent en tête. */
+  parMois: CoutMensuel[];
+  membreMoisCourant: number;
+  membreTotal: number;
+  gestionMoisCourant: number;
+  gestionTotal: number;
+  globalMoisCourant: number;
+  globalTotal: number;
+};
+
+type LigneMensuelle = { mois: string; imputation: 'membre' | 'gestion'; cout_usd: number | string };
+
+// Vue mensuelle complète (pas de borne de date : la vue elle-même groupe
+// déjà par mois, la reprendre entière donne à la fois l'historique
+// mois par mois ET, en sommant ses lignes, le total depuis l'origine —
+// sans exécuter deux requêtes différentes pour les deux besoins.
+export async function getAiUsageOverview(): Promise<AiUsageOverview> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any).from('ai_usage_mensuel').select('mois, imputation, cout_usd');
+  if (error) {
+    console.error('getAiUsageOverview:', error.message);
+    return {
+      parMois: [],
+      membreMoisCourant: 0,
+      membreTotal: 0,
+      gestionMoisCourant: 0,
+      gestionTotal: 0,
+      globalMoisCourant: 0,
+      globalTotal: 0,
+    };
+  }
+
+  const rows = (data as unknown as LigneMensuelle[]) ?? [];
+  const parMoisMap = new Map<string, { membre: number; gestion: number }>();
+  for (const r of rows) {
+    const cur = parMoisMap.get(r.mois) ?? { membre: 0, gestion: 0 };
+    cur[r.imputation] += Number(r.cout_usd) || 0;
+    parMoisMap.set(r.mois, cur);
+  }
+  const parMois: CoutMensuel[] = [...parMoisMap.entries()]
+    .map(([mois, v]) => ({ mois, membre: v.membre, gestion: v.gestion, global: v.membre + v.gestion }))
+    .sort((a, b) => (a.mois < b.mois ? 1 : -1));
+
+  // « Mois courant » : premier jour du mois en cours, même convention que
+  // `ai_usage_current_month` / `date_trunc('month', now())` côté base.
+  const debutMoisCourant = new Date();
+  debutMoisCourant.setUTCDate(1);
+  debutMoisCourant.setUTCHours(0, 0, 0, 0);
+  const isoMoisCourant = debutMoisCourant.toISOString().slice(0, 10);
+
+  const arrondi = (n: number) => Math.round(n * 1e6) / 1e6;
+  const membreTotal = arrondi(rows.filter((r) => r.imputation === 'membre').reduce((s, r) => s + (Number(r.cout_usd) || 0), 0));
+  const gestionTotal = arrondi(rows.filter((r) => r.imputation === 'gestion').reduce((s, r) => s + (Number(r.cout_usd) || 0), 0));
+  const courant = parMois.find((m) => m.mois === isoMoisCourant);
+
+  return {
+    parMois,
+    membreMoisCourant: courant?.membre ?? 0,
+    membreTotal,
+    gestionMoisCourant: courant?.gestion ?? 0,
+    gestionTotal,
+    globalMoisCourant: (courant?.membre ?? 0) + (courant?.gestion ?? 0),
+    globalTotal: arrondi(membreTotal + gestionTotal),
+  };
+}
+
+export type CoutMembreIa = {
+  coutMois: number;
+  coutTotal: number;
+  tokensMois: number;
+  appelsMois: number;
+  appelsCoutInconnu: number;
+  dernierAppel: string | null;
+};
+
+type LigneParMembre = {
+  user_id: string;
+  cout_mois: number | string | null;
+  cout_total: number | string | null;
+  tokens_mois: number | null;
+  appels_mois: number | null;
+  appels_cout_inconnu: number | null;
+  dernier_appel: string | null;
+};
+
+// Consommation IA par membre (mois courant + cumul), imputation `membre`
+// UNIQUEMENT — la modération n'entre jamais dans le coût affiché d'un
+// membre (`ai_usage_par_membre` filtre déjà côté vue). Servie à part de
+// `getAllowlistMembers` : la fiche liste tous les membres (y compris ceux
+// sans le moindre appel IA), tandis que cette table n'a une ligne que pour
+// ceux qui ont réellement consommé — la fusion se fait par `user_id`.
+export async function getAiUsageParMembre(): Promise<Map<string, CoutMembreIa>> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage_par_membre')
+    .select('user_id, cout_mois, cout_total, tokens_mois, appels_mois, appels_cout_inconnu, dernier_appel');
+  if (error) {
+    console.error('getAiUsageParMembre:', error.message);
+    return new Map();
+  }
+  const rows = (data as unknown as LigneParMembre[]) ?? [];
+  return new Map(
+    rows.map((r) => [
+      r.user_id,
+      {
+        coutMois: Number(r.cout_mois) || 0,
+        coutTotal: Number(r.cout_total) || 0,
+        tokensMois: r.tokens_mois ?? 0,
+        appelsMois: r.appels_mois ?? 0,
+        appelsCoutInconnu: r.appels_cout_inconnu ?? 0,
+        dernierAppel: r.dernier_appel,
+      },
+    ]),
+  );
+}
+
+export type AppelIaDetail = {
+  created_at: string;
+  feature: string;
+  feature_label: string;
+  model: string;
+  tokens: number;
+  cout_usd: number | null;
+  status: string;
+};
+
+// Détail des 20 derniers appels d'un membre (panneau fiche membre) : lecture
+// directe du journal, filtrée par utilisateur — pas besoin de passer par la
+// vue mensuelle qui agrège déjà.
+export async function getDernierAppelsIa(userId: string, limite = 20): Promise<AppelIaDetail[]> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage')
+    .select(
+      'created_at, feature, model, status, input_tokens, cache_creation_tokens, cache_read_tokens, output_tokens, cost_usd, ai_features(label)',
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) {
+    console.error('getDernierAppelsIa:', error.message);
+    return [];
+  }
+  type Row = {
+    created_at: string;
+    feature: string;
+    model: string;
+    status: string;
+    input_tokens: number;
+    cache_creation_tokens: number;
+    cache_read_tokens: number;
+    output_tokens: number;
+    cost_usd: number | string | null;
+    ai_features: { label: string } | { label: string }[] | null;
+  };
+  return ((data as unknown as Row[]) ?? []).map((r) => ({
+    created_at: r.created_at,
+    feature: r.feature,
+    feature_label: Array.isArray(r.ai_features) ? (r.ai_features[0]?.label ?? r.feature) : (r.ai_features?.label ?? r.feature),
+    model: r.model,
+    tokens: r.input_tokens + r.cache_creation_tokens + r.cache_read_tokens + r.output_tokens,
+    cout_usd: r.cost_usd == null ? null : Number(r.cost_usd),
+    status: r.status,
+  }));
 }
 
 // ── Ingrédients / ustensiles non rattachés à la table de référence ───────

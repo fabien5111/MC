@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildComponentContenu, normaliseComponentRecipe } from '@/lib/ai/project-component';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 60;
 
@@ -41,8 +42,18 @@ export async function POST(req: Request) {
     parts: Number.isFinite(Number(body?.servings)) && Number(body?.servings) > 0 ? Math.round(Number(body.servings)) : null,
   };
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
-    const raw = await callClaude(apiKey, buildComponentContenu(name, role, contexte), 2000, 50_000);
+    const raw = await callClaude(
+      apiKey,
+      buildComponentContenu(name, role, contexte),
+      2000,
+      50_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
+    );
     const recette = normaliseComponentRecipe(parseStrictJson(raw.text));
     if (!recette.steps.length) {
       return NextResponse.json({ erreur: 'La proposition est revenue vide, réessayez.' }, { status: 502 });
@@ -51,5 +62,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error('projet/composant:', (e as Error).message);
     return NextResponse.json({ erreur: 'La proposition a échoué, réessayez.' }, { status: 502 });
+  } finally {
+    void enregistrerAppelsIa('projet_composant', user.id, appels);
   }
 }

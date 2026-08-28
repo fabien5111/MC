@@ -11,6 +11,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildStructureContenu, normaliseStructure, INTENT_MAX } from '@/lib/ai/project-structure';
 import { MAX_COMPONENTS } from '@/lib/projects';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 30;
 
@@ -29,13 +30,25 @@ export async function POST(req: Request) {
   const intent = typeof body?.intent === 'string' ? body.intent.trim().slice(0, INTENT_MAX) : '';
   if (intent.length < 5) return NextResponse.json(VIDE);
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
     // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
     // avant que l'hébergeur ne coupe la fonction.
-    const raw = await callClaude(apiKey, buildStructureContenu(intent), 1200, 25_000);
+    const raw = await callClaude(
+      apiKey,
+      buildStructureContenu(intent),
+      1200,
+      25_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
+    );
     return NextResponse.json(normaliseStructure(parseStrictJson(raw.text), MAX_COMPONENTS));
   } catch (e) {
     console.error('projet/structure:', (e as Error).message);
     return NextResponse.json(VIDE);
+  } finally {
+    void enregistrerAppelsIa('projet_structure', user.id, appels);
   }
 }

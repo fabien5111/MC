@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireFullAdmin } from '@/lib/auth';
-import { getAdminStats, getPendingRecipes, getAiCosts } from '@/lib/admin';
+import { getAdminStats, getPendingRecipes, getAiCosts, getAiUsageOverview } from '@/lib/admin';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 export const metadata: Metadata = { title: 'Tableau de bord | Admin — Je pâtisse !' };
@@ -12,10 +12,11 @@ export default async function AdminHomePage() {
   // son propre écran (/admin/commentaires), avec sa propre garde.
   await requireFullAdmin();
 
-  const [stats, pending, aiCosts] = await Promise.all([
+  const [stats, pending, aiCosts, iaOverview] = await Promise.all([
     getAdminStats(),
     getPendingRecipes(),
     getAiCosts(),
+    getAiUsageOverview(),
   ]);
 
   return (
@@ -58,7 +59,7 @@ export default async function AdminHomePage() {
           </div>
         </div>
       </header>
-      <AdminDashboard stats={stats} pending={pending} aiCosts={aiCosts} />
+      <AdminDashboard stats={stats} pending={pending} aiCosts={aiCosts} iaOverview={iaOverview} />
     </>
   );
 }

@@ -4,6 +4,15 @@
 // ⚠️ Les tarifs sont figés ici, dans l'application. Si Anthropic change ses prix
 // ou si `IMPORT_MODEL` pointe vers un modèle absent de la table, `computeCost`
 // renvoie `null` (coût inconnu) plutôt qu'un chiffre faux.
+//
+// ⚠️ La table ci-dessous n'est PLUS la référence du suivi des coûts : depuis le
+// journal `ai_usage`, c'est la table SQL `ai_pricing` (historisée, un tarif par
+// date d'effet) qui fait foi — un changement de prix ne doit pas réécrire le
+// passé, ce qu'une table figée dans le code fait forcément. Ce qui subsiste
+// ici : le chiffrage des colonnes de coût des anciennes tables
+// (`imports`, `recipe_scale_costs`), conservées le temps de la bascule, et les
+// formateurs d'affichage. Tenir les deux tables cohérentes tant que les
+// anciennes colonnes sont écrites.
 import type { ClaudeUsage } from '@/lib/ai/claude';
 
 // Tarifs en dollars par million de tokens.
@@ -15,11 +24,13 @@ type Tarif = {
 };
 
 const TARIFS: Record<string, Tarif> = {
-  'claude-sonnet-5': {
-    input: 3,
-    output: 15,
-    intro: { input: 2, output: 10, jusquAu: '2026-08-31' },
-  },
+  // 2 $ / 10 $ SANS échéance : annoncé au lancement comme tarif
+  // d'introduction jusqu'au 31/08/2026, il est devenu le tarif standard
+  // et la hausse à 3 $ / 15 $ au 01/09/2026 N'AURA PAS LIEU (note
+  // officielle sur la page de tarification, relevée le 28/08/2026).
+  // Laisser le `intro` daté aurait majoré de 50 % le coût de toute
+  // transcription photo à partir du 1er septembre.
+  'claude-sonnet-5': { input: 2, output: 10 },
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-opus-5': { input: 5, output: 25 },
   'claude-opus-4-8': { input: 5, output: 25 },

@@ -21,6 +21,7 @@ import {
   EXTERNAL_SEARCH_MODEL,
 } from '@/lib/ai/claude';
 import { computeCost, WEB_SEARCH_USD_PER_SEARCH } from '@/lib/ai/cost';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import {
   MODERATION_PROMPT_VERSION,
   MODERATION_SYSTEM_PROMPT,
@@ -174,6 +175,11 @@ export async function POST(req: Request) {
   const sourceText = moderationSourceText(source);
   const routeStart = Date.now();
   const remainingBudget = () => HARD_DEADLINE_MS - (Date.now() - routeStart);
+  // Un seul collecteur pour toute l'analyse : modération, jusqu'à trois
+  // jugements de couche B et la recherche externe partagent la même feature
+  // de GESTION (`moderation_recette`) — l'auteur de la recette n'en supporte
+  // jamais le coût, quel que soit le nombre d'appels réellement engagés.
+  const { sink, appels } = collecteurAppelsIa();
 
   try {
     // Reprise sur panne passagère de l'API (saturation, limite de débit) :
@@ -189,6 +195,7 @@ export async function POST(req: Request) {
         MODERATION_MODEL,
         'disabled',
         MODERATION_SYSTEM_PROMPT,
+        sink,
       );
 
     let call = await avecReprise(appelModeration, 3, 1_000, remainingBudget);
@@ -350,6 +357,7 @@ export async function POST(req: Request) {
               MODERATION_MODEL,
               'disabled',
               buildReformulationSystemPrompt(),
+              sink,
             );
             call.usage.inputTokens += judged.usage.inputTokens;
             call.usage.outputTokens += judged.usage.outputTokens;
@@ -427,6 +435,7 @@ export async function POST(req: Request) {
             Math.max(0, remainingBudget() - 4_000),
             undefined,
             [own],
+            sink,
           );
           searchesUsed = webCall.searches;
           // Coût de la recherche externe : modèle propre (souvent différent
@@ -502,5 +511,7 @@ export async function POST(req: Request) {
       .eq('id', analysisId);
     console.error('moderation-recette:', (e as Error).message);
     return NextResponse.json({ analysisId, erreur: 'Analyse indisponible.' });
+  } finally {
+    void enregistrerAppelsIa('moderation_recette', user.id, appels, { table: 'recipe_analysis', id: analysisId });
   }
 }

@@ -6,6 +6,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson, IMPORT_MODEL } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 30;
 
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
   if (prompt.length < 3) return NextResponse.json({ erreur: "Décrivez l'ajustement souhaité." }, { status: 400 });
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
     // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
     // avant que l'hébergeur ne coupe la fonction.
@@ -45,6 +47,10 @@ export async function POST(req: Request) {
       buildContenu(body.recette, prompt, body.moules_reference),
       1000,
       25_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
     );
 
     // Coût réel (cf. Coût IA, back-office) : `recipe_scale_costs` n'est pas
@@ -75,5 +81,11 @@ export async function POST(req: Request) {
       { erreur: "L'ajustement a échoué, réessayez ou saisissez le coefficient manuellement." },
       { status: 502 },
     );
+  } finally {
+    // Journal unifié (`ai_usage`) : coexiste pour l'instant avec l'écriture
+    // ci-dessus dans `recipe_scale_costs` — la bascule complète (abandon des
+    // colonnes de coût des tables historiques) est une migration séparée,
+    // une fois `ai_usage` éprouvé.
+    void enregistrerAppelsIa('ajustement_quantites', user.id, appels);
   }
 }

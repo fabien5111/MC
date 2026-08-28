@@ -22,6 +22,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 60;
 
@@ -134,19 +135,27 @@ export async function POST(req: Request) {
   // des unités extraites par l'IA (cf. lib/ai/import-pivot.ts normaliseUnite).
   const { data: unitsRows } = await supabase.from('units').select('name, abbreviation');
 
+  // Collecteur de la seule passe de STRUCTURATION : la transcription est
+  // journalisée à la source, dans /api/transcribe-photo, où l'appel a
+  // réellement lieu (avec son vrai request_id et sa vraie latence) — la
+  // rejouer ici depuis la valeur déclarée par le navigateur ferait une
+  // seconde ligne pour le même appel.
+  const { sink, appels } = collecteurAppelsIa();
   let usageStructuration: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
   let alertes: string[];
   try {
-    const normalise = await normalizeRecette(apiKey, contenu, unitsRows ?? []);
+    const normalise = await normalizeRecette(apiKey, contenu, unitsRows ?? [], undefined, sink);
     pivot = normalise.pivot;
     usageStructuration = normalise.usage;
     erreurs = normalise.erreurs;
     alertes = normalise.alertes;
   } catch (e) {
-    // Les appels déjà effectués ont été facturés même si l'import échoue : on
-    // les trace en logs, faute de ligne `imports` où les rattacher.
+    // Les appels déjà effectués ont été facturés même si l'import échoue :
+    // journalisés malgré tout (`ref` absent, faute de ligne `imports` où les
+    // rattacher — plus une perte silencieuse comme avant `ai_usage`).
+    void enregistrerAppelsIa('import_recette', user.id, appels);
     const partiel = (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE;
     const total = addUsage(usageTranscription, partiel);
     console.error(
@@ -169,6 +178,9 @@ export async function POST(req: Request) {
     );
   }
   if (erreurs.length) {
+    // Appels réussis (l'IA a répondu), mais extraction jugée incomplète par
+    // la validation : ce n'est pas un `api_error`, le coût est bien réel.
+    void enregistrerAppelsIa('import_recette', user.id, appels);
     return NextResponse.json(
       {
         erreur: estPhoto
@@ -248,7 +260,12 @@ export async function POST(req: Request) {
     })
     .select()
     .single();
-  if (error) return NextResponse.json({ erreur: error.message }, { status: 500 });
+  if (error) {
+    void enregistrerAppelsIa('import_recette', user.id, appels);
+    return NextResponse.json({ erreur: error.message }, { status: 500 });
+  }
+
+  void enregistrerAppelsIa('import_recette', user.id, appels, { table: 'imports', id: row.id });
 
   return NextResponse.json({ import: row, alertes, quota_restant: Math.max(0, QUOTA - compte - 1) });
 }

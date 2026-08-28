@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireFullAdmin } from '@/lib/auth';
-import { getAllowlistMembers } from '@/lib/admin';
+import { getAllowlistMembers, getAiUsageOverview } from '@/lib/admin';
 import { MembersManager } from '@/components/admin/MembersManager';
 import { ImpersonationAudit } from '@/components/admin/ImpersonationAudit';
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Membres | Admin — Je pâtisse !' }
 
 export default async function AdminMembresPage() {
   await requireFullAdmin(); // comptes, rôles et impersonation : admin complet
-  const members = await getAllowlistMembers();
+  const [members, iaOverview] = await Promise.all([getAllowlistMembers(), getAiUsageOverview()]);
   return (
     <>
       <header className="flex items-center justify-between h-16 px-margin-desktop bg-surface/80 backdrop-blur-md border-b border-outline-variant sticky top-0 z-20">
@@ -18,7 +18,7 @@ export default async function AdminMembresPage() {
           <span className="material-symbols-outlined text-sm">arrow_back</span> Tableau de bord
         </Link>
       </header>
-      <MembersManager members={members} />
+      <MembersManager members={members} iaOverview={iaOverview} />
       <div className="px-margin-mobile md:px-margin-desktop max-w-[1400px] w-full pb-12">
         <ImpersonationAudit />
       </div>
