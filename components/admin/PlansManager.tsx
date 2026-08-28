@@ -24,6 +24,7 @@
 // que la migration n'a pas été régénérée : l'appel passe par un cast local,
 // même motif que `ads` dans PartnersManager.
 import { Fragment, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
@@ -234,7 +235,15 @@ export function PlansManager({ grid }: { grid: AdminGrid }) {
   return (
     <div className="p-6 lg:p-10">
       <LoadingOverlay visible={busy} label="Publication…" />
-      <h1 className="mb-2 font-display text-3xl text-primary">Plans d’abonnement</h1>
+      <div className="mb-2 flex items-center justify-between">
+        <h1 className="font-display text-3xl text-primary">Plans d’abonnement</h1>
+        <Link
+          href="/admin/abonnements/tableau-de-bord"
+          className="flex items-center gap-1.5 font-label-md text-[13px] text-on-surface-variant hover:text-primary"
+        >
+          Tableau de bord <span className="material-symbols-outlined text-base">arrow_forward</span>
+        </Link>
+      </div>
       <p className="mb-8 max-w-3xl text-sm text-on-surface-variant">
         Le code technique d’un plan est immuable et n’est jamais montré aux membres : renommer un plan ne
         change aucun droit. Les modifications restent locales tant que vous n’avez pas publié.
