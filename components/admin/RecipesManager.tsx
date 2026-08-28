@@ -103,11 +103,15 @@ function Highlighted({ text, mark }: { text: string; mark?: string }) {
 // "Copie confirmée" qui alimentent recipe_analysis_feedback »).
 function MatchCard({ match, initialFeedback }: { match: RecipeSimilarityMatchSummary; initialFeedback?: MatchFeedbackVerdict }) {
   const isExterne = match.source_type === 'externe';
-  // Couche B approximée par jugement Claude (lib/ai/reformulation.ts) : pas
-  // de séquence commune littérale par construction (c'est une reformulation,
-  // pas une copie), score rédactionnel jugé plutôt que mesuré — comme les
-  // correspondances externes, annoncé comme une estimation.
-  const isReformulation = match.detection_method === 'embedding';
+  // Couche B (lib/ai/reformulation.ts) et correspondance externe « proche »
+  // (lib/ai/external-search.ts) : jugement Claude, pas de séquence commune
+  // littérale par construction — c'est une reformulation, pas une copie. La
+  // réécriture d'une recette est légale (§8 révisé) : ces correspondances
+  // restent affichées à titre informatif, mais n'entrent jamais dans
+  // `editorial_similarity_max` ni dans le drapeau — cf. `isLiteralMatch` de
+  // la route.
+  const isReformulation = match.detection_method === 'embedding' || match.detection_method === 'web_reformulation';
+  const isLiteral = match.detection_method === 'shingles' || match.detection_method === 'web_exacte';
   const ex = match.matched_excerpts?.[0];
   const [voting, setVoting] = useState(false);
   const [voted, setVoted] = useState<MatchFeedbackVerdict | undefined>(initialFeedback);
@@ -147,16 +151,20 @@ function MatchCard({ match, initialFeedback }: { match: RecipeSimilarityMatchSum
         {(match.longest_common_sequence ?? 0) > 0 && (
           <span className="text-[11px] text-on-surface-variant">{match.longest_common_sequence} mots consécutifs identiques</span>
         )}
-        {isReformulation && <span className="text-[11px] text-on-surface-variant italic">reformulation détectée, jugement IA</span>}
+        {isReformulation && (
+          <span className="text-[11px] text-on-surface-variant italic">reformulation détectée, jugement IA — n&apos;affecte pas le drapeau</span>
+        )}
       </div>
       <div className={`mt-2 grid ${isExterne ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
         <div>
-          <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">Texte rédigé — indicateur de copie</p>
+          <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant">
+            {isLiteral ? 'Texte copié mot pour mot' : 'Texte rédigé — indicateur de copie'}
+          </p>
           <p className="text-sm font-semibold text-on-surface">
             {match.editorial_score.toFixed(0)} %{' '}
             {(isExterne || isReformulation) && (
               <span className="font-normal text-on-surface-variant">
-                ({isExterne ? 'estimation IA, hors site' : 'estimation IA, reformulation'})
+                ({isLiteral ? 'estimation IA, hors site' : 'estimation IA, reformulation'})
               </span>
             )}
           </p>
@@ -295,7 +303,14 @@ function AnalysisPanel({
   }
 
   const categories = analysis?.moderation_details?.categories ?? [];
-  const topMatch = matches[0];
+  // `matches` est trié par score décroissant tous types confondus (lib/admin.ts) :
+  // une reformulation (couche B / correspondance externe « proche ») peut donc
+  // arriver en tête alors qu'elle n'entre pas dans `editorial_similarity_max`
+  // (§8 révisé, réécriture légale non comptée). La synthèse doit citer la
+  // source qui justifie réellement ce pourcentage — la première correspondance
+  // littérale — pas la première correspondance tout court.
+  const topLiteralMatch = matches.find((m) => m.detection_method === 'shingles' || m.detection_method === 'web_exacte');
+  const topMatch = topLiteralMatch ?? matches[0];
   const summary =
     analysis?.status === 'termine'
       ? buildAnalysisSummary({

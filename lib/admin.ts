@@ -240,10 +240,15 @@ export type RecipeSimilarityMatchSummary = {
   structural_score: number;
   longest_common_sequence: number | null;
   matched_excerpts: { extrait_soumis: string; extrait_source: string; commun?: string }[] | null;
-  // 'embedding' sert de marqueur pour la couche B approximée par jugement
-  // Claude (pas un vrai calcul cosinus, cf. lib/ai/reformulation.ts) —
-  // distingue une reformulation détectée d'une copie littérale ('shingles').
-  detection_method: 'shingles' | 'embedding' | 'les_deux' | null;
+  // 'shingles' (interne) et 'web_exacte' (externe) sont des copies littérales
+  // mesurées/jugées comme telles — les seules à compter dans le drapeau (§8
+  // révisé). 'embedding' (couche B) et 'web_reformulation' marquent une
+  // reformulation détectée par jugement Claude : la réécriture d'une recette
+  // est légale, ces correspondances restent affichées mais n'influencent
+  // jamais le drapeau. 'les_deux' et `null` (correspondances externes
+  // antérieures à cette distinction) sont traités comme informatifs par
+  // prudence.
+  detection_method: 'shingles' | 'embedding' | 'web_exacte' | 'web_reformulation' | 'les_deux' | null;
 };
 
 // Correspondances de similarité (§6.3) pour un ensemble d'analyses, groupées
