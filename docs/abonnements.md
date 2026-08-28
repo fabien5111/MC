@@ -450,3 +450,52 @@ Variables d'environnement à configurer avant mise en production (cf.
 le cron refuse toute requête (503, jamais une route ouverte par défaut), et
 les e-mails ne partent pas silencieusement — rien de tout cela n'empêche le
 reste du site de fonctionner.
+
+## 10. `/reglages` — annulation en libre-service (hors spécification V1)
+
+La spécification ne prévoyait, en V1, que des actions **administrateur**
+manuelles (§8.3 : attribuer, prolonger, changer de plan, annuler). Aucun
+membre ne pouvait agir sur son propre abonnement. Ajouté sur demande, en
+plus de la refonte de « Mon utilisation » en « Mon forfait » (bandeau
+d'état, jauges en cartes plutôt qu'en liste, liens contextuels vers `/plans`
+pour l'essai et la montée en gamme).
+
+### Toujours à échéance, jamais immédiate
+
+`mc_cancel_own_subscription()` (SECURITY DEFINER, `auth.uid()` seul contrôle
+d'accès — un membre n'agit que sur SA propre ligne `ACTIVE` non-`DEFAULT`)
+ne retire jamais un service déjà en cours : l'abonnement continue jusqu'à sa
+date de fin, réelle si elle existe déjà, sinon fixée à la fin du mois
+calendaire en cours — c'est la seule période implicite qu'on puisse lui
+attribuer en l'absence de toute facturation réelle en V1 (aucun cycle de
+renouvellement n'existe à interrompre).
+
+### Marqueur d'intention, jamais lu par le moteur de droits
+
+`subscriptions.cancel_requested_at` ne change rien à `mc_effective_rights` :
+c'est une trace pour l'administrateur (visible dans l'historique de la fiche
+membre), qui lui évite de prolonger par erreur un abonnement que le membre a
+déjà choisi de ne pas reconduire. Le calcul des droits continue de ne
+dépendre que de `status` et `ends_at`, comme documenté au §1.2 — aucune
+exception introduite pour cette fonctionnalité.
+
+### Pas de réactivation en libre-service
+
+Une fois cliqué, seul un administrateur peut revenir en arrière (fiche
+membre, « Prolonger », déjà en place depuis le lot 4). Annuler puis
+prolonger `ends_at` à la fin du mois courant pour un abonnement qui n'en
+avait pas ne serait pas réversible sans perdre l'information « il n'avait
+pas de date de fin » — au lieu de modéliser cette réversibilité, plus
+complexe qu'utile pour un cas rare, le changement d'avis passe par le même
+canal que toute autre exception commerciale : contacter l'administrateur.
+
+### Actions dupliquées vers `/plans`, pas réimplémentées
+
+« Essayer une formule payante » et « Passer à une formule supérieure »
+renvoient vers `/plans` plutôt que d'agir sur place : la page publique porte
+déjà l'intégralité de cette logique (comparaison, tarifs, confirmation de
+rétrogradation, file de demandes). Dupliquer une version simplifiée ici
+aurait créé deux chemins à maintenir pour le même geste, avec le risque
+qu'ils divergent. `UsageCard` ne fait que déterminer QUAND proposer chaque
+lien (`grid.plans` + `orderIndex` pour « supérieure », `trialConsumed` +
+`trialAllowed` pour l'essai), jamais comment l'exécuter.

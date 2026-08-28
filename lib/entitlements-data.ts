@@ -217,6 +217,8 @@ export type CurrentPlan = {
   endsAt: string | null;
   /** Jours restants, `null` quand l'abonnement n'expire pas. */
   daysLeft: number | null;
+  /** Annulation demandée par le membre lui-même (`mc_cancel_own_subscription`). */
+  cancelRequestedAt: string | null;
 };
 
 /**
@@ -228,19 +230,30 @@ export type CurrentPlan = {
  * c'est un libellé d'affichage, pas une décision d'accès — celle-là ne passe
  * que par `getEntitlements`.
  */
+// `cancel_requested_at` n'est pas encore dans lib/database.types.ts tant que
+// la migration n'a pas été appliquée puis régénérée — colonne lue via un
+// type local, même motif que `notifications` dans notifications-data.ts.
+type LigneAbonnementCourant = {
+  type: string;
+  starts_at: string;
+  ends_at: string | null;
+  cancel_requested_at: string | null;
+  plan_versions: { plans: { code: string; label: string } };
+};
+
 export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('type, starts_at, ends_at, plan_versions!inner(plans!inner(code, label))')
+    .select('type, starts_at, ends_at, cancel_requested_at, plan_versions!inner(plans!inner(code, label))' as never)
     .eq('user_id', userId)
     .eq('status', 'ACTIVE')
-    .order('starts_at', { ascending: false });
+    .order('starts_at', { ascending: false })
+    .returns<LigneAbonnementCourant[]>();
   if (error || !data?.length) return null;
 
   const maintenant = Date.now();
-  const vivant = (l: (typeof data)[number]) =>
-    l.ends_at === null || new Date(l.ends_at).getTime() > maintenant;
+  const vivant = (l: LigneAbonnementCourant) => l.ends_at === null || new Date(l.ends_at).getTime() > maintenant;
 
   const ligne = data.find((l) => l.type !== 'DEFAULT' && vivant(l)) ?? data.find((l) => l.type === 'DEFAULT');
   if (!ligne) return null;
@@ -252,6 +265,7 @@ export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan 
     type: ligne.type,
     startsAt: ligne.starts_at,
     endsAt: ligne.ends_at,
+    cancelRequestedAt: ligne.cancel_requested_at,
     daysLeft:
       ligne.ends_at === null
         ? null

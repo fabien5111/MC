@@ -14,7 +14,7 @@ import { UsageCard } from '@/components/profile/UsageCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { getNotifyEmailPreference } from '@/lib/notifications-data';
-import { getCurrentPlan, getGrid, getUsageReport } from '@/lib/entitlements-data';
+import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -69,7 +69,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -79,6 +79,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getUsageReport(user.id),
       getGrid(),
       getCurrentPlan(user.id),
+      hasConsumedTrial(user.id),
     ]);
 
   return (
@@ -107,7 +108,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           isAdmin={admin}
           followCounts={followCounts}
         />
-        <UsageCard usage={usage} features={grid.features} currentPlan={currentPlan} />
+        <UsageCard usage={usage} grid={grid} currentPlan={currentPlan} trialConsumed={trialConsumed} />
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
