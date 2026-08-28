@@ -16,6 +16,7 @@ import {
   getLimit,
   hasYearlyOption,
   isOverLimit,
+  quotaFailure,
   rightScore,
   upgradeSuggestion,
   verdict,
@@ -258,5 +259,39 @@ describe('blocage éducatif', () => {
 
   it('ne rend aucun message quand l’action est autorisée', () => {
     expect(blockingMessage(grille, 'mode_projet', 'PRO', { autorise: true })).toBeNull();
+  });
+});
+
+describe('refus remontés par la base', () => {
+  it('décode un dépassement avec sa clé, sa consommation et son plafond', () => {
+    expect(quotaFailure({ message: 'MC_QUOTA_EXCEEDED:fournees_actives_max:2:2' })).toEqual({
+      code: 'EXCEEDED',
+      featureKey: 'fournees_actives_max',
+      usage: 2,
+      limit: 2,
+    });
+  });
+
+  it('décode un droit absent du plan', () => {
+    expect(quotaFailure({ message: 'MC_QUOTA_DENIED:mode_projet' })).toMatchObject({
+      code: 'DENIED',
+      featureKey: 'mode_projet',
+    });
+  });
+
+  it('ne travestit pas une panne en limite atteinte', () => {
+    // Une vraie erreur base doit remonter telle quelle : la masquer derrière
+    // « limite atteinte » enverrait le membre payer pour un bug.
+    expect(quotaFailure({ message: 'could not connect to server' })).toBeNull();
+    expect(quotaFailure(new Error('duplicate key value violates unique constraint'))).toBeNull();
+  });
+
+  it('reste robuste sur un message tronqué', () => {
+    expect(quotaFailure({ message: 'MC_QUOTA_EXCEEDED:import_ia_mensuel' })).toEqual({
+      code: 'EXCEEDED',
+      featureKey: 'import_ia_mensuel',
+      usage: null,
+      limit: null,
+    });
   });
 });

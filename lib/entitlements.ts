@@ -374,3 +374,49 @@ function freeAlternative(featureKey: string): string | null {
       return null;
   }
 }
+
+// ── Refus remontés par la base ───────────────────────────────
+
+export type QuotaFailure = {
+  code: 'DENIED' | 'EXCEEDED' | 'FORBIDDEN' | 'AUTH' | 'AUTRE';
+  featureKey: string | null;
+  usage: number | null;
+  limit: number | null;
+};
+
+/**
+ * Traduit une erreur remontée par la base en refus exploitable.
+ *
+ * Les gardes SQL lèvent des messages de la forme
+ * `MC_QUOTA_EXCEEDED:<clé>:<usage>:<plafond>` : ce format existe pour que
+ * l'interface puisse composer un message éducatif sans relire la grille, et
+ * pour qu'un refus de quota ne ressemble jamais à une panne. Une erreur qui
+ * n'en est pas un est rendue telle quelle (`AUTRE`) — la masquer derrière un
+ * « limite atteinte » serait un mensonge.
+ */
+export function quotaFailure(error: unknown): QuotaFailure | null {
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : String(error ?? '');
+  if (!message.startsWith('MC_QUOTA_')) return null;
+
+  const [tete, ...reste] = message.split(':');
+  const nombre = (v: string | undefined) => {
+    const n = Number.parseInt(v ?? '', 10);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  switch (tete) {
+    case 'MC_QUOTA_EXCEEDED':
+      return { code: 'EXCEEDED', featureKey: reste[0] ?? null, usage: nombre(reste[1]), limit: nombre(reste[2]) };
+    case 'MC_QUOTA_DENIED':
+      return { code: 'DENIED', featureKey: reste[0] ?? null, usage: null, limit: null };
+    case 'MC_QUOTA_FORBIDDEN':
+      return { code: 'FORBIDDEN', featureKey: null, usage: null, limit: null };
+    case 'MC_QUOTA_AUTH':
+      return { code: 'AUTH', featureKey: null, usage: null, limit: null };
+    default:
+      return { code: 'AUTRE', featureKey: reste[0] ?? null, usage: null, limit: null };
+  }
+}
