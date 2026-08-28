@@ -22,6 +22,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
+import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 60;
 
@@ -134,6 +135,17 @@ export async function POST(req: Request) {
   // des unités extraites par l'IA (cf. lib/ai/import-pivot.ts normaliseUnite).
   const { data: unitsRows } = await supabase.from('units').select('name, abbreviation');
 
+  // Quota d'abonnement. Réservé AVANT l'appel — le décompte doit borner la
+  // dépense, pas la constater : un contrôle suivi d'un appel de trente
+  // secondes laisse passer autant d'appels simultanés qu'il y a de requêtes.
+  // Le crédit est rendu si la structuration échoue (cf. `rendre()` plus bas).
+  //
+  // Un import vaut UN crédit, quel que soit le nombre de photos : la
+  // transcription page par page a lieu dans d'autres requêtes, qui vérifient
+  // le droit sans rien décompter.
+  const quota = await reserverQuota(user.id, 'import_ia_mensuel');
+  if (estRefus(quota)) return quota.refus;
+
   let usageStructuration: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
@@ -145,6 +157,10 @@ export async function POST(req: Request) {
     erreurs = normalise.erreurs;
     alertes = normalise.alertes;
   } catch (e) {
+    // L'import n'a pas abouti : le crédit est rendu. Les appels déjà émis ont
+    // été facturés par Anthropic, mais faire payer au membre un import qu'il
+    // n'a pas obtenu serait doublement injuste.
+    await quota.rendre();
     // Les appels déjà effectués ont été facturés même si l'import échoue : on
     // les trace en logs, faute de ligne `imports` où les rattacher.
     const partiel = (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE;
@@ -169,6 +185,8 @@ export async function POST(req: Request) {
     );
   }
   if (erreurs.length) {
+    // Extraction incomplète : pas de brouillon, donc pas de crédit consommé.
+    await quota.rendre();
     return NextResponse.json(
       {
         erreur: estPhoto
@@ -248,7 +266,11 @@ export async function POST(req: Request) {
     })
     .select()
     .single();
-  if (error) return NextResponse.json({ erreur: error.message }, { status: 500 });
+  if (error) {
+    // Pas de brouillon enregistré : rien à relire, donc rien à décompter.
+    await quota.rendre();
+    return NextResponse.json({ erreur: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ import: row, alertes, quota_restant: Math.max(0, QUOTA - compte - 1) });
 }

@@ -11,6 +11,8 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildStructureContenu, normaliseStructure, INTENT_MAX } from '@/lib/ai/project-structure';
 import { MAX_COMPONENTS } from '@/lib/projects';
+import { messageQuota } from '@/lib/quota-route';
+import { consumeQuota, refundQuota } from '@/lib/entitlements-data';
 
 export const maxDuration = 30;
 
@@ -29,12 +31,23 @@ export async function POST(req: Request) {
   const intent = typeof body?.intent === 'string' ? body.intent.trim().slice(0, INTENT_MAX) : '';
   if (intent.length < 5) return NextResponse.json(VIDE);
 
+  // Quota réservé avant l'appel, rendu s'il échoue. Le refus est rendu en 200
+  // avec la proposition vide : cette route est best-effort par construction
+  // (l'écran doit rester utilisable à la main), et son appelant traite tout
+  // statut non-2xx comme « pas de proposition », sans rien afficher. Le
+  // champ `erreur` est ce qui permet au dialogue de dire pourquoi.
+  const echec = await consumeQuota('mode_projet_ia_mensuel');
+  if (echec) {
+    return NextResponse.json({ ...VIDE, erreur: await messageQuota(user.id, 'mode_projet_ia_mensuel', echec) });
+  }
+
   try {
     // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
     // avant que l'hébergeur ne coupe la fonction.
     const raw = await callClaude(apiKey, buildStructureContenu(intent), 1200, 25_000);
     return NextResponse.json(normaliseStructure(parseStrictJson(raw.text), MAX_COMPONENTS));
   } catch (e) {
+    await refundQuota('mode_projet_ia_mensuel');
     console.error('projet/structure:', (e as Error).message);
     return NextResponse.json(VIDE);
   }
