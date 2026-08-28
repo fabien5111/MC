@@ -208,6 +208,7 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 | 2b | Couche de lecture, cache de la grille | `lib/entitlements-data.ts`, `lib/data/reference.ts` |
 | 3 | Back-office de paramétrage des plans | `/admin/abonnements`, `lib/plans-admin.ts` |
 | 5b | Quotas de flux sur les cinq routes IA | `lib/quota-route.ts` + routes |
+| 5c (anticipé) | Lecture seule d'un projet en cours sans `mode_projet` | `/projets/[id]`, `ProjectReadOnly`, `mc_enforce_project_access` |
 
 ### Objets SQL en place
 
@@ -231,19 +232,47 @@ membre. Le lot 5a l'attache aux cinq tables (`recipes`, `favorites`, `batches`,
 |---|---|---|
 | 4 | Fiche abonnement d'un membre, historique, actions manuelles | étend `/admin/membres` ; y retirer le sélecteur `profiles.plan` |
 | 5a | Rattacher `mc_enforce_stock` aux cinq tables + blocage éducatif | |
-| 5c | Huit droits binaires + lecture seule après rétrogradation | **arbitrage ouvert** (voir plus bas) |
+| 5c | Sept droits binaires restants + `notes_personnelles` / `sous_etapes_sequencement` en lecture seule | le cas `mode_projet` est traité, ci-dessus |
 | 6 | Page publique des plans, bascule mensuel/annuel, essai | `mc_start_trial` attend `TRIAL_EMAIL_SALT` |
 | 7 | Jauges « Mon utilisation » | `getUsageReport` est prête |
 | 8 | Cron, notifications in-app, e-mail | trois sous-systèmes inexistants |
 | 9 | Tableau de bord | |
 
-### Deux questions non tranchées
+### Une question tranchée, une encore ouverte
 
-1. **Un membre PRO rétrogradé garde des projets en cours.** Que fait
-   `/projets/[id]` ? Parcours guidé en lecture seule, dissolution forcée, ou
-   accès maintenu ? C'est le seul cas de rétrogradation qui ne se règle pas
-   par « l'existant est préservé, seule la création est bloquée » : un projet
-   en cours n'est pas un objet fini, c'est un dialogue inachevé.
+1. **Un membre PRO rétrogradé garde des projets en cours : lecture seule.**
+   `/projets/[id]` reste accessible et montre tout — intention, format,
+   composants et leur résolution — mais n'écrit plus rien tant que le droit
+   `mode_projet` n'est pas rétabli (`components/projets/ProjectReadOnly.tsx`).
+   Ni dissolution forcée, ni redirection vers la fiche recette : un projet en
+   cours n'est pas une recette utilisable en l'état, c'est un dialogue
+   inachevé, et le figer en lecture ne lui fait perdre aucune donnée.
+
+   Le contrôle est à deux niveaux, même doctrine que le reste du chantier :
+   - **côté page**, `/projets/[id]` bascule sur `ProjectReadOnly` dès que
+     `canAccess(droits, 'mode_projet')` est faux — c'est la voie normale ;
+   - **côté base**, `mc_enforce_project_access()` bloque toute écriture sur
+     `recipe_steps`, `ingredient_groups`, `ingredients` (via `group_id`),
+     `recipe_project_components`, `recipe_projects` et `recipes` (colonnes de
+     format) tant que la recette est `kind = 'project'` et
+     `project_stage = 'wizard'` et que le propriétaire n'a pas le droit — pour
+     qu'un appel direct depuis la console ne contourne pas la page. C'est du
+     lot 5c anticipé, posé ici parce que la règle vient d'être tranchée et
+     que les écritures du parcours guidé sont, comme partout ailleurs, des
+     appels `supabase-js` directs du navigateur.
+
+   **Portée volontairement stricte** : la validation (`wizard → ready`, §8)
+   est elle aussi bloquée — un membre rétrogradé ne peut ni continuer ni
+   clôturer son projet, seulement le consulter. Si ça s'avère trop dur en
+   usage réel, la validation est le seul geste qu'il serait raisonnable
+   d'excepter (elle *sort* le projet de l'état surveillé plutôt que d'y
+   ajouter du travail).
+   La réversion `ready → wizard` (`ProjectMarking`, §8.5) n'est PAS concernée :
+   au moment de ce geste, l'état encore en base est `ready`, pas `wizard`.
+
+   Page publique `/plans` référencée par le lien de l'écran : route à créer
+   au lot 6, nom retenu pour cohérence.
+
 2. **`reordonnancement_etapes` n'a pas de geste identifié** dans le produit.
    La ligne est seedée `visible = false` en attendant.
 
