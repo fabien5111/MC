@@ -184,7 +184,7 @@ export function PlansPage({
                     <p className="font-label-md text-[17px] text-primary">{p.label}</p>
                     {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
                     <p className="mt-3 font-headline-md text-2xl">
-                      {tarif === null ? '—' : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
+                      {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
                       {tarif !== null && tarif > 0 && (
                         <span className="text-sm font-normal text-on-surface-variant">
                           {' '}
@@ -200,6 +200,10 @@ export function PlansPage({
                         estCourant={p.code === currentPlanCode}
                         inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
                         trialConsumed={trialConsumed}
+                        // Sans tarif configuré pour cette formule, « S'abonner »
+                        // n'a rien à proposer — jamais affiché dans ce cas
+                        // (un essai reste possible, lui, sans moyen de paiement).
+                        aUnTarif={tarif !== null}
                         onEssayer={() => essayer(p.code)}
                         onAbonner={() => demander(p.code, annuel ? 'YEARLY' : 'MONTHLY')}
                         onRetrograder={() => retrograder(p.code)}
@@ -273,6 +277,7 @@ function BoutonPlan({
   estCourant,
   inferieur,
   trialConsumed,
+  aUnTarif,
   onEssayer,
   onAbonner,
   onRetrograder,
@@ -282,6 +287,10 @@ function BoutonPlan({
   estCourant: boolean;
   inferieur: boolean;
   trialConsumed: boolean;
+  // Un tarif est configuré pour cette formule (périodicité affichée) —
+  // sans lui, « S'abonner » n'a rien à proposer et ne s'affiche jamais.
+  // L'essai, lui, ne demande aucun moyen de paiement : il reste possible.
+  aUnTarif: boolean;
   onEssayer: () => void;
   onAbonner: () => void;
   onRetrograder: () => void;
@@ -297,6 +306,7 @@ function BoutonPlan({
     );
   }
   if (!connecte) {
+    if (!plan.trialAllowed && !aUnTarif) return null;
     return (
       <Link href="/connexion?next=/plans" className={`${cls} block bg-primary text-center text-on-primary hover:shadow-lg`}>
         {plan.trialAllowed ? 'Essayer' : "S'abonner"}
@@ -317,6 +327,7 @@ function BoutonPlan({
       </button>
     );
   }
+  if (!aUnTarif) return null;
   return (
     <button type="button" onClick={onAbonner} className={`${cls} bg-primary text-on-primary hover:shadow-lg`}>
       S&apos;abonner
