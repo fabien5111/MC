@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -169,6 +169,134 @@ export type Database = {
           title?: string | null
         }
         Relationships: []
+      }
+      ai_features: {
+        Row: {
+          code: string
+          imputation: string
+          label: string
+          position: number
+        }
+        Insert: {
+          code: string
+          imputation: string
+          label: string
+          position?: number
+        }
+        Update: {
+          code?: string
+          imputation?: string
+          label?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      ai_pricing: {
+        Row: {
+          cache_read_per_mtok: number
+          cache_write_per_mtok: number
+          created_at: string
+          currency: string
+          effective_from: string
+          id: number
+          input_per_mtok: number
+          model: string
+          output_per_mtok: number
+          web_search_per_1k: number
+        }
+        Insert: {
+          cache_read_per_mtok: number
+          cache_write_per_mtok: number
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: never
+          input_per_mtok: number
+          model: string
+          output_per_mtok: number
+          web_search_per_1k?: number
+        }
+        Update: {
+          cache_read_per_mtok?: number
+          cache_write_per_mtok?: number
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: never
+          input_per_mtok?: number
+          model?: string
+          output_per_mtok?: number
+          web_search_per_1k?: number
+        }
+        Relationships: []
+      }
+      ai_usage: {
+        Row: {
+          cache_creation_tokens: number
+          cache_read_tokens: number
+          cost_usd: number | null
+          created_at: string
+          error_code: string | null
+          feature: string
+          id: number
+          input_tokens: number
+          latency_ms: number | null
+          model: string
+          output_tokens: number
+          ref_id: string | null
+          ref_table: string | null
+          request_id: string | null
+          status: string
+          user_id: string | null
+          web_searches: number
+        }
+        Insert: {
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          error_code?: string | null
+          feature: string
+          id?: never
+          input_tokens?: number
+          latency_ms?: number | null
+          model: string
+          output_tokens?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          request_id?: string | null
+          status: string
+          user_id?: string | null
+          web_searches?: number
+        }
+        Update: {
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          error_code?: string | null
+          feature?: string
+          id?: never
+          input_tokens?: number
+          latency_ms?: number | null
+          model?: string
+          output_tokens?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          request_id?: string | null
+          status?: string
+          user_id?: string | null
+          web_searches?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_feature_fkey"
+            columns: ["feature"]
+            isOneToOne: false
+            referencedRelation: "ai_features"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       allergens: {
         Row: {
@@ -3420,6 +3548,44 @@ export type Database = {
       }
     }
     Views: {
+      ai_usage_mensuel: {
+        Row: {
+          appels: number | null
+          appels_cout_inconnu: number | null
+          appels_ko: number | null
+          appels_ok: number | null
+          cout_usd: number | null
+          dernier_appel: string | null
+          feature: string | null
+          feature_label: string | null
+          imputation: string | null
+          mois: string | null
+          recherches_web: number | null
+          tokens: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_feature_fkey"
+            columns: ["feature"]
+            isOneToOne: false
+            referencedRelation: "ai_features"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      ai_usage_par_membre: {
+        Row: {
+          appels_cout_inconnu: number | null
+          appels_mois: number | null
+          appels_total: number | null
+          cout_mois: number | null
+          cout_total: number | null
+          dernier_appel: string | null
+          tokens_mois: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       author_ratings: {
         Row: {
           author_id: string | null
