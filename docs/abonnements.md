@@ -193,3 +193,66 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 - **Impersonation** : le moteur rend les droits du membre *incarné* ;
   `is_read_only_session()` et `useWriteGuard` continuent de primer sur toute
   autorisation d'abonnement.
+
+---
+
+## 6. État du chantier
+
+### Livré (branche `claude/spec-analysis-plan-ucdmvl`, PR #169)
+
+| Lot | Contenu | Où |
+|---|---|---|
+| 0 | Arbitrages, mesure du parc | ce document |
+| 1 | Schéma, RLS, moteur SQL, seeds | base (SQL joué à la main) |
+| 2a | Moteur pur + 29 tests + règle ESLint | `lib/entitlements.ts` |
+| 2b | Couche de lecture, cache de la grille | `lib/entitlements-data.ts`, `lib/data/reference.ts` |
+| 3 | Back-office de paramétrage des plans | `/admin/abonnements`, `lib/plans-admin.ts` |
+| 5b | Quotas de flux sur les cinq routes IA | `lib/quota-route.ts` + routes |
+
+### Objets SQL en place
+
+Tables : `plans`, `plan_versions`, `features`, `plan_features`, `subscriptions`,
+`trials`, `usage_counters`, `admin_events`, `subscription_requests`.
+
+Fonctions : `mc_anchor_date`, `mc_period_bounds`, `mc_renewal_anchor`,
+`mc_effective_rights`, `mc_usage`, `mc_check_quota`, `mc_usage_report`,
+`mc_consume`, `mc_refund`, `mc_enforce_stock`, `mc_start_trial`,
+`mc_publish_plan_version`, `mc_attach_default_plan`.
+
+**`mc_enforce_stock` n'est rattachée à aucune table.** C'est délibéré : posée
+avant les messages d'interface du lot 5a, elle produirait une erreur brute au
+membre. Le lot 5a l'attache aux cinq tables (`recipes`, `favorites`, `batches`,
+`shopping_lists`, `book_shares`) en même temps qu'il pose les blocages
+éducatifs.
+
+### À faire
+
+| Lot | Contenu | Note |
+|---|---|---|
+| 4 | Fiche abonnement d'un membre, historique, actions manuelles | étend `/admin/membres` ; y retirer le sélecteur `profiles.plan` |
+| 5a | Rattacher `mc_enforce_stock` aux cinq tables + blocage éducatif | |
+| 5c | Huit droits binaires + lecture seule après rétrogradation | **arbitrage ouvert** (voir plus bas) |
+| 6 | Page publique des plans, bascule mensuel/annuel, essai | `mc_start_trial` attend `TRIAL_EMAIL_SALT` |
+| 7 | Jauges « Mon utilisation » | `getUsageReport` est prête |
+| 8 | Cron, notifications in-app, e-mail | trois sous-systèmes inexistants |
+| 9 | Tableau de bord | |
+
+### Deux questions non tranchées
+
+1. **Un membre PRO rétrogradé garde des projets en cours.** Que fait
+   `/projets/[id]` ? Parcours guidé en lecture seule, dissolution forcée, ou
+   accès maintenu ? C'est le seul cas de rétrogradation qui ne se règle pas
+   par « l'existant est préservé, seule la création est bloquée » : un projet
+   en cours n'est pas un objet fini, c'est un dialogue inachevé.
+2. **`reordonnancement_etapes` n'a pas de geste identifié** dans le produit.
+   La ligne est seedée `visible = false` en attendant.
+
+### Reprise
+
+`npm run test` (moteur pur), `npm run typecheck`, `npm run lint` (dont la
+règle anti-`plan === 'PRO'`), `npm run build`.
+
+Toute migration SQL se livre **dans la conversation**, jamais en fichier
+`db/*.sql` — et `npm run gen:types` la suit, sans quoi les nouvelles fonctions
+restent invisibles au typage (c'est pourquoi `mc_publish_plan_version` est
+encore appelée par un cast local dans `PlansManager`).
