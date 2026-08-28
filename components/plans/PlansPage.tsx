@@ -306,7 +306,17 @@ function BoutonPlan({
     );
   }
   if (!connecte) {
-    if (!plan.trialAllowed && !aUnTarif) return null;
+    // Ni essai ni tarif à proposer (la formule par défaut, typiquement) :
+    // le geste qui reste est de rejoindre le site, pas de « s'abonner » à
+    // une formule gratuite par construction — même lien que « Créer un
+    // compte » de l'en-tête.
+    if (!plan.trialAllowed && !aUnTarif) {
+      return (
+        <Link href="/connexion?inscription=1" className={`${cls} block border border-outline-variant text-center text-primary hover:bg-surface-container`}>
+          Créer un compte
+        </Link>
+      );
+    }
     return (
       <Link href="/connexion?next=/plans" className={`${cls} block bg-primary text-center text-on-primary hover:shadow-lg`}>
         {plan.trialAllowed ? 'Essayer' : "S'abonner"}
