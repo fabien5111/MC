@@ -3487,6 +3487,18 @@ export type Database = {
         Returns: number
       }
       mc_usage: { Args: { p_key: string; p_user_id: string }; Returns: number }
+      mc_usage_report: {
+        Args: { p_user_id: string }
+        Returns: {
+          allowed: boolean
+          feature_key: string
+          limit_type: string
+          limit_value: number
+          period_end: string
+          unlimited: boolean
+          usage: number
+        }[]
+      }
       merge_ideas: {
         Args: { source_id: string; target_id: string }
         Returns: undefined
