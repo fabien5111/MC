@@ -233,7 +233,7 @@ export function MembersManager({ members }: { members: Member[] }) {
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1 items-start">
                         {m.subscription
-                          ? badge('bg-secondary-container text-on-secondary-container', `${m.subscription.planCode}${m.subscription.type === 'TRIAL' ? ' · essai' : ''}`)
+                          ? badge('bg-secondary-container text-on-secondary-container', `${m.subscription.planLabel}${m.subscription.type === 'TRIAL' ? ' · essai' : ''}`)
                           : badge('bg-outline-variant text-on-surface-variant', m.profileId ? '—' : 'Non inscrit')}
                         {m.subscription?.trialConsumed && m.subscription.type !== 'TRIAL' && (
                           <span className="text-[10px] text-on-surface-variant">Essai déjà consommé</span>
@@ -512,7 +512,7 @@ function EditPanel({
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm text-on-surface-variant">
               {member.subscription
-                ? `${member.subscription.planCode}${member.subscription.type === 'TRIAL' ? ' (essai)' : ''}`
+                ? `${member.subscription.planLabel}${member.subscription.type === 'TRIAL' ? ' (essai)' : ''}`
                 : 'Gratuit (par défaut)'}
             </span>
             <button

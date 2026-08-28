@@ -427,7 +427,7 @@ export type Member = {
   // attente (pas encore de profil). `profiles.plan` / `allowlist.plan`
   // ('free' / 'paid') sont mortes depuis le chantier abonnements — ne plus
   // les lire (cf. docs/abonnements.md § « doctrine restante »).
-  subscription: { planCode: string; type: string; endsAt: string | null; trialConsumed: boolean } | null;
+  subscription: { planCode: string; planLabel: string; type: string; endsAt: string | null; trialConsumed: boolean } | null;
   is_demo: boolean;
   notes: string | null;
   invited_at: string | null;

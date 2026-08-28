@@ -106,17 +106,21 @@ type LigneActive = {
   ends_at: string | null;
   starts_at: string;
   status: string;
-  plan_versions: { plans: { code: string } };
+  // Le libellé (`label`) est celui affiché aux membres et modifiable en
+  // back-office — c'est lui qu'il faut montrer ici, jamais le `code`
+  // technique immuable (« FREE », « PRO »), qui n'a de sens que pour la
+  // logique, jamais pour l'affichage (cf. CLAUDE.md « Contrainte forte »).
+  plan_versions: { plans: { code: string; label: string } };
 };
 
 export async function getMembersSubscriptionSummaries(): Promise<
-  Map<string, { planCode: string; type: string; endsAt: string | null; trialConsumed: boolean }>
+  Map<string, { planCode: string; planLabel: string; type: string; endsAt: string | null; trialConsumed: boolean }>
 > {
   const supabase = await createClient();
   const [{ data: rows }, { data: trials }] = await Promise.all([
     supabase
       .from('subscriptions')
-      .select('user_id, type, ends_at, starts_at, status, plan_versions!inner(plans!inner(code))')
+      .select('user_id, type, ends_at, starts_at, status, plan_versions!inner(plans!inner(code, label))')
       .eq('status', 'ACTIVE')
       .order('starts_at', { ascending: false })
       .returns<LigneActive[]>(),
@@ -137,13 +141,17 @@ export async function getMembersSubscriptionSummaries(): Promise<
     parMembre.set(r.user_id, entree);
   }
 
-  const out = new Map<string, { planCode: string; type: string; endsAt: string | null; trialConsumed: boolean }>();
+  const out = new Map<
+    string,
+    { planCode: string; planLabel: string; type: string; endsAt: string | null; trialConsumed: boolean }
+  >();
   for (const [userId, { defaut, autre }] of parMembre) {
     const vivant = autre && (autre.ends_at === null || new Date(autre.ends_at).getTime() > maintenant);
     const retenue = vivant ? autre : defaut;
     if (!retenue) continue;
     out.set(userId, {
       planCode: retenue.plan_versions.plans.code,
+      planLabel: retenue.plan_versions.plans.label,
       type: retenue.type,
       endsAt: retenue.ends_at,
       trialConsumed: trialSet.has(userId),
