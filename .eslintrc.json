@@ -1,3 +1,12 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "BinaryExpression[operator=/^([!=]==?)$/] > Literal[value=/^(FREE|PLUS|PRO)$/]",
+        "message": "Aucun test de plan en dur : passer par le moteur de droits (canAccess / verdict, lib/entitlements.ts). Un plan renommé ou un plan ajouté ne doit demander aucune modification de code — cf. docs/abonnements.md."
+      }
+    ]
+  }
 }

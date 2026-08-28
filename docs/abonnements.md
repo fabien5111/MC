@@ -171,7 +171,14 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 ## 5. Doctrine restante
 
 - **Aucun test de plan en dur.** Pas de `plan === 'PRO'` : tout passe par le
-  moteur. Une règle ESLint locale l'interdira (lot 2).
+  moteur. La règle est en place (`no-restricted-syntax` dans `.eslintrc.json`)
+  et échoue au `npm run lint`, dans les deux sens de la comparaison.
+- **Le calcul des droits effectifs n'existe qu'en SQL.** `lib/entitlements.ts`
+  ne fait que consommer le résultat de `mc_effective_rights` : deux
+  implémentations de la règle du maximum auraient divergé au premier
+  changement, et c'est la version SQL qui fait foi puisque c'est elle que les
+  triggers appliquent. Les tests (`npm run test`) ne couvrent donc que le pur :
+  verdicts, seuils de jauge, diff de versions, contrôle de cohérence, messages.
 - **`profiles.plan` et `allowlist.plan` sont morts** dès le lot 4. Ces deux
   colonnes (`free` / `paid`) sont aujourd'hui affichées et modifiables dans
   `/admin/membres` ; elles deviennent une seconde vérité dès que
