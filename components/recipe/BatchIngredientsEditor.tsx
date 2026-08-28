@@ -42,11 +42,15 @@ export function BatchIngredientsEditor({
   units,
   unitTips,
   conversions,
+  canReplaceIngredient = true,
 }: {
   batch: BatchFull;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Droit d'abonnement (`remplacement_ingredient_par_recette`). Défaut à
+  // `true` pour l'appelant qui ne le passe pas encore.
+  canReplaceIngredient?: boolean;
 }) {
   const { mutate, busy, refresh } = useMutation();
   const dialog = useDialog();
@@ -347,7 +351,10 @@ export function BatchIngredientsEditor({
                                 >
                                   <span className="material-symbols-outlined text-[18px]">edit</span>
                                 </button>
-                                {!row.removed && !batchStepReplaced(step) && (
+                                {/* Un remplacement déjà en place (cf. le bouton `undo`
+                                    ci-dessus) reste géré même sans le droit — seul en
+                                    DÉMARRER un nouveau est bridé (§7.4). */}
+                                {!row.removed && !batchStepReplaced(step) && canReplaceIngredient && (
                                   <button
                                     type="button"
                                     onClick={() => setExpanding(row)}

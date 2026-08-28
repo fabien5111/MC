@@ -62,10 +62,18 @@ export function BatchStepDonePanel({
   title,
   meta,
   children,
+  canPersonalNotes = true,
+  canSubsteps = true,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
+  // Droits d'abonnement (§4 « Lancer une fournée »). Défaut à `true` : les
+  // appelants qui ne les passent pas encore (aucun aujourd'hui) gardent le
+  // comportement d'avant ce câblage plutôt que de se retrouver bridés par
+  // omission.
+  canPersonalNotes?: boolean;
+  canSubsteps?: boolean;
   // Date de dégustation de la fournée : rend les jours sous forme de vraies
   // dates dans le sélecteur, comme les badges de la fiche.
   plannedDate: string | null;
@@ -318,7 +326,7 @@ export function BatchStepDonePanel({
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editingNote && (
+        {!editingNote && canPersonalNotes && (
           <button
             type="button"
             onClick={() => {
@@ -332,7 +340,18 @@ export function BatchStepDonePanel({
           </button>
         )}
       </div>
-      {editingNote ? (
+      {/* Une note déjà saisie AVANT une rétrogradation reste visible telle
+          quelle (§7.4, l'existant est préservé) : seule la saisie d'une
+          nouvelle note est bridée, jamais l'affichage de celle qui existe. */}
+      {!canPersonalNotes && !step.user_note ? (
+        <p className="no-print font-body-md text-sm italic text-on-surface-variant">
+          Non incluses dans votre formule —{' '}
+          <Link href="/plans" className="text-primary underline">
+            voir les formules
+          </Link>
+          .
+        </p>
+      ) : editingNote ? (
         <div className="no-print flex flex-col gap-3">
           <textarea
             value={noteDraft}
@@ -532,7 +551,7 @@ export function BatchStepDonePanel({
             </button>
           </div>
         </div>
-      ) : (
+      ) : canSubsteps ? (
         <button
           type="button"
           onClick={() => setAddingSubstep(true)}
@@ -540,7 +559,19 @@ export function BatchStepDonePanel({
         >
           <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter une sous-étape
         </button>
-      )}
+      ) : substeps.length === 0 ? (
+        // Sous-étapes déjà présentes AVANT une rétrogradation restent
+        // affichées et cochables ci-dessus (§7.4) : seule l'AJOUT d'une
+        // nouvelle en est bridé, jamais visible sur une liste déjà garnie
+        // pour ne pas répéter le message à chaque étape d'une longue fournée.
+        <p className="no-print font-body-md text-[12px] italic text-on-surface-variant">
+          Sous-étapes non incluses dans votre formule —{' '}
+          <Link href="/plans" className="text-primary underline">
+            voir les formules
+          </Link>
+          .
+        </p>
+      ) : null}
     </>
   );
 

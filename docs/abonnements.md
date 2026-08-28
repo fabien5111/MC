@@ -214,7 +214,7 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 | 4 | Fiche abonnement d'un membre, historique, actions manuelles | `/admin/membres`, `lib/subscriptions-admin.ts`, `mc_admin_*` |
 | 5a | Cinq limites de stock câblées + message éducatif générique | `mc_enforce_stock` attachée, `lib/quota-message-client.ts`, `useMutation` |
 | 5b | Quotas de flux sur les cinq routes IA | `lib/quota-route.ts` + routes |
-| 5c (partiel) | `mode_projet` en lecture seule pour un projet en cours | `/projets/[id]`, `ProjectReadOnly`, `mc_enforce_project_access` |
+| 5c | `mode_projet` en lecture seule pour un projet en cours, plus les cinq derniers droits binaires (voir §9) | `/projets/[id]`, `PreparerView`, `/importer`, `/relecture/[id]`, `PartnerSlot` |
 | 6 | Page publique des plans, bascule mensuel/annuel, essai, demandes | `/plans`, `lib/trial.ts`, `subscription_requests` |
 | 8 | Cron d'expiration, notifications in-app + e-mail | `/api/cron/abonnements`, `NotificationBell`, `lib/mail.ts` |
 | 7 | Jauges « Mon utilisation » | `/reglages`, `components/profile/UsageCard.tsx` |
@@ -238,9 +238,9 @@ Fonctions : `mc_anchor_date`, `mc_period_bounds`, `mc_renewal_anchor`,
 
 ### À faire
 
-| Lot | Contenu | Note |
-|---|---|---|
-| 5c (reste) | Sept droits binaires (`remplacement_ingredient_par_recette`, `notes_personnelles`, `sous_etapes_sequencement`, `ecran_relecture_import`, `fusion_listes_courses`, `navigation_sans_pub`) | `mode_projet` seul est traité |
+Plus rien : les neuf droits binaires du §4 sont tous câblés. `fusion_listes_courses`
+et `reordonnancement_etapes` restent seedées `visible = false`, faute de
+fonctionnalité correspondante dans le produit (§2).
 
 ### Une question tranchée, une encore ouverte
 
@@ -362,6 +362,75 @@ les notifications in-app d'expiration restent affichées quoi qu'il arrive
 `getProfile()` (`getNotifyEmailPreference`, `lib/notifications-data.ts`) :
 l'ajouter à la liste énumérée de `lib/auth.ts` la ferait relire à chaque
 rendu de page pour un réglage qui ne sert qu'à `/reglages` et au cron.
+
+## 9. Les cinq derniers droits binaires — décisions
+
+### Proportionnalité assumée : UI seule, pas de trigger SQL
+
+`mode_projet` et les cinq limites de stock ont un garde-fou en base
+(`mc_enforce_project_access`, `mc_enforce_stock`) parce qu'ils protègent une
+ressource — le nombre d'objets créés, l'accès à un mode entier. Les cinq
+points ci-dessous n'ont **que** le contrôle côté interface (`canAccess()`
+lu côté serveur, prop transmise aux composants client) :
+
+- `remplacement_ingredient_par_recette`, `notes_personnelles`,
+  `sous_etapes_sequencement` : un membre qui forcerait l'écriture depuis la
+  console du navigateur ajouterait une note ou une sous-étape sans y avoir
+  droit. Sans coût, sans effet sur d'autres membres, sans dépense d'API —
+  contrairement à un stock illimité de recettes ou un mode projet entier.
+  Un garde-fou en base coûterait un trigger de plus par table concernée pour
+  un risque qui n'en est pas un.
+- `ecran_relecture_import` : le contrôle réel — l'appel à l'API Anthropic —
+  est déjà côté serveur depuis le lot 5b (`import_ia_mensuel`). Ce que ce
+  lot ajoute n'est qu'un meilleur MOMENT pour le dire (à l'ouverture de la
+  page, pas après une tentative d'import ratée en profondeur).
+- `navigation_sans_pub` : aucune écriture, une pure question d'affichage —
+  masquer localement ses propres publicités depuis les outils de
+  développement du navigateur n'apporte rien qu'un bloqueur de publicité
+  n'offre déjà.
+
+Si l'un de ces points s'avérait un jour un vecteur d'abus réel, le motif à
+suivre est déjà écrit : `mc_enforce_project_access` (lot 5c) pour le modèle
+d'un trigger conditionnel sur `kind`/`project_stage`, adaptable à
+`batch_steps.user_note` et `batch_substeps`.
+
+### `notes_personnelles` / `sous_etapes_sequencement` : l'existant reste, l'ajout est bridé
+
+Deux surfaces distinctes portent ces droits : la note d'étape
+(`BatchStepDonePanel`) et la note de fournée (`BatchNotes`) pour les notes ;
+les sous-étapes n'existent que dans `BatchStepDonePanel`. Dans les trois cas,
+la règle est la même (§7.4, l'existant est préservé) : une note ou une liste
+de sous-étapes déjà saisies AVANT une rétrogradation restent affichées et
+modifiables en lecture — seul le bouton de CRÉATION (nouvelle note quand
+aucune n'existe, nouvelle sous-étape) disparaît, remplacé par un message bref
+et un lien vers `/plans`. Un droit rétabli fait réapparaître le bouton sans
+rien à migrer : rien n'a jamais été supprimé.
+
+### `ecran_relecture_import` : portée volontairement stricte, comme `mode_projet`
+
+`/importer` masque le formulaire (`ImporterForm`) mais garde la liste des
+imports passés visible — c'est de l'historique, jamais concerné par un
+contrôle de création. `/relecture/[id]`, en revanche, est bloquée
+**entièrement** pour un brouillon existant sans le droit, sans vue en
+lecture seule : un import non publié est un artefact intermédiaire d'un
+parcours interrompu, pas un contenu que le membre consulte ou dont il aurait
+besoin — contrairement à un projet en cours (§5c, `mode_projet`), qui reste
+lisible parce qu'il porte une intention et une structure déjà investies.
+Rien n'est supprimé pour autant : la ligne `imports` / `recipes` (brouillon)
+reste en base, seulement inatteignable tant que le droit n'est pas rétabli.
+
+### `navigation_sans_pub` : un seul point de contrôle, pas trois
+
+Trois emplacements diffusent des publicités hors accueil
+(`recipe_inline`, `search_list`, `sidebar`). Le contrôle est posé une seule
+fois, dans `PartnerSlot` lui-même (déjà un Server Component qui résout
+`getCurrentUser()`/`isAdmin()` en interne) — jamais dans les trois pages
+appelantes, qui n'ont pas à savoir que ce droit existe. `home_top` et
+`home_mid` sont explicitement exemptés : `pub_accueil` reste `OUI` pour tout
+le monde (§2, écarts de grille), la page d'accueil n'est gouvernée par aucun
+plan. Le repère « Emplacement libre » réservé à l'administration
+(`EmptySlot`) n'est pas concerné : le nouveau contrôle n'intervient qu'une
+fois qu'une campagne existe réellement à afficher.
 
 ## 8. Reprise
 
