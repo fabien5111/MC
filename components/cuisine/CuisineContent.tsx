@@ -34,6 +34,7 @@ import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
 import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -343,7 +344,9 @@ export function CuisineContent({
 
       router.push(`/fournee/${batchId}`);
     } catch (e) {
-      dialog.alert('Erreur lors de la recréation de la fournée : ' + (e as Error).message);
+      const brut = (e as Error).message;
+      const educatif = await translateQuotaError(brut);
+      dialog.alert(educatif ?? 'Erreur lors de la recréation de la fournée : ' + brut);
       setRefaisant(null);
     }
   }

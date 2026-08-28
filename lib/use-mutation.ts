@@ -30,7 +30,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { logImpersonationAction, useImpersonation } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
-import { quotaFailure } from '@/lib/entitlements';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 // Forme minimale d'un retour supabase-js. `null` permet d'abandonner sans
 // alerte (ex. redirection vers /connexion faute de session active).
@@ -41,28 +41,9 @@ type Write = () => PromiseLike<WriteResult | null>;
 // futur trigger du même type) arrive ici comme n'importe quelle erreur
 // Postgres — `useMutation` étant le point de passage unique de toutes les
 // écritures du site, c'est le seul endroit où le traduire compte de le
-// faire une fois pour toutes plutôt que dans chaque appelant.
-//
-// Composer le message éducatif exige la grille et le plan courant
-// (`lib/entitlements-data.ts`, server-only) : d'où l'aller-retour vers
-// /api/quota-message plutôt qu'un appel direct depuis ce hook client.
-// Best-effort : si la traduction échoue, l'erreur brute reste affichée —
-// dégradée, mais jamais un blocage silencieux.
-async function messageEducatif(rawMessage: string): Promise<string | null> {
-  const echec = quotaFailure({ message: rawMessage });
-  if (!echec) return null;
-  try {
-    const r = await fetch('/api/quota-message', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ raw: rawMessage }),
-    });
-    const data = await r.json();
-    return typeof data?.message === 'string' ? data.message : null;
-  } catch {
-    return null;
-  }
-}
+// faire une fois pour toutes plutôt que dans chaque appelant. Les écritures
+// hors périmètre du hook (CreerForm, la création d'une fournée) appellent
+// `translateQuotaError` directement — cf. lib/quota-message-client.ts.
 
 export type MutateOptions = {
   // Texte du confirm() préalable ; l'écriture est abandonnée si l'utilisateur
@@ -131,7 +112,7 @@ export function useMutation() {
         }
         if (res.error) {
           console.debug(`[mutation-timing] ${label} — erreur après ${writeMs}ms`);
-          const educatif = await messageEducatif(res.error.message);
+          const educatif = await translateQuotaError(res.error.message);
           dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
           return false;
         }
@@ -148,7 +129,7 @@ export function useMutation() {
         return true;
       } catch (e) {
         const brut = (e as Error).message || 'écriture impossible';
-        const educatif = await messageEducatif(brut);
+        const educatif = await translateQuotaError(brut);
         dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${brut}`);
         return false;
       } finally {
