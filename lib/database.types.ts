@@ -3170,6 +3170,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_requested_at: string | null
           created_at: string
           created_by: string | null
           ends_at: string | null
@@ -3188,6 +3189,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
@@ -3206,6 +3208,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
@@ -3571,6 +3574,7 @@ export type Database = {
         Args: { p_anchor: number; p_at: string }
         Returns: string
       }
+      mc_cancel_own_subscription: { Args: never; Returns: string }
       mc_check_quota: {
         Args: { p_key: string; p_user_id: string }
         Returns: Json
@@ -3592,6 +3596,22 @@ export type Database = {
         Returns: Record<string, unknown>
       }
       mc_pseudo_slug: { Args: { p: string }; Returns: string }
+      mc_publish_plan_version: {
+        Args: {
+          p_active: boolean
+          p_currency: string
+          p_label: string
+          p_order_index: number
+          p_plan_id: number
+          p_price_monthly: number
+          p_price_yearly: number
+          p_reason: string
+          p_rights: Json
+          p_tagline: string
+          p_trial_allowed: boolean
+        }
+        Returns: number
+      }
       mc_refund: { Args: { p_key: string; p_n?: number }; Returns: undefined }
       mc_renewal_anchor: { Args: { p_user_id: string }; Returns: number }
       mc_start_trial: {
