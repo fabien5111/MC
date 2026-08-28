@@ -144,6 +144,7 @@ const PROFILE_COLUMN_LIST = [
   'followers_count', 'following_count', 'created_at',
   'website', 'website_url', 'instagram', 'instagram_url',
   'facebook_url', 'youtube_url', 'tiktok_url', 'pinterest_url',
+  'notify_email',
 ] as const satisfies readonly (keyof Profile)[];
 
 // `satisfies` ci-dessus attrape une colonne **inexistante** (faute de frappe) ;
