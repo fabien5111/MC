@@ -117,11 +117,17 @@ un droit payant à tous).
   par le membre, et n'ajoute pas d'agrégat à chaque insertion.
 - **`fournees_actives_max`** : « active » = `batches.status = 'planifiee'`
   (les autres valeurs sont `terminee` et `abandonnee`).
-- **Trois lignes sont seedées en `visible = false`**, faute de fonctionnalité
-  correspondante dans le produit : `fusion_listes_courses`,
-  `reordonnancement_etapes`, `affichage_patissiers`. Une grille publique
-  générée depuis la base afficherait sinon des promesses non tenues. Les
-  repasser à `visible = true` le jour où la fonctionnalité existe.
+- **Erreur corrigée après coup** : les trois lignes `fusion_listes_courses`,
+  `reordonnancement_etapes` et `affichage_patissiers` avaient été seedées
+  `visible = false` au lot 0, sur l'hypothèse — fausse — qu'aucune
+  fonctionnalité ne leur correspondait dans le produit. Les trois existent
+  réellement : fusionner deux listes de courses (`CuisineContent`,
+  `MergeListRow` / `mergeShoppingLists`), réordonner les étapes d'une
+  journée par glisser-déposer entre recettes (`PlanningDayView`,
+  `day_order_index`), rechercher des pâtissiers (`/recherche`,
+  `AuthorCard`). Les trois sont repassées à `visible = true`. Voir §9 pour
+  le câblage des deux premières (la troisième est `OUI` sur les trois
+  plans, aucun contrôle d'accès à poser).
 
 Total seedé : **44 fonctionnalités**, 10 sections, 5 limites de stock,
 3 quotas de flux.
@@ -148,8 +154,8 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `remplacement_ingredient_par_recette` | binaire | `IngredientExpandDialog` |
 | `notes_personnelles` | binaire | `BatchStepDonePanel`, `BatchNotes` |
 | `sous_etapes_sequencement` | binaire | `BatchStepDonePanel` |
-| `reordonnancement_etapes` | binaire | à définir |
-| `fusion_listes_courses` | binaire | fonctionnalité à créer |
+| `reordonnancement_etapes` | binaire | `PlanningDayView` (`/en-cuisine`) |
+| `fusion_listes_courses` | binaire | `CuisineContent` (`/en-cuisine`) |
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
 
 ---
@@ -238,11 +244,11 @@ Fonctions : `mc_anchor_date`, `mc_period_bounds`, `mc_renewal_anchor`,
 
 ### À faire
 
-Plus rien : les neuf droits binaires du §4 sont tous câblés. `fusion_listes_courses`
-et `reordonnancement_etapes` restent seedées `visible = false`, faute de
-fonctionnalité correspondante dans le produit (§2).
+Plus rien : les onze droits binaires de la grille (§4) sont tous câblés,
+`fusion_listes_courses` et `reordonnancement_etapes` compris (§9, ajoutés
+après coup — l'hypothèse initiale de leur absence était fausse, cf. §2).
 
-### Une question tranchée, une encore ouverte
+### Une question tranchée, plus aucune ouverte
 
 1. **Un membre PRO rétrogradé garde des projets en cours : lecture seule.**
    `/projets/[id]` reste accessible et montre tout — intention, format,
@@ -270,9 +276,6 @@ fonctionnalité correspondante dans le produit (§2).
    ajouter du travail).
    La réversion `ready → wizard` (`ProjectMarking`, §8.5) n'est PAS concernée :
    au moment de ce geste, l'état encore en base est `ready`, pas `wizard`.
-
-2. **`reordonnancement_etapes` n'a pas de geste identifié** dans le produit.
-   La ligne est seedée `visible = false` en attendant.
 
 ## 7. Lot 8 — cron, notifications, e-mail : décisions
 
@@ -499,3 +502,50 @@ aurait créé deux chemins à maintenir pour le même geste, avec le risque
 qu'ils divergent. `UsageCard` ne fait que déterminer QUAND proposer chaque
 lien (`grid.plans` + `orderIndex` pour « supérieure », `trialConsumed` +
 `trialAllowed` pour l'essai), jamais comment l'exécuter.
+
+## 11. Correction — `fusion_listes_courses` et `reordonnancement_etapes` existaient
+
+Le lot 0 avait posé `visible = false` sur ces deux lignes (et sur
+`affichage_patissiers`) en affirmant qu'aucune fonctionnalité ne leur
+correspondait dans le produit. **C'était faux pour les trois**, repéré par
+l'auteur du projet en relisant l'écran de paramétrage, pas par une relecture
+du code — l'erreur venait d'avoir généralisé un commentaire sur UN écran
+(« pas de fusion ici » dans `ArchivedShoppingLists.tsx`, qui ne vaut que pour
+les listes archivées) à l'ensemble du produit, sans vérifier ailleurs.
+
+- **`fusion_listes_courses`** : fusionner une liste de courses dans une autre
+  (`CuisineContent.tsx`, bouton « Fusionner avec une autre liste »,
+  `MergeListRow` / `mergeShoppingLists`) — distinct de « ajouter les
+  ingrédients d'une recette à une liste existante » (`ShoppingWidget.tsx`),
+  qui reste ouvert à tous : ce n'est pas fusionner *plusieurs listes*, c'est
+  la création normale d'une liste.
+- **`reordonnancement_etapes`** : glisser-déposer les étapes d'une même
+  journée entre plusieurs fournées, dans le planning du jour
+  (`PlanningDayView.tsx`, `batch_steps.day_order_index`).
+
+### Câblage, même proportionnalité que le §9
+
+Contrôle côté interface uniquement, pas de trigger SQL — même raisonnement
+qu'au §9 : ni l'une ni l'autre ne protège une ressource ou un coût. Les deux
+droits sont calculés une fois dans `app/en-cuisine/page.tsx` et transmis en
+prop (`CuisineContent` → `PlanningDayView` pour le réordonnancement, gardé
+sur place pour la fusion). Sans le droit :
+- le bouton de fusion (icône `call_merge`) ne s'affiche pas — la suppression
+  d'une liste, elle, reste toujours possible ;
+- la poignée de glisser-déposer (icône `drag_indicator`) est remplacée par
+  un espace inerte de même largeur, pour ne pas décaler la mise en page ;
+  `onDragOver` / `onDrop` du parent restent de toute façon sans effet tant
+  qu'aucun glissé n'a pu démarrer.
+
+### Grille corrigée
+
+```sql
+update public.features
+   set visible = true
+ where key in ('fusion_listes_courses', 'reordonnancement_etapes', 'affichage_patissiers');
+```
+
+`affichage_patissiers` (recherche de pâtissiers, `/recherche`,
+`AuthorCard.tsx`) est `OUI` sur les trois plans : rendue visible sur `/plans`
+pour la lisibilité de l'offre, sans aucun contrôle d'accès à poser — elle ne
+gouverne rien.
