@@ -46,6 +46,50 @@ export type Database = {
           },
         ]
       }
+      admin_events: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          id: number
+          reason: string | null
+          state_after: Json | null
+          state_before: Json | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          state_after?: Json | null
+          state_before?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: never
+          reason?: string | null
+          state_after?: Json | null
+          state_before?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_events_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_ignored_refs: {
         Row: {
           created_at: string
@@ -1220,6 +1264,48 @@ export type Database = {
           },
         ]
       }
+      features: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          key: string
+          label: string
+          limit_type: string
+          order_index: number
+          section: string
+          section_order: number
+          unit: string | null
+          visible: boolean
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: never
+          key: string
+          label: string
+          limit_type?: string
+          order_index?: number
+          section: string
+          section_order?: number
+          unit?: string | null
+          visible?: boolean
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: never
+          key?: string
+          label?: string
+          limit_type?: string
+          order_index?: number
+          section?: string
+          section_order?: number
+          unit?: string | null
+          visible?: boolean
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string | null
@@ -1785,6 +1871,135 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plan_features: {
+        Row: {
+          feature_id: number
+          id: number
+          limit_value: number | null
+          plan_version_id: number
+          unlimited: boolean
+          value: string
+        }
+        Insert: {
+          feature_id: number
+          id?: never
+          limit_value?: number | null
+          plan_version_id: number
+          unlimited?: boolean
+          value: string
+        }
+        Update: {
+          feature_id?: number
+          id?: never
+          limit_value?: number | null
+          plan_version_id?: number
+          unlimited?: boolean
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_features_plan_version_id_fkey"
+            columns: ["plan_version_id"]
+            isOneToOne: false
+            referencedRelation: "plan_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: number
+          is_current: boolean
+          number: number
+          plan_id: number
+          price_monthly: number | null
+          price_yearly: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: never
+          is_current?: boolean
+          number: number
+          plan_id: number
+          price_monthly?: number | null
+          price_yearly?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: never
+          is_current?: boolean
+          number?: number
+          plan_id?: number
+          price_monthly?: number | null
+          price_yearly?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_versions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          id: number
+          is_default: boolean
+          label: string
+          order_index: number
+          tagline: string | null
+          trial_allowed: boolean
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          id?: never
+          is_default?: boolean
+          label: string
+          order_index?: number
+          tagline?: string | null
+          trial_allowed?: boolean
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          id?: never
+          is_default?: boolean
+          label?: string
+          order_index?: number
+          tagline?: string | null
+          trial_allowed?: boolean
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -2818,6 +3033,140 @@ export type Database = {
           },
         ]
       }
+      subscription_requests: {
+        Row: {
+          created_at: string
+          id: number
+          periodicity: string
+          plan_id: number
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          periodicity?: string
+          plan_id: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          periodicity?: string
+          plan_id?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_requests_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          external_customer_id: string | null
+          external_subscription_id: string | null
+          id: number
+          periodicity: string
+          plan_version_id: number
+          promo_code: string | null
+          provider: string
+          reason: string | null
+          renewal_anchor: number
+          starts_at: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          external_customer_id?: string | null
+          external_subscription_id?: string | null
+          id?: never
+          periodicity?: string
+          plan_version_id: number
+          promo_code?: string | null
+          provider?: string
+          reason?: string | null
+          renewal_anchor?: number
+          starts_at?: string
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          external_customer_id?: string | null
+          external_subscription_id?: string | null
+          id?: never
+          periodicity?: string
+          plan_version_id?: number
+          promo_code?: string | null
+          provider?: string
+          reason?: string | null
+          renewal_anchor?: number
+          starts_at?: string
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_version_id_fkey"
+            columns: ["plan_version_id"]
+            isOneToOne: false
+            referencedRelation: "plan_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           category_picto: string | null
@@ -2851,6 +3200,45 @@ export type Database = {
         }
         Relationships: []
       }
+      trials: {
+        Row: {
+          consumed_at: string
+          email_hash: string
+          id: number
+          subscription_id: number | null
+          user_id: string | null
+        }
+        Insert: {
+          consumed_at?: string
+          email_hash: string
+          id?: never
+          subscription_id?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          consumed_at?: string
+          email_hash?: string
+          id?: never
+          subscription_id?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trials_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           abbreviation: string | null
@@ -2874,6 +3262,48 @@ export type Database = {
           tooltip?: string | null
         }
         Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          consumed: number
+          feature_id: number
+          id: number
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Insert: {
+          consumed?: number
+          feature_id: number
+          id?: never
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Update: {
+          consumed?: number
+          feature_id?: number
+          id?: never
+          period_end?: string
+          period_start?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_counters_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_counters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       utensils: {
         Row: {
@@ -3025,8 +3455,50 @@ export type Database = {
         }
         Returns: Json
       }
+      mc_anchor_date: {
+        Args: { p_anchor: number; p_at: string }
+        Returns: string
+      }
+      mc_check_quota: {
+        Args: { p_key: string; p_user_id: string }
+        Returns: Json
+      }
+      mc_consume: { Args: { p_key: string; p_n?: number }; Returns: number }
+      mc_effective_rights: {
+        Args: { p_user_id: string }
+        Returns: {
+          allowed: boolean
+          feature_key: string
+          limit_type: string
+          limit_value: number
+          unlimited: boolean
+        }[]
+      }
       mc_norm: { Args: { txt: string }; Returns: string }
+      mc_period_bounds: {
+        Args: { p_anchor: number; p_at: string }
+        Returns: Record<string, unknown>
+      }
       mc_pseudo_slug: { Args: { p: string }; Returns: string }
+      mc_refund: { Args: { p_key: string; p_n?: number }; Returns: undefined }
+      mc_renewal_anchor: { Args: { p_user_id: string }; Returns: number }
+      mc_start_trial: {
+        Args: { p_email_hash: string; p_plan_code: string }
+        Returns: number
+      }
+      mc_usage: { Args: { p_key: string; p_user_id: string }; Returns: number }
+      mc_usage_report: {
+        Args: { p_user_id: string }
+        Returns: {
+          allowed: boolean
+          feature_key: string
+          limit_type: string
+          limit_value: number
+          period_end: string
+          unlimited: boolean
+          usage: number
+        }[]
+      }
       merge_ideas: {
         Args: { source_id: string; target_id: string }
         Returns: undefined
