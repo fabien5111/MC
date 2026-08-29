@@ -33,7 +33,7 @@ import { getGrid, getRightsForVersion } from '@/lib/entitlements-data';
 import { claimNotification, createNotification, getNotifyEmailPreference } from '@/lib/notifications-data';
 import { lostFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
-import { envoyerEmail } from '@/lib/mail';
+import { sendEmailBestEffort } from '@/lib/email';
 
 export const maxDuration = 60;
 
@@ -91,7 +91,7 @@ async function envoyer(
   // Notifications in-app d'expiration toujours affichées (spec §10) : la
   // préférence ne conditionne QUE l'e-mail, jamais leur écrite ci-dessus.
   if (profil?.email && (await getNotifyEmailPreference(ligne.user_id))) {
-    await envoyerEmail({ to: profil.email, subject: content.emailSubject, html: content.emailHtml, text: content.emailText });
+    await sendEmailBestEffort({ to: profil.email, subject: content.emailSubject, html: content.emailHtml, text: content.emailText });
   }
 }
 

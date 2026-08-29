@@ -222,7 +222,7 @@ Règle héritée de `docs/note-regression-cache.md`, à ne pas enfreindre :
 | 5b | Quotas de flux sur les cinq routes IA | `lib/quota-route.ts` + routes |
 | 5c | `mode_projet` en lecture seule pour un projet en cours, plus les cinq derniers droits binaires (voir §9) | `/projets/[id]`, `PreparerView`, `/importer`, `/relecture/[id]`, `PartnerSlot` |
 | 6 | Page publique des plans, bascule mensuel/annuel, essai, demandes | `/plans`, `lib/trial.ts`, `subscription_requests` |
-| 8 | Cron d'expiration, notifications in-app + e-mail | `/api/cron/abonnements`, `NotificationBell`, `lib/mail.ts` |
+| 8 | Cron d'expiration, notifications in-app + e-mail | `/api/cron/abonnements`, `NotificationBell`, `lib/email.ts` |
 | 7 | Jauges « Mon utilisation » | `/reglages`, `components/profile/UsageCard.tsx` |
 | 9 | Tableau de bord administrateur | `/admin/abonnements/tableau-de-bord` |
 
@@ -281,15 +281,23 @@ après coup — l'hypothèse initiale de leur absence était fausse, cf. §2).
 
 ### Prestataire retenu : AWS SES en SMTP
 
-Choix du produit, pas le mien : SES exposé en SMTP standard, donc
-`lib/mail.ts` ne connaît rien d'AWS — cinq variables génériques (`SMTP_HOST`,
-`SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`). Changer de
-prestataire un jour ne touchera que l'environnement, jamais le code.
+Choix du produit, pas le mien : SES exposé en SMTP standard, donc `lib/email.ts`
+ne connaît rien d'AWS — cinq variables génériques (`SES_SMTP_HOST`,
+`SES_SMTP_PORT`, `SES_SMTP_USER`, `SES_SMTP_PASSWORD`, `SES_SENDER_EMAIL`).
+Changer de prestataire un jour ne touchera que l'environnement, jamais le code.
 
-**Best-effort**, même doctrine que la modération IA : SMTP absent ou en panne
-→ l'envoi échoue silencieusement (loggé), jamais un blocage. Un e-mail non
-parti dégrade l'information du membre, il ne doit jamais faire échouer le
-cron qui l'accompagne.
+**Un seul client SMTP, deux façons de l'appeler.** `lib/email.ts` existait déjà
+sur `main` (PR #170, outil de test `/admin/test-email`, ajouté pendant que ce
+chantier était en cours) au moment où ce lot a construit son propre
+`lib/mail.ts` — même fournisseur, deux jeux de variables d'environnement.
+Fusionné après coup dans `lib/email.ts` plutôt que de garder les deux : `sendEmail`
+lève (`MissingSmtpConfigError` ou l'erreur d'envoi), ce que veut un admin qui
+teste sa configuration — voir l'échec plutôt qu'un succès qui masquerait une
+panne ; `sendEmailBestEffort` ne lève jamais et renvoie `true`/`false`, même
+doctrine que la modération IA, pour le cron — SMTP absent ou en panne →
+l'envoi échoue silencieusement (loggé), jamais un blocage. Un e-mail non parti
+dégrade l'information du membre, il ne doit jamais faire échouer le cron qui
+l'accompagne ni les autres abonnements traités dans la même passe.
 
 ### Le cron ne peut pas être précis à l'heure près
 
@@ -448,11 +456,12 @@ local, même motif que `ads` dans `PartnersManager`).
 
 Variables d'environnement à configurer avant mise en production (cf.
 `.env.local.example`) : `TRIAL_EMAIL_SALT` (essai gratuit, lot 6), `CRON_SECRET`
-(tâche planifiée), `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` /
-`MAIL_FROM` (e-mail, AWS SES). Sans elles : l'essai gratuit refuse de démarrer,
-le cron refuse toute requête (503, jamais une route ouverte par défaut), et
-les e-mails ne partent pas silencieusement — rien de tout cela n'empêche le
-reste du site de fonctionner.
+(tâche planifiée), `SES_SMTP_HOST` / `SES_SMTP_PORT` / `SES_SMTP_USER` /
+`SES_SMTP_PASSWORD` / `SES_SENDER_EMAIL` (e-mail, AWS SES — partagées avec
+l'outil de test `/admin/test-email` de la PR #170). Sans elles : l'essai
+gratuit refuse de démarrer, le cron refuse toute requête (503, jamais une
+route ouverte par défaut), et les e-mails ne partent pas silencieusement —
+rien de tout cela n'empêche le reste du site de fonctionner.
 
 ## 10. `/reglages` — annulation en libre-service (hors spécification V1)
 
