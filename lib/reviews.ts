@@ -12,6 +12,10 @@ export const REVIEW_RATING_MIN = 1;
 export const REVIEW_RATING_MAX = 5;
 export const REVIEW_COMMENT_MAX = 1000;
 
+// Photos jointes à l'avis (format paysage, compressées comme la photo
+// principale d'une recette — cf. `resizeImageToDataUrl` via `ImageSlot`).
+export const REVIEW_PHOTOS_MAX = 2;
+
 // En dessous de cette note, le commentaire devient obligatoire : une note
 // basse sans explication n'aide ni l'auteur de la recette ni les futurs
 // lecteurs, alors qu'une bonne note se suffit à elle-même.
@@ -23,7 +27,7 @@ export function reviewCommentRequired(rating: number): boolean {
 
 export type ReviewValidation = { ok: true } | { ok: false; message: string };
 
-export function validateReview(rating: number, comment: string): ReviewValidation {
+export function validateReview(rating: number, comment: string, photos: string[] = []): ReviewValidation {
   if (!Number.isInteger(rating) || rating < REVIEW_RATING_MIN || rating > REVIEW_RATING_MAX) {
     return { ok: false, message: 'Choisissez une note de 1 à 5 étoiles.' };
   }
@@ -33,6 +37,12 @@ export function validateReview(rating: number, comment: string): ReviewValidatio
   }
   if (!texte && reviewCommentRequired(rating)) {
     return { ok: false, message: 'Un commentaire est requis pour une note inférieure à 3/5.' };
+  }
+  if (photos.length > REVIEW_PHOTOS_MAX) {
+    return { ok: false, message: `${REVIEW_PHOTOS_MAX} photos maximum.` };
+  }
+  if (photos.some((p) => typeof p !== 'string' || !p.startsWith('data:image/'))) {
+    return { ok: false, message: 'Photo invalide.' };
   }
   return { ok: true };
 }
