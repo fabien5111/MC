@@ -27,8 +27,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json().catch(() => ({}));
   const rating = Number(body?.rating);
   const comment = typeof body?.comment === 'string' ? body.comment : '';
+  const photos = Array.isArray(body?.photos) ? body.photos.filter((p: unknown): p is string => typeof p === 'string') : [];
 
-  const result = await submitOrUpdateReview(batch, user.id, rating, comment);
+  const result = await submitOrUpdateReview(batch, user.id, rating, comment, photos);
   if (!result.ok) return NextResponse.json({ erreur: result.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

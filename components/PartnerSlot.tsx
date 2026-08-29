@@ -10,6 +10,8 @@
 // et isAdmin sont mémoïsés par requête (React cache).
 import Link from 'next/link';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { canAccess } from '@/lib/entitlements';
+import { getEntitlements } from '@/lib/entitlements-data';
 import { PartnerLink } from '@/components/PartnerLink';
 import { adSlotConfig, type AdSlotConfig, type Ad, type AdSlotKey, type AdsBySlot } from '@/lib/ads-config';
 
@@ -36,6 +38,17 @@ export async function PartnerSlot({
   // Emplacement sans campagne : rien pour les visiteurs (la section disparaît
   // au lieu de laisser un bloc vide), un repère pour les administrateurs.
   if (!ad) return <EmptySlot cfg={cfg} className={className} />;
+
+  // `navigation_sans_pub` (§4 « Page d'accueil ») : les emplacements HORS
+  // accueil disparaissent pour qui a ce droit. `home_top` / `home_mid`
+  // restent affichés à tout le monde — `pub_accueil` n'est gouverné par
+  // aucun plan (cf. docs/abonnements.md, écarts de grille). Un visiteur
+  // déconnecté n'a pas de droits à vérifier : il voit les encarts, comme un
+  // membre FREE.
+  if (slot !== 'home_top' && slot !== 'home_mid') {
+    const user = await getCurrentUser();
+    if (user && canAccess(await getEntitlements(user.id), 'navigation_sans_pub')) return null;
+  }
 
   const inner = ad.image_url ? <Visual ad={ad} cfg={cfg} /> : <TextCard ad={ad} cfg={cfg} />;
   const box = `encart-partenaire w-full ${cfg.tone === 'gradient' && !ad.image_url ? 'encart-partenaire--decor' : ''} ${

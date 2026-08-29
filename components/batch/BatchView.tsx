@@ -136,6 +136,7 @@ export function BatchView({
   lecture,
   initialMode,
   myReview,
+  droits,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -157,6 +158,9 @@ export function BatchView({
   // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
   // l'ajustement se fait au calme avant de passer aux fourneaux.
   initialMode?: 'preparer' | 'cuisiner';
+  // Droits d'abonnement (§4 « Lancer une fournée »), calculés une fois par la
+  // page — jamais recalculés ici, `BatchView` n'a pas de session à lire.
+  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -426,6 +430,7 @@ export function BatchView({
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
             onMarkTerminee={markTerminee}
+            droits={droits}
           />
         ) : (
           <CuisinerView
@@ -460,6 +465,7 @@ function PreparerView({
   onDelete,
   onSwitchMode,
   onMarkTerminee,
+  droits,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -473,6 +479,7 @@ function PreparerView({
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
   onMarkTerminee: () => void;
+  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
@@ -656,7 +663,7 @@ function PreparerView({
         ce que vous avez déjà réalisé, et « recette : … » rappelle la valeur d&apos;origine.
       </p>
 
-      <BatchNotes batchId={batch.id} notes={batch.user_note} />
+      <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} />
 
       {/* Photo principale — remontée au-dessus du bloc technique (même ordre
           que la fiche recette), plutôt qu'après la description plus bas. */}
@@ -902,7 +909,7 @@ function PreparerView({
               <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
               <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
             </summary>
-            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} />
+            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} canReplaceIngredient={droits.remplacementIngredient} />
           </details>
         </div>
       )}
@@ -1011,6 +1018,8 @@ function PreparerView({
                   substeps={s.batch_substeps}
                   plannedDate={batch.planned_date}
                   dayOptions={dayOptions}
+                  canPersonalNotes={droits.notesPersonnelles}
+                  canSubsteps={droits.sousEtapes}
                 >
                   <StepPhotoGallery photos={photos} />
                   {s.video_url && <StepVideoPlayer url={s.video_url} />}

@@ -31,6 +31,7 @@ import type { RecipeFull } from '@/lib/recipes';
 import { scalingCoef, scaleFromBase, type BatchFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -334,7 +335,8 @@ export function BatchWidget({
       .select('id')
       .single();
     if (error || !batchRow) {
-      dialog.alert('Erreur : ' + (error?.message || 'création refusée'));
+      const educatif = await translateQuotaError(error?.message || '');
+      dialog.alert(educatif ?? 'Erreur : ' + (error?.message || 'création refusée'));
       setBusy(false);
       return;
     }

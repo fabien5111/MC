@@ -14,6 +14,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildComponentContenu, normaliseComponentRecipe } from '@/lib/ai/project-component';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
+import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 60;
 
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
     parts: Number.isFinite(Number(body?.servings)) && Number(body?.servings) > 0 ? Math.round(Number(body.servings)) : null,
   };
 
+  const quota = await reserverQuota(user.id, 'mode_projet_ia_mensuel');
+  if (estRefus(quota)) return quota.refus;
+
   const { sink, appels } = collecteurAppelsIa();
   try {
     const raw = await callClaude(
@@ -56,10 +60,12 @@ export async function POST(req: Request) {
     );
     const recette = normaliseComponentRecipe(parseStrictJson(raw.text));
     if (!recette.steps.length) {
+      await quota.rendre();
       return NextResponse.json({ erreur: 'La proposition est revenue vide, réessayez.' }, { status: 502 });
     }
     return NextResponse.json(recette);
   } catch (e) {
+    await quota.rendre();
     console.error('projet/composant:', (e as Error).message);
     return NextResponse.json({ erreur: 'La proposition a échoué, réessayez.' }, { status: 502 });
   } finally {

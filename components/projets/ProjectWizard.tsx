@@ -176,7 +176,11 @@ export function ProjectWizard({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ intent: texte }),
       });
-      const data = (await r.json()) as ProposedStructure;
+      const data = (await r.json()) as ProposedStructure & { erreur?: string };
+      // Quota de générations épuisé : la route rend 200 avec une proposition
+      // vide pour ne pas interrompre le parcours, mais le membre doit savoir
+      // pourquoi l'étape suivante s'ouvre vierge.
+      if (data?.erreur) await dialog.alert(data.erreur);
       if (r.ok && data) {
         setProposal(data);
         if (data.title && !title.trim()) setTitle(data.title);

@@ -22,8 +22,20 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import Link from 'next/link';
 
-export function BatchNotes({ batchId, notes: initialNotes }: { batchId: number; notes: string | null }) {
+export function BatchNotes({
+  batchId,
+  notes: initialNotes,
+  canPersonalNotes = true,
+}: {
+  batchId: number;
+  notes: string | null;
+  // Droit d'abonnement (`notes_personnelles`) — même règle que la note
+  // d'étape (BatchStepDonePanel) : l'existant reste visible, seule la
+  // saisie d'une nouvelle note est bridée (§7.4).
+  canPersonalNotes?: boolean;
+}) {
   const { mutate, busy } = useMutation();
   const [notes, setNotes] = useState(initialNotes);
   const [editing, setEditing] = useState(false);
@@ -54,13 +66,21 @@ export function BatchNotes({ batchId, notes: initialNotes }: { batchId: number; 
       <LoadingOverlay visible={busy} label="Enregistrement…" />
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editing && (
+        {!editing && canPersonalNotes && (
           <button type="button" onClick={open} title={notes ? 'Modifier ma note' : 'Ajouter une note'} className="no-print text-primary hover:opacity-70">
             <span className="material-symbols-outlined text-[18px]">{notes ? 'edit' : 'add_circle'}</span>
           </button>
         )}
       </div>
-      {editing ? (
+      {!canPersonalNotes && !notes ? (
+        <p className="no-print font-body-md text-sm italic text-on-surface-variant">
+          Non incluses dans votre formule —{' '}
+          <Link href="/plans" className="text-primary underline">
+            voir les formules
+          </Link>
+          .
+        </p>
+      ) : editing ? (
         <div className="no-print flex flex-col gap-3">
           <textarea
             value={draft}

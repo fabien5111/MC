@@ -34,6 +34,7 @@ import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
 import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -42,6 +43,7 @@ export function CuisineContent({
   batchesTerminees,
   activeBatches,
   shoppingLists,
+  droits,
 }: {
   planning: BatchListRow[];
   // Fournées closes (terminées ou abandonnées) — écran dédié plutôt qu'un
@@ -50,6 +52,9 @@ export function CuisineContent({
   batchesTerminees: BatchListRow[];
   activeBatches: ActiveBatchRow[];
   shoppingLists: ShoppingListSummary[];
+  // Droits d'abonnement (§4) : fusion de listes de courses, réordonnancement
+  // des étapes dans le planning du jour.
+  droits: { fusionListes: boolean; reordonnancement: boolean };
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -343,7 +348,9 @@ export function CuisineContent({
 
       router.push(`/fournee/${batchId}`);
     } catch (e) {
-      dialog.alert('Erreur lors de la recréation de la fournée : ' + (e as Error).message);
+      const brut = (e as Error).message;
+      const educatif = await translateQuotaError(brut);
+      dialog.alert(educatif ?? 'Erreur lors de la recréation de la fournée : ' + brut);
       setRefaisant(null);
     }
   }
@@ -412,7 +419,7 @@ export function CuisineContent({
           )}
         </div>
         {planningView === 'jours' ? (
-          <PlanningDayView plans={planningList} />
+          <PlanningDayView plans={planningList} canReorder={droits.reordonnancement} />
         ) : planningList.length > 0 ? (
           <div className="max-w-3xl space-y-4">
             {planningList.map((p) => {
@@ -594,14 +601,16 @@ export function CuisineContent({
                       {l.created_at ? 'Créée le ' + formatDate(l.created_at) : ''}
                     </p>
                     <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        title="Fusionner avec une autre liste"
-                        onClick={() => setMergingListId(mergingListId === l.id ? null : l.id)}
-                        className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">call_merge</span>
-                      </button>
+                      {droits.fusionListes && (
+                        <button
+                          type="button"
+                          title="Fusionner avec une autre liste"
+                          onClick={() => setMergingListId(mergingListId === l.id ? null : l.id)}
+                          className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">call_merge</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         title="Supprimer la liste"

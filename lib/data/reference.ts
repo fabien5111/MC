@@ -334,6 +334,7 @@ const CLES_PUBLIQUES = [
   'banner_home_tablette',
   'banner_home_mobile',
   'recipe_default_photo',
+  'subscription_trial_days',
 ] as const;
 
 const lireSettings = referenceAccessor<{ key: string; value: string | null }>({
@@ -360,3 +361,103 @@ export const getPublicSiteSettings = async (): Promise<Record<string, string>> =
 // fiche recette) quand l'auteur n'a fourni aucune photo.
 export const getRecipeDefaultPhoto = async (): Promise<string | null> =>
   (await getPublicSiteSettings()).recipe_default_photo || null;
+
+// ---------------------------------------------------------------------------
+// Grille des abonnements — quatre lectures, une seule forme composée ailleurs
+// ---------------------------------------------------------------------------
+//
+// `plans`, `plan_versions`, `features` et `plan_features` sont servies comme
+// des référentiels : petites, stables, et lues à chaque affichage de la page
+// des plans comme de tout contrôle de droit. Elles sont en lecture PUBLIQUE
+// (policy `_lecture_publique`), donc lisibles au rôle `anon` — condition sans
+// laquelle `unstable_cache` ne pourrait pas les servir.
+//
+// **Ne jamais y faire passer l'abonnement d'un membre** : celui-là dépend de
+// l'utilisateur et se lit sans cache partagé (cf. `lib/entitlements-data.ts`).
+//
+// Volatilité : celle d'un tarif ou d'un droit, c'est-à-dire faible — mais
+// l'invalidation (`revalidateReference('plans')`) reste la vraie voie de
+// propagation, la durée n'étant qu'un filet.
+
+export type PlanRow = Pick<
+  Database['public']['Tables']['plans']['Row'],
+  'id' | 'code' | 'label' | 'tagline' | 'order_index' | 'is_default' | 'trial_allowed' | 'active'
+>;
+
+export const getPlanRows = referenceAccessor<PlanRow>({
+  table: 'plans',
+  revalidate: HEURE,
+  query: async (sb) =>
+    lignes(
+      await sb
+        .from('plans')
+        .select('id, code, label, tagline, order_index, is_default, trial_allowed, active')
+        .order('order_index'),
+    ),
+});
+
+export type PlanVersionRow = Pick<
+  Database['public']['Tables']['plan_versions']['Row'],
+  'id' | 'plan_id' | 'number' | 'price_monthly' | 'price_yearly' | 'currency'
+>;
+
+// Versions COURANTES seulement : les anciennes ne servent qu'à l'historique
+// d'un abonné, qui se lit avec sa session et non par ce cache partagé.
+export const getCurrentPlanVersions = referenceAccessor<PlanVersionRow>({
+  table: 'plan_versions',
+  revalidate: HEURE,
+  query: async (sb) =>
+    lignes(
+      await sb
+        .from('plan_versions')
+        .select('id, plan_id, number, price_monthly, price_yearly, currency')
+        .eq('is_current', true),
+    ),
+});
+
+export type FeatureRow = Pick<
+  Database['public']['Tables']['features']['Row'],
+  'id' | 'key' | 'label' | 'description' | 'section' | 'section_order' | 'order_index' | 'limit_type' | 'unit' | 'visible'
+>;
+
+export const getFeatureRows = referenceAccessor<FeatureRow>({
+  table: 'features',
+  revalidate: HEURE,
+  query: async (sb) =>
+    lignes(
+      await sb
+        .from('features')
+        .select('id, key, label, description, section, section_order, order_index, limit_type, unit, visible')
+        .order('section_order')
+        .order('order_index'),
+    ),
+});
+
+export type PlanFeatureRow = Pick<
+  Database['public']['Tables']['plan_features']['Row'],
+  'plan_version_id' | 'feature_id' | 'value' | 'limit_value' | 'unlimited'
+>;
+
+// Jointure interne sur `plan_versions` : sans elle, la lecture rapatrierait
+// les droits de TOUTES les versions passées, dont le volume croît de 132
+// lignes à chaque publication d'une grille.
+export const getCurrentPlanFeatures = referenceAccessor<PlanFeatureRow>({
+  table: 'plan_features',
+  revalidate: HEURE,
+  query: async (sb) =>
+    lignes(
+      await sb
+        .from('plan_features')
+        .select('plan_version_id, feature_id, value, limit_value, unlimited, plan_versions!inner(is_current)')
+        .eq('plan_versions.is_current', true),
+    ),
+});
+
+// Durée de l'essai gratuit, en jours. Réglage global (§7.2), rangé dans
+// `site_settings` plutôt que sur `plans` : il ne varie pas d'un plan à
+// l'autre, et une colonne par plan aurait invité à les désynchroniser.
+export const getTrialDays = async (): Promise<number> => {
+  const brut = (await getPublicSiteSettings()).subscription_trial_days;
+  const n = Number.parseInt(brut ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : 14;
+};

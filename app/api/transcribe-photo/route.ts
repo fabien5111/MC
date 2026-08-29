@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isReadOnlySession } from '@/lib/impersonation';
+import { verifierAcces } from '@/lib/quota-route';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/claude';
 import { transcrireUne } from '@/lib/ai/transcribe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
@@ -51,6 +52,12 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
+
+  // Droit d'import vérifié, mais AUCUN crédit consommé : un import vaut un
+  // crédit, pas une page. C'est /api/import-url qui décompte, une fois, quand
+  // les transcriptions lui reviennent assemblées.
+  const refus = await verifierAcces(user.id, 'import_ia_mensuel');
+  if (refus) return refus;
 
   const body = await req.json().catch(() => ({}));
   const brut = typeof body?.image === 'string' ? body.image : '';

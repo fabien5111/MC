@@ -4,6 +4,7 @@
 // client à dupliquer.
 import Link from 'next/link';
 import { formatDate } from '@/lib/format';
+import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import type { RecipeComment } from '@/lib/reviews-data';
 
 function Stars({ value }: { value: number | null }) {
@@ -50,6 +51,11 @@ export function RecipeComments({ comments }: { comments: RecipeComment[] }) {
                 {c.created_at && <span className="text-[12px] text-on-surface-variant">{formatDate(c.created_at)}</span>}
               </div>
               {c.content && <p className="font-body-md text-body-md text-on-surface whitespace-pre-line">{c.content}</p>}
+              {c.photo_urls.length > 0 && (
+                <div className="w-40 mt-3">
+                  <StepPhotoGallery photos={c.photo_urls.map((url) => ({ url, ai_retouched: false }))} compact />
+                </div>
+              )}
             </div>
           </div>
         ))}

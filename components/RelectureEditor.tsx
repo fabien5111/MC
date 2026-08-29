@@ -23,6 +23,7 @@ import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe
 import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -1133,7 +1134,9 @@ export function RelectureEditor({
     } catch (e) {
       // La recette a pu être créée avant l'échec : `createdRecipeIdRef` fait
       // qu'une nouvelle tentative la reprend au lieu d'en créer une seconde.
-      dialog.alert('Erreur à la création : ' + (e as Error).message);
+      const brut = (e as Error).message;
+      const educatif = await translateQuotaError(brut);
+      dialog.alert(educatif ?? 'Erreur à la création : ' + brut);
       busyRef.current = false;
       setBusy(false);
     }

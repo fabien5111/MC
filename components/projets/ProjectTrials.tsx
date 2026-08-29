@@ -25,6 +25,7 @@ import { scaledQuantityText } from '@/lib/projects';
 import { formatDate } from '@/lib/format';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 // Appréciation globale, volontairement à trois valeurs (spec §7.2) : de quoi
 // retrouver d'un coup d'œil l'essai qui a marché, pas une échelle de notation.
@@ -114,7 +115,8 @@ export function ProjectTrials({
         .select('id')
         .single();
       if (error || !batchRow) {
-        dialog.alert('Erreur : ' + (error?.message || 'création refusée'));
+        const educatif = await translateQuotaError(error?.message || '');
+        dialog.alert(educatif ?? 'Erreur : ' + (error?.message || 'création refusée'));
         return;
       }
       try {

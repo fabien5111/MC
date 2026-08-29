@@ -6,6 +6,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
+import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 30;
 
@@ -37,6 +38,10 @@ export async function POST(req: Request) {
   const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
   if (prompt.length < 3) return NextResponse.json({ erreur: "Décrivez l'ajustement souhaité." }, { status: 400 });
 
+  // Réservé avant l'appel, rendu s'il échoue (cf. lib/quota-route.ts).
+  const quota = await reserverQuota(user.id, 'ajustement_ia_mensuel');
+  if (estRefus(quota)) return quota.refus;
+
   const { sink, appels } = collecteurAppelsIa();
   try {
     // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
@@ -54,6 +59,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(normaliseResultat(parseStrictJson(raw.text)));
   } catch {
+    await quota.rendre();
     return NextResponse.json(
       { erreur: "L'ajustement a échoué, réessayez ou saisissez le coefficient manuellement." },
       { status: 502 },

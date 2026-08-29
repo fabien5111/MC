@@ -28,6 +28,7 @@ export type AdminNavItem = {
 // admin-lists-config.ts.
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
+  { href: '/admin/abonnements', label: 'Abonnements', icon: 'card_membership' },
   { href: '/admin/aide', label: "Blocs d'aide", icon: 'help_center' },
   { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
   { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
@@ -39,4 +40,5 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
   { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
   { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book', manager: true },
+  { href: '/admin/test-email', label: 'Test e-mail', icon: 'forward_to_inbox' },
 ];

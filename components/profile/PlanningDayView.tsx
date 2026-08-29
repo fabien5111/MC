@@ -33,7 +33,15 @@ const dateLabel = (iso: string): string =>
 // cache client du routeur face à une page `force-dynamic`). En refaire un
 // ici doublait chaque arrivée sur « En cuisine » d'un second aller-retour
 // serveur identique au premier, pour rien.
-export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
+export function PlanningDayView({
+  plans,
+  canReorder = true,
+}: {
+  plans: BatchListRow[];
+  // Droit d'abonnement (`reordonnancement_etapes`). Défaut à `true` pour tout
+  // appelant qui ne le passe pas encore.
+  canReorder?: boolean;
+}) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
   const router = useRouter();
@@ -234,18 +242,26 @@ export function PlanningDayView({ plans }: { plans: BatchListRow[] }) {
                       l'étape (case à cocher collée devant, jamais solidaire
                       du titre de la recette au-dessus), puis le temps. */}
                   <div className="flex items-center gap-2">
-                    <span
-                      draggable
-                      onDragStart={(e) => {
-                        setDragId(it.stepId);
-                        e.dataTransfer.effectAllowed = 'move';
-                      }}
-                      onDragEnd={() => setDragId(null)}
-                      title="Glisser pour réordonner cette étape dans sa journée"
-                      className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
-                    >
-                      drag_indicator
-                    </span>
+                    {canReorder ? (
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          setDragId(it.stepId);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragEnd={() => setDragId(null)}
+                        title="Glisser pour réordonner cette étape dans sa journée"
+                        className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                      >
+                        drag_indicator
+                      </span>
+                    ) : (
+                      // Espace réservé, sans poignée : sans droit, l'étape
+                      // n'est ni draggable ni cible de dépose (`onDragOver` /
+                      // `onDrop` du <li> parent restent inertes tant que
+                      // `dragId` ne peut jamais être posé — cf. plus haut).
+                      <span className="w-[18px] shrink-0" aria-hidden />
+                    )}
                     <Link
                       href={`/fournee/${it.planId}?mode=preparer`}
                       className="font-label-md text-[11px] text-secondary uppercase tracking-widest hover:underline"
