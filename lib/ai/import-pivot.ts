@@ -1,6 +1,6 @@
 // Logique d'extraction/normalisation d'une recette importée (schéma pivot v1.0).
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
-import { addUsage, callClaude, parseStrictJson, type ClaudeUsage } from '@/lib/ai/claude';
+import { addUsage, callClaude, parseStrictJson, type ClaudeUsage, type UsageSink } from '@/lib/ai/claude';
 
 // ── Schéma d'extraction (sortie brute de l'IA) ───────────────
 // Volontairement plat et concis : chaque clé superflue rallonge la génération,
@@ -432,6 +432,10 @@ export async function normalizeRecette(
   // part du `maxDuration` de la route pour transcrire les pages : il reste
   // moins que le budget nominal pour structurer.
   budgetMs: number = BUDGET_MS,
+  // Collecteur du journal de consommation, transmis tel quel à chaque appel
+  // (au plus trois : extraction, relance JSON, relance de complétude) — un
+  // import qui relance deux fois doit produire trois lignes distinctes.
+  sink?: UsageSink,
 ): Promise<{ pivot: Pivot; usage: ClaudeUsage; erreurs: string[]; alertes: string[] }> {
   // Budget de temps partagé par les (au plus deux) appels : la relance ne doit
   // pas pousser la fonction serverless au-delà de son `maxDuration`, sinon
@@ -439,7 +443,7 @@ export async function normalizeRecette(
   const debut = Date.now();
   const restant = () => Math.max(5_000, budgetMs - (Date.now() - debut));
 
-  const first = await callClaude(apiKey, messageAnalyse(contenu), 8000, restant());
+  const first = await callClaude(apiKey, messageAnalyse(contenu), 8000, restant(), undefined, undefined, undefined, sink);
 
   let recette: RecetteIA;
   let usage = first.usage;
@@ -456,6 +460,10 @@ export async function normalizeRecette(
       ),
       8000,
       restant(),
+      undefined,
+      undefined,
+      undefined,
+      sink,
     );
     usage = addUsage(usage, retry.usage);
     try {
@@ -478,6 +486,10 @@ export async function normalizeRecette(
       ),
       8000,
       restant(),
+      undefined,
+      undefined,
+      undefined,
+      sink,
     );
     usage = addUsage(usage, retry.usage);
     try {

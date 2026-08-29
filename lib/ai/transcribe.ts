@@ -17,7 +17,7 @@
 // photographiée en entier, le corps du texte tombait à quelques pixels de haut
 // et « 150 °C » se lisait « 160 °C ». Une photo par requête rend à chacune la
 // limite entière.
-import { TRANSCRIBE_MODEL, callClaude, type BlocContenu, type ClaudeUsage } from '@/lib/ai/claude';
+import { TRANSCRIBE_MODEL, callClaude, type BlocContenu, type ClaudeUsage, type UsageSink } from '@/lib/ai/claude';
 
 export const PROMPT_TRANSCRIPTION = `Tu transcris la photo d'une page de livre de cuisine ou de fiche de recette.
 Ta seule tâche est de LIRE. Tu ne structures pas, tu n'interprètes pas, tu ne résumes pas.
@@ -50,6 +50,7 @@ export async function transcrireUne(
   image: ImagePhoto,
   numero: number,
   timeoutMs: number,
+  sink?: UsageSink,
 ): Promise<{ texte: string; usage: ClaudeUsage }> {
   // Image d'abord, consigne ensuite : c'est l'ordre recommandé pour une entrée
   // visuelle accompagnée d'une instruction.
@@ -57,6 +58,15 @@ export async function transcrireUne(
     { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
     { type: 'text', text: PROMPT_TRANSCRIPTION },
   ];
-  const { text, usage } = await callClaude(apiKey, contenu, 3000, timeoutMs, TRANSCRIBE_MODEL);
+  const { text, usage } = await callClaude(
+    apiKey,
+    contenu,
+    3000,
+    timeoutMs,
+    TRANSCRIBE_MODEL,
+    undefined,
+    undefined,
+    sink,
+  );
   return { texte: `--- page ${numero} ---\n${String(text || '').trim()}`, usage };
 }

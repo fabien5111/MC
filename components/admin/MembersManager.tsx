@@ -7,8 +7,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { Member } from '@/lib/admin';
+import type { Member, AiUsageOverview, AppelIaDetail } from '@/lib/admin';
 import { formatDate } from '@/lib/format';
+import { formatUsd } from '@/lib/ai/cost';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
@@ -23,13 +24,17 @@ function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
 }
 
-export function MembersManager({ members }: { members: Member[] }) {
+export function MembersManager({ members, iaOverview }: { members: Member[]; iaOverview: AiUsageOverview }) {
   const router = useRouter();
   const dialog = useDialog();
   const { mutate } = useMutation();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Member | null>(null);
+  // Tri par coût IA décroissant par défaut : c'est le seul tri qui rend
+  // cette colonne utile — repérer les quelques comptes qui pèsent le plus
+  // sur la facture, pas parcourir la liste par ordre alphabétique.
+  const [sortCout, setSortCout] = useState<'desc' | 'asc' | null>('desc');
   const { connect: connectImpersonation, busy: impBusy, link: impersonation, clear: clearImpersonation } = useImpersonateLink();
   // Copie locale des props serveur : permet de retirer une ligne supprimée en
   // même temps que le spinner, sans attendre la fin du router.refresh().
@@ -57,21 +62,29 @@ export function MembersManager({ members }: { members: Member[] }) {
     [rows],
   );
 
-  const filtered = useMemo(
-    () =>
-      rows
-        .filter((m) => {
-          if (filter === 'demo') return m.is_demo;
-          if (filter === 'trial') return m.subscription?.type === 'TRIAL';
-          if (filter === 'all') return true;
-          return m.status === filter;
-        })
-        .filter((m) => {
-          const q = query.toLowerCase();
-          return !q || [m.email, m.fullName || '', m.notes || ''].some((v) => v.toLowerCase().includes(q));
-        }),
-    [rows, filter, query],
-  );
+  const filtered = useMemo(() => {
+    const base = rows
+      .filter((m) => {
+        if (filter === 'demo') return m.is_demo;
+        if (filter === 'trial') return m.subscription?.type === 'TRIAL';
+        if (filter === 'all') return true;
+        return m.status === filter;
+      })
+      .filter((m) => {
+        const q = query.toLowerCase();
+        return !q || [m.email, m.fullName || '', m.notes || ''].some((v) => v.toLowerCase().includes(q));
+      });
+    if (!sortCout) return base;
+    // `null` (jamais d'appel IA) trié après les montants connus, quel que
+    // soit le sens : un membre sans consommation n'est ni le plus ni le
+    // moins coûteux, il est hors sujet pour ce tri.
+    return [...base].sort((a, b) => {
+      if (a.coutIaMois == null && b.coutIaMois == null) return 0;
+      if (a.coutIaMois == null) return 1;
+      if (b.coutIaMois == null) return -1;
+      return sortCout === 'desc' ? b.coutIaMois - a.coutIaMois : a.coutIaMois - b.coutIaMois;
+    });
+  }, [rows, filter, query, sortCout]);
 
   // La suppression passe par une route serveur : effacer la seule ligne
   // `profiles` depuis le navigateur laissait le compte d'authentification
@@ -135,7 +148,7 @@ export function MembersManager({ members }: { members: Member[] }) {
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[1400px] w-full">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         {(
           [
             ['Total', stats.total],
@@ -149,6 +162,19 @@ export function MembersManager({ members }: { members: Member[] }) {
             <p className="font-headline-md text-[28px] text-primary">{v}</p>
           </div>
         ))}
+      </div>
+
+      {/* Coût IA des membres (import, ajustement, mode projet) — jamais la
+          modération, qui n'est jamais imputée à un membre. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
+          <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Coût IA des membres — ce mois-ci</p>
+          <p className="font-headline-md text-[28px] text-primary">{formatUsd(iaOverview.membreMoisCourant)}</p>
+        </div>
+        <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
+          <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Coût IA des membres — au total</p>
+          <p className="font-headline-md text-[28px] text-primary">{formatUsd(iaOverview.membreTotal)}</p>
+        </div>
       </div>
 
       <InviteCard members={rows} onInvited={() => router.refresh()} />
@@ -179,20 +205,34 @@ export function MembersManager({ members }: { members: Member[] }) {
             Tous les membres <span className="text-on-surface-variant font-body-md text-sm font-normal">({filtered.length})</span>
           </h3>
         </div>
-        <table className="w-full text-left border-collapse min-w-[820px]">
+        <table className="w-full text-left border-collapse min-w-[900px]">
           <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
             <tr>
-              {['Membre', 'Statut', 'Accès', 'Plan / Rôle', 'Recettes', 'Depuis', ''].map((h, i) => (
+              {['Membre', 'Statut', 'Accès', 'Plan / Rôle', 'Recettes', 'Depuis'].map((h, i) => (
                 <th key={i} className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">
                   {h}
                 </th>
               ))}
+              <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">
+                <button
+                  type="button"
+                  onClick={() => setSortCout((s) => (s === 'desc' ? 'asc' : 'desc'))}
+                  className="flex items-center gap-0.5 hover:text-primary"
+                  title="Trier par coût IA du mois"
+                >
+                  Coût IA (mois)
+                  <span className="material-symbols-outlined text-sm">
+                    {sortCout === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                  </span>
+                </button>
+              </th>
+              <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider" />
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant text-sm">
+                <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant text-sm">
                   Aucun membre trouvé.
                 </td>
               </tr>
@@ -248,6 +288,13 @@ export function MembersManager({ members }: { members: Member[] }) {
                     <td className="px-6 py-4 text-center text-sm font-medium text-on-surface">{m.profileId ? m.recipeCount : '—'}</td>
                     <td className="px-6 py-4 text-xs text-on-surface-variant">
                       {m.invited_at ? new Date(m.invited_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-on-surface">
+                      {m.coutIaMois == null ? (
+                        <span className="text-on-surface-variant">—</span>
+                      ) : (
+                        formatUsd(m.coutIaMois)
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end items-center gap-1">
@@ -487,6 +534,9 @@ function EditPanel({
           </p>
         </div>
       </div>
+      {member.profileId && (member.coutIaMois != null || member.coutIaTotal != null) && (
+        <AiUsageDetail userId={member.profileId} coutMois={member.coutIaMois ?? 0} coutTotal={member.coutIaTotal ?? 0} />
+      )}
       <Row label="Statut">
         <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}>
           <option value="active">Actif</option>
@@ -575,6 +625,104 @@ function EditPanel({
       />
     )}
     </>
+  );
+}
+
+// Bloc « Consommation IA » de la fiche membre : mois + total (déjà connus,
+// venus de la liste), et les derniers appels — chargés à l'ouverture, RLS
+// admin (`ai_usage_select_admin`), sans passer par une route dédiée.
+function AiUsageDetail({ userId, coutMois, coutTotal }: { userId: string; coutMois: number; coutTotal: number }) {
+  const [appels, setAppels] = useState<AppelIaDetail[] | null>(null);
+  const [ouvert, setOuvert] = useState(false);
+
+  useEffect(() => {
+    if (!ouvert || appels !== null) return;
+    let annule = false;
+    // `ai_usage` n'est pas encore dans lib/database.types.ts tant que la
+    // migration n'a pas été régénérée — cast local, même motif que
+    // lib/admin.ts.
+    (createClient() as any)
+      .from('ai_usage')
+      .select(
+        'created_at, feature, model, status, input_tokens, cache_creation_tokens, cache_read_tokens, output_tokens, cost_usd, ai_features(label)',
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data, error }: { data: unknown; error: { message: string } | null }) => {
+        if (annule) return;
+        if (error) {
+          console.error('AiUsageDetail:', error.message);
+          setAppels([]);
+          return;
+        }
+        type Row = {
+          created_at: string;
+          feature: string;
+          model: string;
+          status: string;
+          input_tokens: number;
+          cache_creation_tokens: number;
+          cache_read_tokens: number;
+          output_tokens: number;
+          cost_usd: number | string | null;
+          ai_features: { label: string } | { label: string }[] | null;
+        };
+        const rows = ((data as unknown as Row[]) ?? []).map((r) => ({
+          created_at: r.created_at,
+          feature: r.feature,
+          feature_label: Array.isArray(r.ai_features) ? r.ai_features[0]?.label ?? r.feature : r.ai_features?.label ?? r.feature,
+          model: r.model,
+          tokens: r.input_tokens + r.cache_creation_tokens + r.cache_read_tokens + r.output_tokens,
+          cout_usd: r.cost_usd == null ? null : Number(r.cost_usd),
+          status: r.status,
+        }));
+        setAppels(rows);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [ouvert, appels, userId]);
+
+  return (
+    <div className="border border-outline-variant rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOuvert((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-left"
+      >
+        <span className="text-sm font-semibold text-on-surface">Consommation IA</span>
+        <span className="text-xs text-on-surface-variant">
+          {formatUsd(coutMois)} ce mois · {formatUsd(coutTotal)} au total
+        </span>
+      </button>
+      {ouvert && (
+        <div className="px-4 py-3 border-t border-outline-variant">
+          {appels === null ? (
+            <p className="text-xs text-on-surface-variant">Chargement…</p>
+          ) : appels.length === 0 ? (
+            <p className="text-xs text-on-surface-variant">Aucun appel IA enregistré.</p>
+          ) : (
+            <ul className="space-y-2 max-h-64 overflow-y-auto">
+              {appels.map((a, i) => (
+                <li key={i} className="flex items-center justify-between text-xs gap-2">
+                  <div className="min-w-0">
+                    <p className="text-on-surface truncate">{a.feature_label}</p>
+                    <p className="text-on-surface-variant">
+                      {formatDate(a.created_at)} · {a.model} · {a.tokens.toLocaleString('fr-FR')} tokens
+                      {a.status !== 'success' && <span className="text-error"> · échec</span>}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-on-surface font-medium">
+                    {a.cout_usd == null ? '—' : formatUsd(a.cout_usd)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

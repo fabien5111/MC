@@ -3,9 +3,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { callClaude, parseStrictJson, IMPORT_MODEL } from '@/lib/ai/claude';
-import { computeCost } from '@/lib/ai/cost';
+import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 30;
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
   const quota = await reserverQuota(user.id, 'ajustement_ia_mensuel');
   if (estRefus(quota)) return quota.refus;
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
     // 25 s : la route déclare `maxDuration = 30`, l'appel doit rendre la main
     // avant que l'hébergeur ne coupe la fonction.
@@ -50,29 +51,11 @@ export async function POST(req: Request) {
       buildContenu(body.recette, prompt, body.moules_reference),
       1000,
       25_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
     );
-
-    // Coût réel (cf. Coût IA, back-office) : `recipe_scale_costs` n'est pas
-    // encore dans lib/database.types.ts tant que la migration n'a pas été
-    // appliquée puis régénérée (cf. CLAUDE.md) — accès non typé en attendant,
-    // même motif que `recipe_analysis` dans /api/moderation-recette.
-    // Best-effort : un échec d'enregistrement du coût ne doit pas invalider
-    // un ajustement par ailleurs réussi.
-    try {
-      const cost = computeCost(raw.usage, IMPORT_MODEL);
-      const { error } = await (
-        supabase.from('recipe_scale_costs' as any) as ReturnType<typeof supabase.from>
-      ).insert({
-        user_id: user.id,
-        model: IMPORT_MODEL,
-        input_tokens: raw.usage.inputTokens,
-        output_tokens: raw.usage.outputTokens,
-        cost_usd: cost?.usd ?? null,
-      } as never);
-      if (error) console.error('scale-recipe (coût):', error.message);
-    } catch (costError) {
-      console.error('scale-recipe (coût):', (costError as Error).message);
-    }
 
     return NextResponse.json(normaliseResultat(parseStrictJson(raw.text)));
   } catch {
@@ -81,5 +64,14 @@ export async function POST(req: Request) {
       { erreur: "L'ajustement a échoué, réessayez ou saisissez le coefficient manuellement." },
       { status: 502 },
     );
+  } finally {
+    // `await`, jamais `void` : sur une fonction serverless Vercel, la requête
+    // HTTP en vol d'un `void` non attendu peut être coupée net dès la réponse
+    // envoyée (gel de l'environnement d'exécution) — la ligne ne part jamais.
+    // `enregistrerAppelsIa` avale déjà toutes ses erreurs en interne (best-
+    // effort), donc l'attendre ne remet pas en cause la doctrine « le journal
+    // ne casse jamais la réponse » : ça change seulement le moment où la
+    // fonction est autorisée à se terminer.
+    await enregistrerAppelsIa('ajustement_quantites', user.id, appels);
   }
 }

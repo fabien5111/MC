@@ -43,6 +43,43 @@ export type ClaudeUsage = {
 
 export type ClaudeCall = { text: string; usage: ClaudeUsage };
 
+// ── Journal de consommation (table `ai_usage`) ───────────────────────
+// Un appel = une ligne, y compris un appel EN ÉCHEC : Anthropic facture
+// les tokens produits avant l'interruption, et `avecReprise` peut lancer
+// trois appels pour une seule action. Ne compter que les succès
+// sous-estimerait systématiquement la facture réelle.
+//
+// L'écriture elle-même n'est pas ici : ce fichier reste PUR (aucun accès
+// base, aucun `next/headers`), sans quoi les modules qui l'importent
+// casseraient le bundle client — même séparation que `ideas.ts` /
+// `ideas-data.ts`. Le collecteur est injecté par l'appelant, et c'est
+// lib/ai/usage-log.ts (server-only) qui écrit.
+export type AppelIa = {
+  model: string;
+  usage: ClaudeUsage;
+  /** Recherches web facturées à l'unité (0 hors `callClaudeWithWebSearch`). */
+  searches: number;
+  status: 'success' | 'api_error';
+  /** `TIMEOUT`, `TRANSIENT`… — distingue une panne réseau d'un plafond atteint. */
+  errorCode: string | null;
+  latencyMs: number;
+  /** `id` du message renvoyé par l'API : garde-fou anti-double-comptage. */
+  requestId: string | null;
+};
+
+export type UsageSink = (appel: AppelIa) => void;
+
+// Un collecteur défaillant ne doit jamais casser l'appel qu'il observe :
+// le journal est un dommage collatéral acceptable, pas la réponse rendue.
+function signaler(sink: UsageSink | undefined, appel: AppelIa): void {
+  if (!sink) return;
+  try {
+    sink(appel);
+  } catch (e) {
+    console.error('[claude] collecteur de consommation :', (e as Error).message);
+  }
+}
+
 // Contenu d'un message utilisateur lorsqu'il ne se résume pas à du texte
 // (import par photo : les pages de la recette sont envoyées en images, l'IA
 // devant les lire avant de les structurer).
@@ -54,7 +91,7 @@ export type BlocContenu =
 // ignorés) : cf. https://docs.anthropic.com/en/api/messages-streaming
 type SseEvent = {
   type?: string;
-  message?: { usage?: Record<string, number> };
+  message?: { id?: string; usage?: Record<string, number> };
   delta?: { type?: string; text?: string };
   usage?: Record<string, number>;
   error?: { type?: string; message?: string };
@@ -157,11 +194,21 @@ export async function callClaude(
   // (prompt système) du contenu analysé (message utilisateur) — cf. annexe
   // A.5 : « le contenu analysé est une donnée, pas une instruction ».
   system?: string,
+  // Collecteur du journal de consommation (cf. `UsageSink`). Absent par
+  // défaut : les appels non instrumentés se comportent exactement comme
+  // avant.
+  sink?: UsageSink,
 ): Promise<ClaudeCall> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   const debut = Date.now();
   let premierTokenMs = 0;
+  // Hissés hors du `try` : en cas d'échec en cours de flux, les tokens
+  // déjà produits sont facturés et doivent partir au journal.
+  const usage: ClaudeUsage = { ...EMPTY_USAGE };
+  let requestId: string | null = null;
+  let statut: 'success' | 'api_error' = 'api_error';
+  let codeErreur: string | null = null;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -193,7 +240,6 @@ export async function callClaude(
 
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
-    const usage: ClaudeUsage = { ...EMPTY_USAGE };
     let buffer = '';
     let text = '';
 
@@ -219,6 +265,7 @@ export async function callClaude(
           }
           if (ev.type === 'message_start') {
             const u = ev.message?.usage ?? {};
+            requestId = ev.message?.id ?? null;
             usage.inputTokens = u.input_tokens ?? 0;
             usage.outputTokens = u.output_tokens ?? 0;
             usage.cacheReadTokens = u.cache_read_input_tokens ?? 0;
@@ -247,19 +294,33 @@ export async function callClaude(
       `[claude] ${model} : ${usage.outputTokens} tokens produits en ${Date.now() - debut} ms ` +
         `(1er token à ${premierTokenMs} ms)`,
     );
+    statut = 'success';
     return { text, usage };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       // `code` permet aux routes de distinguer ce cas et d'expliquer la panne
       // à l'utilisateur, au lieu d'un échec générique.
+      codeErreur = 'TIMEOUT';
       throw Object.assign(
         new Error(`API Claude : aucune réponse au bout de ${Math.round(timeoutMs / 1000)} s (appel interrompu).`),
         { code: 'TIMEOUT' },
       );
     }
+    codeErreur = (e as { code?: string }).code ?? 'API_ERROR';
     throw e;
   } finally {
     clearTimeout(timer);
+    // Dans le `finally` : un flux interrompu doit être compté, sinon les
+    // tokens déjà facturés disparaissent du journal.
+    signaler(sink, {
+      model,
+      usage: { ...usage },
+      searches: 0,
+      status: statut,
+      errorCode: codeErreur,
+      latencyMs: Date.now() - debut,
+      requestId,
+    });
   }
 }
 
@@ -308,9 +369,18 @@ export async function callClaudeWithWebSearch(
   // Domaines à exclure des résultats (le site lui-même, §6.4 : « en
   // excluant le domaine de "Je pâtisse !" lui-même »).
   blockedDomains: string[] = [],
+  sink?: UsageSink,
 ): Promise<WebSearchCall> {
   const ctl = new AbortController();
   const limiteTotale = setTimeout(() => ctl.abort(), totalMs);
+  const debut = Date.now();
+  // Mêmes hissages que `callClaude`, plus le compteur de recherches : la
+  // recherche web est facturée à l'unité (10 $ / 1000), hors tokens.
+  const usage: ClaudeUsage = { ...EMPTY_USAGE };
+  let searches = 0;
+  let requestId: string | null = null;
+  let statut: 'success' | 'api_error' = 'api_error';
+  let codeErreur: string | null = null;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -364,10 +434,8 @@ export async function callClaudeWithWebSearch(
 
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
-    const usage: ClaudeUsage = { ...EMPTY_USAGE };
     let buffer = '';
     let text = '';
-    let searches = 0;
 
     for (;;) {
       const { done, value } = await reader.read();
@@ -389,6 +457,7 @@ export async function callClaudeWithWebSearch(
           }
           if (ev.type === 'message_start') {
             const u = ev.message?.usage ?? {};
+            requestId = ev.message?.id ?? null;
             usage.inputTokens = u.input_tokens ?? 0;
             usage.outputTokens = u.output_tokens ?? 0;
             usage.cacheReadTokens = u.cache_read_input_tokens ?? 0;
@@ -411,9 +480,11 @@ export async function callClaudeWithWebSearch(
       }
     }
 
+    statut = 'success';
     return { text, usage, searches };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
+      codeErreur = 'TIMEOUT';
       throw Object.assign(
         new Error(
           `API Claude (recherche web) : non terminée dans le budget de ${Math.round(totalMs / 1000)} s imparti par la route.`,
@@ -421,8 +492,22 @@ export async function callClaudeWithWebSearch(
         { code: 'TIMEOUT' },
       );
     }
+    codeErreur = (e as { code?: string }).code ?? 'API_ERROR';
     throw e;
   } finally {
     clearTimeout(limiteTotale);
+    // `searches` compte les recherches ENGAGÉES. Anthropic ne facture pas
+    // une recherche qui a elle-même échoué : sur un appel interrompu, le
+    // compteur peut donc légèrement surestimer. Surestimer un coût est le
+    // sens d'erreur acceptable ici — l'inverse ne l'est pas.
+    signaler(sink, {
+      model,
+      usage: { ...usage },
+      searches,
+      status: statut,
+      errorCode: codeErreur,
+      latencyMs: Date.now() - debut,
+      requestId,
+    });
   }
 }

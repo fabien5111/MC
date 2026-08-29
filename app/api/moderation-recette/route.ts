@@ -18,9 +18,8 @@ import {
   avecReprise,
   estTransitoire,
   MODERATION_MODEL,
-  EXTERNAL_SEARCH_MODEL,
 } from '@/lib/ai/claude';
-import { computeCost, WEB_SEARCH_USD_PER_SEARCH } from '@/lib/ai/cost';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import {
   MODERATION_PROMPT_VERSION,
   MODERATION_SYSTEM_PROMPT,
@@ -174,6 +173,11 @@ export async function POST(req: Request) {
   const sourceText = moderationSourceText(source);
   const routeStart = Date.now();
   const remainingBudget = () => HARD_DEADLINE_MS - (Date.now() - routeStart);
+  // Un seul collecteur pour toute l'analyse : modération, jusqu'à trois
+  // jugements de couche B et la recherche externe partagent la même feature
+  // de GESTION (`moderation_recette`) — l'auteur de la recette n'en supporte
+  // jamais le coût, quel que soit le nombre d'appels réellement engagés.
+  const { sink, appels } = collecteurAppelsIa();
 
   try {
     // Reprise sur panne passagère de l'API (saturation, limite de débit) :
@@ -189,6 +193,7 @@ export async function POST(req: Request) {
         MODERATION_MODEL,
         'disabled',
         MODERATION_SYSTEM_PROMPT,
+        sink,
       );
 
     let call = await avecReprise(appelModeration, 3, 1_000, remainingBudget);
@@ -198,10 +203,6 @@ export async function POST(req: Request) {
       // Une seule relance en cas d'échec de parsing, puis échec (annexe A.6).
       const retry = await avecReprise(appelModeration, 3, 1_000, remainingBudget);
       call = { text: retry.text, usage: { ...call.usage } };
-      call.usage.inputTokens += retry.usage.inputTokens;
-      call.usage.outputTokens += retry.usage.outputTokens;
-      call.usage.cacheReadTokens += retry.usage.cacheReadTokens;
-      call.usage.cacheWriteTokens += retry.usage.cacheWriteTokens;
       parsed = parseModerationJson(retry.text);
     }
 
@@ -350,12 +351,8 @@ export async function POST(req: Request) {
               MODERATION_MODEL,
               'disabled',
               buildReformulationSystemPrompt(),
+              sink,
             );
-            call.usage.inputTokens += judged.usage.inputTokens;
-            call.usage.outputTokens += judged.usage.outputTokens;
-            call.usage.cacheReadTokens += judged.usage.cacheReadTokens;
-            call.usage.cacheWriteTokens += judged.usage.cacheWriteTokens;
-
             const parsed2 = parseReformulationResult(judged.text);
             if (parsed2?.reformulation) {
               reformulationMatches.push({
@@ -389,22 +386,10 @@ export async function POST(req: Request) {
     structuralMax = matches.reduce((max, m) => Math.max(max, m.structural_score), 0);
     const longestSequence = matches.reduce((max, m) => Math.max(max, m.longest_common_sequence ?? 0), 0);
 
-    // Coût réel (§9), calculé appel par appel plutôt qu'à partir du seul total
-    // de tokens de `call.usage` : modération/couche B (MODERATION_MODEL) et
-    // recherche externe (EXTERNAL_SEARCH_MODEL) peuvent tourner sur des
-    // modèles différents, à des tarifs différents — les sommer avant
-    // d'appliquer un tarif unique donnerait un montant faux. `call.usage`
-    // ne contient à ce stade que la modération et la couche B (même modèle),
-    // donc un seul appel de tarif suffit ici.
-    const moderationCost = computeCost(call.usage, MODERATION_MODEL);
-    let costUsd = moderationCost?.usd ?? 0;
-    let costConnu = moderationCost != null;
-
     // --- Étape 3 (§6.4) : recherche externe, sauf correspondance interne
     // déjà forte. Best-effort — un incident réseau ne doit pas invalider la
     // modération et la similarité interne déjà obtenues.
     let externalNote: string | undefined;
-    let searchesUsed = 0;
     let externalMatchCount = 0;
     if (editorialMax < EXTERNAL_SEARCH_SKIP_THRESHOLD && remainingBudget() < MIN_BUDGET_EXTERNAL) {
       externalNote = 'Vérification externe non effectuée (budget de temps épuisé par les étapes précédentes).';
@@ -427,20 +412,8 @@ export async function POST(req: Request) {
             Math.max(0, remainingBudget() - 4_000),
             undefined,
             [own],
+            sink,
           );
-          searchesUsed = webCall.searches;
-          // Coût de la recherche externe : modèle propre (souvent différent
-          // de la modération) + coût à l'unité des recherches web
-          // elles-mêmes, absent du bloc `usage` de l'API.
-          const externalCost = computeCost(webCall.usage, EXTERNAL_SEARCH_MODEL);
-          if (externalCost) costUsd += externalCost.usd;
-          else costConnu = false;
-          costUsd += searchesUsed * WEB_SEARCH_USD_PER_SEARCH;
-          call.usage.inputTokens += webCall.usage.inputTokens;
-          call.usage.outputTokens += webCall.usage.outputTokens;
-          call.usage.cacheReadTokens += webCall.usage.cacheReadTokens;
-          call.usage.cacheWriteTokens += webCall.usage.cacheWriteTokens;
-
           const externalMatches = parseExternalMatches(webCall.text);
           if (externalMatches.length) {
             const rows = externalMatches.map((m) => ({
@@ -479,12 +452,11 @@ export async function POST(req: Request) {
         editorial_similarity_max: editorialMax,
         structural_similarity_max: structuralMax,
         overall_flag: flag,
-        cost_tokens: call.usage.inputTokens + call.usage.outputTokens,
-        cost_searches: searchesUsed,
-        // `null` plutôt qu'un montant partiel si un tarif de modèle est
-        // inconnu (cf. lib/ai/cost.ts) — jamais un chiffre qui sous-compte
-        // silencieusement une partie de l'analyse.
-        cost_usd: costConnu ? Math.round(costUsd * 1e6) / 1e6 : null,
+        // Le coût n'est plus stocké ici : `ai_usage` (ref_table
+        // 'recipe_analysis', ref_id = analysisId) est désormais la seule
+        // source, sommée à la lecture (lib/admin.ts, `getLatestAnalyses` /
+        // `getAnalysesByIds`) — il couvre modération, couche B ET recherche
+        // externe (tokens + recherches web) sans somme manuelle ici.
         completed_at: nowIso(),
       })
       .eq('id', analysisId);
@@ -502,5 +474,9 @@ export async function POST(req: Request) {
       .eq('id', analysisId);
     console.error('moderation-recette:', (e as Error).message);
     return NextResponse.json({ analysisId, erreur: 'Analyse indisponible.' });
+  } finally {
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('moderation_recette', user.id, appels, { table: 'recipe_analysis', id: analysisId });
   }
 }

@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildComponentContenu, normaliseComponentRecipe } from '@/lib/ai/project-component';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 60;
@@ -45,8 +46,18 @@ export async function POST(req: Request) {
   const quota = await reserverQuota(user.id, 'mode_projet_ia_mensuel');
   if (estRefus(quota)) return quota.refus;
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
-    const raw = await callClaude(apiKey, buildComponentContenu(name, role, contexte), 2000, 50_000);
+    const raw = await callClaude(
+      apiKey,
+      buildComponentContenu(name, role, contexte),
+      2000,
+      50_000,
+      undefined,
+      undefined,
+      undefined,
+      sink,
+    );
     const recette = normaliseComponentRecipe(parseStrictJson(raw.text));
     if (!recette.steps.length) {
       await quota.rendre();
@@ -57,5 +68,9 @@ export async function POST(req: Request) {
     await quota.rendre();
     console.error('projet/composant:', (e as Error).message);
     return NextResponse.json({ erreur: 'La proposition a échoué, réessayez.' }, { status: 502 });
+  } finally {
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('projet_composant', user.id, appels);
   }
 }

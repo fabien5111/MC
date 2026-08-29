@@ -16,6 +16,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { verifierAcces } from '@/lib/quota-route';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/claude';
 import { transcrireUne } from '@/lib/ai/transcribe';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 60;
 
@@ -91,8 +92,13 @@ export async function POST(req: Request) {
     );
   }
 
+  // C'est ICI, et non dans /api/import-url, que l'appel de transcription a
+  // réellement lieu : c'est donc ici qu'il faut le journaliser (vrai
+  // request_id, vraie latence), pas depuis la valeur que le navigateur
+  // redéclare ensuite à /api/import-url pour l'affichage du coût de l'import.
+  const { sink, appels } = collecteurAppelsIa();
   try {
-    const { texte, usage } = await transcrireUne(apiKey, { mediaType, data }, numero, BUDGET_MS);
+    const { texte, usage } = await transcrireUne(apiKey, { mediaType, data }, numero, BUDGET_MS, sink);
     return NextResponse.json({
       texte,
       // Renvoyé au navigateur, qui le rendra à /api/import-url : la
@@ -111,5 +117,11 @@ export async function POST(req: Request) {
       },
       { status: timeout ? 504 : 502 },
     );
+  } finally {
+    // `await`, jamais `void` : une écriture non attendue peut être coupée net
+    // par le gel de la fonction serverless dès la réponse envoyée. Sans
+    // risque pour la doctrine best-effort : la fonction avale déjà ses
+    // propres erreurs.
+    await enregistrerAppelsIa('import_transcription', user.id, appels);
   }
 }

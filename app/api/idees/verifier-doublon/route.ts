@@ -9,6 +9,7 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildCheckContenu, normaliseCheckResultat } from '@/lib/ai/idea-duplicates';
 import { getIdeaCandidatesForCheck, getIdeaSummaries } from '@/lib/ideas-data';
 import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX } from '@/lib/ideas';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
 export const maxDuration = 30;
 
@@ -32,8 +33,9 @@ export async function POST(req: Request) {
   const candidates = await getIdeaCandidatesForCheck();
   if (!candidates.length) return NextResponse.json({ matches: [] });
 
+  const { sink, appels } = collecteurAppelsIa();
   try {
-    const raw = await callClaude(apiKey, buildCheckContenu(title, description, candidates), 600, 20_000);
+    const raw = await callClaude(apiKey, buildCheckContenu(title, description, candidates), 600, 20_000, undefined, undefined, undefined, sink);
     const matches = normaliseCheckResultat(parseStrictJson(raw.text), new Set(candidates.map((c) => c.id)));
     if (!matches.length) return NextResponse.json({ matches: [] });
 
@@ -51,5 +53,12 @@ export async function POST(req: Request) {
     console.error('verifier-doublon:', (e as Error).message);
     // Échec de l'IA : ne bloque pas la publication, comme l'absence de clé.
     return NextResponse.json({ matches: [] });
+  } finally {
+    // Best-effort, hors du chemin de réponse : le coût de la vérification
+    // anti-doublon est une charge de GESTION (modération de la boîte à
+    // idées), jamais imputée au membre qui dépose l'idée.
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('idee_doublon', user.id, appels);
   }
 }

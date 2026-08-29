@@ -22,6 +22,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage } from '@/lib/ai/claude';
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
+import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
 
 export const maxDuration = 60;
@@ -146,12 +147,18 @@ export async function POST(req: Request) {
   const quota = await reserverQuota(user.id, 'import_ia_mensuel');
   if (estRefus(quota)) return quota.refus;
 
+  // Collecteur de la seule passe de STRUCTURATION : la transcription est
+  // journalisée à la source, dans /api/transcribe-photo, où l'appel a
+  // réellement lieu (avec son vrai request_id et sa vraie latence) — la
+  // rejouer ici depuis la valeur déclarée par le navigateur ferait une
+  // seconde ligne pour le même appel.
+  const { sink, appels } = collecteurAppelsIa();
   let usageStructuration: ClaudeUsage;
   let pivot: Record<string, any>;
   let erreurs: string[];
   let alertes: string[];
   try {
-    const normalise = await normalizeRecette(apiKey, contenu, unitsRows ?? []);
+    const normalise = await normalizeRecette(apiKey, contenu, unitsRows ?? [], undefined, sink);
     pivot = normalise.pivot;
     usageStructuration = normalise.usage;
     erreurs = normalise.erreurs;
@@ -161,8 +168,12 @@ export async function POST(req: Request) {
     // été facturés par Anthropic, mais faire payer au membre un import qu'il
     // n'a pas obtenu serait doublement injuste.
     await quota.rendre();
-    // Les appels déjà effectués ont été facturés même si l'import échoue : on
-    // les trace en logs, faute de ligne `imports` où les rattacher.
+    // Les appels déjà effectués ont été facturés même si l'import échoue :
+    // journalisés malgré tout (`ref` absent, faute de ligne `imports` où les
+    // rattacher — plus une perte silencieuse comme avant `ai_usage`).
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     const partiel = (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE;
     const total = addUsage(usageTranscription, partiel);
     console.error(
@@ -187,6 +198,10 @@ export async function POST(req: Request) {
   if (erreurs.length) {
     // Extraction incomplète : pas de brouillon, donc pas de crédit consommé.
     await quota.rendre();
+    // Appels réussis (l'IA a répondu), mais extraction jugée incomplète par
+    // la validation : ce n'est pas un `api_error`, le coût est bien réel.
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts).
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     return NextResponse.json(
       {
         erreur: estPhoto
@@ -269,8 +284,12 @@ export async function POST(req: Request) {
   if (error) {
     // Pas de brouillon enregistré : rien à relire, donc rien à décompter.
     await quota.rendre();
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts).
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     return NextResponse.json({ erreur: error.message }, { status: 500 });
   }
+
+  await enregistrerAppelsIa('import_recette', user.id, appels, { table: 'imports', id: row.id });
 
   return NextResponse.json({ import: row, alertes, quota_restant: Math.max(0, QUOTA - compte - 1) });
 }
