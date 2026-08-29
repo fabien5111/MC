@@ -111,8 +111,14 @@ export default async function FourneePage({ params, searchParams }: Params) {
       {/* `<main>` : sans lui, le bouton Imprimer n'expand aucun `<details>`
           replié (`usePrintDetailsExpansion` cible `main details`) et les
           règles CSS d'impression scopées à `main` (pleine largeur, une seule
-          colonne) restent sans effet — même structure que /recette/[id]. */}
-      <main>
+          colonne) restent sans effet — même structure que /recette/[id].
+          `batch-page` : réserve la largeur du rail replié (`.recipe-toc`,
+          58px), posée ici plutôt que sur le conteneur `mx-auto` de
+          `BatchView` (cf. commentaire de la règle dans globals.css). Sans
+          elle, le rail — en `position: fixed` — se superpose au texte et aux
+          cases à cocher entre 701px et 1024px, où rien d'autre ne dégage la
+          place qu'il occupe. */}
+      <main className="batch-page">
         <BatchView
           batch={batch}
           baseRecipe={baseRecipe}

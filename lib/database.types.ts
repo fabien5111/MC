@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -169,6 +169,134 @@ export type Database = {
           title?: string | null
         }
         Relationships: []
+      }
+      ai_features: {
+        Row: {
+          code: string
+          imputation: string
+          label: string
+          position: number
+        }
+        Insert: {
+          code: string
+          imputation: string
+          label: string
+          position?: number
+        }
+        Update: {
+          code?: string
+          imputation?: string
+          label?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      ai_pricing: {
+        Row: {
+          cache_read_per_mtok: number
+          cache_write_per_mtok: number
+          created_at: string
+          currency: string
+          effective_from: string
+          id: number
+          input_per_mtok: number
+          model: string
+          output_per_mtok: number
+          web_search_per_1k: number
+        }
+        Insert: {
+          cache_read_per_mtok: number
+          cache_write_per_mtok: number
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: never
+          input_per_mtok: number
+          model: string
+          output_per_mtok: number
+          web_search_per_1k?: number
+        }
+        Update: {
+          cache_read_per_mtok?: number
+          cache_write_per_mtok?: number
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: never
+          input_per_mtok?: number
+          model?: string
+          output_per_mtok?: number
+          web_search_per_1k?: number
+        }
+        Relationships: []
+      }
+      ai_usage: {
+        Row: {
+          cache_creation_tokens: number
+          cache_read_tokens: number
+          cost_usd: number | null
+          created_at: string
+          error_code: string | null
+          feature: string
+          id: number
+          input_tokens: number
+          latency_ms: number | null
+          model: string
+          output_tokens: number
+          ref_id: string | null
+          ref_table: string | null
+          request_id: string | null
+          status: string
+          user_id: string | null
+          web_searches: number
+        }
+        Insert: {
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          error_code?: string | null
+          feature: string
+          id?: never
+          input_tokens?: number
+          latency_ms?: number | null
+          model: string
+          output_tokens?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          request_id?: string | null
+          status: string
+          user_id?: string | null
+          web_searches?: number
+        }
+        Update: {
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          error_code?: string | null
+          feature?: string
+          id?: never
+          input_tokens?: number
+          latency_ms?: number | null
+          model?: string
+          output_tokens?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          request_id?: string | null
+          status?: string
+          user_id?: string | null
+          web_searches?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_feature_fkey"
+            columns: ["feature"]
+            isOneToOne: false
+            referencedRelation: "ai_features"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       allergens: {
         Row: {
@@ -1872,6 +2000,83 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: number
+          kind: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: never
+          kind: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: never
+          kind?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications_sent: {
+        Row: {
+          id: number
+          notification_type: string
+          sent_at: string
+          subscription_id: number
+          user_id: string
+        }
+        Insert: {
+          id?: never
+          notification_type: string
+          sent_at?: string
+          subscription_id: number
+          user_id: string
+        }
+        Update: {
+          id?: never
+          notification_type?: string
+          sent_at?: string
+          subscription_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_sent_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_features: {
         Row: {
           feature_id: number
@@ -2020,6 +2225,7 @@ export type Database = {
           is_admin: boolean | null
           is_demo: boolean
           notes: string | null
+          notify_email: boolean
           pinterest_url: string | null
           plan: string
           provider: string | null
@@ -2049,6 +2255,7 @@ export type Database = {
           is_admin?: boolean | null
           is_demo?: boolean
           notes?: string | null
+          notify_email?: boolean
           pinterest_url?: string | null
           plan?: string
           provider?: string | null
@@ -2078,6 +2285,7 @@ export type Database = {
           is_admin?: boolean | null
           is_demo?: boolean
           notes?: string | null
+          notify_email?: boolean
           pinterest_url?: string | null
           plan?: string
           provider?: string | null
@@ -3090,6 +3298,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_requested_at: string | null
           created_at: string
           created_by: string | null
           ends_at: string | null
@@ -3108,6 +3317,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
@@ -3126,6 +3336,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
@@ -3337,6 +3548,44 @@ export type Database = {
       }
     }
     Views: {
+      ai_usage_mensuel: {
+        Row: {
+          appels: number | null
+          appels_cout_inconnu: number | null
+          appels_ko: number | null
+          appels_ok: number | null
+          cout_usd: number | null
+          dernier_appel: string | null
+          feature: string | null
+          feature_label: string | null
+          imputation: string | null
+          mois: string | null
+          recherches_web: number | null
+          tokens: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_feature_fkey"
+            columns: ["feature"]
+            isOneToOne: false
+            referencedRelation: "ai_features"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      ai_usage_par_membre: {
+        Row: {
+          appels_cout_inconnu: number | null
+          appels_mois: number | null
+          appels_total: number | null
+          cout_mois: number | null
+          cout_total: number | null
+          dernier_appel: string | null
+          tokens_mois: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       author_ratings: {
         Row: {
           author_id: string | null
@@ -3455,10 +3704,43 @@ export type Database = {
         }
         Returns: Json
       }
+      mc_admin_cancel_subscription: {
+        Args: {
+          p_immediate: boolean
+          p_reason: string
+          p_subscription_id: number
+        }
+        Returns: undefined
+      }
+      mc_admin_extend_subscription: {
+        Args: {
+          p_new_ends_at: string
+          p_reason: string
+          p_subscription_id: number
+        }
+        Returns: undefined
+      }
+      mc_admin_grant_subscription: {
+        Args: {
+          p_ends_at: string
+          p_periodicity: string
+          p_plan_code: string
+          p_reason: string
+          p_starts_at: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      mc_admin_reset_trial: {
+        Args: { p_reason: string; p_user_id: string }
+        Returns: undefined
+      }
       mc_anchor_date: {
         Args: { p_anchor: number; p_at: string }
         Returns: string
       }
+      mc_cancel_own_subscription: { Args: never; Returns: string }
       mc_check_quota: {
         Args: { p_key: string; p_user_id: string }
         Returns: Json
@@ -3480,6 +3762,22 @@ export type Database = {
         Returns: Record<string, unknown>
       }
       mc_pseudo_slug: { Args: { p: string }; Returns: string }
+      mc_publish_plan_version: {
+        Args: {
+          p_active: boolean
+          p_currency: string
+          p_label: string
+          p_order_index: number
+          p_plan_id: number
+          p_price_monthly: number
+          p_price_yearly: number
+          p_reason: string
+          p_rights: Json
+          p_tagline: string
+          p_trial_allowed: boolean
+        }
+        Returns: number
+      }
       mc_refund: { Args: { p_key: string; p_n?: number }; Returns: undefined }
       mc_renewal_anchor: { Args: { p_user_id: string }; Returns: number }
       mc_start_trial: {
