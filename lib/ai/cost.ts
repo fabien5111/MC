@@ -8,11 +8,14 @@
 // ⚠️ La table ci-dessous n'est PLUS la référence du suivi des coûts : depuis le
 // journal `ai_usage`, c'est la table SQL `ai_pricing` (historisée, un tarif par
 // date d'effet) qui fait foi — un changement de prix ne doit pas réécrire le
-// passé, ce qu'une table figée dans le code fait forcément. Ce qui subsiste
-// ici : le chiffrage des colonnes de coût des anciennes tables
-// (`imports`, `recipe_scale_costs`), conservées le temps de la bascule, et les
-// formateurs d'affichage. Tenir les deux tables cohérentes tant que les
-// anciennes colonnes sont écrites.
+// passé, ce qu'une table figée dans le code fait forcément. `recipe_scale_costs`
+// et les colonnes de coût de `recipe_analysis` ont été retirées (bascule
+// complète vers `ai_usage`, cf. lib/admin.ts `getAiUsageDetail` /
+// `getCoutsParRef`). Seule `imports.cost_usd` (§ ci-dessous) continue d'utiliser
+// `computeCost` : elle alimente la colonne coût de « Mes imports »
+// (ImporterList), affichage par import que `ai_usage` ne peut pas reconstituer
+// aujourd'hui (le coût de la transcription photo, elle, n'est pas rattachée à
+// l'import qui n'existe pas encore au moment de l'appel).
 import type { ClaudeUsage } from '@/lib/ai/claude';
 
 // Tarifs en dollars par million de tokens.

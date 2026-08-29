@@ -1,7 +1,6 @@
 // Chargeurs de données admin, typés — portés de db.js (getMolds, getMoldTypes).
 import { createClient } from '@/lib/supabase/server';
 import { TAUX_EUR_AFFICHE } from '@/lib/ai/cost';
-import { MODERATION_MODEL, EXTERNAL_SEARCH_MODEL } from '@/lib/ai/claude';
 import {
   isImpersonationMode,
   withImpersonationSchema,
@@ -178,6 +177,49 @@ export type RecipeAnalysisSummary = {
   created_at: string;
 };
 
+// Coût d'un objet métier (une analyse, un import…), sommé depuis `ai_usage`
+// (`ref_table`/`ref_id`) plutôt que stocké en colonne sur sa propre table :
+// c'est le journal unifié qui fait foi, la ligne métier ne duplique plus rien.
+// `null` dès qu'UNE des lignes sommées a un coût inconnu (modèle absent de
+// `ai_pricing`) — même doctrine que l'ancien calcul en route : mieux vaut pas
+// de chiffre qu'un chiffre qui sous-compte silencieusement.
+type CoutParRef = { cost_usd: number | null; tokens: number; searches: number };
+
+async function getCoutsParRef(table: string, ids: (string | number)[]): Promise<Record<string, CoutParRef>> {
+  if (!ids.length) return {};
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage')
+    .select('ref_id, cost_usd, input_tokens, cache_creation_tokens, cache_read_tokens, output_tokens, web_searches')
+    .eq('ref_table', table)
+    .in(
+      'ref_id',
+      ids.map((id) => String(id)),
+    );
+  if (error) {
+    console.error(`getCoutsParRef(${table}):`, error.message);
+    return {};
+  }
+  type Row = {
+    ref_id: string;
+    cost_usd: number | string | null;
+    input_tokens: number | null;
+    cache_creation_tokens: number | null;
+    cache_read_tokens: number | null;
+    output_tokens: number | null;
+    web_searches: number | null;
+  };
+  const byRef: Record<string, CoutParRef> = {};
+  for (const r of (data ?? []) as Row[]) {
+    const cur = byRef[r.ref_id] ?? { cost_usd: 0, tokens: 0, searches: 0 };
+    cur.tokens += (r.input_tokens ?? 0) + (r.cache_creation_tokens ?? 0) + (r.cache_read_tokens ?? 0) + (r.output_tokens ?? 0);
+    cur.searches += r.web_searches ?? 0;
+    cur.cost_usd = cur.cost_usd == null || r.cost_usd == null ? null : cur.cost_usd + Number(r.cost_usd);
+    byRef[r.ref_id] = cur;
+  }
+  return byRef;
+}
+
 // La plus récente analyse de chaque recette d'une liste, indexée par
 // `recipe_id`. Une recette peut avoir plusieurs lignes d'historique (relance
 // manuelle) : on ne garde que la plus fraîche pour l'affichage admin.
@@ -188,8 +230,7 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
     .from('recipe_analysis')
     .select(
       'id, recipe_id, status, overall_flag, moderation_verdict, moderation_details, ' +
-        'editorial_similarity_max, structural_similarity_max, error_message, ' +
-        'cost_usd, cost_tokens, cost_searches, created_at',
+        'editorial_similarity_max, structural_similarity_max, error_message, created_at',
     )
     .in('recipe_id', recipeIds)
     .order('created_at', { ascending: false });
@@ -197,9 +238,23 @@ export async function getLatestAnalyses(recipeIds: string[]): Promise<Record<str
     console.error('getLatestAnalyses:', error.message);
     return {};
   }
+  const rows = (data ?? []) as (Omit<RecipeAnalysisSummary, 'cost_usd' | 'cost_tokens' | 'cost_searches'> & {
+    recipe_id: string;
+  })[];
+  const couts = await getCoutsParRef(
+    'recipe_analysis',
+    rows.map((r) => r.id),
+  );
   const byRecipe: Record<string, RecipeAnalysisSummary> = {};
-  for (const row of (data ?? []) as (RecipeAnalysisSummary & { recipe_id: string })[]) {
-    if (!byRecipe[row.recipe_id]) byRecipe[row.recipe_id] = row;
+  for (const row of rows) {
+    if (byRecipe[row.recipe_id]) continue;
+    const c = couts[String(row.id)];
+    byRecipe[row.recipe_id] = {
+      ...row,
+      cost_usd: c?.cost_usd ?? null,
+      cost_tokens: c?.tokens ?? null,
+      cost_searches: c?.searches ?? null,
+    };
   }
   return byRecipe;
 }
@@ -216,16 +271,23 @@ export async function getAnalysesByIds(analysisIds: number[]): Promise<Record<nu
     .from('recipe_analysis')
     .select(
       'id, status, overall_flag, moderation_verdict, moderation_details, ' +
-        'editorial_similarity_max, structural_similarity_max, error_message, ' +
-        'cost_usd, cost_tokens, cost_searches, created_at',
+        'editorial_similarity_max, structural_similarity_max, error_message, created_at',
     )
     .in('id', analysisIds);
   if (error) {
     console.error('getAnalysesByIds:', error.message);
     return {};
   }
+  const rows = (data ?? []) as Omit<RecipeAnalysisSummary, 'cost_usd' | 'cost_tokens' | 'cost_searches'>[];
+  const couts = await getCoutsParRef(
+    'recipe_analysis',
+    rows.map((r) => r.id),
+  );
   const byId: Record<number, RecipeAnalysisSummary> = {};
-  for (const row of (data ?? []) as RecipeAnalysisSummary[]) byId[row.id] = row;
+  for (const row of rows) {
+    const c = couts[String(row.id)];
+    byId[row.id] = { ...row, cost_usd: c?.cost_usd ?? null, cost_tokens: c?.tokens ?? null, cost_searches: c?.searches ?? null };
+  }
   return byId;
 }
 
@@ -543,13 +605,10 @@ export async function getListEntries(table: string, orderBy = 'name'): Promise<R
   }
 }
 
-// ── Coûts IA (import, vérification recettes, ajustement recette) ─────────
-// Consommation et coût réels par catégorie d'appel IA, mesurés depuis le bloc
-// `usage` renvoyé par l'API Claude (cf. lib/ai/cost.ts). Réservé au back-office.
-// Une seule granularité de tokens (total, pas entrée/sortie) : `recipe_analysis`
-// ne stocke que la somme (modération + éventuelle couche B + recherche
-// externe, cf. /api/moderation-recette), un détail par catégorie serait donc
-// incohérent entre les trois sources.
+// ── Coûts IA, par fonctionnalité ──────────────────────────────────────
+// Consommation et coût réels, mesurés depuis le bloc `usage` renvoyé par
+// l'API Claude et journalisés dans `ai_usage` (lib/ai/usage-log.ts).
+// Réservé au back-office.
 export type AiCostSummary = {
   /** Appels comptabilisés (ceux d'avant la mesure n'ont pas de coût). */
   appels: number;
@@ -568,19 +627,6 @@ export type AiCostCategory = {
   total: AiCostSummary;
   /** Modèles rencontrés dans la période (le tarif dépend du modèle). */
   modeles: string[];
-};
-
-export type AiCosts = {
-  /** POST /api/import-url (+ /api/transcribe-photo en amont) — table `imports`. */
-  import: AiCostCategory;
-  /** POST /api/moderation-recette — table `recipe_analysis`. */
-  verification: AiCostCategory;
-  /** POST /api/scale-recipe — table `recipe_scale_costs`. */
-  ajustement: AiCostCategory;
-  /** Somme des trois catégories ci-dessus. */
-  ensemble: AiCostCategory;
-  /** Taux dollar → euro appliqué, à afficher pour lever l'ambiguïté. */
-  tauxEur: number;
 };
 
 type CostRow = { created_at: string; tokens: number; cost_usd: number | null };
@@ -630,33 +676,48 @@ function fusion(cats: AiCostCategory[]): AiCostCategory {
   };
 }
 
-// Agrégats jour / mois / total par catégorie + un total général. Nécessite une
-// politique RLS autorisant les admins à lire toute la table sur `imports`,
-// `recipe_analysis` et `recipe_scale_costs` (cf. migrations) ; sans elle, les
-// compteurs ne refléteraient que les appels de l'admin connecté.
-//
-// `recipe_analysis` et `recipe_scale_costs` sont absentes de
-// lib/database.types.ts tant que leurs migrations n'ont pas été appliquées en
-// base puis régénérées (`npm run gen:types`) — accès non typé en attendant,
-// même motif que dans /api/moderation-recette et /api/scale-recipe.
-export async function getAiCosts(): Promise<AiCosts> {
-  const supabase = await createClient();
+// Détail par fonctionnalité (import, vérification, ajustement, mode projet,
+// modération…), source unique `ai_usage` — remplace l'ancien `getAiCosts()`
+// qui lisait trois tables distinctes (`imports`, `recipe_analysis`,
+// `recipe_scale_costs`). Nécessite la policy RLS admin sur `ai_usage`
+// (cf. migration), sans quoi les compteurs ne refléteraient que les appels
+// de l'admin connecté.
+export type AiUsageFeatureRow = AiCostCategory & {
+  code: string;
+  label: string;
+  imputation: 'membre' | 'gestion';
+};
 
-  const [importsRes, verifRes, ajustRes] = await Promise.all([
-    supabase
-      .from('imports')
-      .select('created_at, model, input_tokens, output_tokens, cost_usd')
-      .order('created_at', { ascending: false }),
-    (supabase.from('recipe_analysis' as any) as ReturnType<typeof supabase.from>)
-      .select('created_at, cost_tokens, cost_usd')
-      .order('created_at', { ascending: false }),
-    (supabase.from('recipe_scale_costs' as any) as ReturnType<typeof supabase.from>)
-      .select('created_at, model, input_tokens, output_tokens, cost_usd')
-      .order('created_at', { ascending: false }),
-  ]);
-  if (importsRes.error) console.error('getAiCosts (import):', importsRes.error.message);
-  if (verifRes.error) console.error('getAiCosts (vérification):', verifRes.error.message);
-  if (ajustRes.error) console.error('getAiCosts (ajustement):', ajustRes.error.message);
+export type AiUsageDetail = {
+  parFeature: AiUsageFeatureRow[];
+  ensemble: AiCostCategory;
+  tauxEur: number;
+};
+
+type AiUsageRawRow = {
+  created_at: string;
+  feature: string;
+  model: string;
+  input_tokens: number | null;
+  cache_creation_tokens: number | null;
+  cache_read_tokens: number | null;
+  output_tokens: number | null;
+  cost_usd: number | string | null;
+  ai_features: { label: string; imputation: 'membre' | 'gestion'; position: number } | null;
+};
+
+export async function getAiUsageDetail(): Promise<AiUsageDetail> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage')
+    .select(
+      'created_at, feature, model, input_tokens, cache_creation_tokens, cache_read_tokens, output_tokens, cost_usd, ai_features(label, imputation, position)',
+    )
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('getAiUsageDetail:', error.message);
+    return { parFeature: [], ensemble: categorie([], [], new Date(), new Date()), tauxEur: TAUX_EUR_AFFICHE };
+  }
 
   const debutJour = new Date();
   debutJour.setUTCHours(0, 0, 0, 0);
@@ -664,51 +725,52 @@ export async function getAiCosts(): Promise<AiCosts> {
   debutMois.setUTCDate(1);
   debutMois.setUTCHours(0, 0, 0, 0);
 
-  type TokensCostRow = { created_at: string; model: string | null; input_tokens: number | null; output_tokens: number | null; cost_usd: number | null };
+  type Groupe = { label: string; imputation: 'membre' | 'gestion'; position: number; rows: CostRow[]; modeles: Set<string> };
+  const parCode = new Map<string, Groupe>();
+  for (const r of (data ?? []) as AiUsageRawRow[]) {
+    const code = r.feature;
+    const g = parCode.get(code) ?? {
+      label: r.ai_features?.label ?? code,
+      imputation: r.ai_features?.imputation ?? 'gestion',
+      position: r.ai_features?.position ?? 999,
+      rows: [],
+      modeles: new Set<string>(),
+    };
+    g.rows.push({
+      created_at: r.created_at,
+      tokens: (r.input_tokens ?? 0) + (r.cache_creation_tokens ?? 0) + (r.cache_read_tokens ?? 0) + (r.output_tokens ?? 0),
+      cost_usd: r.cost_usd == null ? null : Number(r.cost_usd),
+    });
+    g.modeles.add(r.model);
+    parCode.set(code, g);
+  }
 
-  const importRows = ((importsRes.data as unknown as TokensCostRow[]) ?? []).map((r) => ({
-    created_at: r.created_at,
-    tokens: (r.input_tokens ?? 0) + (r.output_tokens ?? 0),
-    cost_usd: r.cost_usd,
-  }));
-  const importModeles = [
-    ...new Set(((importsRes.data as unknown as TokensCostRow[]) ?? []).map((r) => r.model).filter((m): m is string => !!m)),
-  ];
-
-  const verifRows = (
-    (verifRes.data as unknown as { created_at: string; cost_tokens: number; cost_usd: number | null }[]) ?? []
-  ).map((r) => ({ created_at: r.created_at, tokens: r.cost_tokens, cost_usd: r.cost_usd }));
-
-  const ajustRows = ((ajustRes.data as unknown as TokensCostRow[]) ?? []).map((r) => ({
-    created_at: r.created_at,
-    tokens: (r.input_tokens ?? 0) + (r.output_tokens ?? 0),
-    cost_usd: r.cost_usd,
-  }));
-  const ajustModeles = [
-    ...new Set(((ajustRes.data as unknown as TokensCostRow[]) ?? []).map((r) => r.model).filter((m): m is string => !!m)),
-  ];
-
-  const importCat = categorie(importRows, importModeles, debutJour, debutMois);
-  // Modération et (le cas échéant) recherche externe : pas de colonne `model`
-  // par ligne, les deux modèles possibles sont donc listés statiquement.
-  const verifCat = categorie(verifRows, [MODERATION_MODEL, EXTERNAL_SEARCH_MODEL], debutJour, debutMois);
-  const ajustCat = categorie(ajustRows, ajustModeles, debutJour, debutMois);
+  // Trié par `position` (ordre de `ai_features`) avant de construire les
+  // objets finaux : `position` ne fait pas partie du type public exposé.
+  const parFeature: AiUsageFeatureRow[] = [...parCode.entries()]
+    .sort(([, a], [, b]) => a.position - b.position || a.label.localeCompare(b.label))
+    .map(([code, g]) => ({
+      code,
+      label: g.label,
+      imputation: g.imputation,
+      ...categorie(g.rows, [...g.modeles], debutJour, debutMois),
+    }));
 
   return {
-    import: importCat,
-    verification: verifCat,
-    ajustement: ajustCat,
-    ensemble: fusion([importCat, verifCat, ajustCat]),
+    parFeature,
+    ensemble: parFeature.length
+      ? fusion(parFeature)
+      : categorie([], [], debutJour, debutMois),
     tauxEur: TAUX_EUR_AFFICHE,
   };
 }
 
-// ── Coût IA — journal unifié (`ai_usage`) ─────────────────────────────
-// Remplace progressivement `getAiCosts` ci-dessus : une ligne par appel
-// (succès ET échec), classée par `imputation` (`membre` / `gestion`)
-// plutôt que par table d'origine — c'est ce qui permet de répondre
-// séparément à « combien coûte tel membre » et « combien coûte la
-// modération du site », plutôt que trois catégories techniques.
+// ── Coût IA — vue d'ensemble membres / gestion (journal `ai_usage`) ────
+// Une ligne par appel (succès ET échec), classée par `imputation`
+// (`membre` / `gestion`) — c'est ce qui permet de répondre séparément à
+// « combien coûte tel membre » et « combien coûte la modération du site »,
+// complémentaire au détail par fonctionnalité de `getAiUsageDetail`
+// ci-dessus.
 //
 // `ai_usage_mensuel` / `ai_usage_par_membre` ne sont pas encore dans
 // lib/database.types.ts tant que la migration n'a pas été appliquée puis

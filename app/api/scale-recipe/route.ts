@@ -3,8 +3,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { callClaude, parseStrictJson, IMPORT_MODEL } from '@/lib/ai/claude';
-import { computeCost } from '@/lib/ai/cost';
+import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 
@@ -53,28 +52,6 @@ export async function POST(req: Request) {
       sink,
     );
 
-    // Coût réel (cf. Coût IA, back-office) : `recipe_scale_costs` n'est pas
-    // encore dans lib/database.types.ts tant que la migration n'a pas été
-    // appliquée puis régénérée (cf. CLAUDE.md) — accès non typé en attendant,
-    // même motif que `recipe_analysis` dans /api/moderation-recette.
-    // Best-effort : un échec d'enregistrement du coût ne doit pas invalider
-    // un ajustement par ailleurs réussi.
-    try {
-      const cost = computeCost(raw.usage, IMPORT_MODEL);
-      const { error } = await (
-        supabase.from('recipe_scale_costs' as any) as ReturnType<typeof supabase.from>
-      ).insert({
-        user_id: user.id,
-        model: IMPORT_MODEL,
-        input_tokens: raw.usage.inputTokens,
-        output_tokens: raw.usage.outputTokens,
-        cost_usd: cost?.usd ?? null,
-      } as never);
-      if (error) console.error('scale-recipe (coût):', error.message);
-    } catch (costError) {
-      console.error('scale-recipe (coût):', (costError as Error).message);
-    }
-
     return NextResponse.json(normaliseResultat(parseStrictJson(raw.text)));
   } catch {
     return NextResponse.json(
@@ -82,11 +59,6 @@ export async function POST(req: Request) {
       { status: 502 },
     );
   } finally {
-    // Journal unifié (`ai_usage`) : coexiste pour l'instant avec l'écriture
-    // ci-dessus dans `recipe_scale_costs` — la bascule complète (abandon des
-    // colonnes de coût des tables historiques) est une migration séparée,
-    // une fois `ai_usage` éprouvé.
-    //
     // `await`, jamais `void` : sur une fonction serverless Vercel, la requête
     // HTTP en vol d'un `void` non attendu peut être coupée net dès la réponse
     // envoyée (gel de l'environnement d'exécution) — la ligne ne part jamais.

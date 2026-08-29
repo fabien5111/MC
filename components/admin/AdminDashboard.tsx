@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { AdminRecipeRow, AiCosts, AiCostCategory, AiCostSummary, AiUsageOverview } from '@/lib/admin';
+import type { AdminRecipeRow, AiUsageDetail, AiCostSummary, AiUsageOverview } from '@/lib/admin';
 import { formatUsd } from '@/lib/ai/cost';
 
 // Montants déjà convertis côté serveur (le taux €/$ est une variable
@@ -35,12 +35,12 @@ function CoutCellule({ d }: { d: AiCostSummary }) {
 export function AdminDashboard({
   stats,
   pending,
-  aiCosts,
+  aiUsageDetail,
   iaOverview,
 }: {
   stats: { totalRecipes: number; pendingRecipes: number; pendingComments: number };
   pending: AdminRecipeRow[];
-  aiCosts: AiCosts;
+  aiUsageDetail: AiUsageDetail;
   iaOverview: AiUsageOverview;
 }) {
   const { mutate } = useMutation();
@@ -124,52 +124,61 @@ export function AdminDashboard({
       </section>
 
       {/* Coût IA — mesuré depuis la consommation réelle renvoyée par l'API,
-          par poste (import, vérification recettes, ajustement recette). */}
+          par fonctionnalité (import, ajustement, mode projet, modération…).
+          Source unique : `ai_usage`. */}
       <section className="mb-12">
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-6">
           <h2 className="font-headline-md text-primary flex items-center gap-3">
             <span className="material-symbols-outlined">payments</span> Coût IA
           </h2>
           <span className="text-xs text-on-surface-variant">
-            1 crédit Anthropic = 1 $ · taux € indicatif ({aiCosts.tauxEur})
+            1 crédit Anthropic = 1 $ · taux € indicatif ({aiUsageDetail.tauxEur})
           </span>
         </div>
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead className="bg-surface-container font-label-md text-on-surface-variant border-b border-outline-variant">
               <tr>
-                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Poste</th>
+                <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Fonctionnalité</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Aujourd&apos;hui</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Ce mois-ci</th>
                 <th className="px-8 py-4 font-semibold uppercase tracking-wider text-xs">Depuis le début</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant font-body-md text-on-surface">
-              {(
-                [
-                  { label: 'Import IA', c: aiCosts.import },
-                  { label: 'Vérification recettes', c: aiCosts.verification },
-                  { label: 'Ajustement recette', c: aiCosts.ajustement },
-                ] as { label: string; c: AiCostCategory }[]
-              ).map(({ label, c }) => (
-                <tr key={label} className="hover:bg-surface-container-low transition-colors">
+              {aiUsageDetail.parFeature.length === 0 && (
+                <tr>
+                  <td className="px-8 py-5 text-on-surface-variant" colSpan={4}>
+                    Aucun appel IA mesuré pour l&apos;instant.
+                  </td>
+                </tr>
+              )}
+              {aiUsageDetail.parFeature.map((f) => (
+                <tr key={f.code} className="hover:bg-surface-container-low transition-colors">
                   <td className="px-8 py-5">
-                    <p className="font-medium">{label}</p>
+                    <p className="font-medium">
+                      {f.label}
+                      <span className="ml-2 text-[10px] uppercase tracking-wider text-on-surface-variant/70">
+                        {f.imputation === 'gestion' ? 'gestion' : 'membre'}
+                      </span>
+                    </p>
                     <p className="text-xs text-on-surface-variant">
-                      {c.modeles.length > 0 ? c.modeles.join(', ') : 'aucun appel mesuré'}
+                      {f.modeles.length > 0 ? f.modeles.join(', ') : 'aucun appel mesuré'}
                     </p>
                   </td>
-                  <td className="px-8 py-5"><CoutCellule d={c.jour} /></td>
-                  <td className="px-8 py-5"><CoutCellule d={c.mois} /></td>
-                  <td className="px-8 py-5"><CoutCellule d={c.total} /></td>
+                  <td className="px-8 py-5"><CoutCellule d={f.jour} /></td>
+                  <td className="px-8 py-5"><CoutCellule d={f.mois} /></td>
+                  <td className="px-8 py-5"><CoutCellule d={f.total} /></td>
                 </tr>
               ))}
-              <tr className="bg-surface-container-low font-medium">
-                <td className="px-8 py-5">Total</td>
-                <td className="px-8 py-5"><CoutCellule d={aiCosts.ensemble.jour} /></td>
-                <td className="px-8 py-5"><CoutCellule d={aiCosts.ensemble.mois} /></td>
-                <td className="px-8 py-5"><CoutCellule d={aiCosts.ensemble.total} /></td>
-              </tr>
+              {aiUsageDetail.parFeature.length > 0 && (
+                <tr className="bg-surface-container-low font-medium">
+                  <td className="px-8 py-5">Total</td>
+                  <td className="px-8 py-5"><CoutCellule d={aiUsageDetail.ensemble.jour} /></td>
+                  <td className="px-8 py-5"><CoutCellule d={aiUsageDetail.ensemble.mois} /></td>
+                  <td className="px-8 py-5"><CoutCellule d={aiUsageDetail.ensemble.total} /></td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
