@@ -13,7 +13,18 @@ type StepPhoto = { url: string; ai_retouched: boolean };
 const overlayIconBtn =
   'w-11 h-11 rounded-full bg-surface-container/90 text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors';
 
-export function StepPhotoGallery({ photos }: { photos: StepPhoto[] }) {
+export function StepPhotoGallery({
+  photos,
+  // Grille sur 2 colonnes fixes, sans passer à 4 en desktop : pour un usage
+  // dans un conteneur volontairement étroit (galerie d'un avis, 2 photos
+  // max), où `md:grid-cols-4` réduirait les vignettes à une poignée de
+  // pixels plutôt que d'élargir la grille (le conteneur, lui, ne s'élargit
+  // pas avec le viewport).
+  compact = false,
+}: {
+  photos: StepPhoto[];
+  compact?: boolean;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setOpenIndex(null), []);
@@ -41,7 +52,7 @@ export function StepPhotoGallery({ photos }: { photos: StepPhoto[] }) {
 
   return (
     <>
-      <div className="print-step-photos grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`print-step-photos grid grid-cols-2 ${compact ? '' : 'md:grid-cols-4'} gap-4`}>
         {photos.map((p, k) => (
           <div
             key={k}

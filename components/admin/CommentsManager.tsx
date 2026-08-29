@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { formatDate } from '@/lib/format';
 import type { AdminComment } from '@/lib/admin';
 
@@ -171,6 +172,11 @@ export function CommentsManager({ comments }: { comments: AdminComment[] }) {
                       </p>
                     )}
                     {c.status === 'spam' && <p className="mt-2 text-[12px] text-error font-semibold">Marqué comme spam.</p>}
+                    {c.photo_urls && c.photo_urls.length > 0 && (
+                      <div className="w-24 mt-2">
+                        <StepPhotoGallery photos={c.photo_urls.map((url) => ({ url, ai_retouched: false }))} compact />
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-5">
                     <ScoreIA score={c.ai_score} reason={c.ai_reason} />

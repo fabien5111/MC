@@ -59,6 +59,7 @@ export type PendingComment = {
   // (npm run gen:types), comme `moderation_note` sur les recettes.
   rating?: number | null;
   ai_score?: number | null;
+  photo_urls?: string[] | null;
   ai_reason?: string | null;
 };
 

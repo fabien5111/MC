@@ -10,8 +10,22 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { REVIEW_COMMENT_MAX, reviewCommentRequired, validateReview } from '@/lib/reviews';
+import { ImageSlot } from '@/components/ImageSlot';
+import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
+import { REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, reviewCommentRequired, validateReview } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
+
+// Les photos d'avis n'ont pas de filigrane IA (contrairement aux photos de
+// recette) : `ai_retouched` est toujours à `false` pour réutiliser tel quel
+// le diaporama plein écran de `StepPhotoGallery`.
+function ReviewPhotos({ photos }: { photos: string[] }) {
+  if (!photos.length) return null;
+  return (
+    <div className="w-40">
+      <StepPhotoGallery photos={photos.map((url) => ({ url, ai_retouched: false }))} compact />
+    </div>
+  );
+}
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
@@ -51,21 +65,36 @@ function ReviewForm({
   batchId,
   initialRating,
   initialComment,
+  initialPhotos,
   submitLabel,
   onSubmitted,
 }: {
   batchId: number;
   initialRating: number;
   initialComment: string;
+  initialPhotos: string[];
   submitLabel: string;
   onSubmitted: () => void;
 }) {
   const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState(initialComment);
+  const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const required = rating > 0 && reviewCommentRequired(rating);
+
+  function setPhotoAt(index: number, dataUrl: string) {
+    setPhotos((prev) => {
+      const next = [...prev];
+      next[index] = dataUrl;
+      return next.filter(Boolean);
+    });
+  }
+
+  function clearPhotoAt(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
 
   async function submit() {
     setError(null);
@@ -73,7 +102,7 @@ function ReviewForm({
       setError('Choisissez une note.');
       return;
     }
-    const validation = validateReview(rating, comment);
+    const validation = validateReview(rating, comment, photos);
     if (!validation.ok) {
       setError(validation.message);
       return;
@@ -83,7 +112,7 @@ function ReviewForm({
       const res = await fetch(`/api/fournee/${batchId}/avis`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ rating, comment: comment.trim() }),
+        body: JSON.stringify({ rating, comment: comment.trim(), photos }),
       });
       const data = (await res.json().catch(() => ({}))) as { erreur?: string };
       if (!res.ok) {
@@ -113,6 +142,23 @@ function ReviewForm({
         <p className="text-[12px] text-outline mt-1 text-right">
           {comment.length}/{REVIEW_COMMENT_MAX}
         </p>
+      </div>
+      <div>
+        <p className="text-[12px] text-on-surface-variant mb-2">Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum)</p>
+        <div className="flex gap-3">
+          {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
+            <ImageSlot
+              key={i}
+              src={photos[i] ?? null}
+              onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
+              onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
+              aspectRatio={16 / 9}
+              maxWidth={1400}
+              placeholder="Ajouter une photo"
+              className="w-32 h-[72px] md:w-40 md:h-[90px]"
+            />
+          ))}
+        </div>
       </div>
       {error && <p className="text-error text-sm">{error}</p>}
       <div>
@@ -193,6 +239,7 @@ export function BatchReview({
           batchId={batchId}
           initialRating={0}
           initialComment=""
+          initialPhotos={[]}
           submitLabel="Envoyer mon avis"
           onSubmitted={() => setJustSubmitted(true)}
         />
@@ -206,6 +253,7 @@ export function BatchReview({
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
+          <ReviewPhotos photos={myReview.photo_urls} />
           <p className="text-[12px] text-on-surface-variant italic mt-1">En cours de modération.</p>
         </div>
       </Card>
@@ -218,6 +266,7 @@ export function BatchReview({
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
+          <ReviewPhotos photos={myReview.photo_urls} />
           <Link href={`/recette/${recipeId}#sec-commentaires`} className="text-[12px] text-primary underline underline-offset-2 mt-1">
             Voir sur la fiche recette
           </Link>
@@ -242,6 +291,7 @@ export function BatchReview({
         batchId={batchId}
         initialRating={myReview.rating || 0}
         initialComment={myReview.content}
+        initialPhotos={myReview.photo_urls}
         submitLabel="Reproposer mon avis"
         onSubmitted={() => setJustSubmitted(true)}
       />

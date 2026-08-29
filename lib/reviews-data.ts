@@ -29,6 +29,7 @@ export type MyRecipeReview = {
   rating: number | null;
   content: string;
   rejection_reason: string | null;
+  photo_urls: string[];
 };
 
 // Avis courant du membre pour CETTE recette (une seule ligne possible, cf.
@@ -39,7 +40,7 @@ export async function getMyRecipeReview(recipeId: string, userId: string): Promi
   const supabase = await createClient();
   const { data, error } = await (supabase as any)
     .from('comments')
-    .select('id, batch_id, status, rating, content, rejection_reason')
+    .select('id, batch_id, status, rating, content, rejection_reason, photo_urls')
     .eq('recipe_id', recipeId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -52,6 +53,7 @@ export type RecipeComment = {
   content: string;
   rating: number | null;
   created_at: string | null;
+  photo_urls: string[];
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
 };
 
@@ -62,7 +64,7 @@ export async function getApprovedComments(recipeId: string): Promise<RecipeComme
   const supabase = await createClient();
   const { data, error } = await (supabase as any)
     .from('comments')
-    .select('id, content, rating, created_at, profiles(full_name, avatar_url, username)')
+    .select('id, content, rating, created_at, photo_urls, profiles(full_name, avatar_url, username)')
     .eq('recipe_id', recipeId)
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
@@ -86,12 +88,13 @@ export async function submitOrUpdateReview(
   userId: string,
   rating: number,
   comment: string,
+  photos: string[] = [],
 ): Promise<SubmitReviewResult> {
   if (batch.user_id !== userId) return { ok: false, message: 'Cette fournée ne vous appartient pas.' };
   if (batch.status !== 'terminee') return { ok: false, message: 'Cette fournée n’est pas encore terminée.' };
   if (!batch.recipe_id) return { ok: false, message: 'Recette d’origine introuvable.' };
 
-  const validation = validateReview(rating, comment);
+  const validation = validateReview(rating, comment, photos);
   if (!validation.ok) return validation;
   const texte = comment.trim();
 
@@ -153,6 +156,7 @@ export async function submitOrUpdateReview(
     rejection_reason: null,
     ai_score: aiScore,
     ai_reason: aiReason,
+    photo_urls: photos,
   };
 
   const { error: writeError } = existing
