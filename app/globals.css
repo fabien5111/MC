@@ -396,14 +396,14 @@ body {
 .creer-page,
 .relecture-page,
 .recette-page,
-.execution-page {
+.batch-page {
   margin-left: 58px;
 }
 @media (max-width: 700px) {
   .creer-page,
   .relecture-page,
   .recette-page,
-  .execution-page {
+  .batch-page {
     margin-left: 0;
   }
 }
