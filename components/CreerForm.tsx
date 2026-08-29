@@ -36,6 +36,7 @@ import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
+import { translateQuotaError } from '@/lib/quota-message-client';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -1083,7 +1084,9 @@ export function CreerForm({
       // La recette a pu être créée avant l'échec (étapes, photos, ingrédients
       // sont écrits ensuite) : `createdIdRef` fait qu'une nouvelle tentative la
       // met à jour au lieu d'en créer une seconde.
-      dialog.alert('Erreur : ' + ((e as Error).message || "Impossible d'enregistrer la recette."));
+      const brut = (e as Error).message || "Impossible d'enregistrer la recette.";
+      const educatif = await translateQuotaError(brut);
+      dialog.alert(educatif ?? 'Erreur : ' + brut);
       busyRef.current = false;
       setBusy(false);
     }

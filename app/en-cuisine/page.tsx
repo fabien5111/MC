@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
 import { getBatches, getActiveBatches, getShoppingLists } from '@/lib/profile';
+import { canAccess } from '@/lib/entitlements';
+import { getEntitlements } from '@/lib/entitlements-data';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -28,12 +30,19 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, batchesTerminees, activeBatches, shoppingLists] = await Promise.all([
+  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements] = await Promise.all([
     getBatches(user.id, 'actives'),
     getBatches(user.id, 'terminees'),
     getActiveBatches(user.id),
     getShoppingLists(user.id),
+    getEntitlements(user.id),
   ]);
+  // Droits d'abonnement (§4) : calculés une fois ici, jamais recalculés plus
+  // bas dans l'arbre de composants.
+  const droits = {
+    fusionListes: canAccess(entitlements, 'fusion_listes_courses'),
+    reordonnancement: canAccess(entitlements, 'reordonnancement_etapes'),
+  };
 
   return (
     <>
@@ -52,6 +61,7 @@ export default async function EnCuisinePage() {
           batchesTerminees={batchesTerminees}
           activeBatches={activeBatches}
           shoppingLists={shoppingLists}
+          droits={droits}
         />
       </main>
       <Footer />

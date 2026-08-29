@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
+import { canAccess } from '@/lib/entitlements';
+import { getEntitlements } from '@/lib/entitlements-data';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
 import { getMyRecipeReview } from '@/lib/reviews-data';
@@ -70,21 +72,30 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
 export default async function FourneePage({ params, searchParams }: Params) {
   const { id } = await params;
   const { lecture, mode } = await searchParams;
-  await requireUser(`/fournee/${id}`);
+  const user = await requireUser(`/fournee/${id}`);
 
   const batchId = Number(id);
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview] = await Promise.all([
-    getUnits(),
-    getIngredientConversions(),
-    getIngredientDensities(),
-    getShoppingLists(batch.user_id!),
-    getBaseRecipeInfo(batch.recipe_id),
-    getAllergensWithPicto(),
-    batch.recipe_id ? getMyRecipeReview(batch.recipe_id, batch.user_id!) : Promise.resolve(null),
-  ]);
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements] =
+    await Promise.all([
+      getUnits(),
+      getIngredientConversions(),
+      getIngredientDensities(),
+      getShoppingLists(batch.user_id!),
+      getBaseRecipeInfo(batch.recipe_id),
+      getAllergensWithPicto(),
+      batch.recipe_id ? getMyRecipeReview(batch.recipe_id, batch.user_id!) : Promise.resolve(null),
+      getEntitlements(user.id),
+    ]);
+  // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
+  // jamais recalculés plus bas dans l'arbre de composants.
+  const droits = {
+    remplacementIngredient: canAccess(entitlements, 'remplacement_ingredient_par_recette'),
+    notesPersonnelles: canAccess(entitlements, 'notes_personnelles'),
+    sousEtapes: canAccess(entitlements, 'sous_etapes_sequencement'),
+  };
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -120,6 +131,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           lecture={lecture === '1'}
           initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
           myReview={myReview}
+          droits={droits}
         />
       </main>
       <MobileNav current="cuisine" />

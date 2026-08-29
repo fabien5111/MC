@@ -17,6 +17,8 @@ import { getVisibleHelpBlocks } from '@/lib/help';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { RelectureEditor } from '@/components/RelectureEditor';
+import { canAccess, blockingMessage } from '@/lib/entitlements';
+import { getCurrentPlan, getEntitlements, getGrid } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: "Relecture d'un import | Je pâtisse !" };
 
@@ -29,7 +31,7 @@ export default async function RelecturePage({ params }: Params) {
   const { id } = await params;
   const numId = Number(id);
 
-  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin, conversions, ingredientRefIds, helpBlocks] = await Promise.all([
+  const [importRow, units, refs, refAllergens, allergens, utensilRefs, difficulties, moldTypes, tags, admin, conversions, ingredientRefIds, helpBlocks, droits, grid, currentPlan] = await Promise.all([
     Number.isFinite(numId) ? getImport(numId) : Promise.resolve(null),
     getUnits(),
     getIngredientRefNames(),
@@ -43,7 +45,22 @@ export default async function RelecturePage({ params }: Params) {
     getIngredientConversions(),
     getIngredientRefsList(),
     getVisibleHelpBlocks('relecture', user.id),
+    getEntitlements(user.id),
+    getGrid(),
+    getCurrentPlan(user.id),
   ]);
+  // Droit d'abonnement : un brouillon laissé après une rétrogradation reste
+  // en base (rien n'est supprimé), mais ni relu ni publié tant que le droit
+  // n'est pas rétabli — même portée stricte que le mode projet (§5c).
+  const peutRelire = canAccess(droits, 'ecran_relecture_import');
+  const messageBloque = peutRelire
+    ? null
+    : blockingMessage(grid, 'ecran_relecture_import', currentPlan?.code ?? '', {
+        autorise: false,
+        raison: 'PLAN_INSUFFISANT',
+        limite: null,
+        usage: 0,
+      });
 
   return (
     <>
@@ -62,6 +79,14 @@ export default async function RelecturePage({ params }: Params) {
         {!importRow ? (
           <div className="text-on-surface-variant italic">
             Import introuvable (ou vous n&apos;y avez pas accès).
+          </div>
+        ) : !peutRelire ? (
+          <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
+            <p className="font-label-md text-[15px]">{messageBloque?.titre}</p>
+            <p className="mt-2 text-sm text-on-surface-variant">{messageBloque?.corps}</p>
+            <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
+              Voir les formules
+            </Link>
           </div>
         ) : (
           <RelectureEditor

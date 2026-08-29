@@ -8,6 +8,7 @@ import {
   type ImpersonationMode,
 } from '@/lib/impersonation-types';
 import type { Database } from '@/lib/database.types';
+import { getMembersSubscriptionSummaries } from '@/lib/subscriptions-admin';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 export type Mold = Database['public']['Tables']['molds']['Row'] & {
@@ -423,7 +424,11 @@ export type Member = {
   email: string;
   status: string;
   role: string;
-  plan: string;
+  // Abonnement réel (table `subscriptions`), null pour une invitation en
+  // attente (pas encore de profil). `profiles.plan` / `allowlist.plan`
+  // ('free' / 'paid') sont mortes depuis le chantier abonnements — ne plus
+  // les lire (cf. docs/abonnements.md § « doctrine restante »).
+  subscription: { planCode: string; planLabel: string; type: string; endsAt: string | null; trialConsumed: boolean } | null;
   is_demo: boolean;
   notes: string | null;
   invited_at: string | null;
@@ -442,15 +447,16 @@ export type Member = {
 
 export async function getAllowlistMembers(): Promise<Member[]> {
   const supabase = withImpersonationSchema(await createClient());
-  const [{ data: profiles }, { data: allowlist }, { data: recipes }] = await Promise.all([
+  const [{ data: profiles }, { data: allowlist }, { data: recipes }, subscriptions] = await Promise.all([
     supabase
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, provider, status, role, plan, is_demo, notes, created_at, impersonation_access',
+        'id, email, full_name, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access',
       )
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
     supabase.from('recipes').select('author_id'),
+    getMembersSubscriptionSummaries(),
   ]);
 
   const recipeMap: Record<string, number> = {};
@@ -472,7 +478,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       email: p.email || '',
       status: al?.status || p.status || 'active',
       role: al?.role || p.role || 'member',
-      plan: al?.plan || p.plan || 'free',
+      subscription: subscriptions.get(p.id) ?? null,
       is_demo: al?.is_demo ?? p.is_demo ?? false,
       notes: al?.notes || p.notes || null,
       invited_at: al?.invited_at || p.created_at,
@@ -495,7 +501,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       email: a.email,
       status: a.status,
       role: a.role,
-      plan: a.plan,
+      subscription: null,
       is_demo: a.is_demo,
       notes: a.notes,
       invited_at: a.invited_at,

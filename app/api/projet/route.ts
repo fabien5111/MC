@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { INTENT_MAX } from '@/lib/ai/project-structure';
+import { verifierAcces } from '@/lib/quota-route';
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -23,6 +24,13 @@ export async function POST(req: Request) {
   if (await isReadOnlySession()) {
     return NextResponse.json({ erreur: 'Session de consultation (lecture seule).' }, { status: 403 });
   }
+
+  // Droit d'accès au mode projet, jusqu'ici jamais vérifié : n'importe quel
+  // membre connecté pouvait ouvrir un projet. Le lot 5b avait câblé les
+  // quotas de générations IA du mode projet sans jamais contrôler l'ACCÈS au
+  // mode projet lui-même.
+  const refus = await verifierAcces(user.id, 'mode_projet');
+  if (refus) return refus;
 
   const body = await req.json().catch(() => ({}));
   const intent = typeof body?.intent === 'string' ? body.intent.replace(/\s+/g, ' ').trim().slice(0, INTENT_MAX) : '';
