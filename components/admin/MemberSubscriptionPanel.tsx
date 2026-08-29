@@ -1,10 +1,10 @@
 'use client';
 
-// Fiche membre — onglet Abonnement (spec §8.3) : bandeau d'état, historique
+// Fiche membre — section Abonnement (spec §8.3) : bandeau d'état, historique
 // complet, consommation actuelle et quatre actions administrateur.
 //
 // Chargé à la demande (`GET /api/admin/membres/[id]/abonnement`) plutôt que
-// livré avec la liste : l'historique et les cinq comptages de consommation
+// livré avec la fiche : l'historique et les cinq comptages de consommation
 // ne servent qu'au moment où l'administrateur ouvre CETTE fiche.
 //
 // **Toute mutation passe par une fonction serveur** (`mc_admin_*`,
@@ -12,6 +12,9 @@
 // ce sont elles qui ferment l'abonnement actif avant d'en ouvrir un autre, et
 // qui tiennent le journal. Un motif est de ce fait toujours demandé — la
 // base le refuse sinon, mais mieux vaut ne jamais lui envoyer la requête vide.
+//
+// Section de page (`/admin/membres/[id]`), pas un panneau superposé : plus de
+// second drawer empilé sur la fiche membre.
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
@@ -33,15 +36,7 @@ function rpc(): (fn: string, args: Record<string, unknown>) => PromiseLike<{ err
 const TYPE_LABELS: Record<string, string> = { DEFAULT: 'Gratuit', TRIAL: 'Essai', PAID: 'Payant', GIFT: 'Offert' };
 const STATUS_LABELS: Record<string, string> = { ACTIVE: 'Actif', EXPIRED: 'Expiré', CANCELLED: 'Annulé' };
 
-export function MemberSubscriptionPanel({
-  memberId,
-  memberLabel,
-  onClose,
-}: {
-  memberId: string;
-  memberLabel: string;
-  onClose: () => void;
-}) {
+export function MemberSubscriptionPanel({ memberId }: { memberId: string }) {
   const dialog = useDialog();
   const [data, setData] = useState<MemberSubscriptionOverview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -147,22 +142,17 @@ export function MemberSubscriptionPanel({
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <aside className="fixed top-0 right-0 h-full w-full max-w-lg bg-surface-bright border-l border-outline-variant z-50 flex flex-col">
-        <LoadingOverlay visible={busy} label="Enregistrement…" />
-        <div className="flex items-center justify-between px-8 py-6 border-b border-outline-variant">
-          <h3 className="font-headline-md text-xl font-semibold">Abonnement — {memberLabel}</h3>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-primary">
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
+    <div className="relative border border-outline-variant rounded-xl overflow-hidden">
+      <LoadingOverlay visible={busy} label="Enregistrement…" />
+      <div className="px-6 py-4 border-b border-outline-variant bg-surface-container-low">
+        <h3 className="font-headline-md text-base font-semibold">Abonnement</h3>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-          {loading || !data ? (
-            <p className="text-sm text-on-surface-variant">Chargement…</p>
-          ) : (
-            <>
+      <div className="px-6 py-6 space-y-6">
+        {loading || !data ? (
+          <p className="text-sm text-on-surface-variant">Chargement…</p>
+        ) : (
+          <>
               <section className="rounded-lg border border-outline-variant p-4">
                 {data.current ? (
                   <>
@@ -258,9 +248,8 @@ export function MemberSubscriptionPanel({
               </section>
             </>
           )}
-        </div>
-      </aside>
-    </>
+      </div>
+    </div>
   );
 }
 

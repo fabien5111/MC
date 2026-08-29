@@ -501,6 +501,10 @@ export type Member = {
   profileId: string | null;
   allowlistId: number | null;
   fullName: string | null;
+  // Adresse de la vitrine publique (`/u/[username]`) — `null` tant que le
+  // membre n'a pas choisi de pseudo (cf. CLAUDE.md « Pseudo »), y compris
+  // pour une invitation en attente (pas encore de profil).
+  username: string | null;
   recipeCount: number;
   // Droit d'impersonation hérité par les sessions « connecté en tant que »
   // ouvertes par ce membre — n'a de sens que pour un admin.
@@ -518,7 +522,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     supabase
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access',
+        'id, email, full_name, username, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access',
       )
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
@@ -557,6 +561,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       profileId: p.id,
       allowlistId: al?.id ?? null,
       fullName: p.full_name,
+      username: p.username ?? null,
       recipeCount: recipeMap[p.id] || 0,
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
       coutIaMois: coutsIa.get(p.id)?.coutMois ?? null,
@@ -582,6 +587,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       profileId: null,
       allowlistId: a.id,
       fullName: null,
+      username: null,
       recipeCount: 0,
       // Pas encore de profil : la valeur par défaut s'appliquera à l'inscription.
       impersonationAccess: 'read_only',
@@ -591,6 +597,126 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     }));
 
   return [...registered, ...pending];
+}
+
+// Une seule fiche membre (écran `/admin/membres/[id]`) : requêtes scopées à
+// CET utilisateur uniquement, contrairement à `getAllowlistMembers` qui
+// rapatrie toute la base pour construire la liste — coûteux si on ne
+// l'appelait que pour en extraire une ligne (cf. CLAUDE.md, doctrine egress).
+// `id` reprend le format de `Member.id` (`p-<profileId>` ou `a-<allowlistId>`)
+// tel que produit ci-dessus et utilisé comme segment de route.
+export async function getMemberById(id: string): Promise<Member | null> {
+  const supabase = withImpersonationSchema(await createClient());
+
+  if (id.startsWith('p-')) {
+    const profileId = id.slice(2);
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, username, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access')
+      .eq('id', profileId)
+      .maybeSingle();
+    if (!p) return null;
+    const emailKey = (p.email || '').toLowerCase();
+    const [{ data: al }, { count: recipeCount }] = await Promise.all([
+      emailKey
+        ? supabase.from('allowlist').select('*').ilike('email', emailKey).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('author_id', profileId),
+    ]);
+    return {
+      id,
+      email: p.email || '',
+      status: al?.status || p.status || 'active',
+      role: al?.role || p.role || 'member',
+      // Chargé séparément (`MemberSubscriptionPanel`, `GET
+      // /api/admin/membres/[id]/abonnement`) : la fiche n'a pas besoin du
+      // résumé, seulement de l'historique complet.
+      subscription: null,
+      is_demo: al?.is_demo ?? p.is_demo ?? false,
+      notes: al?.notes || p.notes || null,
+      invited_at: al?.invited_at || p.created_at,
+      registeredAt: p.created_at,
+      provider: p.provider || null,
+      avatarUrl: p.avatar_url || null,
+      source: 'profile',
+      profileId: p.id,
+      allowlistId: al?.id ?? null,
+      fullName: p.full_name,
+      username: p.username ?? null,
+      recipeCount: recipeCount ?? 0,
+      impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
+      coutIaMois: null,
+      coutIaTotal: null,
+    };
+  }
+
+  if (id.startsWith('a-')) {
+    const allowlistId = Number(id.slice(2));
+    const { data: a } = await supabase.from('allowlist').select('*').eq('id', allowlistId).maybeSingle();
+    if (!a) return null;
+    return {
+      id,
+      email: a.email,
+      status: a.status,
+      role: a.role,
+      subscription: null,
+      is_demo: a.is_demo,
+      notes: a.notes,
+      invited_at: a.invited_at,
+      registeredAt: null,
+      provider: null,
+      avatarUrl: null,
+      source: 'allowlist',
+      profileId: null,
+      allowlistId: a.id,
+      fullName: null,
+      username: null,
+      recipeCount: 0,
+      impersonationAccess: 'read_only',
+      coutIaMois: null,
+      coutIaTotal: null,
+    };
+  }
+
+  return null;
+}
+
+// Nombre de fournées d'un membre (statistique de la fiche) — comptage seul,
+// contrairement à `getBatches` (lib/profile.ts) qui rapatrie les lignes pour
+// l'écran « En cuisine ».
+export async function getBatchCount(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase.from('batches').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+  if (error) {
+    console.error('getBatchCount:', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+// ── Historique de connexion (fiche membre) ────────────────────────────────
+// Horodatage seul (pas le détail des pages vues, qui exigerait une
+// instrumentation neuve à chaque navigation — cf. doctrine egress,
+// CLAUDE.md « Données de référence »). Lu depuis le journal d'audit natif de
+// Supabase Auth (`auth.audit_log_entries`), jamais écrit par l'application :
+// aucune table ni écriture supplémentaire. `auth` n'étant pas exposé par
+// PostgREST, la lecture passe par la RPC SECURITY DEFINER
+// `admin_member_login_history` (vérifie elle-même `is_admin_user()`, même
+// motif que `merge_ideas` / `admin_unknown_ingredients`) — SQL à appliquer
+// séparément (jamais de fichier .sql dans le dépôt, cf. CLAUDE.md).
+export type LoginHistoryEntry = { created_at: string; action: string; ip_address: string | null };
+
+export async function getMemberLoginHistory(userId: string, limit = 20): Promise<LoginHistoryEntry[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    'admin_member_login_history' as never,
+    { p_user_id: userId, p_limit: limit } as never,
+  );
+  if (error) {
+    console.error('getMemberLoginHistory:', error.message);
+    return [];
+  }
+  return (data as unknown as LoginHistoryEntry[]) ?? [];
 }
 
 // ── Listes / taxonomies (CRUD générique) ─────────────────────
