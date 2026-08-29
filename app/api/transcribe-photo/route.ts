@@ -111,6 +111,10 @@ export async function POST(req: Request) {
       { status: timeout ? 504 : 502 },
     );
   } finally {
-    void enregistrerAppelsIa('import_transcription', user.id, appels);
+    // `await`, jamais `void` : une écriture non attendue peut être coupée net
+    // par le gel de la fonction serverless dès la réponse envoyée. Sans
+    // risque pour la doctrine best-effort : la fonction avale déjà ses
+    // propres erreurs.
+    await enregistrerAppelsIa('import_transcription', user.id, appels);
   }
 }

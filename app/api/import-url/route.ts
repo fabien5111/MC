@@ -155,7 +155,9 @@ export async function POST(req: Request) {
     // Les appels déjà effectués ont été facturés même si l'import échoue :
     // journalisés malgré tout (`ref` absent, faute de ligne `imports` où les
     // rattacher — plus une perte silencieuse comme avant `ai_usage`).
-    void enregistrerAppelsIa('import_recette', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     const partiel = (e as { usage?: ClaudeUsage }).usage ?? EMPTY_USAGE;
     const total = addUsage(usageTranscription, partiel);
     console.error(
@@ -180,7 +182,8 @@ export async function POST(req: Request) {
   if (erreurs.length) {
     // Appels réussis (l'IA a répondu), mais extraction jugée incomplète par
     // la validation : ce n'est pas un `api_error`, le coût est bien réel.
-    void enregistrerAppelsIa('import_recette', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts).
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     return NextResponse.json(
       {
         erreur: estPhoto
@@ -261,11 +264,12 @@ export async function POST(req: Request) {
     .select()
     .single();
   if (error) {
-    void enregistrerAppelsIa('import_recette', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts).
+    await enregistrerAppelsIa('import_recette', user.id, appels);
     return NextResponse.json({ erreur: error.message }, { status: 500 });
   }
 
-  void enregistrerAppelsIa('import_recette', user.id, appels, { table: 'imports', id: row.id });
+  await enregistrerAppelsIa('import_recette', user.id, appels, { table: 'imports', id: row.id });
 
   return NextResponse.json({ import: row, alertes, quota_restant: Math.max(0, QUOTA - compte - 1) });
 }

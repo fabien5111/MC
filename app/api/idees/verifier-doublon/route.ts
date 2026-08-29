@@ -57,6 +57,8 @@ export async function POST(req: Request) {
     // Best-effort, hors du chemin de réponse : le coût de la vérification
     // anti-doublon est une charge de GESTION (modération de la boîte à
     // idées), jamais imputée au membre qui dépose l'idée.
-    void enregistrerAppelsIa('idee_doublon', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('idee_doublon', user.id, appels);
   }
 }

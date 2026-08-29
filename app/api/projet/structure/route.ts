@@ -49,6 +49,8 @@ export async function POST(req: Request) {
     console.error('projet/structure:', (e as Error).message);
     return NextResponse.json(VIDE);
   } finally {
-    void enregistrerAppelsIa('projet_structure', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('projet_structure', user.id, appels);
   }
 }

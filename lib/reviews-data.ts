@@ -146,7 +146,9 @@ export async function submitOrUpdateReview(
     } finally {
       // Charge de GESTION : le membre qui dépose l'avis n'en supporte pas le
       // coût, c'est le site qui s'impose ce contrôle.
-      void enregistrerAppelsIa('moderation_avis', userId, appels, { table: 'batches', id: batch.id });
+      // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+      // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+      await enregistrerAppelsIa('moderation_avis', userId, appels, { table: 'batches', id: batch.id });
     }
   }
 

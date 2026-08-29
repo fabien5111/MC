@@ -112,7 +112,9 @@ export async function pseudoModereParIA(pseudo: string, userId?: string): Promis
     console.error('[pseudo] contrôle IA indisponible, pseudo autorisé par défaut :', (e as Error).message);
     return true;
   } finally {
-    void enregistrerAppelsIa('moderation_pseudo', userId ?? null, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('moderation_pseudo', userId ?? null, appels);
   }
 }
 

@@ -65,6 +65,8 @@ export async function POST() {
       { status: 502 },
     );
   } finally {
-    void enregistrerAppelsIa('idee_doublon_admin', user.id, appels);
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('idee_doublon_admin', user.id, appels);
   }
 }

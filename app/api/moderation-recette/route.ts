@@ -512,6 +512,8 @@ export async function POST(req: Request) {
     console.error('moderation-recette:', (e as Error).message);
     return NextResponse.json({ analysisId, erreur: 'Analyse indisponible.' });
   } finally {
-    void enregistrerAppelsIa('moderation_recette', user.id, appels, { table: 'recipe_analysis', id: analysisId });
+    // `await`, jamais `void` (cf. app/api/scale-recipe/route.ts) : sinon la
+    // fonction serverless peut geler avant que l'écriture n'atteigne la base.
+    await enregistrerAppelsIa('moderation_recette', user.id, appels, { table: 'recipe_analysis', id: analysisId });
   }
 }

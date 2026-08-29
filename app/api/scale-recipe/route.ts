@@ -86,6 +86,14 @@ export async function POST(req: Request) {
     // ci-dessus dans `recipe_scale_costs` — la bascule complète (abandon des
     // colonnes de coût des tables historiques) est une migration séparée,
     // une fois `ai_usage` éprouvé.
-    void enregistrerAppelsIa('ajustement_quantites', user.id, appels);
+    //
+    // `await`, jamais `void` : sur une fonction serverless Vercel, la requête
+    // HTTP en vol d'un `void` non attendu peut être coupée net dès la réponse
+    // envoyée (gel de l'environnement d'exécution) — la ligne ne part jamais.
+    // `enregistrerAppelsIa` avale déjà toutes ses erreurs en interne (best-
+    // effort), donc l'attendre ne remet pas en cause la doctrine « le journal
+    // ne casse jamais la réponse » : ça change seulement le moment où la
+    // fonction est autorisée à se terminer.
+    await enregistrerAppelsIa('ajustement_quantites', user.id, appels);
   }
 }
