@@ -187,28 +187,15 @@ function ReviewForm({
   );
 }
 
-export function BatchReview({
-  batchId,
-  recipeId,
-  myReview,
-  onDismiss,
-}: {
-  batchId: number;
-  recipeId: string | null;
-  myReview: MyRecipeReview | null;
-  // « Ne plus afficher », porté par le parent : la carte se démonte aussitôt
-  // l'écriture faite, une mutation déclarée ici emporterait sa transition
-  // avec elle (cf. CLAUDE.md, même motif que les fenêtres modales).
-  onDismiss: () => void;
-}) {
-  const [justSubmitted, setJustSubmitted] = useState(false);
-
-  if (!recipeId) return null;
-  // Un avis existe déjà pour cette recette, déposé depuis une AUTRE fournée
-  // — le bouton ne s'affiche que sur la fournée d'origine (cf. en-tête).
-  if (myReview && myReview.batch_id !== batchId) return null;
-
-  const Card = ({ children }: { children: React.ReactNode }) => (
+// Composant à part (portée module), jamais défini dans le corps de
+// `BatchReview` : une fonction composant redéfinie à chaque rendu du parent
+// change de type à chaque fois aux yeux de React, qui démonte puis remonte
+// tout son contenu — ici `ReviewForm`, avec la perte de son état local
+// (note, commentaire, photos) à chaque rendu de `BatchView` (ancêtre à
+// l'état riche : cases à cocher des étapes, minuteurs de sauvegarde…), pas
+// seulement à une action de l'utilisateur sur la carte elle-même.
+function Card({ onDismiss, children }: { onDismiss: () => void; children: React.ReactNode }) {
+  return (
     <div id="sec-avis" className="scroll-mt-28 mb-6 p-5 bg-secondary-container/20 border border-secondary/30 rounded-xl">
       <div className="flex items-start justify-between gap-3 mb-4">
         <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
@@ -230,10 +217,32 @@ export function BatchReview({
       {children}
     </div>
   );
+}
+
+export function BatchReview({
+  batchId,
+  recipeId,
+  myReview,
+  onDismiss,
+}: {
+  batchId: number;
+  recipeId: string | null;
+  myReview: MyRecipeReview | null;
+  // « Ne plus afficher », porté par le parent : la carte se démonte aussitôt
+  // l'écriture faite, une mutation déclarée ici emporterait sa transition
+  // avec elle (cf. CLAUDE.md, même motif que les fenêtres modales).
+  onDismiss: () => void;
+}) {
+  const [justSubmitted, setJustSubmitted] = useState(false);
+
+  if (!recipeId) return null;
+  // Un avis existe déjà pour cette recette, déposé depuis une AUTRE fournée
+  // — le bouton ne s'affiche que sur la fournée d'origine (cf. en-tête).
+  if (myReview && myReview.batch_id !== batchId) return null;
 
   if (justSubmitted) {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <p className="text-sm text-on-surface-variant">
           Merci ! Votre avis a été transmis à la modération et apparaîtra sur la fiche recette une fois validé.
         </p>
@@ -243,7 +252,7 @@ export function BatchReview({
 
   if (!myReview) {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <ReviewForm
           batchId={batchId}
           initialRating={0}
@@ -258,7 +267,7 @@ export function BatchReview({
 
   if (myReview.status === 'pending') {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
@@ -271,7 +280,7 @@ export function BatchReview({
 
   if (myReview.status === 'approved') {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
@@ -287,7 +296,7 @@ export function BatchReview({
   // `rejected` : le motif remplace l'avis initial, formulaire rouvert et
   // pré-rempli pour resoumission.
   return (
-    <Card>
+    <Card onDismiss={onDismiss}>
       <div className="mb-4 p-3 bg-error-container/40 text-on-error-container rounded-lg text-[13px] flex items-start gap-2">
         <span className="material-symbols-outlined text-[18px] shrink-0">info</span>
         <p>
