@@ -120,6 +120,47 @@ export function PlansPage({
     }
   }
 
+  // Simulation de paiement (§ CLAUDE.md « Fonctionnalités à venir ») : tant
+  // qu'aucun prestataire (Stripe/PayPal) n'est branché, un code tient lieu de
+  // preuve de paiement pour activer un abonnement mensuel immédiatement. La
+  // vérification du code vit uniquement dans `mc_simulate_subscribe`
+  // (SECURITY DEFINER) — jamais côté client, même doctrine que le reste du
+  // site (« les contrôles client ne prouvent rien »).
+  async function simulerAbonnement(planCode: string, planLabel: string) {
+    const code = await dialog.prompt(
+      `Code d'activation — ${planLabel}, abonnement mensuel (simulation en l'absence de moyen de paiement réel) :`,
+      { required: true, placeholder: 'Code' },
+    );
+    if (!code) return;
+    setBusy(true);
+    try {
+      // `mc_simulate_subscribe` n'est pas encore dans lib/database.types.ts
+      // tant que la migration n'a pas été appliquée puis régénérée — appel
+      // non typé en attendant, même motif que `mc_cancel_own_subscription`
+      // dans UsageCard.
+      const { error } = await (
+        createClient().rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => PromiseLike<{ error: { message: string } | null }>
+      )('mc_simulate_subscribe', { p_plan_code: planCode, p_promo_code: code.trim() });
+      if (error) {
+        const messages: Record<string, string> = {
+          MC_SIMU_READONLY: 'Session de consultation (lecture seule) : action impossible.',
+          MC_SIMU_PLAN: "Cette formule n'est pas disponible pour le moment.",
+          MC_SIMU_BAD_CODE: 'Code incorrect.',
+        };
+        const head = error.message.split(':')[0];
+        dialog.alert(messages[head] ?? "L'activation n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert(`Abonnement ${planLabel} activé pour un mois.`);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function retrograder(planCode: string) {
     if (!currentPlanCode) return;
     const changements = diffRights(grid.rights[currentPlanCode] ?? {}, grid.rights[planCode] ?? {}).filter(
@@ -219,7 +260,7 @@ export function PlansPage({
                           // (un essai reste possible, lui, sans moyen de paiement).
                           aUnTarif={tarif !== null}
                           onEssayer={() => essayer(p.code)}
-                          onAbonner={() => demander(p.code, annuel ? 'YEARLY' : 'MONTHLY')}
+                          onAbonner={() => simulerAbonnement(p.code, p.label)}
                           onRetrograder={() => retrograder(p.code)}
                         />
                       </div>
