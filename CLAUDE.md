@@ -399,6 +399,94 @@ directes :
   multi-sessions sur un même objet — remplacés par la chaîne de fournées
   successives via « Refaire cette fournée » (`batches.source_plan_id`, posé
   à la duplication dans `CuisineContent.refaireBatch`).
+
+- **Une fournée close est verrouillée dans les DEUX modes, et se rouvre
+  explicitement.** `readOnly` (`batch.status !== 'planifiee'`, `?lecture=1`
+  ou impersonation lecture seule) doit atteindre **tout** ce qui écrit : le
+  mode Cuisiner le respectait depuis toujours, mais `BatchStepDonePanel` ne
+  recevait pas la prop — le mode Préparer restait donc modifiable sur une
+  fournée terminée (cases, jour de l'étape, notes, sous-étapes). L'interface
+  mentait sur l'état de la fournée ; ce n'était pas un trou de sécurité
+  (`useMutation` bride toujours l'impersonation), mais bien une écriture
+  d'historique par effet de bord. Corollaire posé en même temps :
+  **« Reprendre cette fournée » vaut désormais pour `terminee` autant que
+  pour `abandonnee`** — la doctrine antérieure (« seul l'abandon est
+  réversible ») n'était tenable que tant que Préparer offrait cette
+  échappatoire non voulue. Deux conséquences à connaître :
+  - le bouton est volontairement **indépendant de `lecture`** — « Fournées
+    terminées » (`/en-cuisine`) n'ouvre qu'en `?lecture=1`, s'y adosser le
+    rendrait invisible depuis son unique point d'entrée (même raisonnement
+    que la carte d'avis) ;
+  - reprendre efface `date_fin`, donc la durée totale du résumé : d'où une
+    confirmation explicite sur une fournée `terminee`, absente pour un
+    abandon.
+  **Le verrou doit s'énoncer là où il se fait sentir** : un bandeau en tête
+  des deux modes dit pourquoi tout est grisé et porte le bouton de reprise.
+  Le lien de l'en-tête ne suffit pas — il sort du champ dès qu'on a déroulé
+  la page, et une case grisée sans explication ni porte de sortie se lit
+  comme une panne, pas comme un état.
+  **Lever `?lecture=1` passe par `router.replace`, jamais par `refresh`** :
+  le paramètre vit dans l'URL, donc dans les `searchParams` du rendu serveur
+  — un `refresh` rejouerait la page avec `lecture=1` et la re-verrouillerait
+  aussitôt, et un `history.replaceState` réécrirait la barre d'adresse sans
+  rien renvoyer au serveur. C'est la seule resynchronisation de cet écran qui
+  ne soit pas un `router.refresh()`.
+- **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
+  la première est la note personnelle de la fournée (éditée en Préparer par
+  `BatchNotes`), la seconde le commentaire saisi au lancement dans
+  `BatchWidget`. Le mode Cuisiner n'affichait que `notes`, sous le libellé
+  « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
+  la recette, y était donc structurellement invisible. Les deux sont
+  désormais rendues, sous deux libellés distincts.
+- **Une note personnelle n'est jamais repliée avec l'étape.** Une étape
+  entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
+  bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui
+  serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
+  passé. Vaut dans les deux modes — `StepCookCard` rend `user_note` hors de
+  son propre volet, pour la même raison.
+- **Le mode Cuisiner AFFICHE ce que « déjà réalisé » exclut, il ne l'escamote
+  pas.** `StepCookCard` filtrait ses ingrédients par `batchIngredientExcluded`
+  (et ses sous-étapes par `batchSubstepExcluded`) **avant** de rendre : une
+  étape cochée s'affichait donc littéralement vide, et la déplier ne révélait
+  rien. Or c'est justement ce contenu qu'on relit après coup pour ajuster la
+  recette. Les lignes exclues sont désormais rendues barrées et verrouillées,
+  comme en mode Préparer — la même règle que « une étape n'est jamais retirée
+  du déroulé », appliquée un cran plus bas. Ne disparaissent que les lignes
+  qui ne font plus partie de la fournée : retirées à la main, éclatées en
+  sous-recette, ou portées par une étape entièrement remplacée. Corollaire :
+  les automatismes (auto-coche de l'étape quand tout est coché) travaillent
+  sur les listes `active*`, jamais sur les listes affichées — sinon une étape
+  dont tout est exclu ne se cocherait plus jamais.
+- **Le repli du mode Cuisiner porte sur l'ÉTAPE, pas sur le jour** : les
+  jalons sont dépliés par défaut (on suit `collapsedJalons`, les jours que
+  l'utilisateur a refermés — jamais l'inverse), les étapes repliées. Replier
+  les deux niveaux ne laissait plus rien voir du déroulé ; n'en replier aucun
+  noyait l'étape en cours sous les ingrédients de toute la journée. L'en-tête
+  d'une étape repliée annonce ce qu'elle contient (« 6 ingrédients ·
+  3 sous-étapes »), sans quoi elle se lirait comme une étape vide.
+  **Un `<details>` piloté par React a besoin de son `onToggle`** : sans lui,
+  le clic n'est connu que du navigateur, et le premier re-rendu (une case
+  cochée suffit) rétablit l'état calculé — le jour se refermait sous le doigt.
+  **Tout l'en-tête d'une étape déplie**, pas seulement le chevron (cible de la
+  taille d'une icône, difficile à viser au doigt) : d'où un `role="button"` et
+  non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
+  titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
+  replierait au passage.
+- **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
+  les trois champs du mode Cuisiner — ingrédient, sous-étape, étape. Ces
+  champs sont vides sur l'immense majorité des lignes : sans marqueur, celui
+  qui porte une remarque se confond avec les autres dès qu'on remonte la
+  liste. Même couleur que le reste de la fournée pour « de vous » (cf. le
+  bandeau de légende du mode Préparer). Les deux premiers étant des champs
+  **non contrôlés** (`defaultValue` + `onBlur`), le vert n'y apparaît qu'à la
+  validation de la saisie — il signale une note *enregistrée*, pas en cours de
+  frappe ; le troisième, contrôlé, verdit à la frappe.
+- **Proposer un avis suit ce que `BatchReview` sait offrir**, pas la seule
+  appartenance de l'avis à la fournée : un avis `pending` ou `approved` y rend
+  un récapitulatif en lecture seule, il n'y a rien à saisir. `reviewEligible`
+  ne retient donc que l'absence d'avis et un avis `rejected` de cette fournée.
+  Se voyait en reprenant puis reclôturant une fournée déjà notée : on
+  proposait de noter une recette qui l'était déjà.
 - L'historique de l'ancien modèle (`executions`, `execution_steps`,
   `execution_substeps`, `execution_ingredients`, `execution_utensils`) a été
   renommé `*_legacy` et conservé en base, sans être ni lu ni écrit par

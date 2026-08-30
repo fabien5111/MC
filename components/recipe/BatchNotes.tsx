@@ -28,6 +28,7 @@ export function BatchNotes({
   batchId,
   notes: initialNotes,
   canPersonalNotes = true,
+  readOnly = false,
 }: {
   batchId: number;
   notes: string | null;
@@ -35,6 +36,10 @@ export function BatchNotes({
   // d'étape (BatchStepDonePanel) : l'existant reste visible, seule la
   // saisie d'une nouvelle note est bridée (§7.4).
   canPersonalNotes?: boolean;
+  // Fournée close ou consultation : la note reste lisible, seul le bouton
+  // d'édition disparaît — distinct de `canPersonalNotes`, qui renvoie vers
+  // les formules, alors qu'ici il n'y a rien à souscrire.
+  readOnly?: boolean;
 }) {
   const { mutate, busy } = useMutation();
   const [notes, setNotes] = useState(initialNotes);
@@ -46,6 +51,7 @@ export function BatchNotes({
   useEffect(() => setNotes(initialNotes), [initialNotes]);
 
   async function save() {
+    if (readOnly) return;
     const next = draft.trim() || null;
     const ok = await mutate(() => createClient().from('batches').update({ user_note: next } as never).eq('id', batchId), {
       errorLabel: 'Note non enregistrée',
@@ -66,13 +72,13 @@ export function BatchNotes({
       <LoadingOverlay visible={busy} label="Enregistrement…" />
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editing && canPersonalNotes && (
+        {!editing && canPersonalNotes && !readOnly && (
           <button type="button" onClick={open} title={notes ? 'Modifier ma note' : 'Ajouter une note'} className="no-print text-primary hover:opacity-70">
             <span className="material-symbols-outlined text-[18px]">{notes ? 'edit' : 'add_circle'}</span>
           </button>
         )}
       </div>
-      {!canPersonalNotes && !notes ? (
+      {!canPersonalNotes && !notes && !readOnly ? (
         <p className="no-print font-body-md text-sm italic text-on-surface-variant">
           Non incluses dans votre formule —{' '}
           <Link href="/plans" className="text-primary underline">

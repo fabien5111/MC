@@ -64,10 +64,19 @@ export function BatchStepDonePanel({
   children,
   canPersonalNotes = true,
   canSubsteps = true,
+  readOnly = false,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
   substeps: SubRow[];
+  // Fournée close (terminée/abandonnée), consultation `?lecture=1` ou session
+  // « en tant que » lecture seule : mêmes conditions que le mode Cuisiner,
+  // qui désactive ses cases depuis toujours. Sans cette prop, le mode
+  // Préparer restait modifiable sur une fournée terminée — l'interface
+  // mentait sur l'état de la fournée, et cocher/décocher y réécrivait
+  // l'historique de ce qui avait été réellement fait. Défaut à `false` :
+  // l'appelant qui ne la passe pas garde le comportement d'avant.
+  readOnly?: boolean;
   // Droits d'abonnement (§4 « Lancer une fournée »). Défaut à `true` : les
   // appelants qui ne les passent pas encore (aucun aujourd'hui) gardent le
   // comportement d'avant ce câblage plutôt que de se retrouver bridés par
@@ -130,6 +139,7 @@ export function BatchStepDonePanel({
   useEffect(() => setSubsteps(initialSubsteps), [initialSubsteps]);
 
   async function toggleDone() {
+    if (readOnly) return;
     const next = !step.done;
     const ok = await mutate(
       () => createClient().from('batch_steps').update({ done: next } as never).eq('id', step.id),
@@ -139,6 +149,7 @@ export function BatchStepDonePanel({
   }
 
   async function toggleIngredient(row: IngRow) {
+    if (readOnly) return;
     const next = !row.excluded_when_done;
     const ok = await mutate(
       () => createClient().from('batch_ingredients').update({ excluded_when_done: next } as never).eq('id', row.id),
@@ -150,6 +161,7 @@ export function BatchStepDonePanel({
   // Même exception, pour une puce de sous-étape (ex. « Porter à ébullition »
   // gardée alors que le reste de l'étape est déjà fait).
   async function toggleSubstep(sub: SubRow) {
+    if (readOnly) return;
     const next = !sub.excluded_when_done;
     const ok = await mutate(
       () => createClient().from('batch_substeps').update({ excluded_when_done: next } as never).eq('id', sub.id),
@@ -162,6 +174,7 @@ export function BatchStepDonePanel({
   // Seul `day_offset` bouge : `base_day_offset` garde le jour de la recette,
   // ce qui permet d'afficher les deux et de rétablir.
   async function changeDay(next: number) {
+    if (readOnly) return;
     if (next === step.day_offset) return;
     const ok = await mutate(() => createClient().from('batch_steps').update({ day_offset: next } as never).eq('id', step.id), {
       errorLabel: 'Jour non enregistré',
@@ -170,6 +183,7 @@ export function BatchStepDonePanel({
   }
 
   async function saveNote() {
+    if (readOnly) return;
     const next = noteDraft.trim() || null;
     const ok = await mutate(() => createClient().from('batch_steps').update({ user_note: next } as never).eq('id', step.id), {
       errorLabel: 'Note non enregistrée',
@@ -183,6 +197,7 @@ export function BatchStepDonePanel({
   // Ajout d'une sous-étape, à la fin de la liste (pas d'intercalation, qui
   // demanderait un `order_index` fractionnaire).
   async function addSubstep() {
+    if (readOnly) return;
     const texte = substepDraft.trim();
     if (!texte) {
       dialog.alert('Indiquez le texte de la sous-étape.');
@@ -201,6 +216,7 @@ export function BatchStepDonePanel({
   // Supprimable seulement si elle a été ajoutée ici : une sous-étape de la
   // recette se neutralise par « déjà réalisé », jamais par suppression.
   async function deleteSubstep(sub: SubRow) {
+    if (readOnly) return;
     const ok = await mutate(() => createClient().from('batch_substeps').delete().eq('id', sub.id), { errorLabel: 'Suppression impossible' });
     if (ok) setSubsteps((prev) => prev.filter((s) => s.id !== sub.id));
   }
@@ -211,6 +227,7 @@ export function BatchStepDonePanel({
   // valeur, ce qui reste bon marché — une étape compte rarement plus d'une
   // poignée de sous-étapes.
   async function moveSubstep(from: number, to: number) {
+    if (readOnly) return;
     if (from === to) return;
     const sorted = [...substeps].sort((a, b) => a.order_index - b.order_index);
     const [moved] = sorted.splice(from, 1);
@@ -246,18 +263,27 @@ export function BatchStepDonePanel({
   // cette limite — plafonné au jour de dégustation (`max`), puisqu'une étape
   // ne peut pas tomber après. Repli sur la liste de décalages si la fournée
   // n'a pas de date (rien à quoi ancrer un calendrier).
-  const dayControlCls = `h-7 border border-outline-variant rounded px-2 font-label-md text-[12px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}`;
+  const dayControlCls = `h-7 border border-outline-variant rounded px-2 font-label-md text-[12px] ${moved ? 'text-green-700' : 'text-on-surface-variant'}${
+    readOnly ? ' opacity-60' : ''
+  }`;
   const dayInput = plannedDate ? (
     <input
       type="date"
       value={offsetToDate(step.day_offset ?? 0, plannedDate)}
       max={plannedDate}
+      disabled={readOnly}
       onChange={(e) => e.target.value && changeDay(dateToOffset(e.target.value, plannedDate))}
-      title="Déplacer cette étape à un autre jour"
+      title={readOnly ? 'Fournée close : le jour n’est plus modifiable' : 'Déplacer cette étape à un autre jour'}
       className={dayControlCls}
     />
   ) : (
-    <select value={step.day_offset} onChange={(e) => changeDay(parseInt(e.target.value, 10))} title="Déplacer cette étape à un autre jour" className={dayControlCls}>
+    <select
+      value={step.day_offset}
+      disabled={readOnly}
+      onChange={(e) => changeDay(parseInt(e.target.value, 10))}
+      title={readOnly ? 'Fournée close : le jour n’est plus modifiable' : 'Déplacer cette étape à un autre jour'}
+      className={dayControlCls}
+    >
       {dayOptions.map((o) => (
         <option key={o} value={o}>
           {dayText(o)}
@@ -273,14 +299,16 @@ export function BatchStepDonePanel({
           <span className="font-label-md text-[11px] text-on-surface-variant" title="Jour prévu par la recette">
             recette : {dayText(step.base_day_offset as number)}
           </span>
-          <button
-            type="button"
-            onClick={() => changeDay(step.base_day_offset as number)}
-            title="Rétablir le jour de la recette"
-            className="text-primary hover:opacity-70"
-          >
-            <span className="material-symbols-outlined text-[18px]">undo</span>
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => changeDay(step.base_day_offset as number)}
+              title="Rétablir le jour de la recette"
+              className="text-primary hover:opacity-70"
+            >
+              <span className="material-symbols-outlined text-[18px]">undo</span>
+            </button>
+          )}
         </>
       )}
     </span>
@@ -288,18 +316,21 @@ export function BatchStepDonePanel({
 
   const doneToggle = (
     <label
-      className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant cursor-pointer"
+      className={`flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant ${readOnly ? 'opacity-60' : 'cursor-pointer'}`}
       title={
-        step.done
-          ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
-          : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
+        readOnly
+          ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
+          : step.done
+            ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
+            : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
       }
     >
       <input
         type="checkbox"
         checked={step.done}
+        disabled={readOnly}
         onChange={toggleDone}
-        className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+        className={`w-5 h-5 rounded border-outline accent-primary focus:ring-primary ${readOnly ? '' : 'cursor-pointer'}`}
       />
       Réalisée partiellement ou complètement
     </label>
@@ -309,7 +340,7 @@ export function BatchStepDonePanel({
   // survol, chaque ligne d'ingrédient/sous-étape porte déjà un `title`
   // explicatif, mais un `title` ne se découvre pas — ce bandeau rend le geste
   // visible sans avoir à survoler chaque case une à une.
-  const partialHint = step.done && (
+  const partialHint = step.done && !readOnly && (
     <p className="font-body-md text-[12px] text-on-surface-variant italic">
       Les ingrédients et sous-étapes déjà pris en compte sont grisés et barrés — décochez ceux que vous voulez
       conserver dans les courses et le déroulé.
@@ -326,7 +357,7 @@ export function BatchStepDonePanel({
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editingNote && canPersonalNotes && (
+        {!editingNote && canPersonalNotes && !readOnly && (
           <button
             type="button"
             onClick={() => {
@@ -412,13 +443,16 @@ export function BatchStepDonePanel({
                       <input
                         type="checkbox"
                         checked={it.excluded_when_done}
+                        disabled={readOnly}
                         onChange={() => toggleIngredient(it)}
                         title={
-                          it.excluded_when_done
-                            ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
-                            : 'Conservé malgré l’étape déjà réalisée'
+                          readOnly
+                            ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
+                            : it.excluded_when_done
+                              ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
+                              : 'Conservé malgré l’étape déjà réalisée'
                         }
-                        className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                        className={`w-5 h-5 rounded border-outline accent-primary focus:ring-primary ${readOnly ? 'opacity-60' : 'cursor-pointer'}`}
                       />
                       )}
                     </span>
@@ -478,29 +512,38 @@ export function BatchStepDonePanel({
                   }}
                   className={`flex gap-1.5 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
                 >
-                  <span
-                    draggable
-                    onDragStart={(e) => {
-                      setDragSubstep(idx);
-                      e.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragEnd={() => setDragSubstep(null)}
-                    title="Glisser pour réordonner cette sous-étape"
-                    className="no-print material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
-                  >
-                    drag_indicator
-                  </span>
+                  {readOnly ? (
+                    <span className="no-print shrink-0 w-[18px]" />
+                  ) : (
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        setDragSubstep(idx);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => setDragSubstep(null)}
+                      title="Glisser pour réordonner cette sous-étape"
+                      className="no-print material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                    >
+                      drag_indicator
+                    </span>
+                  )}
                   {step.done ? (
                     <input
                       type="checkbox"
                       checked={su.excluded_when_done}
+                      disabled={readOnly}
                       onChange={() => toggleSubstep(su)}
                       title={
-                        excluded
-                          ? 'Déjà pris en compte — décocher pour garder cette sous-étape (ex. la cuisson)'
-                          : 'Conservée malgré l’étape déjà réalisée'
+                        readOnly
+                          ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
+                          : excluded
+                            ? 'Déjà pris en compte — décocher pour garder cette sous-étape (ex. la cuisson)'
+                            : 'Conservée malgré l’étape déjà réalisée'
                       }
-                      className="no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-1"
+                      className={`no-print w-5 h-5 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-1 ${
+                        readOnly ? 'opacity-60' : 'cursor-pointer'
+                      }`}
                     />
                   ) : (
                     <span className="shrink-0 w-5 print:hidden" />
@@ -510,7 +553,7 @@ export function BatchStepDonePanel({
                       glyphe que les ingrédients de la liste totale. */}
                   <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface shrink-0 mt-1 mr-1.5" />
                   <span className={`flex-1 min-w-0 ${tone}`}>{su.texte}</span>
-                  {su.added && (
+                  {su.added && !readOnly && (
                     <button
                       type="button"
                       onClick={() => deleteSubstep(su)}
@@ -551,7 +594,7 @@ export function BatchStepDonePanel({
             </button>
           </div>
         </div>
-      ) : canSubsteps ? (
+      ) : readOnly ? null : canSubsteps ? (
         <button
           type="button"
           onClick={() => setAddingSubstep(true)}
@@ -577,7 +620,6 @@ export function BatchStepDonePanel({
 
   const lists = (
     <>
-      {noteBlock}
       {partialHint}
       {ingredientsBlock}
       {substepsBlock}
@@ -617,6 +659,12 @@ export function BatchStepDonePanel({
           {meta}
         </div>
       </div>
+      {/* Reste visible même étape repliée (`collapsible`) : contrairement aux
+          ingrédients/sous-étapes (qui n'ont plus d'utilité une fois l'étape
+          traitée), la note personnelle sert justement à ajuster la recette
+          après coup — la replier avec le reste la rendrait invisible sans
+          qu'on pense à dérouler le chevron pour aller la chercher. */}
+      {noteBlock}
       {open && (
         <div className="flex flex-col gap-6">
           {lists}
