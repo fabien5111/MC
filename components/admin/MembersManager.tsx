@@ -2,13 +2,14 @@
 
 // Gestion des membres (porté de admin-membres.html) : stats, filtres,
 // recherche, table (profils inscrits + invitations allowlist), invitation,
-// suppression. Le bouton « Modifier » navigue vers la fiche dédiée
+// suppression. Cliquer sur une ligne navigue vers la fiche dédiée
 // (`/admin/membres/[id]`, `components/admin/MemberDetail.tsx`) plutôt que
 // d'ouvrir un panneau superposé — toutes les infos et actions d'un membre y
-// sont regroupées.
+// sont regroupées. La cellule d'actions arrête la propagation du clic
+// (`stopPropagation`) pour que ses propres boutons (copier le lien, connecter
+// en tant que, supprimer) n'ouvrent pas la fiche en plus de leur action.
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { Member, AiUsageOverview } from '@/lib/admin';
@@ -242,7 +243,11 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                   ? m.fullName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
                   : m.email[0]?.toUpperCase() || '?';
                 return (
-                  <tr key={m.id} className="hover:bg-surface-container-low transition-colors">
+                  <tr
+                    key={m.id}
+                    onClick={() => router.push(`/admin/membres/${m.id}`)}
+                    className="hover:bg-surface-container-low transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {m.avatarUrl ? (
@@ -296,7 +301,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                         formatUsd(m.coutIaMois)
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end items-center gap-1">
                         {m.notes && (
                           <span className="material-symbols-outlined text-base text-on-surface-variant" title={m.notes}>
@@ -318,9 +323,6 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                             <span className="material-symbols-outlined text-lg">switch_account</span>
                           </button>
                         )}
-                        <Link href={`/admin/membres/${m.id}`} className="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Modifier">
-                          <span className="material-symbols-outlined text-lg">edit_note</span>
-                        </Link>
                         <button onClick={() => del(m)} className="p-1.5 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">
                           <span className="material-symbols-outlined text-lg">delete</span>
                         </button>

@@ -14,7 +14,9 @@
 // base le refuse sinon, mais mieux vaut ne jamais lui envoyer la requête vide.
 //
 // Section de page (`/admin/membres/[id]`), pas un panneau superposé : plus de
-// second drawer empilé sur la fiche membre.
+// second drawer empilé sur la fiche membre. Rendu nu (sans son propre
+// encadré/en-tête) : le parent (`MemberDetail`) l'enveloppe dans son
+// `CollapsibleSection` générique, commun à toutes les sections de la fiche.
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
@@ -142,13 +144,9 @@ export function MemberSubscriptionPanel({ memberId }: { memberId: string }) {
   }
 
   return (
-    <div className="relative border border-outline-variant rounded-xl overflow-hidden">
+    <div className="relative">
       <LoadingOverlay visible={busy} label="Enregistrement…" />
-      <div className="px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-        <h3 className="font-headline-md text-base font-semibold">Abonnement</h3>
-      </div>
-
-      <div className="px-6 py-6 space-y-6">
+      <div className="space-y-6">
         {loading || !data ? (
           <p className="text-sm text-on-surface-variant">Chargement…</p>
         ) : (

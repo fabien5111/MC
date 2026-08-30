@@ -702,6 +702,79 @@ export async function getMemberById(id: string): Promise<Member | null> {
   return null;
 }
 
+// ── Activité récente (fiche membre) ───────────────────────────────────────
+// Trois listes courtes, une requête chacune, colonnes explicites (pas de
+// `select('*')`) : ces aperçus n'ont pas besoin du contenu complet des
+// recettes/fournées/commentaires, seulement de quoi les identifier et les
+// dater.
+export type MemberRecentRecipe = { id: string; title: string; status: string | null; created_at: string | null };
+
+export async function getMemberRecentRecipes(userId: string, limit = 5): Promise<MemberRecentRecipe[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, title, status, created_at')
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentRecipes:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export type MemberRecentBatch = { id: number; recipe_id: string | null; recipe_title: string | null; status: string; created_at: string | null };
+
+export async function getMemberRecentBatches(userId: string, limit = 5): Promise<MemberRecentBatch[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('batches')
+    .select('id, recipe_id, recipe_title, status, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentBatches:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export type MemberRecentComment = {
+  id: number;
+  recipe_id: string | null;
+  recipe_title: string | null;
+  content: string;
+  rating: number | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+export async function getMemberRecentComments(userId: string, limit = 5): Promise<MemberRecentComment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, recipe_id, content, rating, status, created_at, recipes(title)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentComments:', error.message);
+    return [];
+  }
+  type Row = { id: number; recipe_id: string | null; content: string; rating: number | null; status: string | null; created_at: string | null; recipes: { title: string | null } | { title: string | null }[] | null };
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    recipe_id: r.recipe_id,
+    content: r.content,
+    rating: r.rating,
+    status: r.status,
+    created_at: r.created_at,
+    recipe_title: Array.isArray(r.recipes) ? (r.recipes[0]?.title ?? null) : (r.recipes?.title ?? null),
+  }));
+}
+
 // Nombre de fournées d'un membre (statistique de la fiche) — comptage seul,
 // contrairement à `getBatches` (lib/profile.ts) qui rapatrie les lignes pour
 // l'écran « En cuisine ».

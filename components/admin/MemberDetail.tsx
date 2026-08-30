@@ -10,13 +10,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { Member, LoginHistoryEntry } from '@/lib/admin';
-import type { ImpersonationSessionWithEvents } from '@/lib/impersonation';
+import type { Member, LoginHistoryEntry, MemberRecentRecipe, MemberRecentBatch, MemberRecentComment } from '@/lib/admin';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { formatUsd } from '@/lib/ai/cost';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { withImpersonationSchema, modeLabel, type ImpersonationMode } from '@/lib/impersonation-types';
+import { withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
 import { MemberSubscriptionPanel } from '@/components/admin/MemberSubscriptionPanel';
 
@@ -27,14 +26,38 @@ function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
 }
 
+// Bloc à en-tête repliable, replié par défaut — motif commun à toutes les
+// sections de la fiche (identité, impersonation, abonnement, suppression…) :
+// une fiche complète en un seul écran ne doit pas obliger à tout parcourir
+// pour trouver une action précise.
+function CollapsibleSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-outline-variant rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-6 py-4 bg-surface-container-low hover:bg-surface-container-high transition-colors text-left"
+      >
+        <h3 className="font-headline-md text-base font-semibold">{title}</h3>
+        <div className="flex items-center gap-2 shrink-0">
+          {subtitle && <span className="text-xs text-on-surface-variant">{subtitle}</span>}
+          <span className="material-symbols-outlined text-on-surface-variant">{open ? 'expand_less' : 'expand_more'}</span>
+        </div>
+      </button>
+      {open && <div className="px-6 py-6 space-y-5">{children}</div>}
+    </div>
+  );
+}
+
 export function MemberDetail({
   member,
   stats,
-  impersonationSessions,
+  recent,
 }: {
   member: Member;
   stats: { followers: number; following: number; batches: number };
-  impersonationSessions: ImpersonationSessionWithEvents[];
+  recent: { recipes: MemberRecentRecipe[]; batches: MemberRecentBatch[]; comments: MemberRecentComment[] };
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -165,108 +188,143 @@ export function MemberDetail({
         <AiUsageDetail userId={member.profileId} coutMois={member.coutIaMois ?? 0} coutTotal={member.coutIaTotal ?? 0} />
       )}
 
+      {/* Activité récente */}
+      {member.profileId && (
+        <CollapsibleSection title="Activité récente">
+          <RecentList
+            label="Dernières recettes"
+            empty="Aucune recette."
+            items={recent.recipes.map((r) => ({
+              key: r.id,
+              href: `/recette/${r.id}`,
+              title: r.title,
+              meta: `${STATUS_LABELS[r.status ?? ''] ?? r.status ?? '—'} · ${formatDate(r.created_at)}`,
+            }))}
+          />
+          <RecentList
+            label="Dernières fournées"
+            empty="Aucune fournée."
+            items={recent.batches.map((b) => ({
+              key: b.id,
+              href: `/fournee/${b.id}`,
+              title: b.recipe_title || '(recette supprimée)',
+              meta: `${BATCH_STATUS_LABELS[b.status] ?? b.status} · ${formatDate(b.created_at)}`,
+            }))}
+          />
+          <RecentList
+            label="Derniers commentaires"
+            empty="Aucun commentaire."
+            items={recent.comments.map((c) => ({
+              key: c.id,
+              href: c.recipe_id ? `/recette/${c.recipe_id}` : undefined,
+              title: c.recipe_title || '(recette supprimée)',
+              meta: `${c.rating != null ? `${c.rating}/5 · ` : ''}${COMMENT_STATUS_LABELS[c.status ?? ''] ?? c.status ?? '—'} · ${formatDate(c.created_at)}`,
+              detail: c.content,
+            }))}
+          />
+        </CollapsibleSection>
+      )}
+
       {/* Identité / statut */}
-      <div className="border border-outline-variant rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h3 className="font-headline-md text-base font-semibold">Identité et statut</h3>
-        </div>
-        <div className="px-6 py-6 space-y-5">
-          <Row label="Statut">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}>
-              <option value="active">Actif</option>
-              <option value="pending">Invité</option>
-              <option value="disabled">Désactivé</option>
-            </select>
-          </Row>
-          <Row label="Rôle">
-            <select value={role} onChange={(e) => setRole(e.target.value)} className={FIELD}>
-              <option value="member">Membre</option>
-              <option value="gestionnaire">Gestionnaire</option>
-              <option value="admin">Admin</option>
-            </select>
-            {role === 'gestionnaire' && (
-              <span className="text-[11px] text-on-surface-variant mt-1 block">
-                Accès restreint au back-office : modération des recettes et rédaction du blog. Ni membres, ni référentiels,
-                ni paramètres du site.
-              </span>
-            )}
-          </Row>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isDemo} onChange={(e) => setIsDemo(e.target.checked)} /> Compte de démonstration
-          </label>
-          <Row label="Notes">
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={FIELD} />
-          </Row>
-          {member.status === 'pending' && (
-            <div className="flex flex-col gap-2">
-              <span className={LABEL}>Lien d&apos;invitation</span>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={inviteLinkFor(member.email)}
-                  className="flex-1 border-b border-outline-variant bg-transparent py-1.5 text-xs text-on-surface-variant focus:outline-none"
-                  type="text"
-                />
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(inviteLinkFor(member.email)).then(() => dialog.alert('Lien copié dans le presse-papiers.'))}
-                  className="text-primary hover:opacity-70 text-sm flex items-center gap-1 shrink-0"
-                >
-                  <span className="material-symbols-outlined text-lg">content_copy</span>
-                </button>
-              </div>
-            </div>
+      <CollapsibleSection title="Identité et statut">
+        <Row label="Statut">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}>
+            <option value="active">Actif</option>
+            <option value="pending">Invité</option>
+            <option value="disabled">Désactivé</option>
+          </select>
+        </Row>
+        <Row label="Rôle">
+          <select value={role} onChange={(e) => setRole(e.target.value)} className={FIELD}>
+            <option value="member">Membre</option>
+            <option value="gestionnaire">Gestionnaire</option>
+            <option value="admin">Admin</option>
+          </select>
+          {role === 'gestionnaire' && (
+            <span className="text-[11px] text-on-surface-variant mt-1 block">
+              Accès restreint au back-office : modération des recettes et rédaction du blog. Ni membres, ni référentiels,
+              ni paramètres du site.
+            </span>
           )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={savingBusy}
-            className="bg-primary text-on-primary py-2.5 px-6 rounded text-sm font-semibold hover:opacity-90 disabled:opacity-60"
-          >
-            {savingBusy ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-        </div>
-      </div>
+        </Row>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={isDemo} onChange={(e) => setIsDemo(e.target.checked)} /> Compte de démonstration
+        </label>
+        <Row label="Notes">
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={FIELD} />
+        </Row>
+        {member.status === 'pending' && (
+          <div className="flex flex-col gap-2">
+            <span className={LABEL}>Lien d&apos;invitation</span>
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={inviteLinkFor(member.email)}
+                className="flex-1 border-b border-outline-variant bg-transparent py-1.5 text-xs text-on-surface-variant focus:outline-none"
+                type="text"
+              />
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(inviteLinkFor(member.email)).then(() => dialog.alert('Lien copié dans le presse-papiers.'))}
+                className="text-primary hover:opacity-70 text-sm flex items-center gap-1 shrink-0"
+              >
+                <span className="material-symbols-outlined text-lg">content_copy</span>
+              </button>
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={save}
+          disabled={savingBusy}
+          className="bg-primary text-on-primary py-2.5 px-6 rounded text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+        >
+          {savingBusy ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
+      </CollapsibleSection>
 
       {/* Impersonation */}
       {member.profileId && (
-        <div className="border border-outline-variant rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-            <h3 className="font-headline-md text-base font-semibold">Connexion « en tant que »</h3>
-          </div>
-          <div className="px-6 py-6 space-y-5">
-            {role === 'admin' && (
-              <Row label="Droits hérités par les sessions ouvertes par cet administrateur">
-                <select value={impAccess} onChange={(e) => setImpAccess(e.target.value as ImpersonationMode)} className={FIELD}>
-                  <option value="read_only">Lecture seule</option>
-                  <option value="write">Modification</option>
-                </select>
-                <span className="text-[11px] text-on-surface-variant mt-1 block">
-                  N&apos;oubliez pas d&apos;enregistrer après avoir changé ce réglage.
-                </span>
-              </Row>
-            )}
-            <button
-              type="button"
-              onClick={connecterEnTantQue}
-              disabled={impBusy}
-              className="flex items-center justify-center gap-2 border border-outline-variant rounded py-2.5 px-6 text-sm font-semibold hover:bg-surface-container-high transition-colors disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-lg">switch_account</span>
-              {impBusy ? 'Génération du lien…' : 'Connecter en tant que'}
-            </button>
-            <ImpersonationSessionsList sessions={impersonationSessions} />
-            <LoginHistory userId={member.profileId} />
-          </div>
-        </div>
+        <CollapsibleSection title="Connexion « en tant que »">
+          {role === 'admin' && (
+            <Row label="Droits hérités par les sessions ouvertes par cet administrateur">
+              <select value={impAccess} onChange={(e) => setImpAccess(e.target.value as ImpersonationMode)} className={FIELD}>
+                <option value="read_only">Lecture seule</option>
+                <option value="write">Modification</option>
+              </select>
+              <span className="text-[11px] text-on-surface-variant mt-1 block">
+                N&apos;oubliez pas d&apos;enregistrer après avoir changé ce réglage.
+              </span>
+            </Row>
+          )}
+          <button
+            type="button"
+            onClick={connecterEnTantQue}
+            disabled={impBusy}
+            className="flex items-center justify-center gap-2 border border-outline-variant rounded py-2.5 px-6 text-sm font-semibold hover:bg-surface-container-high transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-lg">switch_account</span>
+            {impBusy ? 'Génération du lien…' : 'Connecter en tant que'}
+          </button>
+        </CollapsibleSection>
+      )}
+
+      {/* Connexions du membre */}
+      {member.profileId && (
+        <CollapsibleSection title="Connexions du membre">
+          <LoginHistory userId={member.profileId} />
+        </CollapsibleSection>
       )}
 
       {/* Abonnement */}
-      {member.profileId && <MemberSubscriptionPanel memberId={member.profileId} />}
+      {member.profileId && (
+        <CollapsibleSection title="Abonnement">
+          <MemberSubscriptionPanel memberId={member.profileId} />
+        </CollapsibleSection>
+      )}
 
       {/* Suppression */}
-      <div className="border border-error/40 rounded-xl p-6 space-y-3">
-        <h3 className="font-headline-md text-base font-semibold text-error">Zone de danger</h3>
+      <CollapsibleSection title="Zone de danger">
         <button
           type="button"
           onClick={supprimer}
@@ -277,54 +335,53 @@ export function MemberDetail({
         <p className="text-[10px] text-on-surface-variant text-center">
           La suppression est irréversible : le compte de connexion est supprimé et les recettes du membre seront orphelinées.
         </p>
-      </div>
+      </CollapsibleSection>
 
       {impersonation && <ImpersonationLinkPanel link={impersonation} onClose={clearImpersonation} />}
     </main>
   );
 }
 
-// Sessions « connecté en tant que » ouvertes par un admin SUR ce membre —
-// même donnée que `ImpersonationAudit` (journal global, bas de la liste),
-// filtrée ici à un seul membre (`getImpersonationSessions(limit, userId)`),
-// et chargée côté serveur (page.tsx) : contrairement à `LoginHistory`
-// ci-dessous, aucune route dédiée n'était nécessaire, la RLS admin suffit
-// déjà à `getImpersonationSessions`. Distinct de `LoginHistory` : ici, ce
-// sont les connexions faites PAR un admin, pas les connexions du membre
-// lui-même.
-function ImpersonationSessionsList({ sessions }: { sessions: ImpersonationSessionWithEvents[] }) {
+const STATUS_LABELS: Record<string, string> = { draft: 'Brouillon', pending: 'En attente', published: 'Publiée', rejected: 'Refusée' };
+const BATCH_STATUS_LABELS: Record<string, string> = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', abandonnee: 'Abandonnée' };
+const COMMENT_STATUS_LABELS: Record<string, string> = { pending: 'À modérer', approved: 'Publié', rejected: 'Refusé', spam: 'Spam' };
+
+// Une liste d'aperçu (recettes/fournées/commentaires) de la section
+// « Activité récente » — même formes de ligne (titre + méta + lien optionnel),
+// factorisée pour ne pas répéter trois fois le même balisage.
+function RecentList({
+  label,
+  empty,
+  items,
+}: {
+  label: string;
+  empty: string;
+  items: { key: string | number; href?: string; title: string; meta: string; detail?: string }[];
+}) {
   return (
-    <div className="border-t border-outline-variant pt-5">
-      <h4 className="mb-2 font-label-md text-[13px] text-primary">Sessions « connecté en tant que »</h4>
-      {sessions.length === 0 ? (
-        <p className="text-xs text-on-surface-variant">Aucun administrateur ne s&apos;est connecté en tant que ce membre.</p>
+    <div>
+      <h4 className="mb-2 font-label-md text-[13px] text-primary">{label}</h4>
+      {items.length === 0 ? (
+        <p className="text-xs text-on-surface-variant">{empty}</p>
       ) : (
-        <ul className="space-y-2 max-h-64 overflow-y-auto">
-          {sessions.map((s) => {
-            const active = s.started_at && !s.ended_at && new Date(s.expires_at).getTime() > Date.now();
+        <ul className="space-y-1.5">
+          {items.map((item) => {
+            const content = (
+              <>
+                <p className="text-on-surface truncate">{item.title}</p>
+                <p className="text-on-surface-variant">{item.meta}</p>
+                {item.detail && <p className="text-on-surface-variant italic truncate">« {item.detail} »</p>}
+              </>
+            );
             return (
-              <li key={s.id} className="text-xs border border-outline-variant rounded p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-on-surface font-medium">{s.admin_email || '—'}</span>
-                  <span
-                    className={`shrink-0 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                      s.mode === 'write' ? 'bg-error-container text-on-error-container' : 'bg-secondary-container text-on-secondary-container'
-                    }`}
-                  >
-                    {modeLabel(s.mode)}
-                  </span>
-                </div>
-                <p className="mt-1 text-on-surface-variant">
-                  Lien généré le {formatDateTime(s.created_at)}
-                  {!s.started_at ? (
-                    ' · non utilisé'
-                  ) : active ? (
-                    <span className="font-semibold text-green-700"> · en cours</span>
-                  ) : (
-                    <> · {formatDateTime(s.started_at)} → {s.ended_at ? formatDateTime(s.ended_at) : 'expirée'}</>
-                  )}
-                  {s.eventCount > 0 && ` · ${s.eventCount} action${s.eventCount > 1 ? 's' : ''}`}
-                </p>
+              <li key={item.key} className="text-xs border border-outline-variant rounded p-2.5">
+                {item.href ? (
+                  <a href={item.href} target="_blank" rel="noreferrer noopener" className="block hover:text-primary">
+                    {content}
+                  </a>
+                ) : (
+                  content
+                )}
               </li>
             );
           })}
@@ -364,8 +421,7 @@ function LoginHistory({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="border-t border-outline-variant pt-5">
-      <h4 className="mb-2 font-label-md text-[13px] text-primary">Historique de connexion</h4>
+    <div>
       {history === null ? (
         <p className="text-xs text-on-surface-variant">Chargement…</p>
       ) : history.length === 0 ? (
