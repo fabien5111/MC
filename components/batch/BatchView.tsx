@@ -1712,28 +1712,44 @@ function StepCookCard({
 
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
-      {/* Chevron HORS du `<label>` : à l'intérieur, tout clic dessus aurait
-          aussi basculé la case à cocher de l'étape. */}
-      <div className="flex items-start gap-2 p-4">
-        <label className="flex flex-1 min-w-0 items-start gap-4 cursor-pointer select-none">
-          <input type="checkbox" checked={s.done} disabled={readOnly} onChange={(ev) => onToggleStep(s.id, ev.target.checked)} className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
-          <span className="flex-1 min-w-0">
-            <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
-            <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
-            {!open && insideSummary.length > 0 && (
-              <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
-            )}
-          </span>
-        </label>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
-          className="shrink-0 p-1 text-on-surface-variant hover:text-primary"
-        >
-          <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
-        </button>
+      {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
+          cible de la taille d'une icône était inutilement difficile à viser,
+          au doigt comme à la souris. La case à cocher garde donc son propre
+          clic (`stopPropagation`) — sans quoi cocher une étape la replierait
+          au passage. C'est aussi pourquoi ce n'est plus un `<label>` : il
+          renverrait vers la case tout clic sur le titre. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          ev.preventDefault();
+          setOpen((o) => !o);
+        }}
+        className="flex items-start gap-2 p-4 cursor-pointer select-none hover:bg-surface-container-low/60 transition-colors"
+      >
+        <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
+          <input
+            type="checkbox"
+            checked={s.done}
+            disabled={readOnly}
+            aria-label={`Marquer « ${s.title || 'cette étape'} » comme réalisée`}
+            onChange={(ev) => onToggleStep(s.id, ev.target.checked)}
+            className={`w-8 h-8 rounded border-outline accent-primary focus:ring-primary shrink-0 ${readOnly ? '' : 'cursor-pointer'}`}
+          />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+          <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
+          {!open && insideSummary.length > 0 && (
+            <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
+          )}
+        </span>
+        <span className={`shrink-0 p-1 material-symbols-outlined text-on-surface-variant transition-transform ${open ? 'rotate-180' : ''}`}>
+          expand_more
+        </span>
       </div>
 
       {/* Hors du volet, comme en mode Préparer : la note personnelle est le
@@ -1800,7 +1816,18 @@ function StepCookCard({
                 disabled={locked}
                 defaultValue={ing.commentaire || ''}
                 onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
-                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem]"
+                // Vert = une note a été saisie ici. Ces champs sont vides
+                // dans l'immense majorité des lignes : sans marqueur, celui
+                // qui porte une remarque se confond avec les autres dès
+                // qu'on remonte la liste. Le vert est la couleur déjà
+                // utilisée partout sur la fournée pour « de vous » (cf. le
+                // bandeau de légende du mode Préparer). Le champ étant non
+                // contrôlé (`defaultValue` + `onBlur`), la couleur apparaît
+                // à la validation de la saisie, pas à la frappe : elle
+                // signale bien une note ENREGISTRÉE.
+                className={`border rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem] ${
+                  ing.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant'
+                }`}
               />
             );
             return (
@@ -1869,7 +1896,17 @@ function StepCookCard({
                     })}
                   </ul>
                 )}
-                <input type="text" placeholder="note sur cette sous-étape" disabled={subLocked} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
+                {/* Même marqueur vert que sur la note d'un ingrédient. */}
+                <input
+                  type="text"
+                  placeholder="note sur cette sous-étape"
+                  disabled={subLocked}
+                  defaultValue={su.commentaire || ''}
+                  onBlur={(ev) => onSubComment(su.id, ev.target.value)}
+                  className={`ml-9 border rounded px-2 py-1.5 font-body-md text-sm ${
+                    su.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant'
+                  }`}
+                />
               </li>
             );
           })}
@@ -1891,7 +1928,13 @@ function StepCookCard({
           disabled={readOnly}
           value={s.commentaire || ''}
           onChange={(ev) => onStepComment(s.id, ev.target.value)}
-          className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
+          // Même marqueur vert que les notes d'ingrédient et de sous-étape :
+          // les laisser se signaler et pas celle-ci ferait lire l'absence de
+          // vert comme « rien de saisi » sur une étape justement commentée.
+          // Champ contrôlé, ici : le vert suit la frappe.
+          className={`w-full border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
+            s.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low'
+          }`}
         />
       </div>
         </>

@@ -467,6 +467,20 @@ directes :
   **Un `<details>` piloté par React a besoin de son `onToggle`** : sans lui,
   le clic n'est connu que du navigateur, et le premier re-rendu (une case
   cochée suffit) rétablit l'état calculé — le jour se refermait sous le doigt.
+  **Tout l'en-tête d'une étape déplie**, pas seulement le chevron (cible de la
+  taille d'une icône, difficile à viser au doigt) : d'où un `role="button"` et
+  non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
+  titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
+  replierait au passage.
+- **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
+  les trois champs du mode Cuisiner — ingrédient, sous-étape, étape. Ces
+  champs sont vides sur l'immense majorité des lignes : sans marqueur, celui
+  qui porte une remarque se confond avec les autres dès qu'on remonte la
+  liste. Même couleur que le reste de la fournée pour « de vous » (cf. le
+  bandeau de légende du mode Préparer). Les deux premiers étant des champs
+  **non contrôlés** (`defaultValue` + `onBlur`), le vert n'y apparaît qu'à la
+  validation de la saisie — il signale une note *enregistrée*, pas en cours de
+  frappe ; le troisième, contrôlé, verdit à la frappe.
 - **Proposer un avis suit ce que `BatchReview` sait offrir**, pas la seule
   appartenance de l'avis à la fournée : un avis `pending` ou `approved` y rend
   un récapitulatif en lecture seule, il n'y a rien à saisir. `reviewEligible`
