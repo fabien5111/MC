@@ -320,7 +320,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                             className="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant disabled:opacity-50"
                             title="Connecter en tant que ce membre"
                           >
-                            <span className="material-symbols-outlined text-lg">switch_account</span>
+                            <span className="material-symbols-outlined text-lg">visibility</span>
                           </button>
                         )}
                         <button onClick={() => del(m)} className="p-1.5 hover:bg-error/10 rounded text-on-surface-variant hover:text-error" title="Supprimer">

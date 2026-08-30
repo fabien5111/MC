@@ -157,16 +157,30 @@ export function MemberDetail({
             {member.registeredAt ? <>Inscrit le {formatDate(member.registeredAt)}</> : <>Invité le {formatDate(member.invited_at) || '—'}</>}
           </p>
         </div>
-        {member.username && (
-          <a
-            href={`/u/${member.username}`}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="ml-auto shrink-0 flex items-center gap-1 rounded-pill border border-outline-variant px-4 py-2 text-[12.5px] font-semibold text-primary hover:bg-surface-container"
-          >
-            <span className="material-symbols-outlined text-base">open_in_new</span> Profil public
-          </a>
-        )}
+        <div className="ml-auto shrink-0 flex items-center gap-2">
+          {member.profileId && (
+            <button
+              type="button"
+              onClick={connecterEnTantQue}
+              disabled={impBusy}
+              className="flex items-center gap-1 rounded-pill border border-outline-variant px-4 py-2 text-[12.5px] font-semibold text-primary hover:bg-surface-container disabled:opacity-50"
+              title="Connecter en tant que ce membre"
+            >
+              <span className="material-symbols-outlined text-base">visibility</span>
+              {impBusy ? 'Génération du lien…' : 'Connecter en tant que'}
+            </button>
+          )}
+          {member.username && (
+            <a
+              href={`/u/${member.username}`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="flex items-center gap-1 rounded-pill border border-outline-variant px-4 py-2 text-[12.5px] font-semibold text-primary hover:bg-surface-container"
+            >
+              <span className="material-symbols-outlined text-base">open_in_new</span> Profil public
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Statistiques */}
