@@ -13,16 +13,14 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot } from '@/components/ImageSlot';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, reviewCommentRequired, validateReview } from '@/lib/reviews';
+import type { ReviewPhoto } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 
-// Les photos d'avis n'ont pas de filigrane IA (contrairement aux photos de
-// recette) : `ai_retouched` est toujours à `false` pour réutiliser tel quel
-// le diaporama plein écran de `StepPhotoGallery`.
-function ReviewPhotos({ photos }: { photos: string[] }) {
+function ReviewPhotos({ photos }: { photos: ReviewPhoto[] }) {
   if (!photos.length) return null;
   return (
     <div className="w-40">
-      <StepPhotoGallery photos={photos.map((url) => ({ url, ai_retouched: false }))} compact />
+      <StepPhotoGallery photos={photos} compact />
     </div>
   );
 }
@@ -72,13 +70,13 @@ function ReviewForm({
   batchId: number;
   initialRating: number;
   initialComment: string;
-  initialPhotos: string[];
+  initialPhotos: ReviewPhoto[];
   submitLabel: string;
   onSubmitted: () => void;
 }) {
   const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState(initialComment);
-  const [photos, setPhotos] = useState<string[]>(initialPhotos);
+  const [photos, setPhotos] = useState<ReviewPhoto[]>(initialPhotos);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -87,8 +85,16 @@ function ReviewForm({
   function setPhotoAt(index: number, dataUrl: string) {
     setPhotos((prev) => {
       const next = [...prev];
-      next[index] = dataUrl;
+      next[index] = { url: dataUrl, ai_retouched: next[index]?.ai_retouched ?? false };
       return next.filter(Boolean);
+    });
+  }
+
+  function setPhotoAiRetouchedAt(index: number, value: boolean) {
+    setPhotos((prev) => {
+      const next = [...prev];
+      if (next[index]) next[index] = { ...next[index], ai_retouched: value };
+      return next;
     });
   }
 
@@ -149,13 +155,16 @@ function ReviewForm({
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
             <ImageSlot
               key={i}
-              src={photos[i] ?? null}
+              src={photos[i]?.url ?? null}
               onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
               onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
               aspectRatio={16 / 9}
               maxWidth={1400}
               placeholder="Ajouter une photo"
               className="w-32 h-[72px] md:w-40 md:h-[90px]"
+              aiRetouched={photos[i]?.ai_retouched ?? false}
+              promptAiRetouched
+              onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
             />
           ))}
         </div>

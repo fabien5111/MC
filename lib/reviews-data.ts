@@ -21,6 +21,7 @@ import {
 } from '@/lib/ai/comment-moderation';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { validateReview } from '@/lib/reviews';
+import type { ReviewPhoto } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
 
 export type MyRecipeReview = {
@@ -30,7 +31,7 @@ export type MyRecipeReview = {
   rating: number | null;
   content: string;
   rejection_reason: string | null;
-  photo_urls: string[];
+  photo_urls: ReviewPhoto[];
 };
 
 // Avis courant du membre pour CETTE recette (une seule ligne possible, cf.
@@ -54,7 +55,7 @@ export type RecipeComment = {
   content: string;
   rating: number | null;
   created_at: string | null;
-  photo_urls: string[];
+  photo_urls: ReviewPhoto[];
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
 };
 
@@ -89,7 +90,7 @@ export async function submitOrUpdateReview(
   userId: string,
   rating: number,
   comment: string,
-  photos: string[] = [],
+  photos: ReviewPhoto[] = [],
 ): Promise<SubmitReviewResult> {
   if (batch.user_id !== userId) return { ok: false, message: 'Cette fournée ne vous appartient pas.' };
   if (batch.status !== 'terminee') return { ok: false, message: 'Cette fournée n’est pas encore terminée.' };

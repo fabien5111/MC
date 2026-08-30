@@ -53,7 +53,7 @@ export function RecipeComments({ comments }: { comments: RecipeComment[] }) {
               {c.content && <p className="font-body-md text-body-md text-on-surface whitespace-pre-line">{c.content}</p>}
               {c.photo_urls.length > 0 && (
                 <div className="w-40 mt-3">
-                  <StepPhotoGallery photos={c.photo_urls.map((url) => ({ url, ai_retouched: false }))} compact />
+                  <StepPhotoGallery photos={c.photo_urls} compact />
                 </div>
               )}
             </div>

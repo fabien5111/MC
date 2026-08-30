@@ -8,6 +8,7 @@ import {
 } from '@/lib/impersonation-types';
 import type { Database } from '@/lib/database.types';
 import { getMembersSubscriptionSummaries } from '@/lib/subscriptions-admin';
+import type { ReviewPhoto } from '@/lib/reviews';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 export type Mold = Database['public']['Tables']['molds']['Row'] & {
@@ -59,7 +60,7 @@ export type PendingComment = {
   // (npm run gen:types), comme `moderation_note` sur les recettes.
   rating?: number | null;
   ai_score?: number | null;
-  photo_urls?: string[] | null;
+  photo_urls?: ReviewPhoto[] | null;
   ai_reason?: string | null;
 };
 
