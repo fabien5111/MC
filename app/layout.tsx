@@ -4,6 +4,7 @@ import { NavigationSpinner } from '@/components/NavigationSpinner';
 import { ServiceWorkerCleanup } from '@/components/ServiceWorkerCleanup';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
+import { VisitTracker } from '@/components/VisitTracker';
 import { DialogProvider } from '@/components/Dialog';
 import { getImpersonationContext } from '@/lib/impersonation';
 import { APPLE_SPLASH_SCREENS } from '@/lib/apple-splash-screens';
@@ -86,6 +87,7 @@ export default async function RootLayout({
             {impersonation && (
               <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
             )}
+            <VisitTracker />
             {children}
           </ImpersonationProvider>
         </DialogProvider>

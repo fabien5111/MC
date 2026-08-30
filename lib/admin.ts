@@ -788,29 +788,33 @@ export async function getBatchCount(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-// ── Historique de connexion (fiche membre) ────────────────────────────────
-// Horodatage seul (pas le détail des pages vues, qui exigerait une
-// instrumentation neuve à chaque navigation — cf. doctrine egress,
-// CLAUDE.md « Données de référence »). Lu depuis le journal d'audit natif de
-// Supabase Auth (`auth.audit_log_entries`), jamais écrit par l'application :
-// aucune table ni écriture supplémentaire. `auth` n'étant pas exposé par
-// PostgREST, la lecture passe par la RPC SECURITY DEFINER
-// `admin_member_login_history` (vérifie elle-même `is_admin_user()`, même
-// motif que `merge_ideas` / `admin_unknown_ingredients`) — SQL à appliquer
-// séparément (jamais de fichier .sql dans le dépôt, cf. CLAUDE.md).
-export type LoginHistoryEntry = { created_at: string; action: string; ip_address: string | null };
+// ── Sessions de visite (fiche membre) ─────────────────────────────────────
+// Compteurs seuls (date de connexion, dernière activité, nombre de pages
+// vues) — jamais le détail page par page : le stocker exigerait une
+// écriture à chaque navigation du site, à l'inverse de la doctrine de
+// réduction d'egress du projet (cf. CLAUDE.md « Données de référence »,
+// docs/audit-egress-supabase.md). Le compteur lui-même est déjà groupé côté
+// client (`components/VisitTracker.tsx`) : les pages vues sont accumulées en
+// mémoire et l'écriture n'est envoyée qu'une fois par minute environ (ou à la
+// mise en arrière-plan de l'onglet), jamais à chaque clic.
+// `visit_sessions` n'est pas encore dans lib/database.types.ts tant que la
+// migration n'a pas été régénérée — accès non typé en attendant, même motif
+// que `ai_usage` plus haut.
+export type VisitSessionRow = { id: string; started_at: string; last_seen_at: string; page_count: number };
 
-export async function getMemberLoginHistory(userId: string, limit = 20): Promise<LoginHistoryEntry[]> {
+export async function getMemberVisitSessions(userId: string, limit = 15): Promise<VisitSessionRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc(
-    'admin_member_login_history' as never,
-    { p_user_id: userId, p_limit: limit } as never,
-  );
+  const { data, error } = await (supabase as any)
+    .from('visit_sessions')
+    .select('id, started_at, last_seen_at, page_count')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(limit);
   if (error) {
-    console.error('getMemberLoginHistory:', error.message);
+    console.error('getMemberVisitSessions:', error.message);
     return [];
   }
-  return (data as unknown as LoginHistoryEntry[]) ?? [];
+  return (data as unknown as VisitSessionRow[]) ?? [];
 }
 
 // ── Listes / taxonomies (CRUD générique) ─────────────────────

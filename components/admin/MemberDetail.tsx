@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import type { Member, LoginHistoryEntry, MemberRecentRecipe, MemberRecentBatch, MemberRecentComment } from '@/lib/admin';
+import type { Member, VisitSessionRow, MemberRecentRecipe, MemberRecentBatch, MemberRecentComment } from '@/lib/admin';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { formatUsd } from '@/lib/ai/cost';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -54,10 +54,12 @@ export function MemberDetail({
   member,
   stats,
   recent,
+  visitSessions,
 }: {
   member: Member;
   stats: { followers: number; following: number; batches: number };
   recent: { recipes: MemberRecentRecipe[]; batches: MemberRecentBatch[]; comments: MemberRecentComment[] };
+  visitSessions: VisitSessionRow[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -312,7 +314,7 @@ export function MemberDetail({
       {/* Connexions du membre */}
       {member.profileId && (
         <CollapsibleSection title="Connexions du membre">
-          <LoginHistory userId={member.profileId} />
+          <VisitSessionsList sessions={visitSessions} />
         </CollapsibleSection>
       )}
 
@@ -391,52 +393,31 @@ function RecentList({
   );
 }
 
-// Historique de connexion (horodatage seul) : lu depuis le journal d'audit
-// natif de Supabase Auth via `GET /api/admin/membres/[id]/connexions` — pas
-// de détail de pages vues, cf. CLAUDE.md doctrine egress. Chargé à l'ouverture
-// de la section, comme `AiUsageDetail` ci-dessous.
-function LoginHistory({ userId }: { userId: string }) {
-  const [history, setHistory] = useState<LoginHistoryEntry[] | null>(null);
-
-  useEffect(() => {
-    let annule = false;
-    fetch(`/api/admin/membres/${userId}/connexions`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!annule) setHistory(data?.history ?? []);
-      })
-      .catch(() => {
-        if (!annule) setHistory([]);
-      });
-    return () => {
-      annule = true;
-    };
-  }, [userId]);
-
-  const ACTION_LABELS: Record<string, string> = {
-    login: 'Connexion',
-    logout: 'Déconnexion',
-    user_signedup: 'Inscription',
-    token_refreshed: 'Session prolongée',
-  };
-
+// Sessions de visite (date de connexion, dernière activité, nombre de pages
+// vues) — chargées côté serveur avec le reste de la fiche (`page.tsx`,
+// `getMemberVisitSessions`), pas de fetch client dédié : c'est une simple
+// lecture bornée (15 lignes), au même titre que les listes d'activité
+// récente. Alimentées par `components/VisitTracker.tsx`, monté sur tout le
+// site — compteurs seuls, jamais le détail des pages (cf. CLAUDE.md doctrine
+// egress).
+function VisitSessionsList({ sessions }: { sessions: VisitSessionRow[] }) {
+  if (sessions.length === 0) {
+    return <p className="text-xs text-on-surface-variant">Aucune session enregistrée.</p>;
+  }
   return (
-    <div>
-      {history === null ? (
-        <p className="text-xs text-on-surface-variant">Chargement…</p>
-      ) : history.length === 0 ? (
-        <p className="text-xs text-on-surface-variant">Aucune connexion enregistrée.</p>
-      ) : (
-        <ul className="space-y-1.5 max-h-64 overflow-y-auto">
-          {history.map((h, i) => (
-            <li key={i} className="flex items-center justify-between text-xs">
-              <span className="text-on-surface">{ACTION_LABELS[h.action] ?? h.action}</span>
-              <span className="text-on-surface-variant">{formatDateTime(h.created_at)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+      {sessions.map((s) => {
+        const dureeMin = Math.max(0, Math.round((new Date(s.last_seen_at).getTime() - new Date(s.started_at).getTime()) / 60_000));
+        return (
+          <li key={s.id} className="flex items-center justify-between text-xs">
+            <span className="text-on-surface">{formatDateTime(s.started_at)}</span>
+            <span className="text-on-surface-variant">
+              {dureeMin > 0 ? `${dureeMin} min` : '< 1 min'} · {s.page_count} page{s.page_count > 1 ? 's' : ''}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
