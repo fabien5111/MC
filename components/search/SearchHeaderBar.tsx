@@ -34,7 +34,9 @@ export function SearchHeaderBar() {
         <input
           type="search"
           value={criteria.q}
-          onChange={(e) => update({ ...criteria, q: e.target.value }, { debounce: true })}
+          onChange={(e) =>
+            update({ ...criteria, q: e.target.value }, { debounce: true, silent: true })
+          }
           placeholder="Rechercher une recette, un ingrédient, un auteur…"
           aria-label="Rechercher"
           className="flex-1 bg-transparent text-[15px] text-on-surface placeholder:text-outline/70 focus:outline-none"

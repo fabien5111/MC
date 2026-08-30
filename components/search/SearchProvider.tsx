@@ -40,8 +40,13 @@ type SearchContextValue = {
   criteria: SearchCriteria;
   /** Une navigation est en cours : les résultats affichés sont périmés. */
   pending: boolean;
+  /**
+   * `pending`, sauf pendant une saisie texte (`silent`) : le fouet plein
+   * écran clignoterait à chaque pause de frappe et cacherait le champ.
+   */
+  showOverlay: boolean;
   /** Applique de nouveaux critères et remet la pagination à zéro. */
-  update: (next: SearchCriteria, opts?: { debounce?: boolean }) => void;
+  update: (next: SearchCriteria, opts?: { debounce?: boolean; silent?: boolean }) => void;
   /** Palier de pagination suivant, sans toucher aux critères. */
   showMore: () => void;
   /** Tiroir de critères (< 1024 px). */
@@ -72,6 +77,10 @@ export function SearchProvider({
   const [criteria, setCriteria] = useState(serverCriteria);
   const [panelOpen, setPanelOpen] = useState(initialPanelOpen);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Vrai tant que la navigation en cours provient uniquement de la saisie du
+  // champ texte : lu au moment du rendu (même tick que la mise à jour de
+  // `pending` par la transition), pas besoin d'un state dédié.
+  const silentNav = useRef(false);
 
   // Empreinte des critères rendus par le serveur : `serverCriteria` est un
   // objet reconstruit à chaque rendu, inutilisable tel quel comme dépendance.
@@ -91,7 +100,8 @@ export function SearchProvider({
   );
 
   const navigate = useCallback(
-    (next: SearchCriteria) => {
+    (next: SearchCriteria, silent?: boolean) => {
+      silentNav.current = !!silent;
       const qs = criteriaToQueryString(next);
       startTransition(() => {
         router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -101,14 +111,15 @@ export function SearchProvider({
   );
 
   const update = useCallback(
-    (next: SearchCriteria, opts?: { debounce?: boolean }) => {
+    (next: SearchCriteria, opts?: { debounce?: boolean; silent?: boolean }) => {
       // Tout changement de critère ou de tri repart de la première page : on
       // ne concatène jamais des cartes issues de deux jeux de critères.
       const target: SearchCriteria = { ...next, shown: PAGE_SIZE };
       setCriteria(target);
       if (timer.current) clearTimeout(timer.current);
-      if (opts?.debounce) timer.current = setTimeout(() => navigate(target), DEBOUNCE_MS);
-      else navigate(target);
+      if (opts?.debounce)
+        timer.current = setTimeout(() => navigate(target, opts.silent), DEBOUNCE_MS);
+      else navigate(target, opts?.silent);
     },
     [navigate],
   );
@@ -120,9 +131,11 @@ export function SearchProvider({
     navigate(target);
   }, [criteria, navigate]);
 
+  const showOverlay = pending && !silentNav.current;
+
   const value = useMemo(
-    () => ({ criteria, pending, update, showMore, panelOpen, setPanelOpen }),
-    [criteria, pending, update, showMore, panelOpen],
+    () => ({ criteria, pending, showOverlay, update, showMore, panelOpen, setPanelOpen }),
+    [criteria, pending, showOverlay, update, showMore, panelOpen],
   );
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
