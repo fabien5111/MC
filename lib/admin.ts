@@ -8,7 +8,7 @@ import {
 } from '@/lib/impersonation-types';
 import type { Database } from '@/lib/database.types';
 import { getMembersSubscriptionSummaries } from '@/lib/subscriptions-admin';
-import type { ReviewPhoto } from '@/lib/reviews';
+import { normalizeReviewPhotos, type ReviewPhoto } from '@/lib/reviews';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 export type Mold = Database['public']['Tables']['molds']['Row'] & {
@@ -418,7 +418,13 @@ export async function getPendingComments(): Promise<PendingComment[]> {
     .select('*, profiles(full_name), recipes(title)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
-  return (data as unknown as PendingComment[]) ?? [];
+  // Même normalisation que côté membre : sans elle, un avis stocké à
+  // l'ancienne forme arriverait au modérateur avec ses vignettes cassées —
+  // c'est-à-dire sans les photos sur lesquelles il doit justement statuer.
+  return ((data as unknown as PendingComment[]) ?? []).map((c) => ({
+    ...c,
+    photo_urls: normalizeReviewPhotos((c as { photo_urls?: unknown }).photo_urls),
+  }));
 }
 
 // Avis de l'écran de modération dédié (Admin → Commentaires) : TOUS les
@@ -441,7 +447,10 @@ export async function getAdminComments(): Promise<AdminComment[]> {
     console.error('getAdminComments:', error.message);
     return [];
   }
-  return (data as unknown as AdminComment[]) ?? [];
+  return ((data as unknown as AdminComment[]) ?? []).map((c) => ({
+    ...c,
+    photo_urls: normalizeReviewPhotos((c as { photo_urls?: unknown }).photo_urls),
+  }));
 }
 
 // ── Boîte à idées (modération) ─────────────────────────────────────────

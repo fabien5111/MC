@@ -20,7 +20,7 @@ import {
   COMMENT_MODERATION_SYSTEM_PROMPT,
 } from '@/lib/ai/comment-moderation';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { validateReview } from '@/lib/reviews';
+import { validateReview, normalizeReviewPhotos } from '@/lib/reviews';
 import type { ReviewPhoto } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
 
@@ -47,7 +47,11 @@ export async function getMyRecipeReview(recipeId: string, userId: string): Promi
     .eq('user_id', userId)
     .maybeSingle();
   if (error) console.error('getMyRecipeReview:', error.message);
-  return (data as unknown as MyRecipeReview | null) ?? null;
+  if (!data) return null;
+  // Normalisé ici, au plus près de la base : les composants reçoivent
+  // toujours des `ReviewPhoto`, quelle que soit la forme stockée (cf.
+  // `normalizeReviewPhotos`).
+  return { ...(data as unknown as MyRecipeReview), photo_urls: normalizeReviewPhotos((data as { photo_urls?: unknown }).photo_urls) };
 }
 
 export type RecipeComment = {
@@ -74,7 +78,10 @@ export async function getApprovedComments(recipeId: string): Promise<RecipeComme
     console.error('getApprovedComments:', error.message);
     return [];
   }
-  return (data as unknown as RecipeComment[]) ?? [];
+  return ((data as unknown as RecipeComment[]) ?? []).map((c) => ({
+    ...c,
+    photo_urls: normalizeReviewPhotos((c as { photo_urls?: unknown }).photo_urls),
+  }));
 }
 
 export type SubmitReviewResult = { ok: true } | { ok: false; message: string };

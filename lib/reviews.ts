@@ -21,6 +21,35 @@ export const REVIEW_PHOTOS_MAX = 2;
 
 export type ReviewPhoto = { url: string; ai_retouched: boolean };
 
+// `comments.photo_urls` a porté DEUX formes successives : un simple tableau
+// de data-URL (`["data:image/…"]`), puis le tableau d'objets ci-dessus, une
+// fois le filigrane IA ajouté. La colonne étant du `jsonb` sans contrainte
+// de forme, les deux cohabitent en base — aucune migration ne les a
+// converties, et un avis déposé avant ce changement garde l'ancienne.
+//
+// Toute lecture passe donc par ici. Sans cette normalisation, un avis à
+// l'ancienne forme rend `photo.url` indéfini côté composant, et la vignette
+// s'affiche cassée (`<img src="[object Object]">`) — sans la moindre erreur,
+// puisque rien ne plante : la photo est simplement perdue à l'écran alors
+// qu'elle est intacte en base.
+//
+// Volontairement tolérante plutôt qu'une migration SQL : la conversion
+// d'une colonne `jsonb` en place est irréversible en cas d'erreur, alors
+// qu'une lecture qui accepte les deux formes ne coûte rien et vaut aussi
+// pour une ligne écrite par une branche restée sur l'ancienne (les branches
+// de travail partagent la même base). L'écriture, elle, ne produit plus que
+// la forme objet.
+export function normalizeReviewPhotos(raw: unknown): ReviewPhoto[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((p): ReviewPhoto[] => {
+    if (typeof p === 'string') return p ? [{ url: p, ai_retouched: false }] : [];
+    if (p && typeof p === 'object' && typeof (p as ReviewPhoto).url === 'string' && (p as ReviewPhoto).url) {
+      return [{ url: (p as ReviewPhoto).url, ai_retouched: (p as ReviewPhoto).ai_retouched === true }];
+    }
+    return [];
+  });
+}
+
 // En dessous de cette note, le commentaire devient obligatoire : une note
 // basse sans explication n'aide ni l'auteur de la recette ni les futurs
 // lecteurs, alors qu'une bonne note se suffit à elle-même.
