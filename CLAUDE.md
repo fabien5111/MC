@@ -444,6 +444,19 @@ directes :
   serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
   passé. Vaut dans les deux modes — `StepCookCard` rend `user_note` hors de
   son propre volet, pour la même raison.
+- **Le mode Cuisiner AFFICHE ce que « déjà réalisé » exclut, il ne l'escamote
+  pas.** `StepCookCard` filtrait ses ingrédients par `batchIngredientExcluded`
+  (et ses sous-étapes par `batchSubstepExcluded`) **avant** de rendre : une
+  étape cochée s'affichait donc littéralement vide, et la déplier ne révélait
+  rien. Or c'est justement ce contenu qu'on relit après coup pour ajuster la
+  recette. Les lignes exclues sont désormais rendues barrées et verrouillées,
+  comme en mode Préparer — la même règle que « une étape n'est jamais retirée
+  du déroulé », appliquée un cran plus bas. Ne disparaissent que les lignes
+  qui ne font plus partie de la fournée : retirées à la main, éclatées en
+  sous-recette, ou portées par une étape entièrement remplacée. Corollaire :
+  les automatismes (auto-coche de l'étape quand tout est coché) travaillent
+  sur les listes `active*`, jamais sur les listes affichées — sinon une étape
+  dont tout est exclu ne se cocherait plus jamais.
 - **Le repli du mode Cuisiner porte sur l'ÉTAPE, pas sur le jour** : les
   jalons sont dépliés par défaut (on suit `collapsedJalons`, les jours que
   l'utilisateur a refermés — jamais l'inverse), les étapes repliées. Replier

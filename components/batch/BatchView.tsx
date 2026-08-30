@@ -1583,7 +1583,22 @@ function CuisinerBody({
                   <StepCookCard
                     key={s.id}
                     step={s}
-                    ingredients={batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !batchIngredientExcluded(s, it))}
+                    // Tout le contenu de l'étape, y compris ce que « déjà
+                    // réalisé » sort des courses et de la mise en place :
+                    // filtrer ici rendait une étape cochée littéralement
+                    // vide, même dépliée — or c'est justement ce qu'on
+                    // vient relire pour ajuster la recette après coup.
+                    // L'exclusion est rendue barrée par `StepCookCard`, pas
+                    // escamotée (cf. CLAUDE.md « une étape n'est jamais
+                    // retirée du déroulé »). Seules disparaissent les lignes
+                    // qui ne font plus partie de la fournée : retirées à la
+                    // main, ou fabriquées ailleurs (ingrédient éclaté en
+                    // sous-recette, étape entièrement remplacée).
+                    ingredients={
+                      batchStepReplaced(s)
+                        ? []
+                        : batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !it.removed && it.expanded_into_recipe_id == null)
+                    }
                     readOnly={readOnly}
                     isPending={isPending}
                     openedByHash={hashStepId === s.id}
@@ -1658,7 +1673,13 @@ function StepCookCard({
     times.wait_time ? `ATTENTE ${formatTime(times.wait_time).toUpperCase()}` : '',
     times.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}` : s.cook_temp ? `CUISSON ${s.cook_temp} °C` : '',
   ].filter(Boolean);
-  const substeps = [...s.batch_substeps].filter((su) => !batchSubstepExcluded(s, su)).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Même principe que les ingrédients ci-dessus : toutes les sous-étapes
+  // sont rendues, celles que « déjà réalisé » exclut étant barrées plutôt
+  // qu'escamotées. Les listes `active*` — ce qui reste réellement à faire —
+  // servent aux automatismes (auto-coche de l'étape), jamais à l'affichage.
+  const substeps = [...s.batch_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const activeIngredients = ingredients.filter((it) => !batchIngredientExcluded(s, it));
+  const activeSubsteps = substeps.filter((su) => !batchSubstepExcluded(s, su));
   // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
   // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
   // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
@@ -1675,9 +1696,9 @@ function StepCookCard({
   // retirée du déroulé »).
   function maybeAutoCheckStep(justDoneIngredientIds: Set<number>, justDoneSubstepIds: Set<number>) {
     if (readOnly || s.done) return;
-    if (ingredients.length === 0 && substeps.length === 0) return;
-    const allIngDone = ingredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
-    const allSubDone = substeps.every((su) => su.done || justDoneSubstepIds.has(su.id));
+    if (activeIngredients.length === 0 && activeSubsteps.length === 0) return;
+    const allIngDone = activeIngredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
+    const allSubDone = activeSubsteps.every((su) => su.done || justDoneSubstepIds.has(su.id));
     if (allIngDone && allSubDone) onToggleStep(s.id, true);
   }
 
@@ -1740,18 +1761,23 @@ function StepCookCard({
           {ingredients.map((ing) => {
             const prevTxt = [ing.quantity != null ? fmtNum(ing.quantity) : ing.quantity_text || '', ing.unit ? shortUnitLbl(ing.unit) : ''].filter(Boolean).join(' ');
             const conv = ingredientConversionText(conversions, units, ing.ref_id, ing.unit, ing.quantity ?? ing.quantity_text);
-            const struck = ing.done ? ' line-through opacity-50' : '';
+            // Sorti du parcours parce que son étape est marquée « déjà
+            // réalisée » : la ligne reste lisible (c'est ce qu'on relit pour
+            // ajuster), mais il n'y a plus rien à y cocher ni à y saisir.
+            const excluded = batchIngredientExcluded(s, ing);
+            const locked = readOnly || excluded;
+            const struck = ing.done || excluded ? ' line-through opacity-50' : '';
             const checkbox = (
               <input
                 type="checkbox"
-                checked={ing.done}
-                disabled={readOnly}
+                checked={ing.done || excluded}
+                disabled={locked}
                 onChange={(ev) => {
                   const checked = ev.target.checked;
                   onToggleIng(ing.id, checked);
                   if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
                 }}
-                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 ${locked ? '' : 'cursor-pointer'}`}
               />
             );
             const realInput = (
@@ -1761,7 +1787,7 @@ function StepCookCard({
                 step="any"
                 inputMode="decimal"
                 placeholder="réel"
-                disabled={readOnly}
+                disabled={locked}
                 defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
                 onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
                 className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center w-14 sm:w-20 shrink-0"
@@ -1771,7 +1797,7 @@ function StepCookCard({
               <input
                 type="text"
                 placeholder="note (ex : trop sec, viser +10 g)"
-                disabled={readOnly}
+                disabled={locked}
                 defaultValue={ing.commentaire || ''}
                 onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
                 className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem]"
@@ -1804,13 +1830,15 @@ function StepCookCard({
         <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
           {substeps.map((su) => {
             const subIngredients = subIngredientsBySubstep.get(su.id) || [];
+            const subExcluded = batchSubstepExcluded(s, su);
+            const subLocked = readOnly || subExcluded;
             return (
               <li key={su.id} className="flex flex-col gap-1.5">
                 <label className="flex items-start gap-3">
                   <input
                     type="checkbox"
-                    checked={su.done}
-                    disabled={readOnly}
+                    checked={su.done || subExcluded}
+                    disabled={subLocked}
                     onChange={(ev) => {
                       const checked = ev.target.checked;
                       onToggleSub(su.id, checked);
@@ -1819,9 +1847,9 @@ function StepCookCard({
                         maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
                       }
                     }}
-                    className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+                    className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
                   />
-                  <span className={`font-body-md text-[14px] leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+                  <span className={`font-body-md text-[14px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
                 </label>
                 {subIngredients.length > 0 && (
                   <ul className="ml-9 flex flex-col gap-1">
@@ -1830,7 +1858,7 @@ function StepCookCard({
                       const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantity_text);
                       return (
                         <li key={it.id}>
-                          <span className={`text-[12px] font-label-md text-on-surface-variant${su.done ? ' line-through opacity-50' : ''}`}>
+                          <span className={`text-[12px] font-label-md text-on-surface-variant${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>
                             {it.name}
                             {qtyTxt && <> — {qtyTxt}</>}
                             {conv && <> ({conv})</>}
@@ -1841,7 +1869,7 @@ function StepCookCard({
                     })}
                   </ul>
                 )}
-                <input type="text" placeholder="note sur cette sous-étape" disabled={readOnly} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
+                <input type="text" placeholder="note sur cette sous-étape" disabled={subLocked} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
               </li>
             );
           })}
