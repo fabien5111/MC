@@ -1388,6 +1388,10 @@ function CuisinerBody({
         const isCurrent = ji === curIdx;
         const dt = jalonDate(j);
         const target = jalonTarget(j);
+        // Un jour entièrement coché se replie automatiquement (ci-dessous) :
+        // ce repère signale qu'une note personnelle reste à l'intérieur,
+        // pour donner envie de dérouler plutôt que de la laisser invisible.
+        const jNotes = j.steps.some((s) => s.user_note);
         return (
           <details
             key={ji}
@@ -1409,6 +1413,14 @@ function CuisinerBody({
                   {formatTime(jalonDur(j))} de travail · {j.steps.filter((s) => s.done).length}/{j.steps.length} étape{j.steps.length > 1 ? 's' : ''}
                 </span>
               </span>
+              {jNotes && (
+                <span
+                  className="material-symbols-outlined text-secondary text-[18px] shrink-0"
+                  title="Ce jour contient une note personnelle"
+                >
+                  sticky_note_2
+                </span>
+              )}
               <span className="material-symbols-outlined text-on-surface-variant">expand_more</span>
             </summary>
             <div className="p-4 flex flex-col gap-4">

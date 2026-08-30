@@ -577,7 +577,6 @@ export function BatchStepDonePanel({
 
   const lists = (
     <>
-      {noteBlock}
       {partialHint}
       {ingredientsBlock}
       {substepsBlock}
@@ -617,6 +616,12 @@ export function BatchStepDonePanel({
           {meta}
         </div>
       </div>
+      {/* Reste visible même étape repliée (`collapsible`) : contrairement aux
+          ingrédients/sous-étapes (qui n'ont plus d'utilité une fois l'étape
+          traitée), la note personnelle sert justement à ajuster la recette
+          après coup — la replier avec le reste la rendrait invisible sans
+          qu'on pense à dérouler le chevron pour aller la chercher. */}
+      {noteBlock}
       {open && (
         <div className="flex flex-col gap-6">
           {lists}
