@@ -10,6 +10,11 @@
 //
 // Le délai avant affichage reprend celui de NavigationSpinner : un
 // rafraîchissement quasi instantané ne doit pas produire un clignotement.
+//
+// Exception : la saisie du champ texte (`silent`, cf. SearchProvider) ne
+// déclenche jamais le voile — il clignoterait à chaque pause de frappe et
+// cacherait le champ. `showOverlay` porte cette exception ; `aria-busy`
+// reste sur `pending`, l'état de navigation réel.
 import { useEffect, useState, type ReactNode } from 'react';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useSearch } from '@/components/search/SearchProvider';
@@ -17,17 +22,17 @@ import { useSearch } from '@/components/search/SearchProvider';
 const SHOW_DELAY_MS = 120;
 
 export function SearchResults({ children }: { children: ReactNode }) {
-  const { pending } = useSearch();
+  const { pending, showOverlay } = useSearch();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!pending) {
+    if (!showOverlay) {
       setVisible(false);
       return;
     }
     const timer = setTimeout(() => setVisible(true), SHOW_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [pending]);
+  }, [showOverlay]);
 
   return (
     <div className="search-results" aria-busy={pending}>
