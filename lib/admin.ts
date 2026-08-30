@@ -501,6 +501,10 @@ export type Member = {
   profileId: string | null;
   allowlistId: number | null;
   fullName: string | null;
+  // Adresse de la vitrine publique (`/u/[username]`) — `null` tant que le
+  // membre n'a pas choisi de pseudo (cf. CLAUDE.md « Pseudo »), y compris
+  // pour une invitation en attente (pas encore de profil).
+  username: string | null;
   recipeCount: number;
   // Droit d'impersonation hérité par les sessions « connecté en tant que »
   // ouvertes par ce membre — n'a de sens que pour un admin.
@@ -518,7 +522,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     supabase
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access',
+        'id, email, full_name, username, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access',
       )
       .order('created_at', { ascending: false }),
     supabase.from('allowlist').select('*'),
@@ -557,6 +561,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       profileId: p.id,
       allowlistId: al?.id ?? null,
       fullName: p.full_name,
+      username: p.username ?? null,
       recipeCount: recipeMap[p.id] || 0,
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
       coutIaMois: coutsIa.get(p.id)?.coutMois ?? null,
@@ -582,6 +587,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       profileId: null,
       allowlistId: a.id,
       fullName: null,
+      username: null,
       recipeCount: 0,
       // Pas encore de profil : la valeur par défaut s'appliquera à l'inscription.
       impersonationAccess: 'read_only',
@@ -591,6 +597,224 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     }));
 
   return [...registered, ...pending];
+}
+
+// Coût IA mois/total d'UN membre — même vue que `getAiUsageParMembre` mais
+// filtrée à une seule ligne, pour la fiche (`getMemberById` ci-dessous) qui
+// ne charge pas le détail de tous les membres à la fois. `null` si le membre
+// n'a encore fait aucun appel (la vue n'a alors aucune ligne pour lui) —
+// distinct de 0, qui signifierait « a consommé, pour un coût nul ».
+export async function getAiUsageForMember(userId: string): Promise<{ coutMois: number; coutTotal: number } | null> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage_par_membre')
+    .select('cout_mois, cout_total')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('getAiUsageForMember:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return { coutMois: Number(data.cout_mois) || 0, coutTotal: Number(data.cout_total) || 0 };
+}
+
+// Une seule fiche membre (écran `/admin/membres/[id]`) : requêtes scopées à
+// CET utilisateur uniquement, contrairement à `getAllowlistMembers` qui
+// rapatrie toute la base pour construire la liste — coûteux si on ne
+// l'appelait que pour en extraire une ligne (cf. CLAUDE.md, doctrine egress).
+// `id` reprend le format de `Member.id` (`p-<profileId>` ou `a-<allowlistId>`)
+// tel que produit ci-dessus et utilisé comme segment de route.
+export async function getMemberById(id: string): Promise<Member | null> {
+  const supabase = withImpersonationSchema(await createClient());
+
+  if (id.startsWith('p-')) {
+    const profileId = id.slice(2);
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, username, avatar_url, provider, status, role, is_demo, notes, created_at, impersonation_access')
+      .eq('id', profileId)
+      .maybeSingle();
+    if (!p) return null;
+    const emailKey = (p.email || '').toLowerCase();
+    const [{ data: al }, { count: recipeCount }, coutIa] = await Promise.all([
+      emailKey
+        ? supabase.from('allowlist').select('*').ilike('email', emailKey).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('author_id', profileId),
+      getAiUsageForMember(profileId),
+    ]);
+    return {
+      id,
+      email: p.email || '',
+      status: al?.status || p.status || 'active',
+      role: al?.role || p.role || 'member',
+      // Chargé séparément (`MemberSubscriptionPanel`, `GET
+      // /api/admin/membres/[id]/abonnement`) : la fiche n'a pas besoin du
+      // résumé, seulement de l'historique complet.
+      subscription: null,
+      is_demo: al?.is_demo ?? p.is_demo ?? false,
+      notes: al?.notes || p.notes || null,
+      invited_at: al?.invited_at || p.created_at,
+      registeredAt: p.created_at,
+      provider: p.provider || null,
+      avatarUrl: p.avatar_url || null,
+      source: 'profile',
+      profileId: p.id,
+      allowlistId: al?.id ?? null,
+      fullName: p.full_name,
+      username: p.username ?? null,
+      recipeCount: recipeCount ?? 0,
+      impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
+      coutIaMois: coutIa?.coutMois ?? null,
+      coutIaTotal: coutIa?.coutTotal ?? null,
+    };
+  }
+
+  if (id.startsWith('a-')) {
+    const allowlistId = Number(id.slice(2));
+    const { data: a } = await supabase.from('allowlist').select('*').eq('id', allowlistId).maybeSingle();
+    if (!a) return null;
+    return {
+      id,
+      email: a.email,
+      status: a.status,
+      role: a.role,
+      subscription: null,
+      is_demo: a.is_demo,
+      notes: a.notes,
+      invited_at: a.invited_at,
+      registeredAt: null,
+      provider: null,
+      avatarUrl: null,
+      source: 'allowlist',
+      profileId: null,
+      allowlistId: a.id,
+      fullName: null,
+      username: null,
+      recipeCount: 0,
+      impersonationAccess: 'read_only',
+      coutIaMois: null,
+      coutIaTotal: null,
+    };
+  }
+
+  return null;
+}
+
+// ── Activité récente (fiche membre) ───────────────────────────────────────
+// Trois listes courtes, une requête chacune, colonnes explicites (pas de
+// `select('*')`) : ces aperçus n'ont pas besoin du contenu complet des
+// recettes/fournées/commentaires, seulement de quoi les identifier et les
+// dater.
+export type MemberRecentRecipe = { id: string; title: string; status: string | null; created_at: string | null };
+
+export async function getMemberRecentRecipes(userId: string, limit = 5): Promise<MemberRecentRecipe[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, title, status, created_at')
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentRecipes:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export type MemberRecentBatch = { id: number; recipe_id: string | null; recipe_title: string | null; status: string; created_at: string | null };
+
+export async function getMemberRecentBatches(userId: string, limit = 5): Promise<MemberRecentBatch[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('batches')
+    .select('id, recipe_id, recipe_title, status, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentBatches:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export type MemberRecentComment = {
+  id: number;
+  recipe_id: string | null;
+  recipe_title: string | null;
+  content: string;
+  rating: number | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+export async function getMemberRecentComments(userId: string, limit = 5): Promise<MemberRecentComment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, recipe_id, content, rating, status, created_at, recipes(title)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberRecentComments:', error.message);
+    return [];
+  }
+  type Row = { id: number; recipe_id: string | null; content: string; rating: number | null; status: string | null; created_at: string | null; recipes: { title: string | null } | { title: string | null }[] | null };
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    recipe_id: r.recipe_id,
+    content: r.content,
+    rating: r.rating,
+    status: r.status,
+    created_at: r.created_at,
+    recipe_title: Array.isArray(r.recipes) ? (r.recipes[0]?.title ?? null) : (r.recipes?.title ?? null),
+  }));
+}
+
+// Nombre de fournées d'un membre (statistique de la fiche) — comptage seul,
+// contrairement à `getBatches` (lib/profile.ts) qui rapatrie les lignes pour
+// l'écran « En cuisine ».
+export async function getBatchCount(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase.from('batches').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+  if (error) {
+    console.error('getBatchCount:', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+// ── Sessions de visite (fiche membre) ─────────────────────────────────────
+// Compteurs seuls (date de connexion, dernière activité, nombre de pages
+// vues) — jamais le détail page par page : le stocker exigerait une
+// écriture à chaque navigation du site, à l'inverse de la doctrine de
+// réduction d'egress du projet (cf. CLAUDE.md « Données de référence »,
+// docs/audit-egress-supabase.md). Le compteur lui-même est déjà groupé côté
+// client (`components/VisitTracker.tsx`) : les pages vues sont accumulées en
+// mémoire et l'écriture n'est envoyée qu'une fois par minute environ (ou à la
+// mise en arrière-plan de l'onglet), jamais à chaque clic.
+// `visit_sessions` n'est pas encore dans lib/database.types.ts tant que la
+// migration n'a pas été régénérée — accès non typé en attendant, même motif
+// que `ai_usage` plus haut.
+export type VisitSessionRow = { id: string; started_at: string; last_seen_at: string; page_count: number };
+
+export async function getMemberVisitSessions(userId: string, limit = 15): Promise<VisitSessionRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('visit_sessions')
+    .select('id, started_at, last_seen_at, page_count')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getMemberVisitSessions:', error.message);
+    return [];
+  }
+  return (data as unknown as VisitSessionRow[]) ?? [];
 }
 
 // ── Listes / taxonomies (CRUD générique) ─────────────────────
