@@ -623,3 +623,36 @@ relation structurelle entre deux plans, pas un réglage à changer souvent.
   `plans` sur `active = true` : « Essai Pro » n'apparaît jamais dans la
   liste des plans qu'un admin peut attribuer à la main — cohérent, ce n'est
   pas un plan vendable.
+
+## 13. Simulation de paiement, en l'absence de Stripe/PayPal
+
+Tant qu'aucun prestataire de paiement n'est branché, « S'abonner » sur
+`/plans` (formules PLUS et PRO) demande un **code** au lieu de créer une
+`subscription_requests` traitée à la main par un administrateur : code
+valide → abonnement `PAID` mensuel actif immédiatement, exactement comme un
+vrai paiement réussi le ferait.
+
+- **Le contrôle vit exclusivement dans `mc_simulate_subscribe`**
+  (`SECURITY DEFINER`, appelée directement en RPC depuis `PlansPage.tsx`,
+  même geste que `mc_cancel_own_subscription` / `mc_start_trial`) — les deux
+  codes n'existent nulle part côté TypeScript ni dans le bundle client, même
+  doctrine que le reste du site (« les contrôles client ne prouvent rien »,
+  cf. § Authentification de `CLAUDE.md`).
+- **Réutilise `subscriptions.provider` / `.promo_code`**, deux colonnes du
+  schéma initial jamais écrites jusqu'ici — posées d'avance pour un futur
+  prestataire réel. `provider = 'SIMULATION'` distingue sans ambiguïté ces
+  lignes d'un vrai paiement le jour où Stripe/PayPal arrivera, sans migration
+  ni colonne supplémentaire.
+- **Ferme l'abonnement actif non-`DEFAULT`** avant d'insérer le nouveau,
+  même geste que `mc_admin_grant_subscription` (invariant §3.5 : au plus une
+  ligne `ACTIVE` hors `DEFAULT` par membre).
+- **Toujours mensuel, même si la bascule Annuel est sélectionnée** sur
+  `/plans` : le code ne couvre que ce cas, la simulation l'impose sans tenir
+  compte du réglage d'affichage — le libellé du code le précise pour éviter
+  toute confusion côté membre.
+- **`Rétrograder` et la bascule Annuel restent sur l'ancien parcours**
+  (`subscription_requests`, traité par un admin) : ce ne sont pas des
+  achats, rien ne justifiait de les faire passer par un code.
+- **À retirer quand un vrai prestataire sera branché** : `mc_simulate_subscribe`
+  et le prompt de code sur `PlansPage.tsx` sont un pont temporaire, pas une
+  fonctionnalité produit — ne pas construire dessus (remise, palier de prix…).
