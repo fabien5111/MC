@@ -399,6 +399,42 @@ directes :
   multi-sessions sur un même objet — remplacés par la chaîne de fournées
   successives via « Refaire cette fournée » (`batches.source_plan_id`, posé
   à la duplication dans `CuisineContent.refaireBatch`).
+
+- **Une fournée close est verrouillée dans les DEUX modes, et se rouvre
+  explicitement.** `readOnly` (`batch.status !== 'planifiee'`, `?lecture=1`
+  ou impersonation lecture seule) doit atteindre **tout** ce qui écrit : le
+  mode Cuisiner le respectait depuis toujours, mais `BatchStepDonePanel` ne
+  recevait pas la prop — le mode Préparer restait donc modifiable sur une
+  fournée terminée (cases, jour de l'étape, notes, sous-étapes). L'interface
+  mentait sur l'état de la fournée ; ce n'était pas un trou de sécurité
+  (`useMutation` bride toujours l'impersonation), mais bien une écriture
+  d'historique par effet de bord. Corollaire posé en même temps :
+  **« Reprendre cette fournée » vaut désormais pour `terminee` autant que
+  pour `abandonnee`** — la doctrine antérieure (« seul l'abandon est
+  réversible ») n'était tenable que tant que Préparer offrait cette
+  échappatoire non voulue. Deux conséquences à connaître :
+  - le bouton est volontairement **indépendant de `lecture`** — « Fournées
+    terminées » (`/en-cuisine`) n'ouvre qu'en `?lecture=1`, s'y adosser le
+    rendrait invisible depuis son unique point d'entrée (même raisonnement
+    que la carte d'avis) ;
+  - reprendre efface `date_fin`, donc la durée totale du résumé : d'où une
+    confirmation explicite sur une fournée `terminee`, absente pour un
+    abandon. `lecture` est tenu en **état local** dans `BatchView` et retiré
+    de l'URL à la reprise, sans quoi la fournée rouverte resterait verrouillée
+    par un paramètre que plus rien ne justifie.
+- **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
+  la première est la note personnelle de la fournée (éditée en Préparer par
+  `BatchNotes`), la seconde le commentaire saisi au lancement dans
+  `BatchWidget`. Le mode Cuisiner n'affichait que `notes`, sous le libellé
+  « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
+  la recette, y était donc structurellement invisible. Les deux sont
+  désormais rendues, sous deux libellés distincts.
+- **Une note personnelle n'est jamais repliée avec l'étape.** Une étape
+  entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
+  bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui
+  serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
+  passé. Même intention côté Cuisiner, où le repli porte sur un jour entier :
+  l'en-tête d'un jour replié signale par un picto qu'il contient une note.
 - L'historique de l'ancien modèle (`executions`, `execution_steps`,
   `execution_substeps`, `execution_ingredients`, `execution_utensils`) a été
   renommé `*_legacy` et conservé en base, sans être ni lu ni écrit par

@@ -186,7 +186,14 @@ export function BatchView({
     window.scrollTo(0, 0);
   }, []);
 
-  const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
+  // `?lecture=1` (consultation depuis « Fournées terminées ») tenu en état
+  // local, et non lu directement de la prop : reprendre une fournée close
+  // repasse `status` à `planifiee`, mais le paramètre d'URL, lui, resterait —
+  // la fournée rouverte serait donc encore verrouillée. `resumeBatch` le
+  // retire des deux côtés (état + URL).
+  const [lectureMode, setLectureMode] = useState(lecture);
+  useEffect(() => setLectureMode(lecture), [lecture]);
+  const readOnly = batch.status !== 'planifiee' || lectureMode || impersonationReadOnly;
   // Avis sur la recette d'origine. Volontairement indépendant de `readOnly`
   // ET de `lecture` : une fournée terminée est toujours en lecture seule pour
   // ses étapes, et « Fournées terminées » (/en-cuisine) l'ouvre justement en
@@ -277,14 +284,29 @@ export function BatchView({
     router.push('/en-cuisine');
   }
 
-  // Reprendre une fournée abandonnée : repasse `status` à `planifiee` (et
-  // efface `date_fin`), ce qui suffit à rouvrir toutes les écritures — la
-  // fournée redevient une fournée « en cours » ordinaire, sans distinction
-  // avec une qui n'aurait jamais été abandonnée. Pas de symétrique pour
-  // « terminée » : seul l'abandon est présenté comme réversible (l'idée de
-  // « terminée » implique un jugement délibéré, pas une interruption).
+  // Reprendre une fournée close : repasse `status` à `planifiee` (et efface
+  // `date_fin`), ce qui suffit à rouvrir toutes les écritures — la fournée
+  // redevient une fournée « en cours » ordinaire, sans distinction avec une
+  // qui n'aurait jamais été close.
+  //
+  // Ouvert aux fournées TERMINÉES autant qu'abandonnées, contrairement à la
+  // doctrine d'origine (« terminée » implique un jugement délibéré, pas une
+  // interruption). Sans ce bouton, une case cochée par erreur restait
+  // définitivement fausse : le mode Préparer était alors la seule échappatoire
+  // — parce qu'il ne recevait pas `readOnly`, non par conception. En fermant
+  // ce trou (cf. `BatchStepDonePanel`), il fallait rouvrir une porte
+  // explicite, et une correction assumée vaut mieux qu'un effet de bord.
+  // D'où la confirmation renforcée sur une fournée terminée : reprendre
+  // efface `date_fin`, donc la durée totale du résumé.
   async function resumeBatch() {
     if (!writeGuard('Reprise de la fournée')) return;
+    if (
+      batch.status === 'terminee' &&
+      !(await dialog.confirm(
+        'Reprendre cette fournée terminée ?\n\nElle repassera « en cours » et redeviendra modifiable. Sa date de fin — et donc la durée totale de son résumé — sera effacée.',
+      ))
+    )
+      return;
     setBusy(true);
     const { error } = await createClient().from('batches').update({ status: 'planifiee', date_fin: null }).eq('id', batch.id);
     setBusy(false);
@@ -293,6 +315,16 @@ export function BatchView({
       return;
     }
     setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
+    // Sans ça, la fournée rouverte resterait bridée par le `?lecture=1` de
+    // l'URL d'arrivée. `history.replaceState` (pas `router.replace`) : c'est
+    // le même geste que `switchMode`, il ne doit pas déclencher de navigation
+    // par-dessus la resynchronisation qui suit.
+    setLectureMode(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('lecture');
+      window.history.replaceState(null, '', url);
+    }
     startResume(() => router.refresh());
   }
 
@@ -338,7 +370,13 @@ export function BatchView({
             <span className="no-print">
               <PrintButton />
             </span>
-            {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
+            {/* Volontairement indépendant de `lecture` : « Fournées
+                terminées » (/en-cuisine) n'ouvre QUE en `?lecture=1`, s'y
+                adosser rendait le bouton inatteignable depuis son unique
+                point d'entrée — même raisonnement que la carte d'avis
+                ci-dessous. La propriété de la fournée reste garantie par la
+                RLS, et l'impersonation lecture seule bloque toujours. */}
+            {batch.status !== 'planifiee' && !impersonationReadOnly && (
               <button
                 type="button"
                 onClick={resumeBatch}
@@ -620,7 +658,9 @@ function PreparerView({
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
+      // Section masquée sur une fournée close (cf. plus bas) : l'entrée doit
+      // suivre, sous peine de lien mort dans le sommaire.
+      ...(batch.batch_ingredients.length > 0 && !readOnly ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
       ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [],
@@ -663,7 +703,7 @@ function PreparerView({
         ce que vous avez déjà réalisé, et « recette : … » rappelle la valeur d&apos;origine.
       </p>
 
-      <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} />
+      <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} readOnly={readOnly} />
 
       {/* Photo principale — remontée au-dessus du bloc technique (même ordre
           que la fiche recette), plutôt qu'après la description plus bas. */}
@@ -901,8 +941,11 @@ function PreparerView({
           vues à l'écran. `no-print` : c'est une interface d'édition (boutons,
           champs) sans intérêt sur papier, déjà couverte pour l'impression par
           la liste totale ci-dessus, qui exclut déjà les lignes retirées ou
-          remplacées. */}
-      {batch.batch_ingredients.length > 0 && (
+          remplacées. Masquée entièrement sur une fournée close (`readOnly`)
+          plutôt que bridée champ par champ : n'étant QUE de l'édition, elle
+          n'a plus rien à montrer une fois la fournée fermée — la consultation
+          reste assurée par la liste totale juste au-dessus. */}
+      {batch.batch_ingredients.length > 0 && !readOnly && (
         <div id="sec-ingredients" className="no-print scroll-mt-28">
           <details className="group">
             <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
@@ -938,7 +981,7 @@ function PreparerView({
                   <span>
                     {i + 1}. {s.title || 'Étape ' + (i + 1)}
                   </span>
-                  {!s.done && !replaced && (
+                  {!s.done && !replaced && !readOnly && (
                     <button
                       type="button"
                       onClick={() => setReplacingStep(s)}
@@ -972,14 +1015,16 @@ function PreparerView({
                     ) : (
                       <span className="italic">une recette qui n’est plus accessible</span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => cancelStepReplacement(s)}
-                      title="Annuler le remplacement et retirer les étapes ajoutées"
-                      className="no-print text-primary hover:opacity-70"
-                    >
-                      <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
-                    </button>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => cancelStepReplacement(s)}
+                        title="Annuler le remplacement et retirer les étapes ajoutées"
+                        className="no-print text-primary hover:opacity-70"
+                      >
+                        <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
+                      </button>
+                    )}
                   </span>
                 )}
               </div>
@@ -1020,6 +1065,7 @@ function PreparerView({
                   dayOptions={dayOptions}
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
+                  readOnly={readOnly}
                 >
                   <StepPhotoGallery photos={photos} />
                   {s.video_url && <StepVideoPlayer url={s.video_url} />}
@@ -1279,9 +1325,22 @@ function CuisinerView({
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
-      {batch.notes && (
+      {/* Deux colonnes distinctes, longtemps confondues ici : `user_note` est
+          la note personnelle de la fournée (éditée en mode Préparer par
+          `BatchNotes`), `notes` le commentaire saisi au lancement dans
+          `BatchWidget`. Ce bloc n'affichait que `notes`, sous le libellé
+          « Ma note » — la note personnelle, justement celle qu'on écrit pour
+          ajuster la recette, était donc invisible en mode Cuisiner. */}
+      {batch.user_note && (
         <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{batch.user_note}</div>
+        </div>
+      )}
+
+      {batch.notes && (
+        <div className="mb-6 p-3 bg-surface-container-low border-l-4 border-outline-variant rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant mb-1">Commentaire de lancement</p>
           <div className="font-body-md text-sm whitespace-pre-line">{batch.notes}</div>
         </div>
       )}
