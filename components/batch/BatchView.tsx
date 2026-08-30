@@ -208,7 +208,19 @@ export function BatchView({
   // s'apprête justement à poser) plus l'unicité « un avis par recette et par
   // membre » — sinon la proposition automatique poserait une question dont la
   // réponse « oui » n'affiche rien (cf. CLAUDE.md « Avis sur une recette »).
-  const reviewEligible = !!batch.recipe_id && !batch.review_dismissed && !impersonationReadOnly && (!myReview || myReview.batch_id === batch.id);
+  //
+  // La condition suit ce que `BatchReview` sait réellement OFFRIR, et non la
+  // seule appartenance de l'avis à cette fournée : un avis `pending` ou
+  // `approved` y rend un récapitulatif en lecture seule, il n'y a rien à
+  // saisir. Ne restent proposables que l'absence d'avis et un avis `rejected`
+  // (formulaire rouvert avec son motif). Se voit surtout en reprenant puis
+  // reclôturant une fournée déjà notée — on proposait alors de noter une
+  // recette qui l'était déjà.
+  const reviewEligible =
+    !!batch.recipe_id &&
+    !batch.review_dismissed &&
+    !impersonationReadOnly &&
+    (!myReview || (myReview.batch_id === batch.id && myReview.status === 'rejected'));
 
   // Écriture partagée « marquer comme terminée » : rail Préparer, rail
   // Cuisiner et proposition automatique une fois toutes les étapes cochées
@@ -1169,10 +1181,35 @@ function CuisinerView({
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
-  const [manuallyOpenedJalons, setManuallyOpenedJalons] = useState<Set<number>>(new Set());
+  // Jours DÉPLIÉS par défaut : on suit donc les jours que l'utilisateur a
+  // repliés, et non l'inverse. L'ancien jeu (« ouvrir seulement le jour
+  // courant ») cachait les jours déjà faits comme ceux à venir, alors que
+  // c'est désormais l'ÉTAPE qui porte le repli (cf. `StepCookCard`) : replier
+  // les deux niveaux à la fois ne laissait plus rien voir du déroulé.
+  const [collapsedJalons, setCollapsedJalons] = useState<Set<number>>(new Set());
   const expandJalon = useCallback((ji: number) => {
-    setManuallyOpenedJalons((prev) => (prev.has(ji) ? prev : new Set(prev).add(ji)));
+    setCollapsedJalons((prev) => {
+      if (!prev.has(ji)) return prev;
+      const next = new Set(prev);
+      next.delete(ji);
+      return next;
+    });
   }, []);
+  // `<details>` piloté par React : sans ce rappel, le clic de l'utilisateur
+  // n'est connu que du navigateur et le premier re-rendu (une case cochée
+  // suffit) rétablissait l'état calculé, refermant le jour sous le doigt.
+  const setJalonOpen = useCallback((ji: number, open: boolean) => {
+    setCollapsedJalons((prev) => {
+      if (open === !prev.has(ji)) return prev;
+      const next = new Set(prev);
+      if (open) next.delete(ji);
+      else next.add(ji);
+      return next;
+    });
+  }, []);
+  // Étape visée par un lien `#etape-<id>` : dépliée à l'arrivée, sans quoi on
+  // atterrirait sur un titre replié.
+  const [hashStepId, setHashStepId] = useState<number | null>(null);
 
   useEffect(() => {
     if (readOnly || batch.status !== 'planifiee') return;
@@ -1315,6 +1352,7 @@ function CuisinerView({
     const ji = jalons.findIndex((j) => j.steps.some((s) => s.id === stepId));
     if (ji === -1) return;
     expandJalon(ji);
+    setHashStepId(stepId);
     setTimeout(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1398,7 +1436,9 @@ function CuisinerView({
           batch={batch}
           jalons={jalons}
           readOnly={readOnly}
-          manuallyOpenedJalons={manuallyOpenedJalons}
+          collapsedJalons={collapsedJalons}
+          onJalonOpenChange={setJalonOpen}
+          hashStepId={hashStepId}
           conversions={conversions}
           units={units}
           onToggleStep={toggleStep}
@@ -1420,7 +1460,9 @@ function CuisinerBody({
   batch,
   jalons,
   readOnly,
-  manuallyOpenedJalons,
+  collapsedJalons,
+  onJalonOpenChange,
+  hashStepId,
   conversions,
   units,
   onToggleStep,
@@ -1434,7 +1476,9 @@ function CuisinerBody({
   batch: BatchFull;
   jalons: BatchJalon[];
   readOnly: boolean;
-  manuallyOpenedJalons: Set<number>;
+  collapsedJalons: Set<number>;
+  onJalonOpenChange: (ji: number, open: boolean) => void;
+  hashStepId: number | null;
   conversions: ConversionRef[];
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
@@ -1503,7 +1547,8 @@ function CuisinerBody({
           <details
             key={ji}
             id={jalonAnchorId(ji)}
-            open={isCurrent || (readOnly && !jDone) || manuallyOpenedJalons.has(ji)}
+            open={!collapsedJalons.has(ji)}
+            onToggle={(e) => onJalonOpenChange(ji, (e.currentTarget as HTMLDetailsElement).open)}
             className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
           >
             <summary className={`flex items-center gap-4 p-4 cursor-pointer list-none ${isCurrent ? 'bg-primary/5' : 'bg-surface-container-low'}`}>
@@ -1541,6 +1586,7 @@ function CuisinerBody({
                     ingredients={batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !batchIngredientExcluded(s, it))}
                     readOnly={readOnly}
                     isPending={isPending}
+                    openedByHash={hashStepId === s.id}
                     conversions={conversions}
                     units={units}
                     onToggleStep={onToggleStep}
@@ -1566,6 +1612,7 @@ function StepCookCard({
   ingredients,
   readOnly,
   isPending,
+  openedByHash,
   conversions,
   units,
   onToggleStep,
@@ -1580,6 +1627,8 @@ function StepCookCard({
   ingredients: BatchIngredientRow[];
   readOnly: boolean;
   isPending: boolean;
+  // Étape visée par un lien `#etape-<id>` : dépliée à l'arrivée.
+  openedByHash: boolean;
   conversions: ConversionRef[];
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
@@ -1590,6 +1639,18 @@ function StepCookCard({
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
 }) {
+  // Repliée par défaut : le mode Cuisiner sert à avancer étape par étape, et
+  // dérouler d'un coup les ingrédients et sous-étapes de toute une journée
+  // noyait l'étape en cours. Le contenu n'est pas perdu pour autant — il est
+  // à un clic, et l'en-tête annonce ce qu'il y a dedans (cf. `insideSummary`).
+  const [open, setOpen] = useState(false);
+  // L'état initial n'est lu qu'au montage, or ce composant reste monté quand
+  // l'ancre `#etape-<id>` est résolue (effet au montage du parent) : sans cet
+  // effet, on atterrirait sur une étape restée repliée.
+  useEffect(() => {
+    if (openedByHash) setOpen(true);
+  }, [openedByHash]);
+
   const times = remainingStepTimes(s);
   const badges = [
     s.done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
@@ -1620,16 +1681,53 @@ function StepCookCard({
     if (allIngDone && allSubDone) onToggleStep(s.id, true);
   }
 
+  // Ce que le volet replié contient, annoncé sur l'en-tête : une étape
+  // repliée ne doit pas se lire comme une étape vide.
+  const insideSummary = [
+    ingredients.length ? `${ingredients.length} ingrédient${ingredients.length > 1 ? 's' : ''}` : '',
+    substeps.length ? `${substeps.length} sous-étape${substeps.length > 1 ? 's' : ''}` : '',
+    s.commentaire ? 'note du jour J' : '',
+  ].filter(Boolean);
+
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
-      <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
-        <input type="checkbox" checked={s.done} disabled={readOnly} onChange={(ev) => onToggleStep(s.id, ev.target.checked)} className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
-        <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
-          <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
-        </span>
-      </label>
+      {/* Chevron HORS du `<label>` : à l'intérieur, tout clic dessus aurait
+          aussi basculé la case à cocher de l'étape. */}
+      <div className="flex items-start gap-2 p-4">
+        <label className="flex flex-1 min-w-0 items-start gap-4 cursor-pointer select-none">
+          <input type="checkbox" checked={s.done} disabled={readOnly} onChange={(ev) => onToggleStep(s.id, ev.target.checked)} className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
+          <span className="flex-1 min-w-0">
+            <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+            <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
+            {!open && insideSummary.length > 0 && (
+              <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
+            )}
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? "Replier l'étape" : "Déplier l'étape"}
+          className="shrink-0 p-1 text-on-surface-variant hover:text-primary"
+        >
+          <span className={`material-symbols-outlined transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
+        </button>
+      </div>
 
+      {/* Hors du volet, comme en mode Préparer : la note personnelle est le
+          seul contenu de l'étape qui serve encore APRÈS coup, pour ajuster la
+          recette au vu de ce qui s'est passé (cf. CLAUDE.md). La replier avec
+          le reste la rendrait invisible sur toute étape non dépliée. */}
+      {s.user_note && (
+        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{s.user_note}</div>
+        </div>
+      )}
+
+      {open && (
+        <>
       {s.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
@@ -1758,13 +1856,6 @@ function StepCookCard({
         </div>
       )}
 
-      {s.user_note && (
-        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
-          <div className="font-body-md text-sm whitespace-pre-line">{s.user_note}</div>
-        </div>
-      )}
-
       <div className="px-4 pb-4">
         <textarea
           rows={2}
@@ -1775,6 +1866,8 @@ function StepCookCard({
           className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

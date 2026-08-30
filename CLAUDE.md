@@ -442,8 +442,24 @@ directes :
   entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
   bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui
   serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
-  passé. Même intention côté Cuisiner, où le repli porte sur un jour entier :
-  l'en-tête d'un jour replié signale par un picto qu'il contient une note.
+  passé. Vaut dans les deux modes — `StepCookCard` rend `user_note` hors de
+  son propre volet, pour la même raison.
+- **Le repli du mode Cuisiner porte sur l'ÉTAPE, pas sur le jour** : les
+  jalons sont dépliés par défaut (on suit `collapsedJalons`, les jours que
+  l'utilisateur a refermés — jamais l'inverse), les étapes repliées. Replier
+  les deux niveaux ne laissait plus rien voir du déroulé ; n'en replier aucun
+  noyait l'étape en cours sous les ingrédients de toute la journée. L'en-tête
+  d'une étape repliée annonce ce qu'elle contient (« 6 ingrédients ·
+  3 sous-étapes »), sans quoi elle se lirait comme une étape vide.
+  **Un `<details>` piloté par React a besoin de son `onToggle`** : sans lui,
+  le clic n'est connu que du navigateur, et le premier re-rendu (une case
+  cochée suffit) rétablit l'état calculé — le jour se refermait sous le doigt.
+- **Proposer un avis suit ce que `BatchReview` sait offrir**, pas la seule
+  appartenance de l'avis à la fournée : un avis `pending` ou `approved` y rend
+  un récapitulatif en lecture seule, il n'y a rien à saisir. `reviewEligible`
+  ne retient donc que l'absence d'avis et un avis `rejected` de cette fournée.
+  Se voyait en reprenant puis reclôturant une fournée déjà notée : on
+  proposait de noter une recette qui l'était déjà.
 - L'historique de l'ancien modèle (`executions`, `execution_steps`,
   `execution_substeps`, `execution_ingredients`, `execution_utensils`) a été
   renommé `*_legacy` et conservé en base, sans être ni lu ni écrit par
