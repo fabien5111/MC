@@ -558,3 +558,68 @@ update public.features
 `AuthorCard.tsx`) est `OUI` sur les trois plans : rendue visible sur `/plans`
 pour la lisibilité de l'offre, sans aucun contrôle d'accès à poser — elle ne
 gouverne rien.
+
+## 12. Essai à quotas réduits — un plan dédié plutôt qu'une grille parallèle
+
+Demande : que l'essai gratuit du plan Pro n'accorde pas forcément les mêmes
+quotas IA que le Pro payant (le reste des droits restant identique), avec la
+main dessus depuis le back-office.
+
+### Un vrai plan (`plans` + `plan_versions` + `plan_features`), pas un second système de quotas
+
+Retenu : un plan technique supplémentaire (`PRO_ESSAI` / « Essai Pro »),
+`active = false` (jamais proposé à la souscription), `trial_allowed = false`
+(on ne démarre jamais un essai *de* ce plan directement — voir plus bas),
+seedé une fois avec une copie exacte de la grille Pro courante. Rejeté :
+une seconde grille « quotas d'essai » en parallèle de `plan_features`
+aurait dupliqué tout le modèle (versionnement, cohérence, publication) pour
+un seul cas d'usage, alors que l'écran `/admin/abonnements` sait déjà
+afficher et publier n'importe quel nombre de plans sans une ligne de code —
+`PlansManager` itère sur `grid.plans`, jamais sur une liste écrite en dur.
+Conséquence directe : régler les quotas IA de l'essai est juste éditer la
+colonne « Essai Pro », à côté de « Pro », sur l'écran existant.
+
+### La redirection est un geste séparé, jamais une réécriture de `mc_start_trial`
+
+`mc_start_trial(p_plan_code, p_email_hash)` reste appelé exactement comme
+avant, avec le code du plan que le membre a réellement cliqué (`PRO`) — zéro
+risque de régression sur le chemin de démarrage d'essai existant. Une
+fonction neuve, `mc_redirect_trial_plan_version(p_source_plan_code)`,
+appelée juste après par la route (`/api/plans/essayer`), regarde
+`plans.trial_grant_plan_id` du plan source : si une redirection est
+configurée, elle réassigne le `plan_version_id` de l'abonnement `TRIAL`
+tout juste créé vers la version courante du plan cible — uniquement la
+ligne la plus récente du membre courant (`auth.uid()`), jamais une ligne
+d'un autre membre. Sans redirection configurée pour le plan demandé (tous
+les autres plans aujourd'hui), elle ne fait rien. Best-effort côté route :
+un échec de cette étape ne fait pas échouer le démarrage de l'essai, il le
+laisse simplement sur les droits du plan demandé — même doctrine qu'ailleurs
+(§1.5, « échouer en ouvert sur une erreur de configuration »).
+
+`plans.trial_grant_plan_id` (entier, référence `plans.id`, nullable) porte
+ce lien — posé une fois par SQL, pas exposé dans `PlansManager` : c'est une
+relation structurelle entre deux plans, pas un réglage à changer souvent.
+
+### Ce que ça change (et ne change pas) ailleurs
+
+- `type` reste `TRIAL` sur `subscriptions` — seul `plan_version_id` change.
+  Tout ce qui lit les droits effectifs (`mc_effective_rights`, jauges,
+  blocages) suit automatiquement la grille du plan cible, sans code
+  supplémentaire : le moteur ne connaît que des `plan_version_id`, jamais
+  des codes de plan en dur.
+- `/plans` (page publique) filtre les plans sur `p.active || p.code ===
+  currentPlanCode` (`PlansPage.tsx`) : un plan `active = false` n'apparaît
+  donc **que** pour le membre dont c'est effectivement le plan courant —
+  jamais dans la grille comparative vue par tout le monde. Un membre en
+  cours d'essai Pro voit donc sa colonne « Essai Pro » (droits réels,
+  quotas IA réduits compris) sur `/plans`, personne d'autre.
+- `/reglages` (« Mon forfait ») affiche déjà `currentPlan.label` — devient
+  « Essai Pro » sans changement de code, puisque `getCurrentPlan` lit le
+  plan de la ligne `subscriptions` active, quel qu'il soit.
+- Admin → Membres, tableau de bord des abonnements : mêmes lectures
+  génériques (`plan_versions.plans.code/label`), un membre en essai réduit
+  apparaît distinctement de « Pro », sans changement de code non plus.
+- `MemberSubscriptionPanel` (attribution manuelle par un admin) filtre déjà
+  `plans` sur `active = true` : « Essai Pro » n'apparaît jamais dans la
+  liste des plans qu'un admin peut attribuer à la main — cohérent, ce n'est
+  pas un plan vendable.
