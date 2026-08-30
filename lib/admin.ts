@@ -599,6 +599,26 @@ export async function getAllowlistMembers(): Promise<Member[]> {
   return [...registered, ...pending];
 }
 
+// Coût IA mois/total d'UN membre — même vue que `getAiUsageParMembre` mais
+// filtrée à une seule ligne, pour la fiche (`getMemberById` ci-dessous) qui
+// ne charge pas le détail de tous les membres à la fois. `null` si le membre
+// n'a encore fait aucun appel (la vue n'a alors aucune ligne pour lui) —
+// distinct de 0, qui signifierait « a consommé, pour un coût nul ».
+export async function getAiUsageForMember(userId: string): Promise<{ coutMois: number; coutTotal: number } | null> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from('ai_usage_par_membre')
+    .select('cout_mois, cout_total')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('getAiUsageForMember:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return { coutMois: Number(data.cout_mois) || 0, coutTotal: Number(data.cout_total) || 0 };
+}
+
 // Une seule fiche membre (écran `/admin/membres/[id]`) : requêtes scopées à
 // CET utilisateur uniquement, contrairement à `getAllowlistMembers` qui
 // rapatrie toute la base pour construire la liste — coûteux si on ne
@@ -617,11 +637,12 @@ export async function getMemberById(id: string): Promise<Member | null> {
       .maybeSingle();
     if (!p) return null;
     const emailKey = (p.email || '').toLowerCase();
-    const [{ data: al }, { count: recipeCount }] = await Promise.all([
+    const [{ data: al }, { count: recipeCount }, coutIa] = await Promise.all([
       emailKey
         ? supabase.from('allowlist').select('*').ilike('email', emailKey).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('author_id', profileId),
+      getAiUsageForMember(profileId),
     ]);
     return {
       id,
@@ -645,8 +666,8 @@ export async function getMemberById(id: string): Promise<Member | null> {
       username: p.username ?? null,
       recipeCount: recipeCount ?? 0,
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
-      coutIaMois: null,
-      coutIaTotal: null,
+      coutIaMois: coutIa?.coutMois ?? null,
+      coutIaTotal: coutIa?.coutTotal ?? null,
     };
   }
 

@@ -113,13 +113,14 @@ export type ImpersonationSessionWithEvents = ImpersonationSessionRow & {
 
 // Journal des connexions « en tant que » — back-office. Lecture via la session
 // de l'admin (la RLS n'ouvre ce select qu'aux admins).
-export async function getImpersonationSessions(limit = 25): Promise<ImpersonationSessionWithEvents[]> {
+// `targetUserId` : filtre sur les sessions ouvertes SUR ce membre (fiche
+// membre, `/admin/membres/[id]`) — sans filtre, le journal global affiché en
+// bas de la liste (`ImpersonationAudit`).
+export async function getImpersonationSessions(limit = 25, targetUserId?: string): Promise<ImpersonationSessionWithEvents[]> {
   const supabase = withImpersonationSchema(await createClient());
-  const { data: sessions, error } = await supabase
-    .from('impersonation_sessions')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  let query = supabase.from('impersonation_sessions').select('*').order('created_at', { ascending: false }).limit(limit);
+  if (targetUserId) query = query.eq('target_user_id', targetUserId);
+  const { data: sessions, error } = await query;
   if (error || !sessions?.length) return [];
 
   const ids = sessions.map((s) => s.id);

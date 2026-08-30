@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { requireFullAdmin } from '@/lib/auth';
 import { getMemberById, getBatchCount } from '@/lib/admin';
 import { getFollowCounts } from '@/lib/follows';
+import { getImpersonationSessions } from '@/lib/impersonation';
 import { MemberDetail } from '@/components/admin/MemberDetail';
 
 export const metadata: Metadata = { title: 'Fiche membre | Admin — Je pâtisse !' };
@@ -14,9 +15,10 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   const member = await getMemberById(id);
   if (!member) notFound();
 
-  const [followCounts, batchCount] = await Promise.all([
+  const [followCounts, batchCount, impersonationSessions] = await Promise.all([
     member.profileId ? getFollowCounts(member.profileId) : Promise.resolve({ followers: 0, following: 0 }),
     member.profileId ? getBatchCount(member.profileId) : Promise.resolve(0),
+    member.profileId ? getImpersonationSessions(10, member.profileId) : Promise.resolve([]),
   ]);
 
   return (
@@ -33,6 +35,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
       <MemberDetail
         member={member}
         stats={{ followers: followCounts.followers, following: followCounts.following, batches: batchCount }}
+        impersonationSessions={impersonationSessions}
       />
     </>
   );

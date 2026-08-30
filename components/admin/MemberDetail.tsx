@@ -11,11 +11,12 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { Member, LoginHistoryEntry } from '@/lib/admin';
+import type { ImpersonationSessionWithEvents } from '@/lib/impersonation';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { formatUsd } from '@/lib/ai/cost';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
+import { withImpersonationSchema, modeLabel, type ImpersonationMode } from '@/lib/impersonation-types';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
 import { MemberSubscriptionPanel } from '@/components/admin/MemberSubscriptionPanel';
 
@@ -29,9 +30,11 @@ function inviteLinkFor(email: string): string {
 export function MemberDetail({
   member,
   stats,
+  impersonationSessions,
 }: {
   member: Member;
   stats: { followers: number; following: number; batches: number };
+  impersonationSessions: ImpersonationSessionWithEvents[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -252,6 +255,7 @@ export function MemberDetail({
               <span className="material-symbols-outlined text-lg">switch_account</span>
               {impBusy ? 'Génération du lien…' : 'Connecter en tant que'}
             </button>
+            <ImpersonationSessionsList sessions={impersonationSessions} />
             <LoginHistory userId={member.profileId} />
           </div>
         </div>
@@ -277,6 +281,56 @@ export function MemberDetail({
 
       {impersonation && <ImpersonationLinkPanel link={impersonation} onClose={clearImpersonation} />}
     </main>
+  );
+}
+
+// Sessions « connecté en tant que » ouvertes par un admin SUR ce membre —
+// même donnée que `ImpersonationAudit` (journal global, bas de la liste),
+// filtrée ici à un seul membre (`getImpersonationSessions(limit, userId)`),
+// et chargée côté serveur (page.tsx) : contrairement à `LoginHistory`
+// ci-dessous, aucune route dédiée n'était nécessaire, la RLS admin suffit
+// déjà à `getImpersonationSessions`. Distinct de `LoginHistory` : ici, ce
+// sont les connexions faites PAR un admin, pas les connexions du membre
+// lui-même.
+function ImpersonationSessionsList({ sessions }: { sessions: ImpersonationSessionWithEvents[] }) {
+  return (
+    <div className="border-t border-outline-variant pt-5">
+      <h4 className="mb-2 font-label-md text-[13px] text-primary">Sessions « connecté en tant que »</h4>
+      {sessions.length === 0 ? (
+        <p className="text-xs text-on-surface-variant">Aucun administrateur ne s&apos;est connecté en tant que ce membre.</p>
+      ) : (
+        <ul className="space-y-2 max-h-64 overflow-y-auto">
+          {sessions.map((s) => {
+            const active = s.started_at && !s.ended_at && new Date(s.expires_at).getTime() > Date.now();
+            return (
+              <li key={s.id} className="text-xs border border-outline-variant rounded p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-on-surface font-medium">{s.admin_email || '—'}</span>
+                  <span
+                    className={`shrink-0 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                      s.mode === 'write' ? 'bg-error-container text-on-error-container' : 'bg-secondary-container text-on-secondary-container'
+                    }`}
+                  >
+                    {modeLabel(s.mode)}
+                  </span>
+                </div>
+                <p className="mt-1 text-on-surface-variant">
+                  Lien généré le {formatDateTime(s.created_at)}
+                  {!s.started_at ? (
+                    ' · non utilisé'
+                  ) : active ? (
+                    <span className="font-semibold text-green-700"> · en cours</span>
+                  ) : (
+                    <> · {formatDateTime(s.started_at)} → {s.ended_at ? formatDateTime(s.ended_at) : 'expirée'}</>
+                  )}
+                  {s.eventCount > 0 && ` · ${s.eventCount} action${s.eventCount > 1 ? 's' : ''}`}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
