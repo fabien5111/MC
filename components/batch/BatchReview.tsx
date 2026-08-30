@@ -153,19 +153,31 @@ function ReviewForm({
         <p className="text-[12px] text-on-surface-variant mb-2">Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum)</p>
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
-            <ImageSlot
-              key={i}
-              src={photos[i]?.url ?? null}
-              onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
-              onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
-              aspectRatio={16 / 9}
-              maxWidth={1400}
-              placeholder="Ajouter une photo"
-              className="w-32 h-[72px] md:w-40 md:h-[90px]"
-              aiRetouched={photos[i]?.ai_retouched ?? false}
-              promptAiRetouched
-              onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
-            />
+            <div key={i} className="space-y-1.5">
+              <ImageSlot
+                src={photos[i]?.url ?? null}
+                onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
+                onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
+                aspectRatio={16 / 9}
+                maxWidth={1400}
+                placeholder="Ajouter une photo"
+                className="w-32 h-[72px] md:w-40 md:h-[90px]"
+                aiRetouched={photos[i]?.ai_retouched ?? false}
+                promptAiRetouched
+                onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
+              />
+              {photos[i] && (
+                <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer w-32 md:w-40">
+                  <input
+                    type="checkbox"
+                    checked={photos[i].ai_retouched}
+                    onChange={(e) => setPhotoAiRetouchedAt(i, e.target.checked)}
+                    className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                  />
+                  Indication photo retravaillée avec l&apos;IA
+                </label>
+              )}
+            </div>
           ))}
         </div>
       </div>
