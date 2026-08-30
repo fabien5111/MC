@@ -36,5 +36,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer." }, { status: 422 });
   }
 
+  // Certains plans redirigent l'essai vers une version aux quotas propres
+  // (`plans.trial_grant_plan_id` — ex. Pro → Essai Pro, mêmes droits sauf les
+  // quotas IA, réglables séparément en back-office). Best-effort et non
+  // bloquant : sans redirection configurée pour ce plan, ou en cas d'échec,
+  // l'essai garde les droits du plan demandé — jamais un essai qui échoue à
+  // démarrer pour une raison qui ne regarde pas le membre.
+  //
+  // `mc_redirect_trial_plan_version` n'est pas encore dans
+  // lib/database.types.ts tant que la migration n'a pas été régénérée —
+  // appel non typé, même motif que `mc_publish_plan_version` dans
+  // PlansManager.
+  const { error: erreurRedirection } = await (
+    supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<{ error: { message: string } | null }>
+  )('mc_redirect_trial_plan_version', { p_source_plan_code: planCode });
+  if (erreurRedirection) console.error('plans/essayer redirect:', erreurRedirection.message);
+
   return NextResponse.json({ ok: true });
 }
