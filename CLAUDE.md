@@ -419,9 +419,18 @@ directes :
     que la carte d'avis) ;
   - reprendre efface `date_fin`, donc la durée totale du résumé : d'où une
     confirmation explicite sur une fournée `terminee`, absente pour un
-    abandon. `lecture` est tenu en **état local** dans `BatchView` et retiré
-    de l'URL à la reprise, sans quoi la fournée rouverte resterait verrouillée
-    par un paramètre que plus rien ne justifie.
+    abandon.
+  **Le verrou doit s'énoncer là où il se fait sentir** : un bandeau en tête
+  des deux modes dit pourquoi tout est grisé et porte le bouton de reprise.
+  Le lien de l'en-tête ne suffit pas — il sort du champ dès qu'on a déroulé
+  la page, et une case grisée sans explication ni porte de sortie se lit
+  comme une panne, pas comme un état.
+  **Lever `?lecture=1` passe par `router.replace`, jamais par `refresh`** :
+  le paramètre vit dans l'URL, donc dans les `searchParams` du rendu serveur
+  — un `refresh` rejouerait la page avec `lecture=1` et la re-verrouillerait
+  aussitôt, et un `history.replaceState` réécrirait la barre d'adresse sans
+  rien renvoyer au serveur. C'est la seule resynchronisation de cet écran qui
+  ne soit pas un `router.refresh()`.
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

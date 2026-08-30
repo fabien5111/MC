@@ -300,6 +300,13 @@ export function BatchView({
   // efface `date_fin`, donc la durée totale du résumé.
   async function resumeBatch() {
     if (!writeGuard('Reprise de la fournée')) return;
+    // Fournée déjà « en cours », simplement ouverte en consultation
+    // (`?lecture=1`) : rien à réécrire en base, il n'y a que le bridage
+    // d'URL à lever.
+    if (batch.status === 'planifiee') {
+      reopenForEditing();
+      return;
+    }
     if (
       batch.status === 'terminee' &&
       !(await dialog.confirm(
@@ -315,17 +322,28 @@ export function BatchView({
       return;
     }
     setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
-    // Sans ça, la fournée rouverte resterait bridée par le `?lecture=1` de
-    // l'URL d'arrivée. `history.replaceState` (pas `router.replace`) : c'est
-    // le même geste que `switchMode`, il ne doit pas déclencher de navigation
-    // par-dessus la resynchronisation qui suit.
+    reopenForEditing();
+  }
+
+  // Lève le bridage `?lecture=1` et resynchronise. Contrairement au reste des
+  // écritures de cet écran, la resynchronisation passe par `router.replace`
+  // et non `router.refresh()` : le paramètre vit dans l'URL, donc dans les
+  // `searchParams` du rendu serveur — un `refresh` seul rejouerait la page
+  // avec `lecture=1` et la re-verrouillerait aussitôt. `history.replaceState`
+  // ne suffit pas non plus : il réécrit la barre d'adresse sans rien
+  // renvoyer au serveur. Enveloppé dans la transition de `resuming` pour que
+  // le voile tienne jusqu'au nouveau rendu (cf. CLAUDE.md « busy couvre aussi
+  // la resynchronisation »).
+  function reopenForEditing() {
     setLectureMode(false);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('lecture');
-      window.history.replaceState(null, '', url);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('lecture')) {
+      startResume(() => router.refresh());
+      return;
     }
-    startResume(() => router.refresh());
+    url.searchParams.delete('lecture');
+    startResume(() => router.replace(url.pathname + url.search, { scroll: false }));
   }
 
   // « Ne plus afficher » la carte d'avis, pour cette fournée seulement : une
@@ -396,6 +414,36 @@ export function BatchView({
             .filter(Boolean)
             .join(' — ')}
         </p>
+
+        {/* Verrou en lecture seule, énoncé là où il se fait sentir. Le bouton
+            « Reprendre » de l'en-tête ci-dessus est hors champ dès qu'on a
+            déroulé la page : sans ce bandeau, une case grisée n'a aucune
+            explication ni aucune porte de sortie visible — c'est ce qui
+            faisait lire le verrou comme une panne. Affiché dans les DEUX
+            modes, l'un comme l'autre étant concerné. Exclut l'impersonation
+            lecture seule, qui a déjà son propre bandeau (ImpersonationBanner)
+            et où rien n'est à rouvrir. */}
+        {readOnly && !impersonationReadOnly && (
+          <div className="no-print mb-6 border border-outline-variant bg-surface-container-low rounded-lg px-4 py-3 flex items-start gap-3 flex-wrap">
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0">lock</span>
+            <p className="font-body-md text-sm text-on-surface flex-1 min-w-[16rem]">
+              {batch.status === 'terminee'
+                ? 'Cette fournée est terminée'
+                : batch.status === 'abandonnee'
+                  ? 'Cette fournée est abandonnée'
+                  : 'Cette fournée est ouverte en consultation'}{' '}
+              : ses étapes, ses quantités et ses notes ne sont plus modifiables.
+            </p>
+            <button
+              type="button"
+              onClick={resumeBatch}
+              className="shrink-0 flex items-center gap-1.5 rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+              {batch.status === 'planifiee' ? 'Modifier cette fournée' : 'Reprendre cette fournée'}
+            </button>
+          </div>
+        )}
 
         {mode === 'preparer' && baseModifiedSince && (
           <div className="no-print mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
