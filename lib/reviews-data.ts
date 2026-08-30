@@ -20,7 +20,8 @@ import {
   COMMENT_MODERATION_SYSTEM_PROMPT,
 } from '@/lib/ai/comment-moderation';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { validateReview } from '@/lib/reviews';
+import { validateReview, normalizeReviewPhotos } from '@/lib/reviews';
+import type { ReviewPhoto } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
 
 export type MyRecipeReview = {
@@ -30,7 +31,7 @@ export type MyRecipeReview = {
   rating: number | null;
   content: string;
   rejection_reason: string | null;
-  photo_urls: string[];
+  photo_urls: ReviewPhoto[];
 };
 
 // Avis courant du membre pour CETTE recette (une seule ligne possible, cf.
@@ -46,7 +47,11 @@ export async function getMyRecipeReview(recipeId: string, userId: string): Promi
     .eq('user_id', userId)
     .maybeSingle();
   if (error) console.error('getMyRecipeReview:', error.message);
-  return (data as unknown as MyRecipeReview | null) ?? null;
+  if (!data) return null;
+  // Normalisé ici, au plus près de la base : les composants reçoivent
+  // toujours des `ReviewPhoto`, quelle que soit la forme stockée (cf.
+  // `normalizeReviewPhotos`).
+  return { ...(data as unknown as MyRecipeReview), photo_urls: normalizeReviewPhotos((data as { photo_urls?: unknown }).photo_urls) };
 }
 
 export type RecipeComment = {
@@ -54,7 +59,7 @@ export type RecipeComment = {
   content: string;
   rating: number | null;
   created_at: string | null;
-  photo_urls: string[];
+  photo_urls: ReviewPhoto[];
   profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
 };
 
@@ -73,7 +78,10 @@ export async function getApprovedComments(recipeId: string): Promise<RecipeComme
     console.error('getApprovedComments:', error.message);
     return [];
   }
-  return (data as unknown as RecipeComment[]) ?? [];
+  return ((data as unknown as RecipeComment[]) ?? []).map((c) => ({
+    ...c,
+    photo_urls: normalizeReviewPhotos((c as { photo_urls?: unknown }).photo_urls),
+  }));
 }
 
 export type SubmitReviewResult = { ok: true } | { ok: false; message: string };
@@ -89,7 +97,7 @@ export async function submitOrUpdateReview(
   userId: string,
   rating: number,
   comment: string,
-  photos: string[] = [],
+  photos: ReviewPhoto[] = [],
 ): Promise<SubmitReviewResult> {
   if (batch.user_id !== userId) return { ok: false, message: 'Cette fournée ne vous appartient pas.' };
   if (batch.status !== 'terminee') return { ok: false, message: 'Cette fournée n’est pas encore terminée.' };

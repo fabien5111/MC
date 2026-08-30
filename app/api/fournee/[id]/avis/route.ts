@@ -9,6 +9,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { getBatch } from '@/lib/profile';
 import { submitOrUpdateReview } from '@/lib/reviews-data';
+import type { ReviewPhoto } from '@/lib/reviews';
 
 export const maxDuration = 30;
 
@@ -27,7 +28,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json().catch(() => ({}));
   const rating = Number(body?.rating);
   const comment = typeof body?.comment === 'string' ? body.comment : '';
-  const photos = Array.isArray(body?.photos) ? body.photos.filter((p: unknown): p is string => typeof p === 'string') : [];
+  const photos: ReviewPhoto[] = Array.isArray(body?.photos)
+    ? body.photos
+        .filter((p: unknown): p is { url: unknown; ai_retouched: unknown } => !!p && typeof p === 'object')
+        .map((p: { url: unknown; ai_retouched: unknown }) => ({
+          url: typeof p.url === 'string' ? p.url : '',
+          ai_retouched: p.ai_retouched === true,
+        }))
+    : [];
 
   const result = await submitOrUpdateReview(batch, user.id, rating, comment, photos);
   if (!result.ok) return NextResponse.json({ erreur: result.message }, { status: 400 });
