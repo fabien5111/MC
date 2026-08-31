@@ -896,11 +896,20 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   notifications d'abonnement) — pas de second fournisseur.
 - **Back-office** : `/admin/contact`, réservé à l'admin complet
   (`requireFullAdmin()`), fenêtre des 200 demandes les plus récentes plutôt
-  qu'une pagination serveur complète, filtres statut/type dans l'URL
-  (défaut : `a_deployer`, « ce qui part à la prochaine mise en production »),
-  tri/recherche/anomalies côté client. Toute mutation (statut, réponse,
-  notes, suppression) vit dans la fiche détail (`/admin/contact/[reference]`,
-  adressée par la référence humaine) — jamais dans la liste.
+  qu'une pagination serveur complète, filtres statut/type en cases à cocher
+  (multi-sélection, dans l'URL, tout coché par défaut — un paramètre absent
+  vaut « tout coché », une valeur vide vaut « rien coché »), tri/recherche/
+  anomalies côté client. Toute mutation (statut, réponse, notes, suppression)
+  vit dans la fiche détail (`/admin/contact/[reference]`, adressée par la
+  référence humaine) — jamais dans la liste.
+- **Photos jointes** (`contact_message_photos`, jusqu'à 3 par demande,
+  compressées côté client comme le reste du site) : visibles uniquement dans
+  la fiche détail admin — **jamais transmises à Jira**, qui ne reçoit qu'une
+  ligne de texte et l'URL directe vers la fiche admin quand une photo est
+  jointe (`ContexteTicket.photoAdminUrl`). Une photo est un contenu libre du
+  visiteur, rien ne garantit son absence de donnée personnelle : l'envoyer
+  romprait l'invariant de pseudonymisation ci-dessus. Cf.
+  `docs/contact-jira.md` §15.
 - **Anti-spam sans traceur tiers** : honeypot, délai minimum de 3 s porté
   par un jeton **signé côté serveur** (`CONTACT_FORM_SECRET` — un horodatage
   lu du navigateur ne protégerait rien), limitation de débit comptée en base
@@ -991,7 +1000,7 @@ principales :
 | Site | `site_settings` (bannières d'accueil) |
 | Impersonation | `impersonation_sessions`, `impersonation_events` |
 | Recherche | colonne générée `recipes.fts` (GIN), vue `author_ratings`, fonctions `mc_norm`, `search_advanced_recipes`, `suggest_ingredients` |
-| Contact | `contact_messages`, `contact_replies`, `contact_status_history` — voir « Contact et suivi Jira » ci-dessus, RLS sans policy d'écriture (`docs/contact-jira.md`) |
+| Contact | `contact_messages`, `contact_replies`, `contact_status_history`, `contact_message_photos` — voir « Contact et suivi Jira » ci-dessus, RLS sans policy d'écriture (`docs/contact-jira.md`) |
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).

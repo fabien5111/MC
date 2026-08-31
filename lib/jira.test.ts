@@ -105,6 +105,7 @@ const ctx: NouveauTicketJira = {
   pageUrl: '/recette/tarte-au-citron',
   browserContext: 'Chrome 128 / Android / mobile',
   appVersion: 'a1b2c3d',
+  photoAdminUrl: null,
 };
 
 const ENV_JIRA = {

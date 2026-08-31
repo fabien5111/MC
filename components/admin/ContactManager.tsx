@@ -215,6 +215,11 @@ export function ContactManager({
                       <Link href={`/admin/contact/${r.reference}`} className="font-label-md text-primary hover:underline">
                         {r.reference}
                       </Link>
+                      {r.hasPhotos && (
+                        <span className="material-symbols-outlined ml-1.5 align-middle text-[15px] text-on-surface-variant" title="Photo jointe">
+                          photo_camera
+                        </span>
+                      )}
                       {enAnomalie && (
                         <span className="material-symbols-outlined ml-1.5 align-middle text-[15px] text-error" title="Anomalie sur cette demande">
                           warning

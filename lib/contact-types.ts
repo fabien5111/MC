@@ -193,6 +193,33 @@ export type ContactStatusHistoryInsert = {
 export type ContactStatusHistoryUpdate = Partial<ContactStatusHistoryInsert>;
 
 // ─────────────────────────────────────────────────────────────────────────
+// contact_message_photos
+// ─────────────────────────────────────────────────────────────────────────
+
+// Ne partent JAMAIS vers Jira (docs/contact-jira.md) : une capture d'écran
+// peut montrer un pseudo, un e-mail affiché à l'écran, le nom d'un autre
+// membre — l'inverse de ce que le ticket garantit. Visibles uniquement dans
+// le back-office ; `url` est une data-URL, motif `step_photos.url` (pas de
+// bucket de stockage, cf. CLAUDE.md « Images »).
+export type ContactMessagePhotoRow = {
+  id: string;
+  message_id: string;
+  url: string;
+  order_index: number;
+  created_at: string;
+};
+
+export type ContactMessagePhotoInsert = {
+  id?: string;
+  message_id: string;
+  url: string;
+  order_index?: number;
+  created_at?: string;
+};
+
+export type ContactMessagePhotoUpdate = Partial<ContactMessagePhotoInsert>;
+
+// ─────────────────────────────────────────────────────────────────────────
 // Schéma étendu
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -214,6 +241,11 @@ export type ContactDatabase = Omit<ImpersonationDatabase, 'public'> & {
         ContactStatusHistoryRow,
         ContactStatusHistoryInsert,
         ContactStatusHistoryUpdate
+      >;
+      contact_message_photos: Table<
+        ContactMessagePhotoRow,
+        ContactMessagePhotoInsert,
+        ContactMessagePhotoUpdate
       >;
     };
   };

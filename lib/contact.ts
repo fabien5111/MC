@@ -168,6 +168,38 @@ export function cheminOrigineValide(v: unknown): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Photos jointes — restent dans Supabase, ne partent JAMAIS vers Jira
+// ─────────────────────────────────────────────────────────────────────────
+
+// Une capture d'écran peut montrer un pseudo, un e-mail affiché à l'écran, le
+// nom d'un autre membre — l'inverse exact de ce que le ticket Jira garantit
+// (docs/contact-jira.md). Les photos restent donc uniquement dans
+// `contact_message_photos`, visibles dans le back-office ; Jira ne reçoit
+// qu'une mention de leur présence et un lien vers cet écran
+// (`ContexteTicket.photoAdminUrl`, `corpsTicketJira`).
+export const CONTACT_PHOTOS_MAX = 3;
+
+// Une compression côté client (`resizeImageToDataUrl`, ~1400 px de large)
+// tient largement en dessous de ce plafond ; il n'existe que pour écarter une
+// entrée aberrante (photo non compressée, appel direct de la route) avant
+// qu'elle ne pèse sur le corps de la requête serverless (~4,5 Mo au total,
+// plusieurs photos comprises — cf. `/api/transcribe-photo`).
+export const CONTACT_PHOTO_DATA_URL_MAX = 2_000_000;
+
+/**
+ * Ne rejette jamais la demande pour une photo invalide : une entrée qui
+ * n'est pas une data-URL d'image, ou trop lourde, est silencieusement
+ * écartée plutôt que de faire échouer tout l'envoi — une photo ratée ne
+ * doit jamais faire perdre le message qui l'accompagne.
+ */
+export function validerPhotos(saisie: unknown): string[] {
+  if (!Array.isArray(saisie)) return [];
+  return saisie
+    .filter((v): v is string => typeof v === 'string' && v.startsWith('data:image/') && v.length <= CONTACT_PHOTO_DATA_URL_MAX)
+    .slice(0, CONTACT_PHOTOS_MAX);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Validation de la saisie
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -417,10 +449,21 @@ export type ContexteTicket = {
   /** Déjà réduit par `reduireUserAgent`. */
   browserContext: string | null;
   appVersion: string | null;
+  /**
+   * URL de la fiche admin, à N'INCLURE QUE si la demande porte au moins une
+   * photo (`null` sinon) — construite par l'appelant, jamais ici : cette
+   * fonction reste pure, `siteUrl()` est un accès serveur. Les photos elles-
+   * mêmes ne quittent JAMAIS Supabase (docs/contact-jira.md) : le ticket ne
+   * reçoit qu'un chemin pour aller les voir, jamais leur contenu — même
+   * doctrine que « Coordonnées du demandeur » deux lignes plus bas, qui
+   * renvoie déjà vers ce même écran sans y faire figurer la moindre donnée
+   * personnelle.
+   */
+  photoAdminUrl: string | null;
 };
 
 export function corpsTicketJira(c: ContexteTicket): string {
-  return [
+  const lignes = [
     `Signalement utilisateur — ${c.reference}`,
     '',
     c.message.trim(),
@@ -430,8 +473,12 @@ export function corpsTicketJira(c: ContexteTicket): string {
     `Page : ${c.pageUrl || 'non renseignée'}`,
     `Contexte : ${c.browserContext || CONTEXTE_INCONNU}`,
     `Version : ${c.appVersion || 'non renseignée'}`,
-    `Coordonnées du demandeur : écran d'administration, référence ${c.reference}.`,
-  ].join('\n');
+  ];
+  if (c.photoAdminUrl) {
+    lignes.push(`Photo jointe — à consulter dans l'administration : ${c.photoAdminUrl}`);
+  }
+  lignes.push(`Coordonnées du demandeur : écran d'administration, référence ${c.reference}.`);
+  return lignes.join('\n');
 }
 
 // ─────────────────────────────────────────────────────────────────────────

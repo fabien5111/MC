@@ -12,6 +12,8 @@ import {
   JIRA_SUMMARY_MAX,
   REPONSE_ADMIN_MAX,
   REPONSE_ADMIN_MIN,
+  CONTACT_PHOTO_DATA_URL_MAX,
+  CONTACT_PHOTOS_MAX,
   CONTACT_STATUS_KEYS,
   CONTACT_TYPE_KEYS,
   cheminOrigineValide,
@@ -37,6 +39,7 @@ import {
   resumeTicketJira,
   tronquer,
   validerDemande,
+  validerPhotos,
   validerReponseAdmin,
   verdictDelaiOuverture,
   type ConfigStatutsJira,
@@ -212,6 +215,34 @@ describe('cheminOrigineValide', () => {
   });
 });
 
+describe('validerPhotos', () => {
+  const dataUrl = (octets: number) => `data:image/jpeg;base64,${'A'.repeat(octets)}`;
+
+  it('accepte des data-URL image valides', () => {
+    expect(validerPhotos([dataUrl(100), dataUrl(200)])).toEqual([dataUrl(100), dataUrl(200)]);
+  });
+
+  it("écarte silencieusement ce qui n'est pas une data-URL image, sans faire échouer le reste", () => {
+    expect(validerPhotos(['pas-une-image', 'https://exemple.fr/x.png', dataUrl(50)])).toEqual([dataUrl(50)]);
+  });
+
+  it('borne à CONTACT_PHOTOS_MAX, en gardant les premières', () => {
+    const photos = Array.from({ length: CONTACT_PHOTOS_MAX + 2 }, (_, i) => dataUrl(50 + i));
+    const resultat = validerPhotos(photos);
+    expect(resultat).toHaveLength(CONTACT_PHOTOS_MAX);
+    expect(resultat).toEqual(photos.slice(0, CONTACT_PHOTOS_MAX));
+  });
+
+  it('écarte une entrée trop lourde plutôt que de la tronquer', () => {
+    expect(validerPhotos([dataUrl(CONTACT_PHOTO_DATA_URL_MAX + 1)])).toEqual([]);
+  });
+
+  it("renvoie un tableau vide pour une valeur qui n'est pas un tableau", () => {
+    expect(validerPhotos(undefined)).toEqual([]);
+    expect(validerPhotos('data:image/jpeg;base64,AAAA')).toEqual([]);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────
 // Réduction du user-agent
 // ─────────────────────────────────────────────────────────────────────────
@@ -285,6 +316,7 @@ describe('corpsTicketJira', () => {
         pageUrl: '/recette/tarte-au-citron',
         browserContext: 'Chrome 128 / Android / mobile',
         appVersion: 'a1b2c3d',
+        photoAdminUrl: null,
       }),
     ).toBe(
       [
@@ -310,6 +342,7 @@ describe('corpsTicketJira', () => {
       pageUrl: null,
       browserContext: null,
       appVersion: null,
+      photoAdminUrl: null,
     });
     expect(corps).toContain('Membre : visiteur non connecté');
     expect(corps).toContain('Page : non renseignée');
@@ -324,8 +357,33 @@ describe('corpsTicketJira', () => {
       pageUrl: null,
       browserContext: null,
       appVersion: null,
+      photoAdminUrl: null,
     });
     expect(corps).toContain('Premier paragraphe.\n\nSecond paragraphe.');
+  });
+
+  it("ajoute la ligne de la photo UNIQUEMENT quand photoAdminUrl est renseignée, sans jamais y faire figurer autre chose qu'un lien", () => {
+    const sansPhoto = corpsTicketJira({
+      reference: 'REF-B2C3D4',
+      message: 'Bonjour',
+      userId: null,
+      pageUrl: null,
+      browserContext: null,
+      appVersion: null,
+      photoAdminUrl: null,
+    });
+    expect(sansPhoto).not.toContain('Photo jointe');
+
+    const avecPhoto = corpsTicketJira({
+      reference: 'REF-B2C3D4',
+      message: 'Bonjour',
+      userId: null,
+      pageUrl: null,
+      browserContext: null,
+      appVersion: null,
+      photoAdminUrl: 'https://jepatisse.com/admin/contact/REF-B2C3D4',
+    });
+    expect(avecPhoto).toContain("Photo jointe — à consulter dans l'administration : https://jepatisse.com/admin/contact/REF-B2C3D4");
   });
 });
 

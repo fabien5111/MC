@@ -395,8 +395,12 @@ puisqu'il ne laisse aucune trace.
 Déjà en place, réutilisées telles quelles : `SUPABASE_SERVICE_ROLE_KEY`,
 `CRON_SECRET`, `SES_SMTP_*`, `SES_SENDER_EMAIL`.
 
-Jeu distinct sur `dev.jepatisse.com`, pointant vers un projet Jira de test et
-une adresse de notification de test.
+**Un seul jeu de variables** : Vercel scope par Environnement (Production /
+Preview / Development), jamais par domaine personnalisé, et
+`dev.jepatisse.com` est un domaine de production au sens du projet (cf.
+`CLAUDE.md`) — il n'existe donc pas de jeu « test » séparé pour ce domaine.
+Scoper ces variables à `Preview` en plus de `Production`/`Development` si des
+tests doivent aussi se faire depuis une URL de preview de pull request (§15.5).
 
 **L'URL du webhook est `https://www.jepatisse.com/api/jira/webhook`**, pas
 `https://jepatisse.com/...` : le domaine nu redirige en 308 vers `www`, et un
@@ -650,10 +654,11 @@ l'identique, pour que la mise en route locale n'oublie aucune variable.
 - **Réception des réponses des membres dans le panneau** (§13 de la
   spécification d'origine, V2) : le membre qui répond à l'e-mail reçu
   atterrit dans la boîte `EMAIL_REPLY_TO`, pas dans `/admin/contact`.
-- **Pièces jointes**, **modèles de réponses pré-rédigés**, **suivi du
-  statut visible par le membre sur son compte** (partiellement couvert par
-  la notification in-app, §2.8, mais pas un historique complet) : hors
-  périmètre V1 assumé dès la spécification d'origine.
+- **Modèles de réponses pré-rédigés**, **suivi du statut visible par le
+  membre sur son compte** (partiellement couvert par la notification
+  in-app, §2.8, mais pas un historique complet) : hors périmètre V1 assumé
+  dès la spécification d'origine. Les photos jointes, en revanche, sont
+  couvertes — voir §15.
 
 ### 14.4 Récapitulatif — à vérifier avant mise en service réelle
 
@@ -663,20 +668,134 @@ rouvrir les cinq lots un par un :
 
 1. **SQL du lot 1 exécuté**, puis `npm run gen:types` (les trois tables
    entrent dans `lib/database.types.ts`).
-2. **`is_admin_user()`** se comporte comme attendu pour les policies de
+2. **SQL du lot 7 exécuté** (§15.4 — table `contact_message_photos`), puis
+   `npm run gen:types` de nouveau.
+3. **`is_admin_user()`** se comporte comme attendu pour les policies de
    lecture du back-office (§12.6) — sans quoi `/admin/contact` reste
    silencieusement vide pour un vrai administrateur.
-3. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
+4. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
    sans quoi aucun e-mail (notification admin, réponse, déploiement)
    n'atteint un destinataire non vérifié.
-4. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
+5. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
    `createmeta` (champs obligatoires du projet).
-5. **Toutes les variables d'environnement** listées au §9 renseignées sur
-   Vercel — un jeu distinct sur `dev.jepatisse.com` pointant vers un projet
-   Jira et une adresse de notification de test.
-6. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
+6. **Toutes les variables d'environnement** listées au §9 renseignées sur
+   Vercel, avec le **scope** `Preview` inclus si les tests se font depuis une
+   URL de preview d'une pull request (cf. §15.5) — sans quoi la création de
+   ticket échoue silencieusement sur ces déploiements.
+7. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
    avec la forme réelle du payload confirmée contre le code (§13.7).
-7. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
+8. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
    et relecture juridique de la page.
-8. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
+9. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
    (Hobby suffit — cf. §13.4).
+
+---
+
+## 15. Photos jointes (lot 7)
+
+Retour d'usage après mise en service : pouvoir illustrer un bug par une
+capture d'écran. La demande initiale était de les transmettre à Jira avec
+le ticket — refusé, pour la raison qui suit.
+
+### 15.1 Pourquoi les photos ne partent jamais vers Jira
+
+Le module entier tient sur un invariant : **Jira ne reçoit qu'un ticket
+pseudonymisé** (§7). Une photo est un contenu arbitraire fourni par le
+visiteur — capture d'écran d'une conversation, d'un e-mail, d'un profil
+affichant son nom — rien ne garantit qu'elle ne contient aucune donnée
+personnelle. La transmettre telle quelle romprait l'invariant que
+`corpsTicketJira` et la contrainte SQL `contact_messages_jira_bug_only`
+existent précisément pour garantir. C'est une limite volontaire, pas un
+report technique : aucun filtrage automatique (OCR, détection de visage...)
+n'aurait été fiable à 100 %, et un filtrage imparfait sur une garantie
+RGPD est pire qu'une absence de photo dans le ticket.
+
+**Compromis retenu** : la photo reste dans Supabase, visible uniquement
+dans l'écran d'administration (déjà réservé à l'admin complet et déjà hors
+de portée de Jira). Le ticket Jira reçoit seulement, quand au moins une
+photo est jointe, une ligne de texte et l'URL directe vers la fiche
+d'administration de la demande (`corpsTicketJira`, champ `photoAdminUrl`
+de `ContexteTicket`) :
+
+```
+Photo jointe — à consulter dans l'administration : https://.../admin/contact/<référence>
+```
+
+L'administrateur qui traite le ticket dans Jira a donc un accès direct à
+la photo sans qu'elle ait jamais quitté Supabase.
+
+### 15.2 Stockage — même doctrine que le reste du site
+
+Pas de bucket : les photos sont compressées côté client
+(`lib/images.ts`, `resizeImageToDataUrl` — déjà utilisé par `ImageSlot`) et
+stockées en data-URL, dans une table dédiée `contact_message_photos`
+plutôt qu'une colonne sur `contact_messages` : une demande peut en porter
+plusieurs (jusqu'à `CONTACT_PHOTOS_MAX = 3`), et une colonne unique aurait
+soit plafonné à une seule photo, soit exigé un tableau — moins commode à
+indexer et à faire grandir qu'une ligne par photo.
+
+- **`CONTACT_PHOTOS_MAX = 3`** (`lib/contact.ts`) : un signalement de bug
+  n'a pas besoin d'un album — au-delà, le formulaire désactive l'ajout.
+- **`CONTACT_PHOTO_DATA_URL_MAX = 2_000_000`** caractères par photo :
+  garde-fou applicatif, `validerPhotos` (pure, testée) rejette silencieusement
+  toute entrée qui n'est pas une data-URL `image/*` sous cette taille plutôt
+  que de faire échouer tout l'envoi du formulaire pour une seule photo trop
+  lourde.
+- **`validerPhotos` revalidée côté route** (`POST /api/contact`), jamais
+  seulement côté formulaire — même doctrine que la vérification de pseudo et
+  le commentaire obligatoire sous 3/5 : les contrôles client ne prouvent
+  rien.
+
+### 15.3 Lecture — même partition RLS que le reste du module
+
+`contact_message_photos` suit exactement le motif de `contact_replies` /
+`contact_status_history` (§12.1) : la policy `contact_message_photos_admin_lecture`
+ouvre le `SELECT` à `is_admin_user()`, et **aucune policy d'écriture
+n'existe** — l'insertion (`enregistrerPhotos`, `lib/contact-data.ts`) passe
+par `createAdminClient()` depuis la route publique, jamais par une session
+de navigateur. `getContactPhotos` (`lib/contact-admin-data.ts`) lit avec le
+client de session, comme le reste de l'écran d'administration.
+
+Le badge photo dans la liste (`ContactManager`, icône appareil photo à côté
+de la référence) vient d'une requête groupée sur les `message_id` de la
+page affichée (`getContactMessages`) plutôt que d'un `count` par ligne —
+même raisonnement que le décompte des réponses déjà en place.
+
+### 15.4 SQL
+
+```sql
+create table public.contact_message_photos (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references public.contact_messages(id) on delete cascade,
+  url text not null,
+  order_index smallint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index contact_message_photos_message_id_idx
+  on public.contact_message_photos (message_id);
+
+alter table public.contact_message_photos enable row level security;
+
+create policy contact_message_photos_admin_lecture
+  on public.contact_message_photos
+  for select
+  to authenticated
+  using (is_admin_user());
+```
+
+### 15.5 Gotcha rencontré en cours de route — sans rapport avec les photos
+
+Signalé et résolu pendant la mise au point du lot 5 (Jira), pas du lot 7,
+mais consigné ici faute d'un meilleur endroit : les variables d'environnement
+Vercel sont scopées par **Environnement** (Production / Preview /
+Development), jamais par domaine personnalisé. Un test effectué depuis
+l'URL de preview auto-générée d'une pull request échoue donc silencieusement
+si les variables Jira ne sont scopées qu'à « Production et Development » —
+message d'erreur identique à une vraie variable manquante
+(`variablesJiraManquantes`, §3). `dev.jepatisse.com` est un domaine de
+**production** au sens du projet (cf. `CLAUDE.md`, « Domaines ») : le
+distinguer d'un « environnement de test Jira » séparé, comme envisagé plus
+tôt dans ce document, n'est ni possible (Vercel ne scope pas par domaine)
+ni nécessaire (c'est déjà la production réelle). Le §9 ne liste donc qu'un
+seul jeu de variables Jira, pas un jeu « test » et un jeu « prod ».

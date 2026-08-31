@@ -17,6 +17,7 @@ import {
   premierChampEnErreur,
   reduireUserAgent,
   validerDemande,
+  validerPhotos,
   verdictDelaiOuverture,
   type SaisieDemande,
 } from '@/lib/contact';
@@ -25,11 +26,13 @@ import {
   debitMembreDepasse,
   empreinteIp,
   enregistrerDemande,
+  enregistrerPhotos,
   marquerJira,
   notifierAdmin,
   verifierOuverture,
 } from '@/lib/contact-data';
 import { creerTicketJira } from '@/lib/jira';
+import { siteUrl } from '@/lib/site-url';
 
 export const maxDuration = 20;
 
@@ -55,6 +58,7 @@ export async function POST(req: Request) {
     formToken?: unknown;
     pageUrl?: unknown;
     appVersion?: unknown;
+    photos?: unknown;
   }) | null;
   if (!body) return NextResponse.json({ ok: false }, { status: 400 });
 
@@ -113,6 +117,10 @@ export async function POST(req: Request) {
   const pageUrl = typeof body.pageUrl === 'string' ? body.pageUrl.slice(0, 2048) : null;
   const browserContext = reduireUserAgent(req.headers.get('user-agent'));
   const appVersion = typeof body.appVersion === 'string' ? body.appVersion.slice(0, 40) : null;
+  // Compressées côté client (lib/images.ts) avant envoi ; une entrée invalide
+  // ou trop lourde est silencieusement écartée (validerPhotos), jamais
+  // bloquante pour le reste de la demande.
+  const photos = validerPhotos(body.photos);
 
   const resultat = await enregistrerDemande({
     type: validation.data.type,
@@ -134,6 +142,11 @@ export async function POST(req: Request) {
   // Le statut initial `recu` est déjà lisible sur la ligne (`created_at` +
   // `status`) ; l'historique ne s'ouvre qu'au premier changement réel.
 
+  // Photos : restent dans Supabase, ne partent JAMAIS vers Jira — best-effort,
+  // après l'INSERT principal, sans jamais conditionner la réponse au
+  // demandeur (docs/contact-jira.md).
+  await enregistrerPhotos(resultat.id, photos);
+
   // Création du ticket Jira (spec §8), UNIQUEMENT pour un signalement de bug
   // — `donnees-personnelles` n'y va JAMAIS (garantie doublée par la
   // contrainte SQL `contact_messages_jira_bug_only`, lot 1). Best-effort :
@@ -149,6 +162,9 @@ export async function POST(req: Request) {
       pageUrl,
       browserContext,
       appVersion,
+      // Jamais la photo elle-même dans le ticket — seulement un lien vers
+      // l'écran où elle est visible, et seulement si une photo existe.
+      photoAdminUrl: photos.length > 0 ? `${siteUrl()}/admin/contact/${resultat.reference}` : null,
     });
     await marquerJira(resultat.id, ticket);
     if (ticket.ok) jiraIssueKey = ticket.issueKey;

@@ -30,7 +30,7 @@ import {
   type ContactStatus,
 } from '@/lib/contact';
 import type { ContactDetail as ContactDetailRow } from '@/lib/contact-admin-data';
-import type { ContactReplyRow, ContactStatusHistoryRow } from '@/lib/contact-types';
+import type { ContactMessagePhotoRow, ContactReplyRow, ContactStatusHistoryRow } from '@/lib/contact-types';
 
 function Copiable({ valeur, affichage }: { valeur: string; affichage: string }) {
   const [copie, setCopie] = useState(false);
@@ -100,11 +100,13 @@ export function ContactDetail({
   message,
   replies,
   history,
+  photos,
   jiraUrl,
 }: {
   message: ContactDetailRow;
   replies: ContactReplyRow[];
   history: ContactStatusHistoryRow[];
+  photos: ContactMessagePhotoRow[];
   jiraUrl: string | null;
 }) {
   const router = useRouter();
@@ -263,6 +265,23 @@ export function ContactDetail({
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
           <h1 className="font-headline-md text-lg text-primary mb-3">{message.subject}</h1>
           <p className="whitespace-pre-wrap text-[14.5px] leading-relaxed text-on-surface">{message.message}</p>
+
+          {photos.length > 0 && (
+            <div className="mt-4 border-t border-outline-variant pt-4">
+              <p className="mb-2 text-[11.5px] uppercase tracking-wide text-on-surface-variant">
+                Photo{photos.length > 1 ? 's' : ''} jointe{photos.length > 1 ? 's' : ''} — jamais transmise
+                {photos.length > 1 ? 's' : ''} à Jira
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {photos.map((p) => (
+                  <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" className="block h-24 w-24 overflow-hidden rounded-lg border border-outline-variant">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- data-URL */}
+                    <img src={p.url} alt="" className="h-full w-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bloc identité */}

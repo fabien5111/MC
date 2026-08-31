@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireFullAdmin } from '@/lib/auth';
 import { estReference } from '@/lib/contact';
-import { getContactMessageByReference, getContactReplies, getContactStatusHistory } from '@/lib/contact-admin-data';
+import {
+  getContactMessageByReference,
+  getContactPhotos,
+  getContactReplies,
+  getContactStatusHistory,
+} from '@/lib/contact-admin-data';
 import { ContactDetail } from '@/components/admin/ContactDetail';
 
 export const metadata: Metadata = { title: 'Demande de contact | Admin — Je pâtisse !' };
@@ -24,7 +29,11 @@ export default async function AdminContactDetailPage({
   const message = await getContactMessageByReference(reference);
   if (!message) notFound();
 
-  const [replies, history] = await Promise.all([getContactReplies(message.id), getContactStatusHistory(message.id)]);
+  const [replies, history, photos] = await Promise.all([
+    getContactReplies(message.id),
+    getContactStatusHistory(message.id),
+    getContactPhotos(message.id),
+  ]);
 
   // Construite ici : `JIRA_BASE_URL` est une variable serveur, jamais
   // exposée au navigateur — seul le lien final (public, sans secret) passe
@@ -42,7 +51,7 @@ export default async function AdminContactDetailPage({
           <span className="material-symbols-outlined text-sm">arrow_back</span> Contact
         </Link>
       </header>
-      <ContactDetail message={message} replies={replies} history={history} jiraUrl={jiraUrl} />
+      <ContactDetail message={message} replies={replies} history={history} photos={photos} jiraUrl={jiraUrl} />
     </>
   );
 }

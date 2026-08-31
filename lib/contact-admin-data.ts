@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { withContactSchema } from '@/lib/contact-types';
 import type {
+  ContactMessagePhotoRow,
   ContactMessageRow,
   ContactReplyRow,
   ContactStatusHistoryRow,
@@ -29,6 +30,7 @@ import {
 } from '@/lib/contact';
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
 import { sendEmailBestEffort } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Liste (fenêtre bornée, filtres statut/type appliqués côté serveur)
@@ -54,6 +56,7 @@ export type ContactListRow = Pick<
   authorName: string | null;
   replyCount: number;
   hasFailedReply: boolean;
+  hasPhotos: boolean;
 };
 
 // Cases à cocher, multi-sélection (spec §11.2) : chaque tableau porte
@@ -96,11 +99,12 @@ export async function getContactMessages(filters: ContactListFilters): Promise<C
   const userIds = [...new Set(lignes.map((l) => l.user_id).filter((v): v is string => !!v))];
   const ids = lignes.map((l) => l.id);
 
-  const [{ data: profils }, { data: reponses }] = await Promise.all([
+  const [{ data: profils }, { data: reponses }, { data: photos }] = await Promise.all([
     userIds.length
       ? client.from('profiles').select('id, full_name').in('id', userIds)
       : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
     client.from('contact_replies').select('message_id, email_status').in('message_id', ids),
+    client.from('contact_message_photos').select('message_id').in('message_id', ids),
   ]);
 
   const nomParUser = new Map((profils ?? []).map((p) => [p.id, p.full_name]));
@@ -111,9 +115,11 @@ export async function getContactMessages(filters: ContactListFilters): Promise<C
     if (r.email_status === 'failed') courant.echec = true;
     reponsesParMessage.set(r.message_id, courant);
   }
+  const messagesAvecPhoto = new Set((photos ?? []).map((p) => p.message_id));
 
   return lignes.map((l) => ({
     ...l,
+    hasPhotos: messagesAvecPhoto.has(l.id),
     authorName: l.user_id ? (nomParUser.get(l.user_id) ?? null) : null,
     replyCount: reponsesParMessage.get(l.id)?.total ?? 0,
     hasFailedReply: reponsesParMessage.get(l.id)?.echec ?? false,
@@ -202,6 +208,18 @@ export async function getContactStatusHistory(messageId: string): Promise<Contac
     .select('*')
     .eq('message_id', messageId)
     .order('changed_at', { ascending: false });
+  return data ?? [];
+}
+
+// Ne partent JAMAIS vers Jira (docs/contact-jira.md) : visibles uniquement
+// dans cette fiche admin.
+export async function getContactPhotos(messageId: string): Promise<ContactMessagePhotoRow[]> {
+  const client = withContactSchema(await createClient());
+  const { data } = await client
+    .from('contact_message_photos')
+    .select('*')
+    .eq('message_id', messageId)
+    .order('order_index', { ascending: true });
   return data ?? [];
 }
 
@@ -294,6 +312,11 @@ export async function relancerCreationTicket(messageId: string): Promise<Resulta
   if (!message) return { ok: false, error: 'Demande introuvable.' };
   if (message.type !== 'bug') return { ok: false, error: "Cette demande n'est pas un signalement de bug." };
 
+  const { count: nbPhotos } = await client
+    .from('contact_message_photos')
+    .select('id', { count: 'exact', head: true })
+    .eq('message_id', messageId);
+
   const resultat = await creerTicketJira({
     reference: message.reference,
     subject: message.subject,
@@ -302,6 +325,7 @@ export async function relancerCreationTicket(messageId: string): Promise<Resulta
     pageUrl: message.page_url,
     browserContext: message.browser_context,
     appVersion: message.app_version,
+    photoAdminUrl: (nbPhotos ?? 0) > 0 ? `${siteUrl()}/admin/contact/${message.reference}` : null,
   });
 
   await client

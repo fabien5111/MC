@@ -182,6 +182,25 @@ export async function enregistrerDemande(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Photos jointes — restent dans Supabase, ne partent jamais vers Jira
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Best-effort, comme le reste de ce qui suit l'INSERT principal : une photo
+ * qui échoue à s'enregistrer ne doit jamais faire perdre la demande déjà
+ * validée. `urls` est déjà passée par `validerPhotos` (lib/contact.ts) —
+ * cette fonction ne fait qu'écrire ce qu'on lui donne.
+ */
+export async function enregistrerPhotos(messageId: string, urls: string[]): Promise<void> {
+  if (urls.length === 0) return;
+  const client = withContactSchema(createAdminClient());
+  const { error } = await client
+    .from('contact_message_photos')
+    .insert(urls.map((url, index) => ({ message_id: messageId, url, order_index: index })));
+  if (error) console.error('contact: enregistrement des photos échoué :', error.message);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Création du ticket Jira — résultat journalisé sur la ligne (spec §8)
 // ─────────────────────────────────────────────────────────────────────────
 
