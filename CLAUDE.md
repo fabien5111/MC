@@ -965,6 +965,65 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Installation (PWA)
+
+Le site est installable (icône sur l'écran d'accueil, mode `standalone`) via
+`public/manifest.json`. Longtemps sans service worker actif — un choix
+délibéré, pas un oubli — jusqu'à ce que ça bloque l'installation sur un
+navigateur précis.
+
+- **Chrome/Edge n'exigent plus de service worker pour installer** depuis
+  respectivement leurs versions 108 (mobile) et 112 (desktop) : un manifeste
+  valide en HTTPS suffit à proposer l'installation. **Samsung Internet, lui,
+  l'exige toujours** — manifeste valide *et* service worker portant un
+  gestionnaire `fetch` — sans quoi aucune bannière n'apparaît, quel que soit le
+  manifeste. D'où le retour d'un vrai service worker (`app/sw.js/route.ts`),
+  après l'avoir neutralisé pendant la migration Next.js (cf. ci-dessous).
+- **Historique — pourquoi il n'y en avait plus.** La version vanilla du site
+  enregistrait un service worker sur ce domaine. Resté actif dans les
+  navigateurs des visiteurs après le passage à Next.js, il continuait de
+  servir des pages depuis son cache en ignorant le `no-store` envoyé par le
+  serveur — le carnet de recettes affichait un état périmé qu'un simple F5 ne
+  corrigeait pas, seul un vidage manuel du cache y parvenait. `/sw.js` a donc
+  longtemps été un worker **auto-destructeur** (se désenregistre lui-même,
+  purge les caches, recharge les onglets ouverts) — un service worker ne
+  pouvant pas être désinscrit à distance, c'est la seule méthode fiable pour
+  atteindre les navigateurs qui le portent encore.
+- **Garde-fou du nouveau worker, impératif : jamais de HTML dynamique ni de
+  réponse d'API en cache.** Toute navigation passe en réseau d'abord ; le
+  cache n'intervient qu'en dernier recours, hors ligne, et ne sert alors que
+  `/hors-ligne` — une page statique dédiée, sans dépendance à une donnée que
+  le worker ne peut pas fournir hors ligne. Seuls quelques fichiers immuables
+  (icônes, manifeste) sont précachés. C'est ce qui permet de réintroduire un
+  service worker sans rejouer la régression ci-dessus.
+- **Servi par une route (`app/sw.js/route.ts`), pas par `public/`** : ça
+  permet un interrupteur d'arrêt côté serveur (`PWA_DISABLE_SERVICE_WORKER`,
+  cf. tableau des variables d'environnement) — engagé, la route sert le worker
+  auto-destructeur de l'historique ci-dessus, sans toucher au code du
+  navigateur. Le nom du cache est dérivé de `VERCEL_GIT_COMMIT_SHA` : chaque
+  déploiement purge donc le précédent à l'activation, sans version à
+  incrémenter à la main.
+- **`ServiceWorkerRegistrar`** (`components/ServiceWorkerRegistrar.tsx`,
+  monté dans le layout racine) désinscrit tout enregistrement qui ne pointe
+  pas vers `/sw.js` actuel — reliquat de la version vanilla ou enregistrement
+  fait sous un autre chemin — avant d'enregistrer le worker courant. Il
+  n'a rien à connaître de l'interrupteur d'arrêt : `register('/sw.js')`
+  installe tel quel ce que la route sert.
+- **Bouton d'installation maison** (`components/InstallPwaBanner.tsx`,
+  `lib/use-install-prompt.ts`) : Chrome/Edge et Samsung Internet antérieur à
+  la version 27 émettent `beforeinstallprompt`, capté pour afficher un bouton
+  qui déclenche l'invite native au clic plutôt que la mini-infobar du
+  navigateur. **Samsung Internet ≥ 27 ne l'émet plus** — Samsung a choisi de
+  piloter l'installation depuis son propre menu plutôt que par cet événement
+  Chrome — la bannière bascule alors, après un court délai sans événement, sur
+  une fiche d'instructions (menu ⋮ → « Ajouter une page à »). Même repli pour
+  Safari iOS, qui n'a jamais émis cet événement.
+- **Rejet temporaire, pas définitif** (`localStorage`, 30 jours) : fermer la
+  bannière une fois ne dit pas qu'on ne veut jamais installer l'application.
+- **Visible aux visiteurs comme aux membres** : installer l'application n'est
+  pas une action de compte, la bannière est montée dans le layout racine, hors
+  de toute condition de session.
+
 ## Données de référence (cache)
 
 Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
@@ -1078,6 +1137,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `COMMENT_MODERATION_MODEL` | Modèle du score IA sur les avis d'une fournée terminée (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 | `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
+| `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Un changement ne prend effet qu'au prochain déploiement Vercel (variable lue côté serveur, pas au build). | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
 

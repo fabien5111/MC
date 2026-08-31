@@ -5,20 +5,11 @@ const nextConfig = {
       { protocol: 'https', hostname: 'acbabqolghhyxksouaye.supabase.co' },
     ],
   },
-  async headers() {
-    return [
-      {
-        // Le service worker auto-destructeur ne doit jamais être servi depuis
-        // un cache intermédiaire : sa raison d'être est justement d'atteindre
-        // les navigateurs porteurs de l'ancien worker.
-        source: '/sw.js',
-        headers: [
-          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
-          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
-        ],
-      },
-    ];
-  },
+  // Rien ici pour `/sw.js` : il est désormais servi par `app/sw.js/route.ts`,
+  // qui pose lui-même `Cache-Control: no-store` et son `Content-Type` — un
+  // service worker ne doit jamais être servi depuis un cache intermédiaire,
+  // sans quoi le navigateur mettrait des heures à voir un remplacement
+  // (interrupteur d'arrêt compris).
 };
 
 export default nextConfig;

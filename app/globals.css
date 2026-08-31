@@ -490,6 +490,26 @@ body {
   bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
+/* Bannière d'installation PWA (components/InstallPwaBanner.tsx). Même motif
+   que `.recipe-toc-fab[data-inset='nav']` : posée au-dessus de la barre de
+   navigation basse en dessous de 1024 px, où elle est fixe ; au ras du bas
+   au-dessus, où il n'y a plus de barre à dégager. */
+.pwa-install-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--mobile-nav-h) + 12px);
+  z-index: 40;
+}
+@media (min-width: 1024px) {
+  .pwa-install-banner {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    width: 380px;
+  }
+}
+
 /* Hauteur du contenu, plafonnée à 70 % de l'écran : une liste de sections
    courte ne doit pas occuper tout l'écran, contrairement au tiroir de filtres
    (fixé à 88 %) qui a toujours ses huit facettes à montrer. */
