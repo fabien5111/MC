@@ -6,7 +6,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireFullAdmin } from '@/lib/auth';
-import { isContactStatus, isContactType } from '@/lib/contact';
+import { parseStatutsSelectionnes, parseTypesSelectionnes } from '@/lib/contact';
 import { getContactAnomalyCounts, getContactMessages } from '@/lib/contact-admin-data';
 import { ContactManager } from '@/components/admin/ContactManager';
 
@@ -15,19 +15,20 @@ export const metadata: Metadata = { title: 'Contact | Admin — Je pâtisse !' }
 export default async function AdminContactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ statut?: string; type?: string }>;
+  searchParams: Promise<{ statuts?: string; types?: string }>;
 }) {
   await requireFullAdmin();
   const sp = await searchParams;
 
-  // Aucun paramètre → vue par défaut sur « À déployer » (spec §11.2) : la
-  // liste de ce qui part à la prochaine mise en production. `statut=tous`
-  // (chip « Tous les statuts ») lève le filtre.
-  const statut = sp.statut === 'tous' ? undefined : isContactStatus(sp.statut) ? sp.statut : 'a_deployer';
-  const type = isContactType(sp.type) ? sp.type : undefined;
+  // Paramètre absent → tout coché (défaut demandé : la liste montre tout
+  // tant qu'on n'a rien filtré). `parseStatutsSelectionnes`/
+  // `parseTypesSelectionnes` (lib/contact.ts, pures) distinguent l'absence
+  // de la sélection explicitement vide qu'écrit « Tout décocher ».
+  const statuses = parseStatutsSelectionnes(sp.statuts);
+  const types = parseTypesSelectionnes(sp.types);
 
   const [rows, anomalies] = await Promise.all([
-    getContactMessages({ status: statut, type }),
+    getContactMessages({ statuses, types }),
     getContactAnomalyCounts(),
   ]);
 
@@ -39,7 +40,7 @@ export default async function AdminContactPage({
           <span className="material-symbols-outlined text-sm">arrow_back</span> Tableau de bord
         </Link>
       </header>
-      <ContactManager rows={rows} anomalies={anomalies} currentStatus={statut} currentType={type} />
+      <ContactManager rows={rows} anomalies={anomalies} currentStatuses={statuses} currentTypes={types} />
     </>
   );
 }

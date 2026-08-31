@@ -882,3 +882,25 @@ export const CONTACT_LISTE_MAX = 200;
 
 // Longueur de sujet affichée dans la liste avant troncature.
 export const SUJET_LISTE_MAX = 60;
+
+// ─────────────────────────────────────────────────────────────────────────
+// Filtres statut/type de la liste — cases à cocher, multi-sélection
+// ─────────────────────────────────────────────────────────────────────────
+
+// Paramètres `?statuts=`/`?types=` : une liste de valeurs séparées par des
+// virgules. **Absent** de l'URL → tout coché (comportement par défaut voulu :
+// la liste montre tout tant qu'on n'a touché à rien). Présent mais **vide**
+// (`?statuts=`) → rien coché, distinct de l'absence : c'est ce qu'écrit le
+// bouton « Tout décocher », qui doit rester « rien » à la prochaine visite,
+// pas retomber sur le défaut.
+export function parseStatutsSelectionnes(raw: string | undefined): ContactStatus[] {
+  if (raw === undefined) return [...CONTACT_STATUS_KEYS];
+  if (raw === '') return [];
+  return raw.split(',').filter(isContactStatus);
+}
+
+export function parseTypesSelectionnes(raw: string | undefined): ContactType[] {
+  if (raw === undefined) return [...CONTACT_TYPE_KEYS];
+  if (raw === '') return [];
+  return raw.split(',').filter(isContactType);
+}

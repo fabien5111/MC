@@ -19,7 +19,14 @@ import type {
   ContactReplyRow,
   ContactStatusHistoryRow,
 } from '@/lib/contact-types';
-import { composeReponseAdmin, dateClotureApres, type ContactStatus, type ContactType } from '@/lib/contact';
+import {
+  CONTACT_STATUS_KEYS,
+  CONTACT_TYPE_KEYS,
+  composeReponseAdmin,
+  dateClotureApres,
+  type ContactStatus,
+  type ContactType,
+} from '@/lib/contact';
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
 import { sendEmailBestEffort } from '@/lib/email';
 
@@ -49,7 +56,13 @@ export type ContactListRow = Pick<
   hasFailedReply: boolean;
 };
 
-export type ContactListFilters = { status?: ContactStatus; type?: ContactType };
+// Cases à cocher, multi-sélection (spec §11.2) : chaque tableau porte
+// l'ensemble des valeurs COCHÉES, jamais un filtre unique. `statuses`/`types`
+// couvrant tout l'ensemble possible équivaut à « aucun filtre » (défaut à
+// l'ouverture, cf. `parseStatutsSelectionnes` / `parseTypesSelectionnes`
+// dans `lib/contact.ts`, pures et testées) ; un tableau VIDE signifie
+// « décoché partout », qui ne doit renvoyer aucune ligne.
+export type ContactListFilters = { statuses: ContactStatus[]; types: ContactType[] };
 
 const LISTE_COLONNES =
   'id, reference, created_at, status, type, user_id, email, subject, jira_issue_key, jira_sync_status, jira_status, admin_notify_error, deploy_email_status, deploy_email_error';
@@ -60,11 +73,18 @@ const LISTE_COLONNES =
  * filtre statut/type reste le seul moyen d'atteindre les plus anciennes.
  */
 export async function getContactMessages(filters: ContactListFilters): Promise<ContactListRow[]> {
+  // Court-circuit : une case décochée sur toute une colonne ne peut renvoyer
+  // aucune ligne — inutile d'interroger la base pour le vérifier.
+  if (filters.statuses.length === 0 || filters.types.length === 0) return [];
+
   const client = withContactSchema(await createClient());
 
   let requete = client.from('contact_messages').select(LISTE_COLONNES).order('created_at', { ascending: false }).limit(200);
-  if (filters.status) requete = requete.eq('status', filters.status);
-  if (filters.type) requete = requete.eq('type', filters.type);
+  // `.in()` avec la liste COMPLÈTE des valeurs possibles équivaut à filtre
+  // absent, mais l'omettre carrément évite à Postgres une clause `IN` inutile
+  // dans le cas — le plus courant — où tout est coché.
+  if (filters.statuses.length < CONTACT_STATUS_KEYS.length) requete = requete.in('status', filters.statuses);
+  if (filters.types.length < CONTACT_TYPE_KEYS.length) requete = requete.in('type', filters.types);
   const { data, error } = await requete;
   if (error) {
     console.error('contact-admin: liste des demandes illisible :', error.message);

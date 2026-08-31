@@ -3,13 +3,16 @@
 // Liste des demandes de contact (Admin → Contact, spec §11.2).
 //
 // Le tri et la recherche sont instantanés dans la fenêtre de 200 lignes déjà
-// servie par le serveur ; les filtres statut/type, eux, sont des LIENS qui
-// changent l'URL — c'est le serveur qui les applique, ce qui seul permet
-// d'atteindre des demandes plus anciennes que la fenêtre (cf.
-// docs/contact-jira.md §2.6). Toute action de mutation (changer le statut,
-// répondre, supprimer…) vit dans la vue détail : cette liste ne fait que
-// montrer et laisser filtrer/chercher.
+// servie par le serveur ; les filtres statut/type, eux, sont des cases à
+// cocher qui réécrivent l'URL (`router.replace`) — c'est le serveur qui les
+// applique, ce qui seul permet d'atteindre des demandes plus anciennes que
+// la fenêtre (cf. docs/contact-jira.md §2.6). Toute case décochée réduit
+// l'ensemble affiché ; tout décocher une colonne entière renvoie une liste
+// vide, pas un retour au filtre par défaut. Toute action de mutation
+// (changer le statut, répondre, supprimer…) vit dans la vue détail : cette
+// liste ne fait que montrer et laisser filtrer/chercher.
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   CONTACT_STATUSES,
@@ -31,16 +34,41 @@ function estEnAnomalie(r: ContactListRow): boolean {
   return r.jira_sync_status === 'failed' || !!r.admin_notify_error || r.deploy_email_status === 'failed' || r.hasFailedReply;
 }
 
-function ChipLien({ href, actif, children }: { href: string; actif: boolean; children: React.ReactNode }) {
+// Groupe de cases à cocher générique (statuts ou types) + « Tout cocher » /
+// « Tout décocher ». `T` est `ContactStatus` ou `ContactType` selon l'appel.
+function GroupeCoche<T extends string>({
+  toutes,
+  cochees,
+  libelle,
+  onChange,
+}: {
+  toutes: readonly T[];
+  cochees: T[];
+  libelle: (v: T) => string;
+  onChange: (next: T[]) => void;
+}) {
+  const set = new Set(cochees);
   return (
-    <Link
-      href={href}
-      className={`rounded-full border px-3.5 py-1.5 font-label-md text-[13px] transition-colors ${
-        actif ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'
-      }`}
-    >
-      {children}
-    </Link>
+    <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+      {toutes.map((v) => (
+        <label key={v} className="flex items-center gap-1.5 text-[13px] text-on-surface">
+          <input
+            type="checkbox"
+            checked={set.has(v)}
+            onChange={(e) => onChange(e.target.checked ? [...cochees, v] : cochees.filter((c) => c !== v))}
+            className="accent-primary"
+          />
+          {libelle(v)}
+        </label>
+      ))}
+      <span className="mx-1 h-4 w-px bg-outline-variant" aria-hidden="true" />
+      <button type="button" onClick={() => onChange([...toutes])} className="text-[12.5px] font-semibold text-primary hover:underline">
+        Tout cocher
+      </button>
+      <button type="button" onClick={() => onChange([])} className="text-[12.5px] font-semibold text-on-surface-variant hover:underline">
+        Tout décocher
+      </button>
+    </div>
   );
 }
 
@@ -82,14 +110,15 @@ function BandeauAnomalies({ anomalies }: { anomalies: ContactAnomalyCounts }) {
 export function ContactManager({
   rows,
   anomalies,
-  currentStatus,
-  currentType,
+  currentStatuses,
+  currentTypes,
 }: {
   rows: ContactListRow[];
   anomalies: ContactAnomalyCounts;
-  currentStatus: ContactStatus | undefined;
-  currentType: ContactType | undefined;
+  currentStatuses: ContactStatus[];
+  currentTypes: ContactType[];
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [anomaliesUniquement, setAnomaliesUniquement] = useState(false);
 
@@ -107,36 +136,34 @@ export function ContactManager({
     });
   }, [rows, query, anomaliesUniquement]);
 
-  function paramsAvec(overrides: { statut?: string; type?: string }): string {
+  // Toujours écrit explicitement les DEUX paramètres, y compris quand
+  // l'ensemble coché correspond à « tout » — plus simple et plus robuste que
+  // de tenter de retomber sur l'absence de paramètre, et sans conséquence :
+  // `parseStatutsSelectionnes`/`parseTypesSelectionnes` traitent la liste
+  // complète exactement comme l'absence.
+  function naviguer(statuses: ContactStatus[], types: ContactType[]) {
     const params = new URLSearchParams();
-    const statut = 'statut' in overrides ? overrides.statut : currentStatus;
-    const type = 'type' in overrides ? overrides.type : currentType;
-    if (statut) params.set('statut', statut);
-    if (type) params.set('type', type);
-    const s = params.toString();
-    return s ? `/admin/contact?${s}` : '/admin/contact';
+    params.set('statuts', statuses.join(','));
+    params.set('types', types.join(','));
+    router.replace(`/admin/contact?${params.toString()}`, { scroll: false });
   }
 
   return (
     <main className="flex-1 overflow-y-auto p-gutter lg:px-margin-desktop lg:py-12 bg-surface">
       <BandeauAnomalies anomalies={anomalies} />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <ChipLien href={paramsAvec({ statut: 'tous' })} actif={currentStatus === undefined}>Tous les statuts</ChipLien>
-        {CONTACT_STATUS_KEYS.map((s) => (
-          <ChipLien key={s} href={paramsAvec({ statut: s })} actif={currentStatus === s}>
-            {CONTACT_STATUSES[s].label}
-          </ChipLien>
-        ))}
-      </div>
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <ChipLien href={paramsAvec({ type: 'tous' })} actif={currentType === undefined}>Tous les types</ChipLien>
-        {CONTACT_TYPE_KEYS.map((t) => (
-          <ChipLien key={t} href={paramsAvec({ type: t })} actif={currentType === t}>
-            {CONTACT_TYPES[t].labelCourt}
-          </ChipLien>
-        ))}
-      </div>
+      <GroupeCoche
+        toutes={CONTACT_STATUS_KEYS}
+        cochees={currentStatuses}
+        libelle={(s) => CONTACT_STATUSES[s].label}
+        onChange={(next) => naviguer(next, currentTypes)}
+      />
+      <GroupeCoche
+        toutes={CONTACT_TYPE_KEYS}
+        cochees={currentTypes}
+        libelle={(t) => CONTACT_TYPES[t].labelCourt}
+        onChange={(next) => naviguer(currentStatuses, next)}
+      />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[220px]">

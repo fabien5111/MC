@@ -483,13 +483,28 @@ mutation (`PATCH`/`DELETE /api/admin/contact/[id]`) utilisent en revanche
 l'UUID : la page détail le connaît une fois la ligne chargée, et un
 identifiant interne dans une URL d'API n'a pas besoin d'être lisible.
 
-### 12.3 Vue par défaut sur « À déployer »
+### 12.3 Filtres statut/type — cases à cocher, tout coché par défaut
 
-Conforme au §11.2 de la spécification. Tant que le lot suivant (webhook +
-réconciliation Jira) n'est pas en service, rien ne fait automatiquement
-transiter une demande vers ce statut — la vue par défaut peut donc paraître
-vide au démarrage. Le chip « Tous les statuts » lève le filtre en un clic ;
-ce n'est pas un défaut à corriger, juste l'état transitoire avant le lot 5.
+**Écart demandé par l'utilisateur, qui remplace la version initiale de ce
+lot.** La spécification (§11.2) proposait un filtre à valeur unique par
+colonne, avec une vue par défaut sur « À déployer » ; la première version de
+cet écran suivait cette proposition via des liens à sélection simple
+(`?statut=`/`?type=`).
+
+Remplacé par des **cases à cocher en multi-sélection** — `?statuts=` et
+`?types=`, listes séparées par des virgules — avec **tout coché par défaut**
+(paramètre absent) et un bouton « Tout cocher » / « Tout décocher » par
+colonne. Une colonne entièrement décochée renvoie une liste **vide**, pas un
+retour au défaut : `parseStatutsSelectionnes`/`parseTypesSelectionnes`
+(`lib/contact.ts`, pures, testées) distinguent explicitement l'absence du
+paramètre (tout) d'une valeur vide `?statuts=` (rien).
+
+`getContactMessages` (`lib/contact-admin-data.ts`) applique `.in(...)`
+plutôt que `.eq(...)`, avec deux court-circuits : un ensemble vide sur
+n'importe laquelle des deux colonnes renvoie `[]` sans interroger la base, et
+un ensemble couvrant TOUTES les valeurs possibles omet la clause `IN`
+(équivalent à « pas de filtre », mais sans faire porter à Postgres une
+clause inutile dans le cas — le plus courant — où rien n'est filtré).
 
 ### 12.4 Le bandeau d'anomalies porte sur TOUTE la table, pas sur la fenêtre affichée
 

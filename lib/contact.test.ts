@@ -12,6 +12,8 @@ import {
   JIRA_SUMMARY_MAX,
   REPONSE_ADMIN_MAX,
   REPONSE_ADMIN_MIN,
+  CONTACT_STATUS_KEYS,
+  CONTACT_TYPE_KEYS,
   cheminOrigineValide,
   composeEmailDeploiement,
   composeNotificationAdmin,
@@ -28,6 +30,8 @@ import {
   jiraPeutEcraser,
   mapperStatutJira,
   memeStatutJira,
+  parseStatutsSelectionnes,
+  parseTypesSelectionnes,
   premierChampEnErreur,
   reduireUserAgent,
   resumeTicketJira,
@@ -768,5 +772,45 @@ describe('composeNotificationDeploiement', () => {
     const { title, body } = composeNotificationDeploiement('Les quantités ne se recalculent pas');
     expect(title).toBeTruthy();
     expect(body).toContain('Les quantités ne se recalculent pas');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Filtres statut/type de la liste d'administration
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('parseStatutsSelectionnes', () => {
+  it('coche tout par défaut quand le paramètre est absent', () => {
+    expect(parseStatutsSelectionnes(undefined)).toEqual(CONTACT_STATUS_KEYS);
+  });
+
+  it("distingue l'absence (tout) d'une sélection explicitement vide (rien)", () => {
+    expect(parseStatutsSelectionnes('')).toEqual([]);
+  });
+
+  it('lit une liste de valeurs séparées par des virgules', () => {
+    expect(parseStatutsSelectionnes('recu,termine')).toEqual(['recu', 'termine']);
+  });
+
+  it('ignore silencieusement une valeur invalide plutôt que de faire échouer tout le filtre', () => {
+    expect(parseStatutsSelectionnes('recu,pas-un-statut,termine')).toEqual(['recu', 'termine']);
+  });
+});
+
+describe('parseTypesSelectionnes', () => {
+  it('coche tout par défaut quand le paramètre est absent', () => {
+    expect(parseTypesSelectionnes(undefined)).toEqual(CONTACT_TYPE_KEYS);
+  });
+
+  it("distingue l'absence (tout) d'une sélection explicitement vide (rien)", () => {
+    expect(parseTypesSelectionnes('')).toEqual([]);
+  });
+
+  it('lit une liste de valeurs séparées par des virgules', () => {
+    expect(parseTypesSelectionnes('bug,question')).toEqual(['bug', 'question']);
+  });
+
+  it('ignore silencieusement une valeur invalide', () => {
+    expect(parseTypesSelectionnes('bug,pas-un-type')).toEqual(['bug']);
   });
 });
