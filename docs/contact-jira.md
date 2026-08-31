@@ -280,6 +280,36 @@ retient que navigateur, version majeure, système et type d'appareil — et
 quand elle ne reconnaît rien, elle renvoie une **constante**, jamais un
 fragment de la chaîne d'origine.
 
+### 7.1 Création du ticket (`lib/jira.ts`)
+
+Appelée depuis `/api/contact` juste après l'INSERT, uniquement pour
+`type = 'bug'` — jamais pour `donnees-personnelles`, garantie **doublée** par
+la contrainte SQL `contact_messages_jira_bug_only` (lot 1) : même un appel
+fait par erreur depuis un autre chemin de code échouerait à l'écriture.
+
+- **`summary`** vient de `resumeTicketJira(subject)` — le sujet SEUL, jamais
+  la référence ni le message : ce sont eux, avec le reste du contexte, que
+  porte la `description`.
+- **`description`** est le texte de `corpsTicketJira` (§7), converti en ADF
+  par `texteVersAdf` : une ligne vide sépare deux paragraphes, un saut de
+  ligne simple à l'intérieur d'un bloc devient un `hardBreak` — Jira n'a pas
+  de retour à la ligne automatique dans un nœud `text`.
+- **Aucun champ `reporter`** : un membre n'a pas de compte Jira, le
+  renseigner échouerait ou pointerait sur le mauvais compte.
+- **Best-effort, jamais bloquant** : clé Jira absente, panne, timeout ou
+  contenu refusé → `{ ok: false }`, journalisé sur la ligne
+  (`jira_sync_status = 'failed'`, `jira_error`), jamais renvoyé au
+  demandeur — sa confirmation ne dépend que de l'INSERT, déjà passé.
+- **Timeout 8 s, un seul retry après 1 s**, sur un 429/5xx **ou** une
+  exception réseau (timeout compris — la spec ne distingue pas les deux,
+  l'un et l'autre sont transitoires). Jamais de retry sur 400/401/403 :
+  rejouer une erreur de configuration ou de contenu produirait exactement la
+  même réponse une seconde plus tard.
+- **`jira_status` / `jira_status_id` restent `null` à la création** : Jira
+  place l'issue neuve dans son statut par défaut (catégorie `new`), qu'on ne
+  matérialise pas ici — c'est le webhook et la réconciliation (lot suivant)
+  qui écrivent le premier statut réel, au premier événement reçu.
+
 ---
 
 ## 8. Anti-spam
@@ -390,6 +420,14 @@ déclencheur légitime.
 Webhook **système** (Réglages → Système → Avancé → WebHooks), et non une règle
 Jira Automation : les webhooks système ne sont pas décomptés du quota de 100
 exécutions mensuelles du plan gratuit.
+
+**Vérification ponctuelle avant mise en service** (pas un appel effectué à
+chaque création de ticket — les champs obligatoires d'un projet ne changent
+pas d'une demande à l'autre) : `GET /rest/api/3/issue/createmeta?projectKeys=<JIRA_PROJECT_KEY>&issuetypeNames=<JIRA_ISSUE_TYPE_BUG>&expand=projects.issuetypes.fields`
+doit confirmer que seuls `project`, `issuetype`, `summary` et `description`
+sont requis. Un champ obligatoire supplémentaire (composant, priorité…) ferait
+échouer **toute** création de ticket avec un 400 — jamais retenté (§7.1),
+visible seulement via `jira_error` dans le bandeau d'anomalies.
 
 ---
 

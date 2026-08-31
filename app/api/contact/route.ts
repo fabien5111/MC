@@ -2,13 +2,12 @@
 //
 // Ordre imposé par la spécification, respecté ici : honeypot → délai →
 // validation → débit → génération de référence → réduction du user-agent →
-// INSERT → notification administrateur → réponse. La création du ticket
-// Jira (§8) arrive au lot suivant ; une demande de type `bug` reste en
-// `jira_sync_status = 'pending'` jusque-là.
+// INSERT → création du ticket Jira (si `bug`) → notification administrateur
+// → réponse.
 //
 // **L'INSERT est le seul geste qui conditionne le succès.** Rien après lui
-// (notification administrateur) ne peut faire échouer la réponse — cf.
-// docs/contact-jira.md §2 : « un échec Jira ou un échec d'e-mail ne fait
+// (Jira, notification administrateur) ne peut faire échouer la réponse —
+// cf. docs/contact-jira.md §2 : « un échec Jira ou un échec d'e-mail ne fait
 // jamais perdre une demande ».
 import { NextResponse } from 'next/server';
 import { getCurrentUser, getProfile } from '@/lib/auth';
@@ -26,9 +25,11 @@ import {
   debitMembreDepasse,
   empreinteIp,
   enregistrerDemande,
+  marquerJira,
   notifierAdmin,
   verifierOuverture,
 } from '@/lib/contact-data';
+import { creerTicketJira } from '@/lib/jira';
 
 export const maxDuration = 20;
 
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
   const email = validation.data.email ?? user?.email ?? null;
   const pageUrl = typeof body.pageUrl === 'string' ? body.pageUrl.slice(0, 2048) : null;
   const browserContext = reduireUserAgent(req.headers.get('user-agent'));
+  const appVersion = typeof body.appVersion === 'string' ? body.appVersion.slice(0, 40) : null;
 
   const resultat = await enregistrerDemande({
     type: validation.data.type,
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
     userId: user?.id ?? null,
     pageUrl,
     browserContext,
-    appVersion: typeof body.appVersion === 'string' ? body.appVersion.slice(0, 40) : null,
+    appVersion,
     ipHash,
   });
 
@@ -132,8 +134,29 @@ export async function POST(req: Request) {
   // Le statut initial `recu` est déjà lisible sur la ligne (`created_at` +
   // `status`) ; l'historique ne s'ouvre qu'au premier changement réel.
 
-  // Notification administrateur (spec §10.1) : best-effort, après l'INSERT,
-  // sans jamais conditionner la réponse au demandeur.
+  // Création du ticket Jira (spec §8), UNIQUEMENT pour un signalement de bug
+  // — `donnees-personnelles` n'y va JAMAIS (garantie doublée par la
+  // contrainte SQL `contact_messages_jira_bug_only`, lot 1). Best-effort :
+  // un échec est journalisé sur la ligne (`marquerJira`), jamais renvoyé au
+  // demandeur, qui a déjà sa confirmation sur la seule foi de l'INSERT.
+  let jiraIssueKey: string | null = null;
+  if (resultat.type === 'bug') {
+    const ticket = await creerTicketJira({
+      reference: resultat.reference,
+      subject: validation.data.subject,
+      message: validation.data.message,
+      userId: user?.id ?? null,
+      pageUrl,
+      browserContext,
+      appVersion,
+    });
+    await marquerJira(resultat.id, ticket);
+    if (ticket.ok) jiraIssueKey = ticket.issueKey;
+  }
+
+  // Notification administrateur (spec §10.1) : best-effort, après l'INSERT
+  // et l'éventuelle création Jira, sans jamais conditionner la réponse au
+  // demandeur.
   const profil = user ? await getProfile(user.id) : null;
   await notifierAdmin(
     {
@@ -147,6 +170,7 @@ export async function POST(req: Request) {
       browser_context: browserContext,
     },
     { label: profil?.full_name || (user ? 'Membre' : 'Visiteur'), email },
+    jiraIssueKey,
   );
 
   return NextResponse.json({ ok: true, reference: resultat.reference });

@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { withContactSchema } from '@/lib/contact-types';
 import type { ContactMessageInsert, ContactMessageRow } from '@/lib/contact-types';
 import { composeNotificationAdmin, DEBIT_IP, DEBIT_MEMBRE, genererReference, type ContactType } from '@/lib/contact';
+import type { ResultatTicketJira } from '@/lib/jira';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -159,9 +160,9 @@ export async function enregistrerDemande(
       browser_context: demande.browserContext,
       app_version: demande.appVersion,
       ip_hash: demande.ipHash,
-      // La création Jira arrive au lot suivant : une demande de bug reste en
-      // 'pending' jusque-là, sans que ça déclenche le bandeau d'anomalies
-      // (seul 'failed' y figure, cf. lot 1 §5).
+      // 'pending' le temps de l'appel Jira qui suit l'INSERT (`marquerJira`
+      // le fait basculer en 'sent' ou 'failed') ; jamais consulté pour un
+      // autre type, qui ne crée pas de ticket.
       jira_sync_status: demande.type === 'bug' ? 'pending' : 'not_applicable',
     };
     const { data, error } = await client.from('contact_messages').insert(ligne).select('id').single();
@@ -181,6 +182,30 @@ export async function enregistrerDemande(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Création du ticket Jira — résultat journalisé sur la ligne (spec §8)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Journalise l'issue de la création Jira. Jamais appelée pour un type autre
+ * que `bug` (le seul dont `jira_sync_status` vaille `pending` après
+ * `enregistrerDemande`) — un appel hors de ce cas laisserait `jira_error`
+ * posé sur une demande dont `jira_sync_status` reste `not_applicable`,
+ * incohérence que rien ne lirait mais qui n'a pas de raison d'exister.
+ */
+export async function marquerJira(messageId: string, resultat: ResultatTicketJira): Promise<void> {
+  const client = withContactSchema(createAdminClient());
+  const { error } = await client
+    .from('contact_messages')
+    .update(
+      resultat.ok
+        ? { jira_issue_key: resultat.issueKey, jira_sync_status: 'sent', jira_synced_at: new Date().toISOString() }
+        : { jira_sync_status: 'failed', jira_error: resultat.error },
+    )
+    .eq('id', messageId);
+  if (error) console.error('contact: statut Jira non journalisé :', error.message);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Notification à l'administrateur — à chaque demande (spec §10.1)
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -196,6 +221,10 @@ export type DemandeurNotification = { label: string; email: string | null };
 export async function notifierAdmin(
   message: Pick<ContactMessageRow, 'id' | 'reference' | 'type' | 'subject' | 'message' | 'created_at' | 'page_url' | 'browser_context'>,
   demandeur: DemandeurNotification,
+  // `null` tant que le ticket n'est pas encore créé (type ≠ bug, ou création
+  // Jira échouée) — l'appelant (route) le connaît déjà, la création Jira
+  // ayant lieu AVANT cette notification (spec §7.9-10).
+  jiraIssueKey: string | null = null,
 ): Promise<void> {
   const destinataire = process.env.CONTACT_NOTIFICATION_TO;
   const client = withContactSchema(createAdminClient());
@@ -219,7 +248,7 @@ export async function notifierAdmin(
     createdAtIso: message.created_at,
     pageUrl: message.page_url,
     browserContext: message.browser_context,
-    jiraIssueKey: null, // lot suivant : la création du ticket a lieu après cette notification.
+    jiraIssueKey,
     adminUrl: `${siteUrl()}/admin/contact/${message.reference}`,
   });
 
