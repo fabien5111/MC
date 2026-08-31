@@ -144,6 +144,21 @@ describe('creerTicketJira', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('nomme précisément la ou les variables manquantes — un message générique ne dit pas laquelle corriger', async () => {
+    delete process.env.JIRA_API_TOKEN;
+    delete process.env.JIRA_PROJECT_KEY;
+
+    const resultat = await creerTicketJira(ctx);
+
+    expect(resultat.ok).toBe(false);
+    if (!resultat.ok) {
+      expect(resultat.error).toContain('JIRA_API_TOKEN');
+      expect(resultat.error).toContain('JIRA_PROJECT_KEY');
+      // Les variables présentes ne doivent pas être accusées à tort.
+      expect(resultat.error).not.toContain('JIRA_BASE_URL');
+    }
+  });
+
   it('renvoie la clé du ticket sur un 201, avec le bon corps de requête', async () => {
     const fetchMock = vi.fn().mockResolvedValue(reponseJson(201, { id: '10099', key: 'JEP-142' }));
     vi.stubGlobal('fetch', fetchMock);
@@ -399,5 +414,17 @@ describe('rechercherStatutsJira', () => {
 
     expect(resultat.ok).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("nomme la variable d'authentification manquante, sans exiger JIRA_PROJECT_KEY (pas nécessaire à une recherche)", async () => {
+    delete process.env.JIRA_EMAIL;
+
+    const resultat = await rechercherStatutsJira(['JEP-142']);
+
+    expect(resultat.ok).toBe(false);
+    if (!resultat.ok) {
+      expect(resultat.error).toContain('JIRA_EMAIL');
+      expect(resultat.error).not.toContain('JIRA_PROJECT_KEY');
+    }
   });
 });

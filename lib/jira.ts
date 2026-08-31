@@ -95,6 +95,26 @@ function lireConfigCreation(): ConfigCreationJira | null {
 }
 
 /**
+ * Nomme précisément la ou les variables absentes ou vides, pour un message
+ * d'erreur exploitable — `lireConfigAuth`/`lireConfigCreation` renvoient un
+ * simple `null` en cas d'échec, ce qui ne dit pas LAQUELLE des variables
+ * pose problème. Diagnostic d'autant plus nécessaire que les valeurs sont
+ * généralement enregistrées en secret sur Vercel : impossible de les
+ * relire pour repérer une faute de frappe une fois saisies.
+ */
+function variablesJiraManquantes(avecCreation: boolean): string[] {
+  const requises: [string, string | undefined][] = [
+    ['JIRA_BASE_URL', process.env.JIRA_BASE_URL],
+    ['JIRA_EMAIL', process.env.JIRA_EMAIL],
+    ['JIRA_API_TOKEN', process.env.JIRA_API_TOKEN],
+  ];
+  if (avecCreation) {
+    requises.push(['JIRA_PROJECT_KEY', process.env.JIRA_PROJECT_KEY], ['JIRA_ISSUE_TYPE_BUG', process.env.JIRA_ISSUE_TYPE_BUG]);
+  }
+  return requises.filter(([, valeur]) => !valeur).map(([nom]) => nom);
+}
+
+/**
  * Statuts « développé » / « déployé », lus depuis les variables
  * d'environnement (spec §8.1) — l'id est testé en priorité par
  * `mapperStatutJira` (`lib/contact.ts`), le nom en repli. Toujours
@@ -218,7 +238,8 @@ export type NouveauTicketJira = ContexteTicket & { subject: string };
 export async function creerTicketJira(ctx: NouveauTicketJira): Promise<ResultatTicketJira> {
   const config = lireConfigCreation();
   if (!config) {
-    return { ok: false, error: "Configuration Jira incomplète (JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN / JIRA_PROJECT_KEY / JIRA_ISSUE_TYPE_BUG)." };
+    const manquantes = variablesJiraManquantes(true);
+    return { ok: false, error: `Configuration Jira incomplète côté serveur : ${manquantes.join(', ')} absente(s) ou vide(s).` };
   }
 
   const corps = {
@@ -313,7 +334,10 @@ export async function rechercherStatutsJira(issueKeys: string[]): Promise<Result
   if (issueKeys.length === 0) return { ok: true, statuts: new Map() };
 
   const config = lireConfigAuth();
-  if (!config) return { ok: false, error: 'Configuration Jira incomplète (authentification).' };
+  if (!config) {
+    const manquantes = variablesJiraManquantes(false);
+    return { ok: false, error: `Configuration Jira incomplète côté serveur : ${manquantes.join(', ')} absente(s) ou vide(s).` };
+  }
 
   const statuts = new Map<string, StatutJira>();
   for (let i = 0; i < issueKeys.length; i += TAILLE_LOT_RECHERCHE) {
