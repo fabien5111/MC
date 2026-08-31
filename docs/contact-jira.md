@@ -670,23 +670,26 @@ rouvrir les cinq lots un par un :
    entrent dans `lib/database.types.ts`).
 2. **SQL du lot 7 exécuté** (§15.4 — table `contact_message_photos`), puis
    `npm run gen:types` de nouveau.
-3. **`is_admin_user()`** se comporte comme attendu pour les policies de
+3. **SQL du lot 8 exécuté** (§16.4 — quatre policies de lecture membre) —
+   sans lui, `/reglages` affiche « Aucune demande envoyée » même pour un
+   membre qui en a envoyé plusieurs (la RLS renvoie zéro ligne).
+4. **`is_admin_user()`** se comporte comme attendu pour les policies de
    lecture du back-office (§12.6) — sans quoi `/admin/contact` reste
    silencieusement vide pour un vrai administrateur.
-4. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
+5. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
    sans quoi aucun e-mail (notification admin, réponse, déploiement)
    n'atteint un destinataire non vérifié.
-5. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
+6. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
    `createmeta` (champs obligatoires du projet).
-6. **Toutes les variables d'environnement** listées au §9 renseignées sur
+7. **Toutes les variables d'environnement** listées au §9 renseignées sur
    Vercel, avec le **scope** `Preview` inclus si les tests se font depuis une
    URL de preview d'une pull request (cf. §15.5) — sans quoi la création de
    ticket échoue silencieusement sur ces déploiements.
-7. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
+8. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
    avec la forme réelle du payload confirmée contre le code (§13.7).
-8. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
+9. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
    et relecture juridique de la page.
-9. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
+10. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
    (Hobby suffit — cf. §13.4).
 
 ---
@@ -799,3 +802,92 @@ distinguer d'un « environnement de test Jira » séparé, comme envisagé plus
 tôt dans ce document, n'est ni possible (Vercel ne scope pas par domaine)
 ni nécessaire (c'est déjà la production réelle). Le §9 ne liste donc qu'un
 seul jeu de variables Jira, pas un jeu « test » et un jeu « prod ».
+
+---
+
+## 16. Suivi côté membre (lot 8)
+
+Retour d'usage : un membre qui a envoyé une demande n'avait aucun moyen de
+revoir son avancement autrement qu'en conservant sa référence à la main.
+Ajout d'une section « Mes demandes de contact » dans `/reglages` (l'atelier,
+cf. « Réglages du compte » de `CLAUDE.md`) — pas un nouvel écran `/profil` :
+cet ancien écran n'existe plus, et `/reglages` suit déjà exactement le motif
+recherché (cartes repliables `SettingsCard` listant une relation personnelle
+— abonnements, partages…).
+
+### 16.1 Portée : lecture seule, propriétaire uniquement
+
+`lib/contact-member-data.ts` (nouveau, server-only, motif de
+`lib/contact-admin-data.ts`) n'expose que des lectures, jamais d'écriture :
+répondre ou changer un statut reste un geste d'administration. Repose sur
+quatre nouvelles policies RLS `*_membre_lecture` (`user_id = auth.uid()` sur
+`contact_messages`, propagé par sous-requête `EXISTS` sur les trois tables
+filles) — même raisonnement que `contact_messages_admin_lecture` pour
+l'admin (§12.1) : la RLS ouvre exactement ce qu'il faut, inutile de
+contourner avec le client service_role pour une lecture. Aucune policy
+d'écriture n'est ajoutée — l'invariant du module (aucune écriture hors
+service_role) reste intact.
+
+La fiche détail (`/reglages/mes-demandes/[reference]`) revérifie `user_id`
+explicitement dans la requête (`getMaDemande`), pas seulement via la RLS :
+elle est adressée par référence — une donnée pensée pour être communiquée —
+plutôt que par id interne, la vérification directe évite de faire reposer
+une donnée personnelle sur la seule policy.
+
+### 16.2 Ce que le membre voit, et ce qu'il ne voit jamais
+
+Contrepartie allégée de `components/admin/ContactDetail.tsx`
+(`MaDemandeDetail.tsx`) : message d'origine, photos jointes, réponses reçues
+de l'administrateur, historique des changements de statut. **Jamais** : les
+notes internes, le contexte technique (page, navigateur, version), ni rien
+du bloc Jira (clé de ticket, statut Jira, erreurs de synchronisation) — ces
+informations n'ont pas leur place face au demandeur, qui ne doit voir que le
+statut déjà traduit en français convivial (`CONTACT_STATUSES`, §12.3).
+L'historique s'affiche en ordre chronologique **croissant** (la fiche admin
+l'affiche décroissant, pour un survol rapide) : côté membre, c'est une
+progression qu'on raconte, pas un dernier changement qu'on vérifie.
+
+### 16.3 Confirmation d'envoi
+
+`ContactForm.tsx` ajoute un lien « Suivre son avancement dans mes réglages »
+sur l'écran de confirmation, **uniquement si le visiteur est connecté**
+(`connectedEmail`) : un visiteur anonyme n'a pas de `/reglages` où aller, et
+sa demande n'a de toute façon pas de `user_id` — elle ne peut apparaître
+dans aucune fiche de suivi (§16.1).
+
+### 16.4 SQL
+
+```sql
+create policy contact_messages_membre_lecture
+  on public.contact_messages
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy contact_replies_membre_lecture
+  on public.contact_replies
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.contact_messages m
+    where m.id = contact_replies.message_id and m.user_id = auth.uid()
+  ));
+
+create policy contact_status_history_membre_lecture
+  on public.contact_status_history
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.contact_messages m
+    where m.id = contact_status_history.message_id and m.user_id = auth.uid()
+  ));
+
+create policy contact_message_photos_membre_lecture
+  on public.contact_message_photos
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.contact_messages m
+    where m.id = contact_message_photos.message_id and m.user_id = auth.uid()
+  ));
+```

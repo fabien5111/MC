@@ -910,6 +910,15 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   visiteur, rien ne garantit son absence de donnée personnelle : l'envoyer
   romprait l'invariant de pseudonymisation ci-dessus. Cf.
   `docs/contact-jira.md` §15.
+- **Suivi côté membre** : section « Mes demandes de contact » dans
+  `/reglages` (`lib/contact-member-data.ts`, lecture seule — répondre ou
+  changer un statut reste un geste d'administration), avec une fiche par
+  demande (`/reglages/mes-demandes/[reference]`) montrant le message, les
+  réponses reçues et l'avancement du statut — jamais le contexte technique
+  ni le détail Jira. Repose sur quatre policies RLS `*_membre_lecture`
+  (`user_id = auth.uid()`), en plus des `*_admin_lecture` déjà en place. Le
+  lien apparaît sur l'écran de confirmation du formulaire uniquement pour un
+  visiteur connecté. Cf. `docs/contact-jira.md` §16.
 - **Anti-spam sans traceur tiers** : honeypot, délai minimum de 3 s porté
   par un jeton **signé côté serveur** (`CONTACT_FORM_SECRET` — un horodatage
   lu du navigateur ne protégerait rien), limitation de débit comptée en base

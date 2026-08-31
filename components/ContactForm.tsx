@@ -192,6 +192,11 @@ export function ContactForm({
           Conservez cette référence si vous devez nous la communiquer. Vous recevrez une réponse à l&apos;adresse
           indiquée.
         </p>
+        {connectedEmail && (
+          <Link href={`/reglages/mes-demandes/${reference}`} className="font-label-md text-label-md text-primary hover:underline">
+            Suivre son avancement dans mes réglages →
+          </Link>
+        )}
       </div>
     );
   }
