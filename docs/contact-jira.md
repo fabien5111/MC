@@ -445,3 +445,72 @@ visible seulement via `jira_error` dans le bandeau d'anomalies.
   (réponses et historique partent en cascade) ; si un ticket Jira est encore
   ouvert, retirer l'identifiant membre de sa description et y commenter
   « source supprimée à la demande de l'utilisateur ».
+
+---
+
+## 12. Écran d'administration
+
+### 12.1 Deux clients Supabase, pour deux raisons opposées
+
+`lib/contact-admin-data.ts` lit avec le client **normal** (cookies de
+session) et écrit avec le client **service_role** — l'inverse serait plus
+naturel à première vue (« l'admin est de confiance, pourquoi ne pas tout
+laisser passer par sa session ? »), mais chaque moitié répond à une
+contrainte posée au lot 1 :
+
+- **Lecture** : la policy `contact_messages_admin_lecture` (et ses pareilles
+  sur `contact_replies` / `contact_status_history`) ouvre déjà le `SELECT` à
+  `is_admin_user()`. Contourner la RLS pour lire ce qu'elle autorise déjà
+  ajouterait un chemin de lecture de plus sans rien gagner.
+- **Écriture** : **aucune** policy d'écriture n'existe sur ces tables, pour
+  personne — admin compris (spec §12, lot 1 §6.2 : « toutes les écritures
+  passent par les routes serveur avec la clé service_role »). Un geste
+  d'administration écrit donc TOUJOURS depuis une route serveur
+  (`/api/admin/contact/*`), jamais depuis un client Supabase du navigateur.
+
+Conséquence directe sur `components/admin/ContactDetail.tsx` : pas de
+`useMutation().mutate()` (il attend une promesse Supabase), seulement son
+`refresh()` pour resynchroniser le rendu serveur après un appel `fetch()`
+réussi — même motif que documenté pour les fenêtres modales.
+
+### 12.2 Page adressée par référence, mutations par id
+
+`/admin/contact/[reference]` — la référence humaine, déjà celle de l'e-mail
+de notification et du ticket Jira, plutôt que l'UUID interne. Les routes de
+mutation (`PATCH`/`DELETE /api/admin/contact/[id]`) utilisent en revanche
+l'UUID : la page détail le connaît une fois la ligne chargée, et un
+identifiant interne dans une URL d'API n'a pas besoin d'être lisible.
+
+### 12.3 Vue par défaut sur « À déployer »
+
+Conforme au §11.2 de la spécification. Tant que le lot suivant (webhook +
+réconciliation Jira) n'est pas en service, rien ne fait automatiquement
+transiter une demande vers ce statut — la vue par défaut peut donc paraître
+vide au démarrage. Le chip « Tous les statuts » lève le filtre en un clic ;
+ce n'est pas un défaut à corriger, juste l'état transitoire avant le lot 5.
+
+### 12.4 Le bandeau d'anomalies porte sur TOUTE la table, pas sur la fenêtre affichée
+
+`getContactAnomalyCounts()` interroge `contact_messages` /
+`contact_replies` indépendamment du filtre courant et de la fenêtre de 200
+lignes. Nécessaire : une demande en échec sur un statut ou un type que
+l'admin ne regarde pas en ce moment ne doit pas devenir invisible derrière
+son propre filtre.
+
+### 12.5 Toute mutation vit dans la vue détail, pas dans la liste
+
+La spécification (§11.2) place un sélecteur de statut directement dans
+chaque ligne de la liste. Ce lot le déplace entièrement vers la fiche
+détail : changer un statut sans le contexte complet (message, échanges,
+bloc Jira) est rarement le bon geste, et la liste reste plus simple à lire
+sans un contrôle interactif par ligne. La liste ne fait donc que montrer et
+laisser filtrer/chercher/trier ; toute action part de
+`/admin/contact/[reference]`.
+
+### 12.6 À vérifier avant mise en service
+
+`is_admin_user()` est une fonction déjà utilisée ailleurs dans la base
+(`merge_ideas`, cf. CLAUDE.md) mais son comportement réel n'a pas pu être
+vérifié depuis cet environnement (aucun accès à un projet Supabase). Les
+policies de lecture du lot 1 en dépendent entièrement — à confirmer avec un
+compte admin réel avant de considérer cet écran opérationnel.

@@ -10,8 +10,11 @@ import {
   CONTEXTE_INCONNU,
   DELAI_MINIMUM_MS,
   JIRA_SUMMARY_MAX,
+  REPONSE_ADMIN_MAX,
+  REPONSE_ADMIN_MIN,
   cheminOrigineValide,
   composeNotificationAdmin,
+  composeReponseAdmin,
   corpsTicketJira,
   dateClotureApres,
   delaiSuffisant,
@@ -27,6 +30,7 @@ import {
   resumeTicketJira,
   tronquer,
   validerDemande,
+  validerReponseAdmin,
   verdictDelaiOuverture,
   type ConfigStatutsJira,
   type StatutJira,
@@ -575,5 +579,73 @@ describe('composeNotificationAdmin', () => {
     const html = composeNotificationAdmin({ ...ctxBase, message: '<script>alert(1)</script>' }).html;
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Réponse depuis l'administration
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('validerReponseAdmin', () => {
+  it('accepte une réponse de longueur valide', () => {
+    const r = validerReponseAdmin('Merci pour votre signalement, nous regardons cela.');
+    expect(r.ok).toBe(true);
+  });
+
+  it('rogne les espaces avant de mesurer', () => {
+    const r = validerReponseAdmin(`   ${'a'.repeat(5)}   `);
+    expect(r.ok).toBe(false); // 5 caractères utiles, sous le minimum de 10
+  });
+
+  it('refuse en dessous du minimum et au-dessus du maximum', () => {
+    expect(validerReponseAdmin('trop court').ok).toBe(true); // exactement 10
+    expect(validerReponseAdmin('trop cour').ok).toBe(false); // 9
+    expect(validerReponseAdmin('x'.repeat(REPONSE_ADMIN_MAX)).ok).toBe(true);
+    expect(validerReponseAdmin('x'.repeat(REPONSE_ADMIN_MAX + 1)).ok).toBe(false);
+  });
+
+  it("refuse une valeur qui n'est pas une chaîne", () => {
+    expect(validerReponseAdmin(undefined).ok).toBe(false);
+    expect(validerReponseAdmin(42).ok).toBe(false);
+  });
+
+  it('rend REPONSE_ADMIN_MIN cohérent avec la borne réellement appliquée', () => {
+    expect(validerReponseAdmin('a'.repeat(REPONSE_ADMIN_MIN)).ok).toBe(true);
+    expect(validerReponseAdmin('a'.repeat(REPONSE_ADMIN_MIN - 1)).ok).toBe(false);
+  });
+});
+
+describe('composeReponseAdmin', () => {
+  const ctx = {
+    reference: 'REF-A7F3K2',
+    authorFirstName: 'Fabien',
+    replyBody: 'Le correctif est en cours de développement.',
+    originalSubject: 'Les quantités ne se recalculent pas',
+    originalMessage: 'Les quantités ne se recalculent pas quand je change le nombre de parts.',
+    originalDateIso: '2026-08-30T14:32:00.000Z',
+  };
+
+  it("porte la référence dans l'objet, préfixé « Re : »", () => {
+    const { subject } = composeReponseAdmin(ctx);
+    expect(subject).toBe('Re : Les quantités ne se recalculent pas [REF-A7F3K2]');
+  });
+
+  it('salue par le prénom quand il est connu, génériquement sinon', () => {
+    expect(composeReponseAdmin(ctx).text).toContain('Bonjour Fabien,');
+    expect(composeReponseAdmin({ ...ctx, authorFirstName: null }).text).toContain('Bonjour,');
+  });
+
+  it('rappelle le message initial en citation, tronquée', () => {
+    const long = { ...ctx, originalMessage: 'x'.repeat(600) };
+    const { text } = composeReponseAdmin(long);
+    expect(text).toContain('Votre message initial du');
+    expect(text).toContain('x'.repeat(499) + '…');
+    expect(text).not.toContain('x'.repeat(501));
+  });
+
+  it("échappe le HTML de la réponse de l'administrateur", () => {
+    const html = composeReponseAdmin({ ...ctx, replyBody: '<img src=x onerror=alert(1)>' }).html;
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img');
   });
 });

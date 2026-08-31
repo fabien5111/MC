@@ -673,6 +673,83 @@ export function composeNotificationAdmin(ctx: ContexteNotificationAdmin): Notifi
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Réponse depuis le panneau d'administration (spec §10.2)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const REPONSE_ADMIN_MIN = 10;
+export const REPONSE_ADMIN_MAX = 5000;
+
+// Rappelé en citation dans l'e-mail au demandeur : « votre message initial »,
+// tronqué pour que la réponse reste lisible en premier — l'objet de l'e-mail
+// porte déjà la référence pour retrouver l'échange complet.
+const CITATION_MAX = 500;
+
+export type ValidationReponseAdmin = { ok: true; body: string } | { ok: false; error: string };
+
+/**
+ * Même doctrine que `validerDemande` : les contrôles client ne prouvent
+ * rien, la route serveur revalide (spec §10.2.2 — 10 à 5000 caractères, non
+ * vide après nettoyage).
+ */
+export function validerReponseAdmin(saisie: unknown): ValidationReponseAdmin {
+  const body = typeof saisie === 'string' ? saisie.trim() : '';
+  if (body.length < REPONSE_ADMIN_MIN) return { ok: false, error: `La réponse doit contenir au moins ${REPONSE_ADMIN_MIN} caractères.` };
+  if (body.length > REPONSE_ADMIN_MAX) return { ok: false, error: `La réponse ne peut pas dépasser ${REPONSE_ADMIN_MAX} caractères.` };
+  return { ok: true, body };
+}
+
+export type ContexteReponseAdmin = {
+  reference: string;
+  /** Prénom de l'auteur si connu (profil connecté), sinon salutation générique. */
+  authorFirstName: string | null;
+  replyBody: string;
+  originalSubject: string;
+  originalMessage: string;
+  originalDateIso: string;
+};
+
+export type ReponseAdminComposee = { subject: string; html: string; text: string };
+
+/**
+ * Compose l'e-mail envoyé au demandeur en réponse à sa fiche (§10.2). Le
+ * corps est du texte brut saisi par l'administrateur, jamais du HTML libre
+ * (spec §12) — l'échappement dans la version HTML est la seule protection.
+ */
+export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComposee {
+  const salutation = ctx.authorFirstName ? `Bonjour ${ctx.authorFirstName},` : 'Bonjour,';
+  const citation = tronquer(ctx.originalMessage.trim(), CITATION_MAX);
+  const date = formatDateHeure(ctx.originalDateIso);
+
+  const subject = `Re : ${ctx.originalSubject} [${ctx.reference}]`;
+
+  const text = [
+    salutation,
+    '',
+    ctx.replyBody.trim(),
+    '',
+    '---',
+    'Vous pouvez répondre directement à ce message.',
+    '',
+    `Votre message initial du ${date} :`,
+    `> ${citation}`,
+    '',
+    'L’équipe Je pâtisse !',
+  ].join('\n');
+
+  const echappe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = `
+    <p>${salutation}</p>
+    <p>${echappe(ctx.replyBody.trim()).replace(/\n/g, '<br>')}</p>
+    <hr>
+    <p>Vous pouvez répondre directement à ce message.</p>
+    <p>Votre message initial du ${date} :<br>
+    <em>${echappe(citation).replace(/\n/g, '<br>')}</em></p>
+    <p>L’équipe Je pâtisse !</p>`;
+
+  return { subject, html, text };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Écran d'administration
 // ─────────────────────────────────────────────────────────────────────────
 

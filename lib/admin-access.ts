@@ -33,6 +33,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/blog', label: 'Blog', icon: 'article', manager: true },
   { href: '/admin/idees', label: 'Boîte à idées', icon: 'lightbulb' },
   { href: '/admin/commentaires', label: 'Commentaires', icon: 'forum' },
+  { href: '/admin/contact', label: 'Contact', icon: 'mail' },
   { href: '/admin/inconnus', label: 'Éléments inconnus', icon: 'help' },
   { href: '/admin/listes', label: 'Gestion des listes', icon: 'list_alt' },
   { href: '/admin/membres', label: 'Membres', icon: 'group' },
