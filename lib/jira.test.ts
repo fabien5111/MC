@@ -2,8 +2,17 @@
 // `creerTicketJira` est testée en simulant `fetch` — aucun appel réseau
 // réel, aucune variable d'environnement Jira nécessaire pour les cas qui ne
 // dépendent pas de la configuration.
+import { createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { creerTicketJira, estRetryable, texteVersAdf, type NouveauTicketJira } from './jira';
+import {
+  creerTicketJira,
+  estRetryable,
+  lireConfigStatuts,
+  rechercherStatutsJira,
+  texteVersAdf,
+  verifierSignatureWebhook,
+  type NouveauTicketJira,
+} from './jira';
 
 // ─────────────────────────────────────────────────────────────────────────
 // texteVersAdf
@@ -209,5 +218,186 @@ describe('creerTicketJira', () => {
 
     expect(resultat.ok).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2); // un retry, même sur une exception
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// verifierSignatureWebhook
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('verifierSignatureWebhook', () => {
+  const secret = 'secret-de-test';
+  const corps = '{"issue":{"key":"JEP-142"}}';
+
+  function signer(texte: string, cle: string): string {
+    return `sha256=${createHmac('sha256', cle).update(texte).digest('hex')}`;
+  }
+
+  it('accepte une signature correcte', () => {
+    expect(verifierSignatureWebhook(corps, signer(corps, secret), secret)).toBe(true);
+  });
+
+  it('refuse une signature calculée avec un autre secret', () => {
+    expect(verifierSignatureWebhook(corps, signer(corps, 'autre-secret'), secret)).toBe(false);
+  });
+
+  it('refuse une signature calculée sur un corps différent (falsification)', () => {
+    expect(verifierSignatureWebhook('{"issue":{"key":"JEP-999"}}', signer(corps, secret), secret)).toBe(false);
+  });
+
+  it('refuse un en-tête absent, malformé, ou un algorithme inattendu', () => {
+    expect(verifierSignatureWebhook(corps, null, secret)).toBe(false);
+    expect(verifierSignatureWebhook(corps, 'sans-egal', secret)).toBe(false);
+    expect(verifierSignatureWebhook(corps, `sha1=${createHmac('sha1', secret).update(corps).digest('hex')}`, secret)).toBe(false);
+  });
+
+  it('ne lève jamais sur une signature de longueur différente (garde avant timingSafeEqual)', () => {
+    expect(() => verifierSignatureWebhook(corps, 'sha256=trop-court', secret)).not.toThrow();
+    expect(verifierSignatureWebhook(corps, 'sha256=trop-court', secret)).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// lireConfigStatuts
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('lireConfigStatuts', () => {
+  const envOriginal = { ...process.env };
+  afterEach(() => {
+    process.env = { ...envOriginal };
+  });
+
+  it('retombe sur les noms par défaut quand les variables sont absentes', () => {
+    delete process.env.JIRA_STATUS_TO_DEPLOY;
+    delete process.env.JIRA_STATUS_DEPLOYED;
+    delete process.env.JIRA_STATUS_TO_DEPLOY_ID;
+    delete process.env.JIRA_STATUS_DEPLOYED_ID;
+
+    expect(lireConfigStatuts()).toEqual({
+      aDeployerId: null,
+      aDeployerNom: 'Terminé',
+      deployeId: null,
+      deployeNom: 'Déployé',
+    });
+  });
+
+  it('reprend les variables configurées, id compris', () => {
+    process.env.JIRA_STATUS_TO_DEPLOY = 'Prêt';
+    process.env.JIRA_STATUS_TO_DEPLOY_ID = '111';
+    process.env.JIRA_STATUS_DEPLOYED = 'En prod';
+    process.env.JIRA_STATUS_DEPLOYED_ID = '222';
+
+    expect(lireConfigStatuts()).toEqual({
+      aDeployerId: '111',
+      aDeployerNom: 'Prêt',
+      deployeId: '222',
+      deployeNom: 'En prod',
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// rechercherStatutsJira
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('rechercherStatutsJira', () => {
+  const envOriginal = { ...process.env };
+
+  beforeEach(() => {
+    Object.assign(process.env, ENV_JIRA);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    process.env = { ...envOriginal };
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("ne fait aucun appel réseau pour une liste vide", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await rechercherStatutsJira([]);
+
+    expect(resultat).toEqual({ ok: true, statuts: new Map() });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('lit le statut de chaque ticket demandé', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      reponseJson(200, {
+        issues: [
+          { key: 'JEP-142', fields: { status: { id: '10005', name: 'Déployé', statusCategory: { key: 'done' } } } },
+          { key: 'JEP-143', fields: { status: { id: '3', name: 'En cours', statusCategory: { key: 'indeterminate' } } } },
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await rechercherStatutsJira(['JEP-142', 'JEP-143']);
+
+    expect(resultat.ok).toBe(true);
+    if (resultat.ok) {
+      expect(resultat.statuts.get('JEP-142')).toEqual({ id: '10005', nom: 'Déployé', categorie: 'done' });
+      expect(resultat.statuts.get('JEP-143')).toEqual({ id: '3', nom: 'En cours', categorie: 'indeterminate' });
+    }
+    // Une seule requête pour les deux tickets (par lot), pas une par ticket.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain('/rest/api/3/search');
+    expect(url).toContain(encodeURIComponent('key in (JEP-142,JEP-143)'));
+  });
+
+  it('découpe en lots de 50 tickets', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reponseJson(200, { issues: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const cles = Array.from({ length: 120 }, (_, i) => `JEP-${i}`);
+    await rechercherStatutsJira(cles);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3); // 50 + 50 + 20
+  });
+
+  it('ignore silencieusement une entrée de réponse incomplète, sans faire échouer le lot', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      reponseJson(200, {
+        issues: [
+          { key: 'JEP-142', fields: { status: { name: 'Déployé', statusCategory: { key: 'done' } } } }, // id absent, toléré
+          { key: 'JEP-999' }, // fields absent
+          {},
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await rechercherStatutsJira(['JEP-142', 'JEP-999']);
+
+    expect(resultat.ok).toBe(true);
+    if (resultat.ok) {
+      expect(resultat.statuts.get('JEP-142')).toEqual({ id: null, nom: 'Déployé', categorie: 'done' });
+      expect(resultat.statuts.has('JEP-999')).toBe(false);
+    }
+  });
+
+  it('renvoie une erreur exploitable sur un échec HTTP, sans lever', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reponseJson(400, { errorMessages: ['jql invalide'] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await rechercherStatutsJira(['JEP-142']);
+
+    expect(resultat.ok).toBe(false);
+    if (!resultat.ok) expect(resultat.error).toContain('jql invalide');
+  });
+
+  it("n'appelle pas le réseau si l'authentification Jira est incomplète", async () => {
+    delete process.env.JIRA_API_TOKEN;
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await rechercherStatutsJira(['JEP-142']);
+
+    expect(resultat.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

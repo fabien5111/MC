@@ -7,7 +7,14 @@
 // n'a vocation à tourner dans le navigateur.
 //
 // Décisions de conception : `docs/contact-jira.md`.
-import { corpsTicketJira, resumeTicketJira, type ContexteTicket } from '@/lib/contact';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  corpsTicketJira,
+  resumeTicketJira,
+  type ConfigStatutsJira,
+  type ContexteTicket,
+  type StatutJira,
+} from '@/lib/contact';
 
 const TIMEOUT_MS = 8_000;
 const RETRY_DELAY_MS = 1_000;
@@ -62,22 +69,45 @@ export function texteVersAdf(texte: string): AdfDocument {
 // Appel réseau
 // ─────────────────────────────────────────────────────────────────────────
 
-type ConfigJira = {
-  baseUrl: string;
-  email: string;
-  apiToken: string;
-  projectKey: string;
-  issueTypeBug: string;
-};
+// Authentification seule — suffit à un GET (recherche de statuts). La
+// création d'un ticket a en plus besoin du projet et du type d'issue,
+// portés par `ConfigCreationJira` ci-dessous : deux configurations,
+// pas une seule, pour qu'un `JIRA_PROJECT_KEY` absent ne bloque pas la
+// réconciliation, qui n'en a pas besoin.
+type ConfigAuthJira = { baseUrl: string; email: string; apiToken: string };
 
-function lireConfig(): ConfigJira | null {
+function lireConfigAuth(): ConfigAuthJira | null {
   const baseUrl = process.env.JIRA_BASE_URL;
   const email = process.env.JIRA_EMAIL;
   const apiToken = process.env.JIRA_API_TOKEN;
+  if (!baseUrl || !email || !apiToken) return null;
+  return { baseUrl: baseUrl.replace(/\/+$/, ''), email, apiToken };
+}
+
+type ConfigCreationJira = ConfigAuthJira & { projectKey: string; issueTypeBug: string };
+
+function lireConfigCreation(): ConfigCreationJira | null {
+  const auth = lireConfigAuth();
   const projectKey = process.env.JIRA_PROJECT_KEY;
   const issueTypeBug = process.env.JIRA_ISSUE_TYPE_BUG;
-  if (!baseUrl || !email || !apiToken || !projectKey || !issueTypeBug) return null;
-  return { baseUrl: baseUrl.replace(/\/+$/, ''), email, apiToken, projectKey, issueTypeBug };
+  if (!auth || !projectKey || !issueTypeBug) return null;
+  return { ...auth, projectKey, issueTypeBug };
+}
+
+/**
+ * Statuts « développé » / « déployé », lus depuis les variables
+ * d'environnement (spec §8.1) — l'id est testé en priorité par
+ * `mapperStatutJira` (`lib/contact.ts`), le nom en repli. Toujours
+ * disponible : `aDeployerNom`/`deployeNom` ont un défaut, l'id peut manquer
+ * sans bloquer la reconnaissance par nom.
+ */
+export function lireConfigStatuts(): ConfigStatutsJira {
+  return {
+    aDeployerId: process.env.JIRA_STATUS_TO_DEPLOY_ID || null,
+    aDeployerNom: process.env.JIRA_STATUS_TO_DEPLOY || 'Terminé',
+    deployeId: process.env.JIRA_STATUS_DEPLOYED_ID || null,
+    deployeNom: process.env.JIRA_STATUS_DEPLOYED || 'Déployé',
+  };
 }
 
 function attendre(ms: number): Promise<void> {
@@ -94,17 +124,23 @@ export function estRetryable(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
-async function appelJira(config: ConfigJira, chemin: string, corps: unknown, signal: AbortSignal): Promise<Response> {
+async function appelJira(
+  config: ConfigAuthJira,
+  chemin: string,
+  methode: 'GET' | 'POST',
+  corps: unknown,
+  signal: AbortSignal,
+): Promise<Response> {
   const jeton = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
   return fetch(`${config.baseUrl}${chemin}`, {
-    method: 'POST',
+    method: methode,
     signal,
     headers: {
       Authorization: `Basic ${jeton}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(corps),
+    body: methode === 'POST' ? JSON.stringify(corps) : undefined,
   });
 }
 
@@ -117,15 +153,16 @@ async function appelJira(config: ConfigJira, chemin: string, corps: unknown, sig
  * renvoyées au client »).
  */
 async function appelAvecRetry(
-  config: ConfigJira,
+  config: ConfigAuthJira,
   chemin: string,
-  corps: unknown,
+  methode: 'GET' | 'POST' = 'POST',
+  corps?: unknown,
 ): Promise<{ status: number; body: unknown } | { error: string }> {
   async function tentative(): Promise<{ status: number; body: unknown }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const reponse = await appelJira(config, chemin, corps, controller.signal);
+      const reponse = await appelJira(config, chemin, methode, corps, controller.signal);
       const body = await reponse.json().catch(() => null);
       return { status: reponse.status, body };
     } finally {
@@ -179,7 +216,7 @@ export type NouveauTicketJira = ContexteTicket & { subject: string };
  * sur la seule foi de l'INSERT Supabase.
  */
 export async function creerTicketJira(ctx: NouveauTicketJira): Promise<ResultatTicketJira> {
-  const config = lireConfig();
+  const config = lireConfigCreation();
   if (!config) {
     return { ok: false, error: "Configuration Jira incomplète (JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN / JIRA_PROJECT_KEY / JIRA_ISSUE_TYPE_BUG)." };
   }
@@ -197,7 +234,7 @@ export async function creerTicketJira(ctx: NouveauTicketJira): Promise<ResultatT
     },
   };
 
-  const resultat = await appelAvecRetry(config, '/rest/api/3/issue', corps);
+  const resultat = await appelAvecRetry(config, '/rest/api/3/issue', 'POST', corps);
 
   if ('error' in resultat) {
     console.error('jira: création de ticket échouée :', resultat.error);
@@ -212,4 +249,89 @@ export async function creerTicketJira(ctx: NouveauTicketJira): Promise<ResultatT
   const erreur = `HTTP ${resultat.status} — ${messageErreurJira(resultat.body)}`;
   console.error('jira: création de ticket refusée :', erreur);
   return { ok: false, error: erreur };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Vérification du webhook entrant (spec §9.2)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * `X-Hub-Signature: sha256=<hex>`, calculée par Jira sur le CORPS BRUT de la
+ * requête — jamais sur le JSON reparsé, qui peut réordonner les clés et
+ * produire une signature différente de celle envoyée. L'appelant doit donc
+ * lire `req.text()` avant tout `JSON.parse`.
+ *
+ * Comparaison à temps constant (`timingSafeEqual`), comme l'exige la spec :
+ * une comparaison `===` fuiterait le préfixe correct de la signature via le
+ * temps de réponse.
+ */
+export function verifierSignatureWebhook(corpsBrut: string, enTeteSignature: string | null, secret: string): boolean {
+  if (!enTeteSignature) return false;
+  const [algo, signature] = enTeteSignature.split('=');
+  if (algo !== 'sha256' || !signature) return false;
+
+  const attendue = createHmac('sha256', secret).update(corpsBrut).digest('hex');
+  // Longueurs comparées AVANT `timingSafeEqual`, qui lève sur des tampons de
+  // tailles différentes plutôt que de renvoyer `false`.
+  if (signature.length !== attendue.length) return false;
+  return timingSafeEqual(Buffer.from(signature), Buffer.from(attendue));
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Réconciliation quotidienne — lecture groupée des statuts (spec §9.3)
+// ─────────────────────────────────────────────────────────────────────────
+
+// Par lots de 50, comme demandé : une seule requête `key in (...)` par lot,
+// plutôt qu'une requête par ticket — nettement moins coûteux, et une
+// réconciliation qui ne porte que sur les demandes encore ouvertes reste de
+// toute façon un petit nombre de lots.
+const TAILLE_LOT_RECHERCHE = 50;
+
+export type ResultatRechercheStatuts = { ok: true; statuts: Map<string, StatutJira> } | { ok: false; error: string };
+
+function statutDepuisIssue(issue: unknown): [string, StatutJira] | null {
+  if (!issue || typeof issue !== 'object') return null;
+  const key = (issue as { key?: unknown }).key;
+  const status = (issue as { fields?: { status?: unknown } }).fields?.status as
+    | { id?: unknown; name?: unknown; statusCategory?: { key?: unknown } }
+    | undefined;
+  if (typeof key !== 'string' || !status || typeof status.name !== 'string' || typeof status.statusCategory?.key !== 'string') {
+    return null;
+  }
+  return [key, { id: typeof status.id === 'string' ? status.id : null, nom: status.name, categorie: status.statusCategory.key }];
+}
+
+/**
+ * Statut courant de chaque ticket demandé, par lots de 50. Best-effort au
+ * niveau de l'appelant (la réconciliation continue le lendemain si elle
+ * échoue) — mais un lot en échec arrête ici toute la fonction plutôt que de
+ * renvoyer un résultat partiel silencieusement incomplet : mieux vaut une
+ * réconciliation qui échoue franchement qu'une qui semble réussie en n'ayant
+ * traité qu'une partie des tickets ouverts.
+ */
+export async function rechercherStatutsJira(issueKeys: string[]): Promise<ResultatRechercheStatuts> {
+  if (issueKeys.length === 0) return { ok: true, statuts: new Map() };
+
+  const config = lireConfigAuth();
+  if (!config) return { ok: false, error: 'Configuration Jira incomplète (authentification).' };
+
+  const statuts = new Map<string, StatutJira>();
+  for (let i = 0; i < issueKeys.length; i += TAILLE_LOT_RECHERCHE) {
+    const lot = issueKeys.slice(i, i + TAILLE_LOT_RECHERCHE);
+    const jql = `key in (${lot.join(',')})`;
+    const chemin = `/rest/api/3/search?jql=${encodeURIComponent(jql)}&fields=status&maxResults=${TAILLE_LOT_RECHERCHE}`;
+
+    const resultat = await appelAvecRetry(config, chemin, 'GET');
+    if ('error' in resultat) return { ok: false, error: resultat.error };
+    if (resultat.status !== 200) return { ok: false, error: `HTTP ${resultat.status} — ${messageErreurJira(resultat.body)}` };
+
+    const issues = (resultat.body as { issues?: unknown })?.issues;
+    if (!Array.isArray(issues)) continue;
+    for (const issue of issues) {
+      const paire = statutDepuisIssue(issue);
+      if (paire) statuts.set(paire[0], paire[1]);
+    }
+  }
+
+  return { ok: true, statuts };
 }

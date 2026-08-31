@@ -13,10 +13,13 @@ import {
   REPONSE_ADMIN_MAX,
   REPONSE_ADMIN_MIN,
   cheminOrigineValide,
+  composeEmailDeploiement,
   composeNotificationAdmin,
+  composeNotificationDeploiement,
   composeReponseAdmin,
   corpsTicketJira,
   dateClotureApres,
+  decisionSynchroJira,
   delaiSuffisant,
   emailDeploiementAutorise,
   estPiegeRempli,
@@ -33,6 +36,7 @@ import {
   validerReponseAdmin,
   verdictDelaiOuverture,
   type ConfigStatutsJira,
+  type EtatActuelDemande,
   type StatutJira,
 } from './contact';
 
@@ -449,6 +453,83 @@ describe('memeStatutJira', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// decisionSynchroJira — point d'entrée unique du webhook et de la
+// réconciliation
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('decisionSynchroJira', () => {
+  const etat = (over: Partial<EtatActuelDemande> = {}): EtatActuelDemande => ({
+    status: 'en_cours',
+    statusSource: 'jira-webhook',
+    jiraStatusId: '10002',
+    jiraStatus: 'Terminé',
+    ...over,
+  });
+
+  it('ignore un événement sans changement de statut Jira (le cas le plus fréquent)', () => {
+    const d = decisionSynchroJira(etat(), statut({ id: '10002', nom: 'Terminé' }), config);
+    expect(d).toEqual({ action: 'ignorer', raison: 'meme_statut', avertissement: null });
+  });
+
+  it('applique le passage en À déployer puis en Terminé, dans cet ordre', () => {
+    const versADeployer = decisionSynchroJira(
+      etat({ jiraStatusId: null, jiraStatus: null, status: 'recu' }),
+      statut({ id: '10002', nom: 'Terminé' }),
+      config,
+    );
+    expect(versADeployer).toMatchObject({ action: 'appliquer', statut: 'a_deployer', notifier: false });
+
+    const versTermine = decisionSynchroJira(etat(), statut({ id: '10005', nom: 'Déployé' }), config);
+    expect(versTermine).toMatchObject({ action: 'appliquer', statut: 'termine', clore: true, notifier: true });
+  });
+
+  it("ne rétrograde jamais une clôture manuelle de l'administrateur", () => {
+    // Le ticket Jira a été rouvert puis repasse par « Terminé » : sans la
+    // garde, ça écraserait un `termine` posé à la main.
+    const d = decisionSynchroJira(
+      etat({ status: 'termine', statusSource: 'admin', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10002', nom: 'Terminé' }),
+      config,
+    );
+    expect(d).toEqual({ action: 'ignorer', raison: 'mappage', avertissement: null });
+  });
+
+  it("laisse Jira mettre à jour une clôture qu'il a lui-même prononcée", () => {
+    // Même statut final (`termine`), mais posé par le webhook — rouvrir puis
+    // redéployer doit rester synchronisable.
+    const d = decisionSynchroJira(
+      etat({ status: 'termine', statusSource: 'jira-webhook', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10002', nom: 'Terminé' }),
+      config,
+    );
+    expect(d).toMatchObject({ action: 'appliquer', statut: 'a_deployer' });
+  });
+
+  it('transmet l’avertissement d’un statut terminal inconnu, sans notifier', () => {
+    const d = decisionSynchroJira(etat({ jiraStatusId: '1', jiraStatus: 'Ancien' }), statut({ id: '10099', nom: 'Livré' }), config);
+    expect(d).toMatchObject({ action: 'appliquer', statut: 'a_deployer', notifier: false });
+    expect(d.avertissement).toContain('Livré');
+  });
+
+  it('ignore silencieusement un ticket encore « à faire »', () => {
+    const d = decisionSynchroJira(etat({ jiraStatusId: null, jiraStatus: null }), statut({ nom: 'À faire', categorie: 'new' }), config);
+    expect(d).toEqual({ action: 'ignorer', raison: 'mappage', avertissement: null });
+  });
+
+  it("vérifie l'idempotence AVANT la protection admin — l'ordre documenté compte", () => {
+    // Un événement qui ne change rien doit rester inoffensif même sur une
+    // demande close manuellement : la garde d'idempotence doit répondre la
+    // première, avant même de consulter `jiraPeutEcraser`.
+    const d = decisionSynchroJira(
+      etat({ status: 'termine', statusSource: 'admin', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10005', nom: 'Déployé' }),
+      config,
+    );
+    expect(d).toEqual({ action: 'ignorer', raison: 'meme_statut', avertissement: null });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
 // Règles de statut
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -647,5 +728,45 @@ describe('composeReponseAdmin', () => {
     const html = composeReponseAdmin({ ...ctx, replyBody: '<img src=x onerror=alert(1)>' }).html;
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// E-mail et notification de déploiement
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('composeEmailDeploiement', () => {
+  it('porte la référence dans l’objet et le sujet original entre guillemets', () => {
+    const { subject, text } = composeEmailDeploiement({
+      reference: 'REF-A7F3K2',
+      authorFirstName: 'Fabien',
+      subject: 'Les quantités ne se recalculent pas',
+    });
+    expect(subject).toBe('Le problème que vous avez signalé est corrigé [REF-A7F3K2]');
+    expect(text).toContain('« Les quantités ne se recalculent pas »');
+  });
+
+  it('salue par le prénom quand il est connu, génériquement sinon', () => {
+    const ctx = { reference: 'REF-A7F3K2', authorFirstName: null, subject: 'Bug' };
+    expect(composeEmailDeploiement({ ...ctx, authorFirstName: 'Fabien' }).text).toContain('Bonjour Fabien,');
+    expect(composeEmailDeploiement(ctx).text).toContain('Bonjour,');
+  });
+
+  it('échappe le sujet dans la version HTML', () => {
+    const html = composeEmailDeploiement({
+      reference: 'REF-A7F3K2',
+      authorFirstName: null,
+      subject: '<script>alert(1)</script>',
+    }).html;
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+});
+
+describe('composeNotificationDeploiement', () => {
+  it('reprend le sujet dans le corps de la notification', () => {
+    const { title, body } = composeNotificationDeploiement('Les quantités ne se recalculent pas');
+    expect(title).toBeTruthy();
+    expect(body).toContain('Les quantités ne se recalculent pas');
   });
 });

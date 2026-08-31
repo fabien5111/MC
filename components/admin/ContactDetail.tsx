@@ -166,6 +166,17 @@ export function ContactDetail({
     refresh();
   }
 
+  async function resynchroniserJira() {
+    setEnvoiEnCours(true);
+    const { ok, body } = await appelAdmin(`/api/admin/contact/${message.id}/jira/resync`, { method: 'POST' });
+    setEnvoiEnCours(false);
+    if (!ok) {
+      dialog.alert(`Resynchronisation impossible : ${body.erreur ?? 'erreur inconnue'}`);
+      return;
+    }
+    refresh();
+  }
+
   // ── Réponse au demandeur ────────────────────────────────────────────────
   const [reponse, setReponse] = useState('');
   const [apercu, setApercu] = useState(false);
@@ -323,6 +334,13 @@ export function ContactDetail({
                 </p>
                 {message.jira_status && <p>Statut Jira : {message.jira_status}</p>}
                 {message.jira_synced_at && <p>Dernière synchronisation : {formatDateHeure(message.jira_synced_at)}</p>}
+                <button
+                  type="button"
+                  onClick={resynchroniserJira}
+                  className="rounded-full border border-outline-variant px-4 py-2 text-[13px] font-semibold text-on-surface-variant hover:text-primary hover:border-primary transition-colors"
+                >
+                  Resynchroniser maintenant
+                </button>
               </>
             ) : (
               <>

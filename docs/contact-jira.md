@@ -167,10 +167,12 @@ spécification repoussait hors périmètre.
 
 | Fichier | Rôle |
 |---|---|
-| `lib/contact.ts` | **Pur.** Types, libellés, validation, référence, réduction du user-agent, mappage Jira, règles de statut. Aucun import Supabase ni `next/headers`. |
+| `lib/contact.ts` | **Pur.** Types, libellés, validation, référence, réduction du user-agent, mappage Jira, décision de synchronisation, compositions d'e-mails et de notifications. Aucun import Supabase ni `next/headers`. |
 | `lib/contact-types.ts` | Types des trois tables, déclarés à la main en attendant `npm run gen:types`. Motif `lib/impersonation-types.ts`. |
-| `lib/contact-data.ts` | *(lot 2)* Lectures et écritures, **server-only**. |
-| `lib/jira.ts` | *(lot 3)* Appels REST Jira, conversion ADF. |
+| `lib/contact-data.ts` | Formulaire public : lectures/écritures du flux `/api/contact`, **server-only**. |
+| `lib/contact-admin-data.ts` | Back-office `/admin/contact` : lectures via le client de session (RLS), écritures via `createAdminClient()`. |
+| `lib/contact-sync-data.ts` | Synchronisation Jira → back-office : webhook et réconciliation, **aucune session** — tout, lectures comprises, passe par `createAdminClient()`. |
+| `lib/jira.ts` | Appels REST Jira (création de ticket, recherche de statuts), conversion ADF, vérification de signature du webhook. |
 
 La séparation pur / `-data` n'est pas cosmétique : le formulaire de contact est
 un Client Component. S'il importait le module de données, il tirerait
@@ -514,3 +516,80 @@ laisser filtrer/chercher/trier ; toute action part de
 vérifié depuis cet environnement (aucun accès à un projet Supabase). Les
 policies de lecture du lot 1 en dépendent entièrement — à confirmer avec un
 compte admin réel avant de considérer cet écran opérationnel.
+
+---
+
+## 13. Synchronisation Jira → back-office
+
+### 13.1 Un point d'entrée unique pour le webhook et la réconciliation
+
+`synchroniserStatut` (`lib/contact-sync-data.ts`) est appelée à l'identique
+par `POST /api/jira/webhook` et par la tâche planifiée
+`GET /api/cron/contact-jira` : calcul de la décision
+(`decisionSynchroJira`, §2.4) puis écriture. Aucun des deux chemins ne
+recompose cette séquence à sa façon — c'est précisément ce qui, séparé,
+finirait par diverger (une garde oubliée d'un côté, appliquée dans un ordre
+différent de l'autre).
+
+Le bouton « Resynchroniser maintenant » de la fiche détail
+(`POST /api/admin/contact/[id]/jira/resync`, spec §11.3) passe par la MÊME
+fonction : un geste manuel ne doit pas contourner les garanties conçues pour
+l'automatique — en particulier, il ne peut pas plus rétrograder une clôture
+manuelle qu'un événement Jira ordinaire.
+
+### 13.2 Le webhook lit le corps en texte, jamais en JSON d'abord
+
+`req.text()`, pas `req.json()` : Jira signe les octets exacts qu'il envoie,
+et un JSON reparsé peut réordonner les clés d'un objet avant que le corps ne
+soit resérialisé pour le calcul de la signature attendue — une comparaison
+sur le JSON reparsé échouerait pour des messages pourtant authentiques.
+`verifierSignatureWebhook` (`lib/jira.ts`) prend donc directement la chaîne
+brute.
+
+### 13.3 Réconciliation : un lot en échec arrête tout, plutôt qu'un résultat partiel silencieux
+
+`rechercherStatutsJira` (`lib/jira.ts`) interroge par lots de 50 (spec
+§9.3.2). Si un lot échoue, la fonction renvoie une erreur globale plutôt que
+les statuts déjà obtenus des lots précédents : un résultat partiel donnerait
+l'illusion d'une réconciliation réussie alors que certains tickets n'ont pas
+été vérifiés. La tâche du lendemain reprend simplement à zéro — c'est la
+doctrine du filet de sécurité (spec §9.3), pas un mécanisme qui doit
+garantir une progression à chaque exécution.
+
+### 13.4 L'e-mail de déploiement n'est plus différé — un seul cron reste nécessaire
+
+Conséquence directe de la décision §2.2 : l'envoi immédiat élimine le besoin
+d'une tâche au quart d'heure. Une seule tâche quotidienne suffit
+(`vercel.json`, 2 h 30 — trente minutes après le cron d'abonnements, pour ne
+pas les faire démarrer à la même minute), ce qui reste compatible avec le
+plan Vercel Hobby (deux tâches au plus, déclenchées une fois par jour).
+
+### 13.5 Notification in-app et e-mail sont deux canaux indépendants
+
+`notifierDeploiement` (`lib/contact-sync-data.ts`) ne fait dépendre la
+notification in-app (décision §2.8) ni de la présence d'une adresse e-mail
+ni du succès de son envoi — seule la présence d'un membre connecté
+(`user_id`) compte. Un visiteur non connecté ne peut recevoir que l'e-mail ;
+un membre connecté reçoit les deux, y compris si l'envoi de l'e-mail échoue.
+
+### 13.6 La réservation de l'e-mail ne redevient jamais `pending`
+
+Le statut `deploy_email_status` passe optimistement à `sent` **avant**
+l'envoi réel (§5) — c'est la réservation elle-même. Si l'envoi échoue
+ensuite, il repasse à `failed`, jamais à `pending` : un retour à `pending`
+rouvrirait la fenêtre qu'une exécution concurrente (webhook et
+réconciliation qui se chevauchent, cas rare mais possible) pourrait
+retraiter en double. Un e-mail en `failed` se rattrape par la réponse
+manuelle de l'administrateur (§10.2), jamais par un nouvel essai
+automatique.
+
+### 13.7 Non vérifié dans cet environnement
+
+Comme pour les lots précédents, aucun appel réseau réel vers Jira n'a été
+possible depuis ce sandbox : le webhook et la réconciliation sont testés par
+construction (fonctions pures + `fetch` simulé), mais pas contre une
+véritable instance Jira ni un véritable webhook système. À vérifier avec un
+projet Jira de test : la configuration du webhook système (URL, secret,
+filtre JQL), la forme réelle du payload `issue_updated` (le webhook suppose
+`issue.fields.status.{id,name,statusCategory.key}` — à confirmer contre un
+événement réel), et le format de réponse de `GET /rest/api/3/search`.

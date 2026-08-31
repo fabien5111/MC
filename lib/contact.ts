@@ -562,6 +562,66 @@ export function memeStatutJira(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Décision de synchronisation — point d'entrée UNIQUE du webhook ET de la
+// réconciliation quotidienne
+// ─────────────────────────────────────────────────────────────────────────
+
+export type EtatActuelDemande = {
+  status: ContactStatus;
+  statusSource: string | null;
+  jiraStatusId: string | null;
+  jiraStatus: string | null;
+};
+
+export type DecisionSynchro =
+  | { action: 'ignorer'; raison: 'meme_statut' | 'mappage'; avertissement: string | null }
+  | { action: 'appliquer'; statut: ContactStatus; clore: boolean; notifier: boolean; avertissement: string | null };
+
+/**
+ * Combine, dans le bon ordre, les trois gardes du §9 de la spécification —
+ * webhook et réconciliation appellent CETTE fonction plutôt que de
+ * recomposer `memeStatutJira` / `mapperStatutJira` / `jiraPeutEcraser`
+ * chacun à sa façon, ce qui garantirait tôt ou tard que l'un des deux
+ * chemins applique les gardes dans un ordre légèrement différent.
+ *
+ * 1. **Idempotence d'abord** (`memeStatutJira`) — la plus fréquente : un
+ *    `issue_updated` sur un commentaire ou une étiquette n'a AUCUN rapport
+ *    avec un changement de statut, et c'est le cas le plus courant qu'un
+ *    webhook Jira envoie.
+ * 2. **Mappage** (`mapperStatutJira`) — traduit le statut Jira en statut de
+ *    la demande, ou `ignorer` pour une catégorie « à faire »/inconnue.
+ * 3. **Protection d'une clôture manuelle** (`jiraPeutEcraser`) — en DERNIER :
+ *    inutile de la consulter si les deux gardes précédentes ont déjà décidé
+ *    de ne rien faire.
+ */
+export function decisionSynchroJira(
+  actuel: EtatActuelDemande,
+  recu: StatutJira,
+  config: ConfigStatutsJira,
+): DecisionSynchro {
+  if (memeStatutJira({ id: actuel.jiraStatusId, nom: actuel.jiraStatus }, recu)) {
+    return { action: 'ignorer', raison: 'meme_statut', avertissement: null };
+  }
+
+  const mappage = mapperStatutJira(recu, config);
+  if (mappage.action === 'ignorer') {
+    return { action: 'ignorer', raison: 'mappage', avertissement: mappage.avertissement };
+  }
+
+  if (!jiraPeutEcraser(actuel.status, actuel.statusSource)) {
+    return { action: 'ignorer', raison: 'mappage', avertissement: null };
+  }
+
+  return {
+    action: 'appliquer',
+    statut: mappage.statut,
+    clore: mappage.clore,
+    notifier: mappage.notifier,
+    avertissement: mappage.avertissement,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // E-mail de déploiement
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -603,6 +663,67 @@ export function emailDeploiementAutorise(c: ConditionsEmailDeploiement): Verdict
     return { envoyer: false, raison: `e-mail déjà traité (statut « ${c.statutEmail} »)` };
   }
   return { envoyer: true };
+}
+
+export type ContexteEmailDeploiement = {
+  reference: string;
+  /** Prénom si connu (profil connecté), sinon salutation générique. */
+  authorFirstName: string | null;
+  subject: string;
+};
+
+export type EmailDeploiementComposee = { subject: string; html: string; text: string };
+
+/**
+ * Contenu de l'e-mail de déploiement (spec §10.3). Reprend le sujet ORIGINAL
+ * de la demande entre guillemets, pour que le membre reconnaisse
+ * immédiatement de quel signalement il s'agit — il peut avoir signalé
+ * plusieurs bugs.
+ */
+export function composeEmailDeploiement(ctx: ContexteEmailDeploiement): EmailDeploiementComposee {
+  const salutation = ctx.authorFirstName ? `Bonjour ${ctx.authorFirstName},` : 'Bonjour,';
+  const subject = `Le problème que vous avez signalé est corrigé [${ctx.reference}]`;
+
+  const text = [
+    salutation,
+    '',
+    'La correction du problème que vous nous aviez signalé est maintenant en ligne :',
+    '',
+    `  « ${ctx.subject} »`,
+    '',
+    'Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la',
+    'page si vous aviez le site déjà ouvert.',
+    '',
+    'Si le problème persiste, répondez à ce message : nous rouvrirons le sujet.',
+    '',
+    'Merci de nous avoir aidés à améliorer Je pâtisse !',
+    '',
+    'L’équipe Je pâtisse !',
+  ].join('\n');
+
+  const echappe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = `
+    <p>${salutation}</p>
+    <p>La correction du problème que vous nous aviez signalé est maintenant en ligne :</p>
+    <p>« ${echappe(ctx.subject)} »</p>
+    <p>Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la page si vous aviez le site déjà ouvert.</p>
+    <p>Si le problème persiste, répondez à ce message : nous rouvrirons le sujet.</p>
+    <p>Merci de nous avoir aidés à améliorer Je pâtisse !</p>
+    <p>L’équipe Je pâtisse !</p>`;
+
+  return { subject, html, text };
+}
+
+export type NotificationDeploiementComposee = { title: string; body: string };
+
+/** Pendant in-app de `composeEmailDeploiement` (décision retenue : notifier
+ * aussi les membres connectés dans la cloche, en plus de l'e-mail — cf.
+ * docs/contact-jira.md §2.8). */
+export function composeNotificationDeploiement(subject: string): NotificationDeploiementComposee {
+  return {
+    title: 'Votre signalement est corrigé',
+    body: `La correction du problème « ${subject} » est maintenant en ligne. Merci de nous avoir aidés à améliorer Je pâtisse !`,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
