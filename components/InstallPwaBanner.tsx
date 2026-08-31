@@ -42,9 +42,22 @@ export function InstallPwaBanner() {
   const { canPromptNatively, installed, dismissed, promptInstall, dismiss } = useInstallPrompt();
   const [manualInstructions, setManualInstructions] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+  // Mobile et tablette seulement : Chrome/Edge desktop émettent aussi
+  // `beforeinstallprompt` (une PWA s'installe en fenêtre sur ordinateur), mais
+  // ce n'est pas l'usage visé ici. Même seuil que la colonne/tiroir de
+  // `/recherche` (cf. `SearchFiltersPanel`, `HeaderSearch`).
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     setManualInstructions(detectManualInstructions());
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
   }, []);
 
   // Ne bascule en mode instructions qu'après avoir laissé sa chance à
@@ -56,7 +69,7 @@ export function InstallPwaBanner() {
     return () => window.clearTimeout(timer);
   }, [canPromptNatively]);
 
-  if (installed || dismissed) return null;
+  if (isDesktop || installed || dismissed) return null;
   if (!canPromptNatively && !(showInstructions && manualInstructions)) return null;
 
   return (
