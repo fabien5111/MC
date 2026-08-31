@@ -439,8 +439,8 @@ visible seulement via `jira_error` dans le bandeau d'anomalies.
   initiée par la personne. **Aucune case de consentement**, et les e-mails
   sortants sont transactionnels (pas de lien de désinscription requis).
 - **Information** affichée sous le formulaire, avec lien vers
-  `/confidentialite`. ⚠️ Cette page **n'existe pas encore** : le module ne peut
-  pas être mis en ligne conforme sans elle.
+  `/confidentialite` (lot 6). Le nom légal de l'éditeur y reste un
+  placeholder à compléter avant publication — cf. §14.4.
 - Le type `donnees-personnelles` ne crée **jamais** de ticket Jira et marque
   la notification d'administration comme prioritaire (délai légal : un mois).
 - **Effacement** : supprimer les lignes `contact_messages` de la personne
@@ -593,3 +593,75 @@ projet Jira de test : la configuration du webhook système (URL, secret,
 filtre JQL), la forme réelle du payload `issue_updated` (le webhook suppose
 `issue.fields.status.{id,name,statusCategory.key}` — à confirmer contre un
 événement réel), et le format de réponse de `GET /rest/api/3/search`.
+
+---
+
+## 14. Finitions (lot 6)
+
+### 14.1 Page `/confidentialite`
+
+Créée pour que le lien affiché sous le formulaire (§4.5 de la spécification
+d'origine) ne pointe plus dans le vide — condition posée dès le lot 1 pour
+que le module puisse aller en production. Contenu établi à partir de ce que
+le code fait réellement (sous-traitants effectivement intégrés, durées de
+conservation codées en base pour le module contact), pas de texte juridique
+générique copié d'ailleurs.
+
+**Ce n'est pas un avis juridique**, et deux points restent à traiter avant
+publication réelle :
+- le nom légal de l'éditeur est un **placeholder** dans le code
+  (`app/confidentialite/page.tsx`) — impossible à deviner depuis ce
+  chantier ;
+- une relecture par un professionnel reste recommandée, comme le rappelait
+  déjà le §4 de la spécification d'origine pour l'ensemble du dispositif
+  RGPD.
+
+### 14.2 `CLAUDE.md`
+
+Nouvelle section « Contact et suivi Jira », entre « Boîte à idées » et
+« Réglages du compte » — résumé des décisions structurantes avec renvoi vers
+ce document pour le détail. Tables mises à jour : « Base de données »
+(nouvelles tables), « Variables d'environnement » (nouvelles variables, et
+`CRON_SECRET` — absente jusqu'ici de cette table alors qu'utilisée par le
+cron d'abonnements, ajoutée à l'occasion). `.env.local.example` complété à
+l'identique, pour que la mise en route locale n'oublie aucune variable.
+
+### 14.3 Ce qui reste explicitement HORS PÉRIPHÉRIE de ce chantier
+
+- **Page « Conditions »** (pied de page) : liée à des sujets sans rapport
+  avec le module contact (CGU, abonnements, propriété intellectuelle) —
+  n'a jamais été référencée par aucun code de ce chantier, contrairement à
+  `/confidentialite`. Un chantier séparé.
+- **Réception des réponses des membres dans le panneau** (§13 de la
+  spécification d'origine, V2) : le membre qui répond à l'e-mail reçu
+  atterrit dans la boîte `EMAIL_REPLY_TO`, pas dans `/admin/contact`.
+- **Pièces jointes**, **modèles de réponses pré-rédigés**, **suivi du
+  statut visible par le membre sur son compte** (partiellement couvert par
+  la notification in-app, §2.8, mais pas un historique complet) : hors
+  périmètre V1 assumé dès la spécification d'origine.
+
+### 14.4 Récapitulatif — à vérifier avant mise en service réelle
+
+Aucun de ces points n'a pu être vérifié depuis cet environnement, faute
+d'accès à un projet Supabase ou Jira réel. Consolidé ici pour ne pas avoir à
+rouvrir les cinq lots un par un :
+
+1. **SQL du lot 1 exécuté**, puis `npm run gen:types` (les trois tables
+   entrent dans `lib/database.types.ts`).
+2. **`is_admin_user()`** se comporte comme attendu pour les policies de
+   lecture du back-office (§12.6) — sans quoi `/admin/contact` reste
+   silencieusement vide pour un vrai administrateur.
+3. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
+   sans quoi aucun e-mail (notification admin, réponse, déploiement)
+   n'atteint un destinataire non vérifié.
+4. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
+   `createmeta` (champs obligatoires du projet).
+5. **Toutes les variables d'environnement** listées au §9 renseignées sur
+   Vercel — un jeu distinct sur `dev.jepatisse.com` pointant vers un projet
+   Jira et une adresse de notification de test.
+6. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
+   avec la forme réelle du payload confirmée contre le code (§13.7).
+7. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
+   et relecture juridique de la page.
+8. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
+   (Hobby suffit — cf. §13.4).
