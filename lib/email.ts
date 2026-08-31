@@ -24,9 +24,12 @@ export class MissingSmtpConfigError extends Error {
   }
 }
 
-export type EmailAEnvoyer = { to: string; subject: string; text: string; html?: string };
+// `replyTo` : optionnel, pour les courriels transactionnels du module contact
+// (§10 de docs/contact-jira.md) — le membre répond directement à
+// EMAIL_REPLY_TO, jamais à `notifications@`.
+export type EmailAEnvoyer = { to: string; subject: string; text: string; html?: string; replyTo?: string };
 
-export async function sendEmail({ to, subject, text, html }: EmailAEnvoyer): Promise<void> {
+export async function sendEmail({ to, subject, text, html, replyTo }: EmailAEnvoyer): Promise<void> {
   const { SES_SMTP_HOST: host, SES_SMTP_PORT: port, SES_SMTP_USER: user, SES_SMTP_PASSWORD: pass, SES_SENDER_EMAIL: from } = process.env;
   if (!host || !port || !user || !pass || !from) throw new MissingSmtpConfigError();
 
@@ -36,7 +39,7 @@ export async function sendEmail({ to, subject, text, html }: EmailAEnvoyer): Pro
     secure: Number(port) === 465,
     auth: { user, pass },
   });
-  await transport.sendMail({ from, to, subject, text, html });
+  await transport.sendMail({ from, to, subject, text, html, replyTo });
 }
 
 /** Renvoie `true` si l'e-mail est parti, `false` sinon — jamais ne lève. */

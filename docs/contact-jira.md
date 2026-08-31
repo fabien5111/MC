@@ -284,12 +284,50 @@ fragment de la chaîne d'origine.
 
 ## 8. Anti-spam
 
-Trois couches, sans traceur tiers (un reCAPTCHA réintroduirait une obligation
-de consentement) :
+### 8.1 Le délai minimum est porté par un jeton signé, pas par l'horloge du navigateur
+
+La spécification (§5.5.2) décrit un simple délai de 3 secondes entre
+l'affichage et la soumission. Mesuré depuis une valeur envoyée par le
+navigateur, ce contrôle ne protège rien : un script qui appelle
+`/api/contact` directement choisit l'horodatage qu'il veut.
+
+`app/contact/page.tsx` signe donc l'instant d'ouverture côté **serveur**
+(`signerOuverture`, HMAC-SHA256, `CONTACT_FORM_SECRET`) et l'embarque dans un
+champ caché (`formToken`) ; la route revérifie la signature avant de faire
+confiance à l'horodatage (`verifierOuverture`). Trois issues, pas une seule,
+parce qu'elles appellent des comportements différents (`verdictDelaiOuverture`,
+`lib/contact.ts`) :
+
+| Issue | Cause | Réponse |
+|---|---|---|
+| `premature` | soumission à moins de 3 s | `200` silencieux, signature d'un robot |
+| `invalide` | jeton absent, signature fausse, horodatage futur | `200` silencieux, falsification |
+| `expire` | jeton valide, mais vieux de plus de 24 h | `400` avec un message franc : un onglet resté ouvert est un cas humain plausible, pas un robot — un silence trompeur laisserait croire à un envoi réussi |
+| `ok` | — | poursuite du traitement |
+
+**Dégradé, jamais bloquant** si `CONTACT_FORM_SECRET` est absent : la route
+retombe sur l'horodatage brut du jeton, non signé, et journalise une erreur.
+Même doctrine que la modération IA des pseudos — une variable de sécurité
+secondaire manquante ne doit jamais empêcher un dépôt de demande.
+
+### 8.2 `page_url` n'accepte qu'un chemin interne
+
+Ni la spécification ni le formulaire ne valident la forme de `page_url` avant
+de l'écrire. `cheminOrigineValide` (`lib/contact.ts`) n'accepte qu'une chaîne
+commençant par `/` et pas par `//` : une URL absolue ou protocole-relative y
+serait affichée telle quelle dans le back-office et dans le ticket Jira,
+trompeuse à lire sans qu'aucun code n'ait besoin d'y naviguer pour que ce
+soit gênant.
+
+### 8.3 Vue d'ensemble des trois couches
+
+Sans traceur tiers (un reCAPTCHA réintroduirait une obligation de
+consentement) :
 
 1. **Honeypot** `website`, masqué par positionnement hors écran. Rempli →
    `200` silencieux, aucune ligne écrite.
-2. **Délai minimum** de 3 secondes entre l'affichage et l'envoi.
+2. **Délai minimum** de 3 secondes entre l'affichage et l'envoi, via le jeton
+   signé du §8.1.
 3. **Limitation de débit** : 3 demandes / 10 min par `ip_hash`, 5 / 24 h par
    `user_id`, comptées **en base** sur `contact_messages`.
 
@@ -317,6 +355,7 @@ puisqu'il ne laisse aucune trace.
 | `JIRA_STATUS_TO_DEPLOY` / `_ID` | Statut « développé, non déployé » — défaut `Terminé` |
 | `JIRA_STATUS_DEPLOYED` / `_ID` | Statut « en production » — défaut `Déployé` |
 | `JIRA_WEBHOOK_SECRET` | Secret HMAC du webhook entrant |
+| `CONTACT_FORM_SECRET` | Secret HMAC du jeton anti-robot du formulaire (§8.1) — absent : le délai minimum reste actif mais non signé, dégradé jamais bloquant |
 | `IP_HASH_SALT` | Sel de hachage des adresses IP |
 | `EMAIL_REPLY_TO` | Adresse de réponse (`contact@jepatisse.com`) |
 | `CONTACT_NOTIFICATION_TO` | Destinataire des notifications d'administration |

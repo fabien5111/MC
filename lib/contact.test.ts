@@ -10,6 +10,8 @@ import {
   CONTEXTE_INCONNU,
   DELAI_MINIMUM_MS,
   JIRA_SUMMARY_MAX,
+  cheminOrigineValide,
+  composeNotificationAdmin,
   corpsTicketJira,
   dateClotureApres,
   delaiSuffisant,
@@ -25,6 +27,7 @@ import {
   resumeTicketJira,
   tronquer,
   validerDemande,
+  verdictDelaiOuverture,
   type ConfigStatutsJira,
   type StatutJira,
 } from './contact';
@@ -162,6 +165,38 @@ describe('anti-spam', () => {
     // Le jeton est émis par le serveur : un horodatage futur est une
     // falsification, pas une dérive d'horloge.
     expect(delaiSuffisant(maintenant + 60_000, maintenant)).toBe(false);
+  });
+});
+
+describe('verdictDelaiOuverture', () => {
+  const maintenant = 100_000_000;
+
+  it('distingue les QUATRE issues, chacune appelant un comportement différent côté route', () => {
+    expect(verdictDelaiOuverture(null, maintenant)).toBe('invalide'); // jeton absent/illisible
+    expect(verdictDelaiOuverture(maintenant + 1, maintenant)).toBe('invalide'); // horodatage futur : falsification
+    expect(verdictDelaiOuverture(maintenant - 500, maintenant)).toBe('premature'); // < 3 s : robot
+    expect(verdictDelaiOuverture(maintenant - DELAI_MINIMUM_MS, maintenant)).toBe('ok');
+    expect(verdictDelaiOuverture(maintenant - 25 * 3_600_000, maintenant)).toBe('expire'); // onglet oublié : humain plausible
+  });
+});
+
+describe('cheminOrigineValide', () => {
+  it("accepte un chemin interne, avec ou sans requête ni ancre", () => {
+    expect(cheminOrigineValide('/recette/tarte-au-citron')).toBe('/recette/tarte-au-citron');
+    expect(cheminOrigineValide('/fournee/12?lecture=1')).toBe('/fournee/12?lecture=1');
+  });
+
+  it('refuse une URL absolue ou un chemin protocole-relatif', () => {
+    // Le champ n'est affiché qu'en texte (back-office, ticket Jira), mais une
+    // URL externe y serait trompeuse à lire sans qu'aucun code n'y navigue.
+    expect(cheminOrigineValide('https://exemple.fr/hameçonnage')).toBeNull();
+    expect(cheminOrigineValide('//exemple.fr/hameçonnage')).toBeNull();
+    expect(cheminOrigineValide('javascript:alert(1)')).toBeNull();
+  });
+
+  it('refuse une valeur qui ne serait pas une chaîne', () => {
+    expect(cheminOrigineValide(undefined)).toBeNull();
+    expect(cheminOrigineValide(42)).toBeNull();
   });
 });
 
@@ -487,5 +522,58 @@ describe('emailDeploiementAutorise', () => {
     const r = emailDeploiementAutorise({ ...conditionsOk, type: 'question' });
     expect(r.envoyer).toBe(false);
     if (!r.envoyer) expect(r.raison.length).toBeGreaterThan(10);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notification à l'administrateur
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('composeNotificationAdmin', () => {
+  const ctxBase = {
+    reference: 'REF-A7F3K2',
+    type: 'bug' as const,
+    subject: 'Les quantités ne se recalculent pas',
+    message: 'Le détail du problème.',
+    authorLabel: 'Fabien D.',
+    authorEmail: 'fabien@exemple.fr',
+    createdAtIso: '2026-08-30T14:32:00.000Z',
+    pageUrl: '/recettes/tarte-au-citron',
+    browserContext: 'Chrome 128 / Android / mobile',
+    jiraIssueKey: null,
+    adminUrl: 'https://jepatisse.com/admin/contact/REF-A7F3K2',
+  };
+
+  it('compose un objet portant le type et la référence', () => {
+    const { subject } = composeNotificationAdmin(ctxBase);
+    expect(subject).toContain('Bug');
+    expect(subject).toContain('REF-A7F3K2');
+  });
+
+  it('marque une demande de type données personnelles comme prioritaire', () => {
+    const { subject, text } = composeNotificationAdmin({ ...ctxBase, type: 'donnees-personnelles' });
+    expect(subject).toContain('PRIORITAIRE');
+    expect(text).toContain("délai de réponse légal d'un mois");
+  });
+
+  it("n'ajoute la ligne du ticket Jira que si elle existe", () => {
+    expect(composeNotificationAdmin(ctxBase).text).not.toContain('Ticket Jira');
+    expect(composeNotificationAdmin({ ...ctxBase, jiraIssueKey: 'JEP-142' }).text).toContain('Ticket Jira : JEP-142');
+  });
+
+  it("désigne un visiteur sans reformuler artificiellement son adresse", () => {
+    const text = composeNotificationAdmin({ ...ctxBase, authorLabel: 'Visiteur', authorEmail: null }).text;
+    expect(text).toContain('Membre : Visiteur');
+    expect(text).not.toContain('Membre : Visiteur (');
+  });
+
+  it("reprend le lien vers l'administration", () => {
+    expect(composeNotificationAdmin(ctxBase).text).toContain(ctxBase.adminUrl);
+  });
+
+  it('échappe le HTML du message dans la version HTML', () => {
+    const html = composeNotificationAdmin({ ...ctxBase, message: '<script>alert(1)</script>' }).html;
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
   });
 });

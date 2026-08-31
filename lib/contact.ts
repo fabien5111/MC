@@ -9,6 +9,7 @@
 //
 // Décisions de conception et écarts assumés vis-à-vis de la spécification :
 // `docs/contact-jira.md`.
+import { formatDateHeure } from '@/lib/format';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types de demande
@@ -153,6 +154,20 @@ export function estReference(v: unknown): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Contexte technique — origine et version
+// ─────────────────────────────────────────────────────────────────────────
+
+// N'accepte qu'un CHEMIN interne (`/recette/tarte-au-citron`), jamais une URL
+// complète : le champ n'est affiché qu'en texte dans le back-office et le
+// ticket Jira, mais accepter un `http://` externe permettrait d'y faire
+// figurer une adresse trompeuse sans qu'aucun code n'ait besoin d'y cliquer
+// pour que ce soit gênant à lire.
+export function cheminOrigineValide(v: unknown): string | null {
+  if (typeof v !== 'string' || !v.startsWith('/') || v.startsWith('//')) return null;
+  return v.slice(0, 2048);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Validation de la saisie
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -263,18 +278,36 @@ export const DELAI_MINIMUM_MS = 3_000;
 // signé récolté une fois pourrait sinon être rejoué indéfiniment.
 export const DELAI_MAXIMUM_MS = 24 * 60 * 60_000;
 
+// Trois issues qui appellent trois comportements DIFFÉRENTS côté route, d'où
+// leur distinction plutôt qu'un simple booléen :
+//  - `premature` et `invalide` sont des signatures de robot (spec §5.5.2) →
+//    200 silencieux, sans écrire de ligne ;
+//  - `expire` est un cas humain plausible (onglet resté ouvert plus de 24 h) →
+//    mérite un message franc invitant à recharger, pas un silence qui ferait
+//    croire à un envoi réussi.
+export type VerdictDelai = 'ok' | 'premature' | 'expire' | 'invalide';
+
 /**
  * L'horodatage d'ouverture est émis ET signé par le rendu serveur du
  * formulaire, jamais lu de l'horloge du navigateur : sans signature, la
- * couche se contourne en une ligne de console et ne vaut rien.
+ * couche se contourne en une ligne de console et ne vaut rien (signature et
+ * vérification : `lib/contact-data.ts`, qui seul a accès au secret).
  *
  * Un horodatage dans le futur est traité comme une falsification, pas comme
  * une dérive d'horloge — la valeur vient du serveur, les deux bornes sont
  * lues sur la même horloge.
  */
-export function delaiSuffisant(ouvertureMs: number, maintenantMs: number): boolean {
+export function verdictDelaiOuverture(ouvertureMs: number | null, maintenantMs: number): VerdictDelai {
+  if (ouvertureMs === null) return 'invalide';
   const ecart = maintenantMs - ouvertureMs;
-  return ecart >= DELAI_MINIMUM_MS && ecart <= DELAI_MAXIMUM_MS;
+  if (ecart < 0) return 'invalide';
+  if (ecart < DELAI_MINIMUM_MS) return 'premature';
+  if (ecart > DELAI_MAXIMUM_MS) return 'expire';
+  return 'ok';
+}
+
+export function delaiSuffisant(ouvertureMs: number, maintenantMs: number): boolean {
+  return verdictDelaiOuverture(ouvertureMs, maintenantMs) === 'ok';
 }
 
 // Comptés EN BASE sur `contact_messages`, pas en mémoire du processus comme
@@ -570,6 +603,73 @@ export function emailDeploiementAutorise(c: ConditionsEmailDeploiement): Verdict
     return { envoyer: false, raison: `e-mail déjà traité (statut « ${c.statutEmail} »)` };
   }
   return { envoyer: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notification à l'administrateur — à chaque demande
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ContexteNotificationAdmin = {
+  reference: string;
+  type: ContactType;
+  subject: string;
+  message: string;
+  /** Nom du profil, ou « Visiteur » pour une demande non authentifiée. */
+  authorLabel: string;
+  authorEmail: string | null;
+  createdAtIso: string;
+  pageUrl: string | null;
+  browserContext: string | null;
+  /** `null` avant la création du ticket (lot Jira) — la ligne est alors omise. */
+  jiraIssueKey: string | null;
+  /** URL absolue vers la vue détail du back-office. */
+  adminUrl: string;
+};
+
+export type NotificationAdminComposee = { subject: string; html: string; text: string };
+
+/**
+ * Notification par courriel à chaque demande (§10.1). Composée ici, PURE :
+ * l'envoi (et la lecture des variables d'environnement qui le rendent
+ * possible) reste dans `lib/contact-data.ts`.
+ */
+export function composeNotificationAdmin(ctx: ContexteNotificationAdmin): NotificationAdminComposee {
+  const type = CONTACT_TYPES[ctx.type];
+  const prioritaire = type.prioritaire;
+
+  const subject = prioritaire
+    ? `[PRIORITAIRE] [Je pâtisse !] Nouvelle demande — [${ctx.reference}]`
+    : `[Je pâtisse !] Nouvelle demande ${type.labelCourt} — [${ctx.reference}]`;
+
+  const auteur = ctx.authorEmail ? `${ctx.authorLabel} (${ctx.authorEmail})` : ctx.authorLabel;
+
+  const lignes = [
+    `Type : ${type.labelCourt}`,
+    `Référence : ${ctx.reference}`,
+    `Membre : ${auteur}`,
+    `Reçue le : ${formatDateHeure(ctx.createdAtIso)}`,
+    '',
+    `Sujet : ${ctx.subject}`,
+    '',
+    ctx.message,
+    '',
+    `Page : ${ctx.pageUrl || 'non renseignée'}`,
+    `Contexte : ${ctx.browserContext || CONTEXTE_INCONNU}`,
+  ];
+  if (ctx.jiraIssueKey) lignes.push(`Ticket Jira : ${ctx.jiraIssueKey}`);
+  if (prioritaire) {
+    lignes.push('', "⚠ Demande relative aux données personnelles : délai de réponse légal d'un mois.");
+  }
+  lignes.push('', `→ Ouvrir dans l'administration : ${ctx.adminUrl}`);
+
+  const text = lignes.join('\n');
+  const html = `<pre style="font:14px/1.5 -apple-system,sans-serif;white-space:pre-wrap;">${lignes
+    .map((l) =>
+      l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+    )
+    .join('\n')}</pre>`;
+
+  return { subject, html, text };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
