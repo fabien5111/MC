@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { estReference, validerReponseMembre } from '@/lib/contact';
+import { estReference, validerPhotos, validerReponseMembre } from '@/lib/contact';
 import { envoyerReponseMembre } from '@/lib/contact-member-data';
 import { MissingServiceKeyError } from '@/lib/supabase/admin';
 
@@ -21,9 +21,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   const body = await req.json().catch(() => ({}));
   const validation = validerReponseMembre(body?.body);
   if (!validation.ok) return NextResponse.json({ erreur: validation.error }, { status: 400 });
+  const photos = validerPhotos(body?.photos);
 
   try {
-    const resultat = await envoyerReponseMembre(user.id, reference, validation.body);
+    const resultat = await envoyerReponseMembre(user.id, reference, validation.body, photos);
     if (!resultat.ok) return NextResponse.json({ erreur: resultat.error }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch (e) {

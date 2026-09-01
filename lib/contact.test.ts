@@ -24,6 +24,7 @@ import {
   composeNotificationDeploiement,
   composeNotificationReponseMembre,
   composeReponseAdmin,
+  corpsCommentaireJira,
   corpsTicketJira,
   dateClotureApres,
   decisionSynchroJira,
@@ -812,6 +813,36 @@ describe('composeNotificationReponseMembre', () => {
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Commentaire Jira à chaque réponse (lot 10)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('corpsCommentaireJira', () => {
+  const ctxBase = {
+    authorKind: 'member' as const,
+    body: 'Toujours le même souci, même après la mise à jour.',
+    createdAtIso: '2026-08-30T14:32:00.000Z',
+    photoAdminUrl: null,
+  };
+
+  it('distingue le demandeur de l’administration', () => {
+    expect(corpsCommentaireJira(ctxBase)).toContain('Réponse du demandeur');
+    expect(corpsCommentaireJira({ ...ctxBase, authorKind: 'admin' })).toContain("Réponse de l'administration");
+  });
+
+  it('reprend le corps du message', () => {
+    expect(corpsCommentaireJira(ctxBase)).toContain(ctxBase.body);
+  });
+
+  it("n'ajoute la ligne de photo que si elle existe", () => {
+    expect(corpsCommentaireJira(ctxBase)).not.toContain('Photo jointe');
+    const avecPhoto = corpsCommentaireJira({ ...ctxBase, photoAdminUrl: 'https://jepatisse.com/admin/contact/REF-A7F3K2' });
+    expect(avecPhoto).toContain('Photo jointe');
+    expect(avecPhoto).toContain('https://jepatisse.com/admin/contact/REF-A7F3K2');
+  });
+
 });
 
 describe('composeReponseAdmin', () => {

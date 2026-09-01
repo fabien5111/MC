@@ -9,9 +9,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { withContactSchema } from '@/lib/contact-types';
-import type { ContactMessageInsert, ContactMessageRow } from '@/lib/contact-types';
-import { composeNotificationAdmin, DEBIT_IP, DEBIT_MEMBRE, genererReference, type ContactType } from '@/lib/contact';
-import type { ResultatTicketJira } from '@/lib/jira';
+import type { ContactMessageInsert, ContactMessageRow, ContactReplyRow } from '@/lib/contact-types';
+import { composeNotificationAdmin, corpsCommentaireJira, DEBIT_IP, DEBIT_MEMBRE, genererReference, type ContactType } from '@/lib/contact';
+import { ajouterCommentaireJira, type ResultatCommentaireJira, type ResultatTicketJira } from '@/lib/jira';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -200,6 +200,20 @@ export async function enregistrerPhotos(messageId: string, urls: string[]): Prom
   if (error) console.error('contact: enregistrement des photos échoué :', error.message);
 }
 
+/**
+ * Même doctrine que `enregistrerPhotos`, pour les photos jointes à une
+ * réponse (lot 10) — uniquement une réponse du DEMANDEUR (jamais l'admin,
+ * dont la réponse part par e-mail où une data-URL n'est pas fiable).
+ */
+export async function enregistrerPhotosReponse(replyId: string, urls: string[]): Promise<void> {
+  if (urls.length === 0) return;
+  const client = withContactSchema(createAdminClient());
+  const { error } = await client
+    .from('contact_reply_photos')
+    .insert(urls.map((url, index) => ({ reply_id: replyId, url, order_index: index })));
+  if (error) console.error('contact: enregistrement des photos de réponse échoué :', error.message);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Création du ticket Jira — résultat journalisé sur la ligne (spec §8)
 // ─────────────────────────────────────────────────────────────────────────
@@ -291,5 +305,58 @@ export async function notifierAdmin(
         : { admin_notify_error: `Envoi à ${destinataire} échoué.` },
     )
     .eq('id', message.id);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Commentaire Jira à chaque réponse (lot 10)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ajoute un commentaire sur le ticket Jira existant pour toute réponse —
+ * admin ou membre (docs/contact-jira.md §18). Partagé entre
+ * `lib/contact-admin-data.ts` (envoi + relance) et `lib/contact-member-data.ts`
+ * (envoi) : les deux écrans déclenchent le même geste, seul le contenu du
+ * commentaire diffère (`corpsCommentaireJira`).
+ *
+ * Rend `null`, sans écrire nulle part, quand il n'y a rien à commenter (pas
+ * un signalement de bug, ou pas encore de ticket) — jamais une erreur.
+ */
+export async function commenterReponseJira(
+  client: ReturnType<typeof withContactSchema>,
+  reply: Pick<ContactReplyRow, 'id' | 'body' | 'author_kind' | 'created_at'>,
+  message: Pick<ContactMessageRow, 'type' | 'jira_issue_key' | 'reference'>,
+): Promise<ResultatCommentaireJira | null> {
+  if (message.type !== 'bug' || !message.jira_issue_key) return null;
+
+  // Une photo jointe à CETTE réponse (membre uniquement, cf. `enregistrerPhotosReponse`) :
+  // jamais transmise elle-même, seulement son existence et un lien vers la
+  // fiche admin — même doctrine que le corps du ticket (§15).
+  let photoAdminUrl: string | null = null;
+  if (reply.author_kind === 'member') {
+    const { count } = await client
+      .from('contact_reply_photos')
+      .select('id', { count: 'exact', head: true })
+      .eq('reply_id', reply.id);
+    if ((count ?? 0) > 0) photoAdminUrl = `${siteUrl()}/admin/contact/${message.reference}`;
+  }
+
+  const texte = corpsCommentaireJira({
+    authorKind: reply.author_kind,
+    body: reply.body,
+    createdAtIso: reply.created_at,
+    photoAdminUrl,
+  });
+  const resultat = await ajouterCommentaireJira(message.jira_issue_key, texte);
+
+  await client
+    .from('contact_replies')
+    .update(
+      resultat.ok
+        ? { jira_comment_status: 'sent', jira_comment_error: null }
+        : { jira_comment_status: 'failed', jira_comment_error: resultat.error },
+    )
+    .eq('id', reply.id);
+
+  return resultat;
 }
 

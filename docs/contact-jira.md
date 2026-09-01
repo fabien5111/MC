@@ -691,9 +691,13 @@ rouvrir les cinq lots un par un :
    ticket échoue silencieusement sur ces déploiements.
 9. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
    avec la forme réelle du payload confirmée contre le code (§13.7).
-10. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
+10. **SQL du lot 10 exécuté** (§18.4 — table `contact_reply_photos`,
+   colonnes `contact_replies.jira_comment_status` / `jira_comment_error`) —
+   sans elle, une réponse membre avec photo échoue à l'écriture, et le
+   commentaire Jira de toute réponse échoue à se journaliser.
+11. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
    et relecture juridique de la page.
-11. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
+12. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
    (Hobby suffit — cf. §13.4).
 
 ---
@@ -956,4 +960,114 @@ du membre.
 alter table public.contact_replies
   add column author_kind text not null default 'admin'
     check (author_kind in ('admin', 'member'));
+```
+
+---
+
+## 18. Photos sur les réponses et commentaire Jira à chaque échange (lot 10)
+
+Deux demandes liées, traitées ensemble : illustrer une réponse par une
+photo, et refléter chaque échange (admin ou membre) sur le ticket Jira
+existant — pour qu'un développeur qui travaille depuis Jira voie la
+conversation avancer sans repasser par l'administration.
+
+### 18.1 Photos : uniquement sur une réponse du demandeur
+
+**Décision** : contrairement au message initial (§15, les deux camps
+pourraient en théorie en avoir), seule une réponse du **demandeur** peut
+porter une photo — jamais une réponse admin. Raison technique, pas de
+principe : une réponse admin part par e-mail (`composeReponseAdmin`), et une
+image en data-URL n'est pas fiable une fois embarquée dans un e-mail
+(beaucoup de clients la suppriment ou la bloquent). Le demandeur, lui, ne
+fait que consulter le panneau — même canal que le message initial, où la
+photo est déjà fiable.
+
+Nouvelle table `contact_reply_photos` (même doctrine que
+`contact_message_photos`, §15) plutôt qu'une colonne nullable sur cette
+dernière : une réponse n'est pas un message, mélanger les deux parents dans
+une même table aurait compliqué la RLS pour rien.
+
+`PhotoUploader.tsx` (nouveau) extrait le widget d'upload de `ContactForm.tsx`
+— compression, aperçu, suppression — pour que `MaDemandeDetail.tsx`
+(formulaire de réponse membre) le réutilise sans dupliquer la logique.
+Bénéfice mesuré au passage : les deux routes qui l'utilisent partagent
+maintenant ce code dans un chunk commun plutôt que de l'embarquer chacune en
+double (`/contact` : 6,27 kB → 3,1 kB ; `/reglages/mes-demandes/[reference]` :
+4,89 kB → 3,37 kB, au build de ce lot).
+
+### 18.2 Commentaire Jira : le même geste, deux appelants
+
+`corpsCommentaireJira` (`lib/contact.ts`, pure) compose un commentaire
+pseudonymisé — « Réponse du demandeur » / « Réponse de l'administration »,
+jamais de nom ni d'e-mail, même invariant que `corpsTicketJira` (§7). Si la
+réponse porte une photo, la même ligne que le ticket initial s'ajoute :
+jamais la photo elle-même, seulement son existence et l'URL de la fiche
+admin.
+
+`commenterReponseJira` (`lib/contact-data.ts`) est le point d'entrée
+**unique**, appelé à la fois par `envoyerReponse` (admin,
+`lib/contact-admin-data.ts`) et `envoyerReponseMembre` (membre,
+`lib/contact-member-data.ts`) — les deux écrans déclenchent le même geste
+après avoir enregistré leur réponse, seul le contenu diffère. Rend `null`,
+sans rien écrire, quand il n'y a rien à commenter (pas un signalement de
+bug, ou pas encore de ticket créé) — jamais une erreur : c'est un cas
+normal, pas un échec.
+
+`ajouterCommentaireJira` (`lib/jira.ts`) est le pendant, côté appel réseau,
+de `creerTicketJira` — mais n'a besoin que de `lireConfigAuth()`
+(authentification seule), pas de `lireConfigCreation()` : un commentaire ne
+crée rien, il n'a pas besoin du projet ni du type d'issue. `POST
+/rest/api/3/issue/{key}/comment`, même ADF que la description du ticket.
+
+### 18.3 Échec tracé, contrairement à la notification e-mail du lot 9
+
+Différence assumée avec `notifierAdminNouvelleReponse` (§17.3, best-effort
+sans colonne) : un commentaire Jira manqué désynchronise silencieusement le
+ticket de la vraie conversation, ce que l'administrateur doit pouvoir
+remarquer et corriger — alors qu'un e-mail interne manqué n'a pas
+d'équivalent visible côté ticket. D'où `contact_replies.jira_comment_status`
+/ `jira_comment_error` (même paire que `jira_sync_status`/`jira_error` sur
+`contact_messages`), et un bouton « Renvoyer le commentaire » dans
+`ContactDetail.tsx` (motif du bouton « Renvoyer » de l'e-mail, mais sur ce
+nouveau statut) — `renvoyerCommentaireJira` (`lib/contact-admin-data.ts`)
+et sa route `/api/admin/contact/[id]/reply/[replyId]/jira-comment`.
+
+### 18.4 SQL
+
+```sql
+create table public.contact_reply_photos (
+  id uuid primary key default gen_random_uuid(),
+  reply_id uuid not null references public.contact_replies(id) on delete cascade,
+  url text not null,
+  order_index smallint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index contact_reply_photos_reply_id_idx
+  on public.contact_reply_photos (reply_id);
+
+alter table public.contact_reply_photos enable row level security;
+
+create policy contact_reply_photos_admin_lecture
+  on public.contact_reply_photos
+  for select
+  to authenticated
+  using (is_admin_user());
+
+create policy contact_reply_photos_membre_lecture
+  on public.contact_reply_photos
+  for select
+  to authenticated
+  using (exists (
+    select 1
+      from public.contact_replies r
+      join public.contact_messages m on m.id = r.message_id
+     where r.id = contact_reply_photos.reply_id
+       and m.user_id = auth.uid()
+  ));
+
+alter table public.contact_replies
+  add column jira_comment_status text not null default 'not_applicable'
+    check (jira_comment_status in ('not_applicable', 'pending', 'sent', 'failed')),
+  add column jira_comment_error text;
 ```

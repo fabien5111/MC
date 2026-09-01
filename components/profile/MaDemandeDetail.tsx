@@ -12,10 +12,25 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import { formatDateHeure } from '@/lib/format';
 import { CONTACT_STATUSES, CONTACT_TYPES, REPONSE_MEMBRE_MAX, REPONSE_MEMBRE_MIN } from '@/lib/contact';
 import type { MaDemandeDetail as MaDemandeDetailRow, MaReponse, MonChangementStatut } from '@/lib/contact-member-data';
 import type { ContactMessagePhotoRow } from '@/lib/contact-types';
+
+function Vignettes({ photos }: { photos: { id: string; url: string }[] }) {
+  if (photos.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-3">
+      {photos.map((p) => (
+        <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" className="block h-20 w-20 overflow-hidden rounded-lg border border-outline-variant">
+          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL */}
+          <img src={p.url} alt="" className="h-full w-full object-cover" />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export function MaDemandeDetail({
   message,
@@ -32,6 +47,8 @@ export function MaDemandeDetail({
   const writeGuard = useWriteGuard();
   const { refresh, busy: refreshBusy } = useMutation();
   const [texte, setTexte] = useState('');
+  const [replyPhotos, setReplyPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const valide = texte.trim().length >= REPONSE_MEMBRE_MIN && texte.trim().length <= REPONSE_MEMBRE_MAX;
 
@@ -42,7 +59,7 @@ export function MaDemandeDetail({
     const res = await fetch(`/api/reglages/mes-demandes/${message.reference}/reply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: texte }),
+      body: JSON.stringify({ body: texte, photos: replyPhotos }),
     });
     const resBody = await res.json().catch(() => ({}));
     setEnvoiEnCours(false);
@@ -51,6 +68,7 @@ export function MaDemandeDetail({
       return;
     }
     setTexte('');
+    setReplyPhotos([]);
     refresh();
   }
 
@@ -82,20 +100,7 @@ export function MaDemandeDetail({
             <p className="mb-2 text-[11.5px] uppercase tracking-wide text-on-surface-variant">
               Photo{photos.length > 1 ? 's' : ''} jointe{photos.length > 1 ? 's' : ''}
             </p>
-            <div className="flex flex-wrap gap-3">
-              {photos.map((p) => (
-                <a
-                  key={p.id}
-                  href={p.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block h-24 w-24 overflow-hidden rounded-lg border border-outline-variant"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- data-URL */}
-                  <img src={p.url} alt="" className="h-full w-full object-cover" />
-                </a>
-              ))}
-            </div>
+            <Vignettes photos={photos} />
           </div>
         )}
       </div>
@@ -112,6 +117,7 @@ export function MaDemandeDetail({
                 {e.kind === 'initial' ? 'Votre demande' : 'Réponse'} — {formatDateHeure(e.created_at)}
               </p>
               <p className="whitespace-pre-wrap text-[13.5px]">{e.body}</p>
+              {e.kind === 'reponse' && <Vignettes photos={e.photos} />}
             </li>
           ))}
         </ul>
@@ -133,11 +139,16 @@ export function MaDemandeDetail({
               {texte.length}/{REPONSE_MEMBRE_MAX}
             </span>
           </div>
+
+          <div className="mt-4">
+            <PhotoUploader photos={replyPhotos} onChange={setReplyPhotos} onBusyChange={setPhotoBusy} />
+          </div>
+
           <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={envoyer}
-              disabled={!valide}
+              disabled={!valide || photoBusy}
               className="rounded-full bg-primary px-6 py-2 text-[13px] font-semibold text-on-primary hover:opacity-90 disabled:opacity-40 transition-all"
             >
               Envoyer

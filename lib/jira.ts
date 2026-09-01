@@ -273,6 +273,40 @@ export async function creerTicketJira(ctx: NouveauTicketJira): Promise<ResultatT
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Commentaire sur un ticket existant — à chaque réponse (lot 10)
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ResultatCommentaireJira = { ok: true } | { ok: false; error: string };
+
+/**
+ * Ajoute un commentaire sur un ticket déjà créé, admin ou membre
+ * (docs/contact-jira.md §18). Seule l'authentification est nécessaire —
+ * `lireConfigAuth`, pas `lireConfigCreation` — un commentaire ne crée rien,
+ * il n'a pas besoin du projet ni du type d'issue.
+ */
+export async function ajouterCommentaireJira(issueKey: string, texte: string): Promise<ResultatCommentaireJira> {
+  const config = lireConfigAuth();
+  if (!config) {
+    const manquantes = variablesJiraManquantes(false);
+    return { ok: false, error: `Configuration Jira incomplète côté serveur : ${manquantes.join(', ')} absente(s) ou vide(s).` };
+  }
+
+  const resultat = await appelAvecRetry(config, `/rest/api/3/issue/${encodeURIComponent(issueKey)}/comment`, 'POST', {
+    body: texteVersAdf(texte),
+  });
+
+  if ('error' in resultat) {
+    console.error('jira: ajout de commentaire échoué :', resultat.error);
+    return { ok: false, error: resultat.error };
+  }
+  if (resultat.status === 201) return { ok: true };
+
+  const erreur = `HTTP ${resultat.status} — ${messageErreurJira(resultat.body)}`;
+  console.error('jira: ajout de commentaire refusé :', erreur);
+  return { ok: false, error: erreur };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Vérification du webhook entrant (spec §9.2)
 // ─────────────────────────────────────────────────────────────────────────
 

@@ -29,8 +29,8 @@ import {
   REPONSE_ADMIN_MIN,
   type ContactStatus,
 } from '@/lib/contact';
-import type { ContactDetail as ContactDetailRow } from '@/lib/contact-admin-data';
-import type { ContactMessagePhotoRow, ContactReplyRow, ContactStatusHistoryRow } from '@/lib/contact-types';
+import type { ContactDetail as ContactDetailRow, ContactReplyAvecPhotos } from '@/lib/contact-admin-data';
+import type { ContactMessagePhotoRow, ContactStatusHistoryRow } from '@/lib/contact-types';
 
 function Copiable({ valeur, affichage }: { valeur: string; affichage: string }) {
   const [copie, setCopie] = useState(false);
@@ -104,7 +104,7 @@ export function ContactDetail({
   jiraUrl,
 }: {
   message: ContactDetailRow;
-  replies: ContactReplyRow[];
+  replies: ContactReplyAvecPhotos[];
   history: ContactStatusHistoryRow[];
   photos: ContactMessagePhotoRow[];
   jiraUrl: string | null;
@@ -211,6 +211,17 @@ export function ContactDetail({
     setEnvoiEnCours(false);
     if (!ok) {
       dialog.alert(`Renvoi impossible : ${body.erreur ?? 'erreur inconnue'}`);
+      return;
+    }
+    refresh();
+  }
+
+  async function renvoyerCommentaire(replyId: string) {
+    setEnvoiEnCours(true);
+    const { ok, body } = await appelAdmin(`/api/admin/contact/${message.id}/reply/${replyId}/jira-comment`, { method: 'POST' });
+    setEnvoiEnCours(false);
+    if (!ok) {
+      dialog.alert(`Commentaire Jira toujours en échec : ${body.erreur ?? 'erreur inconnue'}`);
       return;
     }
     refresh();
@@ -408,11 +419,31 @@ export function ContactDetail({
                     )}
                   </div>
                   <p className="whitespace-pre-wrap text-[13.5px]">{e.body}</p>
-                  {e.author_kind === 'admin' && e.email_status === 'failed' && (
-                    <button type="button" onClick={() => renvoyer(e.id)} className="mt-2 text-[12.5px] font-semibold text-primary hover:underline">
-                      Renvoyer
-                    </button>
+                  {e.photos.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {e.photos.map((p) => (
+                        <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" className="block h-20 w-20 overflow-hidden rounded-lg border border-outline-variant">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- data-URL */}
+                          <img src={p.url} alt="" className="h-full w-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
                   )}
+                  <div className="mt-2 flex items-center gap-3">
+                    {e.author_kind === 'admin' && e.email_status === 'failed' && (
+                      <button type="button" onClick={() => renvoyer(e.id)} className="text-[12.5px] font-semibold text-primary hover:underline">
+                        Renvoyer
+                      </button>
+                    )}
+                    {message.type === 'bug' && message.jira_issue_key && e.jira_comment_status === 'failed' && (
+                      <span className="flex items-center gap-2 text-[12.5px]">
+                        <span className="font-semibold text-error">Commentaire Jira en échec</span>
+                        <button type="button" onClick={() => renvoyerCommentaire(e.id)} className="font-semibold text-primary hover:underline">
+                          Renvoyer le commentaire
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </li>
               ),
             )}

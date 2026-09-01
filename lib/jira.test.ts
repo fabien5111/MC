@@ -5,6 +5,7 @@
 import { createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  ajouterCommentaireJira,
   creerTicketJira,
   estRetryable,
   lireConfigStatuts,
@@ -234,6 +235,71 @@ describe('creerTicketJira', () => {
 
     expect(resultat.ok).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2); // un retry, même sur une exception
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// ajouterCommentaireJira
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('ajouterCommentaireJira', () => {
+  const envOriginal = { ...process.env };
+
+  beforeEach(() => {
+    Object.assign(process.env, ENV_JIRA);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    process.env = { ...envOriginal };
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("n'appelle pas le réseau si la configuration est incomplète", async () => {
+    delete process.env.JIRA_API_TOKEN;
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await ajouterCommentaireJira('JEP-142', 'Réponse du demandeur — texte.');
+
+    expect(resultat.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("n'exige pas JIRA_PROJECT_KEY ni JIRA_ISSUE_TYPE_BUG — un commentaire ne crée rien", async () => {
+    delete process.env.JIRA_PROJECT_KEY;
+    delete process.env.JIRA_ISSUE_TYPE_BUG;
+    const fetchMock = vi.fn().mockResolvedValue(reponseJson(201, {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await ajouterCommentaireJira('JEP-142', 'Réponse du demandeur — texte.');
+
+    expect(resultat.ok).toBe(true);
+  });
+
+  it('poste sur le bon endpoint, avec le texte en ADF', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reponseJson(201, {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await ajouterCommentaireJira('JEP-142', 'Toujours le même souci.');
+
+    expect(resultat).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://exemple.atlassian.net/rest/api/3/issue/JEP-142/comment');
+    const corps = JSON.parse(init.body);
+    expect(corps.body).toEqual(texteVersAdf('Toujours le même souci.'));
+  });
+
+  it('rend une erreur exploitable sur un refus, sans jamais lever', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reponseJson(400, { errorMessages: ['issue introuvable'] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const resultat = await ajouterCommentaireJira('JEP-000', 'texte');
+
+    expect(resultat.ok).toBe(false);
+    if (!resultat.ok) expect(resultat.error).toContain('issue introuvable');
   });
 });
 

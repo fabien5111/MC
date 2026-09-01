@@ -977,6 +977,33 @@ export function composeNotificationReponseMembre(ctx: ContexteNotificationRepons
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Commentaire Jira à chaque réponse (lot 10)
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ContexteCommentaireJira = {
+  authorKind: AuthorKind;
+  body: string;
+  createdAtIso: string;
+  /** Lien vers la fiche admin, uniquement si CETTE réponse porte une photo — jamais la photo elle-même. */
+  photoAdminUrl: string | null;
+};
+
+/**
+ * Corps du commentaire ajouté sur le ticket Jira existant à chaque réponse,
+ * admin ou membre (docs/contact-jira.md §18). Même invariant que
+ * `corpsTicketJira` : jamais de nom, d'e-mail ni d'identifiant — seul le
+ * rôle de l'auteur est indiqué.
+ */
+export function corpsCommentaireJira(ctx: ContexteCommentaireJira): string {
+  const auteur = ctx.authorKind === 'member' ? 'Réponse du demandeur' : "Réponse de l'administration";
+  const lignes = [`${auteur} — ${formatDateHeure(ctx.createdAtIso)}`, '', ctx.body.trim()];
+  if (ctx.photoAdminUrl) {
+    lignes.push('', `Photo jointe — à consulter dans l'administration : ${ctx.photoAdminUrl}`);
+  }
+  return lignes.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Écran d'administration
 // ─────────────────────────────────────────────────────────────────────────
 

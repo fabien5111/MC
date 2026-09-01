@@ -147,6 +147,9 @@ export type ContactReplyRow = {
   sent_at: string | null;
   provider_id: string | null;
   error: string | null;
+  /** `'not_applicable'` hors signalement de bug ou tant qu'aucun ticket n'existe encore (lot 10). */
+  jira_comment_status: JiraSyncStatus;
+  jira_comment_error: string | null;
 };
 
 export type ContactReplyInsert = {
@@ -160,9 +163,37 @@ export type ContactReplyInsert = {
   sent_at?: string | null;
   provider_id?: string | null;
   error?: string | null;
+  jira_comment_status?: JiraSyncStatus;
+  jira_comment_error?: string | null;
 };
 
 export type ContactReplyUpdate = Partial<ContactReplyInsert>;
+
+// ─────────────────────────────────────────────────────────────────────────
+// contact_reply_photos
+// ─────────────────────────────────────────────────────────────────────────
+
+// Même doctrine que `contact_message_photos` (§15) : jamais transmises à
+// Jira, visibles uniquement dans les fiches admin et membre. Table séparée
+// plutôt qu'une colonne nullable sur `contact_message_photos` — ne mélange
+// pas deux parents (message vs réponse) dans la même table.
+export type ContactReplyPhotoRow = {
+  id: string;
+  reply_id: string;
+  url: string;
+  order_index: number;
+  created_at: string;
+};
+
+export type ContactReplyPhotoInsert = {
+  id?: string;
+  reply_id: string;
+  url: string;
+  order_index?: number;
+  created_at?: string;
+};
+
+export type ContactReplyPhotoUpdate = Partial<ContactReplyPhotoInsert>;
 
 // ─────────────────────────────────────────────────────────────────────────
 // contact_status_history
@@ -251,6 +282,11 @@ export type ContactDatabase = Omit<ImpersonationDatabase, 'public'> & {
         ContactMessagePhotoRow,
         ContactMessagePhotoInsert,
         ContactMessagePhotoUpdate
+      >;
+      contact_reply_photos: Table<
+        ContactReplyPhotoRow,
+        ContactReplyPhotoInsert,
+        ContactReplyPhotoUpdate
       >;
     };
   };

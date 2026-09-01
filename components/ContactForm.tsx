@@ -20,9 +20,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { isAcceptedImage, isHeic, resizeImageToDataUrl } from '@/lib/images';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import {
-  CONTACT_PHOTOS_MAX,
   CONTACT_TYPE_KEYS,
   CONTACT_TYPES,
   MESSAGE_MAX,
@@ -82,48 +81,11 @@ export function ContactForm({
     message: useRef<HTMLElement>(null),
   };
 
-  // Photos : compressées côté client (motif `lib/images.ts`, déjà utilisé
-  // pour les recettes), envoyées en data-URL. Restent dans Supabase et le
-  // back-office — jamais transmises à Jira (docs/contact-jira.md).
+  // Photos : compressées côté client (`PhotoUploader`, motif `lib/images.ts`),
+  // envoyées en data-URL. Restent dans Supabase et le back-office — jamais
+  // transmises à Jira (docs/contact-jira.md).
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-
-  async function ajouterPhotos(fichiers: FileList | null) {
-    if (!fichiers || fichiers.length === 0) return;
-    setPhotoError(null);
-    const place = CONTACT_PHOTOS_MAX - photos.length;
-    if (place <= 0) {
-      setPhotoError(`Vous ne pouvez joindre que ${CONTACT_PHOTOS_MAX} photos au maximum.`);
-      return;
-    }
-    setPhotoBusy(true);
-    try {
-      const nouvelles: string[] = [];
-      for (const fichier of Array.from(fichiers).slice(0, place)) {
-        if (isHeic(fichier)) {
-          setPhotoError("Le format HEIC (photos iPhone) n'est pas lisible par le navigateur : exportez d'abord la photo en JPEG.");
-          continue;
-        }
-        if (!isAcceptedImage(fichier)) {
-          setPhotoError('Format de fichier non pris en charge.');
-          continue;
-        }
-        try {
-          nouvelles.push(await resizeImageToDataUrl(fichier));
-        } catch {
-          setPhotoError("Une photo n'a pas pu être lue et a été ignorée.");
-        }
-      }
-      if (nouvelles.length) setPhotos((p) => [...p, ...nouvelles]);
-    } finally {
-      setPhotoBusy(false);
-    }
-  }
-
-  function retirerPhoto(index: number) {
-    setPhotos((p) => p.filter((_, i) => i !== index));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -343,64 +305,7 @@ export function ContactForm({
           </div>
         </div>
 
-        <div>
-          <label className="font-label-md text-label-md text-on-surface-variant mb-2 block">
-            Photo <span className="text-outline">(facultatif, {CONTACT_PHOTOS_MAX} maximum)</span>
-          </label>
-          <p className="mb-2 text-[12.5px] text-on-surface-variant">
-            Utile pour montrer un problème d&apos;affichage — visible uniquement par notre équipe, jamais transmise à
-            un service externe.
-          </p>
-
-          {photos.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-3">
-              {photos.map((src, i) => (
-                <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-outline-variant">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- data-URL */}
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => retirerPhoto(i)}
-                    aria-label="Retirer cette photo"
-                    className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface/90 text-on-surface transition-colors hover:bg-error hover:text-on-error"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">close</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {photos.length < CONTACT_PHOTOS_MAX && (
-            <label
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] transition-colors ${
-                photoBusy
-                  ? 'cursor-wait border-outline-variant text-outline'
-                  : 'cursor-pointer border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-              {photoBusy ? 'Traitement…' : 'Ajouter une photo'}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/avif"
-                multiple
-                disabled={photoBusy}
-                onChange={(e) => {
-                  ajouterPhotos(e.target.files);
-                  e.target.value = '';
-                }}
-                className="sr-only"
-              />
-            </label>
-          )}
-
-          {photoError && (
-            <p role="alert" aria-live="polite" className="mt-2 text-[13px] text-error">
-              {photoError}
-            </p>
-          )}
-        </div>
+        <PhotoUploader photos={photos} onChange={setPhotos} onBusyChange={setPhotoBusy} />
 
         {generalError && (
           <p role="alert" aria-live="polite" className="rounded-lg bg-error-container px-4 py-3 text-[13px] text-on-error-container">

@@ -17,6 +17,7 @@ import { withContactSchema } from '@/lib/contact-types';
 import type {
   ContactMessagePhotoRow,
   ContactMessageRow,
+  ContactReplyPhotoRow,
   ContactReplyRow,
   ContactStatusHistoryRow,
 } from '@/lib/contact-types';
@@ -29,6 +30,7 @@ import {
   type ContactType,
 } from '@/lib/contact';
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
+import { commenterReponseJira } from '@/lib/contact-data';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -191,14 +193,30 @@ export async function getContactMessageByReference(reference: string): Promise<C
   return { ...message, authorName, authorRegisteredAt, previousRequestsCount };
 }
 
-export async function getContactReplies(messageId: string): Promise<ContactReplyRow[]> {
+export type ContactReplyAvecPhotos = ContactReplyRow & { photos: ContactReplyPhotoRow[] };
+
+export async function getContactReplies(messageId: string): Promise<ContactReplyAvecPhotos[]> {
   const client = withContactSchema(await createClient());
   const { data } = await client
     .from('contact_replies')
     .select('*')
     .eq('message_id', messageId)
     .order('created_at', { ascending: true });
-  return data ?? [];
+  const replies = data ?? [];
+  if (replies.length === 0) return [];
+
+  const { data: photos } = await client
+    .from('contact_reply_photos')
+    .select('*')
+    .in('reply_id', replies.map((r) => r.id))
+    .order('order_index', { ascending: true });
+  const parReponse = new Map<string, ContactReplyPhotoRow[]>();
+  for (const p of photos ?? []) {
+    const arr = parReponse.get(p.reply_id) ?? [];
+    arr.push(p);
+    parReponse.set(p.reply_id, arr);
+  }
+  return replies.map((r) => ({ ...r, photos: parReponse.get(r.id) ?? [] }));
 }
 
 export async function getContactStatusHistory(messageId: string): Promise<ContactStatusHistoryRow[]> {
@@ -388,7 +406,7 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
   const client = withContactSchema(createAdminClient());
   const { data: message } = await client
     .from('contact_messages')
-    .select('id, reference, subject, message, email, status, created_at, user_id')
+    .select('id, reference, subject, message, email, status, created_at, user_id, type, jira_issue_key')
     .eq('id', messageId)
     .maybeSingle();
   if (!message) return { ok: false, error: 'Demande introuvable.' };
@@ -397,7 +415,7 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
   const { data: reply, error: insertError } = await client
     .from('contact_replies')
     .insert({ message_id: messageId, author_id: authorId, author_kind: 'admin', body: corps, email_status: 'pending' })
-    .select('id')
+    .select('id, created_at')
     .single();
   if (insertError || !reply) return { ok: false, error: 'Écriture de la réponse impossible.' };
 
@@ -407,6 +425,15 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
     .from('contact_replies')
     .update(delivered ? { email_status: 'sent', sent_at: new Date().toISOString() } : { email_status: 'failed', error })
     .eq('id', reply.id);
+
+  // Commentaire Jira (lot 10) : best-effort, ne conditionne jamais le
+  // résultat renvoyé — la réponse est déjà enregistrée et, si possible,
+  // envoyée par e-mail.
+  await commenterReponseJira(
+    client,
+    { id: reply.id, body: corps, author_kind: 'admin', created_at: reply.created_at },
+    { type: message.type, jira_issue_key: message.jira_issue_key, reference: message.reference },
+  );
 
   // Effet de bord sur le statut (§10.2.7) : seul `recu` bascule, tout autre
   // statut — y compris `a_deployer` — reste intact.
@@ -444,5 +471,31 @@ export async function renvoyerReponse(replyId: string): Promise<ResultatReponse>
     .eq('id', reply.id);
 
   return { ok: true, delivered };
+}
+
+/**
+ * Relance le commentaire Jira d'une réponse déjà enregistrée (bouton
+ * « Renvoyer le commentaire », lot 10) — motif de `renvoyerReponse` pour
+ * l'e-mail, mais sur `jira_comment_status` plutôt que `email_status`.
+ */
+export async function renvoyerCommentaireJira(replyId: string): Promise<ResultatEcriture> {
+  const client = withContactSchema(createAdminClient());
+  const { data: reply } = await client
+    .from('contact_replies')
+    .select('id, message_id, body, author_kind, created_at')
+    .eq('id', replyId)
+    .maybeSingle();
+  if (!reply) return { ok: false, error: 'Réponse introuvable.' };
+
+  const { data: message } = await client
+    .from('contact_messages')
+    .select('type, jira_issue_key, reference')
+    .eq('id', reply.message_id)
+    .maybeSingle();
+  if (!message) return { ok: false, error: 'Demande introuvable.' };
+
+  const resultat = await commenterReponseJira(client, reply, message);
+  if (!resultat) return { ok: false, error: "Pas de ticket Jira associé à cette demande." };
+  return resultat.ok ? { ok: true } : { ok: false, error: resultat.error };
 }
 
