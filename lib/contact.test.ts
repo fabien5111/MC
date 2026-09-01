@@ -471,6 +471,26 @@ describe('mapperStatutJira', () => {
     expect(r.avertissement).toContain('Livré en production');
   });
 
+  it("l'id, quand il est disponible des deux côtés, décide seul — jamais de repli sur un nom par défaut non renseigné", () => {
+    // Cas réel signalé : `JIRA_STATUS_TO_DEPLOY` (nom) n'est jamais définie,
+    // `aDeployerNom` reste donc à sa valeur par défaut `'Terminé'` — qui se
+    // trouve être le nom RÉEL du statut « déployé » configuré ici par id
+    // (10006, nommé « Terminé » chez ce client Jira). Sans le court-circuit
+    // sur l'id, la branche « à déployer » (id 10005, jamais atteint) se
+    // déclarait quand même vraie par coïncidence de nom, et l'ambiguïté
+    // artificielle qui en résultait bloquait le passage à « Terminé » et
+    // supprimait l'e-mail de déploiement.
+    const idSeulement: ConfigStatutsJira = {
+      aDeployerId: '10005',
+      aDeployerNom: 'Terminé', // valeur par défaut, jamais surchargée
+      deployeId: '10006',
+      deployeNom: 'Déployé',
+    };
+    const r = mapperStatutJira(statut({ id: '10006', nom: 'Terminé' }), idSeulement);
+    expect(r).toMatchObject({ action: 'appliquer', statut: 'termine', clore: true, notifier: true });
+    expect(r.avertissement).toBeNull();
+  });
+
   it('ne notifie jamais quand les deux variables désignent le même statut', () => {
     const ambigu: ConfigStatutsJira = {
       aDeployerId: null,

@@ -520,13 +520,21 @@ function normaliserNom(nom: string): string {
  * `Terminé` et `Déployé` partagent la catégorie Jira `done` : la catégorie ne
  * peut donc pas trancher, et c'est l'identité du statut qui décide.
  *
- * L'**id** est testé en priorité — il survit à un renommage, contrairement au
- * nom. Le nom reste testé en repli, ce qui rend la reconnaissance strictement
- * plus robuste que l'un ou l'autre seul : il suffit que l'un des deux
- * corresponde.
+ * L'**id**, quand il est disponible des deux côtés, décide SEUL — il n'y a
+ * alors plus de repli sur le nom. Sans ce court-circuit, un id configuré qui
+ * ne correspond PAS (ce statut n'est pas celui-là) retombait quand même sur
+ * la comparaison de noms : si le nom de configuration de l'AUTRE branche
+ * (souvent une valeur par défaut jamais renseignée, ex. `aDeployerNom` reste
+ * à `'Terminé'` tant que `JIRA_STATUS_TO_DEPLOY` n'est pas définie) coïncidait
+ * par hasard avec le nom réel du statut reçu, les deux branches se
+ * déclaraient vraies à la fois — bascule silencieuse sur la configuration
+ * « ambiguë » (aucun e-mail, statut resté « à déployer ») alors que les id
+ * eux-mêmes ne laissaient aucune place au doute. Le nom n'est un repli que
+ * lorsque l'id manque d'un côté ou de l'autre — jamais un second avis quand
+ * l'id a déjà tranché.
  */
 function correspond(statut: StatutJira, id: string | null, nom: string): boolean {
-  if (id && statut.id && id === statut.id) return true;
+  if (id && statut.id) return id === statut.id;
   return nom.trim() !== '' && normaliserNom(nom) === normaliserNom(statut.nom);
 }
 

@@ -631,6 +631,57 @@ personne ne cherchait à relire un statut. Symptôme observé : un ticket
 marqué « Déployé » dans Jira restait affiché « En cours de traitement »
 dans l'administration, y compris après un clic sur « Resynchroniser ».
 
+### 13.9 Second correctif : l'id ne court-circuitait pas vraiment `correspond()`
+
+Une fois §13.8 corrigé, un second symptôme est apparu sur le même ticket :
+resynchronisé avec succès, mais rangé en « À déployer » alors que son
+statut Jira réel (« Terminé », id `10006`) était bien celui configuré dans
+`JIRA_STATUS_DEPLOYED_ID`. Les variables d'environnement étaient pourtant
+correctes — le bug était dans `correspond()` (`lib/contact.ts`).
+
+**Le défaut** : `correspond()` documentait l'id comme prioritaire sur le nom,
+mais ne court-circuitait qu'en cas de correspondance — un id configuré qui
+ne correspondait **pas** retombait quand même sur la comparaison de noms :
+
+```ts
+// Avant : un id qui ne correspond pas ne bloque rien, la fonction retombe
+// sur le nom — l'id n'est prioritaire qu'en cas de succès, pas en cas d'échec.
+if (id && statut.id && id === statut.id) return true;
+return normaliserNom(nom) === normaliserNom(statut.nom);
+```
+
+Concrètement, chez ce client : `JIRA_STATUS_TO_DEPLOY` (le NOM) n'a jamais
+été renseignée — seule sa variante `_ID` l'a été (`10005`, « A déployer »).
+`aDeployerNom` restait donc à sa valeur par défaut, `'Terminé'`
+(`lireConfigStatuts`) — qui se trouve être, chez ce même client, le nom réel
+du statut « déployé » (id `10006`, nommé « Terminé » dans leur workflow).
+Résultat sur un ticket dans ce statut :
+- `estDeploye` (id `10006` vs `deployeId='10006'`) → vrai, à raison ;
+- `estADeployer` (id `10005` vs `10006` → pas de correspondance par id, donc
+  repli sur le nom : `'Terminé'` (config, jamais renseignée) vs `'Terminé'`
+  (nom réel du statut) → vrai, **à tort**.
+
+Les deux branches se déclarant vraies, `mapperStatutJira` prenait la voie
+« configuration ambiguë » (§7.1) : reste en « à déployer », aucun e-mail —
+un filet de sécurité qui a masqué le bug plutôt que de le révéler, puisque
+rien ne plantait ni n'affichait d'erreur.
+
+**Le correctif** : quand l'id est disponible des deux côtés, il décide
+**seul** — plus de repli sur le nom dans ce cas :
+
+```ts
+function correspond(statut: StatutJira, id: string | null, nom: string): boolean {
+  if (id && statut.id) return id === statut.id;
+  return nom.trim() !== '' && normaliserNom(nom) === normaliserNom(statut.nom);
+}
+```
+
+Le nom reste un repli légitime — mais seulement quand l'id manque d'un côté
+ou de l'autre (config sans id, ou payload Jira sans id), jamais comme second
+avis une fois que l'id a déjà tranché. Test de non-régression :
+`lib/contact.test.ts` « l'id, quand il est disponible des deux côtés, décide
+seul ».
+
 ---
 
 ## 14. Finitions (lot 6)
