@@ -100,11 +100,33 @@ export function UsageCard({
   return (
     <section className="mt-6 border border-outline-variant bg-surface-container-lowest p-8 md:p-10">
       <LoadingOverlay visible={busy} label="Annulation…" />
-      <div className="mb-2 flex items-center gap-3">
-        <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
-        <h2 className="font-headline-md text-headline-md text-primary">
-          Mon forfait — {currentPlan?.label ?? 'Gratuit'}
-        </h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
+          <h2 className="font-headline-md text-headline-md text-primary">
+            Mon forfait — {currentPlan?.label ?? 'Gratuit'}
+          </h2>
+        </div>
+        {(peutEssayer || hasHigherPlan) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {peutEssayer && (
+              <Link
+                href="/plans"
+                className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
+              >
+                Essayer une formule payante
+              </Link>
+            )}
+            {hasHigherPlan && (
+              <Link
+                href="/plans"
+                className="rounded-full bg-primary px-4 py-2 font-label-md text-label-md text-on-primary transition-opacity hover:opacity-90"
+              >
+                Passer à une formule supérieure
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {estPayant && (
@@ -170,16 +192,6 @@ export function UsageCard({
       )}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        {peutEssayer && (
-          <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
-            Essayer une formule payante
-          </Link>
-        )}
-        {hasHigherPlan && (
-          <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
-            Passer à une formule supérieure
-          </Link>
-        )}
         {approcheOuDepasse && !peutEssayer && !hasHigherPlan && (
           <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
             Voir les formules
