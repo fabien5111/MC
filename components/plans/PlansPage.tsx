@@ -65,7 +65,13 @@ export function PlansPage({
   const bascule = hasYearlyOption(plans);
   const currentIndex = plans.findIndex((p) => p.code === currentPlanCode);
 
-  async function essayer(planCode: string) {
+  async function essayer(planCode: string, planLabel: string) {
+    const ok = await dialog.confirm(
+      `Essai gratuit de ${trialDays} jours sur ${planLabel}, sans moyen de paiement — un seul essai possible par ` +
+        `membre, toutes formules confondues. Continuer ?`,
+      { okLabel: 'Démarrer mon essai', cancelLabel: 'Annuler' },
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const r = await fetch('/api/plans/essayer', {
@@ -78,7 +84,7 @@ export function PlansPage({
         dialog.alert(data?.erreur || "L'essai n'a pas pu démarrer.");
         return;
       }
-      await dialog.alert(`Essai démarré : profitez de ${trialDays} jours de ${planCode} gratuitement.`);
+      await dialog.alert(`Essai démarré : profitez de ${trialDays} jours de ${planLabel} gratuitement.`);
       router.refresh();
     } finally {
       setBusy(false);
@@ -276,7 +282,7 @@ export function PlansPage({
                       // n'a rien à proposer — jamais affiché dans ce cas
                       // (un essai reste possible, lui, sans moyen de paiement).
                       aUnTarif={tarif !== null}
-                      onEssayer={() => essayer(p.code)}
+                      onEssayer={() => essayer(p.code, p.label)}
                       onAbonner={() => simulerAbonnement(p.code, p.label)}
                       onRetrograder={() => retrograder(p.code)}
                     />
