@@ -2,7 +2,7 @@
 // (spec §10.2). Réservé à l'admin complet.
 import { NextResponse } from 'next/server';
 import { getVerifiedUser, isAdmin } from '@/lib/auth';
-import { validerReponseAdmin } from '@/lib/contact';
+import { validerPhotos, validerReponseAdmin } from '@/lib/contact';
 import { envoyerReponse } from '@/lib/contact-admin-data';
 import { MissingServiceKeyError } from '@/lib/supabase/admin';
 
@@ -15,9 +15,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json().catch(() => ({}));
   const validation = validerReponseAdmin(body?.body);
   if (!validation.ok) return NextResponse.json({ erreur: validation.error }, { status: 400 });
+  const photos = validerPhotos(body?.photos);
 
   try {
-    const resultat = await envoyerReponse(id, user.id, validation.body);
+    const resultat = await envoyerReponse(id, user.id, validation.body, photos);
     if (!resultat.ok) return NextResponse.json({ erreur: resultat.error }, { status: 400 });
     return NextResponse.json({ ok: true, delivered: resultat.delivered });
   } catch (e) {

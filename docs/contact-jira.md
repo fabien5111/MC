@@ -971,16 +971,21 @@ photo, et refléter chaque échange (admin ou membre) sur le ticket Jira
 existant — pour qu'un développeur qui travaille depuis Jira voie la
 conversation avancer sans repasser par l'administration.
 
-### 18.1 Photos : uniquement sur une réponse du demandeur
+### 18.1 Photos : au départ, uniquement sur une réponse du demandeur
 
-**Décision** : contrairement au message initial (§15, les deux camps
-pourraient en théorie en avoir), seule une réponse du **demandeur** peut
-porter une photo — jamais une réponse admin. Raison technique, pas de
-principe : une réponse admin part par e-mail (`composeReponseAdmin`), et une
-image en data-URL n'est pas fiable une fois embarquée dans un e-mail
-(beaucoup de clients la suppriment ou la bloquent). Le demandeur, lui, ne
-fait que consulter le panneau — même canal que le message initial, où la
-photo est déjà fiable.
+**Décision initiale de ce lot**, revue au lot 11 (§19) : contrairement au
+message initial (§15, les deux camps pourraient en théorie en avoir), seule
+une réponse du **demandeur** pouvait porter une photo — jamais une réponse
+admin. Raison technique, pas de principe : une réponse admin part par
+e-mail (`composeReponseAdmin`), et une image en data-URL n'est pas fiable
+une fois embarquée dans un e-mail (beaucoup de clients la suppriment ou la
+bloquent). Le demandeur, lui, ne fait que consulter le panneau — même canal
+que le message initial, où la photo est déjà fiable.
+
+Le lot 11 lève cette restriction : la photo admin n'est simplement jamais
+embarquée dans l'e-mail, seulement mentionnée avec un lien. Conservé ici
+pour la trace de la décision — la table et la doctrine RGPD ci-dessous
+restent valables telles quelles.
 
 Nouvelle table `contact_reply_photos` (même doctrine que
 `contact_message_photos`, §15) plutôt qu'une colonne nullable sur cette
@@ -1071,3 +1076,50 @@ alter table public.contact_replies
     check (jira_comment_status in ('not_applicable', 'pending', 'sent', 'failed')),
   add column jira_comment_error text;
 ```
+
+---
+
+## 19. Photos sur une réponse admin (lot 11)
+
+Retour d'usage sur le lot 10 : l'administrateur veut pouvoir illustrer sa
+propre réponse, pas seulement lire celles du demandeur.
+
+### 19.1 Aucun changement de schéma
+
+`contact_reply_photos` (§18.1) ne distingue déjà pas l'auteur de la
+réponse — la restriction « demandeur uniquement » n'était que dans le code
+(l'UI n'affichait pas de `PhotoUploader` côté admin, `commenterReponseJira`
+ne regardait la présence de photos que pour `author_kind === 'member'`).
+Ouvrir la fonctionnalité à l'admin est donc une levée de restriction, pas
+une migration : `enregistrerPhotosReponse` (`lib/contact-data.ts`)
+s'utilise à l'identique des deux côtés.
+
+### 19.2 La photo n'est jamais dans l'e-mail — seulement mentionnée, et seulement si le demandeur peut la voir
+
+Même contrainte technique qu'au lot 10, pas contournée : une image en
+data-URL reste peu fiable une fois embarquée dans un e-mail. La photo
+admin n'y est donc **jamais** incluse — `composeReponseAdmin` reçoit un
+`photoMemberUrl` (calculé par `composerEtEnvoyer`,
+`lib/contact-admin-data.ts`) qui n'est renseigné que si :
+1. cette réponse porte au moins une photo (`contact_reply_photos`), et
+2. le demandeur est un membre **connecté** (`message.user_id` non nul) —
+   seul lui a un `/reglages/mes-demandes/[reference]` où la consulter.
+
+Un visiteur sans compte ne voit donc jamais la photo par e-mail — elle
+reste visible dans le panneau admin et, pour un signalement de bug, dans le
+commentaire Jira (`commenterReponseJira`, désormais indifférent à l'auteur
+de la réponse, §18.2). C'est la même dégradation que le reste du module vis-
+à-vis d'un visiteur non connecté : pas d'accès à `/reglages`, donc pas de
+canal pour lui montrer ce que voit un membre.
+
+`composerEtEnvoyer` calcule ce lien à **chaque** envoi — initial
+(`envoyerReponse`) et relance (`renvoyerReponse`) — en interrogeant
+`contact_reply_photos` par l'id de la réponse déjà enregistrée : la photo
+doit donc être écrite (`enregistrerPhotosReponse`) avant l'appel qui compose
+et envoie l'e-mail, sans quoi le premier envoi ne la mentionnerait pas.
+
+### 19.3 Aucune nouvelle policy
+
+Aucun SQL à exécuter pour ce lot : la lecture (RLS) et l'écriture
+(service_role) suivent exactement les policies posées au lot 10 — seule la
+condition côté code qui empêchait l'admin d'utiliser la table disparaît.

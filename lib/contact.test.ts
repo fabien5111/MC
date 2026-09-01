@@ -853,6 +853,7 @@ describe('composeReponseAdmin', () => {
     originalSubject: 'Les quantités ne se recalculent pas',
     originalMessage: 'Les quantités ne se recalculent pas quand je change le nombre de parts.',
     originalDateIso: '2026-08-30T14:32:00.000Z',
+    photoMemberUrl: null,
   };
 
   it("porte la référence dans l'objet, préfixé « Re : »", () => {
@@ -877,6 +878,14 @@ describe('composeReponseAdmin', () => {
     const html = composeReponseAdmin({ ...ctx, replyBody: '<img src=x onerror=alert(1)>' }).html;
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img');
+  });
+
+  it("n'ajoute la mention de photo que si un lien est fourni (lot 11)", () => {
+    expect(composeReponseAdmin(ctx).text).not.toContain('photo est jointe');
+    const avecPhoto = composeReponseAdmin({ ...ctx, photoMemberUrl: 'https://jepatisse.com/reglages/mes-demandes/REF-A7F3K2' });
+    expect(avecPhoto.text).toContain('photo est jointe');
+    expect(avecPhoto.text).toContain('https://jepatisse.com/reglages/mes-demandes/REF-A7F3K2');
+    expect(avecPhoto.html).toContain('photo est jointe');
   });
 });
 

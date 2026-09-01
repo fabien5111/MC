@@ -202,8 +202,11 @@ export async function enregistrerPhotos(messageId: string, urls: string[]): Prom
 
 /**
  * Même doctrine que `enregistrerPhotos`, pour les photos jointes à une
- * réponse (lot 10) — uniquement une réponse du DEMANDEUR (jamais l'admin,
- * dont la réponse part par e-mail où une data-URL n'est pas fiable).
+ * réponse — admin ou membre (lot 10, ouvert à l'admin au lot 11). Côté
+ * admin, la photo n'est jamais embarquée dans l'e-mail envoyé au demandeur
+ * (data-URL peu fiable une fois dans un message) — seulement mentionnée
+ * avec un lien vers son suivi, s'il est membre (`composerEtEnvoyer`,
+ * `lib/contact-admin-data.ts`).
  */
 export async function enregistrerPhotosReponse(replyId: string, urls: string[]): Promise<void> {
   if (urls.length === 0) return;
@@ -328,17 +331,14 @@ export async function commenterReponseJira(
 ): Promise<ResultatCommentaireJira | null> {
   if (message.type !== 'bug' || !message.jira_issue_key) return null;
 
-  // Une photo jointe à CETTE réponse (membre uniquement, cf. `enregistrerPhotosReponse`) :
-  // jamais transmise elle-même, seulement son existence et un lien vers la
-  // fiche admin — même doctrine que le corps du ticket (§15).
-  let photoAdminUrl: string | null = null;
-  if (reply.author_kind === 'member') {
-    const { count } = await client
-      .from('contact_reply_photos')
-      .select('id', { count: 'exact', head: true })
-      .eq('reply_id', reply.id);
-    if ((count ?? 0) > 0) photoAdminUrl = `${siteUrl()}/admin/contact/${message.reference}`;
-  }
+  // Une photo jointe à CETTE réponse, admin ou membre (lot 11) : jamais
+  // transmise elle-même, seulement son existence et un lien vers la fiche
+  // admin — même doctrine que le corps du ticket (§15).
+  const { count } = await client
+    .from('contact_reply_photos')
+    .select('id', { count: 'exact', head: true })
+    .eq('reply_id', reply.id);
+  const photoAdminUrl = (count ?? 0) > 0 ? `${siteUrl()}/admin/contact/${message.reference}` : null;
 
   const texte = corpsCommentaireJira({
     authorKind: reply.author_kind,

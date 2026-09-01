@@ -30,7 +30,7 @@ import {
   type ContactType,
 } from '@/lib/contact';
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
-import { commenterReponseJira } from '@/lib/contact-data';
+import { commenterReponseJira, enregistrerPhotosReponse } from '@/lib/contact-data';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -367,12 +367,23 @@ export type ResultatReponse = { ok: true; delivered: boolean } | { ok: false; er
 async function composerEtEnvoyer(
   client: ReturnType<typeof withContactSchema>,
   message: Pick<ContactMessageRow, 'reference' | 'subject' | 'message' | 'email' | 'created_at' | 'user_id'>,
+  replyId: string,
   corps: string,
 ): Promise<{ delivered: boolean; error: string | null }> {
   let prenom: string | null = null;
   if (message.user_id) {
     const { data: profil } = await client.from('profiles').select('full_name').eq('id', message.user_id).maybeSingle();
     prenom = profil?.full_name?.split(' ')[0] || null;
+  }
+
+  // Une photo jointe par l'admin n'est jamais embarquée dans l'e-mail (peu
+  // fiable en data-URL) : seulement mentionnée, avec un lien vers le suivi
+  // du membre — impossible à proposer à un visiteur non connecté, qui n'a
+  // pas accès à `/reglages` (lot 11).
+  let photoMemberUrl: string | null = null;
+  if (message.user_id) {
+    const { count } = await client.from('contact_reply_photos').select('id', { count: 'exact', head: true }).eq('reply_id', replyId);
+    if ((count ?? 0) > 0) photoMemberUrl = `${siteUrl()}/reglages/mes-demandes/${message.reference}`;
   }
 
   const { subject, html, text } = composeReponseAdmin({
@@ -382,6 +393,7 @@ async function composerEtEnvoyer(
     originalSubject: message.subject,
     originalMessage: message.message,
     originalDateIso: message.created_at,
+    photoMemberUrl,
   });
 
   const delivered = await sendEmailBestEffort({
@@ -402,7 +414,7 @@ async function composerEtEnvoyer(
  * dans le fil, avec son statut de délivrance, et le bouton « Renvoyer »
  * (`renvoyerReponse`) la reprend telle quelle.
  */
-export async function envoyerReponse(messageId: string, authorId: string, corps: string): Promise<ResultatReponse> {
+export async function envoyerReponse(messageId: string, authorId: string, corps: string, photos: string[]): Promise<ResultatReponse> {
   const client = withContactSchema(createAdminClient());
   const { data: message } = await client
     .from('contact_messages')
@@ -419,7 +431,11 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
     .single();
   if (insertError || !reply) return { ok: false, error: 'Écriture de la réponse impossible.' };
 
-  const { delivered, error } = await composerEtEnvoyer(client, message, corps);
+  // Enregistrées AVANT l'envoi : `composerEtEnvoyer` doit déjà les trouver
+  // pour décider d'inclure la mention dans l'e-mail.
+  await enregistrerPhotosReponse(reply.id, photos);
+
+  const { delivered, error } = await composerEtEnvoyer(client, message, reply.id, corps);
 
   await client
     .from('contact_replies')
@@ -463,7 +479,7 @@ export async function renvoyerReponse(replyId: string): Promise<ResultatReponse>
   if (!message) return { ok: false, error: 'Demande introuvable.' };
   if (!message.email) return { ok: false, error: "Cette demande n'a pas d'adresse e-mail associée." };
 
-  const { delivered, error } = await composerEtEnvoyer(client, message, reply.body);
+  const { delivered, error } = await composerEtEnvoyer(client, message, reply.id, reply.body);
 
   await client
     .from('contact_replies')

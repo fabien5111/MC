@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import { formatDateHeure } from '@/lib/format';
 import {
   CONTACT_STATUSES,
@@ -182,6 +183,8 @@ export function ContactDetail({
   // ── Réponse au demandeur ────────────────────────────────────────────────
   const [reponse, setReponse] = useState('');
   const [apercu, setApercu] = useState(false);
+  const [reponsePhotos, setReponsePhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const reponseValide = reponse.trim().length >= REPONSE_ADMIN_MIN && reponse.trim().length <= REPONSE_ADMIN_MAX;
 
   async function envoyerReponse() {
@@ -190,7 +193,7 @@ export function ContactDetail({
     setEnvoiEnCours(true);
     const { ok, body } = await appelAdmin(`/api/admin/contact/${message.id}/reply`, {
       method: 'POST',
-      body: JSON.stringify({ body: reponse }),
+      body: JSON.stringify({ body: reponse, photos: reponsePhotos }),
     });
     setEnvoiEnCours(false);
     if (!ok) {
@@ -198,6 +201,7 @@ export function ContactDetail({
       return;
     }
     setReponse('');
+    setReponsePhotos([]);
     setApercu(false);
     if (body.delivered === false) {
       dialog.alert("La réponse est enregistrée, mais l'e-mail n'a pas pu être envoyé. Utilisez « Renvoyer » depuis le fil des échanges.");
@@ -474,6 +478,15 @@ export function ContactDetail({
                   </span>
                 </div>
 
+                <div className="mt-4">
+                  <PhotoUploader
+                    photos={reponsePhotos}
+                    onChange={setReponsePhotos}
+                    onBusyChange={setPhotoBusy}
+                    helpText="Jamais incluse dans l'e-mail envoyé (peu fiable) — le demandeur connecté y accède depuis son suivi ; un visiteur non connecté ne la verra pas."
+                  />
+                </div>
+
                 {apercu && reponse.trim() && (
                   <div className="mt-3 rounded-lg bg-surface-container-low p-4">
                     <p className="mb-2 text-[11.5px] uppercase tracking-wide text-on-surface-variant">Aperçu</p>
@@ -493,7 +506,7 @@ export function ContactDetail({
                   <button
                     type="button"
                     onClick={envoyerReponse}
-                    disabled={!reponseValide}
+                    disabled={!reponseValide || photoBusy}
                     className="rounded-full bg-primary px-6 py-2 text-[13px] font-semibold text-on-primary hover:opacity-90 disabled:opacity-40 transition-all"
                   >
                     Envoyer la réponse

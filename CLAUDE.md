@@ -932,17 +932,22 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   `createAdminClient()` — aucune policy d'écriture n'est ajoutée. Cf.
   `docs/contact-jira.md` §17.
 - **Photos sur une réponse, commentaire Jira à chaque échange** : une
-  réponse du **demandeur** (jamais l'admin — sa réponse part par e-mail, où
-  une data-URL n'est pas fiable) peut porter une photo
-  (`contact_reply_photos`, widget partagé `PhotoUploader.tsx`). Chaque
-  réponse, admin ou membre, ajoute aussi un commentaire pseudonymisé sur le
-  ticket Jira existant (`commenterReponseJira`, `lib/contact-data.ts`, point
-  d'entrée unique pour les deux écrans) — jamais si la demande n'est pas un
-  bug ou n'a pas encore de ticket. Échec tracé (`contact_replies.jira_comment_status`
-  / `jira_comment_error`, bouton « Renvoyer le commentaire » côté admin),
+  réponse, admin ou membre, peut porter une photo (`contact_reply_photos`,
+  widget partagé `PhotoUploader.tsx`). Une photo admin n'est **jamais**
+  incluse dans l'e-mail envoyé au demandeur (une data-URL n'est pas fiable
+  une fois embarquée) — seulement mentionnée avec un lien vers son suivi
+  (`/reglages/mes-demandes/[reference]`), et uniquement si le demandeur est
+  un membre **connecté** : un visiteur n'a nulle part où la consulter par
+  e-mail, elle reste alors visible seulement dans le panneau admin et le
+  commentaire Jira. Chaque réponse, admin ou membre, ajoute aussi un
+  commentaire pseudonymisé sur le ticket Jira existant
+  (`commenterReponseJira`, `lib/contact-data.ts`, point d'entrée unique pour
+  les deux écrans) — jamais si la demande n'est pas un bug ou n'a pas encore
+  de ticket. Échec tracé (`contact_replies.jira_comment_status` /
+  `jira_comment_error`, bouton « Renvoyer le commentaire » côté admin),
   contrairement à la notification e-mail du point précédent : un commentaire
   manqué désynchronise silencieusement le ticket de la vraie conversation.
-  Cf. `docs/contact-jira.md` §18.
+  Cf. `docs/contact-jira.md` §18-19.
 - **Anti-spam sans traceur tiers** : honeypot, délai minimum de 3 s porté
   par un jeton **signé côté serveur** (`CONTACT_FORM_SECRET` — un horodatage
   lu du navigateur ne protégerait rien), limitation de débit comptée en base

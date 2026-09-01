@@ -874,6 +874,14 @@ export type ContexteReponseAdmin = {
   originalSubject: string;
   originalMessage: string;
   originalDateIso: string;
+  /**
+   * Lien vers le suivi du membre, uniquement si CETTE réponse admin porte
+   * une photo — jamais la photo elle-même (une data-URL n'est pas fiable
+   * une fois embarquée dans un e-mail). `null` pour un demandeur non
+   * connecté : il n'a pas de `/reglages` où la voir, la mention serait sans
+   * objet (§18 de docs/contact-jira.md).
+   */
+  photoMemberUrl: string | null;
 };
 
 export type ReponseAdminComposee = { subject: string; html: string; text: string };
@@ -890,10 +898,15 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
 
   const subject = `Re : ${ctx.originalSubject} [${ctx.reference}]`;
 
+  const ligneMedia = ctx.photoMemberUrl
+    ? `Une photo est jointe à cette réponse — consultez-la depuis votre suivi : ${ctx.photoMemberUrl}`
+    : null;
+
   const text = [
     salutation,
     '',
     ctx.replyBody.trim(),
+    ...(ligneMedia ? ['', ligneMedia] : []),
     '',
     '---',
     'Vous pouvez répondre directement à ce message.',
@@ -908,6 +921,7 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
   const html = `
     <p>${salutation}</p>
     <p>${echappe(ctx.replyBody.trim()).replace(/\n/g, '<br>')}</p>
+    ${ligneMedia ? `<p>${echappe(ligneMedia)}</p>` : ''}
     <hr>
     <p>Vous pouvez répondre directement à ce message.</p>
     <p>Votre message initial du ${date} :<br>
