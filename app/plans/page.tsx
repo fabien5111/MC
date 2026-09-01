@@ -34,6 +34,7 @@ export default async function PlansPublicPage() {
           planIds={planIds}
           connecte={!!user}
           currentPlanCode={currentPlan?.code ?? null}
+          essaiActif={currentPlan?.type === 'TRIAL'}
           trialConsumed={trialConsumed}
           trialDays={trialDays}
           pending={pending}

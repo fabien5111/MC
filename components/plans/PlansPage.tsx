@@ -29,6 +29,7 @@ export function PlansPage({
   planIds,
   connecte,
   currentPlanCode,
+  essaiActif,
   trialConsumed,
   trialDays,
   pending,
@@ -37,6 +38,11 @@ export function PlansPage({
   planIds: Record<string, number>;
   connecte: boolean;
   currentPlanCode: string | null;
+  // Abonnement courant de type TRIAL (§12 de docs/abonnements.md — la
+  // colonne visible n'est alors pas forcément « Pro » mais un plan
+  // technique d'essai, ex. « Essai Plan Pro ») : conditionne le remplacement
+  // de « Rétrograder » par « Annuler mon essai » / « S'abonner ».
+  essaiActif: boolean;
   trialConsumed: boolean;
   trialDays: number;
   pending: PendingRequest | null;
@@ -277,6 +283,7 @@ export function PlansPage({
                       connecte={connecte}
                       estCourant={p.code === currentPlanCode}
                       inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
+                      essaiActif={essaiActif}
                       trialConsumed={trialConsumed}
                       // Sans tarif configuré pour cette formule, « S'abonner »
                       // n'a rien à proposer — jamais affiché dans ce cas
@@ -353,6 +360,7 @@ function BoutonPlan({
   connecte,
   estCourant,
   inferieur,
+  essaiActif,
   trialConsumed,
   aUnTarif,
   onEssayer,
@@ -363,6 +371,11 @@ function BoutonPlan({
   connecte: boolean;
   estCourant: boolean;
   inferieur: boolean;
+  // Abonnement courant de type TRIAL : « Rétrograder » (pensé pour une
+  // vraie rétrogradation d'abonnement payant, avec file d'attente admin)
+  // n'a pas de sens ici — la formule par défaut propose d'annuler l'essai,
+  // les autres de souscrire directement (§ conversation du 01/09).
+  essaiActif: boolean;
   trialConsumed: boolean;
   // Un tarif est configuré pour cette formule (périodicité affichée) —
   // sans lui, « S'abonner » n'a rien à proposer et ne s'affiche jamais.
@@ -374,11 +387,13 @@ function BoutonPlan({
 }) {
   const cls =
     'w-full rounded-pill px-4 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50';
+  const clsSecondaire = `${cls} border border-outline-variant text-primary hover:bg-surface-container`;
+  const clsPrincipal = `${cls} bg-primary text-on-primary hover:shadow-lg`;
 
   if (estCourant) {
     return (
       <button type="button" disabled className={`${cls} bg-surface-container text-on-surface-variant`}>
-        Votre plan
+        Votre plan actuel
       </button>
     );
   }
@@ -389,34 +404,61 @@ function BoutonPlan({
     // compte » de l'en-tête.
     if (!plan.trialAllowed && !aUnTarif) {
       return (
-        <Link href="/connexion?inscription=1" className={`${cls} block border border-outline-variant text-center text-primary hover:bg-surface-container`}>
+        <Link href="/connexion?inscription=1" className={`block text-center ${clsSecondaire}`}>
           Créer un compte
         </Link>
       );
     }
     return (
-      <Link href="/connexion?next=/plans" className={`${cls} block bg-primary text-center text-on-primary hover:shadow-lg`}>
+      <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
         {plan.trialAllowed ? 'Essayer' : "S'abonner"}
       </Link>
     );
   }
+  if (essaiActif) {
+    // La formule par défaut n'a pas de tarif : le seul geste possible est
+    // de renoncer à l'essai, jamais réimplémenté ici (doctrine §10 —
+    // « actions dupliquées vers /plans, pas réimplémentées », dans l'autre
+    // sens) — l'action réelle (confirmation, date de fin) vit dans « Mon
+    // forfait », seul endroit qui connaît déjà l'abonnement en détail.
+    if (plan.isDefault) {
+      return (
+        <Link href="/reglages" className={`block text-center ${clsSecondaire}`}>
+          Annuler mon essai
+        </Link>
+      );
+    }
+    if (!aUnTarif) return null;
+    return (
+      <button type="button" onClick={onAbonner} className={clsPrincipal}>
+        S&apos;abonner
+      </button>
+    );
+  }
   if (inferieur) {
     return (
-      <button type="button" onClick={onRetrograder} className={`${cls} border border-outline-variant text-primary hover:bg-surface-container`}>
+      <button type="button" onClick={onRetrograder} className={clsSecondaire}>
         Rétrograder
       </button>
     );
   }
   if (plan.trialAllowed && !trialConsumed) {
     return (
-      <button type="button" onClick={onEssayer} className={`${cls} bg-primary text-on-primary hover:shadow-lg`}>
-        Essayer gratuitement
-      </button>
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={onEssayer} className={clsPrincipal}>
+          Essayer gratuitement
+        </button>
+        {aUnTarif && (
+          <button type="button" onClick={onAbonner} className={clsSecondaire}>
+            S&apos;abonner
+          </button>
+        )}
+      </div>
     );
   }
   if (!aUnTarif) return null;
   return (
-    <button type="button" onClick={onAbonner} className={`${cls} bg-primary text-on-primary hover:shadow-lg`}>
+    <button type="button" onClick={onAbonner} className={clsPrincipal}>
       S&apos;abonner
     </button>
   );
