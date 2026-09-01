@@ -377,7 +377,12 @@ export async function rechercherStatutsJira(issueKeys: string[]): Promise<Result
   for (let i = 0; i < issueKeys.length; i += TAILLE_LOT_RECHERCHE) {
     const lot = issueKeys.slice(i, i + TAILLE_LOT_RECHERCHE);
     const jql = `key in (${lot.join(',')})`;
-    const chemin = `/rest/api/3/search?jql=${encodeURIComponent(jql)}&fields=status&maxResults=${TAILLE_LOT_RECHERCHE}`;
+    // `/rest/api/3/search` (GET) est retiré par Atlassian (HTTP 410) —
+    // migré vers `/rest/api/3/search/jql`. Un seul lot ≤ 50 clés tient
+    // toujours dans une page (`maxResults`), donc pas besoin de suivre
+    // `nextPageToken` : la forme de la réponse (`issues: [...]`) est
+    // inchangée, seul `total` a disparu — jamais lu ici.
+    const chemin = `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=status&maxResults=${TAILLE_LOT_RECHERCHE}`;
 
     const resultat = await appelAvecRetry(config, chemin, 'GET');
     if ('error' in resultat) return { ok: false, error: resultat.error };

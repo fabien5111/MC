@@ -611,7 +611,25 @@ véritable instance Jira ni un véritable webhook système. À vérifier avec un
 projet Jira de test : la configuration du webhook système (URL, secret,
 filtre JQL), la forme réelle du payload `issue_updated` (le webhook suppose
 `issue.fields.status.{id,name,statusCategory.key}` — à confirmer contre un
-événement réel), et le format de réponse de `GET /rest/api/3/search`.
+événement réel).
+
+### 13.8 Correctif vérifié en production : `/rest/api/3/search` retiré par Atlassian
+
+Le point ci-dessus s'est confirmé à l'usage — pas la forme du payload
+webhook, mais le format de réponse de la lecture groupée des statuts
+(`rechercherStatutsJira`, `lib/jira.ts`) : `GET /rest/api/3/search`, utilisé
+depuis le lot 1, renvoie désormais `HTTP 410 — L'API demandée a été
+supprimée`. Atlassian l'a retiré au profit de `GET /rest/api/3/search/jql`,
+migration effectuée dans le code (chemin changé, reste du contrat identique
+— `issues: [...]` inchangé, seul `total` disparaît, jamais lu ici).
+
+**Effet avant correctif** : aucun statut ne se synchronisait automatiquement,
+ni par le bouton « Resynchroniser maintenant » ni par la réconciliation
+quotidienne — la création du ticket (`POST /rest/api/3/issue`, endpoint
+différent, non affecté) fonctionnait, ce qui masquait le problème tant que
+personne ne cherchait à relire un statut. Symptôme observé : un ticket
+marqué « Déployé » dans Jira restait affiché « En cours de traitement »
+dans l'administration, y compris après un clic sur « Resynchroniser ».
 
 ---
 

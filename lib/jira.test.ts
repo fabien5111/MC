@@ -427,7 +427,9 @@ describe('rechercherStatutsJira', () => {
     // Une seule requête pour les deux tickets (par lot), pas une par ticket.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain('/rest/api/3/search');
+    // `/rest/api/3/search` (sans suffixe) est retiré par Atlassian (HTTP 410
+    // — migration vers `/rest/api/3/search/jql`, cf. lib/jira.ts).
+    expect(url).toContain('/rest/api/3/search/jql');
     expect(url).toContain(encodeURIComponent('key in (JEP-142,JEP-143)'));
   });
 
