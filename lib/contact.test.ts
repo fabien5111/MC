@@ -12,6 +12,8 @@ import {
   JIRA_SUMMARY_MAX,
   REPONSE_ADMIN_MAX,
   REPONSE_ADMIN_MIN,
+  REPONSE_MEMBRE_MAX,
+  REPONSE_MEMBRE_MIN,
   CONTACT_PHOTO_DATA_URL_MAX,
   CONTACT_PHOTOS_MAX,
   CONTACT_STATUS_KEYS,
@@ -20,6 +22,7 @@ import {
   composeEmailDeploiement,
   composeNotificationAdmin,
   composeNotificationDeploiement,
+  composeNotificationReponseMembre,
   composeReponseAdmin,
   corpsTicketJira,
   dateClotureApres,
@@ -41,6 +44,7 @@ import {
   validerDemande,
   validerPhotos,
   validerReponseAdmin,
+  validerReponseMembre,
   verdictDelaiOuverture,
   type ConfigStatutsJira,
   type EtatActuelDemande,
@@ -755,6 +759,58 @@ describe('validerReponseAdmin', () => {
   it('rend REPONSE_ADMIN_MIN cohérent avec la borne réellement appliquée', () => {
     expect(validerReponseAdmin('a'.repeat(REPONSE_ADMIN_MIN)).ok).toBe(true);
     expect(validerReponseAdmin('a'.repeat(REPONSE_ADMIN_MIN - 1)).ok).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Réponse du demandeur depuis son propre suivi (lot 9)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('validerReponseMembre', () => {
+  it('accepte un message court, plus permissif que côté admin', () => {
+    expect(validerReponseMembre('Toujours pareil').ok).toBe(true);
+    expect(REPONSE_MEMBRE_MIN).toBeLessThan(REPONSE_ADMIN_MIN);
+  });
+
+  it('rogne les espaces avant de mesurer', () => {
+    expect(validerReponseMembre(`   ${'a'.repeat(REPONSE_MEMBRE_MIN - 1)}   `).ok).toBe(false);
+  });
+
+  it('refuse en dessous du minimum et au-dessus du maximum', () => {
+    expect(validerReponseMembre('a'.repeat(REPONSE_MEMBRE_MIN)).ok).toBe(true);
+    expect(validerReponseMembre('a'.repeat(REPONSE_MEMBRE_MIN - 1)).ok).toBe(false);
+    expect(validerReponseMembre('x'.repeat(REPONSE_MEMBRE_MAX)).ok).toBe(true);
+    expect(validerReponseMembre('x'.repeat(REPONSE_MEMBRE_MAX + 1)).ok).toBe(false);
+  });
+
+  it("refuse une valeur qui n'est pas une chaîne", () => {
+    expect(validerReponseMembre(undefined).ok).toBe(false);
+    expect(validerReponseMembre(42).ok).toBe(false);
+  });
+});
+
+describe('composeNotificationReponseMembre', () => {
+  const ctx = {
+    reference: 'REF-A7F3K2',
+    subject: 'Les quantités ne se recalculent pas',
+    body: 'Toujours le même souci, même après la mise à jour.',
+    adminUrl: 'https://jepatisse.com/admin/contact/REF-A7F3K2',
+  };
+
+  it('porte la référence dans l’objet', () => {
+    expect(composeNotificationReponseMembre(ctx).subject).toContain('REF-A7F3K2');
+  });
+
+  it('reprend le corps du message et le lien vers l’administration', () => {
+    const { text } = composeNotificationReponseMembre(ctx);
+    expect(text).toContain(ctx.body);
+    expect(text).toContain(ctx.adminUrl);
+  });
+
+  it('échappe le HTML du message dans la version HTML', () => {
+    const html = composeNotificationReponseMembre({ ...ctx, body: '<script>alert(1)</script>' }).html;
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
   });
 });
 

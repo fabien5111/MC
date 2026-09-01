@@ -911,14 +911,26 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   romprait l'invariant de pseudonymisation ci-dessus. Cf.
   `docs/contact-jira.md` §15.
 - **Suivi côté membre** : section « Mes demandes de contact » dans
-  `/reglages` (`lib/contact-member-data.ts`, lecture seule — répondre ou
-  changer un statut reste un geste d'administration), avec une fiche par
-  demande (`/reglages/mes-demandes/[reference]`) montrant le message, les
-  réponses reçues et l'avancement du statut — jamais le contexte technique
-  ni le détail Jira. Repose sur quatre policies RLS `*_membre_lecture`
-  (`user_id = auth.uid()`), en plus des `*_admin_lecture` déjà en place. Le
-  lien apparaît sur l'écran de confirmation du formulaire uniquement pour un
-  visiteur connecté. Cf. `docs/contact-jira.md` §16.
+  `/reglages` (`lib/contact-member-data.ts`), avec une fiche par demande
+  (`/reglages/mes-demandes/[reference]`) montrant le message, les réponses
+  reçues et l'avancement du statut — jamais le contexte technique ni le
+  détail Jira. Repose sur quatre policies RLS `*_membre_lecture` (`user_id =
+  auth.uid()`), en plus des `*_admin_lecture` déjà en place. Le lien apparaît
+  sur l'écran de confirmation du formulaire uniquement pour un visiteur
+  connecté. Cf. `docs/contact-jira.md` §16.
+- **Réponse du demandeur depuis son suivi** : le membre peut ajouter un
+  message à sa demande depuis cette même fiche — `contact_replies.author_kind`
+  (`'admin' | 'member'`) distingue qui a écrit, dans le même fil que les
+  réponses admin. **Aucun effet automatique sur le statut** (contrairement à
+  une réponse admin, qui fait passer `recu` → `en_cours`) : réouvrir une
+  demande `termine`/`a_deployer` toucherait `closed_at` (purge) et
+  l'idempotence de l'e-mail de déploiement — l'administrateur, prévenu par
+  e-mail (best-effort, sans colonne de suivi dédiée), change le statut à la
+  main s'il y a lieu. Changer un statut ou répondre EN TANT QU'administrateur
+  restent des gestes exclusifs à `lib/contact-admin-data.ts` : cette écriture
+  reste, comme toutes les autres du module, exclusivement via
+  `createAdminClient()` — aucune policy d'écriture n'est ajoutée. Cf.
+  `docs/contact-jira.md` §17.
 - **Anti-spam sans traceur tiers** : honeypot, délai minimum de 3 s porté
   par un jeton **signé côté serveur** (`CONTACT_FORM_SECRET` — un horodatage
   lu du navigateur ne protégerait rien), limitation de débit comptée en base

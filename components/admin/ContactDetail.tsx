@@ -391,13 +391,24 @@ export function ContactDetail({
               ) : (
                 <li key={e.id} className="rounded-lg border border-outline-variant p-4">
                   <div className="mb-1 flex items-center justify-between gap-3">
-                    <p className="text-[11.5px] text-on-surface-variant">Réponse — {formatDateHeure(e.created_at)}</p>
-                    <span className={`text-[11.5px] font-semibold ${EMAIL_STATUS_LABEL[e.email_status]?.className ?? ''}`}>
-                      {EMAIL_STATUS_LABEL[e.email_status]?.label ?? e.email_status}
-                    </span>
+                    <p className="flex items-center gap-2 text-[11.5px] text-on-surface-variant">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
+                          e.author_kind === 'member' ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-secondary-container text-on-secondary-container'
+                        }`}
+                      >
+                        {e.author_kind === 'member' ? 'Demandeur' : 'Administration'}
+                      </span>
+                      {formatDateHeure(e.created_at)}
+                    </p>
+                    {e.author_kind === 'admin' && (
+                      <span className={`text-[11.5px] font-semibold ${EMAIL_STATUS_LABEL[e.email_status]?.className ?? ''}`}>
+                        {EMAIL_STATUS_LABEL[e.email_status]?.label ?? e.email_status}
+                      </span>
+                    )}
                   </div>
                   <p className="whitespace-pre-wrap text-[13.5px]">{e.body}</p>
-                  {e.email_status === 'failed' && (
+                  {e.author_kind === 'admin' && e.email_status === 'failed' && (
                     <button type="button" onClick={() => renvoyer(e.id)} className="mt-2 text-[12.5px] font-semibold text-primary hover:underline">
                       Renvoyer
                     </button>

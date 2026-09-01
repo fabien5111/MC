@@ -19,6 +19,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ImpersonationDatabase } from '@/lib/impersonation-types';
 import type {
+  AuthorKind,
   ContactStatus,
   ContactType,
   EmailStatus,
@@ -137,8 +138,11 @@ export type ContactReplyRow = {
   message_id: string;
   created_at: string;
   author_id: string | null;
+  /** Qui a écrit cette entrée du fil — l'administrateur ou le demandeur lui-même (lot 9). */
+  author_kind: AuthorKind;
   /** Texte brut. La conversion en HTML se fait à l'envoi, côté serveur — jamais de HTML libre saisi par l'administrateur. */
   body: string;
+  /** Sans objet pour une réponse du demandeur (`'skipped'` — aucun e-mail à lui envoyer pour son propre message). */
   email_status: EmailStatus;
   sent_at: string | null;
   provider_id: string | null;
@@ -150,6 +154,7 @@ export type ContactReplyInsert = {
   message_id: string;
   created_at?: string;
   author_id?: string | null;
+  author_kind?: AuthorKind;
   body: string;
   email_status?: EmailStatus;
   sent_at?: string | null;

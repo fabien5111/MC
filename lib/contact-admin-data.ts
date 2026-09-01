@@ -396,7 +396,7 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
 
   const { data: reply, error: insertError } = await client
     .from('contact_replies')
-    .insert({ message_id: messageId, author_id: authorId, body: corps, email_status: 'pending' })
+    .insert({ message_id: messageId, author_id: authorId, author_kind: 'admin', body: corps, email_status: 'pending' })
     .select('id')
     .single();
   if (insertError || !reply) return { ok: false, error: 'Écriture de la réponse impossible.' };

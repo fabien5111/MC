@@ -673,23 +673,27 @@ rouvrir les cinq lots un par un :
 3. **SQL du lot 8 exécuté** (§16.4 — quatre policies de lecture membre) —
    sans lui, `/reglages` affiche « Aucune demande envoyée » même pour un
    membre qui en a envoyé plusieurs (la RLS renvoie zéro ligne).
-4. **`is_admin_user()`** se comporte comme attendu pour les policies de
+4. **SQL du lot 9 exécuté** (§17.5 — colonne `contact_replies.author_kind`)
+   — sans elle, l'insertion d'une réponse membre échoue (colonne absente en
+   base ; `npm run gen:types` n'est pas requis ici, `lib/contact-types.ts`
+   déclare ce module à la main, cf. son en-tête).
+5. **`is_admin_user()`** se comporte comme attendu pour les policies de
    lecture du back-office (§12.6) — sans quoi `/admin/contact` reste
    silencieusement vide pour un vrai administrateur.
-5. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
+6. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
    sans quoi aucun e-mail (notification admin, réponse, déploiement)
    n'atteint un destinataire non vérifié.
-6. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
+7. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
    `createmeta` (champs obligatoires du projet).
-7. **Toutes les variables d'environnement** listées au §9 renseignées sur
+8. **Toutes les variables d'environnement** listées au §9 renseignées sur
    Vercel, avec le **scope** `Preview` inclus si les tests se font depuis une
    URL de preview d'une pull request (cf. §15.5) — sans quoi la création de
    ticket échoue silencieusement sur ces déploiements.
-8. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
+9. **Webhook système Jira configuré** (URL, secret, filtre JQL — §10),
    avec la forme réelle du payload confirmée contre le code (§13.7).
-9. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
+10. **Nom légal de l'éditeur** renseigné dans `/confidentialite` (§14.1),
    et relecture juridique de la page.
-10. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
+11. **Plan Vercel** compatible avec deux tâches planifiées quotidiennes
    (Hobby suffit — cf. §13.4).
 
 ---
@@ -815,18 +819,20 @@ cet ancien écran n'existe plus, et `/reglages` suit déjà exactement le motif
 recherché (cartes repliables `SettingsCard` listant une relation personnelle
 — abonnements, partages…).
 
-### 16.1 Portée : lecture seule, propriétaire uniquement
+### 16.1 Portée : propriétaire uniquement
 
 `lib/contact-member-data.ts` (nouveau, server-only, motif de
-`lib/contact-admin-data.ts`) n'expose que des lectures, jamais d'écriture :
-répondre ou changer un statut reste un geste d'administration. Repose sur
-quatre nouvelles policies RLS `*_membre_lecture` (`user_id = auth.uid()` sur
-`contact_messages`, propagé par sous-requête `EXISTS` sur les trois tables
-filles) — même raisonnement que `contact_messages_admin_lecture` pour
-l'admin (§12.1) : la RLS ouvre exactement ce qu'il faut, inutile de
-contourner avec le client service_role pour une lecture. Aucune policy
-d'écriture n'est ajoutée — l'invariant du module (aucune écriture hors
-service_role) reste intact.
+`lib/contact-admin-data.ts`) repose sur quatre nouvelles policies RLS
+`*_membre_lecture` (`user_id = auth.uid()` sur `contact_messages`, propagé
+par sous-requête `EXISTS` sur les trois tables filles) — même raisonnement
+que `contact_messages_admin_lecture` pour l'admin (§12.1) : la RLS ouvre
+exactement ce qu'il faut, inutile de contourner avec le client service_role
+pour une lecture. Au lot 8, ce module n'exposait que des lectures ; le lot 9
+(§17) y ajoute une unique écriture (répondre sur sa propre demande), sans
+aucune nouvelle policy d'écriture — l'invariant du module (aucune écriture
+hors service_role) reste intact. Changer un statut ou répondre EN TANT
+QU'administrateur restent des gestes d'administration exclusifs à
+`lib/contact-admin-data.ts`.
 
 La fiche détail (`/reglages/mes-demandes/[reference]`) revérifie `user_id`
 explicitement dans la requête (`getMaDemande`), pas seulement via la RLS :
@@ -890,4 +896,64 @@ create policy contact_message_photos_membre_lecture
     select 1 from public.contact_messages m
     where m.id = contact_message_photos.message_id and m.user_id = auth.uid()
   ));
+```
+
+---
+
+## 17. Réponse du demandeur depuis son suivi (lot 9)
+
+Retour d'usage sur le lot 8 : consulter l'avancement ne suffit pas si le
+demandeur ne peut pas relancer ou préciser sa demande sans repasser par
+`/contact` (qui créerait une seconde demande, sans lien avec la première).
+
+### 17.1 Distinguer qui a écrit, dans le même fil
+
+`contact_replies` ne portait jusqu'ici que des réponses admin — `author_id`
+désignait l'administrateur. Une nouvelle colonne `author_kind` (`'admin' |
+'member'`, `CHECK`, défaut `'admin'` pour ne pas casser les lignes
+existantes) permet aux deux fiches (`ContactDetail.tsx` admin,
+`MaDemandeDetail.tsx` membre) d'afficher le fil sans ambiguïté — un badge
+« Administration » / « Demandeur » sur chaque entrée. `email_status` reste
+`'skipped'` pour une réponse membre : cette colonne ne suit que les envois
+**vers** le demandeur (réponses admin), sans objet pour son propre message.
+
+### 17.2 Aucun effet automatique sur le statut
+
+Contrairement à la réponse admin (`recu` → `en_cours`, §10.2.7), une réponse
+membre **ne change jamais le statut**. Rouvrir automatiquement une demande
+`termine`/`a_deployer` toucherait `closed_at` (point de départ de la purge,
+§6) et l'idempotence de l'e-mail de déploiement (§5) — deux mécanismes déjà
+verrouillés pour de bonnes raisons, qu'une réouverture silencieuse aurait
+fallu revalider entièrement. L'administrateur est prévenu par e-mail
+(§17.3) et change le statut à la main s'il y a lieu.
+
+### 17.3 Notification à l'administrateur, best-effort et sans colonne dédiée
+
+Sans notification, une réponse membre resterait invisible tant que personne
+ne rouvre la fiche par hasard. `notifierAdminNouvelleReponse`
+(`lib/contact-member-data.ts`) réutilise `sendEmailBestEffort` vers
+`CONTACT_NOTIFICATION_TO` — même doctrine best-effort que `notifierAdmin`
+pour la demande initiale (§10.1), mais **sans colonne pour tracer un
+échec** : ce serait un second point de défaillance à surveiller pour une
+notification secondaire, disproportionné vu l'enjeu (l'e-mail initial,
+lui, reste tracé — c'est celui qui déclenche la création du ticket Jira).
+
+### 17.4 Écriture : toujours service_role, propriété revérifiée
+
+`envoyerReponseMembre` (`lib/contact-member-data.ts`) écrit avec
+`createAdminClient()`, comme toute écriture du module — aucune policy
+d'écriture n'existe sur `contact_replies`, pour personne. La propriété de la
+demande est revérifiée dans la requête (`eq('user_id', userId)`), pas
+seulement déléguée à l'appelant. Garde côté route
+(`/api/reglages/mes-demandes/[reference]/reply`) : `getCurrentUser()` +
+`isReadOnlySession()` (même paire que `/api/fournee/[id]/avis`) — une
+session « en tant que » en lecture seule ne peut pas répondre à la place
+du membre.
+
+### 17.5 SQL
+
+```sql
+alter table public.contact_replies
+  add column author_kind text not null default 'admin'
+    check (author_kind in ('admin', 'member'));
 ```

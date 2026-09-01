@@ -1,10 +1,19 @@
-// Fiche de suivi d'une demande de contact, côté membre — LECTURE SEULE.
-// Version allégée de `components/admin/ContactDetail.tsx` : ni statut
-// modifiable, ni notes internes, ni détail Jira, ni contexte technique —
-// uniquement ce qui concerne le demandeur (son message, les réponses
-// reçues, l'avancement du statut).
+'use client';
+
+// Fiche de suivi d'une demande de contact, côté membre. Version allégée de
+// `components/admin/ContactDetail.tsx` : ni statut modifiable, ni notes
+// internes, ni détail Jira, ni contexte technique — uniquement ce qui
+// concerne le demandeur (son message, les réponses reçues, l'avancement du
+// statut), plus la possibilité d'y ajouter sa propre réponse (lot 9,
+// `lib/contact-member-data.ts` `envoyerReponseMembre`) : aucun effet
+// automatique sur le statut, contrairement à une réponse admin.
+import { useState } from 'react';
+import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
+import { useWriteGuard } from '@/components/ImpersonationProvider';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDateHeure } from '@/lib/format';
-import { CONTACT_STATUSES, CONTACT_TYPES } from '@/lib/contact';
+import { CONTACT_STATUSES, CONTACT_TYPES, REPONSE_MEMBRE_MAX, REPONSE_MEMBRE_MIN } from '@/lib/contact';
 import type { MaDemandeDetail as MaDemandeDetailRow, MaReponse, MonChangementStatut } from '@/lib/contact-member-data';
 import type { ContactMessagePhotoRow } from '@/lib/contact-types';
 
@@ -19,6 +28,32 @@ export function MaDemandeDetail({
   history: MonChangementStatut[];
   photos: ContactMessagePhotoRow[];
 }) {
+  const dialog = useDialog();
+  const writeGuard = useWriteGuard();
+  const { refresh, busy: refreshBusy } = useMutation();
+  const [texte, setTexte] = useState('');
+  const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const valide = texte.trim().length >= REPONSE_MEMBRE_MIN && texte.trim().length <= REPONSE_MEMBRE_MAX;
+
+  async function envoyer() {
+    if (!valide) return;
+    if (!writeGuard('Répondre à une demande de contact')) return;
+    setEnvoiEnCours(true);
+    const res = await fetch(`/api/reglages/mes-demandes/${message.reference}/reply`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: texte }),
+    });
+    const resBody = await res.json().catch(() => ({}));
+    setEnvoiEnCours(false);
+    if (!res.ok) {
+      dialog.alert(`Message non envoyé : ${resBody.erreur ?? 'erreur inconnue'}`);
+      return;
+    }
+    setTexte('');
+    refresh();
+  }
+
   const echanges = [
     { kind: 'initial' as const, id: 'initial', created_at: message.created_at, body: message.message },
     ...replies.map((r) => ({ kind: 'reponse' as const, ...r })),
@@ -26,6 +61,8 @@ export function MaDemandeDetail({
 
   return (
     <div className="flex flex-col gap-6 pb-16">
+      <LoadingOverlay visible={envoiEnCours || refreshBusy} label="Envoi en cours…" />
+
       <div className="flex flex-wrap items-center gap-3">
         <span className={`rounded-full px-3 py-1 text-[12.5px] font-semibold ${CONTACT_TYPES[message.type].badgeClass}`}>
           {CONTACT_TYPES[message.type].label}
@@ -63,24 +100,51 @@ export function MaDemandeDetail({
         )}
       </div>
 
-      {replies.length > 0 && (
-        <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
-          <h2 className="font-headline-md text-base font-semibold mb-4">Échanges</h2>
-          <ul className="flex flex-col gap-4">
-            {echanges.map((e) => (
-              <li
-                key={e.id}
-                className={e.kind === 'initial' ? 'rounded-lg bg-surface-container-low p-4' : 'rounded-lg border border-outline-variant p-4'}
-              >
-                <p className="text-[11.5px] text-on-surface-variant mb-1">
-                  {e.kind === 'initial' ? 'Votre demande' : 'Réponse'} — {formatDateHeure(e.created_at)}
-                </p>
-                <p className="whitespace-pre-wrap text-[13.5px]">{e.body}</p>
-              </li>
-            ))}
-          </ul>
+      <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
+        <h2 className="font-headline-md text-base font-semibold mb-4">Échanges</h2>
+        <ul className="flex flex-col gap-4">
+          {echanges.map((e) => (
+            <li
+              key={e.id}
+              className={e.kind === 'initial' ? 'rounded-lg bg-surface-container-low p-4' : 'rounded-lg border border-outline-variant p-4'}
+            >
+              <p className="text-[11.5px] text-on-surface-variant mb-1">
+                {e.kind === 'initial' ? 'Votre demande' : 'Réponse'} — {formatDateHeure(e.created_at)}
+              </p>
+              <p className="whitespace-pre-wrap text-[13.5px]">{e.body}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 border-t border-outline-variant pt-6">
+          <label htmlFor="reponse-membre" className="mb-2 block font-label-md text-label-md text-on-surface-variant">
+            Ajouter un message à cette demande
+          </label>
+          <textarea
+            id="reponse-membre"
+            value={texte}
+            onChange={(e) => setTexte(e.target.value.slice(0, REPONSE_MEMBRE_MAX))}
+            rows={4}
+            className="w-full resize-none rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-[13.5px] focus:border-primary focus:outline-none"
+          />
+          <div className="mt-1.5 flex items-center justify-between text-[12px] text-outline">
+            <span>Au moins {REPONSE_MEMBRE_MIN} caractères.</span>
+            <span>
+              {texte.length}/{REPONSE_MEMBRE_MAX}
+            </span>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={envoyer}
+              disabled={!valide}
+              className="rounded-full bg-primary px-6 py-2 text-[13px] font-semibold text-on-primary hover:opacity-90 disabled:opacity-40 transition-all"
+            >
+              Envoyer
+            </button>
+          </div>
         </div>
-      )}
+      </div>
 
       {history.length > 0 && (
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">

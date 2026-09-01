@@ -918,6 +918,65 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Réponse du demandeur depuis son propre suivi (lot 9)
+// ─────────────────────────────────────────────────────────────────────────
+
+// Distingue, dans le fil des échanges d'une demande, qui a écrit une
+// réponse — l'administrateur (`/admin/contact`) ou le demandeur lui-même
+// (`/reglages/mes-demandes`). `contact_replies.author_id` pointe vers l'un
+// ou l'autre selon le cas ; `author_kind` seul permet de les distinguer à
+// l'affichage sans requête supplémentaire.
+export type AuthorKind = 'admin' | 'member';
+
+// Plus permissif que côté admin (`REPONSE_ADMIN_MIN = 10`) : un demandeur
+// qui répond « oui toujours pareil » doit pouvoir l'envoyer.
+export const REPONSE_MEMBRE_MIN = 5;
+export const REPONSE_MEMBRE_MAX = 5000;
+
+export type ValidationReponseMembre = { ok: true; body: string } | { ok: false; error: string };
+
+/** Même doctrine que `validerReponseAdmin` : revalidée côté route, jamais seulement côté client. */
+export function validerReponseMembre(saisie: unknown): ValidationReponseMembre {
+  const body = typeof saisie === 'string' ? saisie.trim() : '';
+  if (body.length < REPONSE_MEMBRE_MIN) return { ok: false, error: `Le message doit contenir au moins ${REPONSE_MEMBRE_MIN} caractères.` };
+  if (body.length > REPONSE_MEMBRE_MAX) return { ok: false, error: `Le message ne peut pas dépasser ${REPONSE_MEMBRE_MAX} caractères.` };
+  return { ok: true, body };
+}
+
+export type ContexteNotificationReponseMembre = {
+  reference: string;
+  subject: string;
+  body: string;
+  adminUrl: string;
+};
+
+export type NotificationReponseMembreComposee = { subject: string; html: string; text: string };
+
+/**
+ * Prévient l'administrateur qu'un demandeur a répondu sur une demande déjà
+ * enregistrée — sans elle, la réponse resterait invisible tant que personne
+ * ne rouvre la fiche par hasard. Best-effort comme `composeNotificationAdmin` :
+ * pas de colonne dédiée pour en tracer l'échec, ce serait un second point de
+ * défaillance à surveiller pour une notification secondaire.
+ */
+export function composeNotificationReponseMembre(ctx: ContexteNotificationReponseMembre): NotificationReponseMembreComposee {
+  const subject = `[Je pâtisse !] Nouvelle réponse du demandeur — [${ctx.reference}]`;
+  const lignes = [
+    `Référence : ${ctx.reference}`,
+    `Sujet : ${ctx.subject}`,
+    '',
+    ctx.body,
+    '',
+    `→ Ouvrir dans l'administration : ${ctx.adminUrl}`,
+  ];
+  const text = lignes.join('\n');
+  const html = `<pre style="font:14px/1.5 -apple-system,sans-serif;white-space:pre-wrap;">${lignes
+    .map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
+    .join('\n')}</pre>`;
+  return { subject, html, text };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Écran d'administration
 // ─────────────────────────────────────────────────────────────────────────
 
