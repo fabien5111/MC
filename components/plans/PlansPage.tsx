@@ -216,56 +216,70 @@ export function PlansPage({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
+            {/* Trois `<tr>` plutôt qu'un seul avec un bloc flex par colonne :
+                l'ancienne version empilait titre + accroche + prix + bouton
+                dans une seule cellule par formule, alignés par un
+                `flex-col justify-between` — ça alignait bien les titres en
+                haut et les boutons en bas, mais le PRIX, lui, suit
+                directement l'accroche dans le flux : une accroche plus
+                longue sur une colonne (ex. « Essai Plan Pro », qui passe sur
+                deux lignes) décale son prix vers le bas sans décaler celui
+                des colonnes voisines. Une ligne de tableau par nature de
+                contenu aligne chaque ligne indépendamment des autres — la
+                hauteur d'une ligne suit sa cellule la plus haute, jamais
+                celle de la ligne suivante — donc prix et boutons restent à
+                la même hauteur d'une colonne à l'autre quelle que soit la
+                longueur de l'accroche. */}
             <tr>
-              <th className="w-1/4 p-4 text-left align-top" />
+              <th className="w-1/4 p-4 pb-1 text-left align-top" />
+              {plans.map((p) => (
+                <th key={p.code} className="p-4 pb-1 text-center align-top">
+                  <p className="font-label-md text-[17px] text-primary">{p.label}</p>
+                  {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              <th className="w-1/4 px-4 pb-1 text-left align-top" />
               {plans.map((p) => {
                 const tarif = annuel ? p.priceYearly : p.priceMonthly;
                 const eco = bascule ? annualSaving(p.priceMonthly, p.priceYearly) : null;
                 return (
-                  <th key={p.code} className="p-4 text-center align-top">
-                    {/* `align-top` + colonne flex pleine hauteur plutôt que
-                        `align-bottom` sur toute la cellule : ce dernier
-                        ancrait le bloc entier (titre + accroche + prix +
-                        bouton) par son bas, donc une formule au contenu plus
-                        court (pas d'accroche sur deux lignes, pas de ligne
-                        d'économie) se retrouvait décalée vers le bas — le
-                        titre n'était plus à la même hauteur d'une colonne à
-                        l'autre. `justify-between` garde les titres alignés en
-                        haut tout en gardant les boutons alignés en bas, la
-                        hauteur de ligne étant de toute façon commune aux
-                        trois colonnes. */}
-                    <div className="flex h-full flex-col justify-between">
-                      <div>
-                        <p className="font-label-md text-[17px] text-primary">{p.label}</p>
-                        {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
-                        <p className="mt-3 font-headline-md text-2xl">
-                          {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
-                          {tarif !== null && tarif > 0 && (
-                            <span className="text-sm font-normal text-on-surface-variant">
-                              {' '}
-                              / {annuel ? 'an' : 'mois'}
-                            </span>
-                          )}
-                        </p>
-                        {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
-                      </div>
-                      <div className="mt-4">
-                        <BoutonPlan
-                          plan={p}
-                          connecte={connecte}
-                          estCourant={p.code === currentPlanCode}
-                          inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
-                          trialConsumed={trialConsumed}
-                          // Sans tarif configuré pour cette formule, « S'abonner »
-                          // n'a rien à proposer — jamais affiché dans ce cas
-                          // (un essai reste possible, lui, sans moyen de paiement).
-                          aUnTarif={tarif !== null}
-                          onEssayer={() => essayer(p.code)}
-                          onAbonner={() => simulerAbonnement(p.code, p.label)}
-                          onRetrograder={() => retrograder(p.code)}
-                        />
-                      </div>
-                    </div>
+                  <th key={p.code} className="px-4 pb-1 text-center align-top">
+                    <p className="font-headline-md text-2xl">
+                      {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
+                      {tarif !== null && tarif > 0 && (
+                        <span className="text-sm font-normal text-on-surface-variant">
+                          {' '}
+                          / {annuel ? 'an' : 'mois'}
+                        </span>
+                      )}
+                    </p>
+                    {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
+                  </th>
+                );
+              })}
+            </tr>
+            <tr>
+              <th className="w-1/4 px-4 pb-4 text-left align-top" />
+              {plans.map((p) => {
+                const tarif = annuel ? p.priceYearly : p.priceMonthly;
+                return (
+                  <th key={p.code} className="px-4 pb-4 text-center align-top">
+                    <BoutonPlan
+                      plan={p}
+                      connecte={connecte}
+                      estCourant={p.code === currentPlanCode}
+                      inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
+                      trialConsumed={trialConsumed}
+                      // Sans tarif configuré pour cette formule, « S'abonner »
+                      // n'a rien à proposer — jamais affiché dans ce cas
+                      // (un essai reste possible, lui, sans moyen de paiement).
+                      aUnTarif={tarif !== null}
+                      onEssayer={() => essayer(p.code)}
+                      onAbonner={() => simulerAbonnement(p.code, p.label)}
+                      onRetrograder={() => retrograder(p.code)}
+                    />
                   </th>
                 );
               })}
