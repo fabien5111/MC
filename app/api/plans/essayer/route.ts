@@ -33,6 +33,9 @@ export async function POST(req: Request) {
       MC_TRIAL_READONLY: 'Session de consultation (lecture seule) : action impossible.',
     };
     const code = error.message.split(':')[0];
+    // Code non prévu par cette table : on le journalise pour pouvoir
+    // l'ajouter à la liste plutôt que de laisser un message muet sans trace.
+    if (!messages[code]) console.error('plans/essayer mc_start_trial:', error.message);
     return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer." }, { status: 422 });
   }
 

@@ -207,13 +207,26 @@ export function lostFeatureLabels(
 // ── Dépassement post-rétrogradation (§9.3, §7.4) ────────────
 
 /**
+ * La grille ne stocke qu'une forme plurielle de l'unité ("listes",
+ * "imports / mois"), affichée à côté d'un nombre qui peut valoir 1 — "1
+ * listes" est faux. Plutôt que d'accorder (il faudrait connaître le genre de
+ * chaque unité), le premier mot porte "(s)" une fois pour toutes : "1
+ * liste(s)", "1 import(s) / mois".
+ */
+function withPluralHint(unit: string): string {
+  const [premier, ...reste] = unit.split(' ');
+  const singulier = premier.endsWith('s') ? premier.slice(0, -1) : premier;
+  return [`${singulier}(s)`, ...reste].join(' ');
+}
+
+/**
  * Message du dépassement consécutif à une rétrogradation — générique,
  * jamais un texte par fonctionnalité : le même défaut que
  * `blockingMessage` (§9.4) s'applique ici, la formulation se déduit de la
  * grille (unité) plutôt que d'être répétée pour chaque limite de stock.
  */
 export function overLimitMessage(usage: number, limit: number, unit: string | null): string {
-  const suffixe = unit ? ` ${unit}` : '';
+  const suffixe = unit ? ` ${withPluralHint(unit)}` : '';
   return (
     `Vous utilisez ${usage} sur ${limit}${suffixe} autorisé${limit > 1 ? 's' : ''}. ` +
     `Vous conservez ce qui existe déjà, mais ne pourrez pas en créer de nouveau avant d'être repassé sous la limite.`
@@ -292,7 +305,7 @@ export function formatRight(right: GridRight | undefined, feature: GridFeature):
   if (!right || right.value === 'NO') return 'Non inclus';
   if (right.value === 'YES') return 'Inclus';
   if (right.unlimited || right.limitValue === null) return 'Illimité';
-  return feature.unit ? `${right.limitValue} ${feature.unit}` : String(right.limitValue);
+  return feature.unit ? `${right.limitValue} ${withPluralHint(feature.unit)}` : String(right.limitValue);
 }
 
 /**

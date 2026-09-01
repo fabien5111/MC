@@ -185,7 +185,8 @@ export function PlansPage({
       <LoadingOverlay visible={busy} />
       <h1 className="mb-2 text-center font-display text-3xl text-primary md:text-4xl">Nos formules</h1>
       <p className="mb-8 text-center text-sm text-on-surface-variant">
-        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent.
+        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un seul
+        essai par membre, toutes formules confondues.
       </p>
 
       {bascule && (
