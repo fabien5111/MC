@@ -120,7 +120,7 @@ export function UsageCard({
             {hasHigherPlan && (
               <Link
                 href="/plans"
-                className="rounded-full bg-primary px-4 py-2 font-label-md text-label-md text-on-primary transition-opacity hover:opacity-90"
+                className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
               >
                 Passer à une formule supérieure
               </Link>
