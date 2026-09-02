@@ -935,6 +935,117 @@ Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
   (`<Link>`), sans le `SearchProvider` (debounce, panneau mobile) construit
   pour la recherche avancée — un tri à deux valeurs ne le justifie pas.
 
+## Contact et suivi Jira
+
+Formulaire de contact public (`/contact`), notification de l'administrateur,
+création automatique d'un ticket Jira pour les signalements de bug, suivi de
+son avancement, et e-mail au demandeur quand la correction est **réellement
+en ligne**. Décisions de conception détaillées, écarts assumés vis-à-vis de
+la spécification d'origine, et points restés non vérifiés faute d'accès à un
+projet Supabase/Jira réel : **`docs/contact-jira.md`**.
+
+- **Supabase est la source de vérité, Jira reçoit un ticket pseudonymisé**
+  (référence + UUID du membre, jamais son e-mail, son nom, son IP ni son
+  user-agent brut) — `corpsTicketJira` (`lib/contact.ts`) est le seul
+  constructeur de description de ticket, testé sur cet invariant. Un
+  signalement `donnees-personnelles` ne crée **jamais** de ticket, garanti à
+  la fois par le code et par une contrainte SQL
+  (`contact_messages_jira_bug_only`).
+- **Quatre modules serveur, une seule logique pure.** `lib/contact.ts` (pur :
+  validation, mappage des statuts Jira, décision de synchronisation,
+  compositions d'e-mails — importable par le formulaire, un Client
+  Component) ; `lib/contact-data.ts` (flux public, `/api/contact`) ;
+  `lib/contact-admin-data.ts` (back-office : lectures via le client de
+  session — RLS, écritures via `createAdminClient()`, **aucune policy
+  d'écriture n'existe sur ces tables, pour personne, admin compris**) ;
+  `lib/contact-sync-data.ts` (webhook + réconciliation Jira, **sans aucune
+  session** : tout, lectures comprises, passe par la clé service_role).
+- **`decisionSynchroJira`** (`lib/contact.ts`) est le point de calcul UNIQUE
+  du webhook Jira, de la réconciliation quotidienne et du bouton
+  « Resynchroniser maintenant » : idempotence (le statut Jira n'a pas
+  changé) → mappage (`Terminé` → `a_deployer`, `Déployé` → `termine`) →
+  protection d'une clôture prononcée à la main par un administrateur, dans
+  cet ordre. Statuts Jira reconnus par **id en priorité**, le nom en repli —
+  l'id survit à un renommage dans Jira, contrairement au nom seul.
+- **L'e-mail de déploiement part immédiatement**, pas après un délai (ce
+  qu'aurait exigé un cron Vercel au quart d'heure, incompatible avec le plan
+  Hobby) : `deploy_notify` (interrupteur par demande, à couper *avant* le
+  passage en « déployé ») est donc le seul moyen de l'empêcher — une fois
+  parti, aucun retour en arrière. Réservation par `UPDATE ... WHERE
+  deploy_email_status = 'pending'` avant l'envoi réel (doctrine « réserver
+  plutôt que constater », cf. `lib/quota-route.ts`) : protège contre une
+  course entre le webhook et la réconciliation. Un échec passe en `failed`,
+  **jamais** de retour à `pending` — un envoi manqué se rattrape par la
+  réponse manuelle de l'administrateur, jamais par un nouvel essai
+  automatique. Un membre connecté reçoit aussi une notification in-app,
+  indépendante du canal e-mail (elle ne dépend que de `user_id`, pas d'une
+  adresse ni du succès de l'envoi).
+- **E-mails par SES** (`lib/email.ts`, déjà en production pour les
+  notifications d'abonnement) — pas de second fournisseur.
+- **Back-office** : `/admin/contact`, réservé à l'admin complet
+  (`requireFullAdmin()`), fenêtre des 200 demandes les plus récentes plutôt
+  qu'une pagination serveur complète, filtres statut/type en cases à cocher
+  (multi-sélection, dans l'URL, tout coché par défaut — un paramètre absent
+  vaut « tout coché », une valeur vide vaut « rien coché »), tri/recherche/
+  anomalies côté client. Toute mutation (statut, réponse, notes, suppression)
+  vit dans la fiche détail (`/admin/contact/[reference]`, adressée par la
+  référence humaine) — jamais dans la liste.
+- **Photos jointes** (`contact_message_photos`, jusqu'à 3 par demande,
+  compressées côté client comme le reste du site) : visibles uniquement dans
+  la fiche détail admin — **jamais transmises à Jira**, qui ne reçoit qu'une
+  ligne de texte et l'URL directe vers la fiche admin quand une photo est
+  jointe (`ContexteTicket.photoAdminUrl`). Une photo est un contenu libre du
+  visiteur, rien ne garantit son absence de donnée personnelle : l'envoyer
+  romprait l'invariant de pseudonymisation ci-dessus. Cf.
+  `docs/contact-jira.md` §15.
+- **Suivi côté membre** : section « Mes demandes de contact » dans
+  `/reglages` (`lib/contact-member-data.ts`), avec une fiche par demande
+  (`/reglages/mes-demandes/[reference]`) montrant le message, les réponses
+  reçues et l'avancement du statut — jamais le contexte technique ni le
+  détail Jira. Repose sur quatre policies RLS `*_membre_lecture` (`user_id =
+  auth.uid()`), en plus des `*_admin_lecture` déjà en place. Le lien apparaît
+  sur l'écran de confirmation du formulaire uniquement pour un visiteur
+  connecté. Cf. `docs/contact-jira.md` §16.
+- **Réponse du demandeur depuis son suivi** : le membre peut ajouter un
+  message à sa demande depuis cette même fiche — `contact_replies.author_kind`
+  (`'admin' | 'member'`) distingue qui a écrit, dans le même fil que les
+  réponses admin. **Aucun effet automatique sur le statut** (contrairement à
+  une réponse admin, qui fait passer `recu` → `en_cours`) : réouvrir une
+  demande `termine`/`a_deployer` toucherait `closed_at` (purge) et
+  l'idempotence de l'e-mail de déploiement — l'administrateur, prévenu par
+  e-mail (best-effort, sans colonne de suivi dédiée), change le statut à la
+  main s'il y a lieu. Changer un statut ou répondre EN TANT QU'administrateur
+  restent des gestes exclusifs à `lib/contact-admin-data.ts` : cette écriture
+  reste, comme toutes les autres du module, exclusivement via
+  `createAdminClient()` — aucune policy d'écriture n'est ajoutée. Cf.
+  `docs/contact-jira.md` §17.
+- **Photos sur une réponse, commentaire Jira à chaque échange** : une
+  réponse, admin ou membre, peut porter une photo (`contact_reply_photos`,
+  widget partagé `PhotoUploader.tsx`). Une photo admin n'est **jamais**
+  incluse dans l'e-mail envoyé au demandeur (une data-URL n'est pas fiable
+  une fois embarquée) — seulement mentionnée avec un lien vers son suivi
+  (`/reglages/mes-demandes/[reference]`), et uniquement si le demandeur est
+  un membre **connecté** : un visiteur n'a nulle part où la consulter par
+  e-mail, elle reste alors visible seulement dans le panneau admin et le
+  commentaire Jira. Chaque réponse, admin ou membre, ajoute aussi un
+  commentaire pseudonymisé sur le ticket Jira existant
+  (`commenterReponseJira`, `lib/contact-data.ts`, point d'entrée unique pour
+  les deux écrans) — jamais si la demande n'est pas un bug ou n'a pas encore
+  de ticket. Échec tracé (`contact_replies.jira_comment_status` /
+  `jira_comment_error`, bouton « Renvoyer le commentaire » côté admin),
+  contrairement à la notification e-mail du point précédent : un commentaire
+  manqué désynchronise silencieusement le ticket de la vraie conversation.
+  Cf. `docs/contact-jira.md` §18-19.
+- **Anti-spam sans traceur tiers** : honeypot, délai minimum de 3 s porté
+  par un jeton **signé côté serveur** (`CONTACT_FORM_SECRET` — un horodatage
+  lu du navigateur ne protégerait rien), limitation de débit comptée en base
+  (pas en mémoire de process, cette route écrivant avec la clé
+  service_role).
+- **Tâche planifiée** : `GET /api/cron/contact-jira` (réconciliation
+  quotidienne, filet de sécurité — Jira ne réessaie jamais un webhook
+  échoué), déclarée dans `vercel.json` à 2 h 30, après le cron
+  d'abonnements.
+
 ## Réglages du compte
 
 `/reglages` (l'atelier — ce qu'on règle pour soi, distinct de la vitrine
@@ -1074,6 +1185,7 @@ principales :
 | Site | `site_settings` (bannières d'accueil) |
 | Impersonation | `impersonation_sessions`, `impersonation_events` |
 | Recherche | colonne générée `recipes.fts` (GIN), vue `author_ratings`, fonctions `mc_norm`, `search_advanced_recipes`, `suggest_ingredients` |
+| Contact | `contact_messages`, `contact_replies`, `contact_status_history`, `contact_message_photos` — voir « Contact et suivi Jira » ci-dessus, RLS sans policy d'écriture (`docs/contact-jira.md`) |
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).
@@ -1129,7 +1241,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase | Publique (inlinée au build) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé publique Supabase | Publique (inlinée au build) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit) | Serveur uniquement |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit ; écritures et lectures du module contact/Jira, qui n'a aucune policy RLS d'écriture) | Serveur uniquement |
 | `ANTHROPIC_API_KEY` | API Claude (import / ajustement) | Serveur uniquement |
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |
@@ -1137,6 +1249,15 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `COMMENT_MODERATION_MODEL` | Modèle du score IA sur les avis d'une fournée terminée (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 | `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
+| `CRON_SECRET` | Protège les routes planifiées (`/api/cron/*`) — Vercel ajoute automatiquement l'en-tête `Authorization: Bearer <CRON_SECRET>` à ses appels programmés dès que la variable existe | Serveur uniquement |
+| `CONTACT_NOTIFICATION_TO` | Destinataire de la notification à chaque nouvelle demande de contact | Serveur uniquement |
+| `EMAIL_REPLY_TO` | Adresse « répondre à » des e-mails transactionnels du module contact | Serveur uniquement |
+| `CONTACT_FORM_SECRET` | Signe le jeton anti-robot du formulaire de contact (délai minimum) — absent : dégradé, jamais bloquant | Serveur uniquement |
+| `IP_HASH_SALT` | Sel de hachage des adresses IP du formulaire de contact (jamais stockées en clair) | Serveur uniquement |
+| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | Authentification Jira (création de ticket, recherche de statut) | Serveur uniquement |
+| `JIRA_PROJECT_KEY` / `JIRA_ISSUE_TYPE_BUG` | Projet et type de ticket pour un signalement de bug | Serveur uniquement |
+| `JIRA_STATUS_TO_DEPLOY` / `_ID`, `JIRA_STATUS_DEPLOYED` / `_ID` | Noms (et id, en priorité) des statuts Jira « développé » et « déployé » — cf. « Contact et suivi Jira » | Serveur uniquement |
+| `JIRA_WEBHOOK_SECRET` | Secret HMAC du webhook Jira entrant | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Un changement ne prend effet qu'au prochain déploiement Vercel (variable lue côté serveur, pas au build). | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
