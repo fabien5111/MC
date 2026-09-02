@@ -8,7 +8,7 @@
 // `getActiveBatches`, jamais par heure de démarrage) — ce composant ne
 // fait qu'afficher l'ordre reçu.
 //
-// Deux boutons Préparer/Cuisiner par carte, comme sur `/en-cuisine`
+// Deux boutons Préparer/Pâtisser par carte, comme sur `/en-cuisine`
 // (`ActiveBatchCard`) : chacun ouvre directement la fournée dans le bon
 // mode, sans passer par l'écran générique.
 //
@@ -108,10 +108,10 @@ export function SessionsCarousel({ sessions }: { sessions: ActiveBatchRow[] }) {
                       <span className="material-symbols-outlined text-[18px]">tune</span> Préparer
                     </Link>
                     <Link
-                      href={`/fournee/${s.id}?mode=cuisiner`}
+                      href={`/fournee/${s.id}?mode=patisser`}
                       className="flex items-center gap-1.5 bg-primary text-on-primary px-4 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap hover:shadow-lg transition-all tracking-wide"
                     >
-                      <span className="material-symbols-outlined text-[18px]">skillet</span> Cuisiner
+                      <span className="material-symbols-outlined text-[18px]">skillet</span> Pâtisser
                     </Link>
                   </div>
                 </div>

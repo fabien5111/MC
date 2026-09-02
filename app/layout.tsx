@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { NavigationSpinner } from '@/components/NavigationSpinner';
-import { ServiceWorkerCleanup } from '@/components/ServiceWorkerCleanup';
+import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
+import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
 import { VisitTracker } from '@/components/VisitTracker';
@@ -67,8 +68,11 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <NavigationSpinner />
         </Suspense>
-        {/* Purge l'ancien service worker de la version vanilla (cf. public/sw.js). */}
-        <ServiceWorkerCleanup />
+        {/* Enregistre le service worker du site et purge tout reliquat (cf.
+            components/ServiceWorkerRegistrar.tsx). */}
+        <ServiceWorkerRegistrar />
+        {/* Bannière d'installation PWA — visiteur compris, cf. son en-tête. */}
+        <InstallPwaBanner />
         {/* Remplace window.alert()/confirm() par une modale cohérente avec le
             design du site (cf. components/Dialog.tsx) — englobe tout le reste
             pour que useWriteGuard/useMutation, montés plus bas, y aient accès. */}

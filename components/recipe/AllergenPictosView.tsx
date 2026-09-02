@@ -2,6 +2,7 @@
 // résolus (nom + picto). Pas d'accès Supabase — réutilisable côté serveur
 // (AllergenPictos) comme dans un Client Component (cartes paginées).
 import type { AllergenPictoItem } from '@/lib/recipe-view';
+import { AllergenPicto } from '@/components/recipe/AllergenPicto';
 
 export function AllergenPictosView({
   items,
@@ -21,14 +22,7 @@ export function AllergenPictosView({
       <div className="flex items-center gap-1.5 flex-wrap">
         {items.map((a) =>
           a.picto ? (
-            <span key={a.key} className="flex flex-col items-center gap-0.5">
-              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base */}
-              <img src={a.picto} alt={a.name} title={a.name} className={`${iconClassName} object-contain`} />
-              {/* Libellé absent à l'écran (le nom est déjà dans le title au
-                  survol) mais indispensable au papier, où le survol n'existe
-                  pas — même principe que la fiche recette. */}
-              <span className="hidden print:block text-[9px] text-on-surface-variant">{a.name}</span>
-            </span>
+            <AllergenPicto key={a.key} name={a.name} picto={a.picto} iconClassName={iconClassName} />
           ) : (
             <span
               key={a.key}

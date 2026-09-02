@@ -129,7 +129,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           shoppingLists={shoppingLists}
           allergenRefs={allergenRefs}
           lecture={lecture === '1'}
-          initialMode={mode === 'preparer' || mode === 'cuisiner' ? mode : undefined}
+          initialMode={mode === 'preparer' || mode === 'patisser' ? mode : undefined}
           myReview={myReview}
           droits={droits}
         />

@@ -458,7 +458,7 @@ export function CuisineContent({
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {/* Deux entrées, comme sur une fournée en cours et dans la
                         vue « Par jour » : Préparer (ajuster, cocher ce qui est
-                        déjà fait) reste accessible sans passer par Cuisiner,
+                        déjà fait) reste accessible sans passer par Pâtisser,
                         qui pose `date_debut` au premier affichage. */}
                     <div className="flex items-center gap-2">
                       <Link
@@ -471,11 +471,11 @@ export function CuisineContent({
                       </Link>
                       <Link
                         href={`/fournee/${p.id}`}
-                        title="Cuisiner"
+                        title="Pâtisser"
                         className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
                       >
                         <span className="material-symbols-outlined text-[14px]">play_arrow</span>
-                        <span className="hidden sm:inline">Cuisiner</span>
+                        <span className="hidden sm:inline">Pâtisser</span>
                       </Link>
                     </div>
                     <div className="flex items-center gap-1">
@@ -704,10 +704,10 @@ function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
           <span className="material-symbols-outlined text-[18px]">tune</span> Préparer
         </Link>
         <Link
-          href={`/fournee/${batch.id}?mode=cuisiner`}
+          href={`/fournee/${batch.id}?mode=patisser`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:flex-none"
         >
-          <span className="material-symbols-outlined text-[18px]">skillet</span> Cuisiner
+          <span className="material-symbols-outlined text-[18px]">skillet</span> Pâtisser
         </Link>
       </div>
     </div>

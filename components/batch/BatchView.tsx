@@ -2,9 +2,9 @@
 
 // Écran d'une fournée (porté de recette.html mode planifié + execution.html) :
 // deux modes sur la même donnée — Préparer (avant, au calme : ajuster,
-// éditer) et Cuisiner (pendant : jalons à cocher, tempo). Pas d'écran de
+// éditer) et Pâtisser (pendant : jalons à cocher, tempo). Pas d'écran de
 // mise en place intercalé : c'est le mode Préparer qui sert à tout vérifier
-// avant de passer aux fourneaux, Cuisiner s'ouvre directement sur le
+// avant de passer aux fourneaux, Pâtisser s'ouvre directement sur le
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
@@ -117,10 +117,10 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function defaultMode(batch: BatchFull): 'preparer' | 'cuisiner' {
-  if (batch.status !== 'planifiee') return 'cuisiner'; // fournée close : consultation de ce qui a été fait
-  if (batch.date_debut) return 'cuisiner';
-  if (batch.planned_date && batch.planned_date <= todayIso()) return 'cuisiner';
+function defaultMode(batch: BatchFull): 'preparer' | 'patisser' {
+  if (batch.status !== 'planifiee') return 'patisser'; // fournée close : consultation de ce qui a été fait
+  if (batch.date_debut) return 'patisser';
+  if (batch.planned_date && batch.planned_date <= todayIso()) return 'patisser';
   return 'preparer';
 }
 
@@ -155,9 +155,9 @@ export function BatchView({
   // cf. CLAUDE.md « Avis sur une recette ».
   myReview: MyRecipeReview | null;
   // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
-  // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
+  // jamais sur Pâtisser, même si la date de dégustation tombe aujourd'hui —
   // l'ajustement se fait au calme avant de passer aux fourneaux.
-  initialMode?: 'preparer' | 'cuisiner';
+  initialMode?: 'preparer' | 'patisser';
   // Droits d'abonnement (§4 « Lancer une fournée »), calculés une fois par la
   // page — jamais recalculés ici, `BatchView` n'a pas de session à lire.
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
@@ -168,7 +168,7 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
-  const [mode, setMode] = useState<'preparer' | 'cuisiner'>(() => initialMode ?? defaultMode(initialBatch));
+  const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
   // attendable, donc `resumeBatch` doit garder le voile affiché jusqu'à ce
@@ -178,7 +178,7 @@ export function BatchView({
   const [resuming, startResume] = useTransition();
 
   // Force le haut de page à l'arrivée sur une fournée : `switchMode` gère
-  // déjà le passage Préparer/Cuisiner en cours de session, mais l'arrivée
+  // déjà le passage Préparer/Pâtisser en cours de session, mais l'arrivée
   // directe (lien depuis /en-cuisine, retour navigateur…) peut restaurer une
   // position de scroll d'une visite précédente de cette URL. Une seule fois
   // au montage, avant toute restauration native du navigateur.
@@ -186,7 +186,14 @@ export function BatchView({
     window.scrollTo(0, 0);
   }, []);
 
-  const readOnly = batch.status !== 'planifiee' || lecture || impersonationReadOnly;
+  // `?lecture=1` (consultation depuis « Fournées terminées ») tenu en état
+  // local, et non lu directement de la prop : reprendre une fournée close
+  // repasse `status` à `planifiee`, mais le paramètre d'URL, lui, resterait —
+  // la fournée rouverte serait donc encore verrouillée. `resumeBatch` le
+  // retire des deux côtés (état + URL).
+  const [lectureMode, setLectureMode] = useState(lecture);
+  useEffect(() => setLectureMode(lecture), [lecture]);
+  const readOnly = batch.status !== 'planifiee' || lectureMode || impersonationReadOnly;
   // Avis sur la recette d'origine. Volontairement indépendant de `readOnly`
   // ET de `lecture` : une fournée terminée est toujours en lecture seule pour
   // ses étapes, et « Fournées terminées » (/en-cuisine) l'ouvre justement en
@@ -201,11 +208,23 @@ export function BatchView({
   // s'apprête justement à poser) plus l'unicité « un avis par recette et par
   // membre » — sinon la proposition automatique poserait une question dont la
   // réponse « oui » n'affiche rien (cf. CLAUDE.md « Avis sur une recette »).
-  const reviewEligible = !!batch.recipe_id && !batch.review_dismissed && !impersonationReadOnly && (!myReview || myReview.batch_id === batch.id);
+  //
+  // La condition suit ce que `BatchReview` sait réellement OFFRIR, et non la
+  // seule appartenance de l'avis à cette fournée : un avis `pending` ou
+  // `approved` y rend un récapitulatif en lecture seule, il n'y a rien à
+  // saisir. Ne restent proposables que l'absence d'avis et un avis `rejected`
+  // (formulaire rouvert avec son motif). Se voit surtout en reprenant puis
+  // reclôturant une fournée déjà notée — on proposait alors de noter une
+  // recette qui l'était déjà.
+  const reviewEligible =
+    !!batch.recipe_id &&
+    !batch.review_dismissed &&
+    !impersonationReadOnly &&
+    (!myReview || (myReview.batch_id === batch.id && myReview.status === 'rejected'));
 
   // Écriture partagée « marquer comme terminée » : rail Préparer, rail
-  // Cuisiner et proposition automatique une fois toutes les étapes cochées
-  // (cf. `CuisinerView.proposeFinish`) l'appellent tous les trois, chacun
+  // Pâtisser et proposition automatique une fois toutes les étapes cochées
+  // (cf. `PatisserView.proposeFinish`) l'appellent tous les trois, chacun
   // avec son propre message de confirmation.
   async function finishBatch(): Promise<boolean> {
     if (readOnly) return false;
@@ -232,12 +251,12 @@ export function BatchView({
   // fournée n'est jamais resynchronisée après sa création, donc une
   // correction ultérieure de la recette de base ne lui parvient pas — ce
   // bandeau le signale plutôt que de laisser la divergence silencieuse.
-  // Affiché uniquement en mode Préparer : en Cuisiner, la décision est déjà
+  // Affiché uniquement en mode Préparer : en Pâtisser, la décision est déjà
   // prise et le rappeler n'aide plus, seulement distrait.
   const baseModifiedSince = !!(baseRecipe?.updatedAt && new Date(baseRecipe.updatedAt) > new Date(batch.created_at || 0));
 
-  async function enterCuisiner() {
-    setMode('cuisiner');
+  async function enterPatisser() {
+    setMode('patisser');
     if (!batch.date_debut && batch.status === 'planifiee' && !readOnly) {
       const now = new Date().toISOString();
       const { error } = await createClient().from('batches').update({ date_debut: now }).eq('id', batch.id);
@@ -245,22 +264,22 @@ export function BatchView({
     }
   }
 
-  // Bascule Préparer/Cuisiner, appelée par les deux pastilles du haut comme
+  // Bascule Préparer/Pâtisser, appelée par les deux pastilles du haut comme
   // par le bouton du rail : elle inscrit le mode dans l'URL (`history.
   // replaceState`, pas `router.replace`) pour qu'un rafraîchissement retombe
   // sur le mode affiché plutôt que sur `defaultMode()` — sans ce marquage,
-  // dès qu'on est passé une fois en Cuisiner (`date_debut` posé), un F5
-  // ramenait toujours à Cuisiner même après être revenu sur Préparer. Pas de
+  // dès qu'on est passé une fois en Pâtisser (`date_debut` posé), un F5
+  // ramenait toujours à Pâtisser même après être revenu sur Préparer. Pas de
   // navigation Next (pas de resynchronisation serveur) : ce n'est qu'un
   // changement de vue locale, pas une écriture à refléter ailleurs.
-  function switchMode(m: 'preparer' | 'cuisiner') {
+  function switchMode(m: 'preparer' | 'patisser') {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('mode', m);
       window.history.replaceState(null, '', url);
       window.scrollTo(0, 0);
     }
-    if (m === 'cuisiner') enterCuisiner();
+    if (m === 'patisser') enterPatisser();
     else setMode('preparer');
   }
 
@@ -277,14 +296,36 @@ export function BatchView({
     router.push('/en-cuisine');
   }
 
-  // Reprendre une fournée abandonnée : repasse `status` à `planifiee` (et
-  // efface `date_fin`), ce qui suffit à rouvrir toutes les écritures — la
-  // fournée redevient une fournée « en cours » ordinaire, sans distinction
-  // avec une qui n'aurait jamais été abandonnée. Pas de symétrique pour
-  // « terminée » : seul l'abandon est présenté comme réversible (l'idée de
-  // « terminée » implique un jugement délibéré, pas une interruption).
+  // Reprendre une fournée close : repasse `status` à `planifiee` (et efface
+  // `date_fin`), ce qui suffit à rouvrir toutes les écritures — la fournée
+  // redevient une fournée « en cours » ordinaire, sans distinction avec une
+  // qui n'aurait jamais été close.
+  //
+  // Ouvert aux fournées TERMINÉES autant qu'abandonnées, contrairement à la
+  // doctrine d'origine (« terminée » implique un jugement délibéré, pas une
+  // interruption). Sans ce bouton, une case cochée par erreur restait
+  // définitivement fausse : le mode Préparer était alors la seule échappatoire
+  // — parce qu'il ne recevait pas `readOnly`, non par conception. En fermant
+  // ce trou (cf. `BatchStepDonePanel`), il fallait rouvrir une porte
+  // explicite, et une correction assumée vaut mieux qu'un effet de bord.
+  // D'où la confirmation renforcée sur une fournée terminée : reprendre
+  // efface `date_fin`, donc la durée totale du résumé.
   async function resumeBatch() {
     if (!writeGuard('Reprise de la fournée')) return;
+    // Fournée déjà « en cours », simplement ouverte en consultation
+    // (`?lecture=1`) : rien à réécrire en base, il n'y a que le bridage
+    // d'URL à lever.
+    if (batch.status === 'planifiee') {
+      reopenForEditing();
+      return;
+    }
+    if (
+      batch.status === 'terminee' &&
+      !(await dialog.confirm(
+        'Reprendre cette fournée terminée ?\n\nElle repassera « en cours » et redeviendra modifiable. Sa date de fin — et donc la durée totale de son résumé — sera effacée.',
+      ))
+    )
+      return;
     setBusy(true);
     const { error } = await createClient().from('batches').update({ status: 'planifiee', date_fin: null }).eq('id', batch.id);
     setBusy(false);
@@ -293,7 +334,28 @@ export function BatchView({
       return;
     }
     setBatch((b) => ({ ...b, status: 'planifiee', date_fin: null }));
-    startResume(() => router.refresh());
+    reopenForEditing();
+  }
+
+  // Lève le bridage `?lecture=1` et resynchronise. Contrairement au reste des
+  // écritures de cet écran, la resynchronisation passe par `router.replace`
+  // et non `router.refresh()` : le paramètre vit dans l'URL, donc dans les
+  // `searchParams` du rendu serveur — un `refresh` seul rejouerait la page
+  // avec `lecture=1` et la re-verrouillerait aussitôt. `history.replaceState`
+  // ne suffit pas non plus : il réécrit la barre d'adresse sans rien
+  // renvoyer au serveur. Enveloppé dans la transition de `resuming` pour que
+  // le voile tienne jusqu'au nouveau rendu (cf. CLAUDE.md « busy couvre aussi
+  // la resynchronisation »).
+  function reopenForEditing() {
+    setLectureMode(false);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('lecture')) {
+      startResume(() => router.refresh());
+      return;
+    }
+    url.searchParams.delete('lecture');
+    startResume(() => router.replace(url.pathname + url.search, { scroll: false }));
   }
 
   // « Ne plus afficher » la carte d'avis, pour cette fournée seulement : une
@@ -338,7 +400,13 @@ export function BatchView({
             <span className="no-print">
               <PrintButton />
             </span>
-            {batch.status === 'abandonnee' && !lecture && !impersonationReadOnly && (
+            {/* Volontairement indépendant de `lecture` : « Fournées
+                terminées » (/en-cuisine) n'ouvre QUE en `?lecture=1`, s'y
+                adosser rendait le bouton inatteignable depuis son unique
+                point d'entrée — même raisonnement que la carte d'avis
+                ci-dessous. La propriété de la fournée reste garantie par la
+                RLS, et l'impersonation lecture seule bloque toujours. */}
+            {batch.status !== 'planifiee' && !impersonationReadOnly && (
               <button
                 type="button"
                 onClick={resumeBatch}
@@ -358,6 +426,36 @@ export function BatchView({
             .filter(Boolean)
             .join(' — ')}
         </p>
+
+        {/* Verrou en lecture seule, énoncé là où il se fait sentir. Le bouton
+            « Reprendre » de l'en-tête ci-dessus est hors champ dès qu'on a
+            déroulé la page : sans ce bandeau, une case grisée n'a aucune
+            explication ni aucune porte de sortie visible — c'est ce qui
+            faisait lire le verrou comme une panne. Affiché dans les DEUX
+            modes, l'un comme l'autre étant concerné. Exclut l'impersonation
+            lecture seule, qui a déjà son propre bandeau (ImpersonationBanner)
+            et où rien n'est à rouvrir. */}
+        {readOnly && !impersonationReadOnly && (
+          <div className="no-print mb-6 border border-outline-variant bg-surface-container-low rounded-lg px-4 py-3 flex items-start gap-3 flex-wrap">
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0">lock</span>
+            <p className="font-body-md text-sm text-on-surface flex-1 min-w-[16rem]">
+              {batch.status === 'terminee'
+                ? 'Cette fournée est terminée'
+                : batch.status === 'abandonnee'
+                  ? 'Cette fournée est abandonnée'
+                  : 'Cette fournée est ouverte en consultation'}{' '}
+              : ses étapes, ses quantités et ses notes ne sont plus modifiables.
+            </p>
+            <button
+              type="button"
+              onClick={resumeBatch}
+              className="shrink-0 flex items-center gap-1.5 rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+              {batch.status === 'planifiee' ? 'Modifier cette fournée' : 'Reprendre cette fournée'}
+            </button>
+          </div>
+        )}
 
         {mode === 'preparer' && baseModifiedSince && (
           <div className="no-print mb-6 border border-secondary/50 bg-secondary/5 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -385,9 +483,9 @@ export function BatchView({
         )}
 
         {/* Avis sur la recette d'origine : affiché au-dessus des onglets
-            Préparer/Cuisiner (donc visible quel que soit l'onglet ouvert par
+            Préparer/Pâtisser (donc visible quel que soit l'onglet ouvert par
             défaut à l'arrivée sur une fournée terminée), pas seulement en
-            mode Cuisiner. */}
+            mode Pâtisser. */}
         {canReview && (
           <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} onDismiss={dismissReview} />
         )}
@@ -403,10 +501,10 @@ export function BatchView({
             </button>
             <button
               type="button"
-              onClick={() => switchMode('cuisiner')}
-              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+              onClick={() => switchMode('patisser')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'patisser' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
             >
-              Cuisiner
+              Pâtisser
             </button>
           </span>
           {all.length > 0 && (
@@ -433,7 +531,7 @@ export function BatchView({
             droits={droits}
           />
         ) : (
-          <CuisinerView
+          <PatisserView
             batch={batch}
             setBatch={setBatch}
             readOnly={readOnly}
@@ -477,7 +575,7 @@ function PreparerView({
   allergenRefs: AllergenRef[];
   readOnly: boolean;
   onDelete: () => void;
-  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  onSwitchMode: (m: 'preparer' | 'patisser') => void;
   onMarkTerminee: () => void;
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
@@ -620,14 +718,16 @@ function PreparerView({
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
+      // Section masquée sur une fournée close (cf. plus bas) : l'entrée doit
+      // suivre, sous peine de lien mort dans le sommaire.
+      ...(batch.batch_ingredients.length > 0 && !readOnly ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
       ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [],
   };
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
   const actions: TocAction[] = [
-    { id: 'switch-cuisiner', icon: 'skillet', label: 'Passer en mode Cuisiner', variant: 'outline-strong', onClick: () => onSwitchMode('cuisiner') },
+    { id: 'switch-patisser', icon: 'skillet', label: 'Passer en mode Pâtisser', variant: 'outline-strong', onClick: () => onSwitchMode('patisser') },
     ...(readOnly
       ? []
       : [
@@ -663,7 +763,7 @@ function PreparerView({
         ce que vous avez déjà réalisé, et « recette : … » rappelle la valeur d&apos;origine.
       </p>
 
-      <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} />
+      <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} readOnly={readOnly} />
 
       {/* Photo principale — remontée au-dessus du bloc technique (même ordre
           que la fiche recette), plutôt qu'après la description plus bas. */}
@@ -901,8 +1001,11 @@ function PreparerView({
           vues à l'écran. `no-print` : c'est une interface d'édition (boutons,
           champs) sans intérêt sur papier, déjà couverte pour l'impression par
           la liste totale ci-dessus, qui exclut déjà les lignes retirées ou
-          remplacées. */}
-      {batch.batch_ingredients.length > 0 && (
+          remplacées. Masquée entièrement sur une fournée close (`readOnly`)
+          plutôt que bridée champ par champ : n'étant QUE de l'édition, elle
+          n'a plus rien à montrer une fois la fournée fermée — la consultation
+          reste assurée par la liste totale juste au-dessus. */}
+      {batch.batch_ingredients.length > 0 && !readOnly && (
         <div id="sec-ingredients" className="no-print scroll-mt-28">
           <details className="group">
             <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
@@ -938,7 +1041,7 @@ function PreparerView({
                   <span>
                     {i + 1}. {s.title || 'Étape ' + (i + 1)}
                   </span>
-                  {!s.done && !replaced && (
+                  {!s.done && !replaced && !readOnly && (
                     <button
                       type="button"
                       onClick={() => setReplacingStep(s)}
@@ -972,14 +1075,16 @@ function PreparerView({
                     ) : (
                       <span className="italic">une recette qui n’est plus accessible</span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => cancelStepReplacement(s)}
-                      title="Annuler le remplacement et retirer les étapes ajoutées"
-                      className="no-print text-primary hover:opacity-70"
-                    >
-                      <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
-                    </button>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => cancelStepReplacement(s)}
+                        title="Annuler le remplacement et retirer les étapes ajoutées"
+                        className="no-print text-primary hover:opacity-70"
+                      >
+                        <span className="material-symbols-outlined text-[16px] align-middle">undo</span>
+                      </button>
+                    )}
                   </span>
                 )}
               </div>
@@ -1020,6 +1125,7 @@ function PreparerView({
                   dayOptions={dayOptions}
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
+                  readOnly={readOnly}
                 >
                   <StepPhotoGallery photos={photos} />
                   {s.video_url && <StepVideoPlayer url={s.video_url} />}
@@ -1042,8 +1148,8 @@ function PreparerView({
   );
 }
 
-// ── Mode Cuisiner ────────────────────────────────────────────────────────
-function CuisinerView({
+// ── Mode Pâtisser ────────────────────────────────────────────────────────
+function PatisserView({
   batch,
   setBatch,
   readOnly,
@@ -1061,8 +1167,8 @@ function CuisinerView({
   conversions: ConversionRef[];
   units: UnitRef[];
   setBusy: (b: boolean) => void;
-  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
-  // Rail Cuisiner : même écriture que le rail Préparer, cf. BatchView.
+  onSwitchMode: (m: 'preparer' | 'patisser') => void;
+  // Rail Pâtisser : même écriture que le rail Préparer, cf. BatchView.
   onMarkTerminee: () => void;
   // Écriture nue (sans confirmation), pour la proposition automatique
   // ci-dessous qui pose déjà sa propre question.
@@ -1075,10 +1181,35 @@ function CuisinerView({
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
-  const [manuallyOpenedJalons, setManuallyOpenedJalons] = useState<Set<number>>(new Set());
+  // Jours DÉPLIÉS par défaut : on suit donc les jours que l'utilisateur a
+  // repliés, et non l'inverse. L'ancien jeu (« ouvrir seulement le jour
+  // courant ») cachait les jours déjà faits comme ceux à venir, alors que
+  // c'est désormais l'ÉTAPE qui porte le repli (cf. `StepCookCard`) : replier
+  // les deux niveaux à la fois ne laissait plus rien voir du déroulé.
+  const [collapsedJalons, setCollapsedJalons] = useState<Set<number>>(new Set());
   const expandJalon = useCallback((ji: number) => {
-    setManuallyOpenedJalons((prev) => (prev.has(ji) ? prev : new Set(prev).add(ji)));
+    setCollapsedJalons((prev) => {
+      if (!prev.has(ji)) return prev;
+      const next = new Set(prev);
+      next.delete(ji);
+      return next;
+    });
   }, []);
+  // `<details>` piloté par React : sans ce rappel, le clic de l'utilisateur
+  // n'est connu que du navigateur et le premier re-rendu (une case cochée
+  // suffit) rétablissait l'état calculé, refermant le jour sous le doigt.
+  const setJalonOpen = useCallback((ji: number, open: boolean) => {
+    setCollapsedJalons((prev) => {
+      if (open === !prev.has(ji)) return prev;
+      const next = new Set(prev);
+      if (open) next.delete(ji);
+      else next.add(ji);
+      return next;
+    });
+  }, []);
+  // Étape visée par un lien `#etape-<id>` : dépliée à l'arrivée, sans quoi on
+  // atterrirait sur un titre replié.
+  const [hashStepId, setHashStepId] = useState<number | null>(null);
 
   useEffect(() => {
     if (readOnly || batch.status !== 'planifiee') return;
@@ -1221,6 +1352,7 @@ function CuisinerView({
     const ji = jalons.findIndex((j) => j.steps.some((s) => s.id === stepId));
     if (ji === -1) return;
     expandJalon(ji);
+    setHashStepId(stepId);
     setTimeout(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1236,7 +1368,7 @@ function CuisinerView({
     () => ({ before: [], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
     [showResume],
   );
-  // Symétrique du bouton « Passer en mode Cuisiner » du rail Préparer : le
+  // Symétrique du bouton « Passer en mode Pâtisser » du rail Préparer : le
   // rail reste visible pendant le défilement, contrairement aux deux
   // pastilles du haut de page. Fin de session (terminer/annuler) et sortie
   // y rejoignent les mêmes actions — même mécanisme que « Supprimer la
@@ -1279,19 +1411,34 @@ function CuisinerView({
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
-      {batch.notes && (
+      {/* Deux colonnes distinctes, longtemps confondues ici : `user_note` est
+          la note personnelle de la fournée (éditée en mode Préparer par
+          `BatchNotes`), `notes` le commentaire saisi au lancement dans
+          `BatchWidget`. Ce bloc n'affichait que `notes`, sous le libellé
+          « Ma note » — la note personnelle, justement celle qu'on écrit pour
+          ajuster la recette, était donc invisible en mode Pâtisser. */}
+      {batch.user_note && (
         <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{batch.user_note}</div>
+        </div>
+      )}
+
+      {batch.notes && (
+        <div className="mb-6 p-3 bg-surface-container-low border-l-4 border-outline-variant rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant mb-1">Commentaire de lancement</p>
           <div className="font-body-md text-sm whitespace-pre-line">{batch.notes}</div>
         </div>
       )}
 
       <div className="flex flex-col gap-6">
-        <CuisinerBody
+        <PatisserBody
           batch={batch}
           jalons={jalons}
           readOnly={readOnly}
-          manuallyOpenedJalons={manuallyOpenedJalons}
+          collapsedJalons={collapsedJalons}
+          onJalonOpenChange={setJalonOpen}
+          hashStepId={hashStepId}
           conversions={conversions}
           units={units}
           onToggleStep={toggleStep}
@@ -1309,11 +1456,13 @@ function CuisinerView({
   );
 }
 
-function CuisinerBody({
+function PatisserBody({
   batch,
   jalons,
   readOnly,
-  manuallyOpenedJalons,
+  collapsedJalons,
+  onJalonOpenChange,
+  hashStepId,
   conversions,
   units,
   onToggleStep,
@@ -1327,7 +1476,9 @@ function CuisinerBody({
   batch: BatchFull;
   jalons: BatchJalon[];
   readOnly: boolean;
-  manuallyOpenedJalons: Set<number>;
+  collapsedJalons: Set<number>;
+  onJalonOpenChange: (ji: number, open: boolean) => void;
+  hashStepId: number | null;
   conversions: ConversionRef[];
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
@@ -1388,11 +1539,16 @@ function CuisinerBody({
         const isCurrent = ji === curIdx;
         const dt = jalonDate(j);
         const target = jalonTarget(j);
+        // Un jour entièrement coché se replie automatiquement (ci-dessous) :
+        // ce repère signale qu'une note personnelle reste à l'intérieur,
+        // pour donner envie de dérouler plutôt que de la laisser invisible.
+        const jNotes = j.steps.some((s) => s.user_note);
         return (
           <details
             key={ji}
             id={jalonAnchorId(ji)}
-            open={isCurrent || (readOnly && !jDone) || manuallyOpenedJalons.has(ji)}
+            open={!collapsedJalons.has(ji)}
+            onToggle={(e) => onJalonOpenChange(ji, (e.currentTarget as HTMLDetailsElement).open)}
             className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
           >
             <summary className={`flex items-center gap-4 p-4 cursor-pointer list-none ${isCurrent ? 'bg-primary/5' : 'bg-surface-container-low'}`}>
@@ -1409,6 +1565,14 @@ function CuisinerBody({
                   {formatTime(jalonDur(j))} de travail · {j.steps.filter((s) => s.done).length}/{j.steps.length} étape{j.steps.length > 1 ? 's' : ''}
                 </span>
               </span>
+              {jNotes && (
+                <span
+                  className="material-symbols-outlined text-secondary text-[18px] shrink-0"
+                  title="Ce jour contient une note personnelle"
+                >
+                  sticky_note_2
+                </span>
+              )}
               <span className="material-symbols-outlined text-on-surface-variant">expand_more</span>
             </summary>
             <div className="p-4 flex flex-col gap-4">
@@ -1419,9 +1583,25 @@ function CuisinerBody({
                   <StepCookCard
                     key={s.id}
                     step={s}
-                    ingredients={batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !batchIngredientExcluded(s, it))}
+                    // Tout le contenu de l'étape, y compris ce que « déjà
+                    // réalisé » sort des courses et de la mise en place :
+                    // filtrer ici rendait une étape cochée littéralement
+                    // vide, même dépliée — or c'est justement ce qu'on
+                    // vient relire pour ajuster la recette après coup.
+                    // L'exclusion est rendue barrée par `StepCookCard`, pas
+                    // escamotée (cf. CLAUDE.md « une étape n'est jamais
+                    // retirée du déroulé »). Seules disparaissent les lignes
+                    // qui ne font plus partie de la fournée : retirées à la
+                    // main, ou fabriquées ailleurs (ingrédient éclaté en
+                    // sous-recette, étape entièrement remplacée).
+                    ingredients={
+                      batchStepReplaced(s)
+                        ? []
+                        : batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !it.removed && it.expanded_into_recipe_id == null)
+                    }
                     readOnly={readOnly}
                     isPending={isPending}
+                    openedByHash={hashStepId === s.id}
                     conversions={conversions}
                     units={units}
                     onToggleStep={onToggleStep}
@@ -1447,6 +1627,7 @@ function StepCookCard({
   ingredients,
   readOnly,
   isPending,
+  openedByHash,
   conversions,
   units,
   onToggleStep,
@@ -1461,6 +1642,8 @@ function StepCookCard({
   ingredients: BatchIngredientRow[];
   readOnly: boolean;
   isPending: boolean;
+  // Étape visée par un lien `#etape-<id>` : dépliée à l'arrivée.
+  openedByHash: boolean;
   conversions: ConversionRef[];
   units: UnitRef[];
   onToggleStep: (id: number, checked: boolean) => void;
@@ -1471,6 +1654,18 @@ function StepCookCard({
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
 }) {
+  // Repliée par défaut : le mode Pâtisser sert à avancer étape par étape, et
+  // dérouler d'un coup les ingrédients et sous-étapes de toute une journée
+  // noyait l'étape en cours. Le contenu n'est pas perdu pour autant — il est
+  // à un clic, et l'en-tête annonce ce qu'il y a dedans (cf. `insideSummary`).
+  const [open, setOpen] = useState(false);
+  // L'état initial n'est lu qu'au montage, or ce composant reste monté quand
+  // l'ancre `#etape-<id>` est résolue (effet au montage du parent) : sans cet
+  // effet, on atterrirait sur une étape restée repliée.
+  useEffect(() => {
+    if (openedByHash) setOpen(true);
+  }, [openedByHash]);
+
   const times = remainingStepTimes(s);
   const badges = [
     s.done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
@@ -1478,7 +1673,13 @@ function StepCookCard({
     times.wait_time ? `ATTENTE ${formatTime(times.wait_time).toUpperCase()}` : '',
     times.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}` : s.cook_temp ? `CUISSON ${s.cook_temp} °C` : '',
   ].filter(Boolean);
-  const substeps = [...s.batch_substeps].filter((su) => !batchSubstepExcluded(s, su)).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  // Même principe que les ingrédients ci-dessus : toutes les sous-étapes
+  // sont rendues, celles que « déjà réalisé » exclut étant barrées plutôt
+  // qu'escamotées. Les listes `active*` — ce qui reste réellement à faire —
+  // servent aux automatismes (auto-coche de l'étape), jamais à l'affichage.
+  const substeps = [...s.batch_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  const activeIngredients = ingredients.filter((it) => !batchIngredientExcluded(s, it));
+  const activeSubsteps = substeps.filter((su) => !batchSubstepExcluded(s, su));
   // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
   // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
   // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
@@ -1495,22 +1696,75 @@ function StepCookCard({
   // retirée du déroulé »).
   function maybeAutoCheckStep(justDoneIngredientIds: Set<number>, justDoneSubstepIds: Set<number>) {
     if (readOnly || s.done) return;
-    if (ingredients.length === 0 && substeps.length === 0) return;
-    const allIngDone = ingredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
-    const allSubDone = substeps.every((su) => su.done || justDoneSubstepIds.has(su.id));
+    if (activeIngredients.length === 0 && activeSubsteps.length === 0) return;
+    const allIngDone = activeIngredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
+    const allSubDone = activeSubsteps.every((su) => su.done || justDoneSubstepIds.has(su.id));
     if (allIngDone && allSubDone) onToggleStep(s.id, true);
   }
 
+  // Ce que le volet replié contient, annoncé sur l'en-tête : une étape
+  // repliée ne doit pas se lire comme une étape vide.
+  const insideSummary = [
+    ingredients.length ? `${ingredients.length} ingrédient${ingredients.length > 1 ? 's' : ''}` : '',
+    substeps.length ? `${substeps.length} sous-étape${substeps.length > 1 ? 's' : ''}` : '',
+    s.commentaire ? 'note du jour J' : '',
+  ].filter(Boolean);
+
   return (
     <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
-      <label className="flex items-start gap-4 p-4 cursor-pointer select-none">
-        <input type="checkbox" checked={s.done} disabled={readOnly} onChange={(ev) => onToggleStep(s.id, ev.target.checked)} className="w-8 h-8 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5" />
+      {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
+          cible de la taille d'une icône était inutilement difficile à viser,
+          au doigt comme à la souris. La case à cocher garde donc son propre
+          clic (`stopPropagation`) — sans quoi cocher une étape la replierait
+          au passage. C'est aussi pourquoi ce n'est plus un `<label>` : il
+          renverrait vers la case tout clic sur le titre. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          ev.preventDefault();
+          setOpen((o) => !o);
+        }}
+        className="flex items-start gap-2 p-4 cursor-pointer select-none hover:bg-surface-container-low/60 transition-colors"
+      >
+        <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
+          <input
+            type="checkbox"
+            checked={s.done}
+            disabled={readOnly}
+            aria-label={`Marquer « ${s.title || 'cette étape'} » comme réalisée`}
+            onChange={(ev) => onToggleStep(s.id, ev.target.checked)}
+            className={`w-8 h-8 rounded border-outline accent-primary focus:ring-primary shrink-0 ${readOnly ? '' : 'cursor-pointer'}`}
+          />
+        </span>
         <span className="flex-1 min-w-0">
           <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
+          {!open && insideSummary.length > 0 && (
+            <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
+          )}
         </span>
-      </label>
+        <span className={`shrink-0 p-1 material-symbols-outlined text-on-surface-variant transition-transform ${open ? 'rotate-180' : ''}`}>
+          expand_more
+        </span>
+      </div>
 
+      {/* Hors du volet, comme en mode Préparer : la note personnelle est le
+          seul contenu de l'étape qui serve encore APRÈS coup, pour ajuster la
+          recette au vu de ce qui s'est passé (cf. CLAUDE.md). La replier avec
+          le reste la rendrait invisible sur toute étape non dépliée. */}
+      {s.user_note && (
+        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+          <div className="font-body-md text-sm whitespace-pre-line">{s.user_note}</div>
+        </div>
+      )}
+
+      {open && (
+        <>
       {s.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
@@ -1523,18 +1777,23 @@ function StepCookCard({
           {ingredients.map((ing) => {
             const prevTxt = [ing.quantity != null ? fmtNum(ing.quantity) : ing.quantity_text || '', ing.unit ? shortUnitLbl(ing.unit) : ''].filter(Boolean).join(' ');
             const conv = ingredientConversionText(conversions, units, ing.ref_id, ing.unit, ing.quantity ?? ing.quantity_text);
-            const struck = ing.done ? ' line-through opacity-50' : '';
+            // Sorti du parcours parce que son étape est marquée « déjà
+            // réalisée » : la ligne reste lisible (c'est ce qu'on relit pour
+            // ajuster), mais il n'y a plus rien à y cocher ni à y saisir.
+            const excluded = batchIngredientExcluded(s, ing);
+            const locked = readOnly || excluded;
+            const struck = ing.done || excluded ? ' line-through opacity-50' : '';
             const checkbox = (
               <input
                 type="checkbox"
-                checked={ing.done}
-                disabled={readOnly}
+                checked={ing.done || excluded}
+                disabled={locked}
                 onChange={(ev) => {
                   const checked = ev.target.checked;
                   onToggleIng(ing.id, checked);
                   if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
                 }}
-                className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 ${locked ? '' : 'cursor-pointer'}`}
               />
             );
             const realInput = (
@@ -1544,7 +1803,7 @@ function StepCookCard({
                 step="any"
                 inputMode="decimal"
                 placeholder="réel"
-                disabled={readOnly}
+                disabled={locked}
                 defaultValue={ing.real_quantity != null ? ing.real_quantity : ''}
                 onBlur={(ev) => onIngReal(ing.id, ev.target.value)}
                 className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm text-center w-14 sm:w-20 shrink-0"
@@ -1554,10 +1813,21 @@ function StepCookCard({
               <input
                 type="text"
                 placeholder="note (ex : trop sec, viser +10 g)"
-                disabled={readOnly}
+                disabled={locked}
                 defaultValue={ing.commentaire || ''}
                 onBlur={(ev) => onIngComment(ing.id, ev.target.value)}
-                className="border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem]"
+                // Vert = une note a été saisie ici. Ces champs sont vides
+                // dans l'immense majorité des lignes : sans marqueur, celui
+                // qui porte une remarque se confond avec les autres dès
+                // qu'on remonte la liste. Le vert est la couleur déjà
+                // utilisée partout sur la fournée pour « de vous » (cf. le
+                // bandeau de légende du mode Préparer). Le champ étant non
+                // contrôlé (`defaultValue` + `onBlur`), la couleur apparaît
+                // à la validation de la saisie, pas à la frappe : elle
+                // signale bien une note ENREGISTRÉE.
+                className={`border rounded px-2 py-1.5 font-body-md text-sm flex-1 min-w-0 sm:min-w-[10rem] ${
+                  ing.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant'
+                }`}
               />
             );
             return (
@@ -1587,13 +1857,15 @@ function StepCookCard({
         <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
           {substeps.map((su) => {
             const subIngredients = subIngredientsBySubstep.get(su.id) || [];
+            const subExcluded = batchSubstepExcluded(s, su);
+            const subLocked = readOnly || subExcluded;
             return (
               <li key={su.id} className="flex flex-col gap-1.5">
                 <label className="flex items-start gap-3">
                   <input
                     type="checkbox"
-                    checked={su.done}
-                    disabled={readOnly}
+                    checked={su.done || subExcluded}
+                    disabled={subLocked}
                     onChange={(ev) => {
                       const checked = ev.target.checked;
                       onToggleSub(su.id, checked);
@@ -1602,9 +1874,9 @@ function StepCookCard({
                         maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
                       }
                     }}
-                    className="w-6 h-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
+                    className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
                   />
-                  <span className={`font-body-md text-[14px] leading-relaxed${su.done ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+                  <span className={`font-body-md text-[14px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
                 </label>
                 {subIngredients.length > 0 && (
                   <ul className="ml-9 flex flex-col gap-1">
@@ -1613,7 +1885,7 @@ function StepCookCard({
                       const conv = ingredientConversionText(conversions, units, it.ref_id, it.unit, it.quantity ?? it.quantity_text);
                       return (
                         <li key={it.id}>
-                          <span className={`text-[12px] font-label-md text-on-surface-variant${su.done ? ' line-through opacity-50' : ''}`}>
+                          <span className={`text-[12px] font-label-md text-on-surface-variant${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>
                             {it.name}
                             {qtyTxt && <> — {qtyTxt}</>}
                             {conv && <> ({conv})</>}
@@ -1624,7 +1896,17 @@ function StepCookCard({
                     })}
                   </ul>
                 )}
-                <input type="text" placeholder="note sur cette sous-étape" disabled={readOnly} defaultValue={su.commentaire || ''} onBlur={(ev) => onSubComment(su.id, ev.target.value)} className="ml-9 border border-outline-variant rounded px-2 py-1.5 font-body-md text-sm" />
+                {/* Même marqueur vert que sur la note d'un ingrédient. */}
+                <input
+                  type="text"
+                  placeholder="note sur cette sous-étape"
+                  disabled={subLocked}
+                  defaultValue={su.commentaire || ''}
+                  onBlur={(ev) => onSubComment(su.id, ev.target.value)}
+                  className={`ml-9 border rounded px-2 py-1.5 font-body-md text-sm ${
+                    su.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant'
+                  }`}
+                />
               </li>
             );
           })}
@@ -1639,13 +1921,6 @@ function StepCookCard({
         </div>
       )}
 
-      {s.user_note && (
-        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
-          <div className="font-body-md text-sm whitespace-pre-line">{s.user_note}</div>
-        </div>
-      )}
-
       <div className="px-4 pb-4">
         <textarea
           rows={2}
@@ -1653,9 +1928,17 @@ function StepCookCard({
           disabled={readOnly}
           value={s.commentaire || ''}
           onChange={(ev) => onStepComment(s.id, ev.target.value)}
-          className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
+          // Même marqueur vert que les notes d'ingrédient et de sous-étape :
+          // les laisser se signaler et pas celle-ci ferait lire l'absence de
+          // vert comme « rien de saisi » sur une étape justement commentée.
+          // Champ contrôlé, ici : le vert suit la frappe.
+          className={`w-full border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
+            s.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low'
+          }`}
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -44,7 +44,7 @@ app/                    Pages et routes (App Router)
 ├── connexion/          Connexion / inscription (e-mail + OAuth)
 ├── creer/              Éditeur de recette (création + édition)
 ├── recette/[id]/       Fiche recette (consultation, création d'une fournée)
-├── fournee/[id]/       Fiche + mode Cuisiner d'une fournée (Préparer/Cuisiner)
+├── fournee/[id]/       Fiche + mode Pâtisser d'une fournée (Préparer/Pâtisser)
 ├── execution/[id]/     Ancienne URL d'une session — redirection vers /fournee/[id]
 ├── courses/[id]/       Liste de courses
 ├── profil/             Profil (recettes, favoris, fournées, listes)
@@ -375,14 +375,14 @@ deux objets successifs — un `planning` (intention) et une `executions`
 (réalisation, plusieurs sessions possibles par plan, chaque ligne figée à son
 démarrage). Ils sont fusionnés en un seul : une fournée **est** sa propre
 réalisation, `batch_steps.done` est la seule case à cocher d'une étape, que
-ce soit avant le jour J (« déjà fait en amont ») ou pendant (mode Cuisiner de
+ce soit avant le jour J (« déjà fait en amont ») ou pendant (mode Pâtisser de
 l'écran `/fournee/[id]`, cf. `components/batch/BatchView.tsx`). Conséquences
 directes :
-- **Aucune session à démarrer** : passer en mode Cuisiner ne matérialise
+- **Aucune session à démarrer** : passer en mode Pâtisser ne matérialise
   plus rien (l'ancien `insertMaterializedExecution` a disparu) — la fournée
   porte déjà tout ce qu'il faut cocher depuis sa création. `BatchView` se
   contente de poser `batches.date_debut` à la première entrée en mode
-  Cuisiner.
+  Pâtisser.
 - **Aucune session figée à proposer de supprimer** : modifier un ingrédient
   ou déplacer une étape se reflète instantanément partout, il n'y a plus de
   copie séparée à désynchroniser. Les anciens avertissements (« une session
@@ -399,6 +399,94 @@ directes :
   multi-sessions sur un même objet — remplacés par la chaîne de fournées
   successives via « Refaire cette fournée » (`batches.source_plan_id`, posé
   à la duplication dans `CuisineContent.refaireBatch`).
+
+- **Une fournée close est verrouillée dans les DEUX modes, et se rouvre
+  explicitement.** `readOnly` (`batch.status !== 'planifiee'`, `?lecture=1`
+  ou impersonation lecture seule) doit atteindre **tout** ce qui écrit : le
+  mode Pâtisser le respectait depuis toujours, mais `BatchStepDonePanel` ne
+  recevait pas la prop — le mode Préparer restait donc modifiable sur une
+  fournée terminée (cases, jour de l'étape, notes, sous-étapes). L'interface
+  mentait sur l'état de la fournée ; ce n'était pas un trou de sécurité
+  (`useMutation` bride toujours l'impersonation), mais bien une écriture
+  d'historique par effet de bord. Corollaire posé en même temps :
+  **« Reprendre cette fournée » vaut désormais pour `terminee` autant que
+  pour `abandonnee`** — la doctrine antérieure (« seul l'abandon est
+  réversible ») n'était tenable que tant que Préparer offrait cette
+  échappatoire non voulue. Deux conséquences à connaître :
+  - le bouton est volontairement **indépendant de `lecture`** — « Fournées
+    terminées » (`/en-cuisine`) n'ouvre qu'en `?lecture=1`, s'y adosser le
+    rendrait invisible depuis son unique point d'entrée (même raisonnement
+    que la carte d'avis) ;
+  - reprendre efface `date_fin`, donc la durée totale du résumé : d'où une
+    confirmation explicite sur une fournée `terminee`, absente pour un
+    abandon.
+  **Le verrou doit s'énoncer là où il se fait sentir** : un bandeau en tête
+  des deux modes dit pourquoi tout est grisé et porte le bouton de reprise.
+  Le lien de l'en-tête ne suffit pas — il sort du champ dès qu'on a déroulé
+  la page, et une case grisée sans explication ni porte de sortie se lit
+  comme une panne, pas comme un état.
+  **Lever `?lecture=1` passe par `router.replace`, jamais par `refresh`** :
+  le paramètre vit dans l'URL, donc dans les `searchParams` du rendu serveur
+  — un `refresh` rejouerait la page avec `lecture=1` et la re-verrouillerait
+  aussitôt, et un `history.replaceState` réécrirait la barre d'adresse sans
+  rien renvoyer au serveur. C'est la seule resynchronisation de cet écran qui
+  ne soit pas un `router.refresh()`.
+- **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
+  la première est la note personnelle de la fournée (éditée en Préparer par
+  `BatchNotes`), la seconde le commentaire saisi au lancement dans
+  `BatchWidget`. Le mode Pâtisser n'affichait que `notes`, sous le libellé
+  « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
+  la recette, y était donc structurellement invisible. Les deux sont
+  désormais rendues, sous deux libellés distincts.
+- **Une note personnelle n'est jamais repliée avec l'étape.** Une étape
+  entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
+  bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui
+  serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
+  passé. Vaut dans les deux modes — `StepCookCard` rend `user_note` hors de
+  son propre volet, pour la même raison.
+- **Le mode Pâtisser AFFICHE ce que « déjà réalisé » exclut, il ne l'escamote
+  pas.** `StepCookCard` filtrait ses ingrédients par `batchIngredientExcluded`
+  (et ses sous-étapes par `batchSubstepExcluded`) **avant** de rendre : une
+  étape cochée s'affichait donc littéralement vide, et la déplier ne révélait
+  rien. Or c'est justement ce contenu qu'on relit après coup pour ajuster la
+  recette. Les lignes exclues sont désormais rendues barrées et verrouillées,
+  comme en mode Préparer — la même règle que « une étape n'est jamais retirée
+  du déroulé », appliquée un cran plus bas. Ne disparaissent que les lignes
+  qui ne font plus partie de la fournée : retirées à la main, éclatées en
+  sous-recette, ou portées par une étape entièrement remplacée. Corollaire :
+  les automatismes (auto-coche de l'étape quand tout est coché) travaillent
+  sur les listes `active*`, jamais sur les listes affichées — sinon une étape
+  dont tout est exclu ne se cocherait plus jamais.
+- **Le repli du mode Pâtisser porte sur l'ÉTAPE, pas sur le jour** : les
+  jalons sont dépliés par défaut (on suit `collapsedJalons`, les jours que
+  l'utilisateur a refermés — jamais l'inverse), les étapes repliées. Replier
+  les deux niveaux ne laissait plus rien voir du déroulé ; n'en replier aucun
+  noyait l'étape en cours sous les ingrédients de toute la journée. L'en-tête
+  d'une étape repliée annonce ce qu'elle contient (« 6 ingrédients ·
+  3 sous-étapes »), sans quoi elle se lirait comme une étape vide.
+  **Un `<details>` piloté par React a besoin de son `onToggle`** : sans lui,
+  le clic n'est connu que du navigateur, et le premier re-rendu (une case
+  cochée suffit) rétablit l'état calculé — le jour se refermait sous le doigt.
+  **Tout l'en-tête d'une étape déplie**, pas seulement le chevron (cible de la
+  taille d'une icône, difficile à viser au doigt) : d'où un `role="button"` et
+  non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
+  titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
+  replierait au passage.
+- **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
+  les trois champs du mode Pâtisser — ingrédient, sous-étape, étape. Ces
+  champs sont vides sur l'immense majorité des lignes : sans marqueur, celui
+  qui porte une remarque se confond avec les autres dès qu'on remonte la
+  liste. Même couleur que le reste de la fournée pour « de vous » (cf. le
+  bandeau de légende du mode Préparer). Les deux premiers étant des champs
+  **non contrôlés** (`defaultValue` + `onBlur`), le vert n'y apparaît qu'à la
+  validation de la saisie — il signale une note *enregistrée*, pas en cours de
+  frappe ; le troisième, contrôlé, verdit à la frappe.
+- **Proposer un avis suit ce que `BatchReview` sait offrir**, pas la seule
+  appartenance de l'avis à la fournée : un avis `pending` ou `approved` y rend
+  un récapitulatif en lecture seule, il n'y a rien à saisir. `reviewEligible`
+  ne retient donc que l'absence d'avis et un avis `rejected` de cette fournée.
+  Se voyait en reprenant puis reclôturant une fournée déjà notée : on
+  proposait de noter une recette qui l'était déjà.
 - L'historique de l'ancien modèle (`executions`, `execution_steps`,
   `execution_substeps`, `execution_ingredients`, `execution_utensils`) a été
   renommé `*_legacy` et conservé en base, sans être ni lu ni écrit par
@@ -458,7 +546,7 @@ directes :
 - **Deux notes par étape**, distinctes : `batch_steps.user_note` porte
   l'intention (écrite en amont, éditable depuis le mode Préparer,
   `BatchStepDonePanel`) ; `batch_steps.commentaire` porte le constat du jour
-  J (saisi en mode Cuisiner, `BatchView`). Ne jamais les fusionner en un seul
+  J (saisi en mode Pâtisser, `BatchView`). Ne jamais les fusionner en un seul
   champ : l'une prépare, l'autre relate.
 - **Remplacer un ingrédient par une recette** (`batch_ingredients.expanded_into_recipe_id`,
   `batch_steps.source_ingredient_id`) : « j'ai du praliné dans ma recette,
@@ -519,7 +607,7 @@ d'en créer une nouvelle.
   n'existe (`BatchReview`), et disparaît des autres dès qu'un avis est
   déposé, quel que soit son statut. `comments.batch_id` trace la fournée
   d'origine — seule elle rouvre le formulaire en cas de refus.
-- **La carte d'avis est au-dessus des onglets Préparer/Cuisiner**, et son
+- **La carte d'avis est au-dessus des onglets Préparer/Pâtisser**, et son
   affichage (`canReview`) ne dépend **ni de `readOnly` ni de `lecture`** :
   une fournée terminée est toujours en lecture seule pour ses étapes, et
   « Fournées terminées » (`/en-cuisine`) l'ouvre justement en `?lecture=1` —
@@ -988,6 +1076,65 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Installation (PWA)
+
+Le site est installable (icône sur l'écran d'accueil, mode `standalone`) via
+`public/manifest.json`. Longtemps sans service worker actif — un choix
+délibéré, pas un oubli — jusqu'à ce que ça bloque l'installation sur un
+navigateur précis.
+
+- **Chrome/Edge n'exigent plus de service worker pour installer** depuis
+  respectivement leurs versions 108 (mobile) et 112 (desktop) : un manifeste
+  valide en HTTPS suffit à proposer l'installation. **Samsung Internet, lui,
+  l'exige toujours** — manifeste valide *et* service worker portant un
+  gestionnaire `fetch` — sans quoi aucune bannière n'apparaît, quel que soit le
+  manifeste. D'où le retour d'un vrai service worker (`app/sw.js/route.ts`),
+  après l'avoir neutralisé pendant la migration Next.js (cf. ci-dessous).
+- **Historique — pourquoi il n'y en avait plus.** La version vanilla du site
+  enregistrait un service worker sur ce domaine. Resté actif dans les
+  navigateurs des visiteurs après le passage à Next.js, il continuait de
+  servir des pages depuis son cache en ignorant le `no-store` envoyé par le
+  serveur — le carnet de recettes affichait un état périmé qu'un simple F5 ne
+  corrigeait pas, seul un vidage manuel du cache y parvenait. `/sw.js` a donc
+  longtemps été un worker **auto-destructeur** (se désenregistre lui-même,
+  purge les caches, recharge les onglets ouverts) — un service worker ne
+  pouvant pas être désinscrit à distance, c'est la seule méthode fiable pour
+  atteindre les navigateurs qui le portent encore.
+- **Garde-fou du nouveau worker, impératif : jamais de HTML dynamique ni de
+  réponse d'API en cache.** Toute navigation passe en réseau d'abord ; le
+  cache n'intervient qu'en dernier recours, hors ligne, et ne sert alors que
+  `/hors-ligne` — une page statique dédiée, sans dépendance à une donnée que
+  le worker ne peut pas fournir hors ligne. Seuls quelques fichiers immuables
+  (icônes, manifeste) sont précachés. C'est ce qui permet de réintroduire un
+  service worker sans rejouer la régression ci-dessus.
+- **Servi par une route (`app/sw.js/route.ts`), pas par `public/`** : ça
+  permet un interrupteur d'arrêt côté serveur (`PWA_DISABLE_SERVICE_WORKER`,
+  cf. tableau des variables d'environnement) — engagé, la route sert le worker
+  auto-destructeur de l'historique ci-dessus, sans toucher au code du
+  navigateur. Le nom du cache est dérivé de `VERCEL_GIT_COMMIT_SHA` : chaque
+  déploiement purge donc le précédent à l'activation, sans version à
+  incrémenter à la main.
+- **`ServiceWorkerRegistrar`** (`components/ServiceWorkerRegistrar.tsx`,
+  monté dans le layout racine) désinscrit tout enregistrement qui ne pointe
+  pas vers `/sw.js` actuel — reliquat de la version vanilla ou enregistrement
+  fait sous un autre chemin — avant d'enregistrer le worker courant. Il
+  n'a rien à connaître de l'interrupteur d'arrêt : `register('/sw.js')`
+  installe tel quel ce que la route sert.
+- **Bouton d'installation maison** (`components/InstallPwaBanner.tsx`,
+  `lib/use-install-prompt.ts`) : Chrome/Edge et Samsung Internet antérieur à
+  la version 27 émettent `beforeinstallprompt`, capté pour afficher un bouton
+  qui déclenche l'invite native au clic plutôt que la mini-infobar du
+  navigateur. **Samsung Internet ≥ 27 ne l'émet plus** — Samsung a choisi de
+  piloter l'installation depuis son propre menu plutôt que par cet événement
+  Chrome — la bannière bascule alors, après un court délai sans événement, sur
+  une fiche d'instructions (menu ⋮ → « Ajouter une page à »). Même repli pour
+  Safari iOS, qui n'a jamais émis cet événement.
+- **Rejet temporaire, pas définitif** (`localStorage`, 30 jours) : fermer la
+  bannière une fois ne dit pas qu'on ne veut jamais installer l'application.
+- **Visible aux visiteurs comme aux membres** : installer l'application n'est
+  pas une action de compte, la bannière est montée dans le layout racine, hors
+  de toute condition de session.
+
 ## Données de référence (cache)
 
 Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
@@ -1111,6 +1258,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `JIRA_PROJECT_KEY` / `JIRA_ISSUE_TYPE_BUG` | Projet et type de ticket pour un signalement de bug | Serveur uniquement |
 | `JIRA_STATUS_TO_DEPLOY` / `_ID`, `JIRA_STATUS_DEPLOYED` / `_ID` | Noms (et id, en priorité) des statuts Jira « développé » et « déployé » — cf. « Contact et suivi Jira » | Serveur uniquement |
 | `JIRA_WEBHOOK_SECRET` | Secret HMAC du webhook Jira entrant | Serveur uniquement |
+| `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Un changement ne prend effet qu'au prochain déploiement Vercel (variable lue côté serveur, pas au build). | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
 

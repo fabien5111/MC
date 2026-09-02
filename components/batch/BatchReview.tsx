@@ -13,16 +13,14 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot } from '@/components/ImageSlot';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, reviewCommentRequired, validateReview } from '@/lib/reviews';
+import type { ReviewPhoto } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 
-// Les photos d'avis n'ont pas de filigrane IA (contrairement aux photos de
-// recette) : `ai_retouched` est toujours à `false` pour réutiliser tel quel
-// le diaporama plein écran de `StepPhotoGallery`.
-function ReviewPhotos({ photos }: { photos: string[] }) {
+function ReviewPhotos({ photos }: { photos: ReviewPhoto[] }) {
   if (!photos.length) return null;
   return (
     <div className="w-40">
-      <StepPhotoGallery photos={photos.map((url) => ({ url, ai_retouched: false }))} compact />
+      <StepPhotoGallery photos={photos} compact />
     </div>
   );
 }
@@ -72,13 +70,13 @@ function ReviewForm({
   batchId: number;
   initialRating: number;
   initialComment: string;
-  initialPhotos: string[];
+  initialPhotos: ReviewPhoto[];
   submitLabel: string;
   onSubmitted: () => void;
 }) {
   const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState(initialComment);
-  const [photos, setPhotos] = useState<string[]>(initialPhotos);
+  const [photos, setPhotos] = useState<ReviewPhoto[]>(initialPhotos);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -87,8 +85,16 @@ function ReviewForm({
   function setPhotoAt(index: number, dataUrl: string) {
     setPhotos((prev) => {
       const next = [...prev];
-      next[index] = dataUrl;
+      next[index] = { url: dataUrl, ai_retouched: next[index]?.ai_retouched ?? false };
       return next.filter(Boolean);
+    });
+  }
+
+  function setPhotoAiRetouchedAt(index: number, value: boolean) {
+    setPhotos((prev) => {
+      const next = [...prev];
+      if (next[index]) next[index] = { ...next[index], ai_retouched: value };
+      return next;
     });
   }
 
@@ -147,16 +153,31 @@ function ReviewForm({
         <p className="text-[12px] text-on-surface-variant mb-2">Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum)</p>
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
-            <ImageSlot
-              key={i}
-              src={photos[i] ?? null}
-              onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
-              onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
-              aspectRatio={16 / 9}
-              maxWidth={1400}
-              placeholder="Ajouter une photo"
-              className="w-32 h-[72px] md:w-40 md:h-[90px]"
-            />
+            <div key={i} className="space-y-1.5">
+              <ImageSlot
+                src={photos[i]?.url ?? null}
+                onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
+                onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
+                aspectRatio={16 / 9}
+                maxWidth={1400}
+                placeholder="Ajouter une photo"
+                className="w-32 h-[72px] md:w-40 md:h-[90px]"
+                aiRetouched={photos[i]?.ai_retouched ?? false}
+                promptAiRetouched
+                onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
+              />
+              {photos[i] && (
+                <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer w-32 md:w-40">
+                  <input
+                    type="checkbox"
+                    checked={photos[i].ai_retouched}
+                    onChange={(e) => setPhotoAiRetouchedAt(i, e.target.checked)}
+                    className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                  />
+                  Indication photo retravaillée avec l&apos;IA
+                </label>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -174,6 +195,38 @@ function ReviewForm({
       <p className="text-[12px] text-on-surface-variant italic">
         Votre avis sera relu par la modération avant d’apparaître sur la recette.
       </p>
+    </div>
+  );
+}
+
+// Composant à part (portée module), jamais défini dans le corps de
+// `BatchReview` : une fonction composant redéfinie à chaque rendu du parent
+// change de type à chaque fois aux yeux de React, qui démonte puis remonte
+// tout son contenu — ici `ReviewForm`, avec la perte de son état local
+// (note, commentaire, photos) à chaque rendu de `BatchView` (ancêtre à
+// l'état riche : cases à cocher des étapes, minuteurs de sauvegarde…), pas
+// seulement à une action de l'utilisateur sur la carte elle-même.
+function Card({ onDismiss, children }: { onDismiss: () => void; children: React.ReactNode }) {
+  return (
+    <div id="sec-avis" className="scroll-mt-28 mb-6 p-5 bg-secondary-container/20 border border-secondary/30 rounded-xl">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">rate_review</span>
+          Votre avis sur cette recette
+        </h3>
+        {/* Masquage définitif sur cette fournée seulement — une autre fournée
+            terminée de la même recette continuera de proposer l'avis. */}
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Ne plus afficher pour cette fournée"
+          aria-label="Ne plus afficher pour cette fournée"
+          className="shrink-0 -mt-1 -mr-1 p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+      {children}
     </div>
   );
 }
@@ -199,32 +252,9 @@ export function BatchReview({
   // — le bouton ne s'affiche que sur la fournée d'origine (cf. en-tête).
   if (myReview && myReview.batch_id !== batchId) return null;
 
-  const Card = ({ children }: { children: React.ReactNode }) => (
-    <div id="sec-avis" className="scroll-mt-28 mb-6 p-5 bg-secondary-container/20 border border-secondary/30 rounded-xl">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-[20px]">rate_review</span>
-          Votre avis sur cette recette
-        </h3>
-        {/* Masquage définitif sur cette fournée seulement — une autre fournée
-            terminée de la même recette continuera de proposer l'avis. */}
-        <button
-          type="button"
-          onClick={onDismiss}
-          title="Ne plus afficher pour cette fournée"
-          aria-label="Ne plus afficher pour cette fournée"
-          className="shrink-0 -mt-1 -mr-1 p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
-        >
-          <span className="material-symbols-outlined text-[20px]">close</span>
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-
   if (justSubmitted) {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <p className="text-sm text-on-surface-variant">
           Merci ! Votre avis a été transmis à la modération et apparaîtra sur la fiche recette une fois validé.
         </p>
@@ -234,7 +264,7 @@ export function BatchReview({
 
   if (!myReview) {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <ReviewForm
           batchId={batchId}
           initialRating={0}
@@ -249,7 +279,7 @@ export function BatchReview({
 
   if (myReview.status === 'pending') {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
@@ -262,7 +292,7 @@ export function BatchReview({
 
   if (myReview.status === 'approved') {
     return (
-      <Card>
+      <Card onDismiss={onDismiss}>
         <div className="flex flex-col gap-2">
           <StarsReadOnly value={myReview.rating} />
           {myReview.content && <p className="text-sm text-on-surface whitespace-pre-line">{myReview.content}</p>}
@@ -278,7 +308,7 @@ export function BatchReview({
   // `rejected` : le motif remplace l'avis initial, formulaire rouvert et
   // pré-rempli pour resoumission.
   return (
-    <Card>
+    <Card onDismiss={onDismiss}>
       <div className="mb-4 p-3 bg-error-container/40 text-on-error-container rounded-lg text-[13px] flex items-start gap-2">
         <span className="material-symbols-outlined text-[18px] shrink-0">info</span>
         <p>

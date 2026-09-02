@@ -978,6 +978,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: number
+          photo_urls: Json
           rating: number | null
           recipe_id: string | null
           rejection_reason: string | null
@@ -991,6 +992,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: number
+          photo_urls?: Json
           rating?: number | null
           recipe_id?: string | null
           rejection_reason?: string | null
@@ -1004,6 +1006,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: number
+          photo_urls?: Json
           rating?: number | null
           recipe_id?: string | null
           rejection_reason?: string | null
@@ -2181,6 +2184,7 @@ export type Database = {
           order_index: number
           tagline: string | null
           trial_allowed: boolean
+          trial_grant_plan_id: number | null
         }
         Insert: {
           active?: boolean
@@ -2192,6 +2196,7 @@ export type Database = {
           order_index?: number
           tagline?: string | null
           trial_allowed?: boolean
+          trial_grant_plan_id?: number | null
         }
         Update: {
           active?: boolean
@@ -2203,8 +2208,17 @@ export type Database = {
           order_index?: number
           tagline?: string | null
           trial_allowed?: boolean
+          trial_grant_plan_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "plans_trial_grant_plan_id_fkey"
+            columns: ["trial_grant_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -3546,6 +3560,30 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_sessions: {
+        Row: {
+          id: string
+          last_seen_at: string
+          page_count: number
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_seen_at?: string
+          page_count?: number
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_seen_at?: string
+          page_count?: number
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       ai_usage_mensuel: {
@@ -3624,6 +3662,14 @@ export type Database = {
           id: number
           kind: string
           name: string
+        }[]
+      }
+      admin_member_login_history: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          action: string
+          created_at: string
+          ip_address: string
         }[]
       }
       admin_unignore_ref: { Args: { p_id: number }; Returns: undefined }
@@ -3778,8 +3824,16 @@ export type Database = {
         }
         Returns: number
       }
+      mc_redirect_trial_plan_version: {
+        Args: { p_source_plan_code: string }
+        Returns: undefined
+      }
       mc_refund: { Args: { p_key: string; p_n?: number }; Returns: undefined }
       mc_renewal_anchor: { Args: { p_user_id: string }; Returns: number }
+      mc_simulate_subscribe: {
+        Args: { p_plan_code: string; p_promo_code: string }
+        Returns: number
+      }
       mc_start_trial: {
         Args: { p_email_hash: string; p_plan_code: string }
         Returns: number
