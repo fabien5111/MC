@@ -12,6 +12,15 @@ import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 
 type BlockInput = { key: string; adminLabel: string; text: string; videoUrl: string };
 
+// Redimensionne le <textarea> à la hauteur de son contenu (motif de
+// `CreerForm.tsx`) : jamais de scroll interne, y compris à l'affichage
+// initial d'un texte déjà rempli.
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 export function HelpBlocksManager({ blocks }: { blocks: BlockInput[] }) {
   return (
     <div className="flex flex-col gap-8 max-w-3xl">
@@ -55,9 +64,13 @@ function HelpBlockCard({ block }: { block: BlockInput }) {
         <label className="font-label-md text-label-md text-outline mb-1 block">Texte</label>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            autoGrow(e.target);
+          }}
+          ref={autoGrow}
           rows={4}
-          className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"
+          className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary resize-none overflow-hidden"
           placeholder="Texte affiché aux membres…"
         />
       </div>
