@@ -38,10 +38,52 @@ function detectManualInstructions(): string | null {
   return null;
 }
 
+// État du service worker, second volet du diagnostic : Samsung Internet — et
+// vraisemblablement d'autres navigateurs Android mineurs — refuse de proposer
+// l'installation tant qu'aucun worker portant un gestionnaire `fetch` n'est
+// actif. Savoir que la bannière s'affiche sans worker actif, c'est savoir que
+// le blocage est là et pas dans le manifeste.
+//
+// Best-effort de bout en bout : une lecture qui échoue rend une chaîne, jamais
+// une exception — c'est un texte de diagnostic, il ne doit rien casser.
+async function describeServiceWorker(): Promise<string> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return 'non pris en charge par ce navigateur';
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    if (!registration) return 'aucun enregistrement';
+    // La page n'est contrôlée qu'au chargement suivant l'activation : un
+    // worker actif sur une page non contrôlée est normal juste après la
+    // première visite, pas un symptôme.
+    const controlee = navigator.serviceWorker.controller ? 'page contrôlée' : 'page non contrôlée';
+    const worker = registration.active ?? registration.waiting ?? registration.installing;
+    if (!worker) return `enregistré, aucun worker (${controlee})`;
+    const chemin = (() => {
+      try {
+        return new URL(worker.scriptURL).pathname;
+      } catch {
+        return worker.scriptURL;
+      }
+    })();
+    return `${worker.state} — ${chemin} (${controlee})`;
+  } catch {
+    return 'état illisible';
+  }
+}
+
 export function InstallPwaBanner() {
   const { canPromptNatively, installed, dismissed, promptInstall, dismiss } = useInstallPrompt();
   const [manualInstructions, setManualInstructions] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+  // User-agent brut, affiché replié sous les instructions manuelles. La
+  // détection ci-dessus reposant entièrement sur cette chaîne, un signalement
+  // du type « je ne trouve pas l'option » n'est instruisable qu'en la
+  // connaissant : sans elle, impossible de savoir si le navigateur est
+  // simplement mal reconnu ou s'il ne sait pas installer de PWA du tout.
+  const [userAgent, setUserAgent] = useState<string | null>(null);
+  const [swState, setSwState] = useState<string | null>(null);
+  const [diagCopied, setDiagCopied] = useState(false);
   // Mobile et tablette seulement : Chrome/Edge desktop émettent aussi
   // `beforeinstallprompt` (une PWA s'installe en fenêtre sur ordinateur), mais
   // ce n'est pas l'usage visé ici. Même seuil que la colonne/tiroir de
@@ -50,6 +92,21 @@ export function InstallPwaBanner() {
 
   useEffect(() => {
     setManualInstructions(detectManualInstructions());
+    setUserAgent(navigator.userAgent);
+  }, []);
+
+  // L'enregistrement du worker (`ServiceWorkerRegistrar`) a lieu après le
+  // premier rendu : une lecture au montage peut donc être trop précoce. D'où
+  // la relecture à l'ouverture du volet, qui est de toute façon le seul moment
+  // où la valeur est regardée.
+  useEffect(() => {
+    let annule = false;
+    void describeServiceWorker().then((etat) => {
+      if (!annule) setSwState(etat);
+    });
+    return () => {
+      annule = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -71,6 +128,23 @@ export function InstallPwaBanner() {
 
   if (isDesktop || installed || dismissed) return null;
   if (!canPromptNatively && !(showInstructions && manualInstructions)) return null;
+
+  // Copie sans dépendance au presse-papiers : `navigator.clipboard` n'existe
+  // pas partout (contexte non sécurisé, navigateurs anciens) et c'est
+  // justement sur ces navigateurs-là qu'on a besoin de la chaîne. La sélection
+  // manuelle reste possible dans tous les cas, le bouton n'est qu'un confort.
+  async function copierDiagnostic() {
+    if (!userAgent) return;
+    try {
+      await navigator.clipboard?.writeText(
+        `${userAgent}\nService worker : ${swState ?? 'inconnu'}`,
+      );
+      setDiagCopied(true);
+      window.setTimeout(() => setDiagCopied(false), 2000);
+    } catch {
+      // Presse-papiers refusé : rien à signaler, le texte reste sélectionnable.
+    }
+  }
 
   return (
     <div
@@ -98,6 +172,36 @@ export function InstallPwaBanner() {
             >
               Installer
             </button>
+          )}
+          {!canPromptNatively && userAgent && (
+            <details
+              className="mt-3"
+              onToggle={(event) => {
+                if (!event.currentTarget.open) return;
+                void describeServiceWorker().then(setSwState);
+              }}
+            >
+              <summary className="cursor-pointer font-label-md text-[11px] text-on-surface-variant underline decoration-dotted underline-offset-2">
+                Vous ne trouvez pas l’option ?
+              </summary>
+              <p className="mt-2 font-body-md text-[11px] leading-relaxed text-on-surface-variant">
+                Envoyez-nous ces informations sur votre navigateur, elles nous aident à corriger ces
+                instructions.
+              </p>
+              <p className="mt-2 select-all break-all rounded-lg bg-surface-container px-2 py-1.5 font-mono text-[10px] leading-relaxed text-on-surface-variant">
+                {userAgent}
+              </p>
+              <p className="mt-1 select-all break-all rounded-lg bg-surface-container px-2 py-1.5 font-mono text-[10px] leading-relaxed text-on-surface-variant">
+                Service worker : {swState ?? 'lecture en cours…'}
+              </p>
+              <button
+                type="button"
+                onClick={copierDiagnostic}
+                className="mt-2 rounded-pill border border-outline-variant px-3 py-1.5 font-label-md text-[11px] font-semibold text-on-surface transition-colors hover:bg-surface-container"
+              >
+                {diagCopied ? 'Copié' : 'Copier'}
+              </button>
+            </details>
           )}
         </div>
         <button
