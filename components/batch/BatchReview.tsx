@@ -109,10 +109,10 @@ function ReviewForm({
 
   // Ajout de plusieurs photos en une fois, dans la limite des emplacements
   // encore libres (REVIEW_PHOTOS_MAX au total).
-  async function addPhotosMulti(fileList: FileList) {
+  async function addPhotosMulti(allFiles: File[]) {
     const room = REVIEW_PHOTOS_MAX - photos.length;
     if (room <= 0) return;
-    const files = Array.from(fileList).slice(0, room);
+    const files = allFiles.slice(0, room);
     const { urls, rejected } = await resizeFilesToDataUrls(files, 1400, 'image/jpeg');
     if (rejected) await dialog.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
     if (!urls.length) return;
@@ -174,25 +174,9 @@ function ReviewForm({
         </p>
       </div>
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[12px] text-on-surface-variant">Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum)</p>
-          {photos.length < REVIEW_PHOTOS_MAX && (
-            <label className="inline-flex items-center gap-1.5 text-[12px] text-secondary cursor-pointer hover:underline">
-              <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
-              Ajouter plusieurs photos
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/avif"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.length) void addPhotosMulti(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-          )}
-        </div>
+        <p className="text-[12px] text-on-surface-variant mb-2">
+          Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum) — plusieurs à la fois sont acceptées.
+        </p>
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
             <div key={i} className="space-y-1.5" {...photoReorder.dropProps(String(i))}>
@@ -205,6 +189,7 @@ function ReviewForm({
                   src={photos[i]?.url ?? null}
                   onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
                   onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
+                  onFilesAdded={(files) => void addPhotosMulti(files)}
                   aspectRatio={16 / 9}
                   maxWidth={1400}
                   placeholder="Ajouter une photo"

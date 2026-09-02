@@ -79,6 +79,18 @@ export type ImageSlotProps = {
   promptAiRetouched?: boolean;
   /** Réponse à la question ci-dessus. Requis si `promptAiRetouched`. */
   onAiRetouchedChange?: (value: boolean) => void;
+  /**
+   * Reçoit tous les fichiers d'une sélection ou d'un dépôt groupé de
+   * *plusieurs* fichiers (choix multiple dans le sélecteur système, ou dépôt
+   * de plusieurs fichiers à la fois) — cet emplacement n'affichant qu'une
+   * seule photo, c'est au parent de répartir le reste sur d'autres
+   * emplacements de sa grille (cf. grilles de photos d'étape / d'avis). Une
+   * sélection ou un dépôt d'un seul fichier suit toujours le chemin normal
+   * (compression puis, si `aspectRatio` est fourni, recadrage), même quand
+   * cette prop est renseignée. Sa seule présence active aussi la sélection
+   * multiple dans le sélecteur de fichiers du système.
+   */
+  onFilesAdded?: (files: File[]) => void;
 };
 
 export function ImageSlot({
@@ -101,6 +113,7 @@ export function ImageSlot({
   aspectRatio,
   promptAiRetouched = false,
   onAiRetouchedChange,
+  onFilesAdded,
 }: ImageSlotProps) {
   const dialog = useDialog();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -166,7 +179,12 @@ export function ImageSlot({
                 if (aspectRatio) setEditingPhoto(true);
                 return;
               }
-              const file = e.dataTransfer.files?.[0];
+              const files = Array.from(e.dataTransfer.files || []);
+              if (files.length > 1 && onFilesAdded) {
+                onFilesAdded(files);
+                return;
+              }
+              const file = files[0];
               if (file) void ingest(file);
             }
       }
@@ -279,11 +297,17 @@ export function ImageSlot({
           id={inputId}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/avif"
+          multiple={!!onFilesAdded}
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void ingest(file);
+            const files = Array.from(e.target.files || []);
             e.target.value = '';
+            if (files.length > 1 && onFilesAdded) {
+              onFilesAdded(files);
+              return;
+            }
+            const file = files[0];
+            if (file) void ingest(file);
           }}
         />
       )}

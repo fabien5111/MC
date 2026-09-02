@@ -2260,20 +2260,10 @@ export function CreerForm({
                     )}
                   </div>
 
-                  <label className="mb-3 inline-flex items-center gap-2 text-secondary font-label-md text-label-md cursor-pointer hover:underline">
-                    <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-                    Ajouter plusieurs photos
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/avif"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.length) void addPhotosToStep(si, e.target.files);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
+                  <p className="mb-2 text-[12px] text-on-surface-variant">
+                    Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent
+                    sur les emplacements libres.
+                  </p>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {st.photos.map((p, pi) => {
@@ -2294,6 +2284,7 @@ export function CreerForm({
                               onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                               onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                               onClear={() => patchPhoto(si, pi, null)}
+                              onFilesAdded={(files) => void addPhotosToStep(si, files)}
                               shape="rect"
                               maxWidth={800}
                               aspectRatio={1}
