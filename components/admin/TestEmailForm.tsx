@@ -34,9 +34,10 @@ export function TestEmailForm() {
       if (!res.ok) throw new Error(data?.erreur || 'Envoi impossible.');
       setNotice(`E-mail envoyé à ${email}.`);
       // Champs vidés uniquement en cas de succès : sur un échec, la saisie doit
-      // rester en place pour être corrigée et renvoyée. Le destinataire est
-      // conservé — on enchaîne le plus souvent plusieurs essais vers la même
-      // adresse.
+      // rester en place pour être corrigée et renvoyée. Le destinataire part
+      // avec le reste — le message de confirmation le rappelle, il est composé
+      // avant le vidage.
+      setEmail('');
       setObjet('');
       setCorps('');
     } catch (err) {
