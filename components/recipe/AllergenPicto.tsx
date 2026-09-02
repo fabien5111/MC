@@ -5,6 +5,15 @@
 // Élément top-layer : il ne peut pas s'ancrer via un parent `position:
 // relative`, d'où le repositionnement manuel (au clic, avant l'ouverture)
 // sur les coordonnées du bouton.
+//
+// Invocation IMPÉRATIVE (togglePopover), pas l'attribut déclaratif
+// `popoverTarget` : sur une carte recette, ce picto est rendu à l'intérieur
+// du `<Link>` vers la fiche (RecipeCardLayout) — sans `preventDefault` sur le
+// clic, le tap ouvrirait le popover ET naviguerait vers la recette. Or
+// `preventDefault` annule aussi l'action par défaut du bouton lui-même :
+// avec `popoverTarget`, ce serait le popover qui ne s'ouvrirait plus jamais
+// (même drapeau `defaultPrevented`, sur le même clic). L'appel manuel à
+// `togglePopover()` est indépendant de ce drapeau.
 'use client';
 
 import { useId, useRef } from 'react';
@@ -22,13 +31,16 @@ export function AllergenPicto({
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
-  function positionPopover() {
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     const btn = btnRef.current;
     const pop = popRef.current;
     if (!btn || !pop) return;
     const rect = btn.getBoundingClientRect();
     pop.style.left = `${rect.left + rect.width / 2}px`;
     pop.style.top = `${rect.bottom + 6}px`;
+    pop.togglePopover();
   }
 
   return (
@@ -36,9 +48,9 @@ export function AllergenPicto({
       <button
         ref={btnRef}
         type="button"
-        popoverTarget={popoverId}
-        onClick={positionPopover}
+        onClick={toggle}
         aria-label={name}
+        aria-describedby={popoverId}
         className={`${iconClassName} block appearance-none border-0 bg-transparent p-0 cursor-pointer`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base */}
