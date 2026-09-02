@@ -4,7 +4,7 @@ import { requireUser, getRole } from '@/lib/auth';
 import { getArticleForEdit, getArticleCategoriesAdmin } from '@/lib/admin-blog';
 import { BlogEditor } from '@/components/admin/BlogEditor';
 
-export const metadata: Metadata = { title: 'Rédiger un article | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Rédiger un article | Admin — Je pâtisse !' };
 
 export default async function AdminBlogEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

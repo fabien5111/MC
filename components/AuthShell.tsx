@@ -31,7 +31,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <Link className="maryse-logo-font text-3xl text-primary" href="/">
               Je pâtisse !
             </Link>
-            <p className="font-body-md text-body-md text-secondary">© 2024 Maryse-Club. Tous droits réservés.</p>
+            <p className="font-body-md text-body-md text-secondary">© 2024 Je Pâtisse. Tous droits réservés.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
             <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="#">

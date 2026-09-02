@@ -4,7 +4,7 @@ import { requireUser, getRole } from '@/lib/auth';
 import { getManagedArticles, getArticleCategoriesAdmin } from '@/lib/admin-blog';
 import { BlogManager } from '@/components/admin/BlogManager';
 
-export const metadata: Metadata = { title: 'Blog | Admin — Maryse Club' };
+export const metadata: Metadata = { title: 'Blog | Admin — Je pâtisse !' };
 
 export default async function AdminBlogPage() {
   const user = await requireUser();
