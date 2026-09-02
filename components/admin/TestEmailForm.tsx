@@ -33,6 +33,12 @@ export function TestEmailForm() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.erreur || 'Envoi impossible.');
       setNotice(`E-mail envoyé à ${email}.`);
+      // Champs vidés uniquement en cas de succès : sur un échec, la saisie doit
+      // rester en place pour être corrigée et renvoyée. Le destinataire est
+      // conservé — on enchaîne le plus souvent plusieurs essais vers la même
+      // adresse.
+      setObjet('');
+      setCorps('');
     } catch (err) {
       setError((err as Error).message);
     } finally {
