@@ -1219,14 +1219,15 @@ Identifier :
   - Multi-produits
   - Organisation
 
-#### 2. Recommandation du modèle
+#### 2. Recommandation du modèle et de l'effort
 
 Afficher systématiquement :
 
 MODELE RECOMMANDE :
+EFFORT RECOMMANDE :
 JUSTIFICATION :
 
-Règles :
+Règles (modèle) :
 
 ###### Haiku
 
@@ -1265,6 +1266,33 @@ Utiliser pour :
 - Arbitrage d'architecture
 - Analyse multi-produits
 - Organisation du Bureau d'Études
+
+Règles (effort) :
+
+###### Low
+
+Utiliser pour :
+
+- Reformulation, résumé, documentation simple
+- Modification ciblée sur un seul fichier, sans ambiguïté
+- Tâche mécanique (renommage, application d'un patron déjà défini)
+
+###### Medium
+
+Utiliser pour :
+
+- Développement quotidien (React, API, SQL, debug, refactoring local)
+- Tâches nécessitant d'explorer plusieurs fichiers ou de trancher entre
+  quelques options
+
+###### High
+
+Utiliser pour :
+
+- Architecture, migration, arbitrage technique
+- Analyse transverse ou multi-produits
+- Sujets à fort risque ou à hypothèses implicites nombreuses, nécessitant
+  une vérification critique poussée (cf. §3)
 
 #### 3. Vérification critique
 
