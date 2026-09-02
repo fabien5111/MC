@@ -24,6 +24,7 @@ import { ingredientConversionText, resolveIngredientRefId, convertQty, type Conv
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { moveAt } from '@/lib/photo-reorder';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -305,6 +306,9 @@ export function RelectureEditor({
   const retirerDeLaBanque = useCallback((url: string | null) => {
     if (!url) return;
     setBanque((prev) => prev.filter((p) => p.url !== url));
+  }, []);
+  const reordonnerBanque = useCallback((from: number, to: number) => {
+    setBanque((prev) => moveAt(prev, from, to));
   }, []);
   const [titre, setTitre] = useState(ligatureOeuf(recette.titre || ''));
   const [description, setDescription] = useState(ligatureOeuf(recette.description || ''));
@@ -1299,7 +1303,7 @@ export function RelectureEditor({
         </div>
       )}
 
-      <PhotoBank photos={banque} onSupprimer={retirerDeLaBanque} />
+      <PhotoBank photos={banque} onSupprimer={retirerDeLaBanque} onReorder={reordonnerBanque} />
 
       {/* Infos générales */}
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
