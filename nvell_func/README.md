@@ -1,4 +1,4 @@
-# Handoff : Recherche avancée — Maryse-Club (adapté au dépôt `fabien5111/MC`)
+# Handoff : Recherche avancée — Je Pâtisse (adapté au dépôt `fabien5111/MC`)
 
 > **Version 2, réécrite après lecture du code réel.** La version précédente décrivait la fonctionnalité comme une création complète ; le dépôt montre qu'une bonne part existe déjà. Ce document dit donc **ce qu'il faut étendre**, et non ce qu'il faut construire.
 >
@@ -275,7 +275,7 @@ Icônes Material Symbols utilisées : `search`, `close`, `tune`, `nutrition`, `a
 |---|---|
 | `recherche-retenue.html` | **Référence à implémenter** — 1e, 2a, 2c et l'état vide, facettes interactives. |
 | `recherche-avancee.html` | Contexte de décision (5 pictos, 3 écrans). **Non à implémenter.** |
-| `Specifications_Recherche_Maryse_Club.pdf` | Spécifications d'origine, pour traçabilité. |
+| `Specifications_Recherche_Je_Patisse.pdf` | Spécifications d'origine, pour traçabilité. |
 
 ⚠️ Les maquettes sont des **références visuelles**, pas du code à porter : Tailwind y est chargé par CDN, le JavaScript est une IIFE vanilla sans état applicatif — il ne démontre que les gestes d'interface. **La logique d'état est celle décrite plus haut (URL), pas celle du script de maquette.**
 

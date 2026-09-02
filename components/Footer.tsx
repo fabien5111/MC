@@ -50,7 +50,7 @@ export function Footer() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="font-label-md text-[12px] text-on-tertiary-container italic opacity-70">
-            © 2024 Maryse-Club. The Modern Pâtissier.
+            © 2024 Je Pâtisse. The Modern Pâtissier.
           </p>
           <div className="flex gap-8">
             <span className="font-label-md text-[12px] text-on-tertiary-container uppercase tracking-widest">

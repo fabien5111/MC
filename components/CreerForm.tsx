@@ -2509,7 +2509,7 @@ export function CreerForm({
         </section>
 
         <section className="pt-10 border-t-2 border-primary">
-          <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Maryse-Club.</p>
+          <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Je Pâtisse.</p>
         </section>
       </div>
 
