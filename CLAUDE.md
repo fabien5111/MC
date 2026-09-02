@@ -44,7 +44,7 @@ app/                    Pages et routes (App Router)
 ├── connexion/          Connexion / inscription (e-mail + OAuth)
 ├── creer/              Éditeur de recette (création + édition)
 ├── recette/[id]/       Fiche recette (consultation, création d'une fournée)
-├── fournee/[id]/       Fiche + mode Cuisiner d'une fournée (Préparer/Cuisiner)
+├── fournee/[id]/       Fiche + mode Pâtisser d'une fournée (Préparer/Pâtisser)
 ├── execution/[id]/     Ancienne URL d'une session — redirection vers /fournee/[id]
 ├── courses/[id]/       Liste de courses
 ├── profil/             Profil (recettes, favoris, fournées, listes)
@@ -375,14 +375,14 @@ deux objets successifs — un `planning` (intention) et une `executions`
 (réalisation, plusieurs sessions possibles par plan, chaque ligne figée à son
 démarrage). Ils sont fusionnés en un seul : une fournée **est** sa propre
 réalisation, `batch_steps.done` est la seule case à cocher d'une étape, que
-ce soit avant le jour J (« déjà fait en amont ») ou pendant (mode Cuisiner de
+ce soit avant le jour J (« déjà fait en amont ») ou pendant (mode Pâtisser de
 l'écran `/fournee/[id]`, cf. `components/batch/BatchView.tsx`). Conséquences
 directes :
-- **Aucune session à démarrer** : passer en mode Cuisiner ne matérialise
+- **Aucune session à démarrer** : passer en mode Pâtisser ne matérialise
   plus rien (l'ancien `insertMaterializedExecution` a disparu) — la fournée
   porte déjà tout ce qu'il faut cocher depuis sa création. `BatchView` se
   contente de poser `batches.date_debut` à la première entrée en mode
-  Cuisiner.
+  Pâtisser.
 - **Aucune session figée à proposer de supprimer** : modifier un ingrédient
   ou déplacer une étape se reflète instantanément partout, il n'y a plus de
   copie séparée à désynchroniser. Les anciens avertissements (« une session
@@ -403,7 +403,7 @@ directes :
 - **Une fournée close est verrouillée dans les DEUX modes, et se rouvre
   explicitement.** `readOnly` (`batch.status !== 'planifiee'`, `?lecture=1`
   ou impersonation lecture seule) doit atteindre **tout** ce qui écrit : le
-  mode Cuisiner le respectait depuis toujours, mais `BatchStepDonePanel` ne
+  mode Pâtisser le respectait depuis toujours, mais `BatchStepDonePanel` ne
   recevait pas la prop — le mode Préparer restait donc modifiable sur une
   fournée terminée (cases, jour de l'étape, notes, sous-étapes). L'interface
   mentait sur l'état de la fournée ; ce n'était pas un trou de sécurité
@@ -434,7 +434,7 @@ directes :
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans
-  `BatchWidget`. Le mode Cuisiner n'affichait que `notes`, sous le libellé
+  `BatchWidget`. Le mode Pâtisser n'affichait que `notes`, sous le libellé
   « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
   la recette, y était donc structurellement invisible. Les deux sont
   désormais rendues, sous deux libellés distincts.
@@ -444,7 +444,7 @@ directes :
   serve encore **après** coup, pour ajuster la recette au vu de ce qui s'est
   passé. Vaut dans les deux modes — `StepCookCard` rend `user_note` hors de
   son propre volet, pour la même raison.
-- **Le mode Cuisiner AFFICHE ce que « déjà réalisé » exclut, il ne l'escamote
+- **Le mode Pâtisser AFFICHE ce que « déjà réalisé » exclut, il ne l'escamote
   pas.** `StepCookCard` filtrait ses ingrédients par `batchIngredientExcluded`
   (et ses sous-étapes par `batchSubstepExcluded`) **avant** de rendre : une
   étape cochée s'affichait donc littéralement vide, et la déplier ne révélait
@@ -457,7 +457,7 @@ directes :
   les automatismes (auto-coche de l'étape quand tout est coché) travaillent
   sur les listes `active*`, jamais sur les listes affichées — sinon une étape
   dont tout est exclu ne se cocherait plus jamais.
-- **Le repli du mode Cuisiner porte sur l'ÉTAPE, pas sur le jour** : les
+- **Le repli du mode Pâtisser porte sur l'ÉTAPE, pas sur le jour** : les
   jalons sont dépliés par défaut (on suit `collapsedJalons`, les jours que
   l'utilisateur a refermés — jamais l'inverse), les étapes repliées. Replier
   les deux niveaux ne laissait plus rien voir du déroulé ; n'en replier aucun
@@ -473,7 +473,7 @@ directes :
   titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
   replierait au passage.
 - **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
-  les trois champs du mode Cuisiner — ingrédient, sous-étape, étape. Ces
+  les trois champs du mode Pâtisser — ingrédient, sous-étape, étape. Ces
   champs sont vides sur l'immense majorité des lignes : sans marqueur, celui
   qui porte une remarque se confond avec les autres dès qu'on remonte la
   liste. Même couleur que le reste de la fournée pour « de vous » (cf. le
@@ -546,7 +546,7 @@ directes :
 - **Deux notes par étape**, distinctes : `batch_steps.user_note` porte
   l'intention (écrite en amont, éditable depuis le mode Préparer,
   `BatchStepDonePanel`) ; `batch_steps.commentaire` porte le constat du jour
-  J (saisi en mode Cuisiner, `BatchView`). Ne jamais les fusionner en un seul
+  J (saisi en mode Pâtisser, `BatchView`). Ne jamais les fusionner en un seul
   champ : l'une prépare, l'autre relate.
 - **Remplacer un ingrédient par une recette** (`batch_ingredients.expanded_into_recipe_id`,
   `batch_steps.source_ingredient_id`) : « j'ai du praliné dans ma recette,
@@ -607,7 +607,7 @@ d'en créer une nouvelle.
   n'existe (`BatchReview`), et disparaît des autres dès qu'un avis est
   déposé, quel que soit son statut. `comments.batch_id` trace la fournée
   d'origine — seule elle rouvre le formulaire en cas de refus.
-- **La carte d'avis est au-dessus des onglets Préparer/Cuisiner**, et son
+- **La carte d'avis est au-dessus des onglets Préparer/Pâtisser**, et son
   affichage (`canReview`) ne dépend **ni de `readOnly` ni de `lecture`** :
   une fournée terminée est toujours en lecture seule pour ses étapes, et
   « Fournées terminées » (`/en-cuisine`) l'ouvre justement en `?lecture=1` —

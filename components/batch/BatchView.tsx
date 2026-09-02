@@ -2,9 +2,9 @@
 
 // Écran d'une fournée (porté de recette.html mode planifié + execution.html) :
 // deux modes sur la même donnée — Préparer (avant, au calme : ajuster,
-// éditer) et Cuisiner (pendant : jalons à cocher, tempo). Pas d'écran de
+// éditer) et Pâtisser (pendant : jalons à cocher, tempo). Pas d'écran de
 // mise en place intercalé : c'est le mode Préparer qui sert à tout vérifier
-// avant de passer aux fourneaux, Cuisiner s'ouvre directement sur le
+// avant de passer aux fourneaux, Pâtisser s'ouvre directement sur le
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
@@ -117,10 +117,10 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function defaultMode(batch: BatchFull): 'preparer' | 'cuisiner' {
-  if (batch.status !== 'planifiee') return 'cuisiner'; // fournée close : consultation de ce qui a été fait
-  if (batch.date_debut) return 'cuisiner';
-  if (batch.planned_date && batch.planned_date <= todayIso()) return 'cuisiner';
+function defaultMode(batch: BatchFull): 'preparer' | 'patisser' {
+  if (batch.status !== 'planifiee') return 'patisser'; // fournée close : consultation de ce qui a été fait
+  if (batch.date_debut) return 'patisser';
+  if (batch.planned_date && batch.planned_date <= todayIso()) return 'patisser';
   return 'preparer';
 }
 
@@ -155,9 +155,9 @@ export function BatchView({
   // cf. CLAUDE.md « Avis sur une recette ».
   myReview: MyRecipeReview | null;
   // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
-  // jamais sur Cuisiner, même si la date de dégustation tombe aujourd'hui —
+  // jamais sur Pâtisser, même si la date de dégustation tombe aujourd'hui —
   // l'ajustement se fait au calme avant de passer aux fourneaux.
-  initialMode?: 'preparer' | 'cuisiner';
+  initialMode?: 'preparer' | 'patisser';
   // Droits d'abonnement (§4 « Lancer une fournée »), calculés une fois par la
   // page — jamais recalculés ici, `BatchView` n'a pas de session à lire.
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
@@ -168,7 +168,7 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
-  const [mode, setMode] = useState<'preparer' | 'cuisiner'>(() => initialMode ?? defaultMode(initialBatch));
+  const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
   // attendable, donc `resumeBatch` doit garder le voile affiché jusqu'à ce
@@ -178,7 +178,7 @@ export function BatchView({
   const [resuming, startResume] = useTransition();
 
   // Force le haut de page à l'arrivée sur une fournée : `switchMode` gère
-  // déjà le passage Préparer/Cuisiner en cours de session, mais l'arrivée
+  // déjà le passage Préparer/Pâtisser en cours de session, mais l'arrivée
   // directe (lien depuis /en-cuisine, retour navigateur…) peut restaurer une
   // position de scroll d'une visite précédente de cette URL. Une seule fois
   // au montage, avant toute restauration native du navigateur.
@@ -223,8 +223,8 @@ export function BatchView({
     (!myReview || (myReview.batch_id === batch.id && myReview.status === 'rejected'));
 
   // Écriture partagée « marquer comme terminée » : rail Préparer, rail
-  // Cuisiner et proposition automatique une fois toutes les étapes cochées
-  // (cf. `CuisinerView.proposeFinish`) l'appellent tous les trois, chacun
+  // Pâtisser et proposition automatique une fois toutes les étapes cochées
+  // (cf. `PatisserView.proposeFinish`) l'appellent tous les trois, chacun
   // avec son propre message de confirmation.
   async function finishBatch(): Promise<boolean> {
     if (readOnly) return false;
@@ -251,12 +251,12 @@ export function BatchView({
   // fournée n'est jamais resynchronisée après sa création, donc une
   // correction ultérieure de la recette de base ne lui parvient pas — ce
   // bandeau le signale plutôt que de laisser la divergence silencieuse.
-  // Affiché uniquement en mode Préparer : en Cuisiner, la décision est déjà
+  // Affiché uniquement en mode Préparer : en Pâtisser, la décision est déjà
   // prise et le rappeler n'aide plus, seulement distrait.
   const baseModifiedSince = !!(baseRecipe?.updatedAt && new Date(baseRecipe.updatedAt) > new Date(batch.created_at || 0));
 
-  async function enterCuisiner() {
-    setMode('cuisiner');
+  async function enterPatisser() {
+    setMode('patisser');
     if (!batch.date_debut && batch.status === 'planifiee' && !readOnly) {
       const now = new Date().toISOString();
       const { error } = await createClient().from('batches').update({ date_debut: now }).eq('id', batch.id);
@@ -264,22 +264,22 @@ export function BatchView({
     }
   }
 
-  // Bascule Préparer/Cuisiner, appelée par les deux pastilles du haut comme
+  // Bascule Préparer/Pâtisser, appelée par les deux pastilles du haut comme
   // par le bouton du rail : elle inscrit le mode dans l'URL (`history.
   // replaceState`, pas `router.replace`) pour qu'un rafraîchissement retombe
   // sur le mode affiché plutôt que sur `defaultMode()` — sans ce marquage,
-  // dès qu'on est passé une fois en Cuisiner (`date_debut` posé), un F5
-  // ramenait toujours à Cuisiner même après être revenu sur Préparer. Pas de
+  // dès qu'on est passé une fois en Pâtisser (`date_debut` posé), un F5
+  // ramenait toujours à Pâtisser même après être revenu sur Préparer. Pas de
   // navigation Next (pas de resynchronisation serveur) : ce n'est qu'un
   // changement de vue locale, pas une écriture à refléter ailleurs.
-  function switchMode(m: 'preparer' | 'cuisiner') {
+  function switchMode(m: 'preparer' | 'patisser') {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('mode', m);
       window.history.replaceState(null, '', url);
       window.scrollTo(0, 0);
     }
-    if (m === 'cuisiner') enterCuisiner();
+    if (m === 'patisser') enterPatisser();
     else setMode('preparer');
   }
 
@@ -483,9 +483,9 @@ export function BatchView({
         )}
 
         {/* Avis sur la recette d'origine : affiché au-dessus des onglets
-            Préparer/Cuisiner (donc visible quel que soit l'onglet ouvert par
+            Préparer/Pâtisser (donc visible quel que soit l'onglet ouvert par
             défaut à l'arrivée sur une fournée terminée), pas seulement en
-            mode Cuisiner. */}
+            mode Pâtisser. */}
         {canReview && (
           <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} onDismiss={dismissReview} />
         )}
@@ -501,10 +501,10 @@ export function BatchView({
             </button>
             <button
               type="button"
-              onClick={() => switchMode('cuisiner')}
-              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'cuisiner' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
+              onClick={() => switchMode('patisser')}
+              className={`rounded-pill border px-4 py-2 font-label-md text-label-md ${mode === 'patisser' ? 'border-primary bg-primary text-white' : 'border-outline-variant text-on-surface-variant hover:text-primary'}`}
             >
-              Cuisiner
+              Pâtisser
             </button>
           </span>
           {all.length > 0 && (
@@ -531,7 +531,7 @@ export function BatchView({
             droits={droits}
           />
         ) : (
-          <CuisinerView
+          <PatisserView
             batch={batch}
             setBatch={setBatch}
             readOnly={readOnly}
@@ -575,7 +575,7 @@ function PreparerView({
   allergenRefs: AllergenRef[];
   readOnly: boolean;
   onDelete: () => void;
-  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
+  onSwitchMode: (m: 'preparer' | 'patisser') => void;
   onMarkTerminee: () => void;
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
@@ -727,7 +727,7 @@ function PreparerView({
   };
   const tocSteps = sortedSteps.map((s, i) => ({ key: String(s.id), title: s.title || `Étape ${i + 1}` }));
   const actions: TocAction[] = [
-    { id: 'switch-cuisiner', icon: 'skillet', label: 'Passer en mode Cuisiner', variant: 'outline-strong', onClick: () => onSwitchMode('cuisiner') },
+    { id: 'switch-patisser', icon: 'skillet', label: 'Passer en mode Pâtisser', variant: 'outline-strong', onClick: () => onSwitchMode('patisser') },
     ...(readOnly
       ? []
       : [
@@ -1148,8 +1148,8 @@ function PreparerView({
   );
 }
 
-// ── Mode Cuisiner ────────────────────────────────────────────────────────
-function CuisinerView({
+// ── Mode Pâtisser ────────────────────────────────────────────────────────
+function PatisserView({
   batch,
   setBatch,
   readOnly,
@@ -1167,8 +1167,8 @@ function CuisinerView({
   conversions: ConversionRef[];
   units: UnitRef[];
   setBusy: (b: boolean) => void;
-  onSwitchMode: (m: 'preparer' | 'cuisiner') => void;
-  // Rail Cuisiner : même écriture que le rail Préparer, cf. BatchView.
+  onSwitchMode: (m: 'preparer' | 'patisser') => void;
+  // Rail Pâtisser : même écriture que le rail Préparer, cf. BatchView.
   onMarkTerminee: () => void;
   // Écriture nue (sans confirmation), pour la proposition automatique
   // ci-dessous qui pose déjà sa propre question.
@@ -1368,7 +1368,7 @@ function CuisinerView({
     () => ({ before: [], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
     [showResume],
   );
-  // Symétrique du bouton « Passer en mode Cuisiner » du rail Préparer : le
+  // Symétrique du bouton « Passer en mode Pâtisser » du rail Préparer : le
   // rail reste visible pendant le défilement, contrairement aux deux
   // pastilles du haut de page. Fin de session (terminer/annuler) et sortie
   // y rejoignent les mêmes actions — même mécanisme que « Supprimer la
@@ -1416,7 +1416,7 @@ function CuisinerView({
           `BatchNotes`), `notes` le commentaire saisi au lancement dans
           `BatchWidget`. Ce bloc n'affichait que `notes`, sous le libellé
           « Ma note » — la note personnelle, justement celle qu'on écrit pour
-          ajuster la recette, était donc invisible en mode Cuisiner. */}
+          ajuster la recette, était donc invisible en mode Pâtisser. */}
       {batch.user_note && (
         <div className="mb-6 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
@@ -1432,7 +1432,7 @@ function CuisinerView({
       )}
 
       <div className="flex flex-col gap-6">
-        <CuisinerBody
+        <PatisserBody
           batch={batch}
           jalons={jalons}
           readOnly={readOnly}
@@ -1456,7 +1456,7 @@ function CuisinerView({
   );
 }
 
-function CuisinerBody({
+function PatisserBody({
   batch,
   jalons,
   readOnly,
@@ -1654,7 +1654,7 @@ function StepCookCard({
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
 }) {
-  // Repliée par défaut : le mode Cuisiner sert à avancer étape par étape, et
+  // Repliée par défaut : le mode Pâtisser sert à avancer étape par étape, et
   // dérouler d'un coup les ingrédients et sous-étapes de toute une journée
   // noyait l'étape en cours. Le contenu n'est pas perdu pour autant — il est
   // à un clic, et l'en-tête annonce ce qu'il y a dedans (cf. `insideSummary`).

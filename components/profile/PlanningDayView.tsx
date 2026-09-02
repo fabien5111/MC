@@ -128,7 +128,7 @@ export function PlanningDayView({
   // (toutes fournées confondues sur cet écran, pas seulement celles du jour
   // affiché) puis, si un avis est encore possible sur la recette d'origine,
   // de laisser une note et un commentaire — mêmes actions et messages que
-  // `BatchView.proposeFinish` (mode Cuisiner d'une fournée).
+  // `BatchView.proposeFinish` (mode Pâtisser d'une fournée).
   async function proposeFinish(batchRow: BatchListRow) {
     // Posé avant même la confirmation : la question apparaît sur le même
     // rendu que la case tout juste cochée, donc `fullyDoneBatchIds` doit déjà
@@ -166,7 +166,7 @@ export function PlanningDayView({
 
   // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
   // seule source de vérité (`batch_steps.done`), la même que sur la fiche et
-  // en mode Cuisiner.
+  // en mode Pâtisser.
   async function toggleDone(stepId: number, checked: boolean) {
     const prev = list;
     setList((all) => all.map((p) => ({ ...p, batch_steps: p.batch_steps.map((s) => (s.id === stepId ? { ...s, done: checked } : s)) })));

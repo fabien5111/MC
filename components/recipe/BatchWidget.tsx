@@ -352,7 +352,7 @@ export function BatchWidget({
     // `busy` reste vrai jusqu'au démontage par la navigation : le spinner doit
     // rester affiché pendant la transition vers la fiche de la fournée.
     // `mode=preparer` : la fournée qui vient d'être lancée s'ouvre toujours
-    // sur Préparer, jamais sur Cuisiner — même si la date de dégustation est
+    // sur Préparer, jamais sur Pâtisser — même si la date de dégustation est
     // aujourd'hui, l'ajustement se fait au calme avant de passer aux
     // fourneaux (cf. BatchView.defaultMode).
     router.push(`/fournee/${batchRow.id}?mode=preparer`);
