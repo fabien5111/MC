@@ -14,6 +14,13 @@
 // avec `popoverTarget`, ce serait le popover qui ne s'ouvrirait plus jamais
 // (même drapeau `defaultPrevented`, sur le même clic). L'appel manuel à
 // `togglePopover()` est indépendant de ce drapeau.
+//
+// `data-nav-spinner-ignore` sur le bouton : `NavigationSpinner` détecte un
+// départ de navigation en phase de CAPTURE (pointerdown/pointerup/click),
+// donc avant que `preventDefault`/`stopPropagation` ci-dessous n'aient pu
+// s'exécuter — sans cet attribut, tapoter le picto armait quand même le
+// spinner (pour une navigation qui n'a jamais lieu), qui restait alors
+// affiché jusqu'à son filet de sécurité de 8 s.
 'use client';
 
 import { useId, useRef } from 'react';
@@ -51,6 +58,7 @@ export function AllergenPicto({
         onClick={toggle}
         aria-label={name}
         aria-describedby={popoverId}
+        data-nav-spinner-ignore
         className={`${iconClassName} block appearance-none border-0 bg-transparent p-0 cursor-pointer`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base */}
