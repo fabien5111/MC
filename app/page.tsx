@@ -227,7 +227,15 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
-                  <AllergenPictos names={cardAllergenNames(featured)} className="mb-8 -mt-4" iconClassName="w-7 h-7" />
+                  {/* `relative z-10` : même nécessité que le lien du nom
+                      d'auteur ci-dessous — au-dessus du lien plein cadre de
+                      la section, sinon un tap sur un picto serait intercepté
+                      par lui et naviguerait au lieu d'ouvrir l'infobulle. */}
+                  <AllergenPictos
+                    names={cardAllergenNames(featured)}
+                    className="relative z-10 mb-8 -mt-4"
+                    iconClassName="w-7 h-7"
+                  />
                   <div className="flex flex-wrap items-center gap-8">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">person</span>
