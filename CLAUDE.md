@@ -982,6 +982,22 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   adresse ni du succès de l'envoi).
 - **E-mails par SES** (`lib/email.ts`, déjà en production pour les
   notifications d'abonnement) — pas de second fournisseur.
+- **Liste de suppression des bounces/complaints** (`email_suppressions`,
+  `lib/ses-notifications-data.ts`) : `POST /api/ses/webhook` reçoit les
+  notifications SNS d'un topic abonné à l'identité SES vérifiée (bounce
+  permanent, plainte) et y enregistre l'adresse — `lib/email.ts` consulte
+  cette table avant tout envoi (`SuppressedEmailError`) et ne tente jamais
+  l'envoi vers une adresse qui y figure. **Aucun secret partagé** : SNS ne
+  propose pas de HMAC comme le webhook Jira, la seule protection est la
+  vérification de signature RSA du message (`lib/ses-webhook.ts`,
+  certificat téléchargé à l'URL fournie par SNS, hôte vérifié
+  `sns.*.amazonaws.com` pour écarter tout SSRF). Best-effort dans les deux
+  sens (écriture à la réception, lecture avant envoi) : une panne Supabase
+  ne doit jamais ni faire réessayer indéfiniment le webhook SNS, ni bloquer
+  l'envoi normal d'un e-mail. `lib/ses-types.ts` déclare la table à la main
+  en attendant sa présence dans `lib/database.types.ts` après
+  `npm run gen:types`. Abonnement HTTPS créé côté console AWS, hors de la
+  portée de ce dépôt.
 - **Back-office** : `/admin/contact`, réservé à l'admin complet
   (`requireFullAdmin()`), fenêtre des 200 demandes les plus récentes plutôt
   qu'une pagination serveur complète, filtres statut/type en cases à cocher

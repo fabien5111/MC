@@ -16,11 +16,23 @@
 //    l'information du membre, il ne doit jamais interrompre le traitement
 //    des autres abonnements de la même passe.
 import nodemailer from 'nodemailer';
+import { estSupprimee } from '@/lib/ses-notifications-data';
 
 export class MissingSmtpConfigError extends Error {
   constructor() {
     super('Configuration SMTP manquante (variables SES_SMTP_HOST / SES_SMTP_PORT / SES_SMTP_USER / SES_SMTP_PASSWORD / SES_SENDER_EMAIL).');
     this.name = 'MissingSmtpConfigError';
+  }
+}
+
+// Adresse ayant signalé un bounce définitif ou une plainte (cf.
+// `app/api/ses/webhook`) : SES suspendrait de lui-même l'envoi vers ces
+// adresses après un certain nombre d'échecs, au détriment de la réputation
+// du domaine — autant ne jamais tenter l'envoi.
+export class SuppressedEmailError extends Error {
+  constructor(to: string) {
+    super(`Envoi bloqué : ${to} a signalé un bounce définitif ou une plainte.`);
+    this.name = 'SuppressedEmailError';
   }
 }
 
@@ -32,6 +44,8 @@ export type EmailAEnvoyer = { to: string; subject: string; text: string; html?: 
 export async function sendEmail({ to, subject, text, html, replyTo }: EmailAEnvoyer): Promise<void> {
   const { SES_SMTP_HOST: host, SES_SMTP_PORT: port, SES_SMTP_USER: user, SES_SMTP_PASSWORD: pass, SES_SENDER_EMAIL: from } = process.env;
   if (!host || !port || !user || !pass || !from) throw new MissingSmtpConfigError();
+
+  if (await estSupprimee(to)) throw new SuppressedEmailError(to);
 
   const transport = nodemailer.createTransport({
     host,
