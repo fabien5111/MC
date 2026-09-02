@@ -133,7 +133,16 @@ export function NavigationSpinner() {
     };
 
     const isInternalNavigation = (target: EventTarget | null) => {
-      const anchor = (target as HTMLElement | null)?.closest?.('a');
+      const el = target as HTMLElement | null;
+      // Contrôle qui bloque lui-même sa propre navigation ancêtre
+      // (`preventDefault` + `stopPropagation` dans son gestionnaire React),
+      // mais physiquement situé dans un <a> — le picto d'allergène d'une
+      // carte recette, par ex. `pointerdown`/`pointerup`/`click` tournent ici
+      // en phase de capture, donc AVANT que ce gestionnaire n'ait pu agir :
+      // sans cet écart, le spinner s'armerait pour un tap qui n'aboutit à
+      // aucune navigation, et resterait affiché jusqu'au filet de sécurité.
+      if (el?.closest?.('[data-nav-spinner-ignore]')) return false;
+      const anchor = el?.closest?.('a');
       if (!anchor) return false;
       if (!anchor.getAttribute('href')) return false;
       if (anchor.target && anchor.target !== '_self') return false;
