@@ -632,6 +632,22 @@ export type DecisionSynchro =
   | { action: 'ignorer'; raison: 'meme_statut' | 'mappage'; avertissement: string | null }
   | { action: 'appliquer'; statut: ContactStatus; clore: boolean; notifier: boolean; avertissement: string | null };
 
+export type OptionsDecisionSynchro = {
+  /**
+   * Saute UNIQUEMENT `memeStatutJira` (lot 12, bouton « Resynchroniser
+   * maintenant ») — jamais `jiraPeutEcraser`, qui protège une clôture
+   * manuelle et doit s'appliquer identiquement au geste manuel et à
+   * l'automatique. `memeStatutJira` n'est qu'une optimisation pour
+   * l'automatique (un `issue_updated` sur un commentaire n'a aucun rapport
+   * avec le statut) : sur un clic explicite, elle ne protège de rien — elle
+   * rend le bouton inopérant dès qu'une synchronisation antérieure a déjà
+   * écrit le `jira_status` reçu sur une ligne pourtant restée sur le
+   * mauvais statut de demande (mappage corrigé après coup, ou
+   * `JIRA_STATUS_*_ID` reconfigurée). Cf. docs/contact-jira.md §13.10.
+   */
+  forcerMalgreMemeStatutJira?: boolean;
+};
+
 /**
  * Combine, dans le bon ordre, les trois gardes du §9 de la spécification —
  * webhook et réconciliation appellent CETTE fonction plutôt que de
@@ -642,7 +658,7 @@ export type DecisionSynchro =
  * 1. **Idempotence d'abord** (`memeStatutJira`) — la plus fréquente : un
  *    `issue_updated` sur un commentaire ou une étiquette n'a AUCUN rapport
  *    avec un changement de statut, et c'est le cas le plus courant qu'un
- *    webhook Jira envoie.
+ *    webhook Jira envoie. Contournable par `forcerMalgreMemeStatutJira`.
  * 2. **Mappage** (`mapperStatutJira`) — traduit le statut Jira en statut de
  *    la demande, ou `ignorer` pour une catégorie « à faire »/inconnue.
  * 3. **Protection d'une clôture manuelle** (`jiraPeutEcraser`) — en DERNIER :
@@ -653,8 +669,11 @@ export function decisionSynchroJira(
   actuel: EtatActuelDemande,
   recu: StatutJira,
   config: ConfigStatutsJira,
+  options?: OptionsDecisionSynchro,
 ): DecisionSynchro {
-  if (memeStatutJira({ id: actuel.jiraStatusId, nom: actuel.jiraStatus }, recu)) {
+  const forcer = options?.forcerMalgreMemeStatutJira ?? false;
+
+  if (!forcer && memeStatutJira({ id: actuel.jiraStatusId, nom: actuel.jiraStatus }, recu)) {
     return { action: 'ignorer', raison: 'meme_statut', avertissement: null };
   }
 
@@ -665,6 +684,13 @@ export function decisionSynchroJira(
 
   if (!jiraPeutEcraser(actuel.status, actuel.statusSource)) {
     return { action: 'ignorer', raison: 'mappage', avertissement: null };
+  }
+
+  // Contournement demandé mais rien à corriger : la demande porte déjà le
+  // statut que le mappage produirait — ne pas dupliquer l'historique ni
+  // renvoyer l'e-mail de déploiement pour un clic qui ne change rien.
+  if (forcer && mappage.statut === actuel.status) {
+    return { action: 'ignorer', raison: 'meme_statut', avertissement: null };
   }
 
   return {

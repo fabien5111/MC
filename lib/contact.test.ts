@@ -614,6 +614,43 @@ describe('decisionSynchroJira', () => {
     );
     expect(d).toEqual({ action: 'ignorer', raison: 'meme_statut', avertissement: null });
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // `forcerMalgreMemeStatutJira` (lot 12 — bouton « Resynchroniser »)
+  // ───────────────────────────────────────────────────────────────────────
+
+  it("forcer corrige une demande dont le jira_status stocké est déjà celui reçu mais le statut de la demande erroné", () => {
+    // Cas réel : une synchronisation antérieure buguée a écrit jira_status =
+    // 'Déployé' sans appliquer 'termine' à la demande (restée 'a_deployer').
+    // Sans `forcer`, memeStatutJira bloquerait indéfiniment ce ticket.
+    const d = decisionSynchroJira(
+      etat({ status: 'a_deployer', statusSource: 'jira-webhook', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10005', nom: 'Déployé' }),
+      config,
+      { forcerMalgreMemeStatutJira: true },
+    );
+    expect(d).toMatchObject({ action: 'appliquer', statut: 'termine', clore: true, notifier: true });
+  });
+
+  it("forcer n'applique rien, sans dupliquer l'historique, quand le statut de la demande est déjà correct", () => {
+    const d = decisionSynchroJira(
+      etat({ status: 'termine', statusSource: 'jira-webhook', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10005', nom: 'Déployé' }),
+      config,
+      { forcerMalgreMemeStatutJira: true },
+    );
+    expect(d).toEqual({ action: 'ignorer', raison: 'meme_statut', avertissement: null });
+  });
+
+  it('forcer ne contourne jamais la protection de clôture manuelle', () => {
+    const d = decisionSynchroJira(
+      etat({ status: 'termine', statusSource: 'admin', jiraStatusId: '10005', jiraStatus: 'Déployé' }),
+      statut({ id: '10002', nom: 'Terminé' }),
+      config,
+      { forcerMalgreMemeStatutJira: true },
+    );
+    expect(d).toEqual({ action: 'ignorer', raison: 'mappage', avertissement: null });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────

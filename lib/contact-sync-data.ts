@@ -207,17 +207,24 @@ async function appliquerDecisionSynchro(
 /**
  * Point d'entrée unique : calcule la décision puis l'applique. Webhook et
  * réconciliation n'ont RIEN d'autre à savoir sur la synchronisation.
+ *
+ * `forcer` (lot 12) : réservé au bouton « Resynchroniser maintenant »
+ * (`/api/admin/contact/[id]/jira/resync`) — contourne `memeStatutJira` sans
+ * toucher à `jiraPeutEcraser`, cf. `OptionsDecisionSynchro` (`lib/contact.ts`).
+ * Ni le webhook ni la réconciliation ne doivent jamais le passer à `true`.
  */
 export async function synchroniserStatut(
   message: MessageSync,
   recu: StatutJira,
   config: ConfigStatutsJira,
   source: 'jira-webhook' | 'jira-sync',
+  forcer = false,
 ): Promise<void> {
   const decision = decisionSynchroJira(
     { status: message.status, statusSource: message.status_source, jiraStatusId: message.jira_status_id, jiraStatus: message.jira_status },
     recu,
     config,
+    { forcerMalgreMemeStatutJira: forcer },
   );
 
   if (decision.action === 'ignorer') {

@@ -1,10 +1,15 @@
 // Route Handler — « Resynchroniser maintenant » (spec §11.3), pour ne pas
 // attendre la réconciliation quotidienne. Réservé à l'admin complet.
 //
-// Reprend exactement le chemin du webhook/de la réconciliation
-// (`synchroniserStatut`) : même décision, mêmes garanties d'idempotence et
-// de non-rétrogradation d'une clôture manuelle — un geste manuel ne doit pas
-// contourner les gardes conçues pour l'automatique.
+// Reprend le chemin du webhook/de la réconciliation (`synchroniserStatut`),
+// avec `forcer: true` (lot 12) : contourne UNIQUEMENT `memeStatutJira`, une
+// optimisation pour l'automatique qui n'a pas lieu d'être sur un clic
+// explicite — sans elle, une demande dont le `jira_status` stocké est déjà
+// celui reçu (parce qu'une synchronisation antérieure buguée l'a écrit sans
+// appliquer le bon statut de demande — cf. docs/contact-jira.md §13.9-13.10)
+// resterait bloquée pour toujours, le bouton devenant inopérant. La
+// protection d'une clôture manuelle (`jiraPeutEcraser`), elle, reste
+// entière : un geste manuel ne doit jamais la contourner.
 import { NextResponse } from 'next/server';
 import { getVerifiedUser, isAdmin } from '@/lib/auth';
 import { withContactSchema } from '@/lib/contact-types';
@@ -39,7 +44,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const statutRecu = resultat.statuts.get(message.jira_issue_key);
     if (!statutRecu) return NextResponse.json({ erreur: 'Ticket introuvable côté Jira.' }, { status: 404 });
 
-    await synchroniserStatut(message as MessageSync, statutRecu, lireConfigStatuts(), 'jira-sync');
+    await synchroniserStatut(message as MessageSync, statutRecu, lireConfigStatuts(), 'jira-sync', true);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof MissingServiceKeyError) return NextResponse.json({ erreur: e.message }, { status: 503 });

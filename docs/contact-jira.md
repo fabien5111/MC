@@ -682,6 +682,68 @@ avis une fois que l'id a déjà tranché. Test de non-régression :
 `lib/contact.test.ts` « l'id, quand il est disponible des deux côtés, décide
 seul ».
 
+### 13.10 Troisième correctif : la garde d'idempotence rendait « Resynchroniser » inopérant
+
+Les deux tickets touchés par le bug de §13.9 étaient restés dans un état
+particulier : la synchronisation fautive **avait quand même écrit**
+`jira_status` / `jira_status_id` (les valeurs reçues de Jira, correctes),
+sans appliquer le bon statut à la demande (restée `a_deployer` au lieu de
+`termine`). Une fois §13.9 corrigé, cliquer sur « Resynchroniser
+maintenant » ne changeait toujours rien : `memeStatutJira` comparait le
+statut Jira **déjà stocké** (correct) à celui **reçu** (identique, puisque
+rien n'a changé côté Jira depuis) et concluait — à raison, dans le cas
+général — qu'il n'y avait rien à faire.
+
+**Le problème** : cette garde est une optimisation pour l'**automatique**
+(un `issue_updated` déclenché par un commentaire n'a aucun rapport avec le
+statut, inutile de retraiter). Sur un **clic explicite** de l'administrateur,
+elle n'apporte aucune protection — elle rend seulement le bouton
+définitivement inopérant dès qu'une écriture antérieure a laissé le
+`jira_status` stocké en avance sur le statut réel de la demande (mappage
+buggé comme ici, ou simple reconfiguration de `JIRA_STATUS_*_ID` après
+coup).
+
+**Le correctif** : `decisionSynchroJira` accepte une option
+`forcerMalgreMemeStatutJira`, réservée à la route de resynchronisation
+manuelle, qui saute **uniquement** `memeStatutJira` :
+
+```ts
+export function decisionSynchroJira(
+  actuel: EtatActuelDemande,
+  recu: StatutJira,
+  config: ConfigStatutsJira,
+  options?: OptionsDecisionSynchro,
+): DecisionSynchro {
+  const forcer = options?.forcerMalgreMemeStatutJira ?? false;
+
+  if (!forcer && memeStatutJira(...)) return { action: 'ignorer', raison: 'meme_statut', avertissement: null };
+
+  const mappage = mapperStatutJira(recu, config);
+  if (mappage.action === 'ignorer') return { action: 'ignorer', raison: 'mappage', avertissement: mappage.avertissement };
+
+  if (!jiraPeutEcraser(actuel.status, actuel.statusSource)) return { action: 'ignorer', raison: 'mappage', avertissement: null };
+
+  // Contournement demandé mais rien à corriger : évite de dupliquer
+  // l'historique ou de renvoyer l'e-mail pour un clic qui ne change rien.
+  if (forcer && mappage.statut === actuel.status) return { action: 'ignorer', raison: 'meme_statut', avertissement: null };
+
+  return { action: 'appliquer', ... };
+}
+```
+
+Deux invariants préservés à dessein :
+- **`jiraPeutEcraser` n'est jamais contourné**, même en mode forcé : la
+  protection d'une clôture manuelle s'applique identiquement au geste
+  manuel et à l'automatique — seule `memeStatutJira` est une optimisation
+  sautable.
+- **Le webhook et la réconciliation ne passent jamais `forcer: true`**
+  (`synchroniserStatut`, `lib/contact-sync-data.ts`, nouveau paramètre par
+  défaut `false`) — seule la route
+  `/api/admin/contact/[id]/jira/resync` le fait.
+
+Tests de non-régression : `lib/contact.test.ts`, section
+`forcerMalgreMemeStatutJira`.
+
 ---
 
 ## 14. Finitions (lot 6)
