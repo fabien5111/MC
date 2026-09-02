@@ -27,7 +27,7 @@ export type BatchListRow = {
   notes: string | null;
   status: string;
   // Cuisson en cours : posé au moment où l'utilisateur passe en mode
-  // Cuisiner (date_debut renseignée), effacé quand la fournée est marquée
+  // Pâtisser (date_debut renseignée), effacé quand la fournée est marquée
   // terminée ou abandonnée (date_fin renseignée). Plus de table `executions`
   // séparée à joindre — l'état vit directement sur la fournée.
   date_debut: string | null;
@@ -125,7 +125,7 @@ export async function getBatches(
   return (data as unknown as BatchListRow[]) ?? [];
 }
 
-// Fournées dont la cuisson est en cours (mode Cuisiner ouvert, pas encore
+// Fournées dont la cuisson est en cours (mode Pâtisser ouvert, pas encore
 // terminée) — pour le badge « en cours » de l'accueil (Header, MobileNav,
 // SessionsCarousel) et la section « En cours » d'« En cuisine ». Remplace
 // l'ancien `getActiveExecutions` : plus de table `executions` séparée à

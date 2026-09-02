@@ -5,7 +5,7 @@
 // Une fournée porte à la fois l'intention (ce qui est prévu) et la
 // réalisation (ce qui a été fait) : il n'existe plus d'objet « session »
 // séparé. `done` est la seule case à cocher d'une étape, que ce soit avant le
-// jour J (« déjà fait en amont ») ou pendant (mode Cuisiner) — les deux cases
+// jour J (« déjà fait en amont ») ou pendant (mode Pâtisser) — les deux cases
 // distinctes de l'ancien modèle (`already_done` du plan, `done` de la
 // session) sont fusionnées.
 //
@@ -194,8 +194,8 @@ export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
 
 // ── Étape « déjà faite » ───────────────────────────────────────────────
 // L'utilisateur signale qu'il a réalisé une étape en amont (« la pâte sucrée
-// est déjà au congélateur »), ou la coche pendant qu'il cuisine (mode
-// Cuisiner) — c'est la même case, `batch_steps.done`, qu'elle soit cochée
+// est déjà au congélateur »), ou la coche pendant qu'il pâtisse (mode
+// Pâtisser) — c'est la même case, `batch_steps.done`, qu'elle soit cochée
 // avant ou pendant le jour J.
 //
 // Distinct de `batch_ingredients.removed` : la case de l'étape ne doit pas
@@ -268,12 +268,12 @@ export function remainingStepTimes(s: StepDoneFlags & Pick<BatchStepRow, 'prep_t
   return { prep_time: null, wait_time: null, cook_time: null };
 }
 
-// ── Ingrédients d'une sous-étape (mode Cuisiner) ────────────────────────
+// ── Ingrédients d'une sous-étape (mode Pâtisser) ────────────────────────
 // Le texte d'une sous-étape (« Faire chauffer la crème ») ne pointe vers
 // aucune ligne d'ingrédient : c'est du texte libre saisi dans l'éditeur de
 // recette. On le rapproche ici des ingrédients de LA MÊME étape (jamais de
 // toute la fournée : le champ de recherche minuscule est ce qui rend
-// l'heuristique fiable) pour afficher leur quantité en mode Cuisiner, sans
+// l'heuristique fiable) pour afficher leur quantité en mode Pâtisser, sans
 // avoir à rouvrir la liste d'ingrédients pendant la cuisson.
 //
 // Heuristique volontairement stricte, pas de l'IA : le texte d'un ingrédient
@@ -850,10 +850,10 @@ export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: n
   return { steps, utensils };
 }
 
-// ── Jalons (mode Cuisiner, regroupement par jour) ──────────────────────
+// ── Jalons (mode Pâtisser, regroupement par jour) ──────────────────────
 // Regroupe les étapes de la fournée par jour, du plus lointain au jour J.
 // Opère directement sur `batch_steps` : il n'y a plus de matérialisation
-// séparée d'une « exécution », cuisiner ne fait qu'afficher la fournée
+// séparée d'une « exécution », pâtisser ne fait qu'afficher la fournée
 // autrement.
 export type BatchJalon = { offset: number; steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[] };
 export function groupBatchStepsByDay(steps: (BatchStepRow & { batch_substeps: BatchSubstepRow[] })[]): BatchJalon[] {

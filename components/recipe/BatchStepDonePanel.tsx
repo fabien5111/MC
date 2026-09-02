@@ -14,7 +14,7 @@
 // — la case reste néanmoins visible hors du volet replié, pour pouvoir
 // revenir dessus sans déplier.
 //
-// Cocher ici a exactement le même effet que cocher en mode Cuisiner : il n'y
+// Cocher ici a exactement le même effet que cocher en mode Pâtisser : il n'y
 // a plus de copie séparée à garder synchronisée, donc plus de session à
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
@@ -70,7 +70,7 @@ export function BatchStepDonePanel({
   ingredients: IngRow[];
   substeps: SubRow[];
   // Fournée close (terminée/abandonnée), consultation `?lecture=1` ou session
-  // « en tant que » lecture seule : mêmes conditions que le mode Cuisiner,
+  // « en tant que » lecture seule : mêmes conditions que le mode Pâtisser,
   // qui désactive ses cases depuis toujours. Sans cette prop, le mode
   // Préparer restait modifiable sur une fournée terminée — l'interface
   // mentait sur l'état de la fournée, et cocher/décocher y réécrivait
@@ -349,7 +349,7 @@ export function BatchStepDonePanel({
 
   // Note personnelle : bloc distinct du texte de la recette (description,
   // astuces), qui n'est jamais modifié. Distincte aussi du constat du jour J
-  // (`commentaire`, saisi en mode Cuisiner) — l'une est l'intention, l'autre
+  // (`commentaire`, saisi en mode Pâtisser) — l'une est l'intention, l'autre
   // la réalisation. S'imprime. Placée avant les ingrédients : c'est la
   // première chose à relire en abordant l'étape (matériel à sortir,
   // adaptation…), pas une note de fin de liste.

@@ -7,7 +7,7 @@
 // ingrédients — voir CLAUDE.md « Fournées ») : chaque action est une écriture
 // ciblée sur la ligne concernée, plus de blob JSON à réécrire.
 //
-// Écriture immédiatement reflétée partout (fiche et mode Cuisiner lisent la
+// Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
 import { Fragment, useState } from 'react';

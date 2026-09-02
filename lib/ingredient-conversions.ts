@@ -30,7 +30,7 @@ const normUnit = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
 // Abrège « unité(s) » en « un » pour l'affichage (texte de conversion,
-// unité affichée en mode Cuisiner…) — un raccourci d'affichage uniquement :
+// unité affichée en mode Pâtisser…) — un raccourci d'affichage uniquement :
 // n'affecte ni l'unité stockée en base, ni les listes déroulantes qui
 // utilisent le même nom complet ailleurs dans l'application.
 export const shortUnitLbl = (name: string): string => (name === 'unité(s)' ? 'un' : name);
