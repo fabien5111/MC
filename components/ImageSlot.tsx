@@ -7,6 +7,7 @@
 // (profiles.avatar_url, recipes.hero_image_url…).
 import { useCallback, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
+import { PHOTO_REORDER_DND_TYPE } from '@/lib/photo-reorder';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { PhotoEditorModal } from '@/components/PhotoEditorModal';
 import { useDialog } from '@/components/Dialog';
@@ -162,6 +163,12 @@ export function ImageSlot({
           ? undefined
           : (e) => {
               e.preventDefault();
+              // Un glissement de réordonnancement (grille de photos d'étape/
+              // d'avis, cf. `usePhotoDragReorder`) traverse forcément un
+              // emplacement pour atteindre un autre : le halo de survol
+              // propre à *ce* dépôt (bank/fichier) n'a pas à s'allumer, la
+              // grille appelante affiche déjà le sien.
+              if (e.dataTransfer.types.includes(PHOTO_REORDER_DND_TYPE)) return;
               setDragOver(true);
             }
       }

@@ -183,7 +183,9 @@ function ReviewForm({
               <div
                 className={`relative rounded-lg ${
                   photoReorder.overKey === String(i) ? 'ring-2 ring-primary' : ''
-                }`}
+                } ${photos[i] ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                title={photos[i] ? 'Glisser pour réordonner' : undefined}
+                {...(photos[i] ? photoReorder.dragProps(String(i)) : null)}
               >
                 <ImageSlot
                   src={photos[i]?.url ?? null}
@@ -198,16 +200,6 @@ function ReviewForm({
                   promptAiRetouched
                   onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
                 />
-                {photos[i] && (
-                  <button
-                    type="button"
-                    title="Glisser pour réordonner"
-                    className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md cursor-grab active:cursor-grabbing z-20"
-                    {...photoReorder.dragProps(String(i))}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
-                  </button>
-                )}
               </div>
               {photos[i] && (
                 <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer w-32 md:w-40">

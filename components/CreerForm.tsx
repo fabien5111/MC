@@ -2273,7 +2273,9 @@ export function CreerForm({
                           <div
                             className={`relative aspect-square border border-dashed overflow-hidden ${
                               stepPhotoReorder.overKey === photoKey ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
-                            }`}
+                            } ${p ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                            title={p ? 'Glisser pour réordonner' : undefined}
+                            {...(p ? stepPhotoReorder.dragProps(photoKey) : null)}
                           >
                             <ImageSlot
                               src={p?.url ?? null}
@@ -2291,16 +2293,6 @@ export function CreerForm({
                               placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
                               className="w-full h-full"
                             />
-                            {p && (
-                              <button
-                                type="button"
-                                title="Glisser pour réordonner"
-                                className="absolute top-2 left-2 w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md cursor-grab active:cursor-grabbing z-20"
-                                {...stepPhotoReorder.dragProps(photoKey)}
-                              >
-                                <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
-                              </button>
-                            )}
                           </div>
                           {p && (
                             <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
