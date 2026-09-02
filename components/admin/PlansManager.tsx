@@ -272,9 +272,9 @@ export function PlansManager({ grid, trialDays }: { grid: AdminGrid; trialDays: 
         <h1 className="font-display text-3xl text-primary">Plans d’abonnement</h1>
         <Link
           href="/admin/abonnements/tableau-de-bord"
-          className="flex items-center gap-1.5 font-label-md text-[13px] text-on-surface-variant hover:text-primary"
+          className="flex items-center gap-2 rounded bg-primary px-6 py-2.5 text-sm font-semibold text-on-primary transition-all hover:opacity-90"
         >
-          Tableau de bord <span className="material-symbols-outlined text-base">arrow_forward</span>
+          <span className="material-symbols-outlined text-base">bar_chart</span> Tableau de bord
         </Link>
       </div>
       <p className="mb-8 max-w-3xl text-sm text-on-surface-variant">
