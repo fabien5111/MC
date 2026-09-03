@@ -1,12 +1,13 @@
 // Carte pâtissier de la recherche avancée — pendant de RecipeCard pour les
 // résultats côté auteur. Même langage visuel que RecipeCardLayout (fond,
 // bordure, ombre au survol), mais un contenu propre à un profil : avatar
-// circulaire, nom, bio courte, nombre de recettes publiées et note d'auteur.
+// circulaire, nom, nombre de recettes publiées, note d'auteur et nombre
+// d'abonnés (JEP-22 — la bio, jugée peu utile ici, a été retirée).
 import Link from 'next/link';
 import type { AuthorResult } from '@/lib/search';
 import { StarRating } from '@/components/StarRating';
 
-export function AuthorCard({ author }: { author: AuthorResult }) {
+export function AuthorCard({ author, followersCount }: { author: AuthorResult; followersCount: number }) {
   // Le nom d'utilisateur choisi sert de lien s'il existe (forme partageable),
   // sinon l'identifiant du compte — même repli que getPublicProfile.
   const handle = author.username || author.id;
@@ -29,15 +30,17 @@ export function AuthorCard({ author }: { author: AuthorResult }) {
       </div>
       <div className="min-w-0">
         <p className="font-headline-md text-[15px] text-on-surface truncate">{name}</p>
-        {author.bio && <p className="mt-1 line-clamp-2 text-[12px] text-on-surface-variant">{author.bio}</p>}
       </div>
-      <div className="flex items-center gap-3 text-[12px] text-secondary">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-secondary">
         <span>
           {author.recipe_count} recette{author.recipe_count > 1 ? 's' : ''}
         </span>
         {author.rating_avg != null && (
           <span>(<StarRating value={author.rating_avg} size={12} compact />)</span>
         )}
+        <span>
+          {followersCount} abonné{followersCount > 1 ? 's' : ''}
+        </span>
       </div>
     </Link>
   );

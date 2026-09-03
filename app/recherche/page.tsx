@@ -27,6 +27,7 @@ import { PartnerSlot } from '@/components/PartnerSlot';
 import type { FacetRefs } from '@/components/search/SearchFacets';
 import { getActiveAds } from '@/lib/ads';
 import { getFavoriteIds } from '@/lib/favorites';
+import { getFollowerCounts } from '@/lib/follows';
 import { getAllergensWithPicto } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
 import { getRecipeDefaultPhoto } from '@/lib/site';
@@ -91,6 +92,14 @@ export default async function RecherchePage({
       : null;
 
   const blocks = chunk(result.recipes, CARDS_PER_BLOCK);
+
+  // Nombre d'abonnés des pâtissiers affichés — calculé en une seule requête
+  // pour tout le lot (JEP-22), une fois `result.authors` connu : ne dépend
+  // pas de la portée « recettes » du Promise.all ci-dessus.
+  const followerCounts =
+    criteria.includeAuthors && result.authors.length > 0
+      ? await getFollowerCounts(result.authors.map((a) => a.id))
+      : new Map<string, number>();
 
   return (
     <>
@@ -186,7 +195,7 @@ export default async function RecherchePage({
                   {result.authors.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                       {result.authors.map((a) => (
-                        <AuthorCard key={a.id} author={a} />
+                        <AuthorCard key={a.id} author={a} followersCount={followerCounts.get(a.id) ?? 0} />
                       ))}
                     </div>
                   ) : (

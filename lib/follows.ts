@@ -48,6 +48,26 @@ export async function getFollowCounts(profileId: string): Promise<{ followers: n
   return { followers: followers.count ?? 0, following: following.count ?? 0 };
 }
 
+// Nombre d'abonnés pour un lot d'auteurs (carte pâtissier de la recherche
+// avancée, `AuthorCard`) — même doctrine que `getFollowCounts` : calculé en
+// direct depuis `follows`, jamais depuis `profiles.followers_count` (colonne
+// morte). Une seule requête pour tout le lot plutôt qu'un `getFollowCounts`
+// par auteur affiché.
+export async function getFollowerCounts(profileIds: string[]): Promise<Map<string, number>> {
+  if (profileIds.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('follows').select('following_id').in('following_id', profileIds);
+  if (error) {
+    console.error('getFollowerCounts:', error.message);
+    return new Map();
+  }
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    counts.set(row.following_id, (counts.get(row.following_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export type FollowedMember = { member: Member; created_at: string | null };
 
 // Pâtissiers suivis par `userId`, pour la carte « Mes abonnements » des
