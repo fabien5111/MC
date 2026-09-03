@@ -54,12 +54,12 @@ export async function Header({ current, className }: { current?: NavKey; classNa
   const suggestions = homeCategories.slice(0, 4).map((c) => ({ label: c.name, slug: c.slug }));
 
   return (
-    // Figé au défilement uniquement à partir de 1024 px (`lg`) : c'est le
-    // seuil unique du produit (cf. MobileNav.tsx) où l'en-tête bureau prend le
-    // relais de la barre basse mobile. En dessous, l'en-tête défile avec la
-    // page — sticky y ferait doublon avec la barre basse, déjà fixe.
+    // Figé au défilement sur toute la plage : en dessous de 1024 px (`lg`),
+    // il cohabite avec la barre basse mobile (`MobileNav.tsx`, `fixed
+    // bottom-0`), qui reste l'unique navigation persistante en bas d'écran —
+    // celui-ci ne fait que garder le logo/la recherche visibles en haut.
     <header
-      className={`bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 lg:sticky lg:top-0 z-50${className ? ` ${className}` : ''}`}
+      className={`bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50${className ? ` ${className}` : ''}`}
     >
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
         <div className="flex items-center gap-6 xl:gap-10 min-w-0">
