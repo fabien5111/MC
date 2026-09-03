@@ -86,12 +86,30 @@ export async function resizePhotoForAi(file: File, maxLongEdge = 1568, quality =
 
 export type Rotation90 = 0 | 90 | 180 | 270;
 
-// Charge une image déjà en data-URL (contrairement à `chargerImage`, qui part
+// Charge une image déjà enregistrée (contrairement à `chargerImage`, qui part
 // d'un `File` déposé par l'utilisateur). Utilisé par l'édition d'une photo
-// déjà présente dans le formulaire (zoom/rotation/position).
+// déjà présente dans le formulaire (zoom/rotation/position) et par le calcul
+// des dérivés (`resizeDataUrlToThumb`).
+//
+// `crossOrigin = 'anonymous'` est posé AVANT `src`, seul ordre où l'attribut
+// compte. Il ne sert à rien tant que les images sont des data-URL (la
+// spécification l'ignore sur ce schéma, comme sur `blob:`) — il est là pour le
+// jour où ces colonnes porteront une URL `https://` de stockage objet : sans
+// lui, le navigateur charge bien l'image mais **pollue le canvas**, et le
+// `toDataURL()` de `dessiner` lève alors une `SecurityError`. C'est-à-dire que
+// rééditer une photo ou recalculer une vignette cesserait de fonctionner, sur
+// une image qui s'affiche pourtant normalement.
+//
+// Contrepartie à connaître : sur une source distante qui ne renvoie PAS
+// d'en-tête `Access-Control-Allow-Origin`, l'attribut fait échouer le
+// chargement au lieu de le laisser réussir en polluant le canvas. C'est le
+// comportement voulu — un canvas pollué est inutilisable ici — mais l'échec
+// remonte comme « Image illisible » : en cas de doute sur une image qui
+// s'affiche ailleurs, c'est le CORS du bucket qu'il faut regarder en premier.
 function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Image illisible'));
     img.src = src;
