@@ -17,6 +17,7 @@ import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
@@ -796,7 +797,20 @@ function PreparerView({
             {batch.difficulty_name && (
               <div className="flex flex-col gap-1 items-center text-center">
                 <span className={`${LBL_CLS} print-fs-9`}>Difficulté</span>
-                <span className="print-fs-9 font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
+                <span className="flex items-center gap-2">
+                  {(batch.difficulty_level || 0) > 0 && (
+                    <span className="flex items-center gap-0.5 shrink-0">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <MaryseIcon
+                          key={i}
+                          size={14}
+                          className={i <= (batch.difficulty_level || 0) ? 'text-primary' : 'text-outline-variant'}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  <span className="print-fs-9 font-label-md text-label-md text-on-surface">{batch.difficulty_name}</span>
+                </span>
               </div>
             )}
           </div>
