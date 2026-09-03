@@ -263,8 +263,8 @@ export function validerDemande(saisie: SaisieDemande, estConnecte: boolean): Val
   }
 
   const subject = texte(saisie.subject);
-  if (subject.length < SUJET_MIN) errors.subject = `Le sujet doit contenir au moins ${SUJET_MIN} caractères.`;
-  else if (subject.length > SUJET_MAX) errors.subject = `Le sujet ne peut pas dépasser ${SUJET_MAX} caractères.`;
+  if (subject.length < SUJET_MIN) errors.subject = `L'objet doit contenir au moins ${SUJET_MIN} caractères.`;
+  else if (subject.length > SUJET_MAX) errors.subject = `L'objet ne peut pas dépasser ${SUJET_MAX} caractères.`;
 
   const message = texte(saisie.message);
   if (message.length < MESSAGE_MIN) errors.message = `Votre message doit contenir au moins ${MESSAGE_MIN} caractères.`;
@@ -851,7 +851,7 @@ export function composeNotificationAdmin(ctx: ContexteNotificationAdmin): Notifi
     `Membre : ${auteur}`,
     `Reçue le : ${formatDateHeure(ctx.createdAtIso)}`,
     '',
-    `Sujet : ${ctx.subject}`,
+    `Objet : ${ctx.subject}`,
     '',
     ctx.message,
     '',
@@ -1011,7 +1011,7 @@ export function composeNotificationReponseMembre(ctx: ContexteNotificationRepons
   const subject = `[Je pâtisse !] Nouvelle réponse du demandeur — [${ctx.reference}]`;
   const lignes = [
     `Référence : ${ctx.reference}`,
-    `Sujet : ${ctx.subject}`,
+    `Objet : ${ctx.subject}`,
     '',
     ctx.body,
     '',

@@ -244,7 +244,7 @@ export function ContactForm({
 
         <div>
           <label htmlFor="contact-subject" className="font-label-md text-label-md text-on-surface-variant mb-2 block">
-            Sujet
+            Objet
           </label>
           <input
             id="contact-subject"
