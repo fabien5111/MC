@@ -32,9 +32,14 @@ appelant l'API à la main.
    risque, volume de contexte, modèle recommandé) à partir de ce que dit le
    ticket, **puis attendre l'OK** — un ticket Jira n'est pas une autorisation
    de développer, c'est une demande à qualifier comme une autre.
-3. **Développer** sur la branche désignée, en citant la clé du ticket dans le
-   titre de la PR et dans les messages de commit (`MC-123 — …`) : c'est ce
-   qui alimentera le panneau « Développement » du ticket (lot 2).
+3. **Développer** sur la branche désignée, en citant la clé du ticket **en
+   majuscules** dans le titre de la PR et dans les messages de commit
+   (`MC-123 — …`). C'est ce qui remplit le panneau « Développement » du
+   ticket, et un contrôle GitHub Actions (`.github/workflows/jira-cle.yml`)
+   fait échouer une PR qui n'en cite aucune. Jira ne reconnaît pas `mc-123` :
+   la casse n'est pas un détail de style. Une PR qui n'a réellement pas de
+   ticket (outillage, documentation) se règle par le label `sans-jira`, jamais
+   en inventant une clé.
 4. **Commenter** le ticket seulement si l'utilisateur le demande.
 
 ## Limites, volontaires

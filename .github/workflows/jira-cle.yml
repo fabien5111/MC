@@ -1,0 +1,81 @@
+name: Clé Jira dans la PR
+
+# Vérifie qu'une PR cite au moins une clé de ticket (MC-123) dans son titre,
+# son nom de branche ou l'un de ses messages de commit. C'est ce qui alimente
+# le panneau « Développement » du ticket via l'app GitHub for Jira (lot 2),
+# et ce dont la transition « Déployé » se servira pour retrouver les tickets
+# d'un déploiement (lot 3) : sans clé, le ticket reste muet et le demandeur
+# n'est jamais prévenu.
+#
+# Ne s'active QUE si la variable de dépôt JIRA_PROJECT_KEY est définie
+# (Settings > Secrets and variables > Actions > Variables) : sans elle, on ne
+# peut pas distinguer une vraie clé d'un « UTF-8 ». Échappatoire assumée pour
+# les PR qui n'ont pas de ticket (outillage, documentation) : le label
+# « sans-jira ».
+#
+# Cf. docs/outillage-jira.md §2.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  cle-jira:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'sans-jira') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer la PR avec son historique
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Installer Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # Le titre et le nom de branche viennent de l'extérieur : ils passent
+      # par des variables d'environnement, jamais par une interpolation
+      # ${{ }} dans le shell — sinon un titre de PR bien choisi exécuterait
+      # ce qu'il veut sur le runner.
+      #
+      # Aucun `npm ci` : le script ne tire que des modules natifs de Node.
+      - name: Chercher une clé de ticket
+        env:
+          JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY }}
+          PR_TITRE: ${{ github.event.pull_request.title }}
+          PR_BRANCHE: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -z "$JIRA_PROJECT_KEY" ]; then
+            echo "Variable de dépôt JIRA_PROJECT_KEY absente — contrôle désactivé."
+            echo "La définir dans Settings > Secrets and variables > Actions > Variables."
+            exit 0
+          fi
+
+          cles=$(
+            {
+              printf '%s\n%s\n' "$PR_TITRE" "$PR_BRANCHE"
+              git log --format='%B' "$BASE_SHA".."$HEAD_SHA"
+            } | node scripts/jira-cles.mjs --projet "$JIRA_PROJECT_KEY" -
+          ) && statut=0 || statut=$?
+
+          if [ "$statut" -eq 0 ]; then
+            echo "Ticket(s) lié(s) : $(echo "$cles" | tr '\n' ' ')"
+            exit 0
+          fi
+          if [ "$statut" -ne 2 ]; then
+            echo "Extraction impossible (code $statut) — contrôle non concluant."
+            exit 1
+          fi
+
+          echo "Aucune clé $JIRA_PROJECT_KEY-<n> dans le titre de la PR, le nom de branche"
+          echo "ni les messages de commit."
+          echo
+          echo "La clé doit être en MAJUSCULES : Jira ne reconnaît pas une clé en minuscules."
+          echo "Corriger le titre de la PR suffit — pas besoin de réécrire l'historique."
+          echo "PR sans ticket (outillage, documentation) : poser le label « sans-jira »."
+          exit 1

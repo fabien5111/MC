@@ -9,12 +9,12 @@ avancer le statut du ticket au rythme réel des déploiements.
 demandeur). Le présent document ne parle que de l'outillage de développement,
 et n'ajoute rien au site déployé.
 
-Le chantier est découpé en trois lots. **Seul le lot 1 est en place.**
+Le chantier est découpé en trois lots. **Les lots 1 et 2 sont en place ; le lot 3 reste à faire.**
 
 | Lot | Objet | État |
 |---|---|---|
 | 1 | Lire Jira depuis Claude Code (`scripts/jira.mjs` + skill `jira`) | ✅ en place |
-| 2 | Lien dev ↔ ticket (app GitHub for Jira, clé dans les branches et PR) | à faire |
+| 2 | Lien dev ↔ ticket (app GitHub for Jira, clé dans les PR et commits) | ✅ en place côté dépôt, reste la configuration Jira/GitHub |
 | 3 | Déploiement production → statut « Déployé » | à faire |
 
 ---
@@ -89,20 +89,79 @@ mauvaise instance Jira sans le voir.
 
 ---
 
-## 2. Lot 2 — lien dev ↔ ticket (à faire)
+## 2. Lot 2 — lien dev ↔ ticket
 
-Installer l'app **GitHub for Jira** (gratuite), citer la clé du ticket dans
-le nom de branche, le titre de PR et les messages de commit
-(`MC-123 — …`), puis une règle **Automation mono-projet** « PR fusionnée →
-Terminé ». Le mono-projet compte : sur le plan gratuit, une règle appliquée à
-plusieurs projets devient globale et retombe sous le plafond de 100
-exécutions mensuelles — le même plafond que le webhook système du module
-contact évite déjà (`docs/contact-jira.md` §10).
+Objectif : qu'un ticket Jira montre, dans son panneau « Développement », les
+branches, commits et PR qui le traitent — sans rien saisir à la main, et sans
+qu'un ticket parte en production sans qu'on sache par quel code.
+
+Le repérage se fait sur **la clé du ticket dans le texte** : c'est tout le
+mécanisme, et c'est aussi sa fragilité — une PR qui oublie la clé est
+invisible du ticket, et le restera pour le lot 3.
+
+### 2.1 Convention
+
+Citer `MC-123` dans **le titre de la PR** et dans **les messages de commit**.
+Le nom de branche compte aussi quand il est libre — mais les branches créées
+par Claude Code sont imposées (`claude/…`), d'où le titre de PR comme porteur
+principal.
+
+**En majuscules, impérativement** : Jira ne reconnaît pas `mc-123`. C'est le
+piège numéro un, et il est silencieux — rien ne signale l'absence de lien.
+
+### 2.2 Contrôle automatique (`.github/workflows/jira-cle.yml`)
+
+Une PR sans clé fait échouer un contrôle GitHub Actions, qui cherche dans le
+titre, le nom de branche et tous les messages de commit de la PR. Trois
+choses à savoir :
+
+- **Le contrôle ne s'active que si la variable de dépôt `JIRA_PROJECT_KEY`
+  existe** (Settings → Secrets and variables → Actions → *Variables*, pas
+  *Secrets* : une clé de projet n'est pas un secret, et un secret ne se lit
+  pas dans une condition). Sans elle, aucun moyen de distinguer une clé d'un
+  `UTF-8` : le contrôle passe en annonçant qu'il est désactivé, plutôt que de
+  deviner.
+- **Échappatoire explicite** : le label `sans-jira` sur la PR désactive le
+  contrôle, pour l'outillage et la documentation qui n'ont pas de ticket.
+  Sans cette porte, la seule issue serait de désactiver le workflow — donc de
+  le perdre pour toutes les autres PR.
+- **Il se corrige sans réécrire l'historique** : le titre de la PR suffit, et
+  le contrôle est rejoué à chaque modification du titre (`edited`) comme du
+  label.
+
+### 2.3 Un seul extracteur de clés (`scripts/jira-cles.mjs`)
+
+`extraireCles(texte, prefixe)` est la seule expression régulière du dépôt qui
+reconnaisse une clé Jira. Le contrôle de PR s'en sert aujourd'hui, la
+transition « Déployé » du lot 3 s'en servira demain sur les commits d'un
+déploiement. Deux motifs écrits séparément auraient fini par diverger, et la
+divergence se serait vue au pire endroit : un ticket non transitionné, donc
+un membre jamais prévenu que sa correction est en ligne.
+
+Le préfixe de projet est **obligatoire** : un motif générique
+(`[A-Z]+-\d+`) attrape `UTF-8`, `SHA-256` ou `RFC-2119`. Et la
+reconnaissance est **sensible à la casse**, pour la raison de §2.1 — un
+contrôle vert sur une PR que Jira ignore serait pire que pas de contrôle.
+
+### 2.4 Ce qui reste à faire côté Jira et GitHub (hors dépôt)
+
+1. Installer l'app **GitHub for Jira** (gratuite, Marketplace Atlassian) et
+   l'autoriser sur le dépôt `fabien5111/MC`.
+2. Définir la variable de dépôt `JIRA_PROJECT_KEY` (§2.2) pour activer le
+   contrôle.
+3. Créer la règle **Automation mono-projet** « PR fusionnée → Terminé ». Le
+   mono-projet compte : sur le plan gratuit, une règle appliquée à plusieurs
+   projets devient globale et retombe sous le plafond de 100 exécutions
+   mensuelles — le même plafond que le webhook *système* du module contact
+   évite déjà (`docs/contact-jira.md` §10).
+4. Vérifier sur une vraie PR que le panneau « Développement » du ticket se
+   remplit. Rien dans ce dépôt ne peut le prouver à la place.
 
 ## 3. Lot 3 — déploiement → « Déployé » (à faire)
 
 Un workflow GitHub Actions déclenché après un déploiement **production**
-réussi sur `main` : extraction des clés `MC-\d+` des commits poussés, puis
+réussi sur `main` : extraction des clés des commits poussés (par
+`scripts/jira-cles.mjs`, §2.3), puis
 `POST /rest/api/3/issue/{cle}/transitions`. Le webhook Jira déjà en place
 prend alors le relais et envoie l'e-mail au demandeur.
 
