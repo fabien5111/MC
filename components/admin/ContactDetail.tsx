@@ -117,6 +117,16 @@ export function ContactDetail({
 
   // ── Statut manuel ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<ContactStatus>(message.status);
+  // État local (bascule optimiste au changement manuel) DOUBLÉ d'une
+  // resynchronisation depuis les props — motif CLAUDE.md « état local
+  // initialisé depuis les props ». Sans elle, un statut modifié côté serveur
+  // (« Resynchroniser maintenant », qui peut faire passer la demande en
+  // « Terminé ») revenait bien dans le rendu serveur après `refresh()`, mais
+  // le sélecteur du haut de page gardait sa valeur d'origine jusqu'à un
+  // rechargement complet : `useState` n'est initialisé qu'au montage.
+  useEffect(() => {
+    setStatus(message.status);
+  }, [message.status]);
   async function changerStatut(next: ContactStatus) {
     const avant = status;
     setStatus(next);

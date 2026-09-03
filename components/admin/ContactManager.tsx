@@ -78,7 +78,10 @@ function Copiable({ valeur, affichage }: { valeur: string; affichage: string }) 
     <button
       type="button"
       title="Copier"
-      onClick={async () => {
+      onClick={async (e) => {
+        // La ligne entière navigue vers la fiche : sans ça, copier une
+        // adresse ouvrirait la demande dans la foulée.
+        e.stopPropagation();
         await navigator.clipboard.writeText(valeur).catch(() => {});
         setCopie(true);
         setTimeout(() => setCopie(false), 1500);
@@ -210,9 +213,21 @@ export function ContactManager({
               filtrees.map((r) => {
                 const enAnomalie = estEnAnomalie(r);
                 return (
-                  <tr key={r.id} className="align-top hover:bg-surface-container-low transition-colors">
+                  <tr
+                    key={r.id}
+                    onClick={() => router.push(`/admin/contact/${r.reference}`)}
+                    className="align-top cursor-pointer hover:bg-surface-container-low transition-colors"
+                  >
                     <td className="px-4 py-3.5">
-                      <Link href={`/admin/contact/${r.reference}`} className="font-label-md text-primary hover:underline">
+                      {/* Le lien reste, malgré la ligne cliquable : il porte la
+                          navigation au clavier et le « ouvrir dans un nouvel
+                          onglet », que `router.push` seul ne donnerait pas.
+                          `stopPropagation` évite que les deux se déclenchent. */}
+                      <Link
+                        href={`/admin/contact/${r.reference}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-label-md text-primary hover:underline"
+                      >
                         {r.reference}
                       </Link>
                       {r.hasPhotos && (
