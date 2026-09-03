@@ -1,0 +1,115 @@
+name: Configurer le CORS d'un conteneur Object Storage
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Pose les métadonnées CORS d'un conteneur Swift du Public Cloud Infomaniak.
+# Sans elles, une image du conteneur s'affiche parfaitement dans le navigateur
+# mais **pollue le canvas** : `chargerImageDepuisSrc` (lib/images.ts) pose
+# `crossOrigin = 'anonymous'`, le chargement est alors refusé, et rééditer une
+# photo ou recalculer une vignette cesse de fonctionner. C'est le pendant
+# serveur de ce correctif : l'un sans l'autre ne sert à rien.
+#
+# Cette configuration ne se fait ni depuis Horizon (qui n'expose pas l'édition
+# de métadonnées de conteneur) ni depuis l'application : elle passe par l'API
+# Swift, d'où ce workflow — il permet de la poser sans aucun outil installé
+# localement, et de la rejouer à l'identique sur chaque nouveau conteneur.
+#
+# Secrets attendus (Settings > Secrets and variables > Actions). Toutes ces
+# valeurs se lisent dans le fichier RC OpenStack : Horizon > Projet >
+# Accès API > « Télécharger le fichier RC OpenStack ».
+#   OS_AUTH_URL             ex. https://api.pub2.infomaniak.cloud/identity/v3
+#   OS_PROJECT_NAME         ex. PCP-XXXXXXX
+#   OS_USERNAME             ex. PCU-XXXXXXX
+#   OS_PASSWORD             mot de passe de l'utilisateur OpenStack
+#   OS_REGION_NAME          ex. dc4-a
+#   OS_USER_DOMAIN_NAME     ex. default
+#   OS_PROJECT_DOMAIN_NAME  ex. default
+on:
+  workflow_dispatch:
+    inputs:
+      conteneur:
+        description: Nom du conteneur Swift
+        required: true
+        default: test-photos
+      origine:
+        description: >-
+          Valeur de Access-Control-Allow-Origin. « * » est le bon choix pour un
+          conteneur d'images publiques : Swift ne sait pas comparer une liste
+          d'origines, et le site a plusieurs domaines (www, dev, préversions).
+        required: true
+        default: '*'
+      masquer_listing:
+        description: >-
+          Interdire l'énumération publique du contenu du conteneur (.rlistings).
+          À laisser coché : sans ça, n'importe qui peut lister tous les fichiers.
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  cors:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      CONTENEUR: ${{ inputs.conteneur }}
+      ORIGINE: ${{ inputs.origine }}
+    steps:
+      - name: Installer le client Swift
+        run: pip install --quiet python-swiftclient python-keystoneclient
+
+      - name: Poser les métadonnées CORS
+        run: |
+          set -euo pipefail
+          # `--meta Clé:Valeur` devient l'en-tête X-Container-Meta-Clé côté Swift.
+          # Expose-Headers est nécessaire pour que le navigateur laisse le code
+          # lire Content-Type et Etag ; sans lui, seuls les en-têtes « sûrs »
+          # sont visibles.
+          swift post "$CONTENEUR" \
+            --meta "Access-Control-Allow-Origin:$ORIGINE" \
+            --meta "Access-Control-Expose-Headers:Content-Length,Content-Type,Etag,Last-Modified" \
+            --meta "Access-Control-Max-Age:3600"
+
+      - name: Restreindre l'énumération publique
+        if: ${{ inputs.masquer_listing }}
+        run: |
+          set -euo pipefail
+          # `.r:*` seul = les objets restent lisibles par leur URL, mais la
+          # liste du conteneur n'est plus publique. L'option « accès public »
+          # de Horizon ajoute `.rlistings`, qui laisse énumérer tous les
+          # fichiers — une fuite silencieuse une fois les photos migrées.
+          swift post "$CONTENEUR" --read-acl '.r:*'
+
+      - name: Vérifier que l'en-tête est bien renvoyé
+        run: |
+          set -euo pipefail
+          # `swift auth` écrit OS_STORAGE_URL et OS_AUTH_TOKEN sur sa sortie :
+          # on l'évalue sans jamais l'afficher, le jeton n'a rien à faire dans
+          # les journaux du workflow.
+          eval "$(swift auth)"
+
+          objet=$(swift list "$CONTENEUR" | head -1)
+          if [ -z "$objet" ]; then
+            echo "Conteneur vide : métadonnées posées, vérification impossible."
+            swift stat "$CONTENEUR"
+            exit 0
+          fi
+
+          url="$OS_STORAGE_URL/$CONTENEUR/$objet"
+          echo "Vérification sur : $CONTENEUR/$objet"
+
+          entetes=$(curl -sS -I -H 'Origin: https://dev.jepatisse.com' "$url")
+          echo "$entetes"
+
+          if echo "$entetes" | grep -qi '^access-control-allow-origin:'; then
+            echo "OK — le conteneur renvoie Access-Control-Allow-Origin."
+          else
+            echo "ÉCHEC — en-tête absent : le traitement canvas resterait refusé."
+            exit 1
+          fi
