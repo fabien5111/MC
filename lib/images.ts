@@ -18,6 +18,23 @@ export function isHeic(file: File): boolean {
   return NON_DECODABLES.includes(file.type) || /\.hei[cf]$/i.test(file.name);
 }
 
+/**
+ * Compresse plusieurs fichiers déposés/choisis en une fois (ajout multiple
+ * d'une grille de photos — étapes de recette, avis). Les fichiers dans un
+ * format non supporté sont silencieusement écartés (comptés dans `rejected`,
+ * à charge de l'appelant d'en avertir l'utilisateur) plutôt que de faire
+ * échouer tout le lot.
+ */
+export async function resizeFilesToDataUrls(
+  files: File[],
+  maxWidth = 1400,
+  mime: 'image/jpeg' | 'image/webp' = 'image/jpeg',
+): Promise<{ urls: string[]; rejected: number }> {
+  const accepted = files.filter(isAcceptedImage);
+  const urls = await Promise.all(accepted.map((f) => resizeImageToDataUrl(f, maxWidth, mime)));
+  return { urls, rejected: files.length - accepted.length };
+}
+
 // Charge un fichier image en élément décodé, en libérant l'URL temporaire quoi
 // qu'il arrive.
 function chargerImage(file: File): Promise<HTMLImageElement> {

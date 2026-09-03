@@ -15,6 +15,10 @@ import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, reviewCommentRequired, validateReview } from '@/lib/reviews';
 import type { ReviewPhoto } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
+import { resizeFilesToDataUrls } from '@/lib/images';
+import { moveAt } from '@/lib/photo-reorder';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
+import { useDialog } from '@/components/Dialog';
 
 function ReviewPhotos({ photos }: { photos: ReviewPhoto[] }) {
   if (!photos.length) return null;
@@ -74,6 +78,7 @@ function ReviewForm({
   submitLabel: string;
   onSubmitted: () => void;
 }) {
+  const dialog = useDialog();
   const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState(initialComment);
   const [photos, setPhotos] = useState<ReviewPhoto[]>(initialPhotos);
@@ -101,6 +106,25 @@ function ReviewForm({
   function clearPhotoAt(index: number) {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   }
+
+  // Ajout de plusieurs photos en une fois, dans la limite des emplacements
+  // encore libres (REVIEW_PHOTOS_MAX au total).
+  async function addPhotosMulti(allFiles: File[]) {
+    const room = REVIEW_PHOTOS_MAX - photos.length;
+    if (room <= 0) return;
+    const files = allFiles.slice(0, room);
+    const { urls, rejected } = await resizeFilesToDataUrls(files, 1400, 'image/jpeg');
+    if (rejected) await dialog.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
+    if (!urls.length) return;
+    setPhotos((prev) => [...prev, ...urls.map((url) => ({ url, ai_retouched: false }))].slice(0, REVIEW_PHOTOS_MAX));
+  }
+
+  const photoReorder = usePhotoDragReorder((from, to) => {
+    const f = Number(from);
+    const t = Number(to);
+    if (Number.isNaN(f) || Number.isNaN(t)) return;
+    setPhotos((prev) => moveAt(prev, f, t));
+  });
 
   async function submit() {
     setError(null);
@@ -150,22 +174,33 @@ function ReviewForm({
         </p>
       </div>
       <div>
-        <p className="text-[12px] text-on-surface-variant mb-2">Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum)</p>
+        <p className="text-[12px] text-on-surface-variant mb-2">
+          Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum) — plusieurs à la fois sont acceptées.
+        </p>
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
-            <div key={i} className="space-y-1.5">
-              <ImageSlot
-                src={photos[i]?.url ?? null}
-                onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
-                onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
-                aspectRatio={16 / 9}
-                maxWidth={1400}
-                placeholder="Ajouter une photo"
-                className="w-32 h-[72px] md:w-40 md:h-[90px]"
-                aiRetouched={photos[i]?.ai_retouched ?? false}
-                promptAiRetouched
-                onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
-              />
+            <div key={i} className="space-y-1.5" {...photoReorder.dropProps(String(i))}>
+              <div
+                className={`relative rounded-lg ${
+                  photoReorder.overKey === String(i) ? 'ring-2 ring-primary' : ''
+                } ${photos[i] ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                title={photos[i] ? 'Glisser pour réordonner' : undefined}
+                {...(photos[i] ? photoReorder.dragProps(String(i)) : null)}
+              >
+                <ImageSlot
+                  src={photos[i]?.url ?? null}
+                  onChange={(dataUrl) => setPhotoAt(i, dataUrl)}
+                  onClear={photos[i] ? () => clearPhotoAt(i) : undefined}
+                  onFilesAdded={(files) => void addPhotosMulti(files)}
+                  aspectRatio={16 / 9}
+                  maxWidth={1400}
+                  placeholder="Ajouter une photo"
+                  className="w-32 h-[72px] md:w-40 md:h-[90px]"
+                  aiRetouched={photos[i]?.ai_retouched ?? false}
+                  promptAiRetouched
+                  onAiRetouchedChange={(value) => setPhotoAiRetouchedAt(i, value)}
+                />
+              </div>
               {photos[i] && (
                 <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer w-32 md:w-40">
                   <input

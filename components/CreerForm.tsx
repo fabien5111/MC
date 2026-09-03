@@ -17,8 +17,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { resizeDataUrlToThumb } from '@/lib/images';
+import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
+import { swapAt } from '@/lib/photo-reorder';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
@@ -607,6 +609,42 @@ export function CreerForm({
         k === si ? { ...st, photos: st.photos.map((p, j) => (j === pi && p ? { ...p, ai_retouched: aiRetouched } : p)) } : st,
       ),
     );
+  // Ajout de plusieurs photos en une fois (sélection multiple ou dépôt
+  // groupé) : compressées puis réparties sur les emplacements encore vides
+  // de l'étape, dans l'ordre — le surplus au-delà des emplacements
+  // disponibles est signalé plutôt que silencieusement perdu.
+  const addPhotosToStep = async (si: number, fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    const { urls, rejected } = await resizeFilesToDataUrls(files, 800, 'image/jpeg');
+    if (rejected) await dialog.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
+    if (!urls.length) return;
+    let overflow = 0;
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const photos = [...st.photos];
+        let ri = 0;
+        for (let i = 0; i < photos.length && ri < urls.length; i++) {
+          if (!photos[i]) {
+            photos[i] = { url: urls[ri], original_url: urls[ri], ai_retouched: false };
+            ri++;
+          }
+        }
+        overflow = urls.length - ri;
+        return { ...st, photos };
+      }),
+    );
+    if (overflow) await dialog.alert(`${overflow} photo${overflow > 1 ? 's' : ''} non ajoutée${overflow > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
+  };
+  const stepPhotoReorder = usePhotoDragReorder((from, to) => {
+    const [siFrom, piFromRaw] = from.split(':');
+    const [siTo, piToRaw] = to.split(':');
+    if (siFrom !== siTo) return;
+    const si = Number(siFrom);
+    const piFrom = Number(piFromRaw);
+    const piTo = Number(piToRaw);
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: swapAt(st.photos, piFrom, piTo) } : st)));
+  });
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
   const delStep = async (i: number) => {
@@ -2222,39 +2260,54 @@ export function CreerForm({
                     )}
                   </div>
 
+                  <p className="mb-2 text-[12px] text-on-surface-variant">
+                    Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent
+                    sur les emplacements libres.
+                  </p>
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {st.photos.map((p, pi) => (
-                      <div key={pi} className="space-y-1.5">
-                        <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden">
-                          <ImageSlot
-                            src={p?.url ?? null}
-                            originalSrc={p?.original_url}
-                            aiRetouched={p?.ai_retouched}
-                            onChange={(url) => patchPhoto(si, pi, url)}
-                            promptAiRetouched
-                            onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
-                            onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
-                            onClear={() => patchPhoto(si, pi, null)}
-                            shape="rect"
-                            maxWidth={800}
-                            aspectRatio={1}
-                            placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
-                            className="w-full h-full"
-                          />
-                        </div>
-                        {p && (
-                          <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={p.ai_retouched}
-                              onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
-                              className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                    {st.photos.map((p, pi) => {
+                      const photoKey = `${si}:${pi}`;
+                      return (
+                        <div key={pi} className="space-y-1.5" {...stepPhotoReorder.dropProps(photoKey)}>
+                          <div
+                            className={`relative aspect-square border border-dashed overflow-hidden ${
+                              stepPhotoReorder.overKey === photoKey ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+                            } ${p ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                            title={p ? 'Glisser pour réordonner' : undefined}
+                            {...(p ? stepPhotoReorder.dragProps(photoKey) : null)}
+                          >
+                            <ImageSlot
+                              src={p?.url ?? null}
+                              originalSrc={p?.original_url}
+                              aiRetouched={p?.ai_retouched}
+                              onChange={(url) => patchPhoto(si, pi, url)}
+                              promptAiRetouched
+                              onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
+                              onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
+                              onClear={() => patchPhoto(si, pi, null)}
+                              onFilesAdded={(files) => void addPhotosToStep(si, files)}
+                              shape="rect"
+                              maxWidth={800}
+                              aspectRatio={1}
+                              placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
+                              className="w-full h-full"
                             />
-                            Indication photo retravaillée avec l&apos;IA
-                          </label>
-                        )}
-                      </div>
-                    ))}
+                          </div>
+                          {p && (
+                            <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={p.ai_retouched}
+                                onChange={(e) => patchPhotoAi(si, pi, e.target.checked)}
+                                className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+                              />
+                              Indication photo retravaillée avec l&apos;IA
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4">
