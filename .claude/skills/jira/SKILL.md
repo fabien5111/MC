@@ -46,9 +46,10 @@ appelant l'API à la main.
 
 - **Aucun verbe de transition.** Faire passer un ticket à « Déployé »
   déclenche l'e-mail au demandeur, irréversible une fois parti
-  (`docs/contact-jira.md` §2) : ça appartient à la chaîne de déploiement
-  (lot 3), pas à un agent qui explore un ticket. Si un changement de statut
-  est nécessaire, le demander à l'utilisateur.
+  (`docs/contact-jira.md` §2). C'est le travail du workflow
+  `.github/workflows/jira-deploiement.yml`, qui sait qu'un build production a
+  réussi — pas celui d'un agent qui explore un ticket. Si un changement de
+  statut est nécessaire, le demander à l'utilisateur.
 - **Aucun passe-plat REST générique** : trois verbes, pas un client Jira
   complet. Un besoin nouveau s'ajoute au script, il ne se contourne pas avec
   `curl`.

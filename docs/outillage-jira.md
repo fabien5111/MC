@@ -9,13 +9,14 @@ avancer le statut du ticket au rythme réel des déploiements.
 demandeur). Le présent document ne parle que de l'outillage de développement,
 et n'ajoute rien au site déployé.
 
-Le chantier est découpé en trois lots. **Les lots 1 et 2 sont en place ; le lot 3 reste à faire.**
+Le chantier est découpé en trois lots. **Les trois lots sont en place côté dépôt.** Chacun demande encore une
+configuration hors dépôt, listée à la fin de sa section.
 
 | Lot | Objet | État |
 |---|---|---|
 | 1 | Lire Jira depuis Claude Code (`scripts/jira.mjs` + skill `jira`) | ✅ en place |
 | 2 | Lien dev ↔ ticket (app GitHub for Jira, clé dans les PR et commits) | ✅ en place côté dépôt, reste la configuration Jira/GitHub |
-| 3 | Déploiement production → statut « Déployé » | à faire |
+| 3 | Déploiement production → statut « Déployé » | ✅ en place côté dépôt, **désarmé** tant que `JIRA_DEPLOY_ACTIF` n'est pas à `true` |
 
 ---
 
@@ -157,20 +158,95 @@ contrôle vert sur une PR que Jira ignore serait pire que pas de contrôle.
 4. Vérifier sur une vraie PR que le panneau « Développement » du ticket se
    remplit. Rien dans ce dépôt ne peut le prouver à la place.
 
-## 3. Lot 3 — déploiement → « Déployé » (à faire)
+## 3. Lot 3 — déploiement → « Déployé »
 
-Un workflow GitHub Actions déclenché après un déploiement **production**
-réussi sur `main` : extraction des clés des commits poussés (par
-`scripts/jira-cles.mjs`, §2.3), puis
-`POST /rest/api/3/issue/{cle}/transitions`. Le webhook Jira déjà en place
-prend alors le relais et envoie l'e-mail au demandeur.
+Quand un déploiement **production** réussit, les tickets cités dans les
+derniers commits déployés passent de « Terminé » (développé, pas encore en
+ligne) à « Déployé ». Le webhook Jira déjà en place voit la transition, et le
+site prévient le demandeur que sa correction est en ligne.
 
-Deux points à traiter à ce moment-là, pas avant :
+C'est le seul lot qui écrit dans Jira, et il déclenche un **e-mail
+irréversible** (`docs/contact-jira.md` §2) : une fois parti, aucun retour en
+arrière. Toute sa conception découle de là.
 
-- **Jamais sur une preview**, ni sur le second projet Vercel `dev_jp` qui
-  construit le même dépôt (`CLAUDE.md`, « Déploiement ») : une transition
-  déclenchée par un déploiement qui n'est pas en ligne annoncerait au membre
-  une correction qu'il ne verra pas.
-- **La garde de `decisionSynchroJira`** protège une clôture prononcée à la
-  main côté site ; une transition automatique en amont dans Jira passe avant
-  cette garde. À re-vérifier sur un ticket de test plutôt qu'à supposer.
+| Fichier | Rôle |
+|---|---|
+| `.github/workflows/jira-deploiement.yml` | Déclenchement, garde-fous, plage de commits |
+| `scripts/jira-deploiement.mjs` | Décision et transition, ticket par ticket |
+| `scripts/jira-api.mjs` | Client HTTP Jira partagé avec `jira.mjs` |
+
+### 3.1 Trois garde-fous, dans cet ordre
+
+1. **Simulation par défaut.** Sans la variable de dépôt `JIRA_DEPLOY_ACTIF`
+   à `true`, le workflow tourne mais n'écrit rien : il journalise ce qu'il
+   aurait fait. C'est l'interrupteur d'armement, à basculer une fois le
+   comportement observé sur de vraies exécutions — pas avant. Un
+   `workflow_dispatch` permet en plus de forcer la simulation à la demande.
+2. **Production seulement.** Les déploiements de preview sont ignorés
+   (`deployment_status` filtré sur l'environnement). Le second projet Vercel
+   `dev_jp` construit le même dépôt et produit lui aussi un déploiement
+   « Production » : il déclenche donc le workflow une seconde fois, sans
+   effet — voir le garde-fou suivant. Un `concurrency` les met à la queue leu
+   leu plutôt que de compter sur la chance.
+3. **Périmètre et idempotence.** Seul un ticket au statut « développé, pas
+   encore en ligne » est transitionné. Déjà déployé, en cours, rouvert,
+   statut inconnu : laissé tel quel. C'est ce qui rend le rejeu inoffensif —
+   et c'est testé (`scripts/jira-deploiement.test.mjs`).
+
+### 3.2 Les N derniers commits, pas l'intervalle exact
+
+Le workflow ne cherche pas à reconstituer l'intervalle depuis le déploiement
+précédent (API Deployments, déploiement précédent réussi, comparaison de
+SHA…). Il lit les **50 derniers commits de la révision déployée**, qui sont
+par construction tous en production. La générosité est sans conséquence grâce
+à l'idempotence du §3.1, et elle rattrape gratuitement un déploiement dont le
+workflow aurait échoué — là où un intervalle exact aurait laissé ces tickets
+en arrière pour toujours.
+
+### 3.3 Le statut visé est reconnu par id, le nom en repli
+
+Mêmes variables et même priorité que `lireConfigStatuts` (`lib/jira.ts`) :
+`JIRA_STATUS_TO_DEPLOY[_ID]` et `JIRA_STATUS_DEPLOYED[_ID]`. L'id survit à un
+renommage dans Jira, le nom non. Et comme Jira n'a pas d'API « mettre ce
+statut », le script cherche parmi les **transitions sortantes** celle qui mène
+au statut visé : si le workflow Jira n'en propose aucune, le ticket est
+signalé en échec plutôt que déplacé au hasard.
+
+### 3.4 Un échec n'arrête pas les autres, mais l'exécution est rouge
+
+Les tickets d'un même déploiement sont indépendants : en abandonner cinq
+parce que le premier a un workflow atypique serait pire que le problème. Le
+script traite donc tout le monde, puis sort en erreur s'il reste un échec —
+une réussite apparente ayant oublié la moitié des tickets serait le pire des
+deux mondes.
+
+### 3.5 Ce qui reste à faire hors dépôt
+
+1. **Secrets de dépôt** (Settings → Secrets and variables → Actions →
+   *Secrets*) : `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`.
+2. **Variables** (même écran, onglet *Variables*) : `JIRA_STATUS_TO_DEPLOY` /
+   `_ID`, `JIRA_STATUS_DEPLOYED` / `_ID` — et `JIRA_PROJECT_KEY`, déjà posée
+   au lot 2.
+3. **Observer en simulation.** Le workflow tourne dès la fusion sur `main` ;
+   lire son journal après quelques déploiements et vérifier que les tickets
+   listés sont bien ceux qu'on aurait transitionnés à la main.
+4. **Armer** : `JIRA_DEPLOY_ACTIF = true`.
+5. **Deux vérifications sur un ticket de test**, avant d'armer pour de bon :
+   - `deploy_notify` — l'interrupteur par demande qui empêche l'e-mail de
+     déploiement doit être coupé **avant** le passage en « déployé », jamais
+     après (`docs/contact-jira.md`) ;
+   - la garde de `decisionSynchroJira` protège une clôture prononcée à la
+     main côté site ; une transition automatique en amont dans Jira passe
+     avant cette garde. À vérifier sur un ticket de test plutôt qu'à
+     supposer — c'est le seul point de ce chantier qu'aucun test du dépôt ne
+     peut trancher.
+
+### 3.6 Ce que ce lot ne fait pas
+
+- **Aucun verbe de transition dans `scripts/jira.mjs`** : le lot 1 reste en
+  lecture (et commentaire). Faire passer un ticket en « Déployé » demande de
+  savoir qu'un build production a réussi — c'est le travail du workflow, pas
+  d'un agent qui explore un ticket.
+- **Rien n'est modifié dans le site déployé** : `lib/jira.ts`, le webhook et
+  la réconciliation quotidienne sont inchangés. Ce chantier n'ajoute que de
+  l'outillage.

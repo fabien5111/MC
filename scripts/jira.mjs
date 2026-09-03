@@ -8,60 +8,15 @@
 // déploiement, jamais d'un agent qui explore un ticket.
 //
 // Script en JS pur, non importable depuis `lib/jira.ts` (TypeScript, compilé
-// par Next) : l'authentification Basic et la conversion texte → ADF y sont
-// donc réécrites en quelques lignes. Duplication assumée et bornée — le
-// chemin produit (création de ticket, commentaire de réponse) reste le seul
-// à passer par `lib/jira.ts` et ses tests.
+// par Next) : l'authentification Basic (`scripts/jira-api.mjs`) et la
+// conversion texte → ADF y sont donc réécrites. Duplication assumée et
+// bornée — le chemin produit (création de ticket, commentaire de réponse)
+// reste le seul à passer par `lib/jira.ts` et ses tests.
 import { fileURLToPath } from 'node:url';
+import { appelJira, lireConfig } from './jira-api.mjs';
 
-const TIMEOUT_MS = 8_000;
-const RETRY_DELAY_MS = 1_000;
 const MAX_RESULTATS_DEFAUT = 25;
 const MAX_COMMENTAIRES_DEFAUT = 10;
-
-// ─────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────
-
-/**
- * Les variables vivent normalement dans l'environnement (session Claude Code,
- * CI). `.env.local` n'est lu qu'en repli, et seulement s'il manque quelque
- * chose : sans cette condition, un fichier local écraserait silencieusement
- * les variables de l'environnement courant.
- */
-function chargerEnvLocal() {
-  if (process.env.JIRA_BASE_URL && process.env.JIRA_EMAIL && process.env.JIRA_API_TOKEN) return;
-  try {
-    process.loadEnvFile('.env.local');
-  } catch {
-    // Fichier absent ou illisible : l'absence de variable est signalée
-    // proprement juste après, avec le nom de chacune.
-  }
-}
-
-function lireConfig() {
-  chargerEnvLocal();
-  const manquantes = [
-    ['JIRA_BASE_URL', process.env.JIRA_BASE_URL],
-    ['JIRA_EMAIL', process.env.JIRA_EMAIL],
-    ['JIRA_API_TOKEN', process.env.JIRA_API_TOKEN],
-  ]
-    .filter(([, valeur]) => !valeur)
-    .map(([nom]) => nom);
-
-  if (manquantes.length > 0) {
-    echouer(
-      `Configuration Jira incomplète : ${manquantes.join(', ')} absente(s).\n` +
-        `Les renseigner dans l'environnement de la session (ou dans .env.local en local).`,
-    );
-  }
-
-  return {
-    baseUrl: process.env.JIRA_BASE_URL.replace(/\/+$/, ''),
-    email: process.env.JIRA_EMAIL,
-    apiToken: process.env.JIRA_API_TOKEN,
-  };
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // ADF (Atlassian Document Format)
@@ -130,80 +85,6 @@ export function texteVersAdf(texte) {
   // Jira refuse un `content` vide.
   if (paragraphes.length === 0) paragraphes.push({ type: 'paragraph', content: [{ type: 'text', text: '—' }] });
   return { type: 'doc', version: 1, content: paragraphes };
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Appel réseau
-// ─────────────────────────────────────────────────────────────────────────
-
-/** Un 429 ou un 5xx est transitoire ; un 4xx de configuration ne l'est pas. */
-function estRetryable(status) {
-  return status === 429 || status >= 500;
-}
-
-function attendre(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Timeout 8 s et un seul retry, même politique que `lib/jira.ts`. */
-async function appelJira(config, chemin, methode = 'GET', corps) {
-  const jeton = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
-
-  const tentative = async () => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      const reponse = await fetch(`${config.baseUrl}${chemin}`, {
-        method: methode,
-        signal: controller.signal,
-        headers: {
-          Authorization: `Basic ${jeton}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: corps === undefined ? undefined : JSON.stringify(corps),
-      });
-      const body = await reponse.json().catch(() => null);
-      return { status: reponse.status, body };
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-
-  let resultat;
-  try {
-    resultat = await tentative();
-  } catch (e) {
-    await attendre(RETRY_DELAY_MS);
-    try {
-      resultat = await tentative();
-    } catch (e2) {
-      echouer(`Appel Jira impossible : ${e2.message || e.message}`);
-    }
-  }
-
-  if (estRetryable(resultat.status)) {
-    await attendre(RETRY_DELAY_MS);
-    resultat = await tentative();
-  }
-
-  if (resultat.status === 401 || resultat.status === 403) {
-    echouer(`HTTP ${resultat.status} — authentification Jira refusée (JIRA_EMAIL / JIRA_API_TOKEN).`);
-  }
-  if (resultat.status === 404) echouer('HTTP 404 — ticket ou ressource introuvable (clé exacte ? droits sur le projet ?).');
-  if (resultat.status >= 400) echouer(`HTTP ${resultat.status} — ${messageErreurJira(resultat.body)}`);
-
-  return resultat.body;
-}
-
-function messageErreurJira(body) {
-  if (body && typeof body === 'object') {
-    const messages = Array.isArray(body.errorMessages) ? body.errorMessages.filter((m) => typeof m === 'string') : [];
-    const champs = body.errors && typeof body.errors === 'object' ? Object.entries(body.errors).map(([c, m]) => `${c}: ${m}`) : [];
-    const tout = [...messages, ...champs];
-    if (tout.length > 0) return tout.join(' ; ');
-  }
-  return 'réponse Jira illisible.';
 }
 
 // ─────────────────────────────────────────────────────────────────────────
