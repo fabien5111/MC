@@ -17,6 +17,7 @@ configuration hors dépôt, listée à la fin de sa section.
 | 1 | Lire Jira depuis Claude Code (`scripts/jira.mjs` + skill `jira`) | ✅ en place |
 | 2 | Lien dev ↔ ticket (app GitHub for Jira, clé dans les PR et commits) | ✅ en place côté dépôt, reste la configuration Jira/GitHub |
 | 3 | Déploiement production → statut « Déployé » | ✅ en place côté dépôt, **désarmé** tant que `JIRA_DEPLOY_ACTIF` n'est pas à `true` |
+| 4 | Évaluation du serveur MCP officiel d'Atlassian | ⏳ préparé et documenté ; l'essai demande une session locale (§4) |
 
 ---
 
@@ -250,3 +251,80 @@ deux mondes.
 - **Rien n'est modifié dans le site déployé** : `lib/jira.ts`, le webhook et
   la réconciliation quotidienne sont inchangés. Ce chantier n'ajoute que de
   l'outillage.
+
+---
+
+## 4. Lot 4 — le serveur MCP d'Atlassian
+
+Le lot 1 lit Jira par un script REST. Atlassian publie par ailleurs un
+serveur **MCP** officiel, qui donne au modèle des outils Jira natifs
+(recherche JQL, lecture, création, transition, commentaire) sans passer par
+un script. S'il fonctionne sur ce compte, il remplace avantageusement la
+lecture du lot 1 — le script gardant l'écriture et la CI, où un serveur OAuth
+interactif n'a pas sa place.
+
+Ce lot est **préparé, pas conclu** : l'étape décisive est une authentification
+OAuth dans un navigateur, qui ne peut se faire que depuis un poste, pas depuis
+une session distante. Voir §4.3 pour ce que ça change.
+
+### 4.1 Ce qui est établi
+
+| Point | État au 3 septembre 2026 |
+|---|---|
+| Endpoint recommandé | `https://mcp.atlassian.com/v2/mcp` (l'endpoint `/sse` s'arrête le 30 juin 2026) |
+| Authentification | OAuth 2.1 (navigateur, sans activation admin) **ou** jeton d'API en Basic — cette seconde voie demande une activation par l'administrateur du site |
+| Portée | Atlassian **Cloud** uniquement (ni Server ni Data Center) |
+| Coût | Serveur annoncé gratuit pour les clients Cloud ; Atlassian ne publie **aucun** chiffre de quota, et l'articulation avec les crédits Rovo (sans offre gratuite) reste floue dans la documentation publique |
+| Suppression / administration | Les permissions Jira « delete » et « manage » sont désactivées par défaut |
+
+C'est ce dernier point du tableau — le coût réel sur un plan gratuit — que
+seul l'essai peut trancher. D'où ce lot.
+
+### 4.2 Procédure d'essai (depuis un poste, ~30 min)
+
+```bash
+claude mcp add --transport http --scope local atlassian https://mcp.atlassian.com/v2/mcp
+# puis, dans une session : /mcp  → s'authentifier
+```
+
+`--scope local` est délibéré : la configuration reste sur le poste plutôt que
+d'être commise dans `.mcp.json`, pour la raison du §4.3.
+
+Trois choses à vérifier, dans cet ordre :
+
+1. **L'OAuth aboutit** et `/mcp` affiche le serveur connecté.
+2. **Une recherche JQL répond** sans réclamer de crédits Rovo ni buter sur un
+   quota — c'est la question qui a motivé le lot.
+3. **Les tickets du projet sont visibles** avec le compte utilisé (le serveur
+   MCP hérite des droits de ce compte, pas de ceux du jeton d'API du site).
+
+### 4.3 Pourquoi rien n'est commis dans `.mcp.json`
+
+Un `.mcp.json` versionné s'appliquerait à **toutes** les sessions du dépôt, y
+compris les sessions distantes (Claude Code sur le web). Or `mcp.atlassian.com`
+y est **bloqué par la politique réseau de l'environnement** — vérifié depuis
+cette session : le mandataire refuse la connexion (`403` sur le `CONNECT`).
+Commettre la configuration ajouterait donc, à chaque session distante, un
+serveur qui ne peut pas se connecter.
+
+Deux conséquences pratiques :
+
+- l'essai du §4.2 se fait **depuis un poste** ;
+- pour s'en servir aussi depuis une session distante, il faudrait élargir la
+  politique réseau de l'environnement Claude Code (cf. la documentation de
+  Claude Code sur le web) — à ne faire que si l'essai est concluant.
+
+Le script du lot 1, lui, fonctionne dans les deux cas : il ne parle qu'à
+`JIRA_BASE_URL`, le domaine Atlassian du site, déjà joignable.
+
+### 4.4 Que faire du résultat
+
+| Résultat de l'essai | Suite |
+|---|---|
+| L'OAuth passe et JQL répond sans coût | Utiliser le MCP pour **lire** ; `scripts/jira.mjs` garde l'écriture et reste le chemin de la CI (lots 2 et 3), qui ne peut pas s'authentifier en OAuth |
+| Ça réclame Rovo ou bute sur un quota | Rester sur le script ; noter la date et le message ici — Atlassian fait évoluer ces limites |
+| L'accès est refusé par une règle d'organisation | Rester sur le script ; l'activation par jeton d'API (§4.1) est l'autre voie, mais elle demande une action de l'administrateur du site |
+
+La skill `jira` est déjà écrite pour les deux mondes : elle privilégie les
+outils MCP `atlassian` **quand la session en dispose**, et retombe sur le
+script sinon. Aucune bascule à faire le jour où l'essai est concluant.

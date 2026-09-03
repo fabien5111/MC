@@ -9,6 +9,19 @@ Les specs et les signalements de bug vivent dans Jira (le module contact du
 site y crée un ticket pseudonymisé pour chaque bug remonté — cf.
 `docs/contact-jira.md`). `scripts/jira.mjs` sert à les lire depuis ici.
 
+## Par où lire
+
+Si la session dispose des outils du serveur MCP Atlassian (`mcp__atlassian__…`,
+visibles dans la liste des outils), les utiliser pour **lire** : recherche JQL
+et lecture de ticket y sont natives. Sinon — et c'est le cas par défaut, y
+compris dans les sessions distantes où `mcp.atlassian.com` est bloqué par la
+politique réseau — passer par `scripts/jira.mjs`, qui ne parle qu'au domaine
+Atlassian du site.
+
+L'écriture (commentaire) passe par le script dans les deux cas : un seul
+chemin d'écriture, c'est un seul endroit où vérifier ce qui part chez
+Atlassian. Cf. `docs/outillage-jira.md` §4.
+
 ## Commandes
 
 ```bash
