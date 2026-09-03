@@ -1,0 +1,115 @@
+name: Jira — passer en « Déployé »
+
+# Quand un déploiement PRODUCTION réussit, passe en « Déployé » les tickets
+# cités dans les derniers commits de la branche déployée. Le webhook Jira du
+# site voit ensuite la transition et prévient le demandeur que sa correction
+# est en ligne (docs/contact-jira.md §2).
+#
+# CET E-MAIL EST IRRÉVERSIBLE. D'où trois garde-fous, dans cet ordre :
+#
+#  1. SIMULATION PAR DÉFAUT. Sans la variable de dépôt JIRA_DEPLOY_ACTIF à
+#     « true », le workflow tourne mais n'écrit rien : il journalise ce qu'il
+#     aurait fait. C'est l'interrupteur d'armement, à basculer une fois le
+#     comportement observé sur de vraies exécutions.
+#  2. PRODUCTION SEULEMENT. Les déploiements de preview sont ignorés. Le
+#     second projet Vercel (dev_jp) construit le même dépôt et produit lui
+#     aussi un déploiement « Production » : il déclenchera donc ce workflow
+#     une seconde fois — sans effet, le premier passage ayant déjà tout
+#     transitionné (voir 3).
+#  3. IDEMPOTENCE ET PÉRIMÈTRE. `scripts/jira-deploiement.mjs` ne transitionne
+#     qu'un ticket au statut « développé, pas encore en ligne » ; un ticket
+#     déjà déployé, en cours ou rouvert est laissé tel quel.
+#
+# Cf. docs/outillage-jira.md §3.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branche ou SHA dont on lit les commits
+        required: true
+        default: main
+      profondeur:
+        description: Nombre de commits à examiner
+        required: true
+        default: '50'
+      simulation:
+        description: Ne rien écrire dans Jira
+        type: boolean
+        default: true
+
+# Deux déploiements production simultanés (projet `mc` et projet `dev_jp`)
+# liraient et transitionneraient le même ticket en même temps. On les met à la
+# queue leu leu plutôt que de compter sur la chance.
+concurrency:
+  group: jira-deploiement
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deployer:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       (startsWith(github.event.deployment.environment, 'Production') ||
+        startsWith(github.event.deployment.environment, 'production')))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer la révision déployée
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.deployment.sha }}
+          # De quoi lire les derniers commits, sans cloner tout l'historique.
+          fetch-depth: 100
+
+      - name: Installer Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # Les N derniers commits de la révision déployée sont, par construction,
+      # tous en production : inutile de reconstituer l'intervalle exact depuis
+      # le déploiement précédent. Un ticket déjà déployé est simplement ignoré
+      # (idempotence), ce qui rend cette générosité sans conséquence — et
+      # rattrape au passage un déploiement dont le workflow aurait échoué.
+      #
+      # Aucun `npm ci` : le script ne tire que des modules natifs de Node.
+      - name: Transitionner les tickets déployés
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY }}
+          JIRA_STATUS_TO_DEPLOY: ${{ vars.JIRA_STATUS_TO_DEPLOY }}
+          JIRA_STATUS_TO_DEPLOY_ID: ${{ vars.JIRA_STATUS_TO_DEPLOY_ID }}
+          JIRA_STATUS_DEPLOYED: ${{ vars.JIRA_STATUS_DEPLOYED }}
+          JIRA_STATUS_DEPLOYED_ID: ${{ vars.JIRA_STATUS_DEPLOYED_ID }}
+          ACTIF: ${{ vars.JIRA_DEPLOY_ACTIF }}
+          SIMULATION_DEMANDEE: ${{ github.event_name == 'workflow_dispatch' && inputs.simulation || false }}
+          PROFONDEUR: ${{ github.event_name == 'workflow_dispatch' && inputs.profondeur || 50 }}
+          ENVIRONNEMENT: ${{ github.event.deployment.environment }}
+          URL_DEPLOIEMENT: ${{ github.event.deployment_status.environment_url }}
+        run: |
+          if [ -z "$JIRA_PROJECT_KEY" ] || [ -z "$JIRA_BASE_URL" ]; then
+            echo "JIRA_PROJECT_KEY (variable) ou JIRA_BASE_URL (secret) absent — rien à faire."
+            exit 0
+          fi
+
+          if [ -n "$ENVIRONNEMENT" ]; then
+            echo "Déploiement : $ENVIRONNEMENT — $URL_DEPLOIEMENT"
+          fi
+
+          simulation=""
+          if [ "$ACTIF" != "true" ]; then
+            echo "JIRA_DEPLOY_ACTIF n'est pas « true » — SIMULATION forcée."
+            echo "Armer le workflow : Settings > Secrets and variables > Actions > Variables."
+            simulation="--simulation"
+          elif [ "$SIMULATION_DEMANDEE" = "true" ]; then
+            echo "Simulation demandée au lancement."
+            simulation="--simulation"
+          fi
+
+          git log --format='%B' -n "$PROFONDEUR" HEAD |
+            node scripts/jira-deploiement.mjs --projet "$JIRA_PROJECT_KEY" $simulation
