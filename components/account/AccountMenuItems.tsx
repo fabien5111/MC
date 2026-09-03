@@ -11,7 +11,7 @@
 // occupe une place, se fait cliquer, et n'apprend rien. Elles reviendront avec
 // leur destination.
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export type AccountMenuData = {
@@ -42,8 +42,6 @@ export function AccountMenuItems({
   onNavigate: () => void;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const contactBugHref = `/contact?type=bug&url=${encodeURIComponent(pathname)}`;
 
   async function signOut() {
     onNavigate();
@@ -104,14 +102,20 @@ export function AccountMenuItems({
         <Link href="/reglages" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
           <span className="material-symbols-outlined text-[20px] text-outline">settings</span> Réglages du compte
         </Link>
+        <Link href="/idees" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
+          <span className="material-symbols-outlined text-[20px] text-outline">lightbulb</span> Boîte à idées
+        </Link>
+        <Link href="/plans" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
+          <span className="material-symbols-outlined text-[20px] text-outline">workspace_premium</span> Formules
+        </Link>
         {data.isManager && (
           <Link href="/admin" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
             <span className="material-symbols-outlined text-[20px] text-outline">admin_panel_settings</span>{' '}
             Administration
           </Link>
         )}
-        <Link href={contactBugHref} role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
-          <span className="material-symbols-outlined text-[20px] text-outline">flag</span> Signaler un problème
+        <Link href="/contact" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
+          <span className="material-symbols-outlined text-[20px] text-outline">mail</span> Contact
         </Link>
       </div>
 

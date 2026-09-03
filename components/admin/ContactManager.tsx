@@ -174,7 +174,7 @@ export function ContactManager({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Référence, e-mail, sujet, identifiant…"
+            placeholder="Référence, e-mail, objet, identifiant…"
             className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-[13.5px] focus:border-primary focus:outline-none"
           />
         </div>
@@ -196,7 +196,7 @@ export function ContactManager({
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Date</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Type</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Membre</th>
-              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Sujet</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Objet</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Statut</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Échanges</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Jira</th>
