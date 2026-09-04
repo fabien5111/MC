@@ -1,0 +1,97 @@
+name: Migration — dump du schéma Supabase
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Première marche du lot 0-bis (docs/migration-infomaniak.md § 7.2) : produire
+# le dump `--schema-only` de la base Supabase, et rien d'autre. Aucune cible,
+# aucun environnement Infomaniak — ce workflow se joue AVANT de commander
+# l'essai 14 jours de Virtuozzo Cloud. Il valide la connexion, la version de
+# pg_dump et le filtrage sans consommer un seul jour d'essai ; s'il échoue, il
+# échoue gratuitement.
+#
+# **Le dépôt est public** : ni le dump ni son contenu n'en sortent. Pas
+# d'artefact, pas de `cat`, pas de `set -x` — seuls le poids et le nombre de
+# lignes sont affichés. Le corps des 252 fonctions (dont plusieurs
+# SECURITY DEFINER) et le texte des 320 policies n'ont rien à faire dans un
+# journal public, alors que leurs seuls noms sont déjà lisibles dans
+# lib/database.types.ts.
+#
+# Secret attendu (Settings > Secrets and variables > Actions) :
+#   SUPABASE_DB_URL  chaîne de connexion « Session pooler », port 5432
+#                    (Supabase > Project Settings > Database > Connection string)
+#                    Surtout PAS le pooler transactionnel (port 6543) : il coupe
+#                    les sessions longues et fait échouer pg_dump. Et pas la
+#                    connexion directe non plus : elle est en IPv6, les runners
+#                    GitHub sont en IPv4.
+on:
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Installer la CLI Supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Relever la version du serveur source
+        run: |
+          set -euo pipefail
+          # Le § 4.3 liste ce que Virtuozzo propose (15.19 → 18.6), jamais ce
+          # que Supabase sert. Cette ligne fixe deux choses : le tag de l'image
+          # supabase/postgres à déployer, et le majeur que pg_dump doit lire.
+          psql "$SUPABASE_DB_URL" -Atc 'select version()'
+
+      - name: Inventorier les rôles applicatifs
+        run: |
+          set -euo pipefail
+          # Le § 4.4 parie que l'application n'utilise que anon, authenticated
+          # et service_role — tous fournis par l'image. Un rôle applicatif
+          # inattendu ici changerait le mode opératoire du lot C.
+          psql "$SUPABASE_DB_URL" -Atc \
+            "select rolname from pg_roles where rolname not like 'pg\_%' order by 1"
+
+      - name: Compter les objets de référence
+        run: |
+          set -euo pipefail
+          # Attendu au 03/09/2026 : 320 policies, 252 fonctions, 31 triggers
+          # (§ 2.4). S'ils ont bougé depuis, ce sont ces valeurs-ci qui font foi
+          # — et le § 2.4 est à corriger.
+          psql "$SUPABASE_DB_URL" -Atc "
+            select 'policies='   || (select count(*) from pg_policies where schemaname = 'public')
+                || ' fonctions=' || (select count(*) from pg_proc p
+                                       join pg_namespace n on n.oid = p.pronamespace
+                                      where n.nspname = 'public')
+                || ' triggers='  || (select count(*) from pg_trigger t
+                                       join pg_class c on c.oid = t.tgrelid
+                                       join pg_namespace n on n.oid = c.relnamespace
+                                      where n.nspname = 'public' and not t.tgisinternal)"
+
+      - name: Produire le dump
+        run: |
+          set -euo pipefail
+          # Deux fichiers, dans l'ordre où ils devront être restaurés : les
+          # rôles d'abord, sinon les 320 policies échouent ensemble (§ 2.4).
+          # `supabase db dump` plutôt qu'un pg_dump nu : il aligne la version de
+          # pg_dump sur celle du serveur, écarte les schémas internes et retire
+          # les rôles réservés que l'image supabase/postgres pose déjà.
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL"             -f schema.sql
+
+      - name: Mesurer sans divulguer
+        run: |
+          set -euo pipefail
+          # On mesure, on n'affiche pas. Un dump vide ou ridiculement petit est
+          # le seul symptôme qu'on cherche à voir ici — le reste se vérifie à la
+          # restauration (migration-restauration-repetition.yml).
+          for f in roles.sql schema.sql; do
+            printf '%s : %s octets, %s lignes\n' "$f" "$(wc -c < "$f")" "$(wc -l < "$f")"
+          done
+          if [ "$(wc -c < schema.sql)" -lt 100000 ]; then
+            echo "ÉCHEC — schema.sql est anormalement petit pour 320 policies et 252 fonctions."
+            exit 1
+          fi
+          echo "OK — le dump est exploitable. Étape suivante : § 7.2 phase 1."
