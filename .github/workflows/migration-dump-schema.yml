@@ -37,6 +37,35 @@ jobs:
         with:
           version: latest
 
+      - name: Vérifier la forme de la chaîne de connexion
+        run: |
+          set -euo pipefail
+          # Trois chaînes cohabitent dans l'écran « Connection string » de
+          # Supabase, et deux d'entre elles ne marchent pas ici. La connexion
+          # directe (db.<ref>.supabase.co) ne résout qu'en IPv6, quand les
+          # runners GitHub sont en IPv4 : « Network is unreachable ». Le pooler
+          # transactionnel (port 6543) coupe les sessions longues et fait
+          # échouer pg_dump en cours de route — un échec bien plus coûteux à
+          # diagnostiquer, et qui tomberait pendant l'essai payant.
+          #
+          # Le `case` ne réaffiche jamais la chaîne : elle porte le mot de passe
+          # de la base de production, et un fragment de secret n'est pas masqué
+          # par GitHub, seule sa valeur exacte l'est.
+          case "$SUPABASE_DB_URL" in
+            *db.*.supabase.co*)
+              echo "ÉCHEC — le secret SUPABASE_DB_URL porte la connexion DIRECTE."
+              echo "Elle ne résout qu'en IPv6 ; ce runner est en IPv4."
+              echo "Prendre l'onglet « Session pooler » : l'hôte contient"
+              echo "pooler.supabase.com et l'utilisateur porte la référence du projet."
+              exit 1 ;;
+            *:6543/*)
+              echo "ÉCHEC — le secret SUPABASE_DB_URL porte le pooler TRANSACTIONNEL (6543)."
+              echo "Il coupe les sessions longues et fait échouer pg_dump."
+              echo "Prendre l'onglet « Session pooler », port 5432."
+              exit 1 ;;
+          esac
+          echo "Forme de la chaîne conforme (Session pooler)."
+
       - name: Relever la version du serveur source
         run: |
           set -euo pipefail

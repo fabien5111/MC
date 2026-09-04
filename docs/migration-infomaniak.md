@@ -628,7 +628,10 @@ doit l'être.
    `Database` → `Connection string` → onglet **Session pooler**, port **5432**.
    Ni le pooler transactionnel (6543, qui coupe les sessions longues et fait
    échouer `pg_dump`), ni la connexion directe (IPv6, quand les runners GitHub
-   sont en IPv4).
+   sont en IPv4). **Le signe qui les distingue est l'utilisateur**, pas l'hôte :
+   le pooler écrit `postgres.<ref-du-projet>`, la connexion directe écrit
+   `postgres` tout court. Les deux workflows refusent désormais les deux
+   mauvaises formes avant d'ouvrir la moindre connexion.
 4. **Jouer `migration-dump-schema.yml`** (Actions → Run workflow). Il ne touche
    aucune cible : il valide la connexion, la version de `pg_dump` et le
    filtrage, et affiche les points 1 et 2 au passage. **S'il échoue, il échoue
