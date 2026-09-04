@@ -1,8 +1,9 @@
 'use client';
 
 // « Mon forfait » (spec §9.3, étendu sur demande) : état de l'abonnement,
-// une jauge par limite applicable, et les trois actions qui en découlent —
-// annuler, passer à une formule supérieure, démarrer un essai.
+// une jauge par limite applicable, et les actions qui en découlent —
+// annuler (abonnement ou essai), s'abonner, passer à une formule
+// supérieure, démarrer un essai.
 //
 // Composant client (et non plus Server Component pur) : l'annulation en
 // libre-service a besoin d'un état local (en cours / fait) et d'une boîte de
@@ -69,9 +70,15 @@ export function UsageCard({
   );
 
   const estPayant = !!currentPlan && currentPlan.type !== 'DEFAULT';
+  const estEssai = currentPlan?.type === 'TRIAL';
   const planActuel = grid.plans.find((p) => p.code === currentPlan?.code);
   const hasHigherPlan = grid.plans.some((p) => p.active && (!planActuel || p.orderIndex > planActuel.orderIndex));
   const peutEssayer = !estPayant && !trialConsumed && grid.plans.some((p) => p.active && p.trialAllowed);
+  // Convertir l'essai en abonnement payant n'est pas « passer à une formule
+  // supérieure » (même niveau de droits, ex. Essai Pro → Pro) : un flag
+  // séparé, indépendant de hasHigherPlan (souvent faux ici, le plan technique
+  // d'essai étant placé après toutes les formules actives dans la grille).
+  const peutSouscrire = estEssai;
   const cancelRequestedAt = currentPlan?.cancelRequestedAt ?? null;
 
   async function annuler() {
@@ -80,7 +87,7 @@ export function UsageCard({
     const ok = await dialog.confirm(
       `Vous perdrez les avantages de la formule ${currentPlan.label} le ${echeance} — vous repasserez ensuite à la ` +
         `formule Gratuite. Vous conservez l'accès jusqu'à cette date. Continuer ?`,
-      { okLabel: 'Annuler mon abonnement', cancelLabel: 'Revenir' },
+      { okLabel: estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement', cancelLabel: 'Revenir' },
     );
     if (!ok) return;
     setBusy(true);
@@ -100,11 +107,50 @@ export function UsageCard({
   return (
     <section className="mt-6 border border-outline-variant bg-surface-container-lowest p-8 md:p-10">
       <LoadingOverlay visible={busy} label="Annulation…" />
-      <div className="mb-2 flex items-center gap-3">
-        <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
-        <h2 className="font-headline-md text-headline-md text-primary">
-          Mon forfait — {currentPlan?.label ?? 'Gratuit'}
-        </h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
+          <h2 className="font-headline-md text-headline-md text-primary">
+            Mon forfait — {currentPlan?.label ?? 'Gratuit'}
+          </h2>
+        </div>
+        {(peutEssayer || hasHigherPlan || peutSouscrire || (estPayant && !cancelRequestedAt && !justAnnule)) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {peutEssayer && (
+              <Link
+                href="/plans"
+                className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
+              >
+                Essayer une formule payante
+              </Link>
+            )}
+            {hasHigherPlan && (
+              <Link
+                href="/plans"
+                className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
+              >
+                Passer à une formule supérieure
+              </Link>
+            )}
+            {peutSouscrire && (
+              <Link
+                href="/plans"
+                className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
+              >
+                S&apos;abonner
+              </Link>
+            )}
+            {estPayant && !cancelRequestedAt && !justAnnule && (
+              <button
+                type="button"
+                onClick={annuler}
+                className="rounded-pill border border-error px-4 py-2 font-label-md text-label-md text-error transition-colors hover:bg-error hover:text-white"
+              >
+                {estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {estPayant && (
@@ -170,25 +216,10 @@ export function UsageCard({
       )}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        {peutEssayer && (
-          <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
-            Essayer une formule payante
-          </Link>
-        )}
-        {hasHigherPlan && (
-          <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
-            Passer à une formule supérieure
-          </Link>
-        )}
-        {approcheOuDepasse && !peutEssayer && !hasHigherPlan && (
+        {approcheOuDepasse && !peutEssayer && !hasHigherPlan && !peutSouscrire && (
           <Link href="/plans" className="font-label-md text-[13px] text-primary underline">
             Voir les formules
           </Link>
-        )}
-        {estPayant && !cancelRequestedAt && !justAnnule && (
-          <button type="button" onClick={annuler} className="font-label-md text-[13px] text-error underline">
-            Annuler mon abonnement
-          </button>
         )}
       </div>
     </section>

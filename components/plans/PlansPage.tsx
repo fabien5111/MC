@@ -29,6 +29,7 @@ export function PlansPage({
   planIds,
   connecte,
   currentPlanCode,
+  essaiActif,
   trialConsumed,
   trialDays,
   pending,
@@ -37,6 +38,11 @@ export function PlansPage({
   planIds: Record<string, number>;
   connecte: boolean;
   currentPlanCode: string | null;
+  // Abonnement courant de type TRIAL (§12 de docs/abonnements.md — la
+  // colonne visible n'est alors pas forcément « Pro » mais un plan
+  // technique d'essai, ex. « Essai Plan Pro ») : conditionne le remplacement
+  // de « Rétrograder » par « Annuler mon essai » / « S'abonner ».
+  essaiActif: boolean;
   trialConsumed: boolean;
   trialDays: number;
   pending: PendingRequest | null;
@@ -65,7 +71,13 @@ export function PlansPage({
   const bascule = hasYearlyOption(plans);
   const currentIndex = plans.findIndex((p) => p.code === currentPlanCode);
 
-  async function essayer(planCode: string) {
+  async function essayer(planCode: string, planLabel: string) {
+    const ok = await dialog.confirm(
+      `Essai gratuit de ${trialDays} jours sur ${planLabel}, sans moyen de paiement — un seul essai possible par ` +
+        `membre, toutes formules confondues. Continuer ?`,
+      { okLabel: 'Démarrer mon essai', cancelLabel: 'Annuler' },
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const r = await fetch('/api/plans/essayer', {
@@ -78,7 +90,7 @@ export function PlansPage({
         dialog.alert(data?.erreur || "L'essai n'a pas pu démarrer.");
         return;
       }
-      await dialog.alert(`Essai démarré : profitez de ${trialDays} jours de ${planCode} gratuitement.`);
+      await dialog.alert(`Essai démarré : profitez de ${trialDays} jours de ${planLabel} gratuitement.`);
       router.refresh();
     } finally {
       setBusy(false);
@@ -185,7 +197,8 @@ export function PlansPage({
       <LoadingOverlay visible={busy} />
       <h1 className="mb-2 text-center font-display text-3xl text-primary md:text-4xl">Nos formules</h1>
       <p className="mb-8 text-center text-sm text-on-surface-variant">
-        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent.
+        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un seul
+        essai par membre, toutes formules confondues.
       </p>
 
       {bascule && (
@@ -215,56 +228,71 @@ export function PlansPage({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
+            {/* Trois `<tr>` plutôt qu'un seul avec un bloc flex par colonne :
+                l'ancienne version empilait titre + accroche + prix + bouton
+                dans une seule cellule par formule, alignés par un
+                `flex-col justify-between` — ça alignait bien les titres en
+                haut et les boutons en bas, mais le PRIX, lui, suit
+                directement l'accroche dans le flux : une accroche plus
+                longue sur une colonne (ex. « Essai Plan Pro », qui passe sur
+                deux lignes) décale son prix vers le bas sans décaler celui
+                des colonnes voisines. Une ligne de tableau par nature de
+                contenu aligne chaque ligne indépendamment des autres — la
+                hauteur d'une ligne suit sa cellule la plus haute, jamais
+                celle de la ligne suivante — donc prix et boutons restent à
+                la même hauteur d'une colonne à l'autre quelle que soit la
+                longueur de l'accroche. */}
             <tr>
-              <th className="w-1/4 p-4 text-left align-top" />
+              <th className="w-1/4 p-4 pb-1 text-left align-top" />
+              {plans.map((p) => (
+                <th key={p.code} className="p-4 pb-1 text-center align-top">
+                  <p className="font-label-md text-[17px] text-primary">{p.label}</p>
+                  {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              <th className="w-1/4 px-4 pb-1 text-left align-top" />
               {plans.map((p) => {
                 const tarif = annuel ? p.priceYearly : p.priceMonthly;
                 const eco = bascule ? annualSaving(p.priceMonthly, p.priceYearly) : null;
                 return (
-                  <th key={p.code} className="p-4 text-center align-top">
-                    {/* `align-top` + colonne flex pleine hauteur plutôt que
-                        `align-bottom` sur toute la cellule : ce dernier
-                        ancrait le bloc entier (titre + accroche + prix +
-                        bouton) par son bas, donc une formule au contenu plus
-                        court (pas d'accroche sur deux lignes, pas de ligne
-                        d'économie) se retrouvait décalée vers le bas — le
-                        titre n'était plus à la même hauteur d'une colonne à
-                        l'autre. `justify-between` garde les titres alignés en
-                        haut tout en gardant les boutons alignés en bas, la
-                        hauteur de ligne étant de toute façon commune aux
-                        trois colonnes. */}
-                    <div className="flex h-full flex-col justify-between">
-                      <div>
-                        <p className="font-label-md text-[17px] text-primary">{p.label}</p>
-                        {p.tagline && <p className="mt-0.5 text-xs text-on-surface-variant">{p.tagline}</p>}
-                        <p className="mt-3 font-headline-md text-2xl">
-                          {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
-                          {tarif !== null && tarif > 0 && (
-                            <span className="text-sm font-normal text-on-surface-variant">
-                              {' '}
-                              / {annuel ? 'an' : 'mois'}
-                            </span>
-                          )}
-                        </p>
-                        {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
-                      </div>
-                      <div className="mt-4">
-                        <BoutonPlan
-                          plan={p}
-                          connecte={connecte}
-                          estCourant={p.code === currentPlanCode}
-                          inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
-                          trialConsumed={trialConsumed}
-                          // Sans tarif configuré pour cette formule, « S'abonner »
-                          // n'a rien à proposer — jamais affiché dans ce cas
-                          // (un essai reste possible, lui, sans moyen de paiement).
-                          aUnTarif={tarif !== null}
-                          onEssayer={() => essayer(p.code)}
-                          onAbonner={() => simulerAbonnement(p.code, p.label)}
-                          onRetrograder={() => retrograder(p.code)}
-                        />
-                      </div>
-                    </div>
+                  <th key={p.code} className="px-4 pb-1 text-center align-top">
+                    <p className="font-headline-md text-2xl">
+                      {tarif === null ? (p.isDefault ? 'Gratuit' : '—') : tarif === 0 ? 'Gratuit' : `${tarif.toFixed(2)} €`}
+                      {tarif !== null && tarif > 0 && (
+                        <span className="text-sm font-normal text-on-surface-variant">
+                          {' '}
+                          / {annuel ? 'an' : 'mois'}
+                        </span>
+                      )}
+                    </p>
+                    {annuel && eco !== null && <p className="text-xs text-tertiary">Soit {eco} % d’économie</p>}
+                  </th>
+                );
+              })}
+            </tr>
+            <tr>
+              <th className="w-1/4 px-4 pb-4 text-left align-top" />
+              {plans.map((p) => {
+                const tarif = annuel ? p.priceYearly : p.priceMonthly;
+                return (
+                  <th key={p.code} className="px-4 pb-4 text-center align-top">
+                    <BoutonPlan
+                      plan={p}
+                      connecte={connecte}
+                      estCourant={p.code === currentPlanCode}
+                      inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
+                      essaiActif={essaiActif}
+                      trialConsumed={trialConsumed}
+                      // Sans tarif configuré pour cette formule, « S'abonner »
+                      // n'a rien à proposer — jamais affiché dans ce cas
+                      // (un essai reste possible, lui, sans moyen de paiement).
+                      aUnTarif={tarif !== null}
+                      onEssayer={() => essayer(p.code, p.label)}
+                      onAbonner={() => simulerAbonnement(p.code, p.label)}
+                      onRetrograder={() => retrograder(p.code)}
+                    />
                   </th>
                 );
               })}
@@ -332,6 +360,7 @@ function BoutonPlan({
   connecte,
   estCourant,
   inferieur,
+  essaiActif,
   trialConsumed,
   aUnTarif,
   onEssayer,
@@ -342,6 +371,11 @@ function BoutonPlan({
   connecte: boolean;
   estCourant: boolean;
   inferieur: boolean;
+  // Abonnement courant de type TRIAL : « Rétrograder » (pensé pour une
+  // vraie rétrogradation d'abonnement payant, avec file d'attente admin)
+  // n'a pas de sens ici — la formule par défaut propose d'annuler l'essai,
+  // les autres de souscrire directement (§ conversation du 01/09).
+  essaiActif: boolean;
   trialConsumed: boolean;
   // Un tarif est configuré pour cette formule (périodicité affichée) —
   // sans lui, « S'abonner » n'a rien à proposer et ne s'affiche jamais.
@@ -353,11 +387,13 @@ function BoutonPlan({
 }) {
   const cls =
     'w-full rounded-pill px-4 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50';
+  const clsSecondaire = `${cls} border border-outline-variant text-primary hover:bg-surface-container`;
+  const clsPrincipal = `${cls} bg-primary text-on-primary hover:shadow-lg`;
 
   if (estCourant) {
     return (
       <button type="button" disabled className={`${cls} bg-surface-container text-on-surface-variant`}>
-        Votre plan
+        Votre plan actuel
       </button>
     );
   }
@@ -368,34 +404,61 @@ function BoutonPlan({
     // compte » de l'en-tête.
     if (!plan.trialAllowed && !aUnTarif) {
       return (
-        <Link href="/connexion?inscription=1" className={`${cls} block border border-outline-variant text-center text-primary hover:bg-surface-container`}>
+        <Link href="/connexion?inscription=1" className={`block text-center ${clsSecondaire}`}>
           Créer un compte
         </Link>
       );
     }
     return (
-      <Link href="/connexion?next=/plans" className={`${cls} block bg-primary text-center text-on-primary hover:shadow-lg`}>
+      <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
         {plan.trialAllowed ? 'Essayer' : "S'abonner"}
       </Link>
     );
   }
+  if (essaiActif) {
+    // La formule par défaut n'a pas de tarif : le seul geste possible est
+    // de renoncer à l'essai, jamais réimplémenté ici (doctrine §10 —
+    // « actions dupliquées vers /plans, pas réimplémentées », dans l'autre
+    // sens) — l'action réelle (confirmation, date de fin) vit dans « Mon
+    // forfait », seul endroit qui connaît déjà l'abonnement en détail.
+    if (plan.isDefault) {
+      return (
+        <Link href="/reglages" className={`block text-center ${clsSecondaire}`}>
+          Annuler mon essai
+        </Link>
+      );
+    }
+    if (!aUnTarif) return null;
+    return (
+      <button type="button" onClick={onAbonner} className={clsPrincipal}>
+        S&apos;abonner
+      </button>
+    );
+  }
   if (inferieur) {
     return (
-      <button type="button" onClick={onRetrograder} className={`${cls} border border-outline-variant text-primary hover:bg-surface-container`}>
+      <button type="button" onClick={onRetrograder} className={clsSecondaire}>
         Rétrograder
       </button>
     );
   }
   if (plan.trialAllowed && !trialConsumed) {
     return (
-      <button type="button" onClick={onEssayer} className={`${cls} bg-primary text-on-primary hover:shadow-lg`}>
-        Essayer gratuitement
-      </button>
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={onEssayer} className={clsPrincipal}>
+          Essayer gratuitement
+        </button>
+        {aUnTarif && (
+          <button type="button" onClick={onAbonner} className={clsSecondaire}>
+            S&apos;abonner
+          </button>
+        )}
+      </div>
     );
   }
   if (!aUnTarif) return null;
   return (
-    <button type="button" onClick={onAbonner} className={`${cls} bg-primary text-on-primary hover:shadow-lg`}>
+    <button type="button" onClick={onAbonner} className={clsPrincipal}>
       S&apos;abonner
     </button>
   );

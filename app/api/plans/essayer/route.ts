@@ -19,10 +19,23 @@ export async function POST(req: Request) {
   const planCode = typeof body?.plan === 'string' ? body.plan.trim().toUpperCase() : '';
   if (!planCode) return NextResponse.json({ erreur: 'Plan manquant.' }, { status: 400 });
 
+  // `hashTrialEmail` lève si `TRIAL_EMAIL_SALT` est absent côté serveur —
+  // sans ce filet, l'exception remontait telle quelle (500 muet, aucun
+  // `erreur` dans le corps de la réponse) et le client retombait sur le
+  // message générique sans savoir qu'il s'agissait d'une configuration
+  // manquante plutôt que d'un refus métier.
+  let emailHash: string;
+  try {
+    emailHash = hashTrialEmail(user.email);
+  } catch (e) {
+    console.error('plans/essayer hashTrialEmail:', e);
+    return NextResponse.json({ erreur: "Le service d'essai est temporairement indisponible, réessayez plus tard." }, { status: 500 });
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.rpc('mc_start_trial', {
     p_plan_code: planCode,
-    p_email_hash: hashTrialEmail(user.email),
+    p_email_hash: emailHash,
   });
 
   if (error) {
@@ -33,6 +46,9 @@ export async function POST(req: Request) {
       MC_TRIAL_READONLY: 'Session de consultation (lecture seule) : action impossible.',
     };
     const code = error.message.split(':')[0];
+    // Code non prévu par cette table : on le journalise pour pouvoir
+    // l'ajouter à la liste plutôt que de laisser un message muet sans trace.
+    if (!messages[code]) console.error('plans/essayer mc_start_trial:', error.message);
     return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer." }, { status: 422 });
   }
 

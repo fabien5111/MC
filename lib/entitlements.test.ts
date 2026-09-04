@@ -200,7 +200,7 @@ describe('rendu des valeurs', () => {
     expect(formatRight(non, f)).toBe('Non inclus');
     expect(formatRight(oui, f)).toBe('Inclus');
     expect(formatRight(illimite, f)).toBe('Illimité');
-    expect(formatRight(limite(3), f)).toBe('3 fournées');
+    expect(formatRight(limite(3), f)).toBe('3 fournée(s)');
   });
 
   it('traite le non paramétré comme illimité, comme le moteur', () => {
@@ -229,7 +229,7 @@ describe('blocage éducatif', () => {
   it('propose le plan le moins cher qui fait mieux, pas le plus cher', () => {
     const s = upgradeSuggestion(grille, 'fournees_actives_max', 'FREE');
     expect(s?.planCode).toBe('PLUS');
-    expect(s?.value).toBe('15 fournées');
+    expect(s?.value).toBe('15 fournée(s)');
   });
 
   it('ne propose rien quand aucun plan ne fait mieux', () => {
@@ -244,7 +244,7 @@ describe('blocage éducatif', () => {
       usage: 2,
     });
     expect(m?.corps).toContain('2 sur 2');
-    expect(m?.corps).toContain('15 fournées');
+    expect(m?.corps).toContain('15 fournée(s)');
     expect(m?.alternative).toContain('Terminez');
   });
 
@@ -316,7 +316,7 @@ describe('fonctionnalités perdues (notifications)', () => {
 describe('message de dépassement post-rétrogradation', () => {
   it('accorde le pluriel et inclut l’unité', () => {
     expect(overLimitMessage(3, 1, 'fournées')).toBe(
-      "Vous utilisez 3 sur 1 fournées autorisé. Vous conservez ce qui existe déjà, mais ne pourrez pas en créer de nouveau avant d'être repassé sous la limite.",
+      "Vous utilisez 3 sur 1 fournée(s) autorisé. Vous conservez ce qui existe déjà, mais ne pourrez pas en créer de nouveau avant d'être repassé sous la limite.",
     );
     expect(overLimitMessage(5, 3, 'listes')).toContain('autorisés.');
   });
