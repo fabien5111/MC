@@ -193,7 +193,20 @@ l'utilise : **il n'y a rien à porter de ce côté.**
 ### 2.4 Comptes et surface SQL
 
 - **7 identités** : 4 e-mail, 3 Google.
-- **252 fonctions** dans `public`, **320 policies RLS**, **31 triggers**.
+- **252 fonctions** dans `public`, **320 policies RLS**, **25 triggers**.
+
+Le compte de triggers est celui de la requête documentée en § 7.2 : **schéma
+`public`, triggers internes exclus** (`tgisinternal`, ceux que PostgreSQL crée
+lui-même pour appliquer les clés étrangères). Le relevé du 03/09 annonçait 31 —
+un comptage plus large, réconcilié le 04/09 sur la base elle-même. C'est 25 qui
+sert de valeur de référence, parce que c'est ce que le test de restauration
+comptera des deux côtés.
+
+**Aucun rôle applicatif propre au projet** (relevé du 04/09) : les 15 rôles de
+la base sont tous des rôles Supabase standard — `anon`, `authenticated`,
+`service_role`, `authenticator`, `pgbouncer`, `dashboard_user` et les
+`supabase_*`. C'est le pari du § 4.4 confirmé : l'image `supabase/postgres` les
+pose tous, il n'y a rien à recréer à la main avant la restauration.
 
 Le chiffre de 252 est trompeur : `btree_gist` installe à lui seul plus d'une
 centaine de fonctions dans `public`. Et surtout, **tout cela est transporté par
@@ -551,7 +564,7 @@ permissions une à une sur un service managé, on répète le lot C pour de vrai
 
 > Monter un environnement Virtuozzo Cloud avec le conteneur Docker
 > `supabase/postgres` (15+) et GoTrue, puis **restaurer le dump Supabase** et
-> vérifier que les 320 policies, les 252 fonctions et les 31 triggers passent.
+> vérifier que les 320 policies, les 252 fonctions et les 25 triggers passent.
 
 Ce test répond à toutes les questions d'un coup — extensions, rôles, schéma
 `auth`, objets spécifiques à Supabase — et produit directement le mode
@@ -606,8 +619,11 @@ doit l'être.
    Supabase. Le § 4.3 dit ce que Virtuozzo *propose* (15.19 → 18.6), jamais ce
    que Supabase *sert* : c'est cette lecture qui fixe le tag de l'image et le
    majeur que `pg_dump` doit savoir lire.
-2. **Réancrer les compteurs** du § 2.4 (320 / 252 / 31). S'ils ont bougé depuis
-   le 03/09, ce sont les nouveaux qui font foi.
+2. **Réancrer les compteurs** du § 2.4 (320 / 252 / 25). S'ils ont bougé, ce
+   sont les nouveaux qui font foi. *Fait le 04/09 : policies et fonctions
+   confirmées, triggers ramenés de 31 à 25 (§ 2.4).* Cet écart ne menace pas le
+   Go/No-Go — la comparaison de la phase 2 joue **la même requête des deux
+   côtés**, elle est immunisée contre une divergence de définition.
 3. **Poser le secret `SUPABASE_DB_URL`** : Supabase → `Project Settings` →
    `Database` → `Connection string` → onglet **Session pooler**, port **5432**.
    Ni le pooler transactionnel (6543, qui coupe les sessions longues et fait
@@ -767,6 +783,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | « Sur les plans gratuits, la migration ajoute un coût » | **Faux.** Les alertes de dépassement se déclenchent déjà : la trajectoire réelle est Vercel Pro + Supabase Pro, ~40 €/mois. Infomaniak à 16-28 € est **moins cher** (§ 4.6). |
 | Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
 | Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
+| La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 
 ---
 
@@ -866,7 +883,7 @@ le prix au simulateur (§ 4.5). Les lots A, B et C n'y rentrent pas et n'ont pas
 à y rentrer.
 
 **Le test se fait sur un `pg_dump --schema-only`.** Ce qu'on vérifie — 320
-policies, 252 fonctions, 31 triggers — est du DDL : aucune donnée n'est
+policies, 252 fonctions, 25 triggers — est du DDL : aucune donnée n'est
 nécessaire pour savoir si la restauration passe. C'est plus rapide, et ça évite
 de poser les e-mails et les noms des 7 comptes sur un environnement d'essai
 temporaire. La restauration des données se testera au lot C, sur l'environnement
