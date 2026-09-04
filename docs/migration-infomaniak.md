@@ -1,8 +1,9 @@
 # Migration Vercel + Supabase → Infomaniak
 
 Étude et vérifications préalables à la sortie de Vercel et de Supabase Cloud,
-au profit d'une infrastructure hébergée chez **Infomaniak** (Genève /
-Winterthour).
+au profit d'une infrastructure hébergée chez **Infomaniak**, en Suisse. La
+localisation dépend du produit : le Public Cloud est à Genève et Winterthour,
+**Virtuozzo Cloud (ex-Jelastic) à Genève uniquement** (§ 4.3).
 
 État au **03/09/2026**. Le lot 0 (vérifications bloquantes) est terminé, à
 l'exception de la répétition de restauration (§ 7.2). Les chiffres de la § 2
@@ -22,12 +23,24 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 |---|---|
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. 7-10 j |
-| Sortie de Supabase Cloud | **Décalé** — PostgreSQL managé pas encore disponible chez Infomaniak (§ 4) |
+| Sortie de Supabase Cloud | **Débloquée** — le Database Service ne propose que MySQL, mais Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
 
 **Le fait structurant** : la base pèse **57 Mo** et compte **7 comptes**. Tout
 ce dossier a été réévalué à la lumière de ces deux chiffres — plusieurs
 conclusions posées avant de les connaître étaient fausses (§ 8).
+
+**Cible retenue** :
+
+```
+Virtuozzo Cloud (Genève)
+├── Nœud Node.js 22    → Next.js standalone, déployé depuis GitHub
+├── Docker             → supabase/postgres 15+
+├── Docker             → PostgREST + GoTrue
+└── Load Balancer      → Let's Encrypt, jepatisse.com + dev.jepatisse.com
+
+Public Cloud Object Storage → photos (§ 3, validé)
+```
 
 ---
 
@@ -56,8 +69,10 @@ Sept accroches, toutes triviales :
 d'hébergement : ce plafond tronque des imports photo et fait rendre la main à
 la modération avant son terme.
 
-**Ce qu'on perd** : les *preview deployments* par branche. Coolify sait les
-recréer, à prévoir explicitement.
+**Ce qu'on perd** : les *preview deployments* par branche. Virtuozzo Cloud sait
+cloner un environnement et pilote tout par API/CLI, donc la reconstruction est
+plausible — mais elle n'a **pas été vérifiée**, et ce n'est pas une
+fonctionnalité native. À prévoir explicitement, pas à supposer acquis.
 
 ### 1.2 Supabase — couplage profond, et voulu
 
@@ -224,9 +239,11 @@ emporter tel quel une fois les photos des membres migrées.
 
 ---
 
-## 4. Le blocage PostgreSQL
+## 4. La base : le Database Service ne suffit pas, Virtuozzo Cloud oui
 
-**Au 03/09/2026, le Database Service d'Infomaniak ne propose que MySQL.**
+### 4.1 Le Database Service ne propose que MySQL
+
+**Au 03/09/2026, le Database Service du Public Cloud ne propose que MySQL.**
 PostgreSQL, MariaDB, OpenSearch et Redis sont annoncés « Bientôt disponible »,
 sans échéance publiée.
 
@@ -234,44 +251,90 @@ MySQL n'est pas une option : la sécurité repose sur la RLS PostgreSQL, plus 25
 fonctions, 320 policies, `pg_trgm`, `jsonb` et les colonnes générées. Ce serait
 une réécriture du produit, pas une migration.
 
-### 4.1 Les trois voies, et pourquoi une seule tient
+### 4.2 Les voies examinées
 
-**Attendre.** « Bientôt » n'est pas une date. À demander au support — c'est
-l'information la moins chère du dossier — mais on ne planifie pas contre ça.
+**Attendre le managé.** « Bientôt » n'est pas une date. La question est posée au
+support, mais on ne planifie pas contre ça.
 
-**Séparer la base du reste** (application et photos à Genève, PostgreSQL managé
-à Paris ou maintenu sur Supabase à Francfort). **Écartée**, et pour une raison
+**Séparer la base du reste** — application et photos à Genève, PostgreSQL managé
+à Paris ou maintenu sur Supabase à Francfort. **Écartée**, et pour une raison
 inscrite dans `DEPLOY.md` : les fonctions ont été déplacées de Washington à
 Francfort précisément pour coller à la base, parce qu'*« une page en enchaîne
 plusieurs, dont certaines en série »*. Genève ↔ Paris ou Genève ↔ Francfort,
 c'est ~10 ms d'aller-retour contre moins de 2 ms aujourd'hui. Cette voie
 régresse exactement sur l'axe qui avait été optimisé.
 
-**PostgreSQL auto-hébergé sur une instance Infomaniak.** La seule qui garde
-application, base et stockage dans le même datacenter, chez le même hébergeur.
+**PostgreSQL sur une instance Public Cloud nue.** Tenable — 57 Mo et 7 comptes
+ne demandent pas une infrastructure — mais tout se pilote en SSH : `docker
+compose`, unités systemd, scripts de sauvegarde. **Reste le repli.**
 
-### 4.2 Pourquoi l'auto-hébergement est raisonnable ici
+**Virtuozzo Cloud (ex-Jelastic Cloud).** Le PaaS d'Infomaniak. **Voie retenue.**
 
-Cette voie avait d'abord été qualifiée de « repli à +2-3 jours avec
-l'exploitation à votre charge ». Les chiffres de la § 2 changent le jugement :
+### 4.3 Virtuozzo Cloud — ce qui a été vérifié
 
-- **57 Mo, 7 comptes.** Une sauvegarde `pg_dump` nocturne vers le bucket Object
-  Storage — validé au § 3, CORS compris — prend quelques secondes et pèse
-  quelques mégaoctets. Ce n'est pas une infrastructure de sauvegarde, c'est une
-  ligne de cron.
-- **Superutilisateur.** Tous les points de rupture redoutés d'un service managé
-  — `BYPASSRLS`, `CREATE ROLE`, schéma `auth`, `unaccent`, `btree_gist` dans
-  `public` — disparaissent. Ils n'existaient que parce qu'un managé bride ces
-  droits.
-- **Ce n'est pas une impasse.** Le jour où Infomaniak sort son PostgreSQL
-  managé, passer de l'instance à leur service est un `pg_dump`/restore **dans
-  le même datacenter**.
-- **On est avant l'ouverture.** Seul moment où apprendre à exploiter un
-  PostgreSQL coûte zéro.
+| Point | Verdict |
+|---|---|
+| PostgreSQL | ✅ 14.24, **15.19, 16.15, 17.11, 18.6** (AlmaLinux 9) |
+| Node.js | ✅ **22.23.2**, 24.20.0, 26.8.1 — 18.x et 20.x marqués EOL |
+| SSH / superutilisateur | ✅ SSH natif (gate, Web SSH, add-on *Direct Access*). Root non ouvert par défaut, add-on JPS documenté pour l'obtenir |
+| Conteneurs Docker personnalisés | ✅ n'importe quelle image |
+| Déploiement depuis GitHub | ✅ Git avec mises à jour automatiques, add-on *Git-Push-Deploy*, API REST/CLI |
+| SSL + domaine personnalisé | ✅ Let's Encrypt gratuit sur le nœud Load Balancer |
+| Datacenter | ⚠️ **Genève 1 et Genève 2 uniquement** — pas Winterthour |
+| Sauvegardes / PITR | ⚠️ **à notre charge** — add-on Backup/Restore (dumps planifiés) ou Swiss Backup, facturé à part. **Aucun PITR fourni** |
+| Prix | ⚠️ **non confirmé** — voir § 4.5 |
+| Pérennité | ✅ renommage « Virtuozzo Cloud (anciennement Jelastic Cloud) », simple alignement de marque. En production chez Infomaniak depuis 2018, v8.14.3 |
 
-Ce qui reste réellement à charge : sauvegardes (et leur **restauration
-testée** — une sauvegarde jamais restaurée n'est pas une sauvegarde), absence
-de haute disponibilité sur instance unique, correctifs de sécurité.
+**Deux fournisseurs, une couche critique** : Infomaniak fournit l'infrastructure
+et le support, **Virtuozzo le logiciel et sa maintenance**. C'est le vrai coût
+de cette voie, et il porte sur la brique qui héberge la base.
+
+### 4.4 `supabase/postgres` plutôt que le stack PostgreSQL certifié
+
+Puisque les conteneurs Docker arbitraires sont autorisés, **on déploie l'image
+`supabase/postgres`** plutôt que le stack certifié d'Infomaniak. Ça évite
+d'ouvrir root pour compiler des extensions — mais l'argument principal est
+ailleurs : **cette image pose l'environnement que le dump attend.**
+
+| Ce que l'image apporte | Pourquoi ça compte |
+|---|---|
+| Rôles `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_admin` | Les **320 policies** les référencent ; sans eux, elles échouent en bloc |
+| Schémas `auth`, `extensions`, `graphql_public` | GoTrue n'a plus à créer `auth` ; l'ordre de restauration cesse d'être un piège |
+| Extensions déjà dans le schéma `extensions` | Exactement la disposition mesurée en § 2.3 |
+| `supabase_vault` | Inutile ici (§ 2.3), mais le dump y fait référence |
+
+On ne bricole donc pas un PostgreSQL qui ressemblerait à Supabase : **on déploie
+la pile self-host officielle, allégée** de Studio, Storage et Realtime — dont
+l'application n'a de toute façon aucun usage (§ 1.2). Chemin documenté, pas
+assemblage maison. L'accès root redevient un secours, pas un prérequis.
+
+Reste une exception à poser à la main : `btree_gist` vit dans `public` sur la
+base source (§ 2.3), l'image ne l'y mettra pas d'elle-même.
+
+### 4.5 Ce qui reste à charge
+
+**Le PITR n'est pas fourni, et ce n'est pas « un chantier à part ».** Avec
+`supabase/postgres` d'un côté et un bucket S3 déjà validé de l'autre,
+l'archivage WAL (`wal-g`) représente une demi-journée. Il appartient à la
+**définition de terminé du lot C**, pas à un projet qu'on repousse : le moment
+où il deviendra nécessaire — des abonnés payants — est celui où il sera trop
+tard pour l'ajouter tranquillement. D'ici là, un `pg_dump` nocturne vers le
+bucket suffit ; perdre 24 h de données avant l'ouverture ne coûte rien.
+
+**Une seule région.** Genève uniquement : pas de reprise sur un autre site. À
+accepter explicitement.
+
+**Le prix reste le seul chiffre manquant.** Base annoncée : 1 conteneur de
+128 Mo / 400 MHz, 20 Go SSD et 1 IPv4 pour **CHF 6.31/mois**. Sont offerts les
+20 premiers Go de disque, le SSL, et **2,8 Go/h de trafic externe** (~2 To/mois,
+généreux pour un site chargé en images). Les cloudlets réservés sont dégressifs
+(56 % de remise entre 13 et 16). La pile réelle — Next.js ~0,5-1 Go, PostgreSQL
+~0,5-1 Go, PostgREST et GoTrue ~256 Mo chacun — demande **1,5 à 2,5 Go
+réservés**, soit un ordre de grandeur de **25-40 CHF/mois**. Le tarif unitaire
+est chargé en JavaScript et n'a pu être lu ni par l'auteur de ce document ni par
+la vérification manuelle : **à confirmer au simulateur.**
+
+À comparer à Vercel Pro + Supabase Pro, ~45 $/mois aujourd'hui.
 
 ---
 
@@ -342,17 +405,27 @@ oublier.
 
 ### 6.2 Non vérifié à ce jour
 
-- **Échéance du PostgreSQL managé Infomaniak** — question posée au support.
-- **Prix Infomaniak** — le calculateur n'a pas été consulté. Ordre de grandeur
-  retenu : 45-85 €/mois pour instance + base + stockage objet, **à confirmer**.
+- **Prix Virtuozzo Cloud** — le tarif unitaire du cloudlet est chargé en
+  JavaScript et n'a pas pu être lu. Ordre de grandeur retenu : **25-40
+  CHF/mois** pour la pile complète (§ 4.5), **à confirmer au simulateur**.
+  C'est le seul chiffre qui manque encore au dossier.
 - **La restauration du dump Supabase n'a jamais été tentée** — c'est le
   Go/No-Go réel (§ 7.2).
+- **Échéance du PostgreSQL managé du Public Cloud** — question posée au
+  support. Sans effet sur le plan depuis que Virtuozzo Cloud fournit
+  PostgreSQL (§ 4), mais un managé natif resterait préférable à terme.
 - **RGPD / nLPD** : la Suisse est hors UE mais couverte par une décision
   d'adéquation. Transfert licite, à documenter au registre, dans la politique
   de confidentialité et les mentions légales **avant l'ouverture**.
 - **Pas de CDN à points de présence mondiaux** chez Infomaniak. Non-sujet pour
   un public francophone (Genève ≈ 10-25 ms), sujet réel pour une audience
   mondiale.
+- **La région du bucket n'est PAS un point ouvert**, contrairement à ce qu'on
+  pourrait croire : les photos sont servies **au navigateur**, pas au serveur
+  applicatif. La latence bucket ↔ application ne joue que sur les téléversements
+  et la sauvegarde nocturne. Seul reliquat possible, négligeable : une
+  éventuelle facturation du trafic inter-datacenter pour un dump de quelques
+  dizaines de mégaoctets.
 - **Le projet Vercel `dev_jp`** construit le même dépôt sur la même base. À
   trancher **avant** toute bascule, sinon deux applications écriront dans deux
   bases différentes.
@@ -363,26 +436,32 @@ oublier.
 
 ### 7.1 Immédiat
 
-E-mail au support Infomaniak : échéance du PostgreSQL managé, accès bêta ?
-La réponse peut réordonner tout ce qui suit.
+Passer la pile au **simulateur de prix Virtuozzo Cloud** — le seul chiffre qui
+manque encore (§ 4.5). Accessoirement, demander au support l'échéance du
+PostgreSQL managé du Public Cloud : sans effet sur le plan, mais un managé natif
+resterait préférable à terme.
 
 ### 7.2 Lot 0-bis — répétition de restauration (1 j)
 
 Le Go/No-Go a changé de nature, et y a gagné. Plutôt que de vérifier des
 permissions une à une sur un service managé, on répète le lot C pour de vrai :
 
-> Monter une instance Infomaniak, y installer PostgreSQL 15+ et GoTrue, puis
-> **restaurer le dump Supabase** et vérifier que les 320 policies, les 252
-> fonctions et les 31 triggers passent.
+> Monter un environnement Virtuozzo Cloud avec le conteneur Docker
+> `supabase/postgres` (15+) et GoTrue, puis **restaurer le dump Supabase** et
+> vérifier que les 320 policies, les 252 fonctions et les 31 triggers passent.
 
 Ce test répond à toutes les questions d'un coup — extensions, rôles, schéma
 `auth`, objets spécifiques à Supabase — et produit directement le mode
 opératoire du lot C.
 
-Ordre impératif : **rôles et extensions d'abord, schéma ensuite.**
+**L'image rend largement superflue la préparation manuelle** décrite ci-dessous
+(§ 4.4) : rôles, schémas et extensions y sont déjà posés. Ce bloc reste comme
+filet, à jouer seulement si la restauration échoue sur un objet manquant — et
+`btree_gist` fait exception, il vit dans `public` sur la base source et l'image
+ne l'y mettra pas d'elle-même.
 
 ```sql
--- Rôles supposés par les 320 policies
+-- Rôles supposés par les 320 policies (déjà présents dans supabase/postgres)
 create role anon          nologin noinherit;
 create role authenticated nologin noinherit;
 create role service_role  nologin noinherit bypassrls;
@@ -393,18 +472,24 @@ create extension if not exists pg_trgm     with schema extensions;
 create extension if not exists pgcrypto    with schema extensions;
 create extension if not exists unaccent    with schema extensions;
 create extension if not exists "uuid-ossp" with schema extensions;
-create extension if not exists btree_gist  with schema public;
+create extension if not exists btree_gist  with schema public;  -- à poser à la main
 ```
 
 ### 7.3 Lots
 
 | Lot | Contenu | Estimation | Dépendances |
 |---|---|---|---|
-| **A** | Vercel → instance Infomaniak | 1-2 j | Aucune |
+| **A** | Vercel → nœud Node.js 22 sur Virtuozzo Cloud | 1-2 j | Aucune |
 | **B** | Photos → Object Storage | 7-10 j | Aucune |
-| **C** | Base → PostgreSQL sur instance | 5-8 j | Lot 0-bis |
+| **C** | Base → `supabase/postgres` + PostgREST + GoTrue sur Virtuozzo, archivage WAL compris (§ 4.5) | 5-8 j | Lot 0-bis |
 
 **Les lots B et C sont indépendants** (§ 8) : l'ordre est libre.
+
+**A et C atterrissent sur la même plateforme**, donc application et base
+colocalisées — ce qui était précisément la raison d'écarter la voie « base
+ailleurs » (§ 4.2). Les enchaîner coûte moins cher que de les espacer : même
+console, même déploiement depuis GitHub, même environnement à apprendre une
+seule fois.
 
 Tout est à faire **avant l'ouverture**. À 7 comptes, migrer l'authentification
 est indolore ; après ouverture, c'est une déconnexion de masse, un transfert de
@@ -425,7 +510,10 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le point de rupture d'un managé serait `pg_trgm` | **Incomplet.** `unaccent` est tout aussi critique (`mc_norm()`), et `btree_gist` vit dans `public`. |
 | Le blog est un gisement d'images caché | **Infirmé par la mesure** : 0 image inline dans `articles.content`. |
 | Les quotas « niveau 1 » d'Infomaniak devront être débloqués | **Faux** : 20 vCPU, 64 Go RAM, 1 To — largement suffisants. |
-| Scénario « tout chez Infomaniak, base managée » | **Indisponible** : PostgreSQL managé pas encore sorti (§ 4). |
+| Scénario « tout chez Infomaniak, base managée » | **Indisponible en Public Cloud** : le Database Service ne propose que MySQL. Mais **Virtuozzo Cloud fournit PostgreSQL 15 à 18** — le blocage était propre à un produit, pas à l'hébergeur (§ 4). |
+| « Faute de managé, il faut monter PostgreSQL sur une instance nue » | **Dépassé.** Virtuozzo Cloud donne PostgreSQL sans SSH ni `docker compose` à la main — décisif pour qui travaille exclusivement en ligne. L'instance nue devient le repli. |
+| La proximité du bucket avec l'application est à vérifier | **Non-sujet** : les photos sont servies au navigateur, pas au serveur. Cf. § 6.2. |
+| Le PITR absent est « un chantier à part entière » | **Surévalué.** Avec `supabase/postgres` et un bucket S3 déjà validé, `wal-g` représente une demi-journée : ça appartient à la définition de terminé du lot C (§ 4.5). |
 
 ---
 
@@ -437,3 +525,4 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 - `DEPLOY.md` — configuration Vercel actuelle, dont la région de Francfort et
   sa justification (§ 4.1).
 - PR #201 — correctif `crossOrigin` et workflow CORS Object Storage.
+- PR #205 — ce document.
