@@ -72,7 +72,16 @@ jobs:
           # Le § 4.3 liste ce que Virtuozzo propose (15.19 → 18.6), jamais ce
           # que Supabase sert. Cette ligne fixe deux choses : le tag de l'image
           # supabase/postgres à déployer, et le majeur que pg_dump doit lire.
-          psql "$SUPABASE_DB_URL" -Atc 'select version()'
+          version=$(psql "$SUPABASE_DB_URL" -Atc 'select version()')
+          echo "$version"
+          # Le pull de l'image supabase/postgres noie ce relevé sous une
+          # centaine de lignes de couches Docker, au point que la troncature
+          # du journal l'emporte. Le résumé du job, lui, tient dans un écran.
+          {
+            echo "## Relevés de la phase 0 (§ 7.2)"
+            echo
+            echo "**Serveur source** : $version"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Inventorier les rôles applicatifs
         run: |
@@ -80,8 +89,13 @@ jobs:
           # Le § 4.4 parie que l'application n'utilise que anon, authenticated
           # et service_role — tous fournis par l'image. Un rôle applicatif
           # inattendu ici changerait le mode opératoire du lot C.
-          psql "$SUPABASE_DB_URL" -Atc \
-            "select rolname from pg_roles where rolname not like 'pg\_%' order by 1"
+          roles=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select rolname from pg_roles where rolname not like 'pg\_%' order by 1")
+          echo "$roles"
+          {
+            echo
+            echo "**Rôles** ($(echo "$roles" | wc -l)) : $(echo "$roles" | tr '\n' ' ')"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Compter les objets de référence
         run: |
@@ -89,7 +103,7 @@ jobs:
           # Attendu au 03/09/2026 : 320 policies, 252 fonctions, 31 triggers
           # (§ 2.4). S'ils ont bougé depuis, ce sont ces valeurs-ci qui font foi
           # — et le § 2.4 est à corriger.
-          psql "$SUPABASE_DB_URL" -Atc "
+          compteurs=$(psql "$SUPABASE_DB_URL" -Atc "
             select 'policies='   || (select count(*) from pg_policies where schemaname = 'public')
                 || ' fonctions=' || (select count(*) from pg_proc p
                                        join pg_namespace n on n.oid = p.pronamespace
@@ -97,7 +111,10 @@ jobs:
                 || ' triggers='  || (select count(*) from pg_trigger t
                                        join pg_class c on c.oid = t.tgrelid
                                        join pg_namespace n on n.oid = c.relnamespace
-                                      where n.nspname = 'public' and not t.tgisinternal)"
+                                      where n.nspname = 'public' and not t.tgisinternal)")
+          echo "$compteurs"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Compteurs** : $compteurs" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Produire le dump
         run: |
@@ -116,8 +133,11 @@ jobs:
           # On mesure, on n'affiche pas. Un dump vide ou ridiculement petit est
           # le seul symptôme qu'on cherche à voir ici — le reste se vérifie à la
           # restauration (migration-restauration-repetition.yml).
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           for f in roles.sql schema.sql; do
             printf '%s : %s octets, %s lignes\n' "$f" "$(wc -c < "$f")" "$(wc -l < "$f")"
+            printf '**%s** : %s octets, %s lignes\n\n' \
+              "$f" "$(wc -c < "$f")" "$(wc -l < "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
           if [ "$(wc -c < schema.sql)" -lt 100000 ]; then
             echo "ÉCHEC — schema.sql est anormalement petit pour 320 policies et 252 fonctions."

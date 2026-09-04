@@ -39,7 +39,7 @@ la trajectoire actuelle, elle coûte moins (§ 4.6).
 ```
 Virtuozzo Cloud (Genève)
 ├── Nœud Node.js 22    → Next.js standalone, déployé depuis GitHub
-├── Docker             → supabase/postgres 15+
+├── Docker             → supabase/postgres 17.6 (version de la source)
 ├── Docker             → PostgREST + GoTrue
 └── Load Balancer      → Let's Encrypt, jepatisse.com + dev.jepatisse.com
 
@@ -213,6 +213,28 @@ centaine de fonctions dans `public`. Et surtout, **tout cela est transporté par
 `pg_dump`** — rien à réécrire à la main. Le risque n'est pas la quantité mais
 l'ordre des dépendances : rôles et extensions doivent exister **avant** la
 restauration, sinon 320 policies échouent ensemble.
+
+### 2.5 Version du serveur source — PostgreSQL 17.6
+
+Relevée le 04/09 par le premier dump réussi : la CLI Supabase tire l'image dont
+la version correspond à celle de la base distante, pour que `pg_dump` soit du
+bon millésime. Elle a tiré **`supabase/postgres:17.6.1.165`**.
+
+**C'est le tag à déployer sur Virtuozzo**, et il corrige une approximation du
+dossier, qui parlait de « `supabase/postgres` 15+ ». Restaurer dans un 15 un
+dump produit par PostgreSQL 17 serait une **rétrogradation** : `pg_dump` ne
+promet nulle part d'être relisible par une version antérieure, et toute syntaxe
+apparue depuis échouerait à la restauration. On déploie 17.6, pas « 15 ou plus ».
+
+**La liste du § 4.3 ne contraint pas ce choix** : elle décrit le stack
+PostgreSQL *certifié* d'Infomaniak, que le § 4.4 écarte précisément au profit
+de l'image Docker. La version déployée est celle de l'image, pas celle du
+catalogue.
+
+**Poids du dump** : `schema.sql` 399 196 octets (10 811 lignes), `roles.sql`
+297 octets (13 lignes). Le second est si petit parce que la CLI retire les
+rôles réservés de Supabase — cohérent avec le § 2.4, qui ne trouve aucun rôle
+applicatif propre au projet.
 
 ---
 
@@ -563,7 +585,8 @@ Le Go/No-Go a changé de nature, et y a gagné. Plutôt que de vérifier des
 permissions une à une sur un service managé, on répète le lot C pour de vrai :
 
 > Monter un environnement Virtuozzo Cloud avec le conteneur Docker
-> `supabase/postgres` (15+) et GoTrue, puis **restaurer le dump Supabase** et
+> `supabase/postgres` (17.6, cf. § 2.5) et GoTrue, puis **restaurer le dump
+> Supabase** et
 > vérifier que les 320 policies, les 252 fonctions et les 25 triggers passent.
 
 Ce test répond à toutes les questions d'un coup — extensions, rôles, schéma
@@ -618,7 +641,7 @@ doit l'être.
 1. **Relever la version du serveur source et ses rôles**, dans l'éditeur SQL
    Supabase. Le § 4.3 dit ce que Virtuozzo *propose* (15.19 → 18.6), jamais ce
    que Supabase *sert* : c'est cette lecture qui fixe le tag de l'image et le
-   majeur que `pg_dump` doit savoir lire.
+   majeur que `pg_dump` doit savoir lire. *Fait le 04/09 — § 2.5.*
 2. **Réancrer les compteurs** du § 2.4 (320 / 252 / 25). S'ils ont bougé, ce
    sont les nouveaux qui font foi. *Fait le 04/09 : policies et fonctions
    confirmées, triggers ramenés de 31 à 25 (§ 2.4).* Cet écart ne menace pas le
@@ -644,7 +667,7 @@ doit l'être.
    borné à 10 Go de SSD, 20 Mb/s et 5 environnements — sans conséquence ici
    (le dump pèse quelques mégaoctets), mais la date de fin, elle, se rate.
 2. **`New environment`** → onglet **`Docker`** → **`Select an image`** →
-   `supabase/postgres`, tag du majeur relevé en phase 0. Région **Genève**
+   `supabase/postgres`, tag **`17.6.1.165`** (§ 2.5). Région **Genève**
    (seule option, § 4.3), nom `mc-restore-test`, **1 cloudlet réservé** et
    **8 dynamiques** (≈ 1 Go) — restaurer 320 policies demande de la marge, et
    le dynamique n'est pas facturé au repos (§ 4.5).
@@ -786,6 +809,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | « Sur les plans gratuits, la migration ajoute un coût » | **Faux.** Les alertes de dépassement se déclenchent déjà : la trajectoire réelle est Vercel Pro + Supabase Pro, ~40 €/mois. Infomaniak à 16-28 € est **moins cher** (§ 4.6). |
 | Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
 | Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
+| La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 
 ---
