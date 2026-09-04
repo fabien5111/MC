@@ -4,7 +4,7 @@
 // c'est justement ce qui justifie de la tester ici aussi, sinon les deux
 // versions divergeraient sans que rien ne le signale.
 import { describe, expect, it } from 'vitest';
-import { adfVersTexte, texteVersAdf } from './jira.mjs';
+import { adfVersTexte, resoudreTransition, texteVersAdf } from './jira.mjs';
 
 describe('adfVersTexte', () => {
   it('aplatit paragraphes, sauts de ligne et listes', () => {
@@ -55,5 +55,42 @@ describe('texteVersAdf', () => {
   it('ne produit jamais un content vide, que Jira refuserait', () => {
     expect(texteVersAdf('').content).toHaveLength(1);
     expect(texteVersAdf('\n\n').content[0].content[0].text).toBe('—');
+  });
+});
+
+describe('resoudreTransition', () => {
+  const DEPLOYE_ID = '10002';
+  const DEPLOYE_NOM = 'Déployé';
+  const transitions = [
+    { id: '11', name: 'Rouvrir', to: { id: '10000', name: 'À faire' } },
+    { id: '21', name: 'Commencer', to: { id: '10001', name: 'En cours' } },
+    { id: '31', name: 'Déployer', to: { id: DEPLOYE_ID, name: DEPLOYE_NOM } },
+  ];
+
+  it('retient la transition qui mène au statut visé', () => {
+    const decision = resoudreTransition(transitions, null, 'En cours', DEPLOYE_ID, DEPLOYE_NOM);
+    expect(decision.action).toBe('transitionner');
+    expect(decision.transition.id).toBe('21');
+  });
+
+  it('rend « introuvable » plutôt qu’une transition au hasard', () => {
+    expect(resoudreTransition([transitions[0]], null, 'En cours', DEPLOYE_ID, DEPLOYE_NOM).action).toBe('introuvable');
+    expect(resoudreTransition(undefined, null, 'En cours', DEPLOYE_ID, DEPLOYE_NOM).action).toBe('introuvable');
+  });
+
+  // Le garde-fou : même si la cible demandée correspond, par erreur de
+  // configuration, au statut « Déployé », la transition n'est jamais rendue
+  // utilisable — c'est ce qui empêche ces verbes de déclencher l'e-mail
+  // irréversible au demandeur (docs/contact-jira.md §2).
+  it('refuse toute transition qui mènerait au statut Déployé, même si elle correspond à la cible demandée', () => {
+    const decision = resoudreTransition(transitions, DEPLOYE_ID, DEPLOYE_NOM, DEPLOYE_ID, DEPLOYE_NOM);
+    expect(decision.action).toBe('refuse_deploiement');
+    expect(decision.transition.id).toBe('31');
+  });
+
+  it('reconnaît le statut par id en priorité, ce qui survit à un renommage', () => {
+    const decision = resoudreTransition(transitions, '10001', 'Peu importe', DEPLOYE_ID, DEPLOYE_NOM);
+    expect(decision.action).toBe('transitionner');
+    expect(decision.transition.id).toBe('21');
   });
 });

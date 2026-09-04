@@ -14,7 +14,7 @@ configuration hors dépôt, listée à la fin de sa section.
 
 | Lot | Objet | État |
 |---|---|---|
-| 1 | Lire Jira depuis Claude Code (`scripts/jira.mjs` + skill `jira`) | ✅ en place |
+| 1 | Lire Jira depuis Claude Code, et deux transitions bornées pilotées par l'agent (`scripts/jira.mjs` + skill `jira`) | ✅ en place |
 | 2 | Lien dev ↔ ticket (app GitHub for Jira, clé dans les PR et commits) | ✅ en place côté dépôt, reste la configuration Jira/GitHub |
 | 3 | Déploiement production → statut « Déployé » | ✅ en place côté dépôt, **désarmé** tant que `JIRA_DEPLOY_ACTIF` n'est pas à `true` |
 | 4 | Évaluation du serveur MCP officiel d'Atlassian | ⏳ préparé et documenté ; l'essai demande une session locale (§4) |
@@ -88,6 +88,57 @@ Le script ne lit `.env.local` que si les trois variables manquent dans
 l'environnement. L'inverse ferait écraser sans bruit les variables d'une
 session ou d'un job CI par un fichier local oublié — c'est-à-dire viser la
 mauvaise instance Jira sans le voir.
+
+### 1.6 `demarrer` / `envoyer-en-test` — deux transitions pilotées par l'agent
+
+La session Claude qui développe un ticket a besoin de faire avancer son
+statut à deux moments : au tout début (« Spéc rédigée » → « En cours ») et
+juste après avoir poussé sa branche (« En cours » → « En cours de test »).
+Ni l'un ni l'autre ne relève du lot 3 : ce ne sont pas des transitions
+déclenchées par un déploiement, mais par le rythme de travail de l'agent
+lui-même — d'où deux nouveaux verbes plutôt qu'un détournement du script de
+déploiement.
+
+```bash
+node scripts/jira.mjs demarrer MC-123
+node scripts/jira.mjs envoyer-en-test MC-123
+```
+
+**Chacun ne connaît qu'un seul statut cible**, configurable comme les
+statuts du lot 3 (id d'abord, nom en repli) :
+
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `JIRA_STATUS_IN_PROGRESS` / `_ID` | Statut visé par `demarrer` | `En cours` |
+| `JIRA_STATUS_IN_TEST` / `_ID` | Statut visé par `envoyer-en-test` | `En cours de test` |
+
+**Le garde-fou du §1.2 ne recule pas d'un pas avec ces deux verbes.** Avant
+tout envoi à Jira, `resoudreTransition` (`scripts/jira.mjs`, testée) vérifie
+que la transition résolue ne mène **pas** au statut configuré comme
+« Déployé » (`JIRA_STATUS_DEPLOYED` / `_ID`, mêmes variables que le lot 3) —
+et refuse sinon, quelle que soit la raison qui aurait pu produire cette
+correspondance (erreur de configuration, workflow Jira atypique où les deux
+statuts se confondraient). Faire passer un ticket à « Déployé » reste
+exclusivement le rôle du lot 3 : c'est cette transition-là, et elle seule,
+qui déclenche l'e-mail irréversible au demandeur (`docs/contact-jira.md`
+§2). La logique de résolution de transition (`memeStatut` /
+`trouverTransitionVers`) est partagée avec `jira-deploiement.mjs`
+(`scripts/jira-api.mjs`), pour ne pas la maintenir en double au moment
+précis où il ne faut pas se tromper.
+
+**Config restante hors dépôt** : ajouter `JIRA_STATUS_IN_PROGRESS` et
+`JIRA_STATUS_IN_TEST` (et, si on veut la robustesse au renommage, leurs
+variantes `_ID`) aux variables d'environnement de l'environnement Claude
+Code — mêmes emplacements que les autres variables `JIRA_*` du lot 1.
+Aucune config Jira supplémentaire : ces deux statuts existent déjà dans le
+workflow observé (`À faire` → `Spéc rédigée` → `En cours` → `En cours de
+test` → `À déployer` → `Déployé`).
+
+**Non vérifié en session distante** : les transitions Jira interdisant tout
+raccourci (il faut une transition sortante réelle du statut courant vers la
+cible), un test en conditions réelles suppose un ticket effectivement au bon
+statut de départ — à faire depuis une session qui a un accès Jira
+fonctionnel (cf. §1.5 et le garde réseau des sessions distantes).
 
 ---
 

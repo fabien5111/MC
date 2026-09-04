@@ -17,18 +17,8 @@
 //     sort en erreur : mieux vaut une exécution franchement rouge qu'une
 //     réussite apparente ayant oublié la moitié des tickets.
 import { fileURLToPath } from 'node:url';
-import { appelJira, lireConfig, lireConfigStatuts } from './jira-api.mjs';
+import { appelJira, lireConfig, lireConfigStatuts, memeStatut, trouverTransitionVers } from './jira-api.mjs';
 import { extraireCles } from './jira-cles.mjs';
-
-/**
- * Un statut Jira correspond-il au statut attendu ? L'id d'abord, le nom en
- * repli — même règle que `mapperStatutJira` (`lib/contact.ts`) : l'id survit
- * à un renommage dans Jira, le nom non.
- */
-function memeStatut(statut, id, nom) {
-  if (id && statut?.id) return String(statut.id) === String(id);
-  return typeof statut?.name === 'string' && statut.name.trim().toLowerCase() === nom.trim().toLowerCase();
-}
 
 /**
  * Que faire d'un ticket au vu de son statut courant. Fonction pure, testée —
@@ -46,13 +36,14 @@ export function decisionDeploiement(statutActuel, statuts) {
 }
 
 /**
- * La transition à emprunter pour atteindre le statut « déployé ». Jira n'a
- * pas d'API « mettre ce statut » : il faut nommer une transition sortante du
- * statut courant, et le workflow du projet décide de leur existence.
+ * La transition à emprunter pour atteindre le statut « déployé ». Repose sur
+ * `trouverTransitionVers` (`jira-api.mjs`), partagée avec les verbes
+ * `demarrer` / `envoyer-en-test` de `jira.mjs` — signature conservée telle
+ * quelle (statuts complets plutôt que id/nom) pour ne pas toucher aux tests
+ * existants de ce module.
  */
 export function choisirTransition(transitions, statuts) {
-  const candidates = Array.isArray(transitions) ? transitions : [];
-  return candidates.find((t) => memeStatut(t?.to, statuts.deployeId, statuts.deployeNom)) ?? null;
+  return trouverTransitionVers(transitions, statuts.deployeId, statuts.deployeNom);
 }
 
 async function traiter(config, statuts, cle, simulation) {

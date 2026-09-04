@@ -30,6 +30,8 @@ node scripts/jira.mjs lire MC-123 --commentaires 0    # sans les commentaires
 node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
 node scripts/jira.mjs chercher "assignee = currentUser() AND sprint IN openSprints()" --max 50
 node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
+node scripts/jira.mjs demarrer MC-123                 # → « En cours », au tout début du développement
+node scripts/jira.mjs envoyer-en-test MC-123          # → « En cours de test », juste après le push de la branche
 ```
 
 Variables requises dans l'environnement de la session : `JIRA_BASE_URL`,
@@ -45,7 +47,12 @@ appelant l'API à la main.
    risque, volume de contexte, modèle recommandé) à partir de ce que dit le
    ticket, **puis attendre l'OK** — un ticket Jira n'est pas une autorisation
    de développer, c'est une demande à qualifier comme une autre.
-3. **Développer** sur la branche désignée, en citant la clé du ticket **en
+3. **Démarrer** (`demarrer`) juste après l'OK, avant d'écrire le premier
+   code — fait passer le ticket à « En cours ». Si le ticket n'est pas au
+   statut attendu en amont de cette transition (ex. il n'est pas « Spéc
+   rédigée »), le script le signale plutôt que d'échouer en silence ; ne pas
+   forcer, en parler à l'utilisateur.
+4. **Développer** sur la branche désignée, en citant la clé du ticket **en
    majuscules** dans le titre de la PR et dans les messages de commit
    (`MC-123 — …`). C'est ce qui remplit le panneau « Développement » du
    ticket, et un contrôle GitHub Actions (`.github/workflows/jira-cle.yml`)
@@ -53,19 +60,30 @@ appelant l'API à la main.
    la casse n'est pas un détail de style. Une PR qui n'a réellement pas de
    ticket (outillage, documentation) se règle par le label `sans-jira`, jamais
    en inventant une clé.
-4. **Commenter** le ticket seulement si l'utilisateur le demande.
+5. **Envoyer en test** (`envoyer-en-test`) juste après le push de la branche
+   (ou l'ouverture de la PR) — fait passer le ticket à « En cours de test ».
+   C'est la fin du travail de la session sur ce ticket, pas le déploiement :
+   le passage à « Déployé » reste un geste ultérieur, humain ou piloté par le
+   lot 3 (`.github/workflows/jira-deploiement.yml`), jamais par ce verbe.
+6. **Commenter** le ticket seulement si l'utilisateur le demande.
 
 ## Limites, volontaires
 
-- **Aucun verbe de transition.** Faire passer un ticket à « Déployé »
+- **Deux verbes de transition seulement, chacun borné à un seul statut
+  cible** (`demarrer` → « En cours », `envoyer-en-test` → « En cours de
+  test »), et tous deux **refusent explicitement** toute transition qui
+  mènerait au statut « Déployé » — même si une erreur de configuration
+  (`JIRA_STATUS_IN_PROGRESS` / `JIRA_STATUS_IN_TEST` mal renseignées)
+  désignait ce statut par erreur. Faire passer un ticket à « Déployé »
   déclenche l'e-mail au demandeur, irréversible une fois parti
-  (`docs/contact-jira.md` §2). C'est le travail du workflow
+  (`docs/contact-jira.md` §2) — ça reste exclusivement le travail du workflow
   `.github/workflows/jira-deploiement.yml`, qui sait qu'un build production a
-  réussi — pas celui d'un agent qui explore un ticket. Si un changement de
-  statut est nécessaire, le demander à l'utilisateur.
-- **Aucun passe-plat REST générique** : trois verbes, pas un client Jira
-  complet. Un besoin nouveau s'ajoute au script, il ne se contourne pas avec
-  `curl`.
+  réussi, jamais celui d'un agent qui développe un ticket. Pour tout autre
+  changement de statut, le demander à l'utilisateur plutôt que d'improviser
+  un usage détourné de ces deux verbes.
+- **Aucun passe-plat REST générique** : cinq verbes, pas un client Jira
+  complet. Un besoin nouveau s'ajoute au script, avec son garde-fou le cas
+  échéant, il ne se contourne pas avec `curl`.
 - **Un commentaire est public** sur le ticket, et les tickets issus du
   formulaire de contact sont **pseudonymisés par construction** : ne jamais y
   recopier une donnée personnelle du demandeur (e-mail, nom, IP, user-agent
