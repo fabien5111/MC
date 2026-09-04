@@ -46,6 +46,15 @@ Virtuozzo Cloud (Genève)
 Public Cloud Object Storage → photos (§ 3, validé)
 ```
 
+**Deux produits, un seul fournisseur.** L'application et la base vivent sur
+**Virtuozzo Cloud**, les photos sur l'**Object Storage du Public Cloud** :
+consoles distinctes, facturations distinctes, mais mêmes datacenters suisses et
+même juridiction. Ce découpage n'est pas un compromis — Virtuozzo propose des
+nœuds de stockage, mais ce sont des systèmes de fichiers partagés : servir les
+photos depuis là les ferait transiter par l'application, ce que le lot B vise
+précisément à supprimer. Le stockage objet sert le navigateur **en direct**,
+sans consommer de cloudlets.
+
 ---
 
 ## 1. Deux décisions indépendantes
@@ -672,8 +681,12 @@ pas applicable telle quelle.
 - **Workflow `.github/workflows/object-storage-cors.yml`**, sur `main`,
   rejouable sur n'importe quel conteneur.
 - **`lib/images.ts`** pose déjà `crossOrigin = 'anonymous'` (§ 3.1).
+- **Le § 5.1 est corrigé et déployé** (PR #207) : `getRecipeFull` prend une
+  portée `lecture` / `edition` / `texte`. Ne pas le refaire.
 - **Le projet `test-migration`** du Public Cloud est à supprimer une fois le
   prototypage terminé, avant le 31/12/2026.
+- **Le prix est mesuré** (§ 4.5) : inutile de consommer des jours d'essai pour
+  l'obtenir. Seul manque le tarif au Go du stockage objet, facturé à part.
 
 ### 10.4 Prochaine action — le lot 0-bis
 
