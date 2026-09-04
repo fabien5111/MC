@@ -623,7 +623,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
   sa justification (§ 4.1).
 - PR #201 — correctif `crossOrigin` et workflow CORS Object Storage.
 - PR #205 — ce document.
-- PR #206 — correctif § 5.1 (portées de lecture) et présente mise à jour.
+- PR #207 — correctif § 5.1 (portées de lecture) et mise à jour du prix.
 
 ---
 
