@@ -526,3 +526,86 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
   sa justification (§ 4.1).
 - PR #201 — correctif `crossOrigin` et workflow CORS Object Storage.
 - PR #205 — ce document.
+
+---
+
+## 10. Reprendre ce dossier
+
+Ce chantier se mène sur plusieurs sessions de travail et plusieurs semaines.
+Cette section porte ce qui, sans elle, se perdrait entre deux : l'état réel des
+comptes, ce qui est déjà en place, et la contrainte de travail qui a orienté
+toute l'architecture.
+
+### 10.1 La contrainte qui a tout décidé
+
+**Le développement se fait exclusivement en ligne, sans terminal local.**
+
+C'est l'information la plus structurante du dossier, et la moins évidente à
+deviner en lisant le reste. C'est elle qui fait préférer un PaaS piloté depuis
+une interface web à une instance nue en SSH (§ 4.2), elle qui a fait passer la
+configuration CORS par un workflow GitHub Actions plutôt que par un `swift post`
+en ligne de commande (§ 3.1), et elle qui doit trancher tout arbitrage
+ultérieur entre deux solutions techniquement équivalentes.
+
+Corollaire : **toute procédure écrite ici doit être exécutable depuis un
+navigateur** — console web du fournisseur, éditeur SQL, onglet Actions de
+GitHub. Une procédure qui suppose `psql` ou `docker compose` sur un poste n'est
+pas applicable telle quelle.
+
+### 10.2 État des comptes et ressources
+
+| Élément | Valeur |
+|---|---|
+| Organisation Infomaniak | « Je pâtisse », ID 23470 |
+| Projet Public Cloud | `PCP-BXPGU6A` |
+| Utilisateur OpenStack | `PCU-BXPGU6A` (Horizon n'accepte pas les identifiants du compte Infomaniak) |
+| Région | `dc4-a` |
+| Endpoint stockage objet | `s3.pub2.infomaniak.cloud` |
+| Crédit d'essai Public Cloud | 300 € jusqu'au **31/12/2026**, facturation ensuite |
+| Projet Supabase | `acbabqolghhyxksouaye`, région Francfort |
+
+### 10.3 Ce qui est déjà en place
+
+- **Conteneur `test-photos`** dans le Public Cloud, deux photos de test, accès
+  public **et CORS configuré et vérifié** (§ 3.1). Ne pas le refaire.
+- **Sept secrets GitHub `OS_*`** (`OS_AUTH_URL`, `OS_PROJECT_NAME`,
+  `OS_USERNAME`, `OS_PASSWORD`, `OS_REGION_NAME`, `OS_USER_DOMAIN_NAME`,
+  `OS_PROJECT_DOMAIN_NAME`) déjà renseignés. Ne pas les redemander.
+- **Workflow `.github/workflows/object-storage-cors.yml`**, sur `main`,
+  rejouable sur n'importe quel conteneur.
+- **`lib/images.ts`** pose déjà `crossOrigin = 'anonymous'` (§ 3.1).
+- **Le projet `test-migration`** du Public Cloud est à supprimer une fois le
+  prototypage terminé, avant le 31/12/2026.
+
+### 10.4 Prochaine action — le lot 0-bis
+
+Le seul Go/No-Go qui reste (§ 7.2), à mener pendant l'**essai 14 jours de
+Virtuozzo Cloud**.
+
+**Deux objectifs seulement pendant l'essai** : la répétition de restauration, et
+le prix au simulateur (§ 4.5). Les lots A, B et C n'y rentrent pas et n'ont pas
+à y rentrer.
+
+**Le test se fait sur un `pg_dump --schema-only`.** Ce qu'on vérifie — 320
+policies, 252 fonctions, 31 triggers — est du DDL : aucune donnée n'est
+nécessaire pour savoir si la restauration passe. C'est plus rapide, et ça évite
+de poser les e-mails et les noms des 7 comptes sur un environnement d'essai
+temporaire. La restauration des données se testera au lot C, sur l'environnement
+définitif.
+
+### 10.5 Amorcer une nouvelle session
+
+Le contexte utile vit dans le dépôt, pas dans l'historique de conversation :
+`CLAUDE.md` pour la doctrine du projet, ce document pour le chantier. Un premier
+message suffit :
+
+> Lis `docs/migration-infomaniak.md`. Je démarre l'essai 14 jours de Virtuozzo
+> Cloud chez Infomaniak. On attaque le lot 0-bis : la répétition de
+> restauration.
+
+**Un point de méthode à connaître** : `www.infomaniak.com`, `docs.infomaniak.cloud`
+et `s3.pub2.infomaniak.cloud` ont longtemps été bloqués par la politique réseau
+des sessions, ce qui a obligé à décrire les procédures Infomaniak en termes
+génériques plutôt qu'écran par écran. Ces domaines ont depuis été autorisés — une
+session ouverte **après** ce changement peut lire leur documentation directement,
+et devrait le faire plutôt que de deviner les libellés d'interface.
