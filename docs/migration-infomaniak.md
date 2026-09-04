@@ -557,11 +557,158 @@ Ce test répond à toutes les questions d'un coup — extensions, rôles, schém
 `auth`, objets spécifiques à Supabase — et produit directement le mode
 opératoire du lot C.
 
-**L'image rend largement superflue la préparation manuelle** décrite ci-dessous
+#### Les trois arbitrages, et pourquoi
+
+**Le runner GitHub Actions est le seul terminal disponible** (§ 10.1). Tout le
+reste se pilote au navigateur : l'éditeur SQL de Supabase, le tableau de bord
+Virtuozzo, l'onglet Actions. Ce découpage commande les trois choix ci-dessous,
+faits une fois pour toutes pour ne pas être rejoués sous la pression du chrono
+de l'essai.
+
+**1. Le dump ne transite jamais par un artefact — le dépôt est public.** Sur un
+dépôt public, les artefacts de workflow et les journaux d'exécution sont
+téléchargeables par n'importe qui. Un `schema.sql` déposé en artefact
+publierait le **corps** des 252 fonctions — dont les `SECURITY DEFINER` comme
+`merge_ideas`, qui existent précisément pour contourner la RLS — et le texte
+des 320 policies. Leurs *noms* sont déjà publics — `lib/database.types.ts` est versionné
+— mais pas leur contenu. D'où : dump et restauration **dans le même job**,
+aucun artefact, et `VERBOSITY=terse` sur `psql`, qui réduit chaque erreur à
+« fichier, ligne, message » sans recracher le fragment de SQL fautif. Le numéro
+de ligne suffit à diagnostiquer.
+*Un dépôt privé dédié aurait été l'autre réponse. Écarté : il scinde les
+secrets, la documentation et l'historique du chantier en deux endroits, pour un
+gain que le job unique obtient déjà.*
+
+**2. La cible est jointe par un Endpoint TCP, pas par Web SSH.** L'environnement
+expose le port 5432 via `Settings` → `Endpoints` → `Add` (Private Port 5432,
+TCP) : la plateforme attribue un *Public Port* et une *Access URL* à travers le
+Shared Load Balancer, **sans IP publique dédiée**. Le runner restaure alors
+comme il le fera au lot C.
+*La variante « déposer le dump dans un conteneur Swift privé, le tirer par
+`curl` depuis Web SSH » n'ouvre aucun port. Écartée quand même : elle ne
+produit pas de procédure rejouable, alors que c'est précisément ce que ce lot
+doit livrer. Contrepartie assumée : PostgreSQL est joignable depuis Internet
+pendant quelques heures — base sans données, mot de passe long, et **Endpoint
+supprimé dès la phase 4**.*
+
+**3. GoTrue est dans le même passage, mais après le verdict du DDL.** L'énoncé
+du Go/No-Go ci-dessus le nomme, et ce qu'on veut savoir de lui — ses
+migrations de démarrage entrent-elles en conflit avec le schéma `auth` déjà posé
+par l'image (§ 4.4) — ne se découvre pas autrement. La phase 3 est néanmoins
+séparée : si GoTrue échoue, **le verdict du DDL tient toujours**.
+
+#### Phase 0 — avant de commander l'essai (ne consomme aucun jour)
+
+Le chrono des 14 jours part à la commande. Tout ce qui peut être fait avant
+doit l'être.
+
+1. **Relever la version du serveur source et ses rôles**, dans l'éditeur SQL
+   Supabase. Le § 4.3 dit ce que Virtuozzo *propose* (15.19 → 18.6), jamais ce
+   que Supabase *sert* : c'est cette lecture qui fixe le tag de l'image et le
+   majeur que `pg_dump` doit savoir lire.
+2. **Réancrer les compteurs** du § 2.4 (320 / 252 / 31). S'ils ont bougé depuis
+   le 03/09, ce sont les nouveaux qui font foi.
+3. **Poser le secret `SUPABASE_DB_URL`** : Supabase → `Project Settings` →
+   `Database` → `Connection string` → onglet **Session pooler**, port **5432**.
+   Ni le pooler transactionnel (6543, qui coupe les sessions longues et fait
+   échouer `pg_dump`), ni la connexion directe (IPv6, quand les runners GitHub
+   sont en IPv4).
+4. **Jouer `migration-dump-schema.yml`** (Actions → Run workflow). Il ne touche
+   aucune cible : il valide la connexion, la version de `pg_dump` et le
+   filtrage, et affiche les points 1 et 2 au passage. **S'il échoue, il échoue
+   gratuitement.**
+
+#### Phase 1 — monter l'environnement (jour 1 de l'essai)
+
+1. Manager Infomaniak → `Cloud Computing` → `Jelastic Cloud` → **« Commander un
+   Jelastic Cloud »**. **Noter la date de fin dans l'agenda** : l'essai est
+   borné à 10 Go de SSD, 20 Mb/s et 5 environnements — sans conséquence ici
+   (le dump pèse quelques mégaoctets), mais la date de fin, elle, se rate.
+2. **`New environment`** → onglet **`Docker`** → **`Select an image`** →
+   `supabase/postgres`, tag du majeur relevé en phase 0. Région **Genève**
+   (seule option, § 4.3), nom `mc-restore-test`, **1 cloudlet réservé** et
+   **8 dynamiques** (≈ 1 Go) — restaurer 320 policies demande de la marge, et
+   le dynamique n'est pas facturé au repos (§ 4.5).
+   **Ni Load Balancer ni nœud Node.js** : le lot 0-bis ne sert pas
+   l'application (§ 10.4).
+3. Icône engrenage (`Configuration`) du nœud → variable `POSTGRES_PASSWORD`,
+   longue et aléatoire. Redémarrer, puis **laisser les scripts d'initialisation
+   de l'image finir** : ce sont eux qui posent les rôles, les schémas `auth` /
+   `extensions` et les extensions (§ 4.4).
+4. `Settings` → `Endpoints` → `Add` : nœud Postgres, *Private Port* **5432**,
+   TCP. Reporter l'`Access URL` et le *Public Port* dans les secrets GitHub
+   `VZ_PG_HOST`, `VZ_PG_PORT`, `VZ_PG_PASSWORD`.
+
+#### Phase 2 — la restauration et son verdict
+
+Jouer **`migration-restauration-repetition.yml`** en mode `restaurer`. Le job
+enchaîne, sans intervention : `btree_gist` dans `public` → dump → `roles.sql`
+puis `schema.sql` (dans cet ordre, § 2.4) → inventaire des deux côtés →
+tests fonctionnels → verdict.
+
+Deux partis pris s'y lisent :
+
+- **`ON_ERROR_STOP=0` est délibéré.** On veut l'inventaire *complet* des échecs
+  en une passe, pas le premier : c'est la matière première du mode opératoire du
+  lot C, et repasser dix fois coûte des heures d'essai.
+- **Le test n'est pas l'égalité des inventaires, c'est l'inclusion.** L'image
+  `supabase/postgres` apporte ses propres objets, et c'est très bien. Ce qui
+  compte est que **tout objet de la source existe sur la cible** — d'où un
+  `comm -23` plutôt qu'un `diff`. Deux extensions sont écartées de la
+  comparaison : `supabase_vault`, que rien n'utilise (§ 2.3, vérifié), et
+  `pg_stat_statements`, de l'observabilité optionnelle.
+
+L'inventaire couvre policies, fonctions **avec leur signature**, triggers,
+tables, vues, index, colonnes générées (`recipes.fts`), tables sous RLS et
+extensions **avec leur schéma** — ce dernier point n'est pas décoratif :
+`btree_gist@public` et `pg_trgm@extensions` sont deux choses différentes
+(§ 2.3). Une divergence est **nommée**, pas seulement comptée.
+
+**Verdict : GO si `comm -23` est vide et que `schema.sql` n'a produit aucune
+erreur.** Sinon le job échoue en listant ce qui manque.
+
+#### Phase 3 — GoTrue
+
+Ajouter un nœud Docker `supabase/auth` (ex-`supabase/gotrue`) dans le même
+environnement : `GOTRUE_DB_DRIVER=postgres`, `GOTRUE_DB_DATABASE_URL` (vers
+`supabase_auth_admin`, `search_path=auth`), `GOTRUE_API_HOST=0.0.0.0`,
+`PORT=9999`, `GOTRUE_JWT_SECRET`, `GOTRUE_JWT_AUD=authenticated`,
+`GOTRUE_SITE_URL`, `API_EXTERNAL_URL`.
+
+Deux choses à observer, dans cet ordre : les **migrations de démarrage** passent
+dans les journaux du nœud, puis `/health` répond. Puis **rejouer le workflow en
+mode `verifier`** : si GoTrue a modifié quoi que ce soit dans `public`, on veut
+le savoir maintenant, pas au lot C.
+
+*Point à vérifier sur place plutôt qu'à supposer* : l'image crée les rôles de
+service, mais c'est la pile self-host officielle qui leur assigne un mot de
+passe, par un script monté que nous n'avons pas ici. Un `\du` en Web SSH dira ce
+qui existe réellement ; un `alter role supabase_auth_admin with password …`
+suffit si besoin.
+
+#### Phase 4 — clôture
+
+Supprimer l'Endpoint (le port ne doit pas survivre au test), arrêter
+l'environnement, **faire tourner le mot de passe de la base Supabase** (il a
+transité par un secret GitHub), puis consigner ici : le verdict, la version
+PostgreSQL source, et les objets à poser à la main en plus de `btree_gist`. Le
+§ 6.2 perd alors sa première puce.
+
+#### Ce que ce test ne dit pas
+
+Il valide le **DDL**. Ni la restauration des données, ni la migration des
+7 identités (hachages bcrypt, `provider_id` Google) — le § 10.4 les renvoie au
+lot C, et c'est le bon arbitrage. Mais un « Go » du lot 0-bis **ne se lit pas
+comme un Go sur l'authentification**.
+
+#### Le filet de préparation manuelle
+
+**L'image rend largement superflue la préparation manuelle** ci-dessous
 (§ 4.4) : rôles, schémas et extensions y sont déjà posés. Ce bloc reste comme
 filet, à jouer seulement si la restauration échoue sur un objet manquant — et
 `btree_gist` fait exception, il vit dans `public` sur la base source et l'image
-ne l'y mettra pas d'elle-même.
+ne l'y mettra pas d'elle-même. C'est la seule ligne que le workflow exécute
+d'office.
 
 ```sql
 -- Rôles supposés par les 320 policies (déjà présents dans supabase/postgres)
@@ -633,6 +780,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 - PR #201 — correctif `crossOrigin` et workflow CORS Object Storage.
 - PR #205 — ce document.
 - PR #207 — correctif § 5.1 (portées de lecture) et mise à jour du prix.
+- PR #209 — mode opératoire du lot 0-bis et ses deux workflows (§ 7.2).
 
 ---
 
@@ -687,12 +835,27 @@ pas applicable telle quelle.
   prototypage terminé, avant le 31/12/2026.
 - **Le prix est mesuré** (§ 4.5) : inutile de consommer des jours d'essai pour
   l'obtenir. Seul manque le tarif au Go du stockage objet, facturé à part.
+- **Les deux workflows du lot 0-bis** sont écrits et commentés :
+  `.github/workflows/migration-dump-schema.yml` (dump seul, se joue **avant**
+  l'essai) et `.github/workflows/migration-restauration-repetition.yml` (dump +
+  restauration + inventaire + verdict). Mode opératoire complet en § 7.2.
+- **Quatre secrets GitHub restent à créer**, en plus des sept `OS_*` :
+  `SUPABASE_DB_URL` (session pooler, port 5432) pour la source, `VZ_PG_HOST` /
+  `VZ_PG_PORT` / `VZ_PG_PASSWORD` pour la cible Virtuozzo.
+- **Le dépôt est public**, et ça a valeur de contrainte : journaux et artefacts
+  de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
+  migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
 ### 10.4 Prochaine action — le lot 0-bis
 
-Le seul Go/No-Go qui reste (§ 7.2), à mener pendant l'**essai 14 jours de
-Virtuozzo Cloud**. Le prix, lui, est mesuré (§ 4.5) : rien n'oblige à consommer
-des jours d'essai pour l'obtenir.
+Le seul Go/No-Go qui reste, à mener pendant l'**essai 14 jours de Virtuozzo
+Cloud**. Le prix, lui, est mesuré (§ 4.5) : rien n'oblige à consommer des jours
+d'essai pour l'obtenir.
+
+**Le mode opératoire est écrit, phase par phase, en § 7.2** — s'y reporter
+plutôt que de le reconstruire. Il commence par une phase 0 qui se joue
+**avant** de commander l'essai : elle vaut à elle seule un jour de chrono
+économisé, et elle échoue gratuitement.
 
 Rappel de priorité (§ 7.1) : le **lot B** — photos vers le stockage objet —
 passe devant la migration elle-même. C'est lui qui traite la cause des alertes

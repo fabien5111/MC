@@ -1,0 +1,246 @@
+name: Migration — répétition de restauration (lot 0-bis)
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# LE Go/No-Go du dossier (docs/migration-infomaniak.md § 7.2) : restaurer le
+# DDL de la base Supabase sur un conteneur `supabase/postgres` monté chez
+# Infomaniak (Virtuozzo Cloud), puis vérifier que les 320 policies, les 252
+# fonctions et les 31 triggers sont bien arrivés.
+#
+# Ce qu'il ne fait pas : transporter les données. Le § 10.4 le tranche — ce
+# qu'on vérifie est du DDL, et poser les e-mails des 7 comptes sur un
+# environnement d'essai temporaire n'apporterait rien.
+#
+# **Pourquoi le dump est refait ici au lieu d'être repris en artefact.** Le
+# dépôt est public : sur un dépôt public, les artefacts de workflow sont
+# téléchargeables par n'importe qui. Un `schema.sql` déposé en artefact
+# publierait le corps des 252 fonctions et le texte des 320 policies. Le dump
+# est donc rejoué dans le même job, ne touche jamais le disque partagé, et
+# meurt avec le runner. Même raison pour VERBOSITY=terse ci-dessous.
+#
+# Secrets attendus (Settings > Secrets and variables > Actions) :
+#   SUPABASE_DB_URL   source — « Session pooler », port 5432 (cf.
+#                     migration-dump-schema.yml, à jouer AVANT celui-ci)
+#   VZ_PG_HOST        cible — hôte de l'« Access URL » de l'Endpoint Virtuozzo
+#   VZ_PG_PORT        cible — « Public Port » attribué par la plateforme
+#   VZ_PG_PASSWORD    cible — POSTGRES_PASSWORD du conteneur supabase/postgres
+#
+# L'Endpoint (environnement > Settings > Endpoints > Add, Private Port 5432,
+# TCP) expose Postgres sur Internet le temps du test. Il est à SUPPRIMER dès la
+# répétition terminée : mot de passe long et base sans données ne sont une
+# protection que pendant quelques heures.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          « restaurer » = dump + restauration + vérification (phase 2).
+          « verifier » = vérification seule, sans rien réécrire — c'est le
+          passage à rejouer APRÈS le démarrage de GoTrue (phase 3) pour voir
+          s'il a touché quoi que ce soit dans public.
+        type: choice
+        options: [restaurer, verifier]
+        default: restaurer
+      base:
+        description: Base cible sur le conteneur supabase/postgres
+        required: true
+        default: postgres
+      verbosite:
+        description: >-
+          « terse » (défaut) n'affiche qu'une ligne par erreur : fichier, numéro
+          de ligne, message — sans le fragment de SQL fautif, qui atterrirait
+          dans un journal public. « default » ajoute DETAIL, HINT et le
+          contexte : à n'activer que le temps d'un diagnostic, en connaissance
+          de cause.
+        type: choice
+        options: [terse, default]
+        default: terse
+
+jobs:
+  repetition:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGHOST: ${{ secrets.VZ_PG_HOST }}
+      PGPORT: ${{ secrets.VZ_PG_PORT }}
+      PGUSER: postgres
+      PGPASSWORD: ${{ secrets.VZ_PG_PASSWORD }}
+      PGDATABASE: ${{ inputs.base }}
+      PGCONNECT_TIMEOUT: '15'
+    steps:
+      - name: Installer la CLI Supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Joindre la cible
+        run: |
+          set -euo pipefail
+          # Si l'Endpoint n'est pas ouvert ou le mot de passe faux, autant le
+          # savoir avant d'avoir tiré le dump de la production.
+          psql -Atc 'select version()'
+
+      - name: Écrire la requête d'inventaire
+        run: |
+          set -euo pipefail
+          # UNE requête, jouée à l'identique des deux côtés. C'est la preuve du
+          # Go/No-Go : bien plus forte que trois compteurs, parce qu'elle NOMME
+          # ce qui manque au lieu d'annoncer qu'il manque quelque chose.
+          #
+          # Deux extensions sont écartées volontairement : `supabase_vault`,
+          # que rien n'utilise (§ 2.3, vérifié), et `pg_stat_statements`, de
+          # l'observabilité optionnelle. Les compter ferait crier une
+          # divergence là où il n'y a pas de dette.
+          cat > inventaire.sql <<'SQL'
+          select 'policy:' || tablename || ':' || policyname
+            from pg_policies where schemaname = 'public'
+          union all
+          select 'function:' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+          union all
+          select 'trigger:' || c.relname || ':' || t.tgname
+            from pg_trigger t
+            join pg_class c on c.oid = t.tgrelid
+            join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and not t.tgisinternal
+          union all
+          select 'table:' || c.relname
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind in ('r', 'p')
+          union all
+          select 'vue:' || c.relname
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind in ('v', 'm')
+          union all
+          select 'rls:' || c.relname
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relrowsecurity
+          union all
+          select 'index:' || indexname from pg_indexes where schemaname = 'public'
+          union all
+          select 'genere:' || c.relname || '.' || a.attname
+            from pg_attribute a
+            join pg_class c on c.oid = a.attrelid
+            join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and a.attgenerated <> ''
+          union all
+          select 'extension:' || e.extname || '@' || n.nspname
+            from pg_extension e join pg_namespace n on n.oid = e.extnamespace
+           where e.extname not in ('supabase_vault', 'pg_stat_statements')
+          ;
+          SQL
+
+      - name: Poser btree_gist dans public
+        if: ${{ inputs.mode == 'restaurer' }}
+        run: |
+          set -euo pipefail
+          # La seule préparation manuelle que l'image ne fait pas d'elle-même
+          # (§ 2.3, § 7.2) : btree_gist vit dans `public` sur la base source,
+          # pas dans `extensions`. Doit précéder schema.sql.
+          psql -v ON_ERROR_STOP=1 -c 'create extension if not exists btree_gist with schema public'
+
+      - name: Tirer le dump de la source
+        if: ${{ inputs.mode == 'restaurer' }}
+        run: |
+          set -euo pipefail
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL"             -f schema.sql
+          printf 'roles.sql : %s octets — schema.sql : %s octets\n' \
+            "$(wc -c < roles.sql)" "$(wc -c < schema.sql)"
+
+      - name: Restaurer
+        if: ${{ inputs.mode == 'restaurer' }}
+        run: |
+          set -euo pipefail
+          # ON_ERROR_STOP=0 est délibéré : on veut l'inventaire COMPLET des
+          # échecs en une passe, pas le premier. C'est la matière première du
+          # mode opératoire du lot C, et repasser dix fois coûte des heures
+          # d'essai.
+          #
+          # Les rôles d'abord (§ 2.4). Leurs erreurs ne bloquent pas : l'image
+          # pose déjà anon, authenticated et service_role, un « role already
+          # exists » est le résultat attendu, pas un incident.
+          psql -v ON_ERROR_STOP=0 -v VERBOSITY=${{ inputs.verbosite }} -q \
+               -f roles.sql > /dev/null 2> erreurs-roles.log || true
+          echo "--- rôles : $(grep -c 'ERROR' erreurs-roles.log || true) erreur(s) ---"
+          cat erreurs-roles.log
+
+          psql -v ON_ERROR_STOP=0 -v VERBOSITY=${{ inputs.verbosite }} -q \
+               -f schema.sql > /dev/null 2> erreurs-schema.log || true
+          echo "--- schéma : $(grep -c 'ERROR' erreurs-schema.log || true) erreur(s) ---"
+          cat erreurs-schema.log
+
+      - name: Comparer les deux inventaires
+        run: |
+          set -euo pipefail
+          # LC_ALL=C des deux côtés : `comm` exige le même ordre, et deux
+          # locales différentes suffisent à inventer des écarts.
+          psql "$SUPABASE_DB_URL" -Atf inventaire.sql | LC_ALL=C sort > source.txt
+          psql                    -Atf inventaire.sql | LC_ALL=C sort > cible.txt
+
+          # Le test n'est PAS l'égalité : l'image supabase/postgres apporte ses
+          # propres objets, et c'est très bien. Ce qui compte est l'inclusion —
+          # tout objet de la source doit exister sur la cible.
+          comm -23 source.txt cible.txt > manquants.txt || true
+
+          printf 'source : %s objets — cible : %s objets — manquants : %s\n' \
+            "$(wc -l < source.txt)" "$(wc -l < cible.txt)" "$(wc -l < manquants.txt)"
+
+          if [ -s manquants.txt ]; then
+            echo "--- objets de la source absents de la cible ---"
+            cat manquants.txt
+          fi
+
+      - name: Éprouver ce qui a été restauré
+        run: |
+          set -euo pipefail
+          # Un DDL restauré n'est pas un DDL qui marche. Ces quatre-là couvrent
+          # exactement les dépendances que le § 2.3 désigne comme critiques.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          \echo 'unaccent — mc_norm(), toute la recherche avancée :'
+          select mc_norm('Crème brûlée');
+          \echo 'pg_trgm — repli trigramme de suggest_similar_ideas :'
+          select 'chronomètre' % 'chrono' as trigramme;
+          \echo 'colonne générée recipes.fts :'
+          select attname from pg_attribute
+           where attrelid = 'recipes'::regclass and attgenerated <> '';
+          \echo 'btree_gist doit être dans public, pas dans extensions :'
+          select n.nspname from pg_extension e
+            join pg_namespace n on n.oid = e.extnamespace
+           where e.extname = 'btree_gist';
+          SQL
+
+      - name: Éprouver les droits du rôle anon
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Non bloquant, mais à lire. Si les GRANT ne sont pas passés dans le
+          # dump, PostgREST refuserait tout en lecture anonyme au lot C — un
+          # « permission denied » ici est une trouvaille, pas un incident.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set role anon;
+          select count(*) as recettes_visibles_en_anonyme from recipes;
+          reset role;
+          SQL
+
+      - name: Verdict
+        run: |
+          set -euo pipefail
+          verdict=0
+
+          if [ -s manquants.txt ]; then
+            echo "NO-GO — $(wc -l < manquants.txt) objet(s) de la source manquent à l'arrivée."
+            verdict=1
+          fi
+
+          if [ -f erreurs-schema.log ] && grep -q 'ERROR' erreurs-schema.log; then
+            echo "NO-GO — la restauration du schéma a produit $(grep -c 'ERROR' erreurs-schema.log) erreur(s)."
+            verdict=1
+          fi
+
+          if [ "$verdict" = 0 ]; then
+            echo "GO — inventaire complet, aucune erreur de restauration."
+            echo "Reste à faire : phase 3 (GoTrue), puis relancer ce workflow en mode « verifier »."
+          fi
+          exit "$verdict"
