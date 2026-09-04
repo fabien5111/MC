@@ -67,7 +67,38 @@ export function lireConfigStatuts() {
     aDeployerNom: process.env.JIRA_STATUS_TO_DEPLOY || 'Terminé',
     deployeId: process.env.JIRA_STATUS_DEPLOYED_ID || null,
     deployeNom: process.env.JIRA_STATUS_DEPLOYED || 'Déployé',
+    // Statuts pilotés par l'agent lui-même (verbes `demarrer` /
+    // `envoyer-en-test` de `jira.mjs`), pas par le déploiement — cf.
+    // `docs/outillage-jira.md` §1.5.
+    enCoursId: process.env.JIRA_STATUS_IN_PROGRESS_ID || null,
+    enCoursNom: process.env.JIRA_STATUS_IN_PROGRESS || 'En cours',
+    enTestId: process.env.JIRA_STATUS_IN_TEST_ID || null,
+    enTestNom: process.env.JIRA_STATUS_IN_TEST || 'En cours de test',
   };
+}
+
+/**
+ * Un statut Jira correspond-il au statut attendu ? L'id d'abord, le nom en
+ * repli — l'id survit à un renommage dans Jira, pas le nom. Partagée par
+ * tous les scripts qui transitionnent un ticket (lot 3 déploiement, verbes
+ * `demarrer` / `envoyer-en-test` de `jira.mjs`) : deux implémentations
+ * auraient pu diverger sur le point exact où il ne faut pas se tromper —
+ * reconnaître à tort le statut « Déployé ».
+ */
+export function memeStatut(statut, id, nom) {
+  if (id && statut?.id) return String(statut.id) === String(id);
+  return typeof statut?.name === 'string' && typeof nom === 'string' && statut.name.trim().toLowerCase() === nom.trim().toLowerCase();
+}
+
+/**
+ * La transition à emprunter pour atteindre un statut donné, parmi les
+ * transitions disponibles depuis le statut courant d'un ticket. Jira n'a pas
+ * d'API « mettre ce statut » : il faut nommer une transition sortante, et le
+ * workflow du projet décide de leur existence.
+ */
+export function trouverTransitionVers(transitions, id, nom) {
+  const candidates = Array.isArray(transitions) ? transitions : [];
+  return candidates.find((t) => memeStatut(t?.to, id, nom)) ?? null;
 }
 
 /** Un 429 ou un 5xx est transitoire ; un 4xx de configuration ne l'est pas. */

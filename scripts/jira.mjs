@@ -1,11 +1,19 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Trois verbes seulement : `lire`, `chercher`, `commenter`. Volontairement
-// PAS de passe-plat REST générique ni de verbe de transition : une transition
-// vers « Déployé » déclenche l'e-mail au demandeur, irréversible une fois
-// parti (`docs/contact-jira.md` §2) — ça relève du lot 3, dans une chaîne de
-// déploiement, jamais d'un agent qui explore un ticket.
+// Cinq verbes : `lire`, `chercher`, `commenter`, et deux verbes de
+// transition étroitement bornés, `demarrer` et `envoyer-en-test`. Toujours
+// PAS de passe-plat REST générique : un besoin nouveau s'ajoute au script,
+// avec son garde-fou, plutôt que de se contourner.
+//
+// `demarrer` et `envoyer-en-test` ne connaissent qu'un seul statut cible
+// chacun (« En cours » / « En cours de test », configurables — §1.5 de
+// `docs/outillage-jira.md`) et refusent, avant tout envoi, toute transition
+// qui mènerait au statut « Déployé » : c'est lui qui déclenche l'e-mail au
+// demandeur, irréversible une fois parti (`docs/contact-jira.md` §2). Cette
+// transition-là reste exclusivement le rôle du lot 3
+// (`scripts/jira-deploiement.mjs`), dans une chaîne de déploiement — jamais
+// d'un agent qui développe un ticket.
 //
 // Script en JS pur, non importable depuis `lib/jira.ts` (TypeScript, compilé
 // par Next) : l'authentification Basic (`scripts/jira-api.mjs`) et la
@@ -13,7 +21,7 @@
 // bornée — le chemin produit (création de ticket, commentaire de réponse)
 // reste le seul à passer par `lib/jira.ts` et ses tests.
 import { fileURLToPath } from 'node:url';
-import { appelJira, lireConfig } from './jira-api.mjs';
+import { appelJira, lireConfig, lireConfigStatuts, memeStatut, trouverTransitionVers } from './jira-api.mjs';
 
 const MAX_RESULTATS_DEFAUT = 25;
 const MAX_COMMENTAIRES_DEFAUT = 10;
@@ -180,6 +188,56 @@ async function commenter(cle, texte) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Transitions bornées (`demarrer`, `envoyer-en-test`)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Décide quoi faire d'une demande de transition, sans effet de bord — c'est
+ * elle qui porte le garde-fou, vérifié avant tout envoi à Jira plutôt
+ * qu'après coup : même si `cibleId`/`cibleNom` étaient mal configurés au
+ * point de désigner le statut « Déployé », la transition n'est jamais
+ * effectuée. Testée séparément de l'appel HTTP, même motif que
+ * `decisionDeploiement` (`jira-deploiement.mjs`).
+ */
+export function resoudreTransition(transitions, cibleId, cibleNom, deployeId, deployeNom) {
+  const transition = trouverTransitionVers(transitions, cibleId, cibleNom);
+  if (!transition) return { action: 'introuvable' };
+  if (memeStatut(transition.to, deployeId, deployeNom)) return { action: 'refuse_deploiement', transition };
+  return { action: 'transitionner', transition };
+}
+
+async function transitionner(cle, cibleId, cibleNom) {
+  const config = lireConfig();
+  const statuts = lireConfigStatuts();
+  const { transitions } = await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/transitions`);
+  const decision = resoudreTransition(transitions, cibleId, cibleNom, statuts.deployeId, statuts.deployeNom);
+
+  if (decision.action === 'introuvable') {
+    echouer(`Aucune transition vers « ${cibleNom} » depuis le statut courant de ${cle}. Vérifier le workflow Jira du projet.`);
+  }
+  if (decision.action === 'refuse_deploiement') {
+    echouer(
+      `Transition refusée : elle mènerait à « ${decision.transition.to?.name} », le statut « Déployé » qui déclenche l'e-mail ` +
+        `irréversible au demandeur (docs/contact-jira.md §2). Ce verbe ne fait jamais cette transition — c'est le rôle du lot 3 ` +
+        `(scripts/jira-deploiement.mjs). Vérifier JIRA_STATUS_IN_PROGRESS / JIRA_STATUS_IN_TEST.`,
+    );
+  }
+
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/transitions`, 'POST', { transition: { id: decision.transition.id } });
+  console.log(`${cle} — passé à « ${decision.transition.to?.name ?? cibleNom} » (${config.baseUrl}/browse/${cle})`);
+}
+
+async function demarrer(cle) {
+  const statuts = lireConfigStatuts();
+  await transitionner(cle, statuts.enCoursId, statuts.enCoursNom);
+}
+
+async function envoyerEnTest(cle) {
+  const statuts = lireConfigStatuts();
+  await transitionner(cle, statuts.enTestId, statuts.enTestNom);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Ligne de commande
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -187,13 +245,17 @@ const USAGE = `Usage :
   node scripts/jira.mjs lire <CLE> [--commentaires N]
   node scripts/jira.mjs chercher "<JQL>" [--max N]
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
+  node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
+  node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « En cours de test »)
 
 Variables requises : JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN.
 
 Exemples :
   node scripts/jira.mjs lire MC-123
   node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
-  node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."`;
+  node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
+  node scripts/jira.mjs demarrer MC-123
+  node scripts/jira.mjs envoyer-en-test MC-123`;
 
 function echouer(message) {
   console.error(message);
@@ -245,6 +307,20 @@ async function main(argv) {
     const reste = args.join(' ').trim();
     if (!cle || !reste) echouer(`Clé de ticket ou texte manquant.\n\n${USAGE}`);
     await commenter(cle, reste === '-' ? await lireEntreeStandard() : reste);
+    return;
+  }
+
+  if (verbe === 'demarrer') {
+    const cle = args[0];
+    if (!cle) echouer(`Clé de ticket manquante.\n\n${USAGE}`);
+    await demarrer(cle);
+    return;
+  }
+
+  if (verbe === 'envoyer-en-test') {
+    const cle = args[0];
+    if (!cle) echouer(`Clé de ticket manquante.\n\n${USAGE}`);
+    await envoyerEnTest(cle);
     return;
   }
 
