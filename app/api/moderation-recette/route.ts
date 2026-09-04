@@ -120,7 +120,7 @@ export async function POST(req: Request) {
   // résultat en quelques centaines de ms sans rien recalculer.
   const force = body?.force === true;
 
-  const recipe = await getRecipeFull(recipeId);
+  const recipe = await getRecipeFull(recipeId, 'texte');
   if (!recipe) return NextResponse.json({ erreur: 'Recette introuvable.' }, { status: 404 });
 
   // Déclenchée par l'auteur à sa propre soumission, ou par un admin/gestionnaire

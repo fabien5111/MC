@@ -47,14 +47,14 @@ type Params = {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const r = await getRecipeFull(id);
+  const r = await getRecipeFull(id, 'lecture');
   return { title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !' };
 }
 
 export default async function RecettePage({ params, searchParams }: Params) {
   const { id } = await params;
   const { planifier } = await searchParams;
-  const recipe = await getRecipeFull(id);
+  const recipe = await getRecipeFull(id, 'lecture');
 
   // Projet en cours : sa fiche n'existe pas encore — c'est le parcours guidé
   // qui la construit. On renvoie donc vers cet écran plutôt que d'afficher
