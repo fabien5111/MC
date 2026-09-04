@@ -149,7 +149,8 @@ export type RecipeStepView = {
   video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
-  step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[];
+  // Absentes en portée `texte`, sans `original_url` en portée `lecture`.
+  step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour
   // sa seule cuisson (cf. lib/recipe-plan.ts). Absente sur une recette.
   already_done?: boolean;
@@ -218,10 +219,12 @@ export type RecipeFull = {
   source_url: string | null;
   video_url: string | null;
   serving_advice: string | null;
-  hero_image_url: string | null;
-  hero_image_original_url: string | null;
+  // Optionnelles : la portée de lecture décide si elles sont demandées
+  // (cf. `RecipeReadScope`). `undefined` signifie « pas lue », pas « absente ».
+  hero_image_url?: string | null;
+  hero_image_original_url?: string | null;
   hero_image_ai_retouched: boolean;
-  profiles: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
+  profiles: { full_name: string | null; avatar_url?: string | null; username: string | null } | null;
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   mold_types: { name: string; forme: string | null } | null;
@@ -231,21 +234,80 @@ export type RecipeFull = {
   recipe_steps: RecipeStepView[];
 };
 
-const FULL_SELECT = `
-  *,
-  profiles!recipes_author_id_fkey(full_name, avatar_url, username),
+/**
+ * Ce que l'appelant vient chercher. Les images pèsent 65 % de la base et sont
+ * stockées en data-URL : les transporter quand personne ne les affiche est le
+ * premier poste d'egress du site (cf. docs/migration-infomaniak.md § 5.1).
+ *
+ * - `lecture`  : la fiche recette. Photos affichées, **pas** les originaux.
+ * - `edition`  : `/creer`. Ajoute les originaux, seuls à permettre la
+ *                réédition d'une photo (`PhotoEditorModal`).
+ * - `texte`    : modération et réindexation. **Aucune image** — ces routes ne
+ *                lisent que du texte (`buildModerationSource`), et le réindex
+ *                complet boucle sur toutes les recettes publiées.
+ */
+export type RecipeReadScope = 'lecture' | 'edition' | 'texte';
+
+// Colonnes de `recipes` réellement consommées. Énumérées plutôt que `*` : la
+// table en porte 42, dont la colonne générée `fts` (un tsvector, jamais lu
+// côté client) et deux dérivés d'image en data-URL — `hero_card_url` et
+// `hero_thumb_url`, qui servent aux cartes, pas à la fiche. `select('*')` les
+// expédiait tous à chaque lecture. Même doctrine que `PROFILE_COLUMNS`
+// (cf. CLAUDE.md), et même motif : une table qui porte des images.
+//
+// `difficulty_id` n'est PAS dans `RecipeFull` mais reste indispensable :
+// `CreerForm` le lit via un cast pour pré-remplir la difficulté quand la
+// jointure `difficulties` ne répond pas. Le retirer casserait l'éditeur sans
+// que TypeScript n'en dise rien.
+const RECIPE_COLUMNS = `
+  id, title, description, author_id, is_public, status, kind, project_stage,
+  moderation_note, moderation_note_at, created_at, updated_at,
+  rating_avg, rating_count, measure_type,
+  yield_qty, yield_unit, yield_desc, yield_notes,
+  mold_type_id, mold_dims, difficulty_id,
+  prep_time, cook_time, wait_time, total_time,
+  tips, source, source_url, video_url, serving_advice,
+  hero_image_ai_retouched
+`;
+
+function selectPourPortee(scope: RecipeReadScope): string {
+  const hero =
+    scope === 'texte' ? '' : scope === 'edition' ? ', hero_image_url, hero_image_original_url' : ', hero_image_url';
+  // L'avatar de l'auteur est lui aussi une data-URL : il s'affiche sur la
+  // fiche, il n'a rien à faire dans une lecture de texte.
+  const auteur =
+    scope === 'texte'
+      ? 'profiles!recipes_author_id_fkey(full_name, username)'
+      : 'profiles!recipes_author_id_fkey(full_name, avatar_url, username)';
+  const etapes =
+    scope === 'texte'
+      ? 'recipe_steps(*)'
+      : scope === 'edition'
+        ? 'recipe_steps(*, step_photos(url, original_url, order_index, ai_retouched))'
+        : 'recipe_steps(*, step_photos(url, order_index, ai_retouched))';
+
+  return `
+  ${RECIPE_COLUMNS.trim()}${hero},
+  ${auteur},
   recipe_types(name),
   difficulties(name, level),
   mold_types(name, forme),
   recipe_tags(tags(id, name, slug)),
   recipe_utensils(*, utensils(url)),
   ingredient_groups(*, ingredients(*, ingredient_refs(url, allergens(id, name, picto, tooltip)))),
-  recipe_steps(*, step_photos(*))
+  ${etapes}
 `;
+}
 
-export async function getRecipeFull(id: string): Promise<RecipeFull | null> {
+/**
+ * La portée est explicite et sans valeur par défaut : un appelant qui ne
+ * choisit pas ne peut pas se tromper en silence. Le défaut naturel aurait été
+ * `lecture`, mais un nouvel écran d'édition l'aurait alors hérité et perdu ses
+ * originaux sans erreur visible avant la première réédition de photo.
+ */
+export async function getRecipeFull(id: string, scope: RecipeReadScope): Promise<RecipeFull | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from('recipes').select(FULL_SELECT).eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('recipes').select(selectPourPortee(scope)).eq('id', id).maybeSingle();
   if (error) console.error('getRecipeFull:', error.message);
   return (data as unknown as RecipeFull | null) ?? null;
 }

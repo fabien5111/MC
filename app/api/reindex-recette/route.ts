@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     let indexed = 0;
     for (const id of ids) {
       try {
-        const recipe = await getRecipeFull(id);
+        const recipe = await getRecipeFull(id, 'texte');
         const result = await indexOne(admin, id, recipe);
         if (result === 'indexed') indexed++;
       } catch (e) {
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   const recipeId = typeof body?.recipeId === 'string' ? body.recipeId : null;
   if (!recipeId) return NextResponse.json({ erreur: 'recipeId requis.' }, { status: 400 });
 
-  const recipe = await getRecipeFull(recipeId);
+  const recipe = await getRecipeFull(recipeId, 'texte');
   const autorise = recipe ? recipe.author_id === user.id || (await isManager(user.id)) : await isManager(user.id);
   if (!autorise) return NextResponse.json({ erreur: 'Non autorisé.' }, { status: 403 });
 

@@ -72,7 +72,7 @@ export default async function ProjetPage({ params }: Params) {
     // Recette du projet telle que le moteur de fournée la lit : une fournée
     // d'essai passe exactement par le même chemin que celle d'une recette
     // ordinaire (cf. lib/batch-write.ts).
-    getRecipeFull(id),
+    getRecipeFull(id, 'lecture'),
     getProjectTrials(id),
   ]);
 

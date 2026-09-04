@@ -50,7 +50,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
     getAllergenRefs(),
     getUtensilRefNames(),
     isAdmin(user.id),
-    id ? getRecipeFull(id) : Promise.resolve(null),
+    id ? getRecipeFull(id, 'edition') : Promise.resolve(null),
     getIngredientConversions(),
     getIngredientRefsList(),
     getVisibleHelpBlocks('creer', user.id),
