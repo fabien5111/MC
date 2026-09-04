@@ -5,9 +5,9 @@ au profit d'une infrastructure hébergée chez **Infomaniak**, en Suisse. La
 localisation dépend du produit : le Public Cloud est à Genève et Winterthour,
 **Virtuozzo Cloud (ex-Jelastic) à Genève uniquement** (§ 4.3).
 
-État au **03/09/2026**. Le lot 0 (vérifications bloquantes) est terminé, à
-l'exception de la répétition de restauration (§ 7.2). Les chiffres de la § 2
-sont des mesures réelles, pas des estimations.
+État au **04/09/2026**. Le lot 0 est terminé — prix compris (§ 4.5) — à la
+seule exception de la répétition de restauration (§ 7.2). Les chiffres des
+§ 2 et 4.5 sont des mesures réelles, pas des estimations.
 
 **Motif du chantier** : l'empreinte écologique, avant le coût et avant la
 souveraineté. C'est ce critère qui a désigné Infomaniak plutôt que Scaleway,
@@ -19,16 +19,20 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 
 ## 0. Résumé
 
-| Chantier | Verdict au 03/09/2026 |
+| Chantier | Verdict au 04/09/2026 |
 |---|---|
+| Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
+| Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. **Priorité 2**, 7-10 j |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
-| Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. 7-10 j |
-| Sortie de Supabase Cloud | **Débloquée** — le Database Service ne propose que MySQL, mais Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
+| Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
+| Coût de la cible | **Mesuré** : ≈ 16 €/mois avant l'ouverture, ≈ 28 € après (§ 4.5) |
 
-**Le fait structurant** : la base pèse **57 Mo** et compte **7 comptes**. Tout
-ce dossier a été réévalué à la lumière de ces deux chiffres — plusieurs
-conclusions posées avant de les connaître étaient fausses (§ 8).
+**Deux faits structurants.** La base pèse **57 Mo** et compte **7 comptes** :
+tout ce dossier a été réévalué à leur lumière, et plusieurs conclusions posées
+avant de les connaître étaient fausses (§ 8). Et **les plans gratuits saturent
+déjà**, sur un site non ouvert — la migration ne coûte donc pas plus cher que
+la trajectoire actuelle, elle coûte moins (§ 4.6).
 
 **Cible retenue** :
 
@@ -324,45 +328,123 @@ bucket suffit ; perdre 24 h de données avant l'ouverture ne coûte rien.
 **Une seule région.** Genève uniquement : pas de reprise sur un autre site. À
 accepter explicitement.
 
-**Le prix reste le seul chiffre manquant.** Base annoncée : 1 conteneur de
-128 Mo / 400 MHz, 20 Go SSD et 1 IPv4 pour **CHF 6.31/mois**. Sont offerts les
-20 premiers Go de disque, le SSL, et **2,8 Go/h de trafic externe** (~2 To/mois,
-généreux pour un site chargé en images). Les cloudlets réservés sont dégressifs
-(56 % de remise entre 13 et 16). La pile réelle — Next.js ~0,5-1 Go, PostgreSQL
-~0,5-1 Go, PostgREST et GoTrue ~256 Mo chacun — demande **1,5 à 2,5 Go
-réservés**, soit un ordre de grandeur de **25-40 CHF/mois**. Le tarif unitaire
-est chargé en JavaScript et n'a pu être lu ni par l'auteur de ce document ni par
-la vérification manuelle : **à confirmer au simulateur.**
+**Le prix, mesuré au configurateur le 04/09/2026.** Deux lectures suffisent à
+en tirer le modèle, le configurateur imposant la même RAM à tous les conteneurs :
 
-À comparer à Vercel Pro + Supabase Pro, ~45 $/mois aujourd'hui.
+| Lecture | Configuration | Cloudlets | Prix |
+|---|---|---|---|
+| Plancher | 1 × 128 Mo / 400 MHz, 20 Go, 1 IP | 1 | 5,32 €/mois |
+| A | 5 × 512 Mo / 800 MHz, 20 Go, 1 IP | 20 | **25,94 €/mois** |
+| B | 5 × 1 Go / 1600 MHz, 20 Go, 1 IP | 40 | **48,58 €/mois** |
+
+```
+Coût marginal = (48,58 − 25,94) / (40 − 20) = 1,13 € par cloudlet et par mois
+Part fixe     = 25,94 − 20 × 1,13          = 3,30 €  (IP + 20 Go inclus)
+```
+
+Soit **≈ 9 €/mois par Go de RAM**. Valable dans la plage mesurée : en dessous
+de 4 cloudlets par conteneur la remise tombe de 45 % à 30 %, les petits nœuds
+coûtent donc un peu plus au cloudlet.
+
+**Les lectures A et B surestiment.** Le configurateur impose une RAM uniforme,
+la plateforme non : PostgREST, GoTrue et le load balancer n'ont pas besoin d'un
+gigaoctet chacun. En dimensionnant chaque nœud pour ce qu'il est :
+
+| Nœud | Pré-ouverture | Après ouverture |
+|---|---|---|
+| Next.js | 512 Mo *(4)* | 1 Go *(8)* |
+| `supabase/postgres` | 512 Mo *(4)* | 1 Go *(8)* |
+| PostgREST | 128 Mo *(1)* | 256 Mo *(2)* |
+| GoTrue | 128 Mo *(1)* | 256 Mo *(2)* |
+| Load Balancer | 128 Mo *(1)* | 256 Mo *(2)* |
+| **Total** | **11 cloudlets → ≈ 16 €/mois** | **22 cloudlets → ≈ 28 €/mois** |
+
+Et ce sont encore des plafonds : seuls les cloudlets **réservés** sont facturés
+en continu, les **dynamiques** ne le sont qu'à l'usage.
+
+Sont offerts : les 20 premiers Go de disque, le SSL, et **2,8 Go/h de trafic
+externe** (~2 To/mois — généreux pour un site chargé en images).
+
+### 4.6 L'économie réelle : la trajectoire actuelle n'est pas gratuite
+
+Le site tourne aujourd'hui sur les **plans gratuits** de Vercel et Supabase —
+mais **les alertes de dépassement se déclenchent déjà**, avec 7 comptes et un
+site non ouvert.
+
+| | Limite gratuite | État |
+|---|---|---|
+| Supabase — egress base | 5 Go/mois | Alertes déclenchées |
+| Supabase — taille base | 500 Mo | 57 Mo, large marge |
+| Vercel — bande passante | 100 Go/mois | Alertes déclenchées |
+
+La trajectoire « ne rien faire » mène donc à Supabase Pro (25 $) + Vercel Pro
+(20 $), **≈ 40 €/mois**, pas à zéro. Infomaniak à 16-28 €/mois est **moins cher
+que là où le projet allait**.
+
+**Un point contractuel s'ajoute** : le plan Hobby de Vercel est réservé à un
+usage personnel non commercial. Or l'application porte un module d'abonnements
+payants (`mc_consume`, `mc_start_trial`, `subscriptions`, `plans`). Le jour de
+l'ouverture avec une offre payante, Hobby cesse d'être une option, quelles que
+soient les limites techniques. *(À vérifier dans les conditions en vigueur, mais
+c'est une clause de longue date.)*
+
+**Ce que les alertes révèlent surtout.** Saturer 5 Go d'egress avec 7 testeurs
+et 50 recettes n'est pas normal : à ~740 ko d'images par fiche, 5 Go
+représentent environ 6 700 pages vues. Chaque page coûte anormalement cher, et
+la § 5.1 dit pourquoi. **Migrer l'hébergement sans traiter les images
+déplacerait le problème au lieu de le résoudre** — chez Infomaniak les 2,8 Go/h
+inclus le masqueraient, mais le gaspillage reviendrait en consommation de
+cloudlets.
 
 ---
 
 ## 5. Trouvailles
 
-### 5.1 Les originaux pèsent la moitié des images et ne sont jamais affichés
+### 5.1 Les originaux pèsent la moitié des images et ne sont jamais affichés — **traité**
 
 `step_photos.original_url` (14 Mo) + `recipes.hero_image_original_url`
 (3,6 Mo) = **17,6 Mo, 48 % du poids image**. Ils ne servent qu'à la réédition
 dans `CreerForm` et `RelectureEditor` (`originalSrc={p?.original_url}`).
 
-Or `FULL_SELECT` (`lib/recipes.ts`, ~ligne 243) fait
-`recipe_steps(*, step_photos(*))` et `select *` sur `recipes` : **chaque
-ouverture de fiche recette publique transporte les originaux, jamais rendus.**
+Or `FULL_SELECT` faisait `recipe_steps(*, step_photos(*))` et `select('*')` sur
+`recipes` : **chaque ouverture de fiche recette publique transportait les
+originaux, jamais rendus.**
 
-Ce n'est pas une correction d'une ligne — `getRecipeFull` est partagé :
+Ce n'était pas une correction d'une ligne — `getRecipeFull` est partagé, et
+chaque appelant a un besoin différent :
 
-| Appelant | A besoin des originaux ? |
+| Appelant | Portée retenue |
 |---|---|
-| `app/recette/[id]/page.tsx` | **Non** |
-| `app/api/moderation-recette/route.ts` | **Non** |
-| `app/api/reindex-recette/route.ts` | **Non** — et il boucle sur toutes les recettes publiées |
-| `app/creer/page.tsx` | Oui |
-| `app/projets/[id]/page.tsx` | Oui |
+| `app/recette/[id]/page.tsx` | `lecture` — photos affichées, pas les originaux |
+| `app/projets/[id]/page.tsx` | `lecture` — le parcours guidé ne réédite aucune photo |
+| `app/creer/page.tsx` | `edition` — seul écran qui réédite |
+| `app/api/moderation-recette/route.ts` | `texte` — `buildModerationSource` ne lit que du texte |
+| `app/api/reindex-recette/route.ts` | `texte` — et il boucle sur toutes les recettes publiées |
 
-Il faut une variante ou un paramètre. **Chantier indépendant de toute
-migration, à fort rendement immédiat** — c'est le premier poste d'egress
-identifié après ceux déjà traités dans `docs/audit-egress-supabase.md`.
+**Corrigé le 04/09/2026** : `getRecipeFull` prend désormais une portée
+explicite — `lecture`, `edition` ou `texte` — sans valeur par défaut. Trois
+gaspillages traités d'un coup :
+
+| Gaspillage | Traitement |
+|---|---|
+| Originaux sur la fiche publique (17,6 Mo, 48 % du poids image) | Absents de la portée `lecture` |
+| `select('*')` sur 42 colonnes, dont `fts` (tsvector) et les dérivés `hero_card_url` / `hero_thumb_url` | Colonnes énumérées, comme `PROFILE_COLUMNS` |
+| `/api/moderation-recette` et `/api/reindex-recette` tirant toutes les images pour n'en lire aucune | Portée `texte`, **aucune image** |
+
+Le dernier est le plus lourd : le réindex complet boucle sur **toutes** les
+recettes publiées.
+
+Deux décisions à connaître. **Pas de valeur par défaut** sur la portée : un
+défaut à `lecture` aurait fait hériter un futur écran d'édition d'une recette
+sans ses originaux, sans erreur visible avant la première réédition de photo.
+Et **`difficulty_id` reste dans la liste énumérée** bien qu'absent de
+`RecipeFull` — `CreerForm` le lit via un cast pour pré-remplir la difficulté ;
+le retirer aurait cassé l'éditeur en silence. C'est le piège de tout passage
+de `*` à une énumération.
+
+C'était le premier poste d'egress restant après ceux déjà traités dans
+`docs/audit-egress-supabase.md`, et il se corrigeait **sans migration et sans
+risque** — d'où sa priorité 1 (§ 7.1).
 
 ### 5.2 Cinq réserves sur les colonnes image
 
@@ -405,12 +487,12 @@ oublier.
 
 ### 6.2 Non vérifié à ce jour
 
-- **Prix Virtuozzo Cloud** — le tarif unitaire du cloudlet est chargé en
-  JavaScript et n'a pas pu être lu. Ordre de grandeur retenu : **25-40
-  CHF/mois** pour la pile complète (§ 4.5), **à confirmer au simulateur**.
-  C'est le seul chiffre qui manque encore au dossier.
-- **La restauration du dump Supabase n'a jamais été tentée** — c'est le
-  Go/No-Go réel (§ 7.2).
+- **La restauration du dump Supabase n'a jamais été tentée** — c'est le seul
+  Go/No-Go qui reste (§ 7.2).
+- **Quelles limites exactement ont déclenché les alertes** (§ 4.6) : egress
+  Supabase, bande passante Vercel, invocations de fonctions ? Les trois
+  premières confirment le diagnostic images ; la quatrième pointerait ailleurs,
+  vers le middleware ou les routes IA.
 - **Échéance du PostgreSQL managé du Public Cloud** — question posée au
   support. Sans effet sur le plan depuis que Virtuozzo Cloud fournit
   PostgreSQL (§ 4), mais un managé natif resterait préférable à terme.
@@ -434,12 +516,24 @@ oublier.
 
 ## 7. Plan
 
-### 7.1 Immédiat
+### 7.1 Ordre de priorité
 
-Passer la pile au **simulateur de prix Virtuozzo Cloud** — le seul chiffre qui
-manque encore (§ 4.5). Accessoirement, demander au support l'échéance du
-PostgreSQL managé du Public Cloud : sans effet sur le plan, mais un managé natif
-resterait préférable à terme.
+Les alertes de dépassement (§ 4.6) réordonnent le plan : **le chantier photos
+n'est plus « bon pour l'écologie », c'est la cause du problème.**
+
+| Priorité | Chantier | Effet |
+|---|---|---|
+| **1** | § 5.1 — ne plus transporter les images inutiles | **Fait le 04/09/2026.** Sans migration, sans risque |
+| **2** | Lot B — photos vers le stockage objet | Supprime la source dominante d'egress |
+| **3** | Lots A et C — la migration | Devient un choix serein, pas une fuite en avant |
+
+Traiter 1 et 2 peut remettre le site **sous les seuils gratuits** et rendre le
+temps de mener la migration calmement, plutôt que sous la pression d'une
+facture.
+
+Reste à demander au support l'échéance du PostgreSQL managé du Public Cloud :
+sans effet sur le plan depuis Virtuozzo Cloud, mais un managé natif resterait
+préférable à terme.
 
 ### 7.2 Lot 0-bis — répétition de restauration (1 j)
 
@@ -514,6 +608,9 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | « Faute de managé, il faut monter PostgreSQL sur une instance nue » | **Dépassé.** Virtuozzo Cloud donne PostgreSQL sans SSH ni `docker compose` à la main — décisif pour qui travaille exclusivement en ligne. L'instance nue devient le repli. |
 | La proximité du bucket avec l'application est à vérifier | **Non-sujet** : les photos sont servies au navigateur, pas au serveur. Cf. § 6.2. |
 | Le PITR absent est « un chantier à part entière » | **Surévalué.** Avec `supabase/postgres` et un bucket S3 déjà validé, `wal-g` représente une demi-journée : ça appartient à la définition de terminé du lot C (§ 4.5). |
+| « Sur les plans gratuits, la migration ajoute un coût » | **Faux.** Les alertes de dépassement se déclenchent déjà : la trajectoire réelle est Vercel Pro + Supabase Pro, ~40 €/mois. Infomaniak à 16-28 € est **moins cher** (§ 4.6). |
+| Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
+| Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
 
 ---
 
@@ -526,6 +623,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
   sa justification (§ 4.1).
 - PR #201 — correctif `crossOrigin` et workflow CORS Object Storage.
 - PR #205 — ce document.
+- PR #206 — correctif § 5.1 (portées de lecture) et présente mise à jour.
 
 ---
 
@@ -580,7 +678,12 @@ pas applicable telle quelle.
 ### 10.4 Prochaine action — le lot 0-bis
 
 Le seul Go/No-Go qui reste (§ 7.2), à mener pendant l'**essai 14 jours de
-Virtuozzo Cloud**.
+Virtuozzo Cloud**. Le prix, lui, est mesuré (§ 4.5) : rien n'oblige à consommer
+des jours d'essai pour l'obtenir.
+
+Rappel de priorité (§ 7.1) : le **lot B** — photos vers le stockage objet —
+passe devant la migration elle-même. C'est lui qui traite la cause des alertes
+de dépassement, et il ne dépend d'aucun fournisseur.
 
 **Deux objectifs seulement pendant l'essai** : la répétition de restauration, et
 le prix au simulateur (§ 4.5). Les lots A, B et C n'y rentrent pas et n'ont pas
