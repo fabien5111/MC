@@ -886,7 +886,7 @@ mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
-### 7.5 Lot B — découpage et décisions (B0, B1, B2 étapes 1-2 terminés le 05/09)
+### 7.5 Lot B — découpage et décisions (B0, B1, B2 étapes 1-3 terminés le 05/09)
 
 Le lot B sort les images de la base vers le stockage objet. Le § 7.1 en fait la
 **priorité 1** : c'est lui qui traite la cause des alertes de dépassement, il ne
@@ -999,7 +999,7 @@ interrupteur public/privé au B1.
 |---|---|---|
 | **B0** | `gen:types`, mesure, conteneurs, CORS, arbitrages, sonde TempURL | **Fait le 05/09** |
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
-| **B2** | Bascule des écritures, par risque croissant | **Étapes 1-2 faites le 05/09** — reste étapes 3-4 |
+| **B2** | Bascule des écritures, par risque croissant | **Étapes 1-3 faites le 05/09** — reste étape 4 |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | À faire |
 | **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
 
@@ -1081,6 +1081,35 @@ dans `CreerForm` ou relue par `RecipeImageBackfill` passe sa photo existante
 dans `resizeDataUrlToThumb`. Le CORS de `jp-photos`, déjà posé et vérifié au
 B0/§3.1, est la condition qui rend ce rechargement possible sans polluer le
 canvas.
+
+#### Étape 3 : `profiles` et `comments.photo_urls`
+
+**Un seul écrivain réel pour `profiles`** : `ProfileHeader.saveImage` (avatar,
+bannière), appelé par `ImageSlot.onChange` — une callback `void`, jamais
+attendue par son appelant. `televerserImage()` y est donc entouré d'un
+`try`/`catch` propre, qui affiche l'erreur puis abandonne, plutôt que de
+laisser une exception s'échapper en rejet de promesse non intercepté — le
+même risque déjà écarté à l'étape 1 pour `PartnersManager` (§ 7.5), ici
+structurel à `ImageSlot` plutôt que ponctuel à un écran.
+
+**`profiles.cover_url` n'a, comme les deux pictos de l'étape 1, aucun chemin
+d'écriture applicatif** — confirmé par `docs/note-regression-cache.md` :
+« `cover_url` n'est lu nulle part dans le code applicatif ». Rien à basculer
+côté code ; la colonne est vide de toute façon (§ 7.5, mesure du B0), donc
+sans objet pour le B3 non plus.
+
+**`comments.photo_urls` ne s'écrit pas depuis un composant client, mais
+depuis une route serveur** (`submitOrUpdateReview`, `lib/reviews-data.ts`,
+clé service_role — cf. CLAUDE.md « Avis sur une recette »). Le dépôt ne peut
+donc pas se faire là : la route ne voit jamais les octets d'une image
+(§ 3, même doctrine que l'upload direct navigateur → bucket), et c'est
+justement ce qu'on veut préserver. Le dépôt se fait **avant** l'appel réseau,
+dans `BatchReview.submit()` (le formulaire d'avis) — chaque photo de l'avis
+est déposée sur le stockage objet, et c'est l'URL renvoyée qui part dans le
+corps JSON de `POST /api/fournee/[id]/avis`, à la place de la data-URL.
+Sans ce changement, la route aurait continué à écrire des data-URL dans
+`comments.photo_urls` en toute discrétion — la bascule d'une colonne ne
+suffit pas si elle ne remonte pas jusqu'au point où la donnée est produite.
 
 #### Deux pièges déjà documentés, à ne pas perdre en route
 
@@ -1207,16 +1236,17 @@ pas applicable telle quelle.
 - **Les jours d'essai Virtuozzo restants** n'ont pas été consommés par le lot
   0-bis : tout s'est joué en une matinée du 05/09, la phase 0 ayant absorbé
   hors chrono les trois faux départs (§ 7.4).
-- **Lot B, B0-B1-B2 étapes 1-2 en place** (§ 7.5) : conteneurs `jp-photos`
+- **Lot B, B0-B1-B2 étapes 1-3 en place** (§ 7.5) : conteneurs `jp-photos`
   (public, CORS posé) et `jp-contact` (privé), mécanisme **Swift TempURL**
   vérifié par sonde, `lib/storage.ts` / `lib/storage-data.ts` /
   `lib/storage-client.ts` écrits et testés, route
-  `/api/stockage/televersement`, six écrans basculés (`BannerManager`,
-  `PartnersManager`, `BlogEditor`, `CreerForm`, `RelectureEditor`,
-  `RecipeImageBackfill`). **Reste à poser les deux secrets
-  `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la variable
-  `SWIFT_STORAGE_URL`** — sans eux, la route de présignature échoue à l'exécution
-  (`env()` lève), pas à la compilation.
+  `/api/stockage/televersement`, huit écrans/routes basculés
+  (`BannerManager`, `PartnersManager`, `BlogEditor`, `CreerForm`,
+  `RelectureEditor`, `RecipeImageBackfill`, `ProfileHeader`, `BatchReview`).
+  **Reste à poser les deux secrets `SWIFT_TEMPURL_KEY_PHOTOS` /
+  `SWIFT_TEMPURL_KEY_CONTACT` et la variable `SWIFT_STORAGE_URL`** — sans eux,
+  la route de présignature échoue à l'exécution (`env()` lève), pas à la
+  compilation.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1225,20 +1255,25 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B2, étape 3
+### 10.4 Prochaine action — le lot B2, étape 4
 
 **Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1 et les
-étapes 1-2 du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs, CORS,
+étapes 1-3 du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs, CORS,
 arbitrages, sonde du mécanisme de signature, socle de signature TempURL,
 bascule des trois écrans à faible enjeu (`BannerManager`, `PartnersManager`,
-`BlogEditor`), puis du gros du chantier — `recipes` et `step_photos`
-(`CreerForm`, `RelectureEditor`, `RecipeImageBackfill`), 35 Mo et 322 objets.
+`BlogEditor`), du gros du chantier — `recipes` et `step_photos`
+(`CreerForm`, `RelectureEditor`, `RecipeImageBackfill`), 35 Mo et 322 objets —
+puis de `profiles` (`ProfileHeader`) et `comments.photo_urls` (`BatchReview`,
+déposé avant l'appel à la route serveur qui écrit avec la clé service_role).
 
-**La prochaine action est l'étape 3 du B2** : basculer `profiles`
-(`avatar_url`, `banner_url`) et `comments.photo_urls`, en réutilisant
-`lib/storage-client.ts`. Puis l'étape 4 (`contact_*`, qui suppose d'ouvrir
-l'usage `contact` fermé au B1 en réutilisant la chaîne anti-spam du
-formulaire). Le § 7.5 porte le découpage complet et l'ordre du B2.
+**La prochaine action est l'étape 4 du B2**, la dernière : `contact_*`, ce qui
+suppose d'ouvrir l'usage `contact` fermé au B1 (route de présignature refusée
+avec un 501) en réutilisant la chaîne anti-spam existante du formulaire
+(piège, délai signé, limitation de débit comptée en base — cf. CLAUDE.md
+« Contact et suivi Jira ») avant de la câbler au conteneur privé
+`jp-contact`. Le § 7.5 porte le découpage complet et l'ordre du B2. Une fois
+l'étape 4 posée, le B2 est terminé et le B3 (reprise des ≈360 objets déjà en
+base) peut commencer.
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par

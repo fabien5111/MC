@@ -16,6 +16,7 @@ import { REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, reviewCommentRequired, validateR
 import type { ReviewPhoto } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { resizeFilesToDataUrls } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { useDialog } from '@/components/Dialog';
@@ -139,10 +140,17 @@ function ReviewForm({
     }
     setBusy(true);
     try {
+      // Déposées avant l'envoi du formulaire, jamais dans le corps JSON de la
+      // route : `submitOrUpdateReview` écrit avec la clé service_role sans
+      // jamais voir les octets d'une image (§ 7.5, lot B2, même doctrine que
+      // le § 3 — dépôt direct navigateur → bucket).
+      const photosDeposees = await Promise.all(
+        photos.map(async (p) => ({ ...p, url: await televerserImage('avis', p.url) })),
+      );
       const res = await fetch(`/api/fournee/${batchId}/avis`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ rating, comment: comment.trim(), photos }),
+        body: JSON.stringify({ rating, comment: comment.trim(), photos: photosDeposees }),
       });
       const data = (await res.json().catch(() => ({}))) as { erreur?: string };
       if (!res.ok) {
@@ -151,8 +159,8 @@ function ReviewForm({
         return;
       }
       onSubmitted();
-    } catch {
-      setError('Erreur réseau — réessayez.');
+    } catch (e) {
+      setError((e as Error).message || 'Erreur réseau — réessayez.');
       setBusy(false);
     }
   }
