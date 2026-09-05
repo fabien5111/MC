@@ -31,7 +31,14 @@ type ReponsePresignature = { url: string; conteneur: 'photos' | 'contact'; cle: 
  *
  * Le dépôt est un `PUT` direct navigateur → bucket, l'application ne voit
  * jamais les octets (§ 3).
+ *
+ * Deux signatures : un appelant qui passe une chaîne certaine (une photo
+ * d'étape, toujours renseignée) récupère une chaîne certaine en retour, sans
+ * `!` ni cast — seul l'appelant qui passe potentiellement `null` (une photo
+ * de recette facultative) récupère un retour nullable.
  */
+export async function televerserImage(usage: Usage, valeur: string): Promise<string>;
+export async function televerserImage(usage: Usage, valeur: string | null): Promise<string | null>;
 export async function televerserImage(usage: Usage, valeur: string | null): Promise<string | null> {
   if (!estDataUrlImage(valeur)) return valeur;
 

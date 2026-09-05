@@ -25,6 +25,7 @@ import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
+import { televerserImage } from '@/lib/storage-client';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -1002,6 +1003,14 @@ export function RelectureEditor({
 
       const diffRow = p.difficulte ? closestDifficulty(difficulties, p.difficulte) : null;
 
+      // Data-URL fraîche si la photo vient d'être choisie/éditée dans cet
+      // écran, ou déjà l'URL de stockage sur une reprise après échec —
+      // televerserImage() ne dépose que dans le premier cas (§ 7.5, lot B2).
+      const [heroUrl, heroOriginalUrl] = await Promise.all([
+        televerserImage('recette', p.photo_principale || null),
+        televerserImage('recette', p.photo_principale_original || p.photo_principale || null),
+      ]);
+
       const payload = {
         author_id: user.id,
         title: p.titre || 'Recette importée',
@@ -1014,8 +1023,8 @@ export function RelectureEditor({
         video_url: p.source?.video_url || null,
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
-        hero_image_url: p.photo_principale || null,
-        hero_image_original_url: p.photo_principale_original || p.photo_principale || null,
+        hero_image_url: heroUrl,
+        hero_image_original_url: heroOriginalUrl,
         hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,
         prep_time: t.preparation_min ?? null,
@@ -1086,9 +1095,21 @@ export function RelectureEditor({
 
         const photoRows: StepPhoto[] = Array.isArray(sp.photos) ? sp.photos.filter((p: any) => !!p?.url) : [];
         if (photoRows.length) {
+          // Déposées en parallèle entre elles ET entre les deux URLs de
+          // chaque photo — un pas à pas multiplierait par leur nombre le
+          // temps d'enregistrement (§ 7.5, lot B2).
+          const photosDeposees = await Promise.all(
+            photoRows.map(async (p) => {
+              const [url, originalUrl] = await Promise.all([
+                televerserImage('recette', p.url),
+                televerserImage('recette', p.original_url || p.url),
+              ]);
+              return { ...p, url, original_url: originalUrl };
+            }),
+          );
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url || p.url, order_index: pi, ai_retouched: !!p.ai_retouched })));
+            .insert(photosDeposees.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url, order_index: pi, ai_retouched: !!p.ai_retouched })));
           if (error) throw error;
         }
 

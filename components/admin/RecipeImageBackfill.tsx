@@ -17,6 +17,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { resizeDataUrlToThumb } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 
 const BATCH_SIZE = 20;
 
@@ -60,9 +61,15 @@ export function RecipeImageBackfill({
         for (const r of data as { id: string; hero_image_url: string | null }[]) {
           try {
             const derived = await resizeDataUrlToThumb(r.hero_image_url as string, maxWidth, 'image/jpeg', quality);
+            // `derived` est toujours une data-URL fraîche (resizeDataUrlToThumb
+            // en produit une systématiquement) : televerserImage() la dépose
+            // sur le stockage objet plutôt que de l'écrire telle quelle
+            // (§ 7.5, lot B2) — même chemin que CreerForm pour ces deux
+            // dérivés, une seule implémentation de dépôt.
+            const derivedUrl = await televerserImage('recette', derived);
             const { error: updErr } = await supabase
               .from('recipes')
-              .update({ [column]: derived } as never)
+              .update({ [column]: derivedUrl } as never)
               .eq('id', r.id);
             if (updErr) throw updErr;
             setDone((n) => n + 1);

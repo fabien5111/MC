@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 import { ImageSlot } from '@/components/ImageSlot';
 import { swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
@@ -899,8 +900,21 @@ export function CreerForm({
       //  - `heroThumb` (~96 px) sert les listes de fournées d'« En cuisine » ;
       //  - `heroCard` (~480 px) sert les cartes recette — accueil, recherche,
       //    carnet, profils, suggestions.
-      const heroThumb = hero ? await resizeDataUrlToThumb(hero) : null;
-      const heroCard = hero ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
+      const heroThumbBrut = hero ? await resizeDataUrlToThumb(hero) : null;
+      const heroCardBrut = hero ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
+
+      // Chacun des quatre est une data-URL fraîche si la photo a changé, ou
+      // déjà l'URL de stockage si elle vient de la lecture initiale ;
+      // televerserImage() ne dépose que dans le premier cas et rend le reste
+      // inchangé (§ 7.5, lot B2). En parallèle : ce sont quatre dépôts
+      // indépendants, les enchaîner un par un ralentirait l'enregistrement
+      // pour rien.
+      const [heroUrl, heroOriginalUrl, heroThumb, heroCard] = await Promise.all([
+        televerserImage('recette', hero),
+        televerserImage('recette', heroOriginal),
+        televerserImage('recette', heroThumbBrut),
+        televerserImage('recette', heroCardBrut),
+      ]);
 
       const payload = {
         title: capitalizeSentences(title.trim()),
@@ -924,10 +938,10 @@ export function CreerForm({
         wait_time: gmin(wait),
         cook_time: gmin(cook),
         total_time: gmin(total),
-        hero_image_url: hero,
+        hero_image_url: heroUrl,
         hero_thumb_url: heroThumb,
         hero_card_url: heroCard,
-        hero_image_original_url: heroOriginal,
+        hero_image_original_url: heroOriginalUrl,
         hero_image_ai_retouched: heroAiRetouched,
         // Dissolution effective (cf. `projetIntact`). `kind` reste `project` :
         // la recette garde ses composants et ses crédits, elle perd seulement
@@ -1033,9 +1047,22 @@ export function CreerForm({
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
 
         if (photoRows.length) {
+          // Chaque photo porte deux data-URL potentielles (affichée,
+          // originale) — déposées en parallèle entre elles ET entre photos :
+          // un pas à pas ici multiplierait par le nombre de photos de
+          // l'étape le temps d'enregistrement.
+          const photosDeposees = await Promise.all(
+            photoRows.map(async (p) => {
+              const [url, originalUrl] = await Promise.all([
+                televerserImage('recette', p.url),
+                televerserImage('recette', p.original_url),
+              ]);
+              return { ...p, url, original_url: originalUrl };
+            }),
+          );
           const { error } = await supabase
             .from('step_photos')
-            .insert(photoRows.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url, order_index: pi, ai_retouched: p.ai_retouched })));
+            .insert(photosDeposees.map((p, pi) => ({ step_id: stepRow.id, url: p.url, original_url: p.original_url, order_index: pi, ai_retouched: p.ai_retouched })));
           if (error) throw error;
         }
 
