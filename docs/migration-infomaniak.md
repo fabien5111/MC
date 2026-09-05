@@ -963,9 +963,20 @@ pas applicable telle quelle.
   `.github/workflows/migration-dump-schema.yml` (dump seul, se joue **avant**
   l'essai) et `.github/workflows/migration-restauration-repetition.yml` (dump +
   restauration + inventaire + verdict). Mode opératoire complet en § 7.2.
-- **Quatre secrets GitHub restent à créer**, en plus des sept `OS_*` :
-  `SUPABASE_DB_URL` (session pooler, port 5432) pour la source, `VZ_PG_HOST` /
-  `VZ_PG_PORT` / `VZ_PG_PASSWORD` pour la cible Virtuozzo.
+- **Les quatre secrets du lot 0-bis ont été créés, utilisés, puis supprimés**
+  le 05/09 : `SUPABASE_DB_URL` (source) et `VZ_PG_HOST` / `VZ_PG_PORT` /
+  `VZ_PG_PASSWORD` (cible). Un secret sans usage est une surface d'attaque sans
+  contrepartie. **Le lot C devra les recréer** — la forme exacte est en § 7.2
+  phase 0, et le signe qui distingue les trois chaînes de connexion Supabase y
+  est écrit noir sur blanc, c'est le piège qui a coûté un premier lancement.
+- **L'environnement d'essai `mc-restore-test` est supprimé**, Endpoint compris.
+  Le mot de passe de la base Supabase n'a **pas** été renouvelé : il n'est
+  jamais apparu en clair (GitHub masque les secrets dans les journaux), et le
+  secret qui le portait n'existe plus. À renouveler par hygiène si l'occasion se
+  présente, sans urgence.
+- **Les jours d'essai Virtuozzo restants** n'ont pas été consommés par le lot
+  0-bis : tout s'est joué en une matinée du 05/09, la phase 0 ayant absorbé
+  hors chrono les trois faux départs (§ 7.4).
 - **Le dépôt est public**, et ça a valeur de contrainte : journaux et artefacts
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
