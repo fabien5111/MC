@@ -11,3 +11,7 @@ next-env.d.ts
 
 # worker pdf.js recopié depuis node_modules par scripts/copy-pdf-worker.mjs
 /public/pdf.worker.min.mjs
+
+# artefacts de test manuel du script Python de réconciliation (§ 7.8)
+__pycache__/
+*.pyc
