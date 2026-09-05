@@ -1,11 +1,14 @@
 'use client';
 
 // Gestion des bannières d'accueil par appareil (porté de admin-photos.html).
-// Upload → compression data-URL → enregistrement dans site_settings.
+// Upload → compression en data-URL pour l'aperçu → dépôt sur le stockage
+// objet → l'URL finale, pas la data-URL, est ce qui s'enregistre dans
+// site_settings (§ 7.5, lot B2).
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageToDataUrl } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 
@@ -47,12 +50,17 @@ function BannerCard({
     setStatus('Enregistrement…');
     try {
       const dataUrl = await resizeImageToDataUrl(file, config.max);
+      // L'aperçu s'affiche tout de suite sur la data-URL (compression locale,
+      // aucun aller-retour réseau) ; c'est la valeur PERSISTÉE qui devient
+      // l'URL de stockage — televerserImage() dépose puis rend l'URL finale
+      // (§ 7.5, lot B2).
+      const urlFinale = await televerserImage('banniere', dataUrl);
       const supabase = createClient();
       const { error } = await supabase
         .from('site_settings')
-        .upsert({ key: key(config.device), value: dataUrl });
+        .upsert({ key: key(config.device), value: urlFinale });
       if (error) throw error;
-      setUrl(dataUrl);
+      setUrl(urlFinale);
       // La bannière est lue côté serveur par l'accueil, et désormais servie
       // depuis le cache de `lib/data/reference.ts` : `router.refresh()` seul
       // relirait la valeur en cache. Invalider l'étiquette d'abord.
@@ -77,7 +85,7 @@ function BannerCard({
         className={`${config.aspect} max-w-xl bg-surface-container rounded-lg overflow-hidden border border-outline-variant mb-4 flex items-center justify-center`}
       >
         {url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data-URL
+          // eslint-disable-next-line @next/next/no-img-element -- next/image inutilisé dans tout le dépôt (§ 5.2)
           <img src={url} alt={`Bannière ${config.label}`} className="w-full h-full object-cover" />
         ) : (
           <span className="material-symbols-outlined text-5xl text-on-surface-variant">imagesmode</span>

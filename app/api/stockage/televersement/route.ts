@@ -15,13 +15,14 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import {
+  CONTENEUR_PUBLIC,
   EXPIRATION_TELEVERSEMENT_S,
   USAGES,
   estMimeAccepte,
   estUsage,
   nouvelleCleObjet,
 } from '@/lib/storage';
-import { urlDeTeleversement } from '@/lib/storage-data';
+import { urlDeTeleversement, urlPublique } from '@/lib/storage-data';
 
 function refus(message: string, code: number) {
   return NextResponse.json({ error: message }, { status: code });
@@ -74,10 +75,16 @@ export async function POST(req: Request) {
 
   const cle = nouvelleCleObjet(decl.prefixe, mime);
 
+  // `urlFinale` est ce que l'appelant persiste en base — l'URL publique
+  // stable de l'objet, pas l'URL de dépôt (qui expire et ne vaut que pour un
+  // PUT). Absente sur un conteneur privé : rien n'en a l'usage aujourd'hui,
+  // `contact` étant fermé plus haut — un futur usage privé lirait plutôt par
+  // `urlDeLecture()`, signée à chaque affichage.
   return NextResponse.json({
     cle,
     conteneur: decl.conteneur,
     url: urlDeTeleversement(decl.conteneur, cle),
+    urlFinale: CONTENEUR_PUBLIC[decl.conteneur] ? urlPublique(cle) : null,
     expireDansS: EXPIRATION_TELEVERSEMENT_S,
   });
 }

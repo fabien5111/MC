@@ -886,7 +886,7 @@ mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
-### 7.5 Lot B — découpage et décisions (B0 terminé le 05/09)
+### 7.5 Lot B — découpage et décisions (B0, B1, B2 étape 1 terminés le 05/09)
 
 Le lot B sort les images de la base vers le stockage objet. Le § 7.1 en fait la
 **priorité 1** : c'est lui qui traite la cause des alertes de dépassement, il ne
@@ -998,8 +998,8 @@ interrupteur public/privé au B1.
 | Sous-lot | Contenu | État |
 |---|---|---|
 | **B0** | `gen:types`, mesure, conteneurs, CORS, arbitrages, sonde TempURL | **Fait le 05/09** |
-| **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | À faire |
-| **B2** | Bascule des écritures, par risque croissant | À faire |
+| **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
+| **B2** | Bascule des écritures, par risque croissant | **Étape 1 faite le 05/09** — reste étapes 2-4 |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | À faire |
 | **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
 
@@ -1008,6 +1008,33 @@ interrupteur public/privé au B1.
 répétition à faible enjeu qui exerce toute la chaîne, même logique que la
 phase 0 du lot 0-bis) ; puis `step_photos` et `recipes` (35 Mo, 322 objets) ;
 puis `profiles` et `comments` ; enfin `contact_*` sur le conteneur privé.
+
+**Correction à l'étape 1** : `tags.category_picto` et `allergens.picto` n'ont
+**aucun chemin d'écriture applicatif** — aucune des deux tables n'a d'écran
+d'administration, elles s'éditent directement dans Supabase (cohérent avec
+leur taille, 9 et 8 lignes). Il n'y a donc rien à basculer côté code pour ces
+deux colonnes : leurs data-URL existantes seront reprises telles quelles par
+le B3, comme n'importe quelle valeur trouvée en base. L'étape 1 du B2 s'est
+donc réduite à trois écrans réels : `BannerManager` (`site_settings`),
+`PartnersManager` (`ads.image_url`), `BlogEditor` (`articles.cover_image_url`).
+
+**Ce que l'étape 1 a livré** : `lib/storage-client.ts`, le pont client entre la
+data-URL produite par `lib/images.ts` et l'URL de stockage — dépose puis rend
+l'URL finale, ou rend `valeur` inchangée si ce n'est pas une data-URL. C'est
+cette dernière propriété qui rend l'appel **idempotent et inconditionnel** :
+chaque écran l'appelle avant chaque écriture, que l'image ait changé ou non, et
+elle ne fait rien tant que la colonne porte déjà une URL de stockage — la même
+logique qui rendra le B3 (les valeurs déjà migrées ne sont pas retéléversées)
+et un B2 rejoué partiellement sans risque.
+
+**`BlogEditor` porte un second chemin d'écriture de data-URL, hors périmètre.**
+`insertImage()` insère une image **dans `content` (jsonb)**, pas dans une
+colonne mesurée — c'est le gisement que le § 5.2 point 3 disait « à
+surveiller », mesuré à 0 image inline au 03/09. Non traité ici : la bascule y
+est structurellement différente (remplacer un nœud TipTap après téléversement
+asynchrone, pas juste substituer une valeur avant un `update`), et le mesurer
+à 0 aujourd'hui ne justifie pas la complexité maintenant. Reste dans le
+dossier tant qu'il n'est pas traité.
 
 **On n'efface jamais une data-URL avant d'avoir relu l'objet distant** — d'où B3
 et B4 séparés. C'est ce qui garde le chantier réversible jusqu'au dernier
@@ -1019,8 +1046,11 @@ Le § 5.2 en nomme deux qui mordront : **`lib/contact.ts:198` écarte une photo
 non-`data:` sans erreur** — une photo migrée disparaîtrait en silence, et
 `lib/contact.test.ts` verrouille ce comportement, à reprendre avec le contrat.
 Et le **cycle de vie** : aujourd'hui la cascade FK supprime les images avec la
-recette ; avec un bucket, les objets survivent aux lignes. À décider au B1, pas
-au B4.
+recette ; avec un bucket, les objets survivent aux lignes. **Le B1 a posé la
+condition qui le rendra possible** — clés d'objet en UUID plutôt qu'adressage
+par contenu, pour que la propriété d'un objet reste lisible — mais **le
+mécanisme de réconciliation lui-même (lister, comparer aux références en base,
+supprimer les orphelins de plus de 24 h) reste à écrire**, au B4.
 
 ---
 
@@ -1046,6 +1076,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | L'image apporte les extensions « exactement dans la disposition du § 2.3 » | **Faux pour deux d'entre elles.** `pg_trgm` et `unaccent` ne sont pas créées par `supabase/postgres:17.6.1.165` (§ 2.6) — les deux que le § 2.3 dit critiques. Le workflow pose désormais les cinq lui-même, sans rien supposer de l'image. |
 | Le § 2.2 énumère les colonnes image de la base | **Incomplet de trois colonnes** — `imports.recette`, `tags.category_picto`, `allergens.picto` (§ 7.5). Elles ont été trouvées en balayant tout le schéma plutôt qu'en listant à la main. Une énumération manuelle de colonnes est une hypothèse, pas une mesure. |
 | Le stockage objet d'Infomaniak est un Ceph RadosGW (donc pas de clé TempURL par conteneur) | **Faux** — c'est du Swift natif avec le middleware `s3api` (§ 7.5). Le nom d'hôte en `s3.` désigne un protocole servi, pas l'implémentation. Les clés par conteneur fonctionnent, le cloisonnement `jp-photos` / `jp-contact` tient. |
+| `tags.category_picto` et `allergens.picto` se bascule via un écran d'admin, comme les autres colonnes image de l'étape 1 du B2 | **Faux** — aucune des deux tables n'a d'écran d'administration ; elles s'éditent directement en base (§ 7.5). Rien à basculer côté code, le B3 reprendra leurs data-URL telles quelles. |
 | La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 
@@ -1134,10 +1165,15 @@ pas applicable telle quelle.
 - **Les jours d'essai Virtuozzo restants** n'ont pas été consommés par le lot
   0-bis : tout s'est joué en une matinée du 05/09, la phase 0 ayant absorbé
   hors chrono les trois faux départs (§ 7.4).
-- **Lot B, socle en place** (§ 7.5) : conteneurs `jp-photos` (public, CORS posé)
-  et `jp-contact` (privé), mécanisme **Swift TempURL** vérifié par sonde, clés
-  **par conteneur** disponibles. Reste à poser les deux clés TempURL et à écrire
-  `lib/storage.ts` (B1).
+- **Lot B, B0-B1-B2 étape 1 en place** (§ 7.5) : conteneurs `jp-photos`
+  (public, CORS posé) et `jp-contact` (privé), mécanisme **Swift TempURL**
+  vérifié par sonde, `lib/storage.ts` / `lib/storage-data.ts` /
+  `lib/storage-client.ts` écrits et testés, route
+  `/api/stockage/televersement`, trois écrans basculés (`BannerManager`,
+  `PartnersManager`, `BlogEditor`). **Reste à poser les deux secrets
+  `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la variable
+  `SWIFT_STORAGE_URL`** — sans eux, la route de présignature échoue à l'exécution
+  (`env()` lève), pas à la compilation.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1146,15 +1182,24 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B1
+### 10.4 Prochaine action — le lot B2, étape 2
 
-**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0 du lot B est
-terminé aussi** (§ 7.5) : mesure exhaustive, conteneurs, CORS, arbitrages et
-sonde du mécanisme de signature.
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1 et
+l'étape 1 du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs, CORS,
+arbitrages, sonde du mécanisme de signature, socle de signature TempURL, et
+bascule des trois écrans à faible enjeu (`BannerManager`, `PartnersManager`,
+`BlogEditor`).
 
-**La prochaine action est le B1** : `lib/storage.ts` (signature TempURL en
-`sha256`, `node:crypto`) et la route de présignature — **sans modifier aucun
-écran**. Le § 7.5 porte le découpage complet et l'ordre du B2.
+**La prochaine action est l'étape 2 du B2** : basculer `step_photos` et
+`recipes` (35 Mo, 322 objets — le gros du chantier), en réutilisant
+`lib/storage-client.ts` posé à l'étape 1. Puis l'étape 3 (`profiles`,
+`comments`), puis l'étape 4 (`contact_*`, qui suppose d'ouvrir l'usage
+`contact` fermé au B1 en réutilisant la chaîne anti-spam du formulaire). Le
+§ 7.5 porte le découpage complet et l'ordre du B2.
+
+**Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
+data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
+colonne — non traité (§ 7.5).
 
 **À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
 Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,

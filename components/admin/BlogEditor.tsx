@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { ImageSlot } from '@/components/ImageSlot';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 import { withBlogSchema, articleStatusLabel, type ArticleStatus, type ArticleCategoryRow } from '@/lib/blog-types';
 import { asDoc, hasContent, wordCount, readingMinutes, type ProseDoc } from '@/lib/blog-content';
 import { Image as EditorImage, RecipeLink, recipeLinkContent } from '@/lib/blog-editor-extensions';
@@ -196,6 +197,22 @@ export function BlogEditor({
       if (!editor) return false;
       const statusToWrite = statusOverride ?? status;
       setSaving(true);
+
+      // `cover` est une data-URL fraîchement compressée si la couverture a
+      // changé, ou déjà l'URL de stockage si elle vient de la lecture
+      // initiale — televerserImage() ne dépose que dans le premier cas
+      // (§ 7.5, lot B2). `save()` ne doit jamais lancer : plusieurs appelants
+      // l'invoquent en `void save()`, sans `catch` — un échec du dépôt est
+      // donc annoncé ici, au même titre qu'un échec d'écriture Supabase.
+      let coverUrl: string | null;
+      try {
+        coverUrl = await televerserImage('article', cover);
+      } catch (e) {
+        setSaving(false);
+        dialog.alert('Enregistrement impossible : ' + (e as Error).message);
+        return false;
+      }
+
       const { error } = await supabase
         .from('articles')
         .update({
@@ -204,7 +221,7 @@ export function BlogEditor({
           status: statusToWrite,
           category: category || null,
           excerpt: excerpt || null,
-          cover_image_url: cover,
+          cover_image_url: coverUrl,
           seo_title: seoTitleField || null,
           seo_description: seoDescField || null,
           content: editor.getJSON() as ProseDoc,
@@ -310,6 +327,11 @@ export function BlogEditor({
     setLinkOpen(false);
   }
 
+  // Hors périmètre de la bascule stockage objet du § 7.5 (lot B2, étape 1) :
+  // cette image s'insère dans `content` (jsonb), pas dans une des colonnes
+  // mesurées. Le § 5.2 point 3 constatait 0 image inline à date — ce chemin
+  // reste donc le gisement « à surveiller » qu'il désignait, pas encore
+  // traité.
   async function insertImage(file: File) {
     if (!editor) return;
     if (!isAcceptedImage(file)) {
