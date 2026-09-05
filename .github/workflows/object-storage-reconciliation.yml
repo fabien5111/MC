@@ -1,0 +1,94 @@
+name: Réconciliation des orphelins du stockage objet
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Dernière pièce du lot B (§ 7.1, § 7.7, § 10.4 de docs/migration-infomaniak.md) :
+# liste le contenu d'un conteneur, le compare à TOUTES les URLs réellement
+# référencées en base, et signale les objets qui n'ont plus de ligne qui les
+# pointe depuis plus de `heures_grace` heures — la marge qui évite de traiter
+# comme orphelin un objet dont le dépôt vient tout juste de réussir mais dont
+# l'écriture en base est encore en vol.
+#
+# Hors de portée de l'application elle-même : elle ne sait déposer et lire
+# qu'un objet dont elle connaît déjà la clé (`lib/storage-data.ts`), jamais
+# lister un conteneur.
+#
+# **TOUJOURS un rapport à sec, JAMAIS une suppression dans la même
+# décision.** Ce workflow ne supprime QUE si `confirmer_suppression` vaut
+# EXACTEMENT `SUPPRIMER` — et la bonne pratique est de le lancer une première
+# fois sans cette valeur, de lire le rapport, puis de le relancer une
+# SECONDE fois, séparément, seulement si le rapport est satisfaisant. Une
+# suppression relit toujours le conteneur à neuf avant d'agir : jamais sur la
+# foi d'un rapport d'une exécution précédente.
+#
+# Colonnes couvertes — à tenir manuellement synchronisé avec
+# `lib/backfill.ts` (`CIBLES_BACKFILL`) si une colonne image y est ajoutée :
+#   jp-photos  : recipes(hero_image_url, hero_image_original_url,
+#                hero_thumb_url, hero_card_url), step_photos(url,
+#                original_url), profiles(avatar_url, banner_url),
+#                tags(category_picto), allergens(picto), site_settings(value),
+#                ads(image_url), articles(cover_image_url),
+#                comments(photo_urls — tableau JSON)
+#   jp-contact : contact_message_photos(url), contact_reply_photos(url)
+#
+# Secrets attendus (Settings > Secrets and variables > Actions) :
+#   Les sept OS_* déjà en place (cf. object-storage-cors.yml)
+#   SUPABASE_SERVICE_ROLE_KEY  même valeur que sur Vercel (contourne la RLS —
+#                              nécessaire pour lire les lignes de TOUS les
+#                              membres, pas seulement celles d'un compte)
+on:
+  workflow_dispatch:
+    inputs:
+      conteneur:
+        description: Conteneur à réconcilier
+        type: choice
+        options: [jp-photos, jp-contact]
+        required: true
+        default: jp-photos
+      heures_grace:
+        description: >-
+          Âge minimum (heures) d'un objet non référencé avant de le compter
+          comme orphelin — marge contre un dépôt encore en vol.
+        required: true
+        default: '24'
+      confirmer_suppression:
+        description: >-
+          Laisser VIDE pour un rapport à sec (recommandé en premier lieu).
+          Taper EXACTEMENT « SUPPRIMER » pour supprimer réellement les
+          orphelins trouvés PAR CETTE EXÉCUTION — jamais ceux d'un rapport
+          précédent.
+        required: false
+        default: ''
+
+jobs:
+  reconciliation:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Publique — inlinée au build de l'application (CLAUDE.md), pas un secret.
+      SUPABASE_URL: https://acbabqolghhyxksouaye.supabase.co
+      CONTENEUR: ${{ inputs.conteneur }}
+      HEURES_GRACE: ${{ inputs.heures_grace }}
+      CONFIRMER: ${{ inputs.confirmer_suppression }}
+    steps:
+      - name: Récupérer le script de réconciliation
+        uses: actions/checkout@v4
+
+      - name: Installer les dépendances
+        run: pip install --quiet python-swiftclient python-keystoneclient requests
+
+      - name: Vérifier que la clé service_role est posée
+        run: |
+          set -euo pipefail
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || { echo "ÉCHEC — secret SUPABASE_SERVICE_ROLE_KEY absent."; exit 1; }
+
+      - name: Lister, comparer, rapporter — et supprimer seulement sur confirmation exacte
+        run: python3 .github/scripts/reconcilier_stockage.py
