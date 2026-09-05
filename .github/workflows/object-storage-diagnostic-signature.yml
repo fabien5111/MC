@@ -1,0 +1,151 @@
+name: Diagnostiquer la signature TempURL
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Diagnostic d'un 401 persistant sur les dépôts signés (§ 7.5) : l'application
+# signe correctement en apparence, la clé est posée sur le conteneur, et le
+# stockage refuse quand même. Deux questions restent ouvertes, et seul le
+# cluster peut y répondre :
+#
+#   1. La clé que connaît l'application est-elle bien celle enregistrée sur le
+#      conteneur ? Comparée ici par empreinte — les deux valeurs sont lues,
+#      aucune n'est affichée, seule l'égalité l'est.
+#   2. Sur quel chemin et sous quel format la signature doit-elle porter ?
+#      Le dépôt de test est retenté sur les huit combinaisons possibles
+#      (chemin avec ou sans le préfixe `/object` rendu par `swift auth`,
+#      condensat sha256 ou sha1, signature préfixée du nom du condensat ou
+#      nue) et le code HTTP de chacune est rapporté.
+#
+# Écrit un objet de test minuscule sous `diagnostic/`, supprimé en fin de
+# course — aucun objet de production n'est touché.
+#
+# Secrets attendus : les sept OS_* déjà en place, plus
+# SWIFT_TEMPURL_KEY_PHOTOS / SWIFT_TEMPURL_KEY_CONTACT (cf.
+# object-storage-tempurl-cles.yml).
+on:
+  workflow_dispatch:
+    inputs:
+      conteneur:
+        description: Conteneur sur lequel diagnostiquer
+        type: choice
+        options: [jp-photos, jp-contact]
+        required: true
+        default: jp-photos
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      CLE_PHOTOS: ${{ secrets.SWIFT_TEMPURL_KEY_PHOTOS }}
+      CLE_CONTACT: ${{ secrets.SWIFT_TEMPURL_KEY_CONTACT }}
+      CONTENEUR: ${{ inputs.conteneur }}
+    steps:
+      - name: Installer les dépendances
+        run: pip install --quiet python-swiftclient python-keystoneclient requests
+
+      - name: Comparer la clé, puis essayer chaque combinaison de signature
+        run: |
+          python3 - <<'PY'
+          import hashlib, hmac, os, re, time, uuid
+          from urllib.parse import urlsplit
+
+          import requests
+          from swiftclient.client import Connection
+
+          conteneur = os.environ["CONTENEUR"]
+          cle = os.environ["CLE_PHOTOS"] if conteneur == "jp-photos" else os.environ["CLE_CONTACT"]
+          if not cle:
+              raise SystemExit(f"ÉCHEC — le secret de clé TempURL de {conteneur} est absent.")
+
+          conn = Connection(
+              authurl=os.environ["OS_AUTH_URL"],
+              user=os.environ["OS_USERNAME"],
+              key=os.environ["OS_PASSWORD"],
+              os_options={
+                  "project_name": os.environ["OS_PROJECT_NAME"],
+                  "region_name": os.environ["OS_REGION_NAME"],
+                  "user_domain_name": os.environ["OS_USER_DOMAIN_NAME"],
+                  "project_domain_name": os.environ["OS_PROJECT_DOMAIN_NAME"],
+              },
+              auth_version="3",
+          )
+
+          racine, _ = conn.get_auth()
+          parts = urlsplit(racine)
+          origine = f"{parts.scheme}://{parts.netloc}"
+          chemin_avec = parts.path.rstrip("/")
+          chemin_sans = re.sub(r"^/object", "", chemin_avec)
+          print(f"Racine authentifiée   : {racine}")
+          print(f"Chemin avec /object   : {chemin_avec}")
+          print(f"Chemin sans /object   : {chemin_sans}")
+          print()
+
+          # 1. La clé du secret est-elle celle du conteneur ? Comparée par
+          #    empreinte : ni l'une ni l'autre n'est affichée, seule l'égalité
+          #    l'est — le journal de ce dépôt est public.
+          entetes = conn.head_container(conteneur)
+          cle_conteneur = entetes.get("x-container-meta-temp-url-key")
+          if cle_conteneur is None:
+              print("CLÉ CONTENEUR : ABSENTE — aucune signature ne peut être vérifiée.")
+          elif hashlib.sha256(cle_conteneur.encode()).hexdigest() == hashlib.sha256(cle.encode()).hexdigest():
+              print("CLÉ : identique de part et d'autre (secret GitHub == conteneur).")
+          else:
+              print("CLÉ : DIFFÉRENTE entre le secret GitHub et le conteneur.")
+              print("      → relancer « Poser les clés TempURL des conteneurs ».")
+          print()
+
+          # 2. Quelle combinaison le cluster accepte-t-il réellement ?
+          objet = f"diagnostic/{uuid.uuid4()}.txt"
+          expire = int(time.time()) + 600
+          gagnantes = []
+
+          def essayer(base, nom_base, digest, forme, valeur):
+              chemin = f"{base}/{conteneur}/{objet}"
+              url = f"{origine}{chemin}?temp_url_sig={valeur}&temp_url_expires={expire}"
+              try:
+                  code = requests.put(url, data=b"diagnostic", timeout=30).status_code
+              except Exception as e:  # réseau, TLS…
+                  code = f"erreur ({e.__class__.__name__})"
+              print(f"  {nom_base:16} | {digest:6} | {forme:14} -> HTTP {code}")
+              if isinstance(code, int) and 200 <= code < 300:
+                  gagnantes.append((nom_base, digest, forme))
+
+          print("Dépôt de test, toutes combinaisons :")
+          for base, nom_base in ((chemin_avec, "avec /object"), (chemin_sans, "sans /object")):
+              for digest in ("sha256", "sha1"):
+                  corps = f"PUT\n{expire}\n{base}/{conteneur}/{objet}".encode()
+                  sig = hmac.new(cle.encode(), corps, getattr(hashlib, digest)).hexdigest()
+                  # « préfixée %3A » reproduit exactement ce que l'application
+                  # envoie : URLSearchParams encode le deux-points du préfixe.
+                  for forme, valeur in (
+                      ("préfixée", f"{digest}:{sig}"),
+                      ("préfixée %3A", f"{digest}%3A{sig}"),
+                      ("nue", sig),
+                  ):
+                      essayer(base, nom_base, digest, forme, valeur)
+
+          print()
+          if gagnantes:
+              print("COMBINAISON(S) ACCEPTÉE(S) :")
+              for g in gagnantes:
+                  print(f"  chemin {g[0]}, condensat {g[1]}, signature {g[2]}")
+          else:
+              print("AUCUNE combinaison acceptée — le refus ne vient donc pas du format")
+              print("de la signature ni du chemin, mais d'ailleurs (clé, conteneur, ou")
+              print("configuration du middleware TempURL côté cluster).")
+
+          # Nettoyage : l'objet de test n'existe que si une combinaison a abouti.
+          try:
+              conn.delete_object(conteneur, objet)
+              print(f"\nObjet de test supprimé ({objet}).")
+          except Exception:
+              print(f"\nAucun objet de test à supprimer ({objet}).")
+          PY
