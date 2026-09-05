@@ -1453,14 +1453,23 @@ travail — mais **aucune rétention n'existe**, et la table ne fait que croîtr
 4,7 Mo aujourd'hui, soit 17 % de la base, pour 32 brouillons dont le plus
 ancien date du 13/07/2026.
 
+#### La contrainte de calendrier
+
+**L'essai Virtuozzo a démarré le 05/09 — il est borné à 14 jours, donc il
+expire le 19/09.** C'est la seule échéance dure du lot C, et elle décide du
+séquencement : le C1 (répétition GoTrue) doit tenir dans cette fenêtre, sinon
+il faudra basculer en payant (≈ 16 €/mois avant ouverture, § 4.5) pour le
+mener. Ce n'est pas un drame — c'est le tarif prévu de toute façon (§ 4.6) —
+mais mieux vaut le décider que le subir.
+
+Corollaire de méthode, déjà appris au lot 0-bis (§ 7.4) : **tout ce qui peut
+être préparé hors chrono doit l'être avant de monter l'environnement.**
+
 #### Ce que le C0 laisse ouvert
 
-- **La rétention d'`imports`** : purger les brouillons anciens **non relus**
-  (`statut = 'brouillon'`, aucune recette produite) au-delà d'un seuil, ou
-  migrer le tas tel quel. Décision produit, pas technique — elle ne bloque pas
-  le C1, mais elle change la taille du dump du C3.
-- **L'état de l'essai Virtuozzo** : jours restants, ou passage en payant
-  (≈ 16 €/mois avant ouverture, § 4.5).
+- **La rétention d'`imports`** : tranchée en principe (30 jours, avec
+  information de l'utilisateur), reste à implémenter — voir ci-dessous. Ne
+  bloque pas le C1, mais change la taille du dump du C3.
 
 #### Découpage
 
@@ -1700,8 +1709,8 @@ sont à recréer (§ 10.3).
 
 **Les mesures du C0 sont prises** (§ 7.9) : la base est passée de 57 à
 **27 Mo**, les colonnes image de `recipes` ne pèsent plus que **20 ko** — le
-lot B n'a rien laissé derrière. Reste **l'état de l'essai Virtuozzo** à
-établir avant de planifier le C1.
+lot B n'a rien laissé derrière. **L'essai Virtuozzo a démarré le 05/09 : il
+expire le 19/09**, seule échéance dure du lot C.
 
 **Deux points restés ouverts, à ne pas perdre** :
 - `imports.recette` porte encore **4,7 Mo de data-URL sur 18 brouillons** —
