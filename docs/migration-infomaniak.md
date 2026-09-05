@@ -1429,15 +1429,36 @@ exempte justement de cette page (§ Domaines) — l'exemption est à neutraliser
 le temps de la fenêtre, sans quoi les testeurs écriraient dans la base qu'on
 est en train de migrer.
 
+#### Ce que le C0 a mesuré (05/09, après le lot B)
+
+| Mesure | Valeur | Lecture |
+|---|---|---|
+| `pg_database_size` | **27 Mo** | contre 57 Mo au § 2.1 — le lot B a fait son travail |
+| Colonnes image de `recipes`, vivantes | **20 ko** / 58 recettes | ≈ 350 octets par recette : ce sont des URL, plus une seule data-URL |
+| `imports.recette`, vivant | **4 674 ko** / 32 lignes | dont **18 lignes contenant `data:image/`** |
+
+Les 27 Mo sont la taille **sur disque**, lignes mortes comprises : les 12 Mo
+de TOAST que `recipes` traînait encore sont des data-URL écrasées, que le
+dump ne lira pas. Le dump réel sera donc nettement en dessous.
+
+**`imports` est le dernier gisement d'images resté en base**, et ce n'est
+pas un oubli du lot B : `imports.recette` est un JSON, pas une colonne image
+scalaire, et il a été exclu en connaissance de cause (§ 7.6). Ce JSON porte
+`photo_principale`, `photo_principale_original`, les `etapes[].photos[]` et,
+pour un import PDF, la banque `photos_pdf` des pages pas encore placées.
+`RelectureEditor` ne dépose ces images sur le stockage objet **qu'à la
+validation** (`televerserImage`, § 7.5) : un brouillon jamais relu garde donc
+tout en base, indéfiniment. C'est cohérent — le brouillon est un tampon de
+travail — mais **aucune rétention n'existe**, et la table ne fait que croître :
+4,7 Mo aujourd'hui, soit 17 % de la base, pour 32 brouillons dont le plus
+ancien date du 13/07/2026.
+
 #### Ce que le C0 laisse ouvert
 
-- **La taille réelle de la base après le lot B**, à mesurer avant de
-  planifier : elle pesait 57 Mo dont ≈40 d'images (§ 2.1, § 2.2), qui en sont
-  sorties. Le dump devrait tomber autour de 20 Mo — *devrait*, et c'est
-  exactement le genre de supposition que cette session a appris à ne pas
-  faire. À noter : les data-URL écrasées laissent des lignes mortes, le
-  fichier sur disque ne rétrécira qu'après un `VACUUM FULL` ; le **dump**, lui,
-  ne lit que les lignes vivantes et rétrécit immédiatement.
+- **La rétention d'`imports`** : purger les brouillons anciens **non relus**
+  (`statut = 'brouillon'`, aucune recette produite) au-delà d'un seuil, ou
+  migrer le tas tel quel. Décision produit, pas technique — elle ne bloque pas
+  le C1, mais elle change la taille du dump du C3.
 - **L'état de l'essai Virtuozzo** : jours restants, ou passage en payant
   (≈ 16 €/mois avant ouverture, § 4.5).
 
@@ -1677,12 +1698,18 @@ bascule réversible. Le mode opératoire de la restauration reste celui du
 § 7.2 ; les quatre secrets qu'il réclame ont été supprimés après usage et
 sont à recréer (§ 10.3).
 
-**Deux mesures restent à prendre avant de planifier le C1** (§ 7.9) : la
-taille réelle de la base après le lot B, et l'état de l'essai Virtuozzo.
+**Les mesures du C0 sont prises** (§ 7.9) : la base est passée de 57 à
+**27 Mo**, les colonnes image de `recipes` ne pèsent plus que **20 ko** — le
+lot B n'a rien laissé derrière. Reste **l'état de l'essai Virtuozzo** à
+établir avant de planifier le C1.
 
-**Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
-data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
-colonne — non traité (§ 7.5).
+**Deux points restés ouverts, à ne pas perdre** :
+- `imports.recette` porte encore **4,7 Mo de data-URL sur 18 brouillons** —
+  dernier gisement d'images en base, exclu du lot B en connaissance de cause
+  (JSON, pas colonne scalaire). Aucune rétention n'existe sur cette table
+  (§ 7.9). Décision produit en attente.
+- `BlogEditor.insertImage()` écrit une data-URL dans `articles.content`
+  (jsonb), hors périmètre de la bascule par colonne — non traité (§ 7.5).
 
 **À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
 Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
