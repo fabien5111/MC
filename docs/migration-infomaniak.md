@@ -22,7 +22,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
-| Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. **Priorité 2**, 7-10 j |
+| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **B0 fait le 05/09** : 360 objets, 40 Mo, mécanisme de signature vérifié (§ 7.5). Reste B1-B4 |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
@@ -169,6 +169,13 @@ signature des data-URL.
 Ramené au contenu : **~740 ko d'images par recette**. Projection — 1 000
 recettes ≈ 740 Mo, 5 000 recettes ≈ 3,7 Go. La fenêtre pour traiter le sujet à
 peu de frais est large aujourd'hui, elle se referme vite.
+
+**Ce tableau est incomplet** : il a été composé à la main, colonne par colonne,
+et il en manquait trois — `imports.recette`, `tags.category_picto`,
+`allergens.picto`. Le relevé exhaustif du 05/09 les a trouvées (§ 7.5) en
+balayant *toutes* les colonnes du schéma plutôt qu'une liste supposée. La leçon
+vaut au-delà des images : une énumération manuelle de colonnes est une
+hypothèse, pas une mesure.
 
 ### 2.3 Extensions installées
 
@@ -536,10 +543,20 @@ un `<img src>`, et `next/image` n'est utilisé nulle part. Cinq exceptions :
    images (cascade FK). Avec un bucket, les objets survivent à la ligne : il
    faut une politique de nettoyage. Point le plus systématiquement oublié.
 
-### 5.3 `imports` — 4,9 Mo sans rétention
+### 5.3 `imports` — 4,9 Mo sans rétention, et ce sont des images
 
 26 lignes, 4 888 ko (8 % de la base) : des brouillons d'import IA, données
 transitoires. Une politique de rétention récupérerait ces mégaoctets.
+
+**Le relevé du 05/09 dit d'où vient le poids** : `imports.recette` porte
+4 379 ko de data-URL **imbriquées dans son JSON**, sur 17 lignes — les photos
+transcrites voyagent avec le brouillon.
+
+**Ces mégaoctets sortent donc du lot B** (§ 7.5). Les migrer vers un bucket
+serait du travail pour rien, et pire : ça fabriquerait des objets orphelins le
+jour de la purge, exactement le piège du § 5.2 point 5, appliqué à des données
+qui n'ont pas vocation à durer. La rétention reste la bonne réponse, et elle est
+bien moins chère.
 
 ---
 
@@ -869,6 +886,144 @@ mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
+### 7.5 Lot B — découpage et décisions (B0 terminé le 05/09)
+
+Le lot B sort les images de la base vers le stockage objet. Le § 7.1 en fait la
+**priorité 1** : c'est lui qui traite la cause des alertes de dépassement, il ne
+dépend d'aucun fournisseur, et il peut remettre le site sous les seuils gratuits.
+
+#### Ce que la mesure exhaustive a donné
+
+Relevé du 05/09, en balayant **toutes** les colonnes texte, tableau et JSON du
+schéma et en ne retenant que celles portant réellement des data-URL — plutôt
+qu'une liste énumérée à la main, qui est une hypothèse déguisée.
+
+| Colonne | Poids | Objets |
+|---|---|---|
+| `step_photos.original_url` | 14 Mo | 89 |
+| `step_photos.url` | 11 Mo | 93 |
+| `recipes.hero_image_url` | 5 473 ko | 38 |
+| ~~`imports.recette`~~ *(hors lot, § 5.3)* | *4 379 ko* | *17* |
+| `recipes.hero_image_original_url` | 3 714 ko | 26 |
+| `contact_message_photos.url` | 2 400 ko | 8 |
+| `recipes.hero_card_url` | 962 ko | 38 |
+| `site_settings.value` | 947 ko | 4 |
+| `contact_reply_photos.url` | 872 ko | 2 |
+| `comments.photo_urls` | 650 ko | 2 |
+| `tags.category_picto` | 234 ko | 9 |
+| `profiles.banner_url` | 182 ko | 1 |
+| `recipes.hero_thumb_url` | 122 ko | 38 |
+| `articles.cover_image_url` | 103 ko | 1 |
+| `profiles.avatar_url` | 64 ko | 2 |
+| `allergens.picto` | 46 ko | 8 |
+| `ads.image_url` | 31 ko | 1 |
+| **Total à migrer** | **≈ 40 Mo** | **≈ 360** |
+
+**360 objets, pas des milliers.** C'est l'enseignement qui redimensionne le
+chantier : la reprise des données existantes (B3) est affaire d'heures, pas de
+jours. Le gros est concentré — `step_photos` et `recipes` font 35 Mo et 322
+objets à eux seuls.
+
+**Trois colonnes manquaient au § 2.2** : `imports.recette`, `tags.category_picto`
+et `allergens.picto`. Et **`profiles.cover_url` existe mais est vide** — rien à
+reprendre, mais son chemin d'écriture est à traiter comme les autres.
+
+#### Les deux pictos et le profil sont sur le chemin chaud
+
+`tags.category_picto` et `allergens.picto` sont servis par
+`lib/data/reference.ts`, les référentiels mis en cache — et `tags` est chargé par
+le `Header`, donc **sur chaque page**. Même remarque, en plus fort, pour
+`profiles` : `lib/auth.ts` le commente lui-même, ses trois colonnes image sont
+lues **à chaque rendu de page**. Petits en octets, structurels en fréquence.
+
+#### Décisions arrêtées
+
+**Deux conteneurs, pas un.** `jp-photos` (public) pour recettes, profils, blog,
+publicité, référentiels ; **`jp-contact` (privé)** pour les photos de contact.
+Ce sont des données personnelles — `docs/contact-jira.md` § 15 en fait déjà
+l'argument pour ne jamais les transmettre à Jira. Une clé d'objet non devinable
+n'est pas un contrôle d'accès.
+
+**Swift TempURL plutôt que S3 présigné.** Aucun nouvel identifiant (les sept
+secrets `OS_*` suffisent), aucune dépendance (`node:crypto` signe en une
+quinzaine de lignes), et surtout : ça supprime le problème de créer des
+credentials EC2 **sans jamais les afficher** sur un dépôt public. Le seul point
+où le S3 gagnait était la portabilité vers un autre fournisseur — or le § 0 a
+choisi Infomaniak sur des critères qui ne bougeront pas.
+
+**Téléversement direct navigateur → bucket**, jamais de transit par
+l'application : c'est l'argument du § 3 (*« le stockage objet sert le navigateur
+en direct, sans consommer de cloudlets »*), et ça contourne la limite de 4,5 Mo
+du corps d'une fonction serverless.
+
+#### Ce que la sonde a établi — et l'hypothèse qu'elle a corrigée
+
+`.github/workflows/object-storage-tempurl-sonde.yml`, jouée le 05/09. Elle
+existait parce que les clés TempURL **par conteneur** ne sont pas supportées par
+Ceph RadosGW, et que l'endpoint en `s3.` avait tout d'un RadosGW. Si l'hypothèse
+avait tenu, une clé unique aurait signé les téléversements publics **et** les
+lectures de `jp-contact` — le cloisonnement n'aurait plus été qu'un décor.
+
+**C'était faux, et la sonde l'a montré plutôt que de le supposer dans un sens ou
+dans l'autre** :
+
+```
+Additional middleware: s3api
+Additional middleware: tempurl
+  allowed_digests: ['sha1', 'sha256', 'sha512']
+  deprecated_digests: ['sha1']
+  methods: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE']
+```
+
+C'est du **Swift natif avec le middleware `s3api`** par-dessus : le nom d'hôte
+en `s3.` désigne un protocole servi, pas l'implémentation. Trois conséquences
+opérationnelles :
+
+- **Clé par conteneur acceptée** — vérifiée en la posant puis en relisant la
+  métadonnée, seul test qui vaille : une clé non supportée est ignorée **en
+  silence**, sans erreur. Deux clés indépendantes, donc cloisonnement réel.
+- **`PUT` autorisé** — les téléversements signés fonctionnent.
+- **Signer en `sha256`** : `sha1` est déclaré déprécié par le cluster lui-même.
+
+#### Un piège dans l'outillage existant
+
+**Ne jamais lancer `object-storage-cors.yml` sur `jp-contact`.** Son étape
+« Restreindre l'énumération publique » pose `--read-acl '.r:*'`, ce qui rend les
+objets **lisibles par leur URL pour tout le monde**. C'est le bon réglage pour
+`jp-photos`, et exactement la fuite à éviter sur l'autre. Le workflow gagnera un
+interrupteur public/privé au B1.
+
+#### Découpage
+
+| Sous-lot | Contenu | État |
+|---|---|---|
+| **B0** | `gen:types`, mesure, conteneurs, CORS, arbitrages, sonde TempURL | **Fait le 05/09** |
+| **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | À faire |
+| **B2** | Bascule des écritures, par risque croissant | À faire |
+| **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | À faire |
+| **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
+
+**Ordre du B2, dicté par la mesure** : d'abord `site_settings`, `ads`,
+`articles` et les deux pictos (1,4 Mo, 23 objets, aucune donnée membre — une
+répétition à faible enjeu qui exerce toute la chaîne, même logique que la
+phase 0 du lot 0-bis) ; puis `step_photos` et `recipes` (35 Mo, 322 objets) ;
+puis `profiles` et `comments` ; enfin `contact_*` sur le conteneur privé.
+
+**On n'efface jamais une data-URL avant d'avoir relu l'objet distant** — d'où B3
+et B4 séparés. C'est ce qui garde le chantier réversible jusqu'au dernier
+moment.
+
+#### Deux pièges déjà documentés, à ne pas perdre en route
+
+Le § 5.2 en nomme deux qui mordront : **`lib/contact.ts:198` écarte une photo
+non-`data:` sans erreur** — une photo migrée disparaîtrait en silence, et
+`lib/contact.test.ts` verrouille ce comportement, à reprendre avec le contrat.
+Et le **cycle de vie** : aujourd'hui la cascade FK supprime les images avec la
+recette ; avec un bucket, les objets survivent aux lignes. À décider au B1, pas
+au B4.
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -889,6 +1044,8 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
 | Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
 | L'image apporte les extensions « exactement dans la disposition du § 2.3 » | **Faux pour deux d'entre elles.** `pg_trgm` et `unaccent` ne sont pas créées par `supabase/postgres:17.6.1.165` (§ 2.6) — les deux que le § 2.3 dit critiques. Le workflow pose désormais les cinq lui-même, sans rien supposer de l'image. |
+| Le § 2.2 énumère les colonnes image de la base | **Incomplet de trois colonnes** — `imports.recette`, `tags.category_picto`, `allergens.picto` (§ 7.5). Elles ont été trouvées en balayant tout le schéma plutôt qu'en listant à la main. Une énumération manuelle de colonnes est une hypothèse, pas une mesure. |
+| Le stockage objet d'Infomaniak est un Ceph RadosGW (donc pas de clé TempURL par conteneur) | **Faux** — c'est du Swift natif avec le middleware `s3api` (§ 7.5). Le nom d'hôte en `s3.` désigne un protocole servi, pas l'implémentation. Les clés par conteneur fonctionnent, le cloisonnement `jp-photos` / `jp-contact` tient. |
 | La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 
@@ -977,19 +1134,27 @@ pas applicable telle quelle.
 - **Les jours d'essai Virtuozzo restants** n'ont pas été consommés par le lot
   0-bis : tout s'est joué en une matinée du 05/09, la phase 0 ayant absorbé
   hors chrono les trois faux départs (§ 7.4).
+- **Lot B, socle en place** (§ 7.5) : conteneurs `jp-photos` (public, CORS posé)
+  et `jp-contact` (privé), mécanisme **Swift TempURL** vérifié par sonde, clés
+  **par conteneur** disponibles. Reste à poser les deux clés TempURL et à écrire
+  `lib/storage.ts` (B1).
+- **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
+  déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
+  sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
+  `npm run typecheck` passe en l'état.
 - **Le dépôt est public**, et ça a valeur de contrainte : journaux et artefacts
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B
+### 10.4 Prochaine action — le lot B1
 
-**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). Le dernier Go/No-Go du
-dossier est levé : plus rien ne bloque le lot C sur le plan technique.
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0 du lot B est
+terminé aussi** (§ 7.5) : mesure exhaustive, conteneurs, CORS, arbitrages et
+sonde du mécanisme de signature.
 
-**La priorité reste le lot B** — photos vers le stockage objet (§ 7.1). C'est
-lui qui traite la cause des alertes de dépassement, il ne dépend d'aucun
-fournisseur, et il peut remettre le site sous les seuils gratuits — donc rendre
-le temps de mener la migration sans pression de facture.
+**La prochaine action est le B1** : `lib/storage.ts` (signature TempURL en
+`sha256`, `node:crypto`) et la route de présignature — **sans modifier aucun
+écran**. Le § 7.5 porte le découpage complet et l'ordre du B2.
 
 **À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
 Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
