@@ -22,7 +22,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
-| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **Tout écrit le 05/09** (B0 à B4, § 7.5-§ 7.8) : conteneurs, signature TempURL, écritures basculées, ≈360 objets repris et vérifiés, réconciliation des orphelins écrite. Reste à **exécuter** le workflow de réconciliation (§ 10.4) — aucune API réelle n'a été appelée depuis cette session |
+| Photos hors base → stockage objet | **TERMINÉ le 05/09** (B0 à B4, § 7.5-§ 7.8), exécuté en production et vérifié : **365 objets** déposés (355 sur `jp-photos`, 10 sur `jp-contact`), autant de références en base, **0 orphelin**. Plus aucune image en data-URL sur les onze cibles mesurées au B0 |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
@@ -1006,7 +1006,7 @@ interrupteur public/privé au B1.
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
 | **B2** | Bascule des écritures, par risque croissant | **Complet le 05/09** (4 étapes) |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | **Fait le 05/09** (§ 7.6) |
-| **B4** | Vérification a posteriori + réconciliation des orphelins (cycle de vie) | **Écrit le 05/09** (§ 7.7, § 7.8) — reste à **exécuter** le workflow de réconciliation |
+| **B4** | Vérification a posteriori + réconciliation des orphelins (cycle de vie) | **Fait et exécuté le 05/09** (§ 7.7, § 7.8) — 365/365, 0 orphelin, aucune suppression nécessaire |
 
 **Ordre du B2, dicté par la mesure** : d'abord `site_settings`, `ads`,
 `articles` et les deux pictos (1,4 Mo, 23 objets, aucune donnée membre — une
@@ -1350,11 +1350,21 @@ langages), avec un commentaire pointant vers `lib/backfill.ts` comme source
 de vérité à tenir synchronisée si une colonne image est ajoutée côté
 application.
 
-**Pas encore exécuté** : écrit, vérifié manuellement en simulant Swift et
-Supabase (aucun accès aux vraies API depuis cette session), mais jamais
-lancé pour de vrai — ni en rapport à sec, ni a fortiori en suppression.
-Reste à poser le secret `SUPABASE_SERVICE_ROLE_KEY` sur GitHub puis à
-lancer le workflow depuis l'onglet Actions.
+**Exécuté le 05/09, en rapport à sec, sur les deux conteneurs** :
+
+```
+jp-photos  : 355 objets · 355 clés référencées · 0 orphelin
+jp-contact :  10 objets ·  10 clés référencées · 0 orphelin
+```
+
+Les deux nombres égaux verrouillent les deux sens à la fois : aucun objet
+sans référence en base (rien à nettoyer), aucune référence pointant dans le
+vide (rien de perdu à la reprise). **Aucune suppression n'a donc jamais eu
+besoin d'être lancée** — le mode `confirmer_suppression` reste inutilisé à
+ce jour, et le lot B se clôt sans qu'un seul objet ait été effacé.
+
+Ces totaux recoupent exactement la mesure du B0 (§ 7.5) : 355 pour
+`jp-photos`, et 8 + 2 = 10 pour les deux tables de contact.
 
 ---
 
@@ -1483,18 +1493,27 @@ pas applicable telle quelle.
   `PartnersManager`, `BlogEditor`, `CreerForm`, `RelectureEditor`,
   `RecipeImageBackfill`, `ProfileHeader`, `BatchReview`, `ContactForm`,
   `ContactDetail`/`MaDemandeDetail`), lecture re-signée à quatre endroits
-  (`signerPhotoContact`, `lib/contact-data.ts`). **Reste à poser les deux
-  secrets `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la
-  variable `SWIFT_STORAGE_URL`** — sans eux, la route de présignature (B2)
-  ET le dépôt serveur direct (B3) échouent à l'exécution (`env()` lève), pas
-  à la compilation.
-- **Lot B3 fait le 05/09** (§ 7.6) : `lib/backfill.ts` (dix cibles, pur) /
-  `lib/backfill-data.ts` (dépôt direct serveur + clé service_role) / route
-  `POST /api/admin/backfill-photos` / écran `StorageBackfillManager`
-  (`/admin/photos`). Couvre les ≈ 360 objets mesurés au B0. **Tant que les
-  trois variables d'environnement ci-dessus ne sont pas posées, lancer un
-  lot échoue** (même cause que ci-dessus) : à vérifier avant de cliquer
-  « Lancer » sur `/admin/photos`.
+  (`signerPhotoContact`, `lib/contact-data.ts`). **Les trois variables
+  d'environnement sont posées sur Vercel** (`SWIFT_STORAGE_URL`,
+  `SWIFT_TEMPURL_KEY_PHOTOS`, `SWIFT_TEMPURL_KEY_CONTACT`) et les mêmes clés
+  existent en secrets GitHub. Sans elles, la route de présignature (B2) ET
+  le dépôt serveur direct (B3) échouent à l'exécution (`env()` lève), pas à
+  la compilation — à reposer telles quelles le jour de la bascule vers
+  Virtuozzo (lot A).
+- **Piège opérationnel sur les clés TempURL, payé une fois** : changer le
+  secret GitHub (ou la variable Vercel) **ne pose rien** sur le conteneur.
+  C'est `object-storage-tempurl-cles.yml` qui écrit la clé côté stockage —
+  toute rotation exige donc trois gestes coordonnés (secret GitHub, variable
+  Vercel, workflow rejoué), sans quoi la signature est calculée avec une clé
+  que le conteneur ne connaît pas et tout dépôt tombe en 401. Le diagnostic
+  `object-storage-diagnostic-signature.yml` compare précisément ces deux
+  valeurs, par empreinte, quand le doute revient.
+- **Lot B3 fait ET exécuté le 05/09** (§ 7.6) : `lib/backfill.ts` (dix
+  cibles, pur) / `lib/backfill-data.ts` (dépôt direct serveur + clé
+  service_role) / route `POST /api/admin/backfill-photos` / écran
+  `StorageBackfillManager` (`/admin/photos`). **Passé en production sur les
+  onze cibles** : 365 objets déposés, plus aucune data-URL dans les colonnes
+  mesurées au B0.
 - **B4, partie 1/2 (vérification) faite le 05/09** (§ 7.7) : bouton
   « Vérifier » sur le même écran, relit chaque URL déjà migrée et signale
   ce qui ne répond plus. **Correction à connaître** (§ 8) : le B3 écrase la
@@ -1502,16 +1521,18 @@ pas applicable telle quelle.
   plus de data-URL à « nettoyer » pour les colonnes déjà migrées, la
   vérification ne fait que détecter après coup un objet devenu illisible,
   sans pouvoir revenir en arrière.
-- **B4, partie 2/2 (réconciliation des orphelins) écrite le 05/09** (§ 7.8) :
-  `.github/workflows/object-storage-reconciliation.yml` +
-  `.github/scripts/reconcilier_stockage.py`. Vérifiée manuellement en
-  simulant Swift et Supabase (aucun accès aux vraies API depuis cette
-  session) — **jamais lancée pour de vrai**. **Reste à poser le secret
-  GitHub `SUPABASE_SERVICE_ROLE_KEY`** (même valeur que sur Vercel) puis à
-  lancer le workflow depuis l'onglet Actions — d'abord en rapport à sec
-  (`confirmer_suppression` vide), lire le résultat, puis une seconde fois
-  séparément avec `confirmer_suppression: SUPPRIMER` si le rapport est
-  satisfaisant. C'est la dernière pièce du lot B (§ 7.1).
+- **B4, partie 2/2 (réconciliation des orphelins) faite ET exécutée le
+  05/09** (§ 7.8) : `.github/workflows/object-storage-reconciliation.yml` +
+  `.github/scripts/reconcilier_stockage.py`, lancée en rapport à sec sur les
+  deux conteneurs — 355/355 et 10/10, **0 orphelin**. Le secret GitHub
+  `SUPABASE_SERVICE_ROLE_KEY` est posé. Le mode `confirmer_suppression`
+  n'a jamais servi et n'a pas eu à servir.
+- **Trois workflows de diagnostic** ajoutés en cours de mise en service, à
+  garder pour le lot A/C (mêmes questions se reposeront sur un autre
+  hébergement) : `object-storage-afficher-url.yml` (racine réelle rendue par
+  `swift auth`), `object-storage-diagnostic-signature.yml` (compare la clé
+  du secret à celle du conteneur, et essaie les douze formes de signature),
+  et le rapport à sec de la réconciliation.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1520,42 +1541,46 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — lancer la réconciliation des orphelins (B4, 2/2)
+### 10.4 Prochaine action — le lot C (migration de la base)
 
-**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1, le B2
-(4 étapes), le B3 et le B4 sont TOUS écrits** (§ 7.5 à § 7.8) : mesure
-exhaustive, conteneurs, CORS, arbitrages, sonde du mécanisme de signature,
-socle de signature TempURL, bascule complète des écritures (des trois
-écrans à faible enjeu au `contact_*` anonyme sur conteneur privé), reprise
-des ≈360 objets déjà en base (`StorageBackfillManager`, onze cibles),
-vérification a posteriori (bouton « Vérifier »), et le workflow de
-réconciliation des orphelins (`object-storage-reconciliation.yml`).
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le lot B est
+TERMINÉ**, écrit *et* exécuté en production le 05/09 (§ 7.5 à § 7.8) :
+mesure exhaustive, conteneurs, CORS, sonde du mécanisme de signature,
+socle TempURL, bascule complète des écritures (des trois écrans à faible
+enjeu au `contact_*` anonyme sur conteneur privé), reprise des images déjà
+en base, vérification a posteriori, et réconciliation des orphelins.
 
-**Correction posée au § 8, à ne pas reperdre** : le B3 écrase la data-URL
-dès que le dépôt réussit, sans relecture intermédiaire — la réversibilité
-« jusqu'au B4 » annoncée au § 7.5 ne tient donc pas littéralement. Il n'y a
-plus de data-URL à supprimer pour les colonnes déjà migrées : c'est déjà
-fait, en un seul geste, par le B3 lui-même. Le B4 protège autre chose :
-détecter un objet devenu illisible (partie 1) et nettoyer le stockage des
-objets orphelins (partie 2), pas revenir en arrière sur un dépôt déjà
-écrit.
+**Résultat mesuré, les deux conteneurs réconciliés :**
 
-**La seule action qui reste, pour clore le lot B dans son entier** (§ 7.1) :
-**exécuter** le workflow de réconciliation — rien de plus à écrire côté
-code. Concrètement :
-1. Poser le secret GitHub `SUPABASE_SERVICE_ROLE_KEY` (même valeur que sur
-   Vercel) — absent, le workflow échoue proprement avant tout appel réseau.
-2. Lancer `object-storage-reconciliation.yml` sur `jp-photos` avec
-   `confirmer_suppression` VIDE — un rapport à sec, rien n'est supprimé.
-   Lire le résultat.
-3. Répéter sur `jp-contact`.
-4. Seulement si les deux rapports sont satisfaisants, relancer chaque
-   conteneur **séparément** avec `confirmer_suppression: SUPPRIMER` — une
-   suppression recalcule toujours la liste à neuf, jamais sur la foi d'un
-   rapport précédent.
+```
+jp-photos  : 355 objets · 355 clés référencées · 0 orphelin
+jp-contact :  10 objets ·  10 clés référencées · 0 orphelin
+```
 
-Jamais exécuté depuis cette session (aucun accès aux vraies API Swift ni
-Supabase) — seulement écrit et vérifié par simulation (§ 7.8).
+Plus aucune image en data-URL dans les onze cibles du B0. La cause
+dominante d'egress identifiée au § 4.6 est donc traitée à la source — ce
+qui était la **priorité 1** du § 7.1.
+
+**Mise en service : quatre hypothèses fausses, écartées une à une.** Le
+premier dépôt réel a échoué en 401, et il a fallu quatre tours pour en
+sortir — clé désynchronisée, mauvais hôte (`pub2` au lieu de `pub1`),
+préfixe `/object` cru superflu, et enfin la forme de la signature. Les
+quatre sont consignées au § 8, et deux enseignements de méthode en
+ressortent :
+- **ce qu'un cluster déclare accepter ne dit pas sous quelle forme
+  l'envoyer** — `allowed_digests` avait bien été lu au B0, et n'a pourtant
+  rien empêché ;
+- **arrêter de modifier la configuration à l'aveugle** dès la deuxième
+  hypothèse fausse : c'est un diagnostic qui mesure le cluster
+  (`object-storage-diagnostic-signature.yml`, douze combinaisons) qui a
+  tranché en une exécution ce que trois tours de tâtonnement n'avaient pas
+  réglé.
+
+**La prochaine action est le lot C** — la migration de la base elle-même
+vers Virtuozzo Cloud, dont le lot 0-bis a validé la faisabilité (949
+objets restaurés sur 949, zéro erreur). Le mode opératoire est en § 7.2 ;
+les quatre secrets qu'il réclame ont été supprimés après usage et sont à
+recréer (§ 10.3).
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
