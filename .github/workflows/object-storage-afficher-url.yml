@@ -1,0 +1,48 @@
+name: Afficher l'URL de stockage (SWIFT_STORAGE_URL)
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Diagnostic pur, lecture seule : affiche la racine de stockage telle que le
+# cluster la rend après authentification (`swift auth`) — exactement la
+# valeur attendue par `SWIFT_STORAGE_URL` (Vercel), de la forme
+# `https://<hôte>/v1/AUTH_<projet>`.
+#
+# Sert à vérifier qu'un dépôt signé (401 persistant même après rotation de
+# la clé TempURL) ne parte pas vers une racine différente de celle sur
+# laquelle la clé a été posée (object-storage-tempurl-cles.yml) — un jeton
+# d'authentification (OS_AUTH_TOKEN) reste valable une heure ou deux, jamais
+# affiché ici ; seule la racine de stockage, stable, est imprimée.
+#
+# Réutilise les sept secrets OS_* déjà en place (cf. object-storage-cors.yml).
+on:
+  workflow_dispatch:
+
+jobs:
+  afficher:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+    steps:
+      - name: Installer le client Swift
+        run: pip install --quiet python-swiftclient python-keystoneclient
+
+      - name: Authentifier et afficher la racine de stockage
+        run: |
+          set -euo pipefail
+          # `swift auth` imprime deux lignes, `export OS_STORAGE_URL=...` et
+          # `export OS_AUTH_TOKEN=...` — seule la première est affichée : le
+          # jeton donne un accès temporaire complet, il n'a rien à faire dans
+          # le journal d'un dépôt public.
+          sortie="$(swift auth)"
+          racine="$(echo "$sortie" | grep OS_STORAGE_URL | sed -E 's/^export OS_STORAGE_URL=//')"
+          echo "SWIFT_STORAGE_URL à poser sur Vercel :"
+          echo "  $racine"
+          echo
+          echo "Doit être EXACTEMENT cette valeur, sans barre oblique finale."
