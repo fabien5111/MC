@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
+import { televerserImage } from '@/lib/storage-client';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { PROFILE_LINKS, activeLinks, normalizeUrl, type ProfileLinkField } from '@/lib/profile-links';
@@ -65,16 +66,26 @@ export function ProfileHeader({
 
   async function saveImage(field: 'avatar_url' | 'banner_url', dataUrl: string) {
     if (!writeGuard('Photo de profil')) return;
+    // `onChange` d'ImageSlot n'est pas attendu par l'appelant (fonction
+    // `void`) : une erreur de dépôt doit donc être interceptée ici, jamais
+    // laissée remonter en rejet de promesse non géré (§ 7.5, lot B2).
+    let url: string;
+    try {
+      url = await televerserImage('profil', dataUrl);
+    } catch (e) {
+      dialog.alert('Erreur lors du téléchargement : ' + (e as Error).message);
+      return;
+    }
     const supabase = createClient();
     if (field === 'avatar_url') {
-      const { error } = await supabase.from('profiles').upsert({ id: userId, avatar_url: dataUrl });
+      const { error } = await supabase.from('profiles').upsert({ id: userId, avatar_url: url });
       if (error) return void dialog.alert('Erreur lors du téléchargement : ' + error.message);
-      setAvatar(dataUrl);
+      setAvatar(url);
       router.refresh(); // met à jour l'avatar de la nav (Header serveur)
     } else {
-      const { error } = await supabase.from('profiles').upsert({ id: userId, banner_url: dataUrl });
+      const { error } = await supabase.from('profiles').upsert({ id: userId, banner_url: url });
       if (error) return void dialog.alert('Erreur lors du téléchargement : ' + error.message);
-      setBanner(dataUrl);
+      setBanner(url);
       router.refresh(); // aligne le rendu serveur du profil sur la nouvelle bannière
     }
   }
