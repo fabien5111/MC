@@ -5,9 +5,9 @@ au profit d'une infrastructure hébergée chez **Infomaniak**, en Suisse. La
 localisation dépend du produit : le Public Cloud est à Genève et Winterthour,
 **Virtuozzo Cloud (ex-Jelastic) à Genève uniquement** (§ 4.3).
 
-État au **04/09/2026**. Le lot 0 est terminé — prix compris (§ 4.5) — à la
-seule exception de la répétition de restauration (§ 7.2). Les chiffres des
-§ 2 et 4.5 sont des mesures réelles, pas des estimations.
+État au **05/09/2026**. **Le lot 0 est terminé, répétition de restauration
+comprise : le Go/No-Go est un GO** (§ 7.4). Les chiffres des § 2 et 4.5 sont des
+mesures réelles, pas des estimations.
 
 **Motif du chantier** : l'empreinte écologique, avant le coût et avant la
 souveraineté. C'est ce critère qui a désigné Infomaniak plutôt que Scaleway,
@@ -19,7 +19,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 
 ## 0. Résumé
 
-| Chantier | Verdict au 04/09/2026 |
+| Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
 | Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. **Priorité 2**, 7-10 j |
@@ -27,6 +27,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
 | Coût de la cible | **Mesuré** : ≈ 16 €/mois avant l'ouverture, ≈ 28 € après (§ 4.5) |
+| **Restauration du dump sur Virtuozzo** | **GO** — 949 objets restaurés sur 949, zéro erreur (§ 7.4) |
 
 **Deux faits structurants.** La base pèse **57 Mo** et compte **7 comptes** :
 tout ce dossier a été réévalué à leur lumière, et plusieurs conclusions posées
@@ -39,7 +40,7 @@ la trajectoire actuelle, elle coûte moins (§ 4.6).
 ```
 Virtuozzo Cloud (Genève)
 ├── Nœud Node.js 22    → Next.js standalone, déployé depuis GitHub
-├── Docker             → supabase/postgres 15+
+├── Docker             → supabase/postgres 17.6 (version de la source)
 ├── Docker             → PostgREST + GoTrue
 └── Load Balancer      → Let's Encrypt, jepatisse.com + dev.jepatisse.com
 
@@ -214,6 +215,51 @@ centaine de fonctions dans `public`. Et surtout, **tout cela est transporté par
 l'ordre des dépendances : rôles et extensions doivent exister **avant** la
 restauration, sinon 320 policies échouent ensemble.
 
+### 2.5 Version du serveur source — PostgreSQL 17.6
+
+Relevée le 04/09 par le premier dump réussi : la CLI Supabase tire l'image dont
+la version correspond à celle de la base distante, pour que `pg_dump` soit du
+bon millésime. Elle a tiré **`supabase/postgres:17.6.1.165`**.
+
+**C'est le tag à déployer sur Virtuozzo**, et il corrige une approximation du
+dossier, qui parlait de « `supabase/postgres` 15+ ». Restaurer dans un 15 un
+dump produit par PostgreSQL 17 serait une **rétrogradation** : `pg_dump` ne
+promet nulle part d'être relisible par une version antérieure, et toute syntaxe
+apparue depuis échouerait à la restauration. On déploie 17.6, pas « 15 ou plus ».
+
+**La liste du § 4.3 ne contraint pas ce choix** : elle décrit le stack
+PostgreSQL *certifié* d'Infomaniak, que le § 4.4 écarte précisément au profit
+de l'image Docker. La version déployée est celle de l'image, pas celle du
+catalogue.
+
+**Poids du dump** : `schema.sql` 399 196 octets (10 811 lignes), `roles.sql`
+297 octets (13 lignes). Le second est si petit parce que la CLI retire les
+rôles réservés de Supabase — cohérent avec le § 2.4, qui ne trouve aucun rôle
+applicatif propre au projet.
+
+### 2.6 Ce que l'image apporte vraiment — relevé du 05/09
+
+Mesuré sur `supabase/postgres:17.6.1.165` fraîchement démarré chez Virtuozzo,
+avant toute restauration.
+
+| Ce qui est là | Ce qui manque |
+|---|---|
+| **14 rôles**, dont `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_auth_admin` | — |
+| **4 schémas** : `auth`, `extensions`, `public`, `vault` | — |
+| `pgcrypto`, `uuid-ossp`, `pg_stat_statements` (dans `extensions`), `supabase_vault`, `plpgsql` | **`pg_trgm`**, **`unaccent`**, `btree_gist` |
+
+**Le pari du § 4.4 tient sur les rôles et les schémas, pas sur les
+extensions.** Et les deux manquantes sont précisément celles que le § 2.3
+désigne comme critiques : `unaccent` porte `mc_norm()`, donc toute la recherche
+avancée, et `pg_trgm` le repli trigramme de `suggest_similar_ideas`.
+
+**Conséquence sur le mode opératoire** : le bloc de préparation du § 7.2 cesse
+d'être un filet à jouer en cas d'échec, il devient une étape à part entière du
+workflow — qui pose **les cinq** extensions sans se demander lesquelles l'image
+apporte. Dépendre du jeu par défaut d'une image, c'est dépendre de ce qui change
+d'un tag au suivant ; `if not exists` rend la pose gratuite là où le travail est
+déjà fait.
+
 ---
 
 ## 3. Le stockage objet Infomaniak — validé
@@ -326,7 +372,7 @@ ailleurs : **cette image pose l'environnement que le dump attend.**
 |---|---|
 | Rôles `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_admin` | Les **320 policies** les référencent ; sans eux, elles échouent en bloc |
 | Schémas `auth`, `extensions`, `graphql_public` | GoTrue n'a plus à créer `auth` ; l'ordre de restauration cesse d'être un piège |
-| Extensions déjà dans le schéma `extensions` | Exactement la disposition mesurée en § 2.3 |
+| Extensions déjà dans le schéma `extensions` | **Partiellement seulement** — l'image en pose cinq, mais ni `pg_trgm` ni `unaccent` (relevé du 05/09, § 2.6). Les extensions sont donc toutes posées par le workflow, sans rien supposer de l'image |
 | `supabase_vault` | Inutile ici (§ 2.3), mais le dump y fait référence |
 
 On ne bricole donc pas un PostgreSQL qui ressemblerait à Supabase : **on déploie
@@ -509,8 +555,6 @@ oublier.
 
 ### 6.2 Non vérifié à ce jour
 
-- **La restauration du dump Supabase n'a jamais été tentée** — c'est le seul
-  Go/No-Go qui reste (§ 7.2).
 - **Quelles limites exactement ont déclenché les alertes** (§ 4.6) : egress
   Supabase, bande passante Vercel, invocations de fonctions ? Les trois
   premières confirment le diagnostic images ; la quatrième pointerait ailleurs,
@@ -563,7 +607,8 @@ Le Go/No-Go a changé de nature, et y a gagné. Plutôt que de vérifier des
 permissions une à une sur un service managé, on répète le lot C pour de vrai :
 
 > Monter un environnement Virtuozzo Cloud avec le conteneur Docker
-> `supabase/postgres` (15+) et GoTrue, puis **restaurer le dump Supabase** et
+> `supabase/postgres` (17.6, cf. § 2.5) et GoTrue, puis **restaurer le dump
+> Supabase** et
 > vérifier que les 320 policies, les 252 fonctions et les 25 triggers passent.
 
 Ce test répond à toutes les questions d'un coup — extensions, rôles, schéma
@@ -618,7 +663,7 @@ doit l'être.
 1. **Relever la version du serveur source et ses rôles**, dans l'éditeur SQL
    Supabase. Le § 4.3 dit ce que Virtuozzo *propose* (15.19 → 18.6), jamais ce
    que Supabase *sert* : c'est cette lecture qui fixe le tag de l'image et le
-   majeur que `pg_dump` doit savoir lire.
+   majeur que `pg_dump` doit savoir lire. *Fait le 04/09 — § 2.5.*
 2. **Réancrer les compteurs** du § 2.4 (320 / 252 / 25). S'ils ont bougé, ce
    sont les nouveaux qui font foi. *Fait le 04/09 : policies et fonctions
    confirmées, triggers ramenés de 31 à 25 (§ 2.4).* Cet écart ne menace pas le
@@ -628,7 +673,10 @@ doit l'être.
    `Database` → `Connection string` → onglet **Session pooler**, port **5432**.
    Ni le pooler transactionnel (6543, qui coupe les sessions longues et fait
    échouer `pg_dump`), ni la connexion directe (IPv6, quand les runners GitHub
-   sont en IPv4).
+   sont en IPv4). **Le signe qui les distingue est l'utilisateur**, pas l'hôte :
+   le pooler écrit `postgres.<ref-du-projet>`, la connexion directe écrit
+   `postgres` tout court. Les deux workflows refusent désormais les deux
+   mauvaises formes avant d'ouvrir la moindre connexion.
 4. **Jouer `migration-dump-schema.yml`** (Actions → Run workflow). Il ne touche
    aucune cible : il valide la connexion, la version de `pg_dump` et le
    filtrage, et affiche les points 1 et 2 au passage. **S'il échoue, il échoue
@@ -641,7 +689,7 @@ doit l'être.
    borné à 10 Go de SSD, 20 Mb/s et 5 environnements — sans conséquence ici
    (le dump pèse quelques mégaoctets), mais la date de fin, elle, se rate.
 2. **`New environment`** → onglet **`Docker`** → **`Select an image`** →
-   `supabase/postgres`, tag du majeur relevé en phase 0. Région **Genève**
+   `supabase/postgres`, tag **`17.6.1.165`** (§ 2.5). Région **Genève**
    (seule option, § 4.3), nom `mc-restore-test`, **1 cloudlet réservé** et
    **8 dynamiques** (≈ 1 Go) — restaurer 320 policies demande de la marge, et
    le dynamique n'est pas facturé au repos (§ 4.5).
@@ -717,14 +765,17 @@ Il valide le **DDL**. Ni la restauration des données, ni la migration des
 lot C, et c'est le bon arbitrage. Mais un « Go » du lot 0-bis **ne se lit pas
 comme un Go sur l'authentification**.
 
-#### Le filet de préparation manuelle
+#### La préparation des extensions — une étape, plus un filet
 
-**L'image rend largement superflue la préparation manuelle** ci-dessous
-(§ 4.4) : rôles, schémas et extensions y sont déjà posés. Ce bloc reste comme
-filet, à jouer seulement si la restauration échoue sur un objet manquant — et
-`btree_gist` fait exception, il vit dans `public` sur la base source et l'image
-ne l'y mettra pas d'elle-même. C'est la seule ligne que le workflow exécute
-d'office.
+**Ce bloc n'est pas optionnel**, contrairement à ce que ce document a d'abord
+affirmé. Le relevé du 05/09 (§ 2.6) montre que l'image pose bien les rôles et
+les schémas, mais **pas `pg_trgm` ni `unaccent`** — les deux extensions que le
+§ 2.3 désigne comme critiques. Le workflow exécute donc les cinq lignes
+`create extension` d'office, avant `schema.sql`.
+
+Les rôles ci-dessous, eux, restent un vrai filet : l'image les fournit tous
+(§ 2.6), et ils ne sont là que pour un environnement qui ne serait pas monté
+depuis `supabase/postgres`.
 
 ```sql
 -- Rôles supposés par les 320 policies (déjà présents dans supabase/postgres)
@@ -747,7 +798,7 @@ create extension if not exists btree_gist  with schema public;  -- à poser à l
 |---|---|---|---|
 | **A** | Vercel → nœud Node.js 22 sur Virtuozzo Cloud | 1-2 j | Aucune |
 | **B** | Photos → Object Storage | 7-10 j | Aucune |
-| **C** | Base → `supabase/postgres` + PostgREST + GoTrue sur Virtuozzo, archivage WAL compris (§ 4.5) | 5-8 j | Lot 0-bis |
+| **C** | Base → `supabase/postgres` + PostgREST + GoTrue sur Virtuozzo, archivage WAL compris (§ 4.5) | 5-8 j | **Débloqué** — lot 0-bis au vert (§ 7.4) |
 
 **Les lots B et C sont indépendants** (§ 8) : l'ordre est libre.
 
@@ -761,6 +812,60 @@ Tout est à faire **avant l'ouverture**. À 7 comptes, migrer l'authentification
 est indolore ; après ouverture, c'est une déconnexion de masse, un transfert de
 hachages bcrypt sans filet et un mapping `provider_id` Google à préserver
 exactement sous peine de faire perdre son carnet à un membre.
+
+---
+
+### 7.4 Verdict du lot 0-bis — **GO** (05/09/2026)
+
+La répétition a été menée de bout en bout. **949 objets à la source, 949 à
+l'arrivée, aucun manquant, aucune erreur de restauration.**
+
+**Environnement de test** : Virtuozzo Cloud, Genève DC2, un seul nœud Docker
+`supabase/postgres:17.6.1.165`, 1 cloudlet réservé et 6 dynamiques, Endpoint TCP
+sur le port privé 5432. Restauration pilotée depuis un runner GitHub Actions,
+sans aucun terminal local (§ 10.1).
+
+| Contrôle | Résultat |
+|---|---|
+| Inventaire source ↔ cible (`comm -23`) | **949 / 949, 0 manquant** |
+| Erreurs de `schema.sql` | **0** |
+| `mc_norm('Crème brûlée')` | `creme brulee` — `unaccent` opérationnel |
+| `'chronomètre' % 'chrono'` | `t` — `pg_trgm` opérationnel |
+| Colonnes générées de `recipes` | `fts` **et `has_hero_image`** |
+| `btree_gist` | dans `public`, comme sur la source |
+| `set role anon; select … from recipes` | passe, **sans `permission denied`** |
+
+Durées : dump 1 min 40, restauration 6 min, vérification 10 s.
+
+**Quatre questions ouvertes se referment d'un coup.**
+
+**Le rôle `postgres` n'est pas superutilisateur, et ça ne bloque rien.** C'était
+la dernière inconnue, posée en § 2.6 et laissée délibérément non contournée. Les
+cinq extensions sont passées — toutes « trusted » depuis PostgreSQL 13, donc
+installables par un non-superutilisateur — et les 399 Ko de DDL avec elles, sous
+ce seul rôle. Aucun besoin d'ouvrir un accès superutilisateur au lot C.
+
+**Les `GRANT` voyagent dans le dump.** `set role anon` puis une lecture de
+`recipes` répond `0` — zéro parce que la base est vide, mais surtout **sans
+`permission denied`**. Si les droits n'étaient pas passés, PostgREST aurait
+refusé toute lecture anonyme au lot C ; on l'aurait découvert en production.
+
+**La RLS est bien en place**, sans quoi les 320 policies auraient manqué à
+l'inventaire.
+
+**`recipes` porte deux colonnes générées**, pas une : `fts` et
+`has_hero_image`. Le § 2 n'en mentionnait qu'une.
+
+**Ce que ce GO ne couvre pas**, et qu'il ne faut pas lui faire dire : le DDL,
+rien que le DDL. Ni la restauration des **données**, ni la migration des
+**7 identités** (hachages bcrypt, `provider_id` Google) — le § 10.4 les renvoie
+au lot C, et c'est le bon arbitrage. Ni GoTrue, dont la phase 3 reste à jouer.
+
+**Ce que la répétition a coûté**, et qui vaut d'être retenu pour le lot C : trois
+faux départs, tous attrapés avant d'entamer sérieusement l'essai — un tag
+d'image par défaut en PostgreSQL 14 (§ 2.5), deux extensions absentes de l'image
+(§ 2.6), un rôle `postgres` qui ne peut pas changer son propre mot de passe. Le
+mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
@@ -783,6 +888,8 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | « Sur les plans gratuits, la migration ajoute un coût » | **Faux.** Les alertes de dépassement se déclenchent déjà : la trajectoire réelle est Vercel Pro + Supabase Pro, ~40 €/mois. Infomaniak à 16-28 € est **moins cher** (§ 4.6). |
 | Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
 | Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
+| L'image apporte les extensions « exactement dans la disposition du § 2.3 » | **Faux pour deux d'entre elles.** `pg_trgm` et `unaccent` ne sont pas créées par `supabase/postgres:17.6.1.165` (§ 2.6) — les deux que le § 2.3 dit critiques. Le workflow pose désormais les cinq lui-même, sans rien supposer de l'image. |
+| La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 
 ---
@@ -863,9 +970,22 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot 0-bis
+### 10.4 Prochaine action — le lot B
 
-Le seul Go/No-Go qui reste, à mener pendant l'**essai 14 jours de Virtuozzo
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). Le dernier Go/No-Go du
+dossier est levé : plus rien ne bloque le lot C sur le plan technique.
+
+**La priorité reste le lot B** — photos vers le stockage objet (§ 7.1). C'est
+lui qui traite la cause des alertes de dépassement, il ne dépend d'aucun
+fournisseur, et il peut remettre le site sous les seuils gratuits — donc rendre
+le temps de mener la migration sans pression de facture.
+
+**À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
+Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
+qui a transité par un secret GitHub.
+
+*Ce qui suit décrivait l'action d'avant, conservé pour le raisonnement qui l'a
+cadrée.* Le lot 0-bis était à mener pendant l'**essai 14 jours de Virtuozzo
 Cloud**. Le prix, lui, est mesuré (§ 4.5) : rien n'oblige à consommer des jours
 d'essai pour l'obtenir.
 
