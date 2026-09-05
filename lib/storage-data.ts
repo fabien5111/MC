@@ -19,10 +19,12 @@ import {
 // Le cluster déclare `allowed_digests: ['sha1','sha256','sha512']` et marque
 // **sha1 déprécié** (sondé en B0). On signe donc en sha256.
 //
-// La signature est émise préfixée du nom du condensat — la forme documentée
-// par Swift. La forme nue fonctionne aussi, la longueur levant l'ambiguïté
-// (40/64/128 caractères), mais l'explicite survit à un cluster qui cesserait
-// un jour d'inférer par la longueur.
+// La signature part **nue**, sans le préfixe `sha256:` que documente Swift.
+// Ce n'était pas le choix d'origine : la forme préfixée avait été retenue
+// comme la plus explicite, et elle est refusée en 401 par CE cluster —
+// mesuré le 05/09 sur les douze combinaisons possibles
+// (`object-storage-diagnostic-signature.yml`, cf. § 8). Seule la forme nue
+// passe, la longueur du condensat levant l'ambiguïté (40/64/128 caractères).
 const DIGEST = 'sha256';
 
 function env(nom: string): string {
@@ -31,9 +33,13 @@ function env(nom: string): string {
   return v;
 }
 
-// Racine rendue par `swift auth` (`OS_STORAGE_URL`), de la forme
-// `https://<hôte>/v1/AUTH_<projet>`. On en sépare l'origine du chemin : la
-// signature ne porte QUE le chemin, l'URL finale a besoin des deux.
+// Racine rendue par `swift auth` (`OS_STORAGE_URL`). Chez Infomaniak elle
+// porte un segment `/object` avant `/v1/` —
+// `https://<hôte>/object/v1/AUTH_<projet>` — et ce segment fait bien partie
+// du chemin que la signature doit couvrir : mesuré, une signature calculée
+// sans lui est refusée en 401 (§ 8). On la reprend donc telle quelle, sans
+// rien y retrancher. On en sépare l'origine du chemin : la signature ne
+// porte QUE le chemin, l'URL finale a besoin des deux.
 function racine(): { origine: string; baseV1: string } {
   const u = new URL(env('SWIFT_STORAGE_URL'));
   return { origine: u.origin, baseV1: u.pathname.replace(/\/$/, '') };
@@ -49,8 +55,9 @@ function cle(conteneur: Conteneur): string {
  * Signature TempURL brute.
  *
  * Le corps signé est exactement `méthode\nexpiration\nchemin`, le chemin
- * **non encodé** et commençant par `/v1/`. Exporté pour être testable sur des
- * vecteurs fixes, sans variables d'environnement ni réseau.
+ * **non encodé** et pris tel que la racine le donne (`/object/v1/…` chez
+ * Infomaniak). Exporté pour être testable sur des vecteurs fixes, sans
+ * variables d'environnement ni réseau.
  */
 export function signer(cleSecrete: string, methode: string, expire: number, chemin: string): string {
   const corps = `${methode}\n${expire}\n${chemin}`;
@@ -63,7 +70,7 @@ function urlSignee(conteneur: Conteneur, cleObjet: string, methode: 'PUT' | 'GET
   const expire = Math.floor(Date.now() / 1000) + dureeS;
   const sig = signer(cle(conteneur), methode, expire, chemin);
   const q = new URLSearchParams({
-    temp_url_sig: `${DIGEST}:${sig}`,
+    temp_url_sig: sig,
     temp_url_expires: String(expire),
   });
   return `${origine}${chemin}?${q}`;

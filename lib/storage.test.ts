@@ -213,6 +213,20 @@ describe('URL canonique du conteneur privé — écriture puis lecture', () => {
     const dataUrl = 'data:image/webp;base64,AAAA';
     expect(urlAffichablePrivee('contact', dataUrl)).toBe(dataUrl);
   });
+
+  // Verrou sur une découverte payée cher (§ 8) : ce cluster REFUSE la
+  // signature préfixée du nom du condensat (`sha256:…`), pourtant la forme
+  // documentée par Swift et la plus explicite — 401 systématique, sur les
+  // douze combinaisons mesurées. Seule la forme nue passe. Réintroduire le
+  // préfixe « pour être explicite » casserait tout dépôt en production sans
+  // qu'aucun autre test ne bronche.
+  it('signe en clair, sans préfixe de condensat — la forme préfixée est refusée par le cluster', () => {
+    const signee = urlAffichablePrivee('contact', urlCanonique('contact', 'contact/abc.jpg'));
+    const sig = new URL(signee).searchParams.get('temp_url_sig');
+    expect(sig).toMatch(/^[0-9a-f]{64}$/);
+    expect(signee).not.toContain('sha256:');
+    expect(signee).not.toContain('sha256%3A');
+  });
 });
 
 // L'invariant qui compte. `jp-photos` est en lecture publique : y autoriser un
