@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { PhotoUploader } from '@/components/PhotoUploader';
+import { televerserImage } from '@/lib/storage-client';
 import {
   CONTACT_TYPE_KEYS,
   CONTACT_TYPES,
@@ -94,6 +95,22 @@ export function ContactForm({
 
     setSubmitting(true);
     try {
+      // Déposées sur le stockage objet AVANT l'envoi du formulaire — le même
+      // jeton signé (`openedToken`) protège les deux appels (§ 7.5, lot B2
+      // étape 4). Un dépôt en échec (réseau, stockage indisponible) retombe
+      // sur la data-URL d'origine plutôt que de faire échouer tout l'envoi :
+      // une photo ratée ne doit jamais faire perdre le message qui
+      // l'accompagne — `validerPhotos` côté serveur accepte les deux formes.
+      const photosDeposees = await Promise.all(
+        photos.map(async (p) => {
+          try {
+            return await televerserImage('contact', p, { formToken: openedToken });
+          } catch {
+            return p;
+          }
+        }),
+      );
+
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -106,7 +123,7 @@ export function ContactForm({
           formToken: openedToken,
           pageUrl,
           appVersion,
-          photos,
+          photos: photosDeposees,
         }),
       });
       const data = (await res.json().catch(() => null)) as ReponseContact | null;

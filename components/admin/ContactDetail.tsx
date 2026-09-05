@@ -21,6 +21,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { PhotoUploader } from '@/components/PhotoUploader';
+import { televerserImage } from '@/lib/storage-client';
 import { formatDateHeure } from '@/lib/format';
 import {
   CONTACT_STATUSES,
@@ -201,9 +202,20 @@ export function ContactDetail({
     if (!reponseValide) return;
     if (!(await dialog.confirm('Envoyer cette réponse au demandeur ?'))) return;
     setEnvoiEnCours(true);
+    // Déposées avant l'appel à la route (§ 7.5, lot B2 étape 4) — session
+    // admin déjà authentifiée, pas de jeton de formulaire à transmettre ici
+    // (réservé au dépôt initial, anonyme, de `ContactForm`).
+    let photosDeposees: string[];
+    try {
+      photosDeposees = await Promise.all(reponsePhotos.map((p) => televerserImage('contact', p)));
+    } catch (e) {
+      setEnvoiEnCours(false);
+      dialog.alert('Erreur lors du dépôt de la photo : ' + (e as Error).message);
+      return;
+    }
     const { ok, body } = await appelAdmin(`/api/admin/contact/${message.id}/reply`, {
       method: 'POST',
-      body: JSON.stringify({ body: reponse, photos: reponsePhotos }),
+      body: JSON.stringify({ body: reponse, photos: photosDeposees }),
     });
     setEnvoiEnCours(false);
     if (!ok) {

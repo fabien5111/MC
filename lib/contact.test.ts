@@ -246,6 +246,25 @@ describe('validerPhotos', () => {
     expect(validerPhotos(undefined)).toEqual([]);
     expect(validerPhotos('data:image/jpeg;base64,AAAA')).toEqual([]);
   });
+
+  // § 7.5, lot B2 étape 4 : une fois déposée sur le stockage objet,
+  // `televerserImage('contact', …)` rend une URL de `jp-contact`, plus une
+  // data-URL — ce format doit être accepté, sans quoi la photo disparaîtrait
+  // en silence (le piège documenté au § 7.5).
+  const URL_CONTACT = 'https://s3.pub2.infomaniak.cloud/v1/AUTH_x/jp-contact/contact/9b1-a.jpg';
+
+  it('accepte une URL de stockage du conteneur `jp-contact`', () => {
+    expect(validerPhotos([URL_CONTACT])).toEqual([URL_CONTACT]);
+  });
+
+  it("écarte une URL de stockage d'un AUTRE conteneur (`jp-photos`) — jamais mélanger les deux", () => {
+    const urlPhotos = 'https://s3.pub2.infomaniak.cloud/v1/AUTH_x/jp-photos/recettes/9b1-a.jpg';
+    expect(validerPhotos([urlPhotos])).toEqual([]);
+  });
+
+  it('accepte un mélange de data-URL et d’URLs de stockage, dans la limite de CONTACT_PHOTOS_MAX', () => {
+    expect(validerPhotos([URL_CONTACT, dataUrl(50)])).toEqual([URL_CONTACT, dataUrl(50)]);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────

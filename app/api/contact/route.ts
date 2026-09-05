@@ -22,6 +22,7 @@ import {
   type SaisieDemande,
 } from '@/lib/contact';
 import {
+  clientIp,
   debitIpDepasse,
   debitMembreDepasse,
   empreinteIp,
@@ -40,10 +41,6 @@ export const maxDuration = 20;
 // valeur ne peut donc jamais coïncider avec une référence réellement écrite
 // en base — sûr à renvoyer sans qu'aucune ligne n'existe derrière.
 const REFERENCE_FACTICE = 'REF-000000';
-
-function clientIp(req: Request): string | null {
-  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
-}
 
 export async function POST(req: Request) {
   // Session « en tant que » en lecture seule : émettre une demande depuis ce

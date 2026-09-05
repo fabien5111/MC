@@ -91,10 +91,49 @@ export function urlDeLecture(conteneur: Conteneur, cleObjet: string): string {
   return urlSignee(conteneur, cleObjet, 'GET', EXPIRATION_LECTURE_S);
 }
 
-/** URL publique et stable d'un objet de `jp-photos`. */
-export function urlPublique(cleObjet: string): string {
+/**
+ * URL canonique et stable d'un objet, sans signature — c'est ce que
+ * `urlFinale` rend à l'appelant après un dépôt, et ce que les colonnes image
+ * persistent (§ 7.5, lot B2). Sur `jp-photos` (public), directement
+ * fonctionnelle. Sur `jp-contact` (privé), elle ne l'est PAS — un `GET`
+ * dessus échoue sans signature — mais sa forme stable permet d'en retrouver
+ * la clé (`cleDepuisUrlCanonique`) pour la re-signer à chaque lecture
+ * (`urlAffichablePrivee`), sans colonne séparée pour la clé.
+ */
+export function urlCanonique(conteneur: Conteneur, cleObjet: string): string {
   const { origine, baseV1 } = racine();
-  return `${origine}${cheminObjet(baseV1, 'photos', cleObjet)}`;
+  return `${origine}${cheminObjet(baseV1, conteneur, cleObjet)}`;
+}
+
+/** URL publique et stable d'un objet de `jp-photos`. Alias de `urlCanonique`
+ * figé sur ce conteneur, pour les appelants qui savent déjà être sur
+ * `jp-photos` et n'ont pas à répéter le nom du conteneur. */
+export function urlPublique(cleObjet: string): string {
+  return urlCanonique('photos', cleObjet);
+}
+
+/**
+ * Inverse de `urlCanonique` : retrouve la clé d'objet à partir d'une valeur
+ * déjà stockée en base, ou `null` si elle n'a pas cette forme (une data-URL
+ * pas encore reprise par le B3, ou une valeur imprévue).
+ */
+export function cleDepuisUrlCanonique(conteneur: Conteneur, valeur: string): string | null {
+  const { origine, baseV1 } = racine();
+  const prefixe = `${origine}${cheminObjet(baseV1, conteneur, '')}`;
+  return valeur.startsWith(prefixe) ? valeur.slice(prefixe.length) : null;
+}
+
+/**
+ * URL affichable pour une valeur du conteneur PRIVÉ, à appeler juste avant
+ * de rendre — jamais persistée, elle expire en `EXPIRATION_LECTURE_S`
+ * (§ 7.5, lot B2 étape 4 : `contact_message_photos` / `contact_reply_photos`).
+ * Une valeur qui n'a pas la forme d'une URL canonique de ce conteneur (une
+ * data-URL pas encore migrée par le B3) est rendue inchangée — c'est déjà ce
+ * qu'un `<img>` sait afficher.
+ */
+export function urlAffichablePrivee(conteneur: Conteneur, valeur: string): string {
+  const cle = cleDepuisUrlCanonique(conteneur, valeur);
+  return cle ? urlDeLecture(conteneur, cle) : valeur;
 }
 
 export { CONTENEURS };

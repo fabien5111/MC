@@ -14,6 +14,27 @@ import { composeNotificationAdmin, corpsCommentaireJira, DEBIT_IP, DEBIT_MEMBRE,
 import { ajouterCommentaireJira, type ResultatCommentaireJira, type ResultatTicketJira } from '@/lib/jira';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
+import { USAGES } from '@/lib/storage';
+import { urlAffichablePrivee } from '@/lib/storage-data';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Photos — lecture (`jp-contact` est privé, § 7.5 lot B2 étape 4)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Re-signe l'URL d'une photo juste avant de la rendre au demandeur ou à
+ * l'administration — jamais mise en cache ni persistée, elle expire en
+ * quelques minutes (`EXPIRATION_LECTURE_S`). Partagée par `lib/contact-admin-data.ts`
+ * et `lib/contact-member-data.ts` : les deux lisent les deux mêmes tables
+ * (`contact_message_photos`, `contact_reply_photos`) sur le même conteneur.
+ *
+ * Une valeur qui n'a pas la forme d'une URL canonique de `jp-contact` (une
+ * data-URL, ligne pas encore reprise par le B3) traverse inchangée — c'est
+ * déjà ce qu'un `<img>` sait afficher.
+ */
+export function signerPhotoContact<T extends { url: string }>(photo: T): T {
+  return { ...photo, url: urlAffichablePrivee(USAGES.contact.conteneur, photo.url) };
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Jeton anti-robot (délai minimum d'ouverture, spec §5.5.2)
@@ -63,6 +84,13 @@ export function verifierOuverture(jeton: unknown): number | null {
 
   const ms = Number(msTexte);
   return Number.isFinite(ms) ? ms : null;
+}
+
+// Partagée par `/api/contact` et la route de présignature du stockage objet
+// (§ 7.5, lot B2 étape 4) : les deux comptent le même débit par IP sur le
+// même usage anonyme, une seule lecture de l'en-tête à maintenir.
+export function clientIp(req: Request): string | null {
+  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

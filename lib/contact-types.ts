@@ -235,8 +235,10 @@ export type ContactStatusHistoryUpdate = Partial<ContactStatusHistoryInsert>;
 // Ne partent JAMAIS vers Jira (docs/contact-jira.md) : une capture d'écran
 // peut montrer un pseudo, un e-mail affiché à l'écran, le nom d'un autre
 // membre — l'inverse de ce que le ticket garantit. Visibles uniquement dans
-// le back-office ; `url` est une data-URL, motif `step_photos.url` (pas de
-// bucket de stockage, cf. CLAUDE.md « Images »).
+// le back-office ; `url` porte une data-URL (lignes antérieures au B2) ou
+// l'URL canonique du conteneur PRIVÉ `jp-contact` (§ 7.5, lot B2 étape 4) —
+// dans les deux cas, jamais directement affichable telle quelle côté lecture :
+// `lib/contact-data.ts` `signerPhotoContact` la re-signe avant tout rendu.
 export type ContactMessagePhotoRow = {
   id: string;
   message_id: string;

@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   CONTENEURS,
@@ -9,12 +9,13 @@ import {
   cheminObjet,
   estDataUrlImage,
   estMimeAccepte,
+  estUrlDuConteneur,
   estUrlStockage,
   nouvelleCleObjet,
   USAGES,
   estUsage,
 } from '@/lib/storage';
-import { signer } from '@/lib/storage-data';
+import { cleDepuisUrlCanonique, signer, urlAffichablePrivee, urlCanonique } from '@/lib/storage-data';
 
 // Le corps signé est le contrat avec le serveur Swift : `méthode\nexpiration\n
 // chemin`, chemin non encodé commençant par /v1/. Une divergence d'un seul
@@ -135,6 +136,82 @@ describe('discrimination des deux formes', () => {
 
   it('refuse le http nu — le stockage est servi en https', () => {
     expect(estUrlStockage('http://exemple.fr/a.webp')).toBe(false);
+  });
+});
+
+// § 7.5, lot B2 étape 4 : `/api/contact` est le seul point d'écriture ouvert
+// à un appelant SANS session — sans ce filtre, un appel direct pourrait
+// glisser n'importe quelle URL externe dans `contact_message_photos`, qui se
+// chargerait ensuite dans le panneau d'administration au moment de la
+// modération.
+describe('estUrlDuConteneur', () => {
+  it('accepte une URL du bon conteneur et du bon préfixe', () => {
+    expect(estUrlDuConteneur('contact', 'contact', 'https://s3.x/v1/AUTH_x/jp-contact/contact/a.jpg')).toBe(true);
+  });
+
+  it('refuse une URL pointant vers un AUTRE conteneur', () => {
+    expect(estUrlDuConteneur('contact', 'contact', 'https://s3.x/v1/AUTH_x/jp-photos/contact/a.jpg')).toBe(false);
+  });
+
+  it('refuse une URL externe quelconque — le vrai risque que ce filtre écarte', () => {
+    expect(estUrlDuConteneur('contact', 'contact', 'https://evil.example/pixel.png')).toBe(false);
+  });
+
+  it('refuse une data-URL', () => {
+    expect(estUrlDuConteneur('contact', 'contact', 'data:image/webp;base64,AAAA')).toBe(false);
+  });
+
+  it('refuse une valeur qui n’est pas une chaîne', () => {
+    expect(estUrlDuConteneur('contact', 'contact', undefined)).toBe(false);
+    expect(estUrlDuConteneur('contact', 'contact', 42)).toBe(false);
+  });
+});
+
+// Sur `jp-contact` (privé), la valeur stockée en base n'est ni une URL
+// publique ni une clé nue : une forme stable qu'on sait re-décomposer pour la
+// re-signer à chaque lecture, sans colonne séparée pour la clé (§ 7.5, lot B2
+// étape 4).
+describe('URL canonique du conteneur privé — écriture puis lecture', () => {
+  const ENV = {
+    SWIFT_STORAGE_URL: 'https://s3.pub2.infomaniak.cloud/v1/AUTH_test',
+    SWIFT_TEMPURL_KEY_CONTACT: 'cle-contact-test',
+    SWIFT_TEMPURL_KEY_PHOTOS: 'cle-photos-test',
+  };
+  const envOriginal = { ...process.env };
+
+  beforeEach(() => {
+    Object.assign(process.env, ENV);
+  });
+
+  afterEach(() => {
+    process.env = { ...envOriginal };
+  });
+
+  it('urlCanonique compose une URL stable, jamais signée', () => {
+    const url = urlCanonique('contact', 'contact/abc.jpg');
+    expect(url).toBe('https://s3.pub2.infomaniak.cloud/v1/AUTH_test/jp-contact/contact/abc.jpg');
+    expect(url).not.toContain('temp_url_sig');
+  });
+
+  it('cleDepuisUrlCanonique est l’inverse exact de urlCanonique', () => {
+    const cle = 'contact/abc.jpg';
+    expect(cleDepuisUrlCanonique('contact', urlCanonique('contact', cle))).toBe(cle);
+  });
+
+  it('cleDepuisUrlCanonique rend null pour une URL d’un autre conteneur', () => {
+    expect(cleDepuisUrlCanonique('contact', urlCanonique('photos', 'recettes/abc.jpg'))).toBeNull();
+  });
+
+  it('urlAffichablePrivee re-signe une URL canonique stockée en base', () => {
+    const canonique = urlCanonique('contact', 'contact/abc.jpg');
+    const affichable = urlAffichablePrivee('contact', canonique);
+    expect(affichable.startsWith(canonique)).toBe(true);
+    expect(affichable).toContain('temp_url_sig');
+  });
+
+  it('urlAffichablePrivee rend une data-URL inchangée — ligne pas encore reprise par le B3', () => {
+    const dataUrl = 'data:image/webp;base64,AAAA';
+    expect(urlAffichablePrivee('contact', dataUrl)).toBe(dataUrl);
   });
 });
 
