@@ -71,7 +71,9 @@ export const USAGES = {
   recette: { conteneur: 'photos', prefixe: 'recettes', acces: 'membre' },
   profil: { conteneur: 'photos', prefixe: 'profils', acces: 'membre' },
   avis: { conteneur: 'photos', prefixe: 'avis', acces: 'membre' },
-  site: { conteneur: 'photos', prefixe: 'site', acces: 'admin' },
+  banniere: { conteneur: 'photos', prefixe: 'bannieres', acces: 'admin' },
+  publicite: { conteneur: 'photos', prefixe: 'publicites', acces: 'admin' },
+  article: { conteneur: 'photos', prefixe: 'articles', acces: 'admin' },
   contact: { conteneur: 'contact', prefixe: 'contact', acces: 'public' },
 } as const satisfies Record<string, { conteneur: Conteneur; prefixe: string; acces: Acces }>;
 
@@ -127,6 +129,6 @@ export function estUrlStockage(valeur: string | null | undefined): boolean {
   return typeof valeur === 'string' && /^https:\/\//.test(valeur);
 }
 
-export function estDataUrlImage(valeur: string | null | undefined): boolean {
+export function estDataUrlImage(valeur: string | null | undefined): valeur is string {
   return typeof valeur === 'string' && valeur.startsWith('data:image/');
 }

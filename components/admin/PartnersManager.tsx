@@ -18,6 +18,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { formatDate } from '@/lib/format';
 import { resizeImageToDataUrl, isAcceptedImage, isHeic } from '@/lib/images';
+import { televerserImage } from '@/lib/storage-client';
 import { AD_SLOTS, adSlotConfig, adStatus, type AdRow, type AdSlotKey } from '@/lib/ads-config';
 import { revalidateReference } from '@/lib/revalidate-reference';
 
@@ -293,24 +294,32 @@ function AdForm({
   async function save() {
     if (!canSave) return;
 
-    const payload = {
-      slot,
-      name: name.trim(),
-      link_url: linkUrl.trim() || null,
-      image_url: image,
-      title: title.trim() || null,
-      subtitle: subtitle.trim() || null,
-      cta_label: ctaLabel.trim() || null,
-      start_date: startDate,
-      end_date: noEnd ? null : endDate,
-      active,
-      priority: Number.parseInt(priority, 10) || 0,
-    };
-
     // `refresh: false` : le tiroir se démonte dès onSaved(), c'est au parent
     // (toujours monté) de porter la resynchronisation.
     const ok = await mutate(
       async () => {
+        // `image` est une data-URL fraîchement compressée si la photo a
+        // changé, ou déjà l'URL de stockage si elle vient de la lecture
+        // initiale — televerserImage() ne dépose que dans le premier cas
+        // (§ 7.5, lot B2). À l'intérieur de `mutate()` : un échec du dépôt
+        // doit être annoncé comme n'importe quel autre échec d'écriture, pas
+        // fuiter en rejet non intercepté hors de `save()`.
+        const imageUrl = await televerserImage('publicite', image);
+
+        const payload = {
+          slot,
+          name: name.trim(),
+          link_url: linkUrl.trim() || null,
+          image_url: imageUrl,
+          title: title.trim() || null,
+          subtitle: subtitle.trim() || null,
+          cta_label: ctaLabel.trim() || null,
+          start_date: startDate,
+          end_date: noEnd ? null : endDate,
+          active,
+          priority: Number.parseInt(priority, 10) || 0,
+        };
+
         const r = entry ? await adsTable().update(payload).eq('id', entry.id) : await adsTable().insert(payload);
         // Idem : le cache des campagnes doit tomber avant que le parent ne
         // resynchronise (cf. `del` / `toggleActive` plus haut).
