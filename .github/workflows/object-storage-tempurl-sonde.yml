@@ -1,0 +1,100 @@
+name: Sonder le support TempURL du stockage objet
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Sonde, sans rien engager, ce que le stockage objet d'Infomaniak sait faire en
+# matière de TempURL — le mécanisme retenu pour le lot B (signature des
+# téléversements et des lectures privées, cf. docs/migration-infomaniak.md).
+#
+# La question à trancher : les clés TempURL **par conteneur** sont-elles
+# disponibles ? La documentation OpenStack les décrit, mais précise qu'elles ne
+# sont PAS supportées par Ceph RadosGW, où seule la clé de **compte** existe.
+# L'enjeu n'est pas théorique : avec une seule clé de compte, la même clé
+# signerait les téléversements du conteneur public ET les lectures du conteneur
+# privé des photos de contact — le cloisonnement décidé au lot B n'en serait
+# plus un.
+#
+# Rien n'est laissé derrière : la clé de sondage est aléatoire, jamais affichée,
+# et retirée en fin de course.
+#
+# Réutilise les sept secrets OS_* déjà en place (cf. object-storage-cors.yml).
+on:
+  workflow_dispatch:
+    inputs:
+      conteneur:
+        description: Conteneur sur lequel sonder (doit exister, restera intact)
+        required: true
+        default: jp-photos
+
+jobs:
+  sonde:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      CONTENEUR: ${{ inputs.conteneur }}
+    steps:
+      - name: Installer le client Swift
+        run: pip install --quiet python-swiftclient python-keystoneclient
+
+      - name: Ce que le cluster déclare savoir faire
+        run: |
+          set -euo pipefail
+          # `swift capabilities` liste les middlewares actifs. On y cherche
+          # `tempurl` : ses méthodes autorisées et ses algorithmes de signature.
+          # Une absence ici règle la question avant tout essai.
+          swift capabilities 2>&1 | sed -n '1,80p'
+
+      - name: La clé PAR CONTENEUR est-elle acceptée ?
+        run: |
+          set -euo pipefail
+          # Valeur aléatoire, jamais affichée : elle n'a pas à exister ailleurs
+          # que dans ce job, et le journal de ce dépôt est public.
+          cle=$(openssl rand -hex 32)
+          echo "::add-mask::$cle"
+
+          swift post "$CONTENEUR" --meta "Temp-URL-Key:$cle"
+
+          # `swift stat` réaffiche les métadonnées telles que le cluster les a
+          # réellement enregistrées. Si la clé par conteneur n'est pas
+          # supportée, la ligne sera simplement absente — sans erreur, ce qui
+          # est précisément le piège.
+          if swift stat "$CONTENEUR" | grep -qi 'Temp-URL-Key'; then
+            echo "OUI — clé par conteneur acceptée. Le cloisonnement du lot B tient."
+            echo "PAR_CONTENEUR=oui" >> "$GITHUB_ENV"
+          else
+            echo "NON — clé par conteneur ignorée en silence (comportement Ceph RadosGW)."
+            echo "Conséquence : une seule clé de compte pour les deux conteneurs."
+            echo "PAR_CONTENEUR=non" >> "$GITHUB_ENV"
+          fi
+
+      - name: Retirer la clé de sondage
+        if: always()
+        run: |
+          set -euo pipefail
+          # Une valeur vide efface la métadonnée. Le conteneur repart exactement
+          # dans l'état où la sonde l'a trouvé.
+          swift post "$CONTENEUR" --meta "Temp-URL-Key:" || true
+          swift stat "$CONTENEUR" | grep -i 'Temp-URL-Key' \
+            && echo "ATTENTION — la clé de sondage n'a pas été retirée." \
+            || echo "Nettoyé : aucune clé de sondage ne subsiste."
+
+      - name: Verdict
+        run: |
+          set -euo pipefail
+          echo "Clé TempURL par conteneur : $PAR_CONTENEUR"
+          if [ "$PAR_CONTENEUR" = "non" ]; then
+            echo
+            echo "À arbitrer avant le lot B1 : avec une clé de compte unique, la"
+            echo "clé qui signe les téléversements publics signerait aussi les"
+            echo "lectures de jp-contact. Deux issues — servir les photos de"
+            echo "contact par une route serveur authentifiée plutôt que par"
+            echo "TempURL, ou revenir au S3 présigné dont les identifiants se"
+            echo "cloisonnent par politique."
+          fi
