@@ -22,7 +22,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
-| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **B0-B1-B2-B3 faits le 05/09** : conteneurs, signature TempURL, écritures basculées, ≈360 objets repris (§ 7.5, § 7.6). Reste **B4** (vérification + nettoyage des data-URL + réconciliation) |
+| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **B0-B1-B2-B3 faits le 05/09**, B4 à moitié : conteneurs, signature TempURL, écritures basculées, ≈360 objets repris et vérifiés (§ 7.5-§ 7.7). Reste la **réconciliation des orphelins** (§ 10.4) |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
@@ -1001,7 +1001,7 @@ interrupteur public/privé au B1.
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
 | **B2** | Bascule des écritures, par risque croissant | **Complet le 05/09** (4 étapes) |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | **Fait le 05/09** (§ 7.6) |
-| **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
+| **B4** | Vérification a posteriori + réconciliation des orphelins (cycle de vie) | **Partie 1/2 (vérification) faite le 05/09** (§ 7.7) — reste la réconciliation |
 
 **Ordre du B2, dicté par la mesure** : d'abord `site_settings`, `ads`,
 `articles` et les deux pictos (1,4 Mo, 23 objets, aucune donnée membre — une
@@ -1036,9 +1036,12 @@ asynchrone, pas juste substituer une valeur avant un `update`), et le mesurer
 à 0 aujourd'hui ne justifie pas la complexité maintenant. Reste dans le
 dossier tant qu'il n'est pas traité.
 
-**On n'efface jamais une data-URL avant d'avoir relu l'objet distant** — d'où B3
-et B4 séparés. C'est ce qui garde le chantier réversible jusqu'au dernier
-moment.
+**Intention de départ : ne jamais effacer une data-URL avant d'avoir relu
+l'objet distant** — d'où B3 et B4 séparés, pour garder le chantier
+réversible jusqu'au dernier moment. **Corrigé au § 8** : ce n'est pas ce que
+le B3 a construit — il écrase la colonne dès que le dépôt répond `ok`, sans
+relecture préalable. Le B4 ne protège donc plus une décision d'effacement
+(déjà prise), il détecte seulement après coup un objet devenu illisible.
 
 #### Étape 2 : `recipes` et `step_photos` (35 Mo, 322 objets)
 
@@ -1255,6 +1258,46 @@ plus haut (écriture cross-auteur, RLS non vérifiée table par table).
 
 ---
 
+### 7.7 Lot B4 (partie 1/2) — vérification a posteriori (faite le 05/09)
+
+**Ce que le B3 protège réellement, une fois la correction du § 8 posée : plus
+rien.** La donnée d'origine est déjà écrasée au moment où le B3 rend la main
+— il n'y a plus de décision d'effacement à retarder. Ce qui reste possible,
+et que cette partie du B4 fait : **détecter après coup** un objet déposé
+mais devenu illisible (échec silencieux du dépôt, objet supprimé côté
+stockage entre-temps…). Un échec ici n'a pas de remède automatique : il
+désigne la ligne à corriger à la main, en redéposant la photo depuis son
+écran d'origine — il n'y a plus de data-URL de repli.
+
+**Un bouton « Vérifier » par cible**, à côté de « Lancer »
+(`StorageBackfillManager`) : relit chaque URL de stockage déjà écrite (`GET
+https://…` en `HEAD`, jamais les data-URL restantes — hors périmètre de
+cette vérification) et rend `OK` / `introuvable`. Un seul appel par cible
+plutôt qu'un lot paginé comme la reprise : les volumes mesurés au B0 (≈360
+objets au total, aucune cible n'en approchant l'ensemble) tiennent
+largement sous le plafond de sécurité (`PLAFOND_VERIFICATION = 1000`) — un
+outil de vérification est un geste ponctuel après coup, pas un traitement
+en continu qui justifierait une pagination.
+
+**Re-signature avant lecture sur le conteneur privé.** Une URL de
+`jp-contact` stockée en base n'est, comme pour l'affichage (`signerPhotoContact`,
+lib/contact-data.ts), pas directement lisible — `urlRepond()`
+(`lib/backfill-data.ts`) la fait passer par `urlAffichablePrivee()` avant
+le `HEAD`, exactement comme la lecture des photos de contact.
+
+**Toujours en lecture seule** : aucun résultat de vérification n'écrit quoi
+que ce soit, échec compris — la doctrine « aucune écriture cross-auteur non
+justifiée » du B3 n'a même pas à se poser ici.
+
+**Reste pour la partie 2/2 du B4** : la réconciliation des orphelins (objets
+présents sur le stockage mais sans plus aucune ligne qui les référence,
+condition posée dès le B1 avec les clés d'objet en UUID) — mécanisme distinct,
+qui nécessite de lister le contenu des conteneurs (hors de portée de
+l'application elle-même, qui ne sait que déposer et lire un objet dont elle
+connaît déjà la clé) et donc un outillage séparé, pas un écran admin de plus.
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -1280,6 +1323,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | `tags.category_picto` et `allergens.picto` se bascule via un écran d'admin, comme les autres colonnes image de l'étape 1 du B2 | **Faux** — aucune des deux tables n'a d'écran d'administration ; elles s'éditent directement en base (§ 7.5). Rien à basculer côté code, le B3 reprendra leurs data-URL telles quelles. |
 | La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
+| « On n'efface jamais une data-URL avant d'avoir relu l'objet distant » (§ 7.5) — le B3 déposerait puis vérifierait, le B4 n'effacerait qu'ensuite | **Ce n'est pas ce qui a été construit.** `traiterLotScalaire` (B3) écrase la colonne dès que le dépôt répond `ok`, sans relecture intermédiaire — il n'y a donc plus de data-URL à effacer une fois une ligne migrée : le B3 l'a déjà fait, en un seul geste. Le B4 (§ 7.7) ne protège plus une décision d'effacement, il détecte seulement après coup un objet devenu illisible, sans repli possible en cas d'échec. |
 
 ---
 
@@ -1384,11 +1428,18 @@ pas applicable telle quelle.
 - **Lot B3 fait le 05/09** (§ 7.6) : `lib/backfill.ts` (dix cibles, pur) /
   `lib/backfill-data.ts` (dépôt direct serveur + clé service_role) / route
   `POST /api/admin/backfill-photos` / écran `StorageBackfillManager`
-  (`/admin/photos`). Couvre les ≈ 360 objets mesurés au B0, sans en
-  supprimer aucune data-URL — reste au B4. **Tant que les trois variables
-  d'environnement ci-dessus ne sont pas posées, lancer un lot échoue** (même
-  cause que ci-dessus) : à vérifier avant de cliquer « Lancer » sur
-  `/admin/photos`.
+  (`/admin/photos`). Couvre les ≈ 360 objets mesurés au B0. **Tant que les
+  trois variables d'environnement ci-dessus ne sont pas posées, lancer un
+  lot échoue** (même cause que ci-dessus) : à vérifier avant de cliquer
+  « Lancer » sur `/admin/photos`.
+- **B4, partie 1/2 (vérification) faite le 05/09** (§ 7.7) : bouton
+  « Vérifier » sur le même écran, relit chaque URL déjà migrée et signale
+  ce qui ne répond plus. **Correction à connaître** (§ 8) : le B3 écrase la
+  data-URL dès le dépôt réussi, sans relecture intermédiaire — il n'y a donc
+  plus de data-URL à « nettoyer » pour les colonnes déjà migrées, la
+  vérification ne fait que détecter après coup un objet devenu illisible,
+  sans pouvoir revenir en arrière. **Reste la partie 2/2** : la
+  réconciliation des orphelins (§ 7.7, § 10.4).
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1397,25 +1448,37 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B4
+### 10.4 Prochaine action — le lot B4, partie 2/2 (réconciliation des orphelins)
 
 **Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1, le B2
-(4 étapes) et le B3 sont terminés** (§ 7.5, § 7.6) : mesure exhaustive,
-conteneurs, CORS, arbitrages, sonde du mécanisme de signature, socle de
-signature TempURL, bascule complète des écritures (des trois écrans à
-faible enjeu au `contact_*` anonyme sur conteneur privé), puis reprise des
-≈360 objets déjà en base — écran `/admin/photos` (`StorageBackfillManager`),
-onze cibles, dépôt direct serveur avec la clé service_role, **aucune
-data-URL supprimée**.
+(4 étapes), le B3 et la partie 1/2 du B4 sont terminés** (§ 7.5, § 7.6,
+§ 7.7) : mesure exhaustive, conteneurs, CORS, arbitrages, sonde du
+mécanisme de signature, socle de signature TempURL, bascule complète des
+écritures (des trois écrans à faible enjeu au `contact_*` anonyme sur
+conteneur privé), reprise des ≈360 objets déjà en base (`StorageBackfillManager`,
+onze cibles, dépôt direct serveur), et vérification a posteriori (bouton
+« Vérifier » sur le même écran).
 
-**La prochaine action est le B4** : vérifier que la reprise a bien abouti
-(comparer le compte d'objets par cible aux ≈360 mesurés au B0), **puis
-seulement** supprimer les data-URL désormais redondantes colonne par
-colonne, et écrire le mécanisme de réconciliation des orphelins resté ouvert
-depuis le B1 (clés d'objet en UUID déjà posées exprès pour ça — lister,
-comparer aux références en base, supprimer ce qui n'a plus de ligne depuis
-plus de 24 h). C'est ce dernier sous-lot qui clôt le lot B dans son
-entier (§ 7.1).
+**Correction posée au § 8, à ne pas reperdre** : le B3 écrase la data-URL
+dès que le dépôt réussit, sans relecture intermédiaire — la réversibilité
+« jusqu'au B4 » annoncée au § 7.5 ne tient donc pas littéralement. Il n'y a
+plus de data-URL à supprimer pour les colonnes déjà migrées : c'est déjà
+fait, en un seul geste, par le B3 lui-même.
+
+**La prochaine action est le B4, partie 2/2** : le mécanisme de
+réconciliation des orphelins resté ouvert depuis le B1 (clés d'objet en
+UUID posées exprès pour ça) — lister le contenu de `jp-photos` et
+`jp-contact`, comparer à toutes les URLs réellement référencées en base,
+supprimer ce qui n'a plus de ligne depuis plus de 24 h (marge pour un dépôt
+en cours). **Hors de portée de l'application elle-même** (§ 7.7) : elle ne
+sait déposer et lire qu'un objet dont elle connaît déjà la clé, jamais
+lister un conteneur — l'outillage attendu est plus proche des workflows
+GitHub Actions du B0 (`object-storage-cors.yml`, la sonde TempURL) que d'un
+nouvel écran admin. **Suppression réelle sur le stockage : jamais un seul
+geste** — un rapport à sec (lister, comparer, énumérer les orphelins) doit
+précéder toute suppression, elle-même déclenchée sur confirmation explicite
+séparée, jamais automatique. C'est ce dernier sous-lot qui clôt le lot B
+dans son entier (§ 7.1).
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par

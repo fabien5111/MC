@@ -1,11 +1,12 @@
-// Route Handler — traite un lot du B3 : reprise des images encore en
-// data-URL vers le stockage objet (§ 7.5). Réservée à l'administration —
-// contrairement aux bascules du B2, ces écritures touchent des lignes
-// appartenant à n'importe quel membre, jamais seulement à l'appelant.
+// Route Handler — traite un lot du B3 (reprise des images encore en
+// data-URL vers le stockage objet) ou vérifie a posteriori une cible déjà
+// reprise (B4, § 7.5/§ 8). Réservée à l'administration — contrairement aux
+// bascules du B2, ces écritures/lectures touchent des lignes appartenant à
+// n'importe quel membre, jamais seulement à l'appelant.
 import { NextResponse } from 'next/server';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { CIBLES_BACKFILL, CLE_COMMENTAIRES, estCleCible } from '@/lib/backfill';
-import { traiterLotCommentairesPhotos, traiterLotScalaire } from '@/lib/backfill-data';
+import { traiterLotCommentairesPhotos, traiterLotScalaire, verifierCible, verifierCommentairesPhotos } from '@/lib/backfill-data';
 
 export const maxDuration = 60;
 
@@ -15,7 +16,13 @@ export async function POST(req: Request) {
   if (!(await isAdmin(user.id))) return NextResponse.json({ erreur: 'Réservé aux administrateurs.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
-  const { cible } = (body ?? {}) as { cible?: unknown };
+  const { cible, action } = (body ?? {}) as { cible?: unknown; action?: unknown };
+
+  if (action === 'verifier') {
+    if (cible === CLE_COMMENTAIRES) return NextResponse.json(await verifierCommentairesPhotos());
+    if (!estCleCible(cible)) return NextResponse.json({ erreur: 'Cible inconnue.' }, { status: 400 });
+    return NextResponse.json(await verifierCible(CIBLES_BACKFILL[cible]));
+  }
 
   if (cible === CLE_COMMENTAIRES) {
     return NextResponse.json(await traiterLotCommentairesPhotos());

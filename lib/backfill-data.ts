@@ -16,8 +16,17 @@
 // Jamais de suppression de la data-URL d'origine ici — c'est le B4, une fois
 // la reprise vérifiée (§ 7.5).
 import { createAdminClient } from '@/lib/supabase/admin';
-import { estDataUrlImage, estMimeAccepte, nouvelleCleObjet, USAGES, type MimeAccepte, type Usage } from '@/lib/storage';
-import { urlCanonique, urlDeTeleversement } from '@/lib/storage-data';
+import {
+  CONTENEUR_PUBLIC,
+  estDataUrlImage,
+  estMimeAccepte,
+  estUrlStockage,
+  nouvelleCleObjet,
+  USAGES,
+  type MimeAccepte,
+  type Usage,
+} from '@/lib/storage';
+import { urlAffichablePrivee, urlCanonique, urlDeTeleversement } from '@/lib/storage-data';
 import type { CibleScalaire } from '@/lib/backfill';
 
 function mimeDeDataUrl(dataUrl: string): MimeAccepte | null {
@@ -97,6 +106,71 @@ export async function traiterLotScalaire(cible: CibleScalaire, tailleLot = TAILL
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Vérification a posteriori (§ 7.5/§ 8, lot B4)
+//
+// Le B3 écrase la data-URL dès que le dépôt répond `ok`, sans relecture —
+// il n'y a donc plus de repli une fois une ligne migrée. Cette vérification
+// ne protège plus une décision d'effacement (déjà faite), elle sert
+// seulement à détecter après coup un objet déposé mais devenu illisible
+// (échec silencieux du dépôt, objet supprimé depuis côté stockage…). Un
+// échec ici n'a pas de remède automatique : il désigne la ligne à corriger
+// à la main (redéposer la photo depuis son écran d'origine).
+// ─────────────────────────────────────────────────────────────────────────
+
+export type EchecVerification = { table: string; cle: string; colonne: string; url: string };
+export type ResultatVerification = { verifiees: number; ok: number; echecs: EchecVerification[] };
+
+// Très au-dessus des ≈360 objets mesurés au B0 (§ 7.5) : une vérification est
+// un geste ponctuel après coup, pas un outil qui tourne en continu — un seul
+// appel par cible suffit tant que le volume réel reste de cet ordre.
+const PLAFOND_VERIFICATION = 1000;
+
+async function urlLisible(usage: Usage, url: string): Promise<string> {
+  const decl = USAGES[usage];
+  return CONTENEUR_PUBLIC[decl.conteneur] ? url : urlAffichablePrivee(decl.conteneur, url);
+}
+
+/** Exportée pour être testable indépendamment de la lecture Supabase (`verifierCible`). */
+export async function urlRepond(usage: Usage, url: string): Promise<boolean> {
+  try {
+    const reponse = await fetch(await urlLisible(usage, url), { method: 'HEAD' });
+    return reponse.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Relit chaque URL de stockage déjà écrite pour cette cible (jamais les
+ * data-URL restantes, hors périmètre de la vérification) et confirme
+ * qu'elle répond. Lecture seule — aucune écriture, quel que soit le
+ * résultat.
+ */
+export async function verifierCible(cible: CibleScalaire): Promise<ResultatVerification> {
+  const client = createAdminClient();
+  const filtre = cible.colonnes.map((c) => `${c}.like.https://%`).join(',');
+  const { data, error } = await (client.from(cible.table) as any)
+    .select([cible.cle, ...cible.colonnes].join(','))
+    .or(filtre)
+    .limit(PLAFOND_VERIFICATION);
+  if (error || !data) return { verifiees: 0, ok: 0, echecs: [] };
+
+  const echecs: EchecVerification[] = [];
+  let ok = 0;
+  await Promise.all(
+    (data as Record<string, string | null>[]).flatMap((ligne) =>
+      cible.colonnes.map(async (colonne) => {
+        const valeur = ligne[colonne];
+        if (!valeur || !estUrlStockage(valeur)) return;
+        if (await urlRepond(cible.usage, valeur)) ok++;
+        else echecs.push({ table: cible.table, cle: String(ligne[cible.cle]), colonne, url: valeur });
+      }),
+    ),
+  );
+  return { verifiees: ok + echecs.length, ok, echecs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // `comments.photo_urls` — seule cible en tableau JSON, traitée à part : sa
 // forme (`{ url, ai_retouched }[]`) est spécifique aux avis (§ 7.5) et ne
 // justifie pas de généraliser `traiterLotScalaire` à des colonnes non
@@ -144,4 +218,29 @@ export async function traiterLotCommentairesPhotos(tailleLot = TAILLE_LOT): Prom
     else echecs++;
   }
   return { traites, echecs, restant: data.length === tailleLot };
+}
+
+/** Pendant lecture seule de `traiterLotCommentairesPhotos`, cf. `verifierCible`. */
+export async function verifierCommentairesPhotos(): Promise<ResultatVerification> {
+  const client = createAdminClient();
+  const { data, error } = await client
+    .from('comments')
+    .select('id, photo_urls')
+    .not('photo_urls', 'is', null)
+    .neq('photo_urls', '[]')
+    .limit(PLAFOND_VERIFICATION);
+  if (error || !data) return { verifiees: 0, ok: 0, echecs: [] };
+
+  const echecs: EchecVerification[] = [];
+  let ok = 0;
+  await Promise.all(
+    (data as { id: number; photo_urls: unknown }[]).flatMap((ligne) =>
+      normaliserPhotosAvis(ligne.photo_urls).map(async (p) => {
+        if (!estUrlStockage(p.url)) return;
+        if (await urlRepond('avis', p.url)) ok++;
+        else echecs.push({ table: 'comments', cle: String(ligne.id), colonne: 'photo_urls', url: p.url });
+      }),
+    ),
+  );
+  return { verifiees: ok + echecs.length, ok, echecs };
 }
