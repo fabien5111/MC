@@ -38,10 +38,11 @@ on:
           d'origines, et le site a plusieurs domaines (www, dev, préversions).
         required: true
         default: '*'
-      masquer_listing:
+      acces_public:
         description: >-
-          Interdire l'énumération publique du contenu du conteneur (.rlistings).
-          À laisser coché : sans ça, n'importe qui peut lister tous les fichiers.
+          Objets lisibles par leur URL (.r:*), sans énumération (.rlistings).
+          COCHÉ pour jp-photos. À DÉCOCHER pour jp-contact : ses photos sont des
+          données personnelles, elles ne doivent se lire que par URL signée.
         type: boolean
         required: true
         default: true
@@ -76,19 +77,34 @@ jobs:
             --meta "Access-Control-Expose-Headers:Content-Length,Content-Type,Etag,Last-Modified" \
             --meta "Access-Control-Max-Age:3600"
 
-      - name: Restreindre l'énumération publique
-        if: ${{ inputs.masquer_listing }}
+      - name: Régler l'accès en lecture
         run: |
           set -euo pipefail
-          # `.r:*` seul = les objets restent lisibles par leur URL, mais la
-          # liste du conteneur n'est plus publique. L'option « accès public »
-          # de Horizon ajoute `.rlistings`, qui laisse énumérer tous les
-          # fichiers — une fuite silencieuse une fois les photos migrées.
-          swift post "$CONTENEUR" --read-acl '.r:*'
+          # Ce réglage est le plus dangereux du workflow, parce qu'il est muet :
+          # poser `.r:*` sur le mauvais conteneur ne produit aucune erreur, et
+          # rend d'un coup lisibles par leur URL des données personnelles.
+          #
+          # `.r:*` seul = objets lisibles par leur URL, liste du conteneur non
+          # publique. L'option « accès public » de Horizon ajoute `.rlistings`,
+          # qui laisse énumérer tous les fichiers — une fuite silencieuse une
+          # fois les photos migrées.
+          #
+          # ACL vide = rien de public. Les objets ne se lisent alors que par
+          # une URL TempURL signée (lib/storage-data.ts).
+          if [ "${{ inputs.acces_public }}" = "true" ]; then
+            swift post "$CONTENEUR" --read-acl '.r:*'
+            echo "$CONTENEUR : objets lisibles par URL, énumération fermée."
+          else
+            swift post "$CONTENEUR" --read-acl ''
+            echo "$CONTENEUR : aucun accès public. Lecture par URL signée uniquement."
+          fi
 
       - name: Vérifier que l'en-tête est bien renvoyé
+        if: ${{ inputs.acces_public }}
         run: |
           set -euo pipefail
+          # Uniquement sur un conteneur public : sur un conteneur privé, un GET
+          # nu est refusé, et l'absence d'en-tête ne prouverait rien.
           # `swift auth` écrit OS_STORAGE_URL et OS_AUTH_TOKEN sur sa sortie :
           # on l'évalue sans jamais l'afficher, le jeton n'a rien à faire dans
           # les journaux du workflow.

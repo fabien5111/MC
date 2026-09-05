@@ -1,0 +1,92 @@
+name: Poser les clés TempURL des conteneurs
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Pose la clé de signature TempURL sur chacun des deux conteneurs du lot B.
+# Sans elle, toute URL signée par l'application est refusée : la clé est le
+# secret partagé entre `lib/storage-data.ts` et le stockage.
+#
+# UNE CLÉ PAR CONTENEUR, et c'est le point. Le cluster les accepte (sondé en
+# B0 — c'est du Swift natif, pas un Ceph RadosGW qui n'aurait offert qu'une clé
+# de compte). Deux clés indépendantes veulent dire qu'une fuite de celle qui
+# signe les téléversements publics ne donne AUCUN accès aux photos de contact,
+# qui sont des données personnelles (docs/contact-jira.md § 15).
+#
+# Les clés ne sont jamais affichées : elles sont lues depuis les secrets, et le
+# journal de ce dépôt est public. Elles ne transitent pas non plus par une
+# entrée de workflow, qui serait, elle, visible dans le récapitulatif du run.
+#
+# Secrets attendus (Settings > Secrets and variables > Actions) — mêmes valeurs
+# que les variables d'environnement de l'application :
+#   SWIFT_TEMPURL_KEY_PHOTOS   clé du conteneur jp-photos
+#   SWIFT_TEMPURL_KEY_CONTACT  clé du conteneur jp-contact
+# Plus les sept OS_* déjà en place.
+#
+# Cf. docs/migration-infomaniak.md § 7.5.
+on:
+  workflow_dispatch:
+
+jobs:
+  cles:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      CLE_PHOTOS: ${{ secrets.SWIFT_TEMPURL_KEY_PHOTOS }}
+      CLE_CONTACT: ${{ secrets.SWIFT_TEMPURL_KEY_CONTACT }}
+    steps:
+      - name: Installer le client Swift
+        run: pip install --quiet python-swiftclient python-keystoneclient
+
+      - name: Vérifier que les deux secrets existent, et qu'ils diffèrent
+        run: |
+          set -euo pipefail
+          # Un secret absent produirait une clé vide, posée sans erreur — et
+          # toute signature deviendrait vérifiable par quiconque. On refuse
+          # avant d'écrire quoi que ce soit.
+          [ -n "$CLE_PHOTOS" ]  || { echo "ÉCHEC — secret SWIFT_TEMPURL_KEY_PHOTOS absent."; exit 1; }
+          [ -n "$CLE_CONTACT" ] || { echo "ÉCHEC — secret SWIFT_TEMPURL_KEY_CONTACT absent."; exit 1; }
+
+          # Deux clés identiques annuleraient le cloisonnement sans que rien ne
+          # le signale : c'est exactement le scénario contre lequel la sonde du
+          # B0 a été écrite. La comparaison ne révèle rien — elle ne dit que
+          # « égales » ou « différentes ».
+          if [ "$CLE_PHOTOS" = "$CLE_CONTACT" ]; then
+            echo "ÉCHEC — les deux clés sont identiques : le cloisonnement des"
+            echo "conteneurs n'existerait plus. Générez-en deux distinctes."
+            exit 1
+          fi
+          echo "Deux secrets présents et distincts."
+
+      - name: Poser la clé sur jp-photos
+        run: |
+          set -euo pipefail
+          swift post jp-photos --meta "Temp-URL-Key:$CLE_PHOTOS"
+          # On relit : une métadonnée refusée l'est en silence, sans erreur.
+          swift stat jp-photos | grep -qi 'Temp-URL-Key' \
+            && echo "jp-photos : clé en place." \
+            || { echo "ÉCHEC — clé non enregistrée sur jp-photos."; exit 1; }
+
+      - name: Poser la clé sur jp-contact
+        run: |
+          set -euo pipefail
+          swift post jp-contact --meta "Temp-URL-Key:$CLE_CONTACT"
+          swift stat jp-contact | grep -qi 'Temp-URL-Key' \
+            && echo "jp-contact : clé en place." \
+            || { echo "ÉCHEC — clé non enregistrée sur jp-contact."; exit 1; }
+
+      - name: Rappeler ce qu'il reste à aligner
+        run: |
+          echo "Les deux clés sont posées côté stockage."
+          echo
+          echo "Pour que l'application signe juste, les MÊMES valeurs doivent"
+          echo "exister dans son environnement (Vercel, puis Virtuozzo au lot A) :"
+          echo "  SWIFT_TEMPURL_KEY_PHOTOS"
+          echo "  SWIFT_TEMPURL_KEY_CONTACT"
+          echo "  SWIFT_STORAGE_URL  (racine rendue par « swift auth », /v1/AUTH_… compris)"
