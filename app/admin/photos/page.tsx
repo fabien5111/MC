@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 import { RecipeDefaultPhotoManager } from '@/components/admin/RecipeDefaultPhotoManager';
 import { RecipeImageBackfill } from '@/components/admin/RecipeImageBackfill';
+import { StorageBackfillManager } from '@/components/admin/StorageBackfillManager';
 
 export const metadata: Metadata = { title: 'Photos du site | Admin — Je pâtisse !' };
 
@@ -54,6 +55,17 @@ export default async function AdminPhotosPage() {
             title="Vignettes des cartes recette"
             description="Génère la vignette des recettes créées avant son ajout, pour les cartes recette de l'accueil, la recherche, le carnet, les profils et les suggestions, au lieu de transporter la photo en pleine définition. Les recettes créées ou modifiées depuis en ont déjà une — relancer ne les retouche pas."
           />
+        </section>
+        <section className="mb-12 max-w-4xl">
+          <h2 className="font-headline-md text-primary mb-2">
+            Reprise vers le stockage objet (lot B3)
+          </h2>
+          <p className="text-on-surface-variant mb-8">
+            Dépose sur le stockage objet les images encore stockées en base (créées avant la
+            migration), cible par cible. La donnée d&apos;origine n&apos;est jamais supprimée ici —
+            reprenable sans risque, y compris en cas d&apos;interruption.
+          </p>
+          <StorageBackfillManager />
         </section>
       </main>
     </>

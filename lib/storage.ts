@@ -74,6 +74,12 @@ export const USAGES = {
   banniere: { conteneur: 'photos', prefixe: 'bannieres', acces: 'admin' },
   publicite: { conteneur: 'photos', prefixe: 'publicites', acces: 'admin' },
   article: { conteneur: 'photos', prefixe: 'articles', acces: 'admin' },
+  // Pictogrammes de `tags`/`allergens` — aucun chemin d'écriture applicatif
+  // (§ 7.5 étape 1 du B2), seulement repris par le B3 (`lib/backfill-data.ts`),
+  // qui écrit directement en base sans passer par cette route. `acces: 'admin'`
+  // par cohérence avec le reste du conteneur public, sans effet réel tant
+  // qu'aucun écran n'appelle la présignature pour cet usage.
+  referentiel: { conteneur: 'photos', prefixe: 'referentiels', acces: 'admin' },
   contact: { conteneur: 'contact', prefixe: 'contact', acces: 'public' },
 } as const satisfies Record<string, { conteneur: Conteneur; prefixe: string; acces: Acces }>;
 
