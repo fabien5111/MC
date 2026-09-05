@@ -22,7 +22,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
-| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **B0 fait le 05/09** : 360 objets, 40 Mo, mécanisme de signature vérifié (§ 7.5). Reste B1-B4 |
+| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **B0-B1-B2-B3 faits le 05/09** : conteneurs, signature TempURL, écritures basculées, ≈360 objets repris (§ 7.5, § 7.6). Reste **B4** (vérification + nettoyage des data-URL + réconciliation) |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
@@ -1000,7 +1000,7 @@ interrupteur public/privé au B1.
 | **B0** | `gen:types`, mesure, conteneurs, CORS, arbitrages, sonde TempURL | **Fait le 05/09** |
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
 | **B2** | Bascule des écritures, par risque croissant | **Complet le 05/09** (4 étapes) |
-| **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | À faire |
+| **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | **Fait le 05/09** (§ 7.6) |
 | **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
 
 **Ordre du B2, dicté par la mesure** : d'abord `site_settings`, `ads`,
@@ -1185,6 +1185,76 @@ références en base, supprimer les orphelins de plus de 24 h) reste à
 
 ---
 
+### 7.6 Lot B3 — reprise des ≈360 objets déjà en base (fait le 05/09)
+
+Le B2 a basculé les écritures ; le B3 reprend ce qui existait déjà — les
+colonnes qui portent encore une data-URL, tables mesurées au B0 (§ 7.5), hors
+`imports.recette` (hors périmètre, § 5.3) et `profiles.cover_url` (vide).
+**Aucune data-URL n'est supprimée ici** — ça reste au B4, une fois la reprise
+vérifiée.
+
+**Différence structurelle avec le B2 : ici le serveur a déjà la donnée.** Le
+B2 résolvait « le navigateur a la data-URL, comment la déposer sans la faire
+transiter par l'application » — d'où la présignature et le `PUT` direct
+depuis le poste du visiteur. Le B3 lit la data-URL depuis la base : le
+serveur peut donc la déposer lui-même, sans aller-retour navigateur ni
+présignature — `lib/backfill-data.ts` signe et exécute le `PUT` dans la même
+fonction (`deposerDataUrlServeur`), pendant serveur de `televerserImage()`.
+
+**Clé service_role partout, plutôt qu'une vérification RLS table par
+table.** `RecipeImageBackfill` (étape 1 du B2) prouve que la RLS de
+`recipes` autorise déjà l'admin à écrire sur la recette d'un autre auteur —
+mais rien d'équivalent n'est établi pour `profiles`, `comments`, `ads`,
+`site_settings`, `articles`, `tags`, `allergens`, et **aucune policy
+d'écriture n'existe** sur `contact_message_photos` / `contact_reply_photos`
+« pour personne, admin compris » (CLAUDE.md). Plutôt que vérifier neuf
+policies une par une, le B3 écrit uniformément avec la clé service_role
+(`createAdminClient()`) : cohérent avec sa nature — une reprise
+d'administration cross-auteur n'est pas un geste de membre ordinaire, même
+doctrine que l'impersonation et les réponses admin du module contact.
+
+**Une déclaration de cibles, pure, séparée de l'écriture** —
+`lib/backfill.ts` (dix cibles « scalaires » : table, colonne(s) texte,
+usage) / `lib/backfill-data.ts` (server-only : la clé service_role et la
+signature TempURL). Même séparation que `ideas.ts` / `ideas-data.ts` :
+l'écran admin importe la déclaration pure pour afficher la liste des cibles,
+sans jamais tirer la clé service_role dans son bundle.
+
+**Une ligne partiellement migrée s'auto-cicatrise, sans état à suivre entre
+deux lots.** Une cible peut porter plusieurs colonnes (`recipes` en a
+quatre) migrées indépendamment ; le filtre de sélection (`colonne.like.
+data:%` sur au moins une des colonnes) resélectionne toute ligne encore
+partiellement en data-URL, et seule la colonne qui l'est encore repasse par
+le dépôt — `estDataUrlImage` reconnaît une colonne déjà migrée et la laisse
+inchangée. Une ligne où une seule colonne échoue au dépôt (réseau, format)
+reste donc sélectionnée au lot suivant sans dupliquer ce qui a réussi.
+
+**`comments.photo_urls` est la seule cible en tableau JSON**, traitée à part
+(`traiterLotCommentairesPhotos`) plutôt que généralisée dans le moteur
+scalaire : sa forme (`{ url, ai_retouched }[]`) est spécifique aux avis pour
+un unique appelant, une abstraction commune n'aurait rien simplifié.
+
+**`tags.category_picto` et `allergens.picto` sont couvertes malgré
+l'absence d'écran** (§ 7.5 étape 1 du B2, corrigé au § 8) : le B3 lit et
+écrit directement en base, il n'a besoin d'aucun chemin d'écriture
+applicatif pour ça — contrairement au B2, dont chaque étape bascule un
+écran réel.
+
+**Un nouvel usage, `referentiel`** (`lib/storage.ts`), couvre ces deux
+pictogrammes : `acces: 'admin'` par cohérence avec le reste du conteneur
+public, sans effet réel puisque le B3 ne passe jamais par la route de
+présignature (il signe lui-même, côté serveur).
+
+**Écran unique** (`/admin/photos`, `StorageBackfillManager`), motif
+`RecipeImageBackfill` étendu aux onze cibles (dix scalaires + les avis) :
+un bouton par cible, compteurs repris/échecs, reprenable à tout moment. Une
+différence assumée avec `RecipeImageBackfill` : chaque lot est traité par
+une route serveur (`POST /api/admin/backfill-photos`, clé service_role)
+plutôt que par le client Supabase du navigateur, pour la raison exposée
+plus haut (écriture cross-auteur, RLS non vérifiée table par table).
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -1308,8 +1378,17 @@ pas applicable telle quelle.
   `ContactDetail`/`MaDemandeDetail`), lecture re-signée à quatre endroits
   (`signerPhotoContact`, `lib/contact-data.ts`). **Reste à poser les deux
   secrets `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la
-  variable `SWIFT_STORAGE_URL`** — sans eux, la route de présignature échoue
-  à l'exécution (`env()` lève), pas à la compilation.
+  variable `SWIFT_STORAGE_URL`** — sans eux, la route de présignature (B2)
+  ET le dépôt serveur direct (B3) échouent à l'exécution (`env()` lève), pas
+  à la compilation.
+- **Lot B3 fait le 05/09** (§ 7.6) : `lib/backfill.ts` (dix cibles, pur) /
+  `lib/backfill-data.ts` (dépôt direct serveur + clé service_role) / route
+  `POST /api/admin/backfill-photos` / écran `StorageBackfillManager`
+  (`/admin/photos`). Couvre les ≈ 360 objets mesurés au B0, sans en
+  supprimer aucune data-URL — reste au B4. **Tant que les trois variables
+  d'environnement ci-dessus ne sont pas posées, lancer un lot échoue** (même
+  cause que ci-dessus) : à vérifier avant de cliquer « Lancer » sur
+  `/admin/photos`.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1318,27 +1397,25 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B3
+### 10.4 Prochaine action — le lot B4
 
-**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1 et les
-quatre étapes du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs,
-CORS, arbitrages, sonde du mécanisme de signature, socle de signature
-TempURL, puis bascule complète des écritures — des trois écrans à faible
-enjeu (étape 1) au gros du chantier `recipes`/`step_photos` (étape 2, 35 Mo,
-322 objets), `profiles`/`comments.photo_urls` (étape 3), et enfin `contact_*`
-sur le conteneur privé (étape 4 — le seul cas nécessitant d'ouvrir la route
-de présignature à un appelant sans session, protégé en réutilisant
-exactement la chaîne anti-spam de `/api/contact`).
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1, le B2
+(4 étapes) et le B3 sont terminés** (§ 7.5, § 7.6) : mesure exhaustive,
+conteneurs, CORS, arbitrages, sonde du mécanisme de signature, socle de
+signature TempURL, bascule complète des écritures (des trois écrans à
+faible enjeu au `contact_*` anonyme sur conteneur privé), puis reprise des
+≈360 objets déjà en base — écran `/admin/photos` (`StorageBackfillManager`),
+onze cibles, dépôt direct serveur avec la clé service_role, **aucune
+data-URL supprimée**.
 
-**La prochaine action est le B3** : reprendre les ≈360 objets déjà en base
-(mesure du B0, § 7.5) — chaque colonne qui porte encore une data-URL est
-déposée sur le stockage objet, **sans supprimer** la data-URL d'origine
-(réversibilité, jusqu'au B4). `televerserImage()` étant déjà idempotent
-(une valeur qui n'est pas une data-URL traverse inchangée), le même geste
-peut tourner ligne par ligne sur les tables existantes sans risque de double
-dépôt. Puis le B4 : vérification, nettoyage des data-URL, et le mécanisme de
-réconciliation des orphelins resté ouvert depuis le B1 (§ 7.5, « Deux pièges
-déjà documentés »).
+**La prochaine action est le B4** : vérifier que la reprise a bien abouti
+(comparer le compte d'objets par cible aux ≈360 mesurés au B0), **puis
+seulement** supprimer les data-URL désormais redondantes colonne par
+colonne, et écrire le mécanisme de réconciliation des orphelins resté ouvert
+depuis le B1 (clés d'objet en UUID déjà posées exprès pour ça — lister,
+comparer aux références en base, supprimer ce qui n'a plus de ligne depuis
+plus de 24 h). C'est ce dernier sous-lot qui clôt le lot B dans son
+entier (§ 7.1).
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
