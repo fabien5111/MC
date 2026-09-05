@@ -1274,6 +1274,9 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `JIRA_PROJECT_KEY` / `JIRA_ISSUE_TYPE_BUG` | Projet et type de ticket pour un signalement de bug | Serveur uniquement |
 | `JIRA_STATUS_TO_DEPLOY` / `_ID`, `JIRA_STATUS_DEPLOYED` / `_ID` | Noms (et id, en priorité) des statuts Jira « développé » et « déployé » — cf. « Contact et suivi Jira » | Serveur uniquement |
 | `JIRA_WEBHOOK_SECRET` | Secret HMAC du webhook Jira entrant | Serveur uniquement |
+| `SWIFT_STORAGE_URL` | Racine du stockage objet, telle que la rend `swift auth` (`https://<hôte>/v1/AUTH_<projet>`) — lot B | Serveur uniquement |
+| `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
+| `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Un changement ne prend effet qu'au prochain déploiement Vercel (variable lue côté serveur, pas au build). | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
