@@ -236,6 +236,29 @@ catalogue.
 rôles réservés de Supabase — cohérent avec le § 2.4, qui ne trouve aucun rôle
 applicatif propre au projet.
 
+### 2.6 Ce que l'image apporte vraiment — relevé du 05/09
+
+Mesuré sur `supabase/postgres:17.6.1.165` fraîchement démarré chez Virtuozzo,
+avant toute restauration.
+
+| Ce qui est là | Ce qui manque |
+|---|---|
+| **14 rôles**, dont `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_auth_admin` | — |
+| **4 schémas** : `auth`, `extensions`, `public`, `vault` | — |
+| `pgcrypto`, `uuid-ossp`, `pg_stat_statements` (dans `extensions`), `supabase_vault`, `plpgsql` | **`pg_trgm`**, **`unaccent`**, `btree_gist` |
+
+**Le pari du § 4.4 tient sur les rôles et les schémas, pas sur les
+extensions.** Et les deux manquantes sont précisément celles que le § 2.3
+désigne comme critiques : `unaccent` porte `mc_norm()`, donc toute la recherche
+avancée, et `pg_trgm` le repli trigramme de `suggest_similar_ideas`.
+
+**Conséquence sur le mode opératoire** : le bloc de préparation du § 7.2 cesse
+d'être un filet à jouer en cas d'échec, il devient une étape à part entière du
+workflow — qui pose **les cinq** extensions sans se demander lesquelles l'image
+apporte. Dépendre du jeu par défaut d'une image, c'est dépendre de ce qui change
+d'un tag au suivant ; `if not exists` rend la pose gratuite là où le travail est
+déjà fait.
+
 ---
 
 ## 3. Le stockage objet Infomaniak — validé
@@ -348,7 +371,7 @@ ailleurs : **cette image pose l'environnement que le dump attend.**
 |---|---|
 | Rôles `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_admin` | Les **320 policies** les référencent ; sans eux, elles échouent en bloc |
 | Schémas `auth`, `extensions`, `graphql_public` | GoTrue n'a plus à créer `auth` ; l'ordre de restauration cesse d'être un piège |
-| Extensions déjà dans le schéma `extensions` | Exactement la disposition mesurée en § 2.3 |
+| Extensions déjà dans le schéma `extensions` | **Partiellement seulement** — l'image en pose cinq, mais ni `pg_trgm` ni `unaccent` (relevé du 05/09, § 2.6). Les extensions sont donc toutes posées par le workflow, sans rien supposer de l'image |
 | `supabase_vault` | Inutile ici (§ 2.3), mais le dump y fait référence |
 
 On ne bricole donc pas un PostgreSQL qui ressemblerait à Supabase : **on déploie
@@ -743,14 +766,17 @@ Il valide le **DDL**. Ni la restauration des données, ni la migration des
 lot C, et c'est le bon arbitrage. Mais un « Go » du lot 0-bis **ne se lit pas
 comme un Go sur l'authentification**.
 
-#### Le filet de préparation manuelle
+#### La préparation des extensions — une étape, plus un filet
 
-**L'image rend largement superflue la préparation manuelle** ci-dessous
-(§ 4.4) : rôles, schémas et extensions y sont déjà posés. Ce bloc reste comme
-filet, à jouer seulement si la restauration échoue sur un objet manquant — et
-`btree_gist` fait exception, il vit dans `public` sur la base source et l'image
-ne l'y mettra pas d'elle-même. C'est la seule ligne que le workflow exécute
-d'office.
+**Ce bloc n'est pas optionnel**, contrairement à ce que ce document a d'abord
+affirmé. Le relevé du 05/09 (§ 2.6) montre que l'image pose bien les rôles et
+les schémas, mais **pas `pg_trgm` ni `unaccent`** — les deux extensions que le
+§ 2.3 désigne comme critiques. Le workflow exécute donc les cinq lignes
+`create extension` d'office, avant `schema.sql`.
+
+Les rôles ci-dessous, eux, restent un vrai filet : l'image les fournit tous
+(§ 2.6), et ils ne sont là que pour un environnement qui ne serait pas monté
+depuis `supabase/postgres`.
 
 ```sql
 -- Rôles supposés par les 320 policies (déjà présents dans supabase/postgres)
@@ -809,6 +835,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | « Sur les plans gratuits, la migration ajoute un coût » | **Faux.** Les alertes de dépassement se déclenchent déjà : la trajectoire réelle est Vercel Pro + Supabase Pro, ~40 €/mois. Infomaniak à 16-28 € est **moins cher** (§ 4.6). |
 | Le chantier photos est justifié par l'écologie et le coût futur | **Sous-estimé.** C'est la **cause** des alertes actuelles. Migrer sans le traiter déplacerait le problème (§ 4.6, § 7.1). |
 | Le prix Virtuozzo est une estimation à confirmer | **Mesuré** au configurateur le 04/09/2026 : 1,13 € par cloudlet et par mois, soit 16 €/mois avant l'ouverture et 28 € après (§ 4.5). |
+| L'image apporte les extensions « exactement dans la disposition du § 2.3 » | **Faux pour deux d'entre elles.** `pg_trgm` et `unaccent` ne sont pas créées par `supabase/postgres:17.6.1.165` (§ 2.6) — les deux que le § 2.3 dit critiques. Le workflow pose désormais les cinq lui-même, sans rien supposer de l'image. |
 | La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 

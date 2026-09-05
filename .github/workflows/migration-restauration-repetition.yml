@@ -160,14 +160,35 @@ jobs:
           ;
           SQL
 
-      - name: Poser btree_gist dans public
+      - name: Poser les extensions de la base source
         if: ${{ inputs.mode == 'restaurer' }}
         run: |
           set -euo pipefail
-          # La seule préparation manuelle que l'image ne fait pas d'elle-même
-          # (§ 2.3, § 7.2) : btree_gist vit dans `public` sur la base source,
-          # pas dans `extensions`. Doit précéder schema.sql.
-          psql -v ON_ERROR_STOP=1 -c 'create extension if not exists btree_gist with schema public'
+          # Les cinq extensions du § 2.3, chacune dans le schéma qu'elle occupe
+          # sur la base source — `btree_gist` dans `public`, les autres dans
+          # `extensions`. Doit précéder schema.sql : sans elles, les policies et
+          # les fonctions qui s'y adossent échouent en bloc (§ 2.4).
+          #
+          # On les pose TOUTES, sans se demander lesquelles l'image apporte.
+          # Le relevé du 05/09 sur supabase/postgres:17.6.1.165 a montré que
+          # l'image en crée cinq — pgcrypto, uuid-ossp, pg_stat_statements,
+          # plpgsql, supabase_vault — mais NI `pg_trgm` NI `unaccent`,
+          # justement les deux que le § 2.3 désigne comme critiques
+          # (`mc_norm()` et le repli trigramme de suggest_similar_ideas).
+          # Dépendre du jeu par défaut de l'image, c'est dépendre de ce qui
+          # change d'un tag au suivant ; `if not exists` rend la pose
+          # idempotente, donc gratuite quand l'image a déjà fait le travail.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists btree_gist  with schema public;
+          create extension if not exists pg_trgm     with schema extensions;
+          create extension if not exists unaccent    with schema extensions;
+          create extension if not exists pgcrypto    with schema extensions;
+          create extension if not exists "uuid-ossp" with schema extensions;
+          SQL
+
+          echo "--- extensions en place avant restauration ---"
+          psql -Atc "select extname || '@' || n.nspname from pg_extension e
+                       join pg_namespace n on n.oid = e.extnamespace order by 1"
 
       - name: Tirer le dump de la source
         if: ${{ inputs.mode == 'restaurer' }}
