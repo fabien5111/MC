@@ -5,9 +5,9 @@ au profit d'une infrastructure hébergée chez **Infomaniak**, en Suisse. La
 localisation dépend du produit : le Public Cloud est à Genève et Winterthour,
 **Virtuozzo Cloud (ex-Jelastic) à Genève uniquement** (§ 4.3).
 
-État au **04/09/2026**. Le lot 0 est terminé — prix compris (§ 4.5) — à la
-seule exception de la répétition de restauration (§ 7.2). Les chiffres des
-§ 2 et 4.5 sont des mesures réelles, pas des estimations.
+État au **05/09/2026**. **Le lot 0 est terminé, répétition de restauration
+comprise : le Go/No-Go est un GO** (§ 7.4). Les chiffres des § 2 et 4.5 sont des
+mesures réelles, pas des estimations.
 
 **Motif du chantier** : l'empreinte écologique, avant le coût et avant la
 souveraineté. C'est ce critère qui a désigné Infomaniak plutôt que Scaleway,
@@ -19,7 +19,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 
 ## 0. Résumé
 
-| Chantier | Verdict au 04/09/2026 |
+| Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
 | Photos hors base → stockage objet | **Validé de bout en bout**, CORS compris. **Priorité 2**, 7-10 j |
@@ -27,6 +27,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
 | Coût de la cible | **Mesuré** : ≈ 16 €/mois avant l'ouverture, ≈ 28 € après (§ 4.5) |
+| **Restauration du dump sur Virtuozzo** | **GO** — 949 objets restaurés sur 949, zéro erreur (§ 7.4) |
 
 **Deux faits structurants.** La base pèse **57 Mo** et compte **7 comptes** :
 tout ce dossier a été réévalué à leur lumière, et plusieurs conclusions posées
@@ -554,8 +555,6 @@ oublier.
 
 ### 6.2 Non vérifié à ce jour
 
-- **La restauration du dump Supabase n'a jamais été tentée** — c'est le seul
-  Go/No-Go qui reste (§ 7.2).
 - **Quelles limites exactement ont déclenché les alertes** (§ 4.6) : egress
   Supabase, bande passante Vercel, invocations de fonctions ? Les trois
   premières confirment le diagnostic images ; la quatrième pointerait ailleurs,
@@ -799,7 +798,7 @@ create extension if not exists btree_gist  with schema public;  -- à poser à l
 |---|---|---|---|
 | **A** | Vercel → nœud Node.js 22 sur Virtuozzo Cloud | 1-2 j | Aucune |
 | **B** | Photos → Object Storage | 7-10 j | Aucune |
-| **C** | Base → `supabase/postgres` + PostgREST + GoTrue sur Virtuozzo, archivage WAL compris (§ 4.5) | 5-8 j | Lot 0-bis |
+| **C** | Base → `supabase/postgres` + PostgREST + GoTrue sur Virtuozzo, archivage WAL compris (§ 4.5) | 5-8 j | **Débloqué** — lot 0-bis au vert (§ 7.4) |
 
 **Les lots B et C sont indépendants** (§ 8) : l'ordre est libre.
 
@@ -813,6 +812,60 @@ Tout est à faire **avant l'ouverture**. À 7 comptes, migrer l'authentification
 est indolore ; après ouverture, c'est une déconnexion de masse, un transfert de
 hachages bcrypt sans filet et un mapping `provider_id` Google à préserver
 exactement sous peine de faire perdre son carnet à un membre.
+
+---
+
+### 7.4 Verdict du lot 0-bis — **GO** (05/09/2026)
+
+La répétition a été menée de bout en bout. **949 objets à la source, 949 à
+l'arrivée, aucun manquant, aucune erreur de restauration.**
+
+**Environnement de test** : Virtuozzo Cloud, Genève DC2, un seul nœud Docker
+`supabase/postgres:17.6.1.165`, 1 cloudlet réservé et 6 dynamiques, Endpoint TCP
+sur le port privé 5432. Restauration pilotée depuis un runner GitHub Actions,
+sans aucun terminal local (§ 10.1).
+
+| Contrôle | Résultat |
+|---|---|
+| Inventaire source ↔ cible (`comm -23`) | **949 / 949, 0 manquant** |
+| Erreurs de `schema.sql` | **0** |
+| `mc_norm('Crème brûlée')` | `creme brulee` — `unaccent` opérationnel |
+| `'chronomètre' % 'chrono'` | `t` — `pg_trgm` opérationnel |
+| Colonnes générées de `recipes` | `fts` **et `has_hero_image`** |
+| `btree_gist` | dans `public`, comme sur la source |
+| `set role anon; select … from recipes` | passe, **sans `permission denied`** |
+
+Durées : dump 1 min 40, restauration 6 min, vérification 10 s.
+
+**Quatre questions ouvertes se referment d'un coup.**
+
+**Le rôle `postgres` n'est pas superutilisateur, et ça ne bloque rien.** C'était
+la dernière inconnue, posée en § 2.6 et laissée délibérément non contournée. Les
+cinq extensions sont passées — toutes « trusted » depuis PostgreSQL 13, donc
+installables par un non-superutilisateur — et les 399 Ko de DDL avec elles, sous
+ce seul rôle. Aucun besoin d'ouvrir un accès superutilisateur au lot C.
+
+**Les `GRANT` voyagent dans le dump.** `set role anon` puis une lecture de
+`recipes` répond `0` — zéro parce que la base est vide, mais surtout **sans
+`permission denied`**. Si les droits n'étaient pas passés, PostgREST aurait
+refusé toute lecture anonyme au lot C ; on l'aurait découvert en production.
+
+**La RLS est bien en place**, sans quoi les 320 policies auraient manqué à
+l'inventaire.
+
+**`recipes` porte deux colonnes générées**, pas une : `fts` et
+`has_hero_image`. Le § 2 n'en mentionnait qu'une.
+
+**Ce que ce GO ne couvre pas**, et qu'il ne faut pas lui faire dire : le DDL,
+rien que le DDL. Ni la restauration des **données**, ni la migration des
+**7 identités** (hachages bcrypt, `provider_id` Google) — le § 10.4 les renvoie
+au lot C, et c'est le bon arbitrage. Ni GoTrue, dont la phase 3 reste à jouer.
+
+**Ce que la répétition a coûté**, et qui vaut d'être retenu pour le lot C : trois
+faux départs, tous attrapés avant d'entamer sérieusement l'essai — un tag
+d'image par défaut en PostgreSQL 14 (§ 2.5), deux extensions absentes de l'image
+(§ 2.6), un rôle `postgres` qui ne peut pas changer son propre mot de passe. Le
+mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
@@ -917,9 +970,22 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot 0-bis
+### 10.4 Prochaine action — le lot B
 
-Le seul Go/No-Go qui reste, à mener pendant l'**essai 14 jours de Virtuozzo
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). Le dernier Go/No-Go du
+dossier est levé : plus rien ne bloque le lot C sur le plan technique.
+
+**La priorité reste le lot B** — photos vers le stockage objet (§ 7.1). C'est
+lui qui traite la cause des alertes de dépassement, il ne dépend d'aucun
+fournisseur, et il peut remettre le site sous les seuils gratuits — donc rendre
+le temps de mener la migration sans pression de facture.
+
+**À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
+Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
+qui a transité par un secret GitHub.
+
+*Ce qui suit décrivait l'action d'avant, conservé pour le raisonnement qui l'a
+cadrée.* Le lot 0-bis était à mener pendant l'**essai 14 jours de Virtuozzo
 Cloud**. Le prix, lui, est mesuré (§ 4.5) : rien n'oblige à consommer des jours
 d'essai pour l'obtenir.
 
