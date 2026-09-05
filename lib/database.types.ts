@@ -1037,6 +1037,260 @@ export type Database = {
           },
         ]
       }
+      contact_message_photos: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          order_index: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          order_index?: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          order_index?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_message_photos_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "contact_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_messages: {
+        Row: {
+          admin_notes: string | null
+          admin_notified_at: string | null
+          admin_notify_error: string | null
+          app_version: string | null
+          browser_context: string | null
+          closed_at: string | null
+          created_at: string
+          deploy_email_error: string | null
+          deploy_email_sent_at: string | null
+          deploy_email_status: Database["public"]["Enums"]["contact_email_status"]
+          deploy_notify: boolean
+          email: string | null
+          id: string
+          ip_hash: string | null
+          jira_error: string | null
+          jira_issue_key: string | null
+          jira_status: string | null
+          jira_status_id: string | null
+          jira_sync_status: Database["public"]["Enums"]["contact_jira_sync_status"]
+          jira_synced_at: string | null
+          message: string
+          page_url: string | null
+          reference: string
+          status: Database["public"]["Enums"]["contact_status"]
+          status_source: string | null
+          status_updated_at: string
+          subject: string
+          type: Database["public"]["Enums"]["contact_type"]
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          admin_notified_at?: string | null
+          admin_notify_error?: string | null
+          app_version?: string | null
+          browser_context?: string | null
+          closed_at?: string | null
+          created_at?: string
+          deploy_email_error?: string | null
+          deploy_email_sent_at?: string | null
+          deploy_email_status?: Database["public"]["Enums"]["contact_email_status"]
+          deploy_notify?: boolean
+          email?: string | null
+          id?: string
+          ip_hash?: string | null
+          jira_error?: string | null
+          jira_issue_key?: string | null
+          jira_status?: string | null
+          jira_status_id?: string | null
+          jira_sync_status?: Database["public"]["Enums"]["contact_jira_sync_status"]
+          jira_synced_at?: string | null
+          message: string
+          page_url?: string | null
+          reference: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          status_source?: string | null
+          status_updated_at?: string
+          subject: string
+          type: Database["public"]["Enums"]["contact_type"]
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          admin_notified_at?: string | null
+          admin_notify_error?: string | null
+          app_version?: string | null
+          browser_context?: string | null
+          closed_at?: string | null
+          created_at?: string
+          deploy_email_error?: string | null
+          deploy_email_sent_at?: string | null
+          deploy_email_status?: Database["public"]["Enums"]["contact_email_status"]
+          deploy_notify?: boolean
+          email?: string | null
+          id?: string
+          ip_hash?: string | null
+          jira_error?: string | null
+          jira_issue_key?: string | null
+          jira_status?: string | null
+          jira_status_id?: string | null
+          jira_sync_status?: Database["public"]["Enums"]["contact_jira_sync_status"]
+          jira_synced_at?: string | null
+          message?: string
+          page_url?: string | null
+          reference?: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          status_source?: string | null
+          status_updated_at?: string
+          subject?: string
+          type?: Database["public"]["Enums"]["contact_type"]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      contact_replies: {
+        Row: {
+          author_id: string | null
+          author_kind: string
+          body: string
+          created_at: string
+          email_status: Database["public"]["Enums"]["contact_email_status"]
+          error: string | null
+          id: string
+          jira_comment_error: string | null
+          jira_comment_status: string
+          message_id: string
+          provider_id: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          author_kind?: string
+          body: string
+          created_at?: string
+          email_status?: Database["public"]["Enums"]["contact_email_status"]
+          error?: string | null
+          id?: string
+          jira_comment_error?: string | null
+          jira_comment_status?: string
+          message_id: string
+          provider_id?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          author_kind?: string
+          body?: string
+          created_at?: string
+          email_status?: Database["public"]["Enums"]["contact_email_status"]
+          error?: string | null
+          id?: string
+          jira_comment_error?: string | null
+          jira_comment_status?: string
+          message_id?: string
+          provider_id?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_replies_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "contact_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_reply_photos: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number
+          reply_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          reply_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          reply_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_reply_photos_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "contact_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_status_history: {
+        Row: {
+          author_id: string | null
+          changed_at: string
+          from_status: Database["public"]["Enums"]["contact_status"] | null
+          id: string
+          jira_status: string | null
+          message_id: string
+          source: string
+          to_status: Database["public"]["Enums"]["contact_status"]
+        }
+        Insert: {
+          author_id?: string | null
+          changed_at?: string
+          from_status?: Database["public"]["Enums"]["contact_status"] | null
+          id?: string
+          jira_status?: string | null
+          message_id: string
+          source: string
+          to_status: Database["public"]["Enums"]["contact_status"]
+        }
+        Update: {
+          author_id?: string | null
+          changed_at?: string
+          from_status?: Database["public"]["Enums"]["contact_status"] | null
+          id?: string
+          jira_status?: string | null
+          message_id?: string
+          source?: string
+          to_status?: Database["public"]["Enums"]["contact_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_status_history_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "contact_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       difficulties: {
         Row: {
           id: number
@@ -1058,6 +1312,27 @@ export type Database = {
           name?: string
           status?: string | null
           tooltip?: string | null
+        }
+        Relationships: []
+      }
+      email_suppressions: {
+        Row: {
+          created_at: string
+          email: string
+          last_event_at: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          last_event_at?: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          last_event_at?: string
+          reason?: string
         }
         Relationships: []
       }
@@ -3720,6 +3995,7 @@ export type Database = {
         Returns: boolean
       }
       can_write_articles: { Args: never; Returns: boolean }
+      contact_purge: { Args: never; Returns: undefined }
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
       gone_article_slugs: {
         Args: never
@@ -3919,7 +4195,10 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      contact_email_status: "pending" | "sent" | "failed" | "skipped"
+      contact_jira_sync_status: "not_applicable" | "pending" | "sent" | "failed"
+      contact_status: "recu" | "en_cours" | "a_deployer" | "termine"
+      contact_type: "bug" | "suggestion" | "question" | "donnees-personnelles"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3935,12 +4214,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3964,11 +4243,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3989,11 +4268,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4014,11 +4293,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4031,11 +4310,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4046,6 +4325,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      contact_email_status: ["pending", "sent", "failed", "skipped"],
+      contact_jira_sync_status: ["not_applicable", "pending", "sent", "failed"],
+      contact_status: ["recu", "en_cours", "a_deployer", "termine"],
+      contact_type: ["bug", "suggestion", "question", "donnees-personnelles"],
+    },
   },
 } as const
