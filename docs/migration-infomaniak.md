@@ -22,7 +22,7 @@ récupération de chaleur revendue au réseau urbain, certifications ISO 14001 e
 | Chantier | Verdict au 05/09/2026 |
 |---|---|
 | Images inutiles transportées (§ 5.1) | **Fait** — premier poste d'egress, corrigé sans migration |
-| Photos hors base → stockage objet | **Priorité 1** (§ 7.1). **Tout écrit le 05/09** (B0 à B4, § 7.5-§ 7.8) : conteneurs, signature TempURL, écritures basculées, ≈360 objets repris et vérifiés, réconciliation des orphelins écrite. Reste à **exécuter** le workflow de réconciliation (§ 10.4) — aucune API réelle n'a été appelée depuis cette session |
+| Photos hors base → stockage objet | **TERMINÉ le 05/09** (B0 à B4, § 7.5-§ 7.8), exécuté en production et vérifié : **365 objets** déposés (355 sur `jp-photos`, 10 sur `jp-contact`), autant de références en base, **0 orphelin**. Plus aucune image en data-URL sur les onze cibles mesurées au B0 |
 | Sortie de Vercel | **Faisable, 1-2 j** — couplage faible, sept accroches identifiées |
 | Sortie de Supabase Cloud | **Débloquée** — Virtuozzo Cloud fournit PostgreSQL (§ 4). 5-8 j |
 | Quitter l'API Supabase (PostgREST/GoTrue) | **Écarté** — réécriture de fond, § 1.3 |
@@ -1006,7 +1006,7 @@ interrupteur public/privé au B1.
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
 | **B2** | Bascule des écritures, par risque croissant | **Complet le 05/09** (4 étapes) |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | **Fait le 05/09** (§ 7.6) |
-| **B4** | Vérification a posteriori + réconciliation des orphelins (cycle de vie) | **Écrit le 05/09** (§ 7.7, § 7.8) — reste à **exécuter** le workflow de réconciliation |
+| **B4** | Vérification a posteriori + réconciliation des orphelins (cycle de vie) | **Fait et exécuté le 05/09** (§ 7.7, § 7.8) — 365/365, 0 orphelin, aucune suppression nécessaire |
 
 **Ordre du B2, dicté par la mesure** : d'abord `site_settings`, `ads`,
 `articles` et les deux pictos (1,4 Mo, 23 objets, aucune donnée membre — une
@@ -1350,11 +1350,142 @@ langages), avec un commentaire pointant vers `lib/backfill.ts` comme source
 de vérité à tenir synchronisée si une colonne image est ajoutée côté
 application.
 
-**Pas encore exécuté** : écrit, vérifié manuellement en simulant Swift et
-Supabase (aucun accès aux vraies API depuis cette session), mais jamais
-lancé pour de vrai — ni en rapport à sec, ni a fortiori en suppression.
-Reste à poser le secret `SUPABASE_SERVICE_ROLE_KEY` sur GitHub puis à
-lancer le workflow depuis l'onglet Actions.
+**Exécuté le 05/09, en rapport à sec, sur les deux conteneurs** :
+
+```
+jp-photos  : 355 objets · 355 clés référencées · 0 orphelin
+jp-contact :  10 objets ·  10 clés référencées · 0 orphelin
+```
+
+Les deux nombres égaux verrouillent les deux sens à la fois : aucun objet
+sans référence en base (rien à nettoyer), aucune référence pointant dans le
+vide (rien de perdu à la reprise). **Aucune suppression n'a donc jamais eu
+besoin d'être lancée** — le mode `confirmer_suppression` reste inutilisé à
+ce jour, et le lot B se clôt sans qu'un seul objet ait été effacé.
+
+Ces totaux recoupent exactement la mesure du B0 (§ 7.5) : 355 pour
+`jp-photos`, et 8 + 2 = 10 pour les deux tables de contact.
+
+---
+
+### 7.9 Lot C — découpage et C0 (05/09)
+
+Le lot 0-bis a tranché le DDL, et rien d'autre (§ 7.4) : ni les **données**,
+ni les **7 identités** (bcrypt, `provider_id` Google), ni **GoTrue**, dont la
+phase 3 n'a jamais été jouée. C'est là qu'est tout le risque restant, et le
+découpage ci-dessous le prend dans cet ordre.
+
+#### Ce que le C0 a fermé, sans toucher à une ligne de code
+
+**1. Les clés JWT asymétriques survivent à l'auto-hébergement — le risque le
+plus sérieux, et il est écarté.** `lib/auth.ts` et `lib/supabase/middleware.ts`
+reposent sur `getClaims()`, qui vérifie le jeton **localement contre le JWKS**
+du projet : c'est ce qui a supprimé ~65 % du trafic base
+(`docs/note-regression-cache.md`). Le middleware documente lui-même la
+condition : *« le gain suppose des clés de signature asymétriques ; sur
+l'ancien secret partagé (HS256), `getClaims()` retombe tout seul sur
+`getUser()` »*. Un GoTrue auto-hébergé en HS256 aurait donc **réintroduit un
+aller-retour serveur à chaque rendu de page, sans une seule erreur visible**.
+
+Vérifié sur la documentation officielle plutôt que supposé : l'auto-hébergé
+sait signer en asymétrique (ES256/RS256) et **expose le JWKS au chemin exact
+que `supabase-js` interroge** :
+
+| Service | Variable | Contenu |
+|---|---|---|
+| Auth (GoTrue) | `GOTRUE_JWT_KEYS` | JWK privée EC **+** l'ancienne clé symétrique |
+| PostgREST | `PGRST_JWT_SECRET` | accepte un JWKS entier, pas seulement un secret |
+| — | endpoint | `/auth/v1/.well-known/jwks.json` |
+
+La clé symétrique héritée reste incluse dans le jeu de clés : les jetons déjà
+émis continuent d'être vérifiés pendant la bascule. Aucune déconnexion de
+masse à prévoir de ce fait.
+
+**2. L'application ne parle jamais à PostgreSQL en direct.** Vérifié :
+aucune dépendance `pg`/`postgres`/ORM dans `package.json`, aucune chaîne
+`postgres://` dans le code. Tout passe par HTTPS vers PostgREST et GoTrue.
+Deux conséquences, et la seconde décide du séquencement :
+
+- **Le port 5432 n'a jamais à être exposé en production.** Le lot 0-bis l'a
+  ouvert par un Endpoint TCP le temps d'une restauration (§ 7.2, arbitrage 2)
+  ; le lot C n'a pas à reconduire cette exception au-delà de la bascule.
+- **Garder Vercel devant une base à Genève est tenable** : ~10 ms de latence
+  supplémentaire sur des appels HTTPS, et la bascule se réduit à trois
+  variables d'environnement.
+
+**Arbitrage retenu : C d'abord, A ensuite.** Deux basculements petits et
+réversibles valent mieux qu'un grand. Le § 7.3 note à juste titre que A et C
+atterrissent sur la même plateforme et gagnent à être enchaînés — c'est vrai
+de l'apprentissage de la plateforme, pas du risque : les mener le même jour
+additionne deux causes de panne sans rien simplifier.
+
+**3. `COMING_SOON` est déjà le mode maintenance de la bascule.** La variable
+existe (§ variables d'environnement) et sert la page d'attente à la place du
+site. Gelée pendant la bascule, elle rend le **retour arrière gratuit** : sans
+écriture pendant la fenêtre, revenir à Supabase ne perd rien et ne demande
+aucun rejeu. C'est ce qui transforme le C3 d'un saut sans filet en une
+opération réversible. À poser sur `dev.jepatisse.com` aussi, que `middleware.ts`
+exempte justement de cette page (§ Domaines) — l'exemption est à neutraliser
+le temps de la fenêtre, sans quoi les testeurs écriraient dans la base qu'on
+est en train de migrer.
+
+#### Ce que le C0 a mesuré (05/09, après le lot B)
+
+| Mesure | Valeur | Lecture |
+|---|---|---|
+| `pg_database_size` | **27 Mo** | contre 57 Mo au § 2.1 — le lot B a fait son travail |
+| Colonnes image de `recipes`, vivantes | **20 ko** / 58 recettes | ≈ 350 octets par recette : ce sont des URL, plus une seule data-URL |
+| `imports.recette`, vivant | **4 674 ko** / 32 lignes | dont **18 lignes contenant `data:image/`** |
+
+Les 27 Mo sont la taille **sur disque**, lignes mortes comprises : les 12 Mo
+de TOAST que `recipes` traînait encore sont des data-URL écrasées, que le
+dump ne lira pas. Le dump réel sera donc nettement en dessous.
+
+**`imports` est le dernier gisement d'images resté en base**, et ce n'est
+pas un oubli du lot B : `imports.recette` est un JSON, pas une colonne image
+scalaire, et il a été exclu en connaissance de cause (§ 7.6). Ce JSON porte
+`photo_principale`, `photo_principale_original`, les `etapes[].photos[]` et,
+pour un import PDF, la banque `photos_pdf` des pages pas encore placées.
+`RelectureEditor` ne dépose ces images sur le stockage objet **qu'à la
+validation** (`televerserImage`, § 7.5) : un brouillon jamais relu garde donc
+tout en base, indéfiniment. C'est cohérent — le brouillon est un tampon de
+travail — mais **aucune rétention n'existe**, et la table ne fait que croître :
+4,7 Mo aujourd'hui, soit 17 % de la base, pour 32 brouillons dont le plus
+ancien date du 13/07/2026.
+
+#### La contrainte de calendrier
+
+**L'essai Virtuozzo a démarré le 05/09 — il est borné à 14 jours, donc il
+expire le 19/09.** C'est la seule échéance dure du lot C, et elle décide du
+séquencement : le C1 (répétition GoTrue) doit tenir dans cette fenêtre, sinon
+il faudra basculer en payant (≈ 16 €/mois avant ouverture, § 4.5) pour le
+mener. Ce n'est pas un drame — c'est le tarif prévu de toute façon (§ 4.6) —
+mais mieux vaut le décider que le subir.
+
+Corollaire de méthode, déjà appris au lot 0-bis (§ 7.4) : **tout ce qui peut
+être préparé hors chrono doit l'être avant de monter l'environnement.**
+
+#### Ce que le C0 laisse ouvert
+
+- **La rétention d'`imports`** : tranchée en principe (30 jours, avec
+  information de l'utilisateur), reste à implémenter — voir ci-dessous. Ne
+  bloque pas le C1, mais change la taille du dump du C3.
+
+#### Découpage
+
+| Sous-lot | Contenu | Livrable |
+|---|---|---|
+| **C0** | Mesures et arbitrages, aucun code | Cette section |
+| **C1** | Répétition GoTrue (phase 3 jamais jouée) + migration des 7 identités sur un environnement de test | Le vrai Go/No-Go restant |
+| **C2** | Infrastructure : nœuds Postgres, PostgREST, GoTrue ; SMTP via SES (déjà en place) ; OAuth Google ; clés JWT asymétriques | Environnement reproductible, sans bascule |
+| **C3** | Bascule : `COMING_SOON` → dump → restore → trois variables → vérification → réouverture | Le seul moment risqué, et il est réversible |
+| **C4** | `wal-g` (PITR, § 4.5), retrait de Supabase | Définition de terminé |
+
+**Dépendances codées en dur à reprendre au C3**, repérées maintenant pour ne
+pas les découvrir en pleine bascule : `NEXT_PUBLIC_SUPABASE_URL` et la clé
+publique sont **inlinées au build** (reconstruction sans cache obligatoire),
+et l'URL Supabase est écrite en dur dans
+`.github/scripts/reconcilier_stockage.py` (lot B4).
 
 ---
 
@@ -1483,18 +1614,27 @@ pas applicable telle quelle.
   `PartnersManager`, `BlogEditor`, `CreerForm`, `RelectureEditor`,
   `RecipeImageBackfill`, `ProfileHeader`, `BatchReview`, `ContactForm`,
   `ContactDetail`/`MaDemandeDetail`), lecture re-signée à quatre endroits
-  (`signerPhotoContact`, `lib/contact-data.ts`). **Reste à poser les deux
-  secrets `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la
-  variable `SWIFT_STORAGE_URL`** — sans eux, la route de présignature (B2)
-  ET le dépôt serveur direct (B3) échouent à l'exécution (`env()` lève), pas
-  à la compilation.
-- **Lot B3 fait le 05/09** (§ 7.6) : `lib/backfill.ts` (dix cibles, pur) /
-  `lib/backfill-data.ts` (dépôt direct serveur + clé service_role) / route
-  `POST /api/admin/backfill-photos` / écran `StorageBackfillManager`
-  (`/admin/photos`). Couvre les ≈ 360 objets mesurés au B0. **Tant que les
-  trois variables d'environnement ci-dessus ne sont pas posées, lancer un
-  lot échoue** (même cause que ci-dessus) : à vérifier avant de cliquer
-  « Lancer » sur `/admin/photos`.
+  (`signerPhotoContact`, `lib/contact-data.ts`). **Les trois variables
+  d'environnement sont posées sur Vercel** (`SWIFT_STORAGE_URL`,
+  `SWIFT_TEMPURL_KEY_PHOTOS`, `SWIFT_TEMPURL_KEY_CONTACT`) et les mêmes clés
+  existent en secrets GitHub. Sans elles, la route de présignature (B2) ET
+  le dépôt serveur direct (B3) échouent à l'exécution (`env()` lève), pas à
+  la compilation — à reposer telles quelles le jour de la bascule vers
+  Virtuozzo (lot A).
+- **Piège opérationnel sur les clés TempURL, payé une fois** : changer le
+  secret GitHub (ou la variable Vercel) **ne pose rien** sur le conteneur.
+  C'est `object-storage-tempurl-cles.yml` qui écrit la clé côté stockage —
+  toute rotation exige donc trois gestes coordonnés (secret GitHub, variable
+  Vercel, workflow rejoué), sans quoi la signature est calculée avec une clé
+  que le conteneur ne connaît pas et tout dépôt tombe en 401. Le diagnostic
+  `object-storage-diagnostic-signature.yml` compare précisément ces deux
+  valeurs, par empreinte, quand le doute revient.
+- **Lot B3 fait ET exécuté le 05/09** (§ 7.6) : `lib/backfill.ts` (dix
+  cibles, pur) / `lib/backfill-data.ts` (dépôt direct serveur + clé
+  service_role) / route `POST /api/admin/backfill-photos` / écran
+  `StorageBackfillManager` (`/admin/photos`). **Passé en production sur les
+  onze cibles** : 365 objets déposés, plus aucune data-URL dans les colonnes
+  mesurées au B0.
 - **B4, partie 1/2 (vérification) faite le 05/09** (§ 7.7) : bouton
   « Vérifier » sur le même écran, relit chaque URL déjà migrée et signale
   ce qui ne répond plus. **Correction à connaître** (§ 8) : le B3 écrase la
@@ -1502,16 +1642,18 @@ pas applicable telle quelle.
   plus de data-URL à « nettoyer » pour les colonnes déjà migrées, la
   vérification ne fait que détecter après coup un objet devenu illisible,
   sans pouvoir revenir en arrière.
-- **B4, partie 2/2 (réconciliation des orphelins) écrite le 05/09** (§ 7.8) :
-  `.github/workflows/object-storage-reconciliation.yml` +
-  `.github/scripts/reconcilier_stockage.py`. Vérifiée manuellement en
-  simulant Swift et Supabase (aucun accès aux vraies API depuis cette
-  session) — **jamais lancée pour de vrai**. **Reste à poser le secret
-  GitHub `SUPABASE_SERVICE_ROLE_KEY`** (même valeur que sur Vercel) puis à
-  lancer le workflow depuis l'onglet Actions — d'abord en rapport à sec
-  (`confirmer_suppression` vide), lire le résultat, puis une seconde fois
-  séparément avec `confirmer_suppression: SUPPRIMER` si le rapport est
-  satisfaisant. C'est la dernière pièce du lot B (§ 7.1).
+- **B4, partie 2/2 (réconciliation des orphelins) faite ET exécutée le
+  05/09** (§ 7.8) : `.github/workflows/object-storage-reconciliation.yml` +
+  `.github/scripts/reconcilier_stockage.py`, lancée en rapport à sec sur les
+  deux conteneurs — 355/355 et 10/10, **0 orphelin**. Le secret GitHub
+  `SUPABASE_SERVICE_ROLE_KEY` est posé. Le mode `confirmer_suppression`
+  n'a jamais servi et n'a pas eu à servir.
+- **Trois workflows de diagnostic** ajoutés en cours de mise en service, à
+  garder pour le lot A/C (mêmes questions se reposeront sur un autre
+  hébergement) : `object-storage-afficher-url.yml` (racine réelle rendue par
+  `swift auth`), `object-storage-diagnostic-signature.yml` (compare la clé
+  du secret à celle du conteneur, et essaie les douze formes de signature),
+  et le rapport à sec de la réconciliation.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1520,46 +1662,63 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — lancer la réconciliation des orphelins (B4, 2/2)
+### 10.4 Prochaine action — le lot C (migration de la base)
 
-**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1, le B2
-(4 étapes), le B3 et le B4 sont TOUS écrits** (§ 7.5 à § 7.8) : mesure
-exhaustive, conteneurs, CORS, arbitrages, sonde du mécanisme de signature,
-socle de signature TempURL, bascule complète des écritures (des trois
-écrans à faible enjeu au `contact_*` anonyme sur conteneur privé), reprise
-des ≈360 objets déjà en base (`StorageBackfillManager`, onze cibles),
-vérification a posteriori (bouton « Vérifier »), et le workflow de
-réconciliation des orphelins (`object-storage-reconciliation.yml`).
+**Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le lot B est
+TERMINÉ**, écrit *et* exécuté en production le 05/09 (§ 7.5 à § 7.8) :
+mesure exhaustive, conteneurs, CORS, sonde du mécanisme de signature,
+socle TempURL, bascule complète des écritures (des trois écrans à faible
+enjeu au `contact_*` anonyme sur conteneur privé), reprise des images déjà
+en base, vérification a posteriori, et réconciliation des orphelins.
 
-**Correction posée au § 8, à ne pas reperdre** : le B3 écrase la data-URL
-dès que le dépôt réussit, sans relecture intermédiaire — la réversibilité
-« jusqu'au B4 » annoncée au § 7.5 ne tient donc pas littéralement. Il n'y a
-plus de data-URL à supprimer pour les colonnes déjà migrées : c'est déjà
-fait, en un seul geste, par le B3 lui-même. Le B4 protège autre chose :
-détecter un objet devenu illisible (partie 1) et nettoyer le stockage des
-objets orphelins (partie 2), pas revenir en arrière sur un dépôt déjà
-écrit.
+**Résultat mesuré, les deux conteneurs réconciliés :**
 
-**La seule action qui reste, pour clore le lot B dans son entier** (§ 7.1) :
-**exécuter** le workflow de réconciliation — rien de plus à écrire côté
-code. Concrètement :
-1. Poser le secret GitHub `SUPABASE_SERVICE_ROLE_KEY` (même valeur que sur
-   Vercel) — absent, le workflow échoue proprement avant tout appel réseau.
-2. Lancer `object-storage-reconciliation.yml` sur `jp-photos` avec
-   `confirmer_suppression` VIDE — un rapport à sec, rien n'est supprimé.
-   Lire le résultat.
-3. Répéter sur `jp-contact`.
-4. Seulement si les deux rapports sont satisfaisants, relancer chaque
-   conteneur **séparément** avec `confirmer_suppression: SUPPRIMER` — une
-   suppression recalcule toujours la liste à neuf, jamais sur la foi d'un
-   rapport précédent.
+```
+jp-photos  : 355 objets · 355 clés référencées · 0 orphelin
+jp-contact :  10 objets ·  10 clés référencées · 0 orphelin
+```
 
-Jamais exécuté depuis cette session (aucun accès aux vraies API Swift ni
-Supabase) — seulement écrit et vérifié par simulation (§ 7.8).
+Plus aucune image en data-URL dans les onze cibles du B0. La cause
+dominante d'egress identifiée au § 4.6 est donc traitée à la source — ce
+qui était la **priorité 1** du § 7.1.
 
-**Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
-data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
-colonne — non traité (§ 7.5).
+**Mise en service : quatre hypothèses fausses, écartées une à une.** Le
+premier dépôt réel a échoué en 401, et il a fallu quatre tours pour en
+sortir — clé désynchronisée, mauvais hôte (`pub2` au lieu de `pub1`),
+préfixe `/object` cru superflu, et enfin la forme de la signature. Les
+quatre sont consignées au § 8, et deux enseignements de méthode en
+ressortent :
+- **ce qu'un cluster déclare accepter ne dit pas sous quelle forme
+  l'envoyer** — `allowed_digests` avait bien été lu au B0, et n'a pourtant
+  rien empêché ;
+- **arrêter de modifier la configuration à l'aveugle** dès la deuxième
+  hypothèse fausse : c'est un diagnostic qui mesure le cluster
+  (`object-storage-diagnostic-signature.yml`, douze combinaisons) qui a
+  tranché en une exécution ce que trois tours de tâtonnement n'avaient pas
+  réglé.
+
+**La prochaine action est le lot C** — la migration de la base elle-même
+vers Virtuozzo Cloud, dont le lot 0-bis a validé la faisabilité (949
+objets restaurés sur 949, zéro erreur). **Son découpage et son C0 sont en
+§ 7.9** : les clés JWT asymétriques survivent à l'auto-hébergement (le
+risque majeur, écarté), le port 5432 n'a jamais à être exposé en
+production, et `COMING_SOON` sert de fenêtre de maintenance qui rend la
+bascule réversible. Le mode opératoire de la restauration reste celui du
+§ 7.2 ; les quatre secrets qu'il réclame ont été supprimés après usage et
+sont à recréer (§ 10.3).
+
+**Les mesures du C0 sont prises** (§ 7.9) : la base est passée de 57 à
+**27 Mo**, les colonnes image de `recipes` ne pèsent plus que **20 ko** — le
+lot B n'a rien laissé derrière. **L'essai Virtuozzo a démarré le 05/09 : il
+expire le 19/09**, seule échéance dure du lot C.
+
+**Deux points restés ouverts, à ne pas perdre** :
+- `imports.recette` porte encore **4,7 Mo de data-URL sur 18 brouillons** —
+  dernier gisement d'images en base, exclu du lot B en connaissance de cause
+  (JSON, pas colonne scalaire). Aucune rétention n'existe sur cette table
+  (§ 7.9). Décision produit en attente.
+- `BlogEditor.insertImage()` écrit une data-URL dans `articles.content`
+  (jsonb), hors périmètre de la bascule par colonne — non traité (§ 7.5).
 
 **À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
 Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
