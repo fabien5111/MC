@@ -129,6 +129,21 @@ export function estUrlStockage(valeur: string | null | undefined): boolean {
   return typeof valeur === 'string' && /^https:\/\//.test(valeur);
 }
 
-export function estDataUrlImage(valeur: string | null | undefined): valeur is string {
+export function estDataUrlImage(valeur: unknown): valeur is string {
   return typeof valeur === 'string' && valeur.startsWith('data:image/');
+}
+
+/**
+ * Cette valeur est-elle une URL de stockage pointant vers CE conteneur et ce
+ * préfixe précis, par opposition à une URL externe quelconque ?
+ *
+ * Sert à valider une entrée fournie par le navigateur avant de l'écrire en
+ * base sur l'unique usage ouvert à un appelant non authentifié (`contact`,
+ * seul `acces: 'public'`, § 7.5 lot B2 étape 4) : sans ce filtre, un appel
+ * direct à `/api/contact` pourrait glisser n'importe quelle URL externe —
+ * un pixel de suivi qui se chargerait ensuite dans le panneau
+ * d'administration au moment de la modération.
+ */
+export function estUrlDuConteneur(conteneur: Conteneur, prefixe: string, valeur: unknown): valeur is string {
+  return typeof valeur === 'string' && estUrlStockage(valeur) && valeur.includes(`/${CONTENEURS[conteneur]}/${prefixe}/`);
 }

@@ -85,4 +85,22 @@ describe('televerserImage — dépôt d’une data-URL', () => {
     );
     await expect(televerserImage('recette', DATA_URL)).rejects.toThrow(/URL finale/);
   });
+
+  it('transmet le jeton de formulaire à la présignature quand il est fourni (usage contact, § 7.5 B2 étape 4)', async () => {
+    const urlDepot = 'https://s3.pub2.infomaniak.cloud/v1/AUTH_x/jp-contact/contact/x.jpg?temp_url_sig=abc';
+    const urlFinale = 'https://s3.pub2.infomaniak.cloud/v1/AUTH_x/jp-contact/contact/x.jpg';
+    const appels: { url: string; init?: RequestInit }[] = [];
+    vi.spyOn(global, 'fetch').mockImplementation(async (url, init) => {
+      appels.push({ url: String(url), init });
+      if (appels.length === 1) {
+        return reponseJson({ cle: 'contact/x.jpg', conteneur: 'contact', url: urlDepot, urlFinale });
+      }
+      return reponseJson({});
+    });
+
+    await televerserImage('contact', DATA_URL, { formToken: '123.abcdef' });
+
+    const corpsEnvoye = JSON.parse(String(appels[0].init?.body));
+    expect(corpsEnvoye).toEqual({ usage: 'contact', mime: 'image/webp', formToken: '123.abcdef' });
+  });
 });

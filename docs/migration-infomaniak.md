@@ -886,7 +886,7 @@ mode opératoire du § 7.2 les intègre désormais tous les trois.
 
 ---
 
-### 7.5 Lot B — découpage et décisions (B0, B1, B2 étapes 1-3 terminés le 05/09)
+### 7.5 Lot B — découpage et décisions (B0, B1, B2 complet le 05/09)
 
 Le lot B sort les images de la base vers le stockage objet. Le § 7.1 en fait la
 **priorité 1** : c'est lui qui traite la cause des alertes de dépassement, il ne
@@ -999,7 +999,7 @@ interrupteur public/privé au B1.
 |---|---|---|
 | **B0** | `gen:types`, mesure, conteneurs, CORS, arbitrages, sonde TempURL | **Fait le 05/09** |
 | **B1** | `lib/storage.ts` (signature TempURL) + route de présignature. Aucun écran modifié | **Fait le 05/09** |
-| **B2** | Bascule des écritures, par risque croissant | **Étapes 1-3 faites le 05/09** — reste étape 4 |
+| **B2** | Bascule des écritures, par risque croissant | **Complet le 05/09** (4 étapes) |
 | **B3** | Reprise des ≈ 360 objets, **sans supprimer les data-URL** | À faire |
 | **B4** | Nettoyage des data-URL après vérification + cycle de vie | À faire |
 
@@ -1111,17 +1111,77 @@ Sans ce changement, la route aurait continué à écrire des data-URL dans
 `comments.photo_urls` en toute discrétion — la bascule d'une colonne ne
 suffit pas si elle ne remonte pas jusqu'au point où la donnée est produite.
 
+#### Étape 4 (dernière du B2) : `contact_*`, sur le conteneur privé
+
+La plus différente des quatre : `jp-contact` est **privé**, et le dépôt
+initial (`/api/contact`) est le **seul point d'écriture anonyme** de tout le
+site. Ni `televerserImage()` ni la route de présignature ne pouvaient être
+réutilisées telles quelles.
+
+**`urlFinale` généralisée plutôt que conditionnée au conteneur.** Avant cette
+étape, la route ne rendait une `urlFinale` que pour `jp-photos`
+(`CONTENEUR_PUBLIC[conteneur] ? urlPublique(cle) : null`) — `jp-contact`
+recevait `null`, sur lequel `televerserImage()` lève. `urlCanonique(conteneur,
+cle)` (`lib/storage-data.ts`) rend désormais la même forme stable pour les
+deux conteneurs : directement fonctionnelle sur `jp-photos`, **pas** sur
+`jp-contact` (un `GET` nu y échoue sans signature) mais stable et
+décomposable — `cleDepuisUrlCanonique` en retrouve la clé, ce qui permet de la
+re-signer à la lecture (`urlAffichablePrivee`, `EXPIRATION_LECTURE_S`) **sans
+colonne séparée pour la clé**. `televerserImage()` n'a donc pas eu à changer :
+il reçoit toujours une `urlFinale`, quel que soit le conteneur.
+
+**La route de présignature s'ouvre à un appelant sans session, mais
+seulement pour `contact`, et seulement en réutilisant la chaîne existante**
+— jamais improvisée ici (§ 5.5) :
+- le même jeton signé que `/api/contact` (`formToken`, vérifié par
+  `verifierOuverture` + `verdictDelaiOuverture`) prouve que l'appel vient
+  d'un formulaire resté ouvert au moins trois secondes, pas d'un script qui
+  viserait la route directement ;
+- le même compteur, `debitIpDepasse` sur `contact_messages` par IP — une IP
+  déjà au plafond de demandes ne peut pas non plus obtenir de nouvelles URLs
+  de dépôt.
+
+`clientIp()` (lecture de `x-forwarded-for`), auparavant locale à
+`/api/contact`, est montée dans `lib/contact-data.ts` pour être partagée par
+les deux routes plutôt que dupliquée.
+
+Les réponses (admin `envoyerReponse`, membre `envoyerReponseMembre`) sont, à
+l'inverse, déjà authentifiées : elles suivent la branche normale de la
+route (comme un usage `membre`), sans jeton ni débit à vérifier.
+
+**Le piège du § 5.2 est corrigé : `validerPhotos` accepte maintenant deux
+formes**, une data-URL (repli si le dépôt a échoué avant l'appel — le client
+envoie alors la valeur d'origine plutôt que de perdre la photo) et une URL de
+stockage de `jp-contact`. **Jamais une URL externe quelconque** : la nouvelle
+fonction pure `estUrlDuConteneur(conteneur, prefixe, valeur)`
+(`lib/storage.ts`) vérifie que le chemin contient bien `/jp-contact/contact/`
+— sans ce filtre, `/api/contact` étant anonyme, un appel direct aurait pu
+glisser une image hébergée ailleurs, qui se serait chargée dans le panneau
+d'administration au moment de la modération (fuite d'IP pour la personne qui
+modère). `lib/contact.test.ts` verrouille les deux formes ET ce refus.
+
+**Lecture : re-signature systématique avant rendu.** `contact_message_photos`
+et `contact_reply_photos` sont lues à quatre endroits (`getContactPhotos`,
+`getContactReplies` côté admin ; `getMesPhotos`, `getMesReponses` côté
+membre) qui rendaient jusqu'ici `url` telle quelle à un `<img>` — vrai tant
+que c'était une data-URL, faux dès qu'une URL de `jp-contact` y arrive sans
+signature (403). `signerPhotoContact()` (`lib/contact-data.ts`, partagée par
+les deux modules de lecture) appelle `urlAffichablePrivee` sur chaque ligne
+avant de la rendre ; une data-URL (ligne pas encore reprise par le B3)
+traverse inchangée.
+
 #### Deux pièges déjà documentés, à ne pas perdre en route
 
-Le § 5.2 en nomme deux qui mordront : **`lib/contact.ts:198` écarte une photo
-non-`data:` sans erreur** — une photo migrée disparaîtrait en silence, et
-`lib/contact.test.ts` verrouille ce comportement, à reprendre avec le contrat.
-Et le **cycle de vie** : aujourd'hui la cascade FK supprime les images avec la
-recette ; avec un bucket, les objets survivent aux lignes. **Le B1 a posé la
-condition qui le rendra possible** — clés d'objet en UUID plutôt qu'adressage
-par contenu, pour que la propriété d'un objet reste lisible — mais **le
-mécanisme de réconciliation lui-même (lister, comparer aux références en base,
-supprimer les orphelins de plus de 24 h) reste à écrire**, au B4.
+Le § 5.2 en nomme deux. **Le premier est corrigé ci-dessus** (étape 4) :
+`validerPhotos` distingue maintenant proprement les deux formes plutôt que
+d'écarter en silence tout ce qui n'est pas `data:`. Reste le second, encore
+ouvert — le **cycle de vie** : aujourd'hui la cascade FK supprime les images
+avec la recette ; avec un bucket, les objets survivent aux lignes. **Le B1 a
+posé la condition qui le rendra possible** — clés d'objet en UUID plutôt
+qu'adressage par contenu, pour que la propriété d'un objet reste lisible —
+mais **le mécanisme de réconciliation lui-même (lister, comparer aux
+références en base, supprimer les orphelins de plus de 24 h) reste à
+écrire**, au B4.
 
 ---
 
@@ -1236,17 +1296,20 @@ pas applicable telle quelle.
 - **Les jours d'essai Virtuozzo restants** n'ont pas été consommés par le lot
   0-bis : tout s'est joué en une matinée du 05/09, la phase 0 ayant absorbé
   hors chrono les trois faux départs (§ 7.4).
-- **Lot B, B0-B1-B2 étapes 1-3 en place** (§ 7.5) : conteneurs `jp-photos`
+- **Lot B, B0-B1 et le B2 COMPLET en place** (§ 7.5) : conteneurs `jp-photos`
   (public, CORS posé) et `jp-contact` (privé), mécanisme **Swift TempURL**
   vérifié par sonde, `lib/storage.ts` / `lib/storage-data.ts` /
   `lib/storage-client.ts` écrits et testés, route
-  `/api/stockage/televersement`, huit écrans/routes basculés
-  (`BannerManager`, `PartnersManager`, `BlogEditor`, `CreerForm`,
-  `RelectureEditor`, `RecipeImageBackfill`, `ProfileHeader`, `BatchReview`).
-  **Reste à poser les deux secrets `SWIFT_TEMPURL_KEY_PHOTOS` /
-  `SWIFT_TEMPURL_KEY_CONTACT` et la variable `SWIFT_STORAGE_URL`** — sans eux,
-  la route de présignature échoue à l'exécution (`env()` lève), pas à la
-  compilation.
+  `/api/stockage/televersement` (ouverte à un appelant SANS session pour le
+  seul usage `contact`, protégée par la même chaîne anti-spam que
+  `/api/contact`), dix écrans/routes basculés (`BannerManager`,
+  `PartnersManager`, `BlogEditor`, `CreerForm`, `RelectureEditor`,
+  `RecipeImageBackfill`, `ProfileHeader`, `BatchReview`, `ContactForm`,
+  `ContactDetail`/`MaDemandeDetail`), lecture re-signée à quatre endroits
+  (`signerPhotoContact`, `lib/contact-data.ts`). **Reste à poser les deux
+  secrets `SWIFT_TEMPURL_KEY_PHOTOS` / `SWIFT_TEMPURL_KEY_CONTACT` et la
+  variable `SWIFT_STORAGE_URL`** — sans eux, la route de présignature échoue
+  à l'exécution (`env()` lève), pas à la compilation.
 - **`lib/contact-types.ts` et `lib/ses-types.ts` sont devenus redondants** : ils
   déclaraient à la main des tables absentes de `lib/database.types.ts`, qui y
   sont depuis la régénération du 05/09. Nettoyage possible, sans urgence —
@@ -1255,25 +1318,27 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot B2, étape 4
+### 10.4 Prochaine action — le lot B3
 
 **Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le B0, le B1 et les
-étapes 1-3 du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs, CORS,
-arbitrages, sonde du mécanisme de signature, socle de signature TempURL,
-bascule des trois écrans à faible enjeu (`BannerManager`, `PartnersManager`,
-`BlogEditor`), du gros du chantier — `recipes` et `step_photos`
-(`CreerForm`, `RelectureEditor`, `RecipeImageBackfill`), 35 Mo et 322 objets —
-puis de `profiles` (`ProfileHeader`) et `comments.photo_urls` (`BatchReview`,
-déposé avant l'appel à la route serveur qui écrit avec la clé service_role).
+quatre étapes du B2 sont terminés** (§ 7.5) : mesure exhaustive, conteneurs,
+CORS, arbitrages, sonde du mécanisme de signature, socle de signature
+TempURL, puis bascule complète des écritures — des trois écrans à faible
+enjeu (étape 1) au gros du chantier `recipes`/`step_photos` (étape 2, 35 Mo,
+322 objets), `profiles`/`comments.photo_urls` (étape 3), et enfin `contact_*`
+sur le conteneur privé (étape 4 — le seul cas nécessitant d'ouvrir la route
+de présignature à un appelant sans session, protégé en réutilisant
+exactement la chaîne anti-spam de `/api/contact`).
 
-**La prochaine action est l'étape 4 du B2**, la dernière : `contact_*`, ce qui
-suppose d'ouvrir l'usage `contact` fermé au B1 (route de présignature refusée
-avec un 501) en réutilisant la chaîne anti-spam existante du formulaire
-(piège, délai signé, limitation de débit comptée en base — cf. CLAUDE.md
-« Contact et suivi Jira ») avant de la câbler au conteneur privé
-`jp-contact`. Le § 7.5 porte le découpage complet et l'ordre du B2. Une fois
-l'étape 4 posée, le B2 est terminé et le B3 (reprise des ≈360 objets déjà en
-base) peut commencer.
+**La prochaine action est le B3** : reprendre les ≈360 objets déjà en base
+(mesure du B0, § 7.5) — chaque colonne qui porte encore une data-URL est
+déposée sur le stockage objet, **sans supprimer** la data-URL d'origine
+(réversibilité, jusqu'au B4). `televerserImage()` étant déjà idempotent
+(une valeur qui n'est pas une data-URL traverse inchangée), le même geste
+peut tourner ligne par ligne sur les tables existantes sans risque de double
+dépôt. Puis le B4 : vérification, nettoyage des data-URL, et le mécanisme de
+réconciliation des orphelins resté ouvert depuis le B1 (§ 7.5, « Deux pièges
+déjà documentés »).
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par

@@ -13,6 +13,7 @@ import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { PhotoUploader } from '@/components/PhotoUploader';
+import { televerserImage } from '@/lib/storage-client';
 import { formatDateHeure } from '@/lib/format';
 import { CONTACT_STATUSES, CONTACT_TYPES, REPONSE_MEMBRE_MAX, REPONSE_MEMBRE_MIN } from '@/lib/contact';
 import type { MaDemandeDetail as MaDemandeDetailRow, MaReponse, MonChangementStatut } from '@/lib/contact-member-data';
@@ -56,10 +57,21 @@ export function MaDemandeDetail({
     if (!valide) return;
     if (!writeGuard('Répondre à une demande de contact')) return;
     setEnvoiEnCours(true);
+    // Déposées avant l'appel à la route (§ 7.5, lot B2 étape 4) — session
+    // membre déjà authentifiée, pas de jeton de formulaire à transmettre ici
+    // (réservé au dépôt initial, anonyme, de `ContactForm`).
+    let photosDeposees: string[];
+    try {
+      photosDeposees = await Promise.all(replyPhotos.map((p) => televerserImage('contact', p)));
+    } catch (e) {
+      setEnvoiEnCours(false);
+      dialog.alert('Erreur lors du dépôt de la photo : ' + (e as Error).message);
+      return;
+    }
     const res = await fetch(`/api/reglages/mes-demandes/${message.reference}/reply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: texte, photos: replyPhotos }),
+      body: JSON.stringify({ body: texte, photos: photosDeposees }),
     });
     const resBody = await res.json().catch(() => ({}));
     setEnvoiEnCours(false);

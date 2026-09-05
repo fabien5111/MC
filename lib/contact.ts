@@ -10,6 +10,7 @@
 // Décisions de conception et écarts assumés vis-à-vis de la spécification :
 // `docs/contact-jira.md`.
 import { formatDateHeure } from '@/lib/format';
+import { USAGES, estDataUrlImage, estUrlDuConteneur } from '@/lib/storage';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types de demande
@@ -188,14 +189,29 @@ export const CONTACT_PHOTO_DATA_URL_MAX = 2_000_000;
 
 /**
  * Ne rejette jamais la demande pour une photo invalide : une entrée qui
- * n'est pas une data-URL d'image, ou trop lourde, est silencieusement
- * écartée plutôt que de faire échouer tout l'envoi — une photo ratée ne
- * doit jamais faire perdre le message qui l'accompagne.
+ * n'est ni une data-URL d'image ni une URL de stockage du conteneur
+ * `jp-contact`, ou une data-URL trop lourde, est silencieusement écartée
+ * plutôt que de faire échouer tout l'envoi — une photo ratée ne doit jamais
+ * faire perdre le message qui l'accompagne.
+ *
+ * Accepte deux formes, coexistantes pendant le B2/B3 (§ 7.5) : une data-URL
+ * (repli si le dépôt sur le stockage objet a échoué avant l'appel — le
+ * client envoie alors la valeur d'origine, cf. `ContactForm`) et l'URL
+ * canonique rendue par `televerserImage('contact', …)`, seule forme normale
+ * une fois le B2 en place. **Jamais une URL externe quelconque** :
+ * `estUrlDuConteneur` vérifie que le chemin appartient bien à `jp-contact`
+ * — sans ce filtre, un appel direct à cette route (elle est anonyme) pourrait
+ * glisser une image hébergée ailleurs, qui se chargerait ensuite dans le
+ * panneau d'administration au moment de la modération.
  */
 export function validerPhotos(saisie: unknown): string[] {
   if (!Array.isArray(saisie)) return [];
   return saisie
-    .filter((v): v is string => typeof v === 'string' && v.startsWith('data:image/') && v.length <= CONTACT_PHOTO_DATA_URL_MAX)
+    .filter(
+      (v): v is string =>
+        (estDataUrlImage(v) && v.length <= CONTACT_PHOTO_DATA_URL_MAX) ||
+        estUrlDuConteneur(USAGES.contact.conteneur, USAGES.contact.prefixe, v),
+    )
     .slice(0, CONTACT_PHOTOS_MAX);
 }
 

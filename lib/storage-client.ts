@@ -25,6 +25,15 @@ function dataUrlVersBlob(dataUrl: string): Blob {
 
 type ReponsePresignature = { url: string; conteneur: 'photos' | 'contact'; cle: string; urlFinale: string | null };
 
+type OptionsTeleversement = {
+  // Requis pour l'unique usage ouvert à un appelant SANS session (`contact`,
+  // § 7.5 lot B2 étape 4) : le même jeton signé que `/api/contact`, qui
+  // prouve que l'appel vient d'un formulaire resté ouvert au moins trois
+  // secondes. Ignoré par la route pour tout autre usage (déjà protégé par la
+  // session de l'appelant).
+  formToken?: string;
+};
+
 /**
  * Dépose une data-URL sur le stockage objet et rend l'URL finale à
  * persister en base — ou `valeur` inchangée si ce n'est pas une data-URL.
@@ -37,9 +46,13 @@ type ReponsePresignature = { url: string; conteneur: 'photos' | 'contact'; cle: 
  * `!` ni cast — seul l'appelant qui passe potentiellement `null` (une photo
  * de recette facultative) récupère un retour nullable.
  */
-export async function televerserImage(usage: Usage, valeur: string): Promise<string>;
-export async function televerserImage(usage: Usage, valeur: string | null): Promise<string | null>;
-export async function televerserImage(usage: Usage, valeur: string | null): Promise<string | null> {
+export async function televerserImage(usage: Usage, valeur: string, options?: OptionsTeleversement): Promise<string>;
+export async function televerserImage(usage: Usage, valeur: string | null, options?: OptionsTeleversement): Promise<string | null>;
+export async function televerserImage(
+  usage: Usage,
+  valeur: string | null,
+  options: OptionsTeleversement = {},
+): Promise<string | null> {
   if (!estDataUrlImage(valeur)) return valeur;
 
   const blob = dataUrlVersBlob(valeur);
@@ -47,7 +60,7 @@ export async function televerserImage(usage: Usage, valeur: string | null): Prom
   const reponse = await fetch('/api/stockage/televersement', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usage, mime: blob.type }),
+    body: JSON.stringify({ usage, mime: blob.type, formToken: options.formToken }),
   });
   if (!reponse.ok) {
     const corps = (await reponse.json().catch(() => null)) as { error?: string } | null;

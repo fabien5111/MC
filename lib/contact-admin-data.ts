@@ -30,7 +30,7 @@ import {
   type ContactType,
 } from '@/lib/contact';
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
-import { commenterReponseJira, enregistrerPhotosReponse } from '@/lib/contact-data';
+import { commenterReponseJira, enregistrerPhotosReponse, signerPhotoContact } from '@/lib/contact-data';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -211,7 +211,7 @@ export async function getContactReplies(messageId: string): Promise<ContactReply
     .in('reply_id', replies.map((r) => r.id))
     .order('order_index', { ascending: true });
   const parReponse = new Map<string, ContactReplyPhotoRow[]>();
-  for (const p of photos ?? []) {
+  for (const p of (photos ?? []).map(signerPhotoContact)) {
     const arr = parReponse.get(p.reply_id) ?? [];
     arr.push(p);
     parReponse.set(p.reply_id, arr);
@@ -238,7 +238,7 @@ export async function getContactPhotos(messageId: string): Promise<ContactMessag
     .select('*')
     .eq('message_id', messageId)
     .order('order_index', { ascending: true });
-  return data ?? [];
+  return (data ?? []).map(signerPhotoContact);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

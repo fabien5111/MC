@@ -15,7 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { withContactSchema, type ContactReplyPhotoRow } from '@/lib/contact-types';
 import type { ContactMessageRow, ContactMessagePhotoRow } from '@/lib/contact-types';
 import { composeNotificationReponseMembre, type ContactStatus } from '@/lib/contact';
-import { commenterReponseJira, enregistrerPhotosReponse } from '@/lib/contact-data';
+import { commenterReponseJira, enregistrerPhotosReponse, signerPhotoContact } from '@/lib/contact-data';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 
@@ -74,7 +74,7 @@ export async function getMesReponses(messageId: string): Promise<MaReponse[]> {
     .in('reply_id', replies.map((r) => r.id))
     .order('order_index', { ascending: true });
   const parReponse = new Map<string, ContactReplyPhotoRow[]>();
-  for (const p of photos ?? []) {
+  for (const p of (photos ?? []).map(signerPhotoContact)) {
     const arr = parReponse.get(p.reply_id) ?? [];
     arr.push(p);
     parReponse.set(p.reply_id, arr);
@@ -112,7 +112,7 @@ export async function getMesPhotos(messageId: string): Promise<ContactMessagePho
     .select('*')
     .eq('message_id', messageId)
     .order('order_index', { ascending: true });
-  return data ?? [];
+  return (data ?? []).map(signerPhotoContact);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
