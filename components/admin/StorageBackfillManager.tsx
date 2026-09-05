@@ -18,10 +18,11 @@
 import { useState } from 'react';
 import { CIBLES_ORDRE } from '@/lib/backfill';
 
-type EtatCible = { running: boolean; finished: boolean; done: number; failed: number };
-type ResultatLot = { traites: number; echecs: number; restant: boolean };
+type EchecLot = { cle: string; colonne: string; motif: string };
+type EtatCible = { running: boolean; finished: boolean; done: number; failed: number; details: EchecLot[] };
+type ResultatLot = { traites: number; echecs: number; restant: boolean; details: EchecLot[] };
 
-const ETAT_INITIAL: EtatCible = { running: false, finished: false, done: 0, failed: 0 };
+const ETAT_INITIAL: EtatCible = { running: false, finished: false, done: 0, failed: 0, details: [] };
 
 type EchecVerification = { table: string; cle: string; colonne: string; url: string };
 type EtatVerif = { running: boolean; done: boolean; ok: number; echecs: EchecVerification[] };
@@ -47,15 +48,20 @@ export function StorageBackfillManager() {
     setEtats((prev) => ({ ...prev, [cle]: { ...ETAT_INITIAL, running: true } }));
     let done = 0;
     let failed = 0;
+    // Bornés : au-delà, la liste sert à repérer un motif récurrent, pas à
+    // tout journaliser — le détail complet reste dans les journaux serveur
+    // (console.error, lib/backfill-data.ts).
+    let details: EchecLot[] = [];
     for (;;) {
       const resultat = await appelBackfill<ResultatLot>(cle);
       if (!resultat) break; // erreur réseau/serveur : on s'arrête, reprenable au prochain clic
       done += resultat.traites;
       failed += resultat.echecs;
-      setEtats((prev) => ({ ...prev, [cle]: { running: true, finished: false, done, failed } }));
+      details = [...details, ...resultat.details].slice(0, 20);
+      setEtats((prev) => ({ ...prev, [cle]: { running: true, finished: false, done, failed, details } }));
       if (!resultat.restant) break;
     }
-    setEtats((prev) => ({ ...prev, [cle]: { running: false, finished: true, done, failed } }));
+    setEtats((prev) => ({ ...prev, [cle]: { running: false, finished: true, done, failed, details } }));
   }
 
   async function verifier(cle: string) {
@@ -114,6 +120,15 @@ export function StorageBackfillManager() {
                 </button>
               </div>
             </div>
+            {etat.details.length > 0 && (
+              <ul className="mt-3 flex flex-col gap-1 border-t border-outline-variant pt-3 text-[12px] text-on-surface-variant">
+                {etat.details.map((e, i) => (
+                  <li key={i} className="font-mono">
+                    {e.colonne} — {e.cle} : {e.motif}
+                  </li>
+                ))}
+              </ul>
+            )}
             {verif.echecs.length > 0 && (
               <ul className="mt-3 flex flex-col gap-1 border-t border-outline-variant pt-3 text-[12px] text-on-surface-variant">
                 {verif.echecs.map((e, i) => (

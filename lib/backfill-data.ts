@@ -56,7 +56,8 @@ export async function deposerDataUrlServeur(usage: Usage, dataUrl: string): Prom
   return urlCanonique(decl.conteneur, cle);
 }
 
-export type ResultatLot = { traites: number; echecs: number; restant: boolean };
+export type EchecLot = { cle: string; colonne: string; motif: string };
+export type ResultatLot = { traites: number; echecs: number; restant: boolean; details: EchecLot[] };
 
 const TAILLE_LOT = 20;
 
@@ -79,10 +80,14 @@ export async function traiterLotScalaire(cible: CibleScalaire, tailleLot = TAILL
     .select([cible.cle, ...cible.colonnes].join(','))
     .or(filtre)
     .limit(tailleLot);
-  if (error || !data) return { traites: 0, echecs: 0, restant: false };
+  if (error || !data) {
+    if (error) console.error(`backfill ${cible.table} : lecture échouée —`, error.message);
+    return { traites: 0, echecs: 0, restant: false, details: [] };
+  }
 
   let traites = 0;
   let echecs = 0;
+  const details: EchecLot[] = [];
   for (const ligne of data as Record<string, string | null>[]) {
     const maj: Record<string, string> = {};
     let ok = true;
@@ -91,18 +96,25 @@ export async function traiterLotScalaire(cible: CibleScalaire, tailleLot = TAILL
       if (!estDataUrlImage(valeur)) continue;
       try {
         maj[colonne] = await deposerDataUrlServeur(cible.usage, valeur);
-      } catch {
+      } catch (e) {
         ok = false;
+        const motif = (e as Error).message || 'erreur inconnue';
+        console.error(`backfill ${cible.table}.${colonne} (${ligne[cible.cle]}) —`, motif);
+        details.push({ cle: String(ligne[cible.cle]), colonne, motif });
       }
     }
     if (Object.keys(maj).length > 0) {
       const { error: updErr } = await (client.from(cible.table) as any).update(maj).eq(cible.cle, ligne[cible.cle]);
-      if (updErr) ok = false;
+      if (updErr) {
+        ok = false;
+        console.error(`backfill ${cible.table} (${ligne[cible.cle]}) : écriture échouée —`, updErr.message);
+        details.push({ cle: String(ligne[cible.cle]), colonne: cible.colonnes.join('+'), motif: updErr.message });
+      }
     }
     if (ok) traites++;
     else echecs++;
   }
-  return { traites, echecs, restant: data.length === tailleLot };
+  return { traites, echecs, restant: data.length === tailleLot, details };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -192,10 +204,14 @@ export async function traiterLotCommentairesPhotos(tailleLot = TAILLE_LOT): Prom
     .not('photo_urls', 'is', null)
     .neq('photo_urls', '[]')
     .limit(tailleLot);
-  if (error || !data) return { traites: 0, echecs: 0, restant: false };
+  if (error || !data) {
+    if (error) console.error('backfill comments : lecture échouée —', error.message);
+    return { traites: 0, echecs: 0, restant: false, details: [] };
+  }
 
   let traites = 0;
   let echecs = 0;
+  const details: EchecLot[] = [];
   for (const ligne of data as { id: number; photo_urls: unknown }[]) {
     const photos = normaliserPhotosAvis(ligne.photo_urls);
     if (!photos.some((p) => estDataUrlImage(p.url))) continue; // déjà migré
@@ -206,18 +222,25 @@ export async function traiterLotCommentairesPhotos(tailleLot = TAILLE_LOT): Prom
         if (!estDataUrlImage(p.url)) return p;
         try {
           return { ...p, url: await deposerDataUrlServeur('avis', p.url) };
-        } catch {
+        } catch (e) {
           ok = false;
+          const motif = (e as Error).message || 'erreur inconnue';
+          console.error(`backfill comments.photo_urls (${ligne.id}) —`, motif);
+          details.push({ cle: String(ligne.id), colonne: 'photo_urls', motif });
           return p;
         }
       }),
     );
     const { error: updErr } = await client.from('comments').update({ photo_urls: maj } as never).eq('id', ligne.id);
-    if (updErr) ok = false;
+    if (updErr) {
+      ok = false;
+      console.error(`backfill comments (${ligne.id}) : écriture échouée —`, updErr.message);
+      details.push({ cle: String(ligne.id), colonne: 'photo_urls', motif: updErr.message });
+    }
     if (ok) traites++;
     else echecs++;
   }
-  return { traites, echecs, restant: data.length === tailleLot };
+  return { traites, echecs, restant: data.length === tailleLot, details };
 }
 
 /** Pendant lecture seule de `traiterLotCommentairesPhotos`, cf. `verifierCible`. */
