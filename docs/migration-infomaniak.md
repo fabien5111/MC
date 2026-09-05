@@ -1368,6 +1368,97 @@ Ces totaux recoupent exactement la mesure du B0 (§ 7.5) : 355 pour
 
 ---
 
+### 7.9 Lot C — découpage et C0 (05/09)
+
+Le lot 0-bis a tranché le DDL, et rien d'autre (§ 7.4) : ni les **données**,
+ni les **7 identités** (bcrypt, `provider_id` Google), ni **GoTrue**, dont la
+phase 3 n'a jamais été jouée. C'est là qu'est tout le risque restant, et le
+découpage ci-dessous le prend dans cet ordre.
+
+#### Ce que le C0 a fermé, sans toucher à une ligne de code
+
+**1. Les clés JWT asymétriques survivent à l'auto-hébergement — le risque le
+plus sérieux, et il est écarté.** `lib/auth.ts` et `lib/supabase/middleware.ts`
+reposent sur `getClaims()`, qui vérifie le jeton **localement contre le JWKS**
+du projet : c'est ce qui a supprimé ~65 % du trafic base
+(`docs/note-regression-cache.md`). Le middleware documente lui-même la
+condition : *« le gain suppose des clés de signature asymétriques ; sur
+l'ancien secret partagé (HS256), `getClaims()` retombe tout seul sur
+`getUser()` »*. Un GoTrue auto-hébergé en HS256 aurait donc **réintroduit un
+aller-retour serveur à chaque rendu de page, sans une seule erreur visible**.
+
+Vérifié sur la documentation officielle plutôt que supposé : l'auto-hébergé
+sait signer en asymétrique (ES256/RS256) et **expose le JWKS au chemin exact
+que `supabase-js` interroge** :
+
+| Service | Variable | Contenu |
+|---|---|---|
+| Auth (GoTrue) | `GOTRUE_JWT_KEYS` | JWK privée EC **+** l'ancienne clé symétrique |
+| PostgREST | `PGRST_JWT_SECRET` | accepte un JWKS entier, pas seulement un secret |
+| — | endpoint | `/auth/v1/.well-known/jwks.json` |
+
+La clé symétrique héritée reste incluse dans le jeu de clés : les jetons déjà
+émis continuent d'être vérifiés pendant la bascule. Aucune déconnexion de
+masse à prévoir de ce fait.
+
+**2. L'application ne parle jamais à PostgreSQL en direct.** Vérifié :
+aucune dépendance `pg`/`postgres`/ORM dans `package.json`, aucune chaîne
+`postgres://` dans le code. Tout passe par HTTPS vers PostgREST et GoTrue.
+Deux conséquences, et la seconde décide du séquencement :
+
+- **Le port 5432 n'a jamais à être exposé en production.** Le lot 0-bis l'a
+  ouvert par un Endpoint TCP le temps d'une restauration (§ 7.2, arbitrage 2)
+  ; le lot C n'a pas à reconduire cette exception au-delà de la bascule.
+- **Garder Vercel devant une base à Genève est tenable** : ~10 ms de latence
+  supplémentaire sur des appels HTTPS, et la bascule se réduit à trois
+  variables d'environnement.
+
+**Arbitrage retenu : C d'abord, A ensuite.** Deux basculements petits et
+réversibles valent mieux qu'un grand. Le § 7.3 note à juste titre que A et C
+atterrissent sur la même plateforme et gagnent à être enchaînés — c'est vrai
+de l'apprentissage de la plateforme, pas du risque : les mener le même jour
+additionne deux causes de panne sans rien simplifier.
+
+**3. `COMING_SOON` est déjà le mode maintenance de la bascule.** La variable
+existe (§ variables d'environnement) et sert la page d'attente à la place du
+site. Gelée pendant la bascule, elle rend le **retour arrière gratuit** : sans
+écriture pendant la fenêtre, revenir à Supabase ne perd rien et ne demande
+aucun rejeu. C'est ce qui transforme le C3 d'un saut sans filet en une
+opération réversible. À poser sur `dev.jepatisse.com` aussi, que `middleware.ts`
+exempte justement de cette page (§ Domaines) — l'exemption est à neutraliser
+le temps de la fenêtre, sans quoi les testeurs écriraient dans la base qu'on
+est en train de migrer.
+
+#### Ce que le C0 laisse ouvert
+
+- **La taille réelle de la base après le lot B**, à mesurer avant de
+  planifier : elle pesait 57 Mo dont ≈40 d'images (§ 2.1, § 2.2), qui en sont
+  sorties. Le dump devrait tomber autour de 20 Mo — *devrait*, et c'est
+  exactement le genre de supposition que cette session a appris à ne pas
+  faire. À noter : les data-URL écrasées laissent des lignes mortes, le
+  fichier sur disque ne rétrécira qu'après un `VACUUM FULL` ; le **dump**, lui,
+  ne lit que les lignes vivantes et rétrécit immédiatement.
+- **L'état de l'essai Virtuozzo** : jours restants, ou passage en payant
+  (≈ 16 €/mois avant ouverture, § 4.5).
+
+#### Découpage
+
+| Sous-lot | Contenu | Livrable |
+|---|---|---|
+| **C0** | Mesures et arbitrages, aucun code | Cette section |
+| **C1** | Répétition GoTrue (phase 3 jamais jouée) + migration des 7 identités sur un environnement de test | Le vrai Go/No-Go restant |
+| **C2** | Infrastructure : nœuds Postgres, PostgREST, GoTrue ; SMTP via SES (déjà en place) ; OAuth Google ; clés JWT asymétriques | Environnement reproductible, sans bascule |
+| **C3** | Bascule : `COMING_SOON` → dump → restore → trois variables → vérification → réouverture | Le seul moment risqué, et il est réversible |
+| **C4** | `wal-g` (PITR, § 4.5), retrait de Supabase | Définition de terminé |
+
+**Dépendances codées en dur à reprendre au C3**, repérées maintenant pour ne
+pas les découvrir en pleine bascule : `NEXT_PUBLIC_SUPABASE_URL` et la clé
+publique sont **inlinées au build** (reconstruction sans cache obligatoire),
+et l'URL Supabase est écrite en dur dans
+`.github/scripts/reconcilier_stockage.py` (lot B4).
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -1578,9 +1669,16 @@ ressortent :
 
 **La prochaine action est le lot C** — la migration de la base elle-même
 vers Virtuozzo Cloud, dont le lot 0-bis a validé la faisabilité (949
-objets restaurés sur 949, zéro erreur). Le mode opératoire est en § 7.2 ;
-les quatre secrets qu'il réclame ont été supprimés après usage et sont à
-recréer (§ 10.3).
+objets restaurés sur 949, zéro erreur). **Son découpage et son C0 sont en
+§ 7.9** : les clés JWT asymétriques survivent à l'auto-hébergement (le
+risque majeur, écarté), le port 5432 n'a jamais à être exposé en
+production, et `COMING_SOON` sert de fenêtre de maintenance qui rend la
+bascule réversible. Le mode opératoire de la restauration reste celui du
+§ 7.2 ; les quatre secrets qu'il réclame ont été supprimés après usage et
+sont à recréer (§ 10.3).
+
+**Deux mesures restent à prendre avant de planifier le C1** (§ 7.9) : la
+taille réelle de la base après le lot B, et l'état de l'essai Virtuozzo.
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
