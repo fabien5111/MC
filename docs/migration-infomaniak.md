@@ -294,7 +294,7 @@ Une image du conteneur **s'affiche parfaitement** dans le navigateur, et
 pourtant son traitement canvas est refusé :
 
 ```
-Access to image at 'https://s3.pub2.infomaniak.cloud/...'
+Access to image at 'https://s3.pub1.infomaniak.cloud/...'
 from origin 'https://dev.jepatisse.com' has been blocked by CORS policy:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
@@ -1379,6 +1379,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | La cible est « `supabase/postgres` 15+ » | **17.6.** La source tourne sur PostgreSQL 17.6 (§ 2.5) : restaurer son dump dans un 15 serait une rétrogradation, que `pg_dump` ne promet nulle part. Le tag à déployer est `supabase/postgres:17.6.1.165`. |
 | La base porte 31 triggers | **25**, mesuré le 04/09 sur la requête que le § 7.2 documente (schéma `public`, triggers internes exclus). Les 320 policies et 252 fonctions, elles, sont confirmées. Sans effet sur le Go/No-Go : la comparaison joue la même requête des deux côtés (§ 7.2). |
 | « On n'efface jamais une data-URL avant d'avoir relu l'objet distant » (§ 7.5) — le B3 déposerait puis vérifierait, le B4 n'effacerait qu'ensuite | **Ce n'est pas ce qui a été construit.** `traiterLotScalaire` (B3) écrase la colonne dès que le dépôt répond `ok`, sans relecture intermédiaire — il n'y a donc plus de data-URL à effacer une fois une ligne migrée : le B3 l'a déjà fait, en un seul geste. Le B4 (§ 7.7) ne protège plus une décision d'effacement, il détecte seulement après coup un objet devenu illisible, sans repli possible en cas d'échec. |
+| L'endpoint du stockage objet est `s3.pub2.infomaniak.cloud` (§ 10.2, retenu depuis le B0) | **Faux — c'est `s3.pub1`.** Découvert le 05/09 en testant le B3 en production : tous les dépôts signés échouaient en 401 malgré des clés TempURL correctement posées et identiques des deux côtés (Vercel, conteneur). La cause était `SWIFT_STORAGE_URL` sur Vercel, réglée sur `pub2` — un hôte qui ne connaît ni les conteneurs ni les clés du bon compte. Confirmé en comparant à la sortie réelle de `swift auth` (`object-storage-afficher-url.yml`, nouveau workflow diagnostique). Aucune vérification directe contre le cluster n'avait été faite avant cette valeur : elle avait été retenue par déduction/lecture d'écran, jamais mesurée comme le reste du § 10.2. |
 
 ---
 
@@ -1427,7 +1428,7 @@ pas applicable telle quelle.
 | Projet Public Cloud | `PCP-BXPGU6A` |
 | Utilisateur OpenStack | `PCU-BXPGU6A` (Horizon n'accepte pas les identifiants du compte Infomaniak) |
 | Région | `dc4-a` |
-| Endpoint stockage objet | `s3.pub2.infomaniak.cloud` |
+| Endpoint stockage objet | `s3.pub1.infomaniak.cloud` (corrigé le 05/09, § 8 — `pub2` était faux) |
 | Crédit d'essai Public Cloud | 300 € jusqu'au **31/12/2026**, facturation ensuite |
 | Projet Supabase | `acbabqolghhyxksouaye`, région Francfort |
 
