@@ -1730,6 +1730,84 @@ GoTrue amont pur, arrêté exactement à `20260625000000` — aucune migration
 propre à Supabase, rien de spécifique à désamorcer, et `v2.196.0` produira le
 même schéma colonne pour colonne.
 
+#### Les clés de signature ES256 — procédure, mesurée contre le code
+
+Tout ce qui suit a été vérifié en exécutant le décodeur de `supabase/auth`
+v2.196.0 sur les formes en question, et la documentation de PostgREST lue dans
+ses sources. Rien n'y est de mémoire : ces formats ne se devinent pas et se
+trompent sans message d'erreur.
+
+**Outil : `scripts/jwt-es256.mjs`**, sans dépendance (Node exporte nativement
+une clé au format JWK) :
+
+```bash
+node scripts/jwt-es256.mjs generer mc-es256-2026-09 > prive.json   # GOTRUE_JWT_KEYS
+node scripts/jwt-es256.mjs public < prive.json                     # PGRST_JWT_SECRET
+```
+
+**Deux formes différentes pour la même matière, et c'est voulu par les deux
+logiciels** :
+
+| Variable | Forme attendue | Contenu |
+|---|---|---|
+| `GOTRUE_JWT_KEYS` | **tableau** `[{…}]` | JWK **privées** |
+| `PGRST_JWT_SECRET` | **objet** `{"keys": […]}` | JWK **publiques** |
+
+Se tromper de forme produit un 401 sans explication. PostgREST accepte aussi
+`@fichier.json`, et — point d'exploitation à retenir — **il ne va jamais
+chercher un JWKS par URL** : la valeur est statique, une rotation de clé
+impose donc de la remettre à jour et de recharger la configuration.
+
+**Trois contraintes de GoTrue, mesurées :**
+
+1. **Une seule clé peut porter `sign`.** Zéro → « no signing key detected » ;
+   deux → « multiple signing keys detected, only 1 signing key is supported ».
+   Une clé héritée qu'on garderait pour vérifier d'anciens jetons doit donc
+   porter `key_ops: ["verify"]` **seul**.
+2. **Le champ `alg` n'est pas décoratif.** Sans lui, GoTrue démarre, valide sa
+   configuration **sans broncher** et sert correctement la clé publique sur son
+   JWKS — puis échoue à la **première émission de jeton** : `key is of invalid
+   type: HMAC sign expects []byte`. Il est retombé sur HS256 avec une clé
+   elliptique entre les mains. Le contrôle au démarrage ne l'attrape pas ; la
+   première tentative de connexion, si.
+3. **`GOTRUE_JWT_SECRET` reste obligatoire** (`required:"true"`) même quand
+   `GOTRUE_JWT_KEYS` est renseigné. Il sert de clé de vérification de repli
+   pour un jeton dont le `kid` vaut `GOTRUE_JWT_KEY_ID`.
+
+Bonne nouvelle au passage : **l'endpoint JWKS n'expose jamais une clé
+symétrique** — le gestionnaire écarte explicitement les clés de type `oct`. Un
+secret hérité laissé dans le jeu de clés ne fuit pas par cette porte.
+
+#### Correction au § 7.9 : il y aura bien une déconnexion
+
+Le § 7.9 écrivait : « la clé symétrique héritée reste incluse dans le jeu de
+clés : les jetons déjà émis continuent d'être vérifiés pendant la bascule.
+Aucune déconnexion de masse à prévoir de ce fait. »
+
+**Ce raisonnement ne vaut que si le projet signe aujourd'hui en HS256.** Or il
+signe en ES256 — c'est la condition même du gain de ~65 % que `getClaims()` a
+apporté (`lib/supabase/middleware.ts`, point 2). Et la clé privée
+correspondante vit dans l'infrastructure de Supabase : **elle ne s'exporte
+pas.** On générera donc une paire neuve, avec un `kid` neuf, et tous les jetons
+en circulation deviendront invérifiables à la bascule.
+
+**Sans conséquence pratique** — on a déjà tranché de ne pas migrer les sessions,
+donc tout le monde se reconnecte une fois de toute façon. Mais la *raison*
+avancée au § 7.9 était fausse, et quelqu'un pourrait s'y appuyer pour décider
+l'inverse en croyant les jetons préservés.
+
+**Vérifié le 06/09** sur `/auth/v1/.well-known/jwks.json` du projet : le jeu de
+clés contient **une seule clé, `EC` / `P-256` / `ES256`**, `use: "sig"`,
+`key_ops: ["verify"]`, `kid` `ae1c8c47-e33b-479b-80e8-38c53132ef72`. Le projet
+signe donc bien en asymétrique, la correction ci-dessus s'applique, et ce `kid`
+est celui qui disparaîtra à la bascule.
+
+Détail qui corrobore autre chose au passage : cette forme est **exactement**
+celle que produit `decodePublicKey` de `supabase/auth` (`use` posé à `sig`,
+`key_ops` réduit à `verify`). Le service hébergé tourne donc sur le même GoTrue
+que celui qu'on déploiera — ce qui recoupe le constat du schéma `auth` amont
+pur ci-dessus.
+
 #### Les décisions de phase 0
 
 - **`auth.sessions` (15) et `auth.refresh_tokens` (50) ne sont pas migrées.**
