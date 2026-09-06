@@ -1465,11 +1465,45 @@ mais mieux vaut le décider que le subir.
 Corollaire de méthode, déjà appris au lot 0-bis (§ 7.4) : **tout ce qui peut
 être préparé hors chrono doit l'être avant de monter l'environnement.**
 
+#### La rétention d'`imports` — traitée (06/09)
+
+30 jours **depuis la dernière activité**, pas depuis la création. Le repère
+compte : `RelectureEditor` écrit dans la table à chaque enregistrement
+intermédiaire, si bien qu'`updated_at` suit l'activité réelle, alors que
+`created_at` purgerait un brouillon repris hier mais commencé il y a cinq
+semaines — c'est-à-dire détruire une saisie en cours, le seul vrai risque de
+cette fonctionnalité. D'où une colonne et un trigger plutôt qu'un simple
+filtre sur la date de création.
+
+Trois décisions qui se lisent mal dans le code sans leur raison :
+
+- **La purge vit dans `/api/cron/abonnements`, pas dans son propre cron.** Le
+  plan Vercel Hobby plafonne le nombre de tâches planifiées et `vercel.json`
+  en déclare déjà deux : une troisième entrée serait refusée. La passe est
+  isolée (son échec est rapporté, jamais propagé aux notifications
+  d'abonnement) et l'anomalie est écrite en tête de la route, pour qu'on la
+  redécoupe le jour du passage en Pro plutôt que de s'en étonner.
+- **Le trigger est une fonction plpgsql écrite à la main, pas `moddatetime`.**
+  Sur ce projet les extensions vivent hors du schéma `public` (cf. `pg_trgm`
+  et le `set search_path` de `suggest_similar_ideas`) : une dépendance de plus
+  à ce détail se paierait au restore du lot C.
+- **Les brouillons déjà anciens ont reçu une fenêtre pleine, une fois.**
+  `updated_at` ayant été initialisée sur `created_at`, la rétention se
+  comportait pour les lignes existantes exactement comme si elle comptait
+  depuis la création : le premier passage aurait supprimé trois brouillons
+  jamais relus, sans qu'aucun préavis n'ait pu s'afficher. Un `update … set
+  updated_at = now()` sur ces seules lignes les remet à trente jours réels.
+  Les treize autres lignes purgeables sont des imports **relus** — leur
+  recette est au carnet, la copie de travail ne sert plus, rien à annoncer.
+
+Relevé au moment de la bascule : 16 lignes sur 32 expirées, **1 922 ko
+libérés** — pas les 4,7 Mo, le reste vivant dans des imports récents qui
+vieilliront à leur tour. C'est le régime permanent qui compte, pas ce premier
+passage.
+
 #### Ce que le C0 laisse ouvert
 
-- **La rétention d'`imports`** : tranchée en principe (30 jours, avec
-  information de l'utilisateur), reste à implémenter — voir ci-dessous. Ne
-  bloque pas le C1, mais change la taille du dump du C3.
+- Plus rien qui bloque le C1.
 
 #### Découpage
 

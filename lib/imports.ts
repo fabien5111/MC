@@ -13,6 +13,9 @@ export type ImportRow = {
   recipe_id: string | null;
   cost_usd: number | null;
   created_at: string;
+  // Repère de la rétention (§ 7.9) : c'est `updated_at`, pas `created_at`,
+  // qui date l'échéance affichée — cf. lib/imports-retention.ts.
+  updated_at: string;
 };
 
 export type ImportFull = {
@@ -78,7 +81,7 @@ export async function getImports(userId: string): Promise<ImportRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('imports')
-    .select('id, source_type, source_url, fichier_original, statut, recette, alertes, recipe_id, cost_usd, created_at')
+    .select('id, source_type, source_url, fichier_original, statut, recette, alertes, recipe_id, cost_usd, created_at, updated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getImports:', error.message);
