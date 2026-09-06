@@ -2199,9 +2199,37 @@ Deux corollaires pour le C2 :
   n'est pas contradictoire avec le § 7.9 point 1 : la clé symétrique conservée
   fait que les jetons déjà émis restent *vérifiables*, mais leur
   rafraîchissement, lui, a besoin de la ligne de session.
-- **Le sous-domaine `auth.jepatisse.com`** est à réserver côté DNS dès la
-  phase 0 : il conditionne l'exigence produit du C2 ci-dessus et la
-  déclaration des URI de redirection Google, qui doit précéder la bascule.
+- **Le sous-domaine `auth.jepatisse.com` ne se « réserve » pas** — correction
+  d'une formulation antérieure de ce dossier, qui le rangeait à tort parmi les
+  gestes de phase 0. Un nom DNS n'est pas une ressource qu'on revendique : le
+  domaine `jepatisse.com` étant déjà possédé, le sous-domaine l'est aussi, et
+  personne ne peut le prendre entre-temps. **Ce qui est contraint, c'est
+  l'ordre** :
+  1. le C2 monte l'environnement, qui reçoit alors un nom d'hôte public ;
+  2. le CNAME `auth.jepatisse.com` peut alors pointer vers ce nom d'hôte ;
+  3. Let's Encrypt peut alors seulement émettre le certificat — sa validation
+     HTTP exige que le domaine résolve **déjà** vers l'environnement.
+
+  Créer l'enregistrement avant l'étape 1 le ferait pointer dans le vide et
+  imposerait de le refaire. **Le seul vrai prérequis de phase 0** était donc de
+  savoir où est gérée la zone DNS de `jepatisse.com` — et **c'est mesuré
+  (07/09) : la zone est chez Infomaniak**, les serveurs de noms déclarés étant
+  `ns11.infomaniak.ch` et `ns12.infomaniak.ch`. Ni Vercel, ni un registrar
+  tiers. **Le DNS et l'environnement Virtuozzo vivront donc dans le même
+  manager**, sans aller-retour entre deux fournisseurs au moment du C2.
+
+  Piège de navigation constaté au passage, à connaître pour ne pas le
+  rechercher deux fois : l'écran « Serveur DNS » du manager ne liste que les
+  enregistrements **NS** (la déclaration des serveurs de noms). Les
+  enregistrements A/CNAME — `www`, `dev`, et bientôt `auth` — vivent dans
+  l'**éditeur de zone**, un écran distinct.
+- **Conséquence de topologie pour le C2 : il faut un nœud Load Balancer devant
+  GoTrue.** Le § 4.3 note que Virtuozzo fournit Let's Encrypt gratuitement
+  « sur le nœud Load Balancer » ; exposer GoTrue par un Endpoint TCP nu — comme
+  le lot 0-bis l'avait fait pour Postgres (§ 7.2) — ne permettrait pas de
+  terminer le TLS sur `auth.jepatisse.com`. Ce n'est pas un détail de
+  configuration mais une contrainte d'architecture, qui découle directement de
+  l'exigence produit du C2 (un domaine à nous sur l'écran Google).
 - **La paire ES256** (`GOTRUE_JWT_KEYS`) se génère hors ligne, et le jeu de
   clés doit contenir **aussi** le secret symétrique actuel.
 - **Les quatre secrets GitHub du lot 0-bis sont à recréer** (§ 10.3) — dont le
