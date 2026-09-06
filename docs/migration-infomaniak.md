@@ -2256,6 +2256,103 @@ Deux corollaires pour le C2 :
   Les workflows portent une garde qui refuse les deux mauvaises formes avant de
   tirer quoi que ce soit.
 
+### 7.11 Lot C — exécution par paliers (06/09)
+
+**Le découpage C1 / C2 ne tient pas à l'usage, et c'est mesuré.** Les cinq
+critères de Go/No-Go (§ 7.10) ne sont pas testables au même moment : le critère
+3 — la connexion Google, le plus important — exige une URI de redirection
+**HTTPS**, donc le Load Balancer, le DNS et Let's Encrypt que le C2 devait
+apporter. Le critère 5 exige PostgREST. Répétition et montage s'entremêlent
+donc nécessairement.
+
+**Un seul environnement, monté par paliers**, chacun validant ce qu'il rend
+testable :
+
+| Palier | Contenu | Critères couverts | État |
+|---|---|---|---|
+| **1** | Postgres + restauration du DDL | — | **Fait le 06/09** |
+| **2** | + GoTrue v2.196.0 | 1, 2, 4 | à faire |
+| **3** | + Load Balancer, DNS, TLS | 3 | à faire |
+| **4** | + PostgREST | 5 | à faire |
+
+#### Palier 1 — le résultat
+
+Environnement **`jepatisse`** (et non `mc-restore-test` : celui-ci a vocation à
+devenir réel), Genève DC2, `supabase/postgres:17.6.1.165`, 1 cloudlet réservé /
+8 dynamiques, disque plafonné à 10 Go — l'essai est borné à 10 Go, et 50 Go
+n'apporteraient rien à une base de 27 Mo.
+
+```
+source : 951 objets — cible : 951 objets — manquants : 0
+GO — inventaire complet, aucune erreur de restauration.
+```
+
+951 contre les **949 du lot 0-bis** : les deux de plus sont `imports.updated_at`
+et son trigger, posés le matin même (§ 7.9). Durées : dump 1 min 29,
+restauration 4 min 53.
+
+**Les quatre épreuves de fonctionnement passent** — un DDL restauré n'est pas un
+DDL qui marche :
+
+| Épreuve | Résultat |
+|---|---|
+| `unaccent` → `mc_norm('Crème brûlée')` | `creme brulee` |
+| `pg_trgm` → `'chronomètre' % 'chrono'` | `t` |
+| Colonne générée `recipes.fts` | présente |
+| `btree_gist` dans `public` | confirmé |
+
+Et `set role anon` puis lecture de `recipes` rend **`0` sans
+`permission denied`** : les `GRANT` ont voyagé, ce qui conditionne la lecture
+anonyme par PostgREST au palier 4.
+
+#### Ce que le journal d'initialisation a appris, et qui dérisque le palier 2
+
+**`POSTGRES_PASSWORD` n'est lu qu'au tout premier démarrage**, quand le
+répertoire de données est vide. Le journal montre que l'image a d'abord
+**refusé de démarrer** (`Database is uninitialized and superuser password is
+not specified`) — c'est précisément ce refus qui a laissé le répertoire vide et
+permis à la variable, posée ensuite, d'être prise en compte. Poser le mot de
+passe sur une base déjà initialisée n'aurait rien fait, silencieusement.
+
+**L'image crée un schéma `auth` d'époque 2021** : cinq tables (`users`,
+`refresh_tokens`, `audit_log_entries`, `instances`, `schema_migrations`),
+**pas d'`auth.identities`**, et surtout **`schema_migrations` vide**. GoTrue
+v2.196.0 va donc croire qu'aucune migration n'a été appliquée et tenter de
+rejouer les 70 sur des tables existantes.
+
+**Vérifié dans les sources plutôt que supposé : ça passe.** La première
+migration (`00_init_auth_schema.up.sql`) est écrite en
+`CREATE TABLE IF NOT EXISTS`, avec le même DDL que celui que l'image vient de
+poser. Elle glissera sans rien casser, puis les migrations 2 à 70 ajouteront
+`identities`, le téléphone, la MFA, jusqu'à `20260625000000`. **L'état actuel
+de la base est exactement le point de départ attendu par GoTrue** — le critère
+1 est dérisqué avant même de l'avoir lancé.
+
+**Le rôle `supabase_auth_admin` est créé par l'image**, possède les tables
+`auth` et porte `search_path = "auth"`. C'est le rôle que la séquence du C3
+impose pour `GOTRUE_DB_DATABASE_URL` : rien à créer à la main.
+
+#### L'incident `VZ_PG_HOST`, et la méthode qui l'a réglé en deux minutes
+
+Le premier lancement a échoué en 12 secondes :
+`could not translate host name to address`. Cause : le champ *URL d'accès* de
+l'interface Jelastic est **tronqué à l'affichage**
+(`node216075-jepatisse.jcloud-ver-jpe.ik-s…`), et la valeur recopiée l'était
+aussi.
+
+Plutôt que de faire deviner, la résolution DNS a été **mesurée** :
+`node216075-jepatisse.jcloud-ver-jpe.ik-server.com` → `185.172.100.60`. Le nom
+existait, seule la valeur du secret était incomplète. À retenir pour les trois
+autres endpoints des paliers suivants : **copier l'URL d'accès depuis la liste
+des Endpoints, jamais depuis le champ du formulaire de création.**
+
+#### L'Endpoint TCP est temporaire, et son nom le dit
+
+Nommé **`pg-migration-temporaire`** exprès : le § 7.9 pose que le port 5432 n'a
+jamais à être exposé en production. Il ne l'est ici que le temps des opérations
+(restauration, répétition C1, chargement C3), et sa suppression fait partie de
+la définition de terminé du lot C.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -2485,11 +2582,14 @@ expire le 19/09**, seule échéance dure du lot C.
 dernière activité, purge en quatrième passe du cron des abonnements,
 annoncée au membre dans « Mes imports ».
 
-**La prochaine action est la phase 0 du C1 (§ 7.10)** : trois lectures SQL à
-prendre, la version de GoTrue à relever, le sous-domaine `auth.jepatisse.com`
-à réserver, les quatre secrets du lot 0-bis à recréer. Et une contrainte à ne
-pas manquer — **ce dump-là ne peut pas passer par un artefact GitHub** : il
-porte des adresses e-mail et des empreintes bcrypt, sur un dépôt public.
+**La phase 0 du C1 est close, et le palier 1 du lot C est franchi**
+(§ 7.10, § 7.11) : l'environnement `jepatisse` tourne à Genève, le DDL y est
+restauré à **951 objets sur 951**, les quatre épreuves de fonctionnement
+passent et les `GRANT` ont voyagé. **La prochaine action est le palier 2** :
+ajouter le nœud GoTrue v2.196.0, qui validera les critères 1, 2 et 4 du
+Go/No-Go. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
+pas passer par un artefact GitHub** : il porte des adresses e-mail et des
+empreintes bcrypt, sur un dépôt public.
 
 **Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
 data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
