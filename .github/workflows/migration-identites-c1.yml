@@ -1,0 +1,300 @@
+name: Migration — transfert des identités (lot C1)
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Transporte les 6 comptes et 7 identités de `auth` vers un GoTrue
+# auto-hébergé, puis prouve que rien n'a bougé en chemin
+# (docs/migration-infomaniak.md § 7.10).
+#
+# ─── Pourquoi ce workflow ne ressemble pas à celui du lot 0-bis ───
+#
+# Celui du lot 0-bis transportait du DDL : rien de personnel. Celui-ci
+# transporte des ADRESSES E-MAIL et des EMPREINTES BCRYPT de mots de passe, et
+# le dépôt est PUBLIC — sur un dépôt public, les artefacts de workflow se
+# téléchargent sans authentification et les journaux se lisent de même.
+#
+# D'où trois règles, tenues par la construction du fichier et pas seulement
+# par la bonne volonté :
+#   1. AUCUN `upload-artifact`. Le dump vit dans le système de fichiers
+#      éphémère du runner et meurt avec lui.
+#   2. AUCUNE ligne de données n'atteint la sortie standard. Les contrôles
+#      comparent des DÉCOMPTES et des EMPREINTES md5 — jamais une valeur.
+#      Même doctrine que object-storage-diagnostic-signature.yml, qui compare
+#      deux clés secrètes sans en afficher aucune.
+#   3. `-v VERBOSITY=terse` sur les psql qui écrivent : sans lui, une erreur
+#      de COPY réaffiche la LIGNE fautive, qui contient justement la donnée.
+#
+# ─── Ce qu'il ne transporte PAS, et pourquoi ───
+#
+# Ni `sessions`, ni `refresh_tokens`, ni `flow_state`, ni `mfa_amr_claims`,
+# ni `one_time_tokens` : tranché au § 7.10. À six comptes, une reconnexion
+# unique est indolore, là où des sessions pointant vers un serveur d'auth qui
+# ne les connaît pas sont une classe entière de pannes. Et de toute façon la
+# clé de signature change à la bascule : les jetons en circulation deviennent
+# invérifiables, migrer les sessions ne les sauverait pas.
+#
+# `schema_migrations` non plus : c'est GoTrue qui la tient. La stratégie
+# retenue est de le laisser créer son schéma au démarrage (image v2.196.0,
+# alignée sur `20260625000000`), puis de n'insérer que les deux tables.
+#
+# Secrets attendus (Settings > Secrets and variables > Actions) :
+#   SUPABASE_DB_URL   source — « Session pooler », port 5432
+#   VZ_PG_HOST        cible — hôte de l'« Access URL » de l'Endpoint Virtuozzo
+#   VZ_PG_PORT        cible — « Public Port » attribué par la plateforme
+#   VZ_PG_PASSWORD    cible — POSTGRES_PASSWORD du conteneur
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          « verifier » (défaut) ne compare que les deux côtés, sans rien
+          écrire — à jouer d'abord, et à rejouer après. « transferer »
+          remplace le contenu des deux tables sur la CIBLE.
+        type: choice
+        options: [verifier, transferer]
+        default: verifier
+      base:
+        description: Base cible
+        required: true
+        default: postgres
+      confirmer:
+        description: >-
+          Pour « transferer » uniquement : taper exactement REMPLACER. Le
+          transfert vide `auth.identities` puis `auth.users` sur la cible
+          avant de charger — un geste destructeur ne se déclenche pas par
+          inadvertance (même doctrine que la réconciliation du lot B4).
+        required: false
+        default: ''
+
+jobs:
+  identites:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGHOST: ${{ secrets.VZ_PG_HOST }}
+      PGPORT: ${{ secrets.VZ_PG_PORT }}
+      PGUSER: postgres
+      PGPASSWORD: ${{ secrets.VZ_PG_PASSWORD }}
+      PGDATABASE: ${{ inputs.base }}
+      PGCONNECT_TIMEOUT: '15'
+      PGOPTIONS: '-c client_min_messages=warning'
+    steps:
+      # `pg_dump` refuse de tirer d'un serveur plus récent que lui, et Supabase
+      # est en PostgreSQL 17 quand le runner embarque une version plus
+      # ancienne. Le lot 0-bis contournait par la CLI Supabase ; ici il faut
+      # `-t`, donc le vrai client.
+      - name: Installer le client PostgreSQL 17
+        run: |
+          set -euo pipefail
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      # Même garde qu'au lot 0-bis : la connexion directe ne résout qu'en IPv6
+      # et le pooler transactionnel coupe les sessions longues. Le `case` ne
+      # réaffiche jamais la chaîne — elle porte le mot de passe de production,
+      # et un FRAGMENT de secret n'est pas masqué par GitHub.
+      - name: Vérifier la forme de la chaîne de connexion
+        run: |
+          set -euo pipefail
+          case "$SUPABASE_DB_URL" in
+            *db.*.supabase.co*)
+              echo "ÉCHEC — SUPABASE_DB_URL porte la connexion DIRECTE (IPv6 seul)."
+              echo "Prendre l'onglet « Session pooler », port 5432."
+              exit 1 ;;
+            *:6543/*)
+              echo "ÉCHEC — SUPABASE_DB_URL porte le pooler TRANSACTIONNEL (6543)."
+              echo "Prendre l'onglet « Session pooler », port 5432."
+              exit 1 ;;
+          esac
+          echo "Forme de la chaîne conforme (Session pooler)."
+
+      - name: Joindre la cible
+        run: |
+          set -euo pipefail
+          psql -Atc 'select version()' > /dev/null
+          echo "Cible joignable."
+
+      # ─────────────────────────────────────────────────────────────
+      # Trois gardes AVANT d'écrire quoi que ce soit. Chacune correspond à un
+      # échec qu'on préfère lire ici plutôt que de le diagnostiquer après coup.
+      # ─────────────────────────────────────────────────────────────
+
+      # 1. GoTrue a-t-il bien créé son schéma, à la bonne version ? Un GoTrue
+      #    en retard produit des colonnes manquantes ; un GoTrue en avance
+      #    (≥ v2.197.0) ajoute SCIM et codes de secours, et fait diverger le
+      #    schéma de la source pendant la répétition — au seul moment où l'on
+      #    veut comparer deux états identiques (§ 7.10).
+      - name: Garde 1 — le niveau de migration doit être identique
+        run: |
+          set -euo pipefail
+          src=$(psql "$SUPABASE_DB_URL" -Atc \
+            "select coalesce(max(version), 'AUCUNE') from auth.schema_migrations")
+          dst=$(psql -Atc \
+            "select coalesce(max(version), 'AUCUNE') from auth.schema_migrations")
+          echo "source : $src"
+          echo "cible  : $dst"
+          if [ "$dst" = "AUCUNE" ]; then
+            echo "ÉCHEC — la cible n'a aucune migration : GoTrue n'a pas encore démarré."
+            exit 1
+          fi
+          if [ "$src" != "$dst" ]; then
+            echo "ÉCHEC — niveaux différents. Déployer supabase/auth v2.196.0 (§ 7.10),"
+            echo "        dont le jeu de migrations s'arrête exactement à celui de la source."
+            exit 1
+          fi
+          echo "Niveaux identiques."
+
+      # 2. Les colonnes doivent correspondre, sinon le COPY échoue au milieu —
+      #    ou pire, réussit en perdant une valeur. Comparaison par empreinte de
+      #    la liste (nom + type, triée) : elle dit s'il y a divergence sans
+      #    afficher le schéma.
+      - name: Garde 2 — les colonnes des deux tables doivent correspondre
+        run: |
+          set -euo pipefail
+          cat > colonnes.sql <<'SQL'
+          select md5(string_agg(table_name || '.' || column_name || ':' || data_type, ',' order by table_name, column_name))
+            from information_schema.columns
+           where table_schema = 'auth' and table_name in ('users', 'identities');
+          SQL
+          src=$(psql "$SUPABASE_DB_URL" -Atf colonnes.sql)
+          dst=$(psql -Atf colonnes.sql)
+          if [ "$src" != "$dst" ]; then
+            echo "ÉCHEC — les colonnes diffèrent entre la source et la cible."
+            echo "Empreintes : source ${src:0:8}… / cible ${dst:0:8}…"
+            echo "Comparer à la main dans un psql interactif : rien n'est affiché ici,"
+            echo "les noms de colonnes de auth n'ont pas à passer dans un journal public."
+            exit 1
+          fi
+          echo "Colonnes identiques (empreinte ${src:0:8}…)."
+
+      # 3. Le piège que le lot 0-bis a laissé derrière lui. `handle_new_user`
+      #    est un trigger `after insert on auth.users` qui crée la ligne
+      #    `public.profiles` correspondante (cf. CLAUDE.md, « Pseudo »). Il a
+      #    été restauré avec le DDL. Insérer 6 comptes le fera donc FEU 6 fois
+      #    et fabriquera 6 profils — inoffensif sur un environnement de
+      #    répétition dont `public` est vide, mais à traiter au C3, où les
+      #    vrais profils sont restaurés eux aussi : les deux se percuteraient.
+      #    On ne le désactive pas ici (ça demanderait la propriété de la
+      #    table) ; on le SIGNALE, pour que la surprise n'ait pas lieu.
+      - name: Garde 3 — signaler les triggers portés par auth.users
+        run: |
+          set -euo pipefail
+          echo "--- triggers non internes sur auth.users, côté cible ---"
+          psql -Atc "select t.tgname
+                       from pg_trigger t
+                       join pg_class c on c.oid = t.tgrelid
+                       join pg_namespace n on n.oid = c.relnamespace
+                      where n.nspname = 'auth' and c.relname = 'users'
+                        and not t.tgisinternal
+                      order by 1" || true
+          echo "--- (aucune ligne = aucun trigger) ---"
+          echo "Un trigger ici s'exécutera à chaque compte inséré. Au C3, l'ordre"
+          echo "entre ce chargement et celui de public.profiles devra être tranché."
+
+      # ─────────────────────────────────────────────────────────────
+      - name: Tirer les deux tables de la source
+        if: ${{ inputs.mode == 'transferer' }}
+        run: |
+          set -euo pipefail
+          # Deux fichiers séparés, et pas un seul : `auth.identities` porte une
+          # clé étrangère vers `auth.users`, et `pg_dump --data-only` n'ordonne
+          # pas ses tables selon les dépendances. Séparer, c'est garantir
+          # l'ordre de chargement sans dépendre de `--disable-triggers`, qui
+          # exigerait le superutilisateur.
+          umask 077
+          pg_dump "$SUPABASE_DB_URL" --data-only --no-owner --no-privileges \
+                  -t auth.users      -f users.sql
+          pg_dump "$SUPABASE_DB_URL" --data-only --no-owner --no-privileges \
+                  -t auth.identities -f identities.sql
+          # Une taille, jamais un contenu.
+          printf 'users.sql : %s octets — identities.sql : %s octets\n' \
+            "$(wc -c < users.sql)" "$(wc -c < identities.sql)"
+
+      - name: Charger sur la cible
+        if: ${{ inputs.mode == 'transferer' }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirmer }}" != "REMPLACER" ]; then
+            echo "ÉCHEC — le mode « transferer » vide les deux tables de la cible."
+            echo "Taper exactement REMPLACER dans le champ « confirmer » pour le vouloir."
+            exit 1
+          fi
+          # Une seule transaction : ou les deux tables arrivent, ou rien ne
+          # bouge. Un chargement à moitié fait laisserait des comptes sans
+          # identité — précisément l'état où GoTrue crée un DOUBLON à la
+          # première connexion Google (§ 7.10).
+          # `-v VERBOSITY=terse` n'est pas décoratif ICI : sans lui, une erreur
+          # de COPY réaffiche la LIGNE fautive — c'est-à-dire une adresse
+          # e-mail et une empreinte bcrypt, dans un journal public. C'est une
+          # variable psql (`-v`), pas une variable d'environnement.
+          psql -q -v ON_ERROR_STOP=1 -v VERBOSITY=terse --single-transaction <<'SQL'
+          truncate auth.identities, auth.users cascade;
+          SQL
+          psql -q -v ON_ERROR_STOP=1 -v VERBOSITY=terse --single-transaction -f users.sql
+          psql -q -v ON_ERROR_STOP=1 -v VERBOSITY=terse --single-transaction -f identities.sql
+          echo "Chargement terminé."
+
+      # ─────────────────────────────────────────────────────────────
+      # La preuve. Une requête jouée à l'identique des deux côtés — motif du
+      # lot 0-bis, transposé aux données : elle rend des décomptes et des
+      # empreintes, donc elle est publiable telle quelle dans un journal.
+      # ─────────────────────────────────────────────────────────────
+      - name: Comparer les deux côtés
+        run: |
+          set -euo pipefail
+          cat > preuve.sql <<'SQL'
+          select 'comptes:'    || count(*) from auth.users
+          union all
+          select 'identites:'  || count(*) from auth.identities
+          union all
+          -- Le critère 3 du Go/No-Go, isolé : le compte qui porte à la fois un
+          -- mot de passe et un compte Google. S'il n'y en a plus exactement un,
+          -- le lien a cassé — c'est-à-dire qu'un membre est sur le point de se
+          -- retrouver avec deux comptes et un carnet accroché au mauvais.
+          select 'comptes_multi_identites:' || count(*) from (
+            select user_id from auth.identities group by user_id having count(*) > 1
+          ) x
+          union all
+          select 'avec_mot_de_passe:' || count(*) filter (where encrypted_password is not null)
+            from auth.users
+          union all
+          -- Empreintes de fidélité. `provider_id` est LA colonne dont dépend
+          -- le rattachement (FindIdentityByIdAndProvider, § 7.10) : elle est
+          -- donc empreinte, jamais affichée.
+          select 'empreinte_identites:' || md5(string_agg(
+                   provider || '|' || provider_id || '|' || user_id::text, ','
+                   order by provider, provider_id))
+            from auth.identities
+          union all
+          select 'empreinte_comptes:' || md5(string_agg(
+                   id::text || '|' || coalesce(email, '') || '|' ||
+                   (encrypted_password is not null)::text, ',' order by id))
+            from auth.users
+          ;
+          SQL
+
+          psql "$SUPABASE_DB_URL" -Atf preuve.sql | sort > source.txt
+          psql                    -Atf preuve.sql | sort > cible.txt
+
+          echo "──────── source ────────"; cat source.txt
+          echo "──────── cible ─────────"; cat cible.txt
+          echo "────────────────────────"
+          if diff -q source.txt cible.txt > /dev/null; then
+            echo "IDENTIQUE — les 6 comptes et 7 identités sont arrivés intacts,"
+            echo "provider_id compris. Critère 3 du Go/No-Go : vert."
+          else
+            echo "DIVERGENCE :"
+            diff source.txt cible.txt || true
+            exit 1
+          fi
+
+      # Le runner meurt de toute façon, mais l'effacement explicite dit
+      # l'intention : ces fichiers ne doivent survivre à aucune étape.
+      - name: Effacer les fichiers de transfert
+        if: always()
+        run: rm -f users.sql identities.sql source.txt cible.txt colonnes.sql preuve.sql
