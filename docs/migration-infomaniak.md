@@ -1501,6 +1501,36 @@ libérés** — pas les 4,7 Mo, le reste vivant dans des imports récents qui
 vieilliront à leur tour. C'est le régime permanent qui compte, pas ce premier
 passage.
 
+#### Exigence produit posée au C2 : ce que le visiteur lit chez Google
+
+Au moment du « Se connecter avec Google », l'écran de consentement affiche
+aujourd'hui l'identifiant du projet Supabase — une chaîne opaque, qui n'évoque
+rien au visiteur et qui, sur un écran où on lui demande ses identifiants,
+**ressemble à ce qu'on lui apprend à fuir**. Ce n'est pas un détail cosmétique
+mais un signal de confiance au pire endroit du parcours.
+
+Ce n'est pas « le nom de la base » : c'est **l'hôte de l'URI de redirection
+OAuth**. Le parcours réel est
+`app → <hôte auth>/auth/v1/authorize → Google → <hôte auth>/auth/v1/callback →
+/auth/callback`, et c'est cet hôte, enregistré dans la console Google, que
+l'écran de consentement montre. Le `redirectTo` du code
+(`components/LoginForm.tsx`) porte déjà notre domaine — il n'intervient qu'à la
+toute fin, après Google.
+
+Deux leviers, à ne pas confondre :
+
+| Levier | Où | Quand |
+|---|---|---|
+| **Nom d'application** affiché (« Je pâtisse ! ») | Google Cloud Console → écran de consentement OAuth | **dès maintenant**, indépendant de la migration |
+| **Hôte affiché** dans l'URI de redirection | dépend de l'hébergeur de GoTrue | **au C2** |
+
+Donc : **exposer GoTrue auto-hébergé sur un sous-domaine de `jepatisse.com`**
+(`auth.jepatisse.com`, par exemple), jamais sur le nom d'hôte générique que
+Virtuozzo attribue à l'environnement — sinon on remplace une chaîne opaque par
+une autre. Cet hôte devient la valeur de `NEXT_PUBLIC_SUPABASE_URL` au C3, et
+c'est lui qu'il faut déclarer dans les URI de redirection autorisées côté
+Google **avant** la bascule, pas pendant.
+
 #### Ce que le C0 laisse ouvert
 
 - Plus rien qui bloque le C1.
@@ -1518,8 +1548,11 @@ passage.
 **Dépendances codées en dur à reprendre au C3**, repérées maintenant pour ne
 pas les découvrir en pleine bascule : `NEXT_PUBLIC_SUPABASE_URL` et la clé
 publique sont **inlinées au build** (reconstruction sans cache obligatoire),
-et l'URL Supabase est écrite en dur dans
-`.github/scripts/reconcilier_stockage.py` (lot B4).
+l'URL Supabase est écrite en dur dans
+`.github/scripts/reconcilier_stockage.py` (lot B4), et les **URI de
+redirection autorisées côté Google** doivent porter le nouvel hôte d'auth
+avant la bascule (voir l'exigence produit ci-dessus) — les déclarer pendant
+la fenêtre casserait la connexion Google le temps de la propagation.
 
 ---
 
