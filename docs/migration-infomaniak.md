@@ -1864,6 +1864,39 @@ d'erreur : il change le comportement de l'authentification, silencieusement.
 | Rate Limits | `GOTRUE_RATE_LIMIT_EMAIL_SENT` (défaut 30), `_VERIFY` (30), `_TOKEN_REFRESH` (150), `_OTP` (30), `_ANONYMOUS_USERS` (30) |
 | Attack Protection | `GOTRUE_SECURITY_CAPTCHA_ENABLED` / `_PROVIDER` / `_SECRET`, `GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED` (défaut **true**), `_REFRESH_TOKEN_REUSE_INTERVAL`, `GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION` |
 
+**Protocole de relevé — ce qui se capture, et ce qui ne se capture JAMAIS.**
+
+Les écrans à relever contiennent des secrets. Une capture d'écran finit dans
+un fil de conversation, parfois dans un dépôt, souvent dans un dossier
+« Téléchargements » qu'on oublie. La règle est donc binaire :
+
+| Écran | À capturer | À NE PAS capturer |
+|---|---|---|
+| Providers → Email | tout | — |
+| Providers → Google | *Client ID*, *Callback URL* | **le Client Secret** |
+| Sessions | tout | — |
+| URL Configuration | tout | — |
+| Emails → SMTP | hôte, port, utilisateur, expéditeur | **le mot de passe** |
+| Rate Limits | tout | — |
+| Attack Protection | l'état des interrupteurs | **le secret du captcha** |
+
+**Les trois secrets ne se relèvent pas depuis Supabase, ils se reprennent à la
+source** — ce qui vaut mieux, parce que le tableau de bord les masque de toute
+façon :
+
+- `GOTRUE_EXTERNAL_GOOGLE_SECRET` → Google Cloud Console, écran des
+  identifiants OAuth. C'est le même secret, il n'y a rien à régénérer.
+- `GOTRUE_SMTP_PASS` → identifiants SMTP **SES**. Ils ne sont téléchargeables
+  qu'à leur création : s'ils ont été perdus, il faut en générer une nouvelle
+  paire (l'ancienne reste valide entre-temps, la bascule est donc sans
+  coupure).
+- `GOTRUE_SECURITY_CAPTCHA_SECRET` → console du fournisseur de captcha, **si**
+  l'écran Attack Protection le montre activé.
+
+Ces trois valeurs vont **directement** du tableau de bord d'origine aux
+variables d'environnement de la cible. Elles ne transitent ni par une capture,
+ni par ce dépôt, ni par une conversation.
+
 **Trois valeurs par défaut qui piègent si on ne les regarde pas :**
 
 - `GOTRUE_SESSIONS_TIMEBOX` et `_INACTIVITY_TIMEOUT` sont des **pointeurs sans
