@@ -1919,21 +1919,62 @@ multiples, et **empreintes md5** de `provider|provider_id|user_id` et de
 `id|email|a_un_mot_de_passe`. Publiable telle quelle dans un journal, et
 suffisante pour dire que `provider_id` est arrivé intact.
 
-#### Le trigger `handle_new_user`, à trancher au C3
+#### Le trigger `handle_new_user` — la vraie question, et elle n'est pas celle qu'on croit
 
-En écrivant le workflow, un piège hérité du lot 0-bis est apparu.
 `handle_new_user` est un trigger `after insert on auth.users` qui crée la ligne
-`public.profiles` correspondante (cf. `CLAUDE.md`, « Pseudo ») — et il a été
-restauré avec le DDL. **Insérer les 6 comptes le fera donc feu 6 fois.**
+`public.profiles` correspondante (cf. `CLAUDE.md`, « Pseudo »). En écrivant le
+workflow, il a d'abord été traité comme un risque de **collision** : insérer
+les 6 comptes le ferait feu 6 fois, et les profils qu'il fabrique se
+percuteraient avec les vrais profils restaurés au C3.
 
-Sans conséquence au C1 : l'environnement de répétition a un `public` vide, six
-profils squelettes n'y gênent personne. **Au C3, si :** les vrais
-`public.profiles` sont restaurés eux aussi, et les deux se percuteraient — soit
-le trigger crée le profil avant la restauration et celle-ci bute sur la clé
-primaire, soit l'inverse. L'ordre des deux chargements, et le sort du trigger
-pendant l'opération, sont à trancher **avant** la bascule, pas pendant. Le
-workflow ne le désactive pas (ça demanderait la propriété de la table) : il le
-**signale**, pour que la surprise n'ait pas lieu.
+**Cette lecture repose sur une supposition, et elle est probablement fausse.**
+Le lot 0-bis a restauré le DDL via `supabase db dump` sans sélection de schéma
+— ce qui produit le schéma **`public`**. Le *corps* de la fonction
+`public.handle_new_user()` est donc bien passé (elle compte parmi les 252
+fonctions inventoriées), mais **le trigger, lui, est un objet du schéma
+`auth`** : rien ne dit qu'il figure dans ce dump, et l'inventaire du lot 0-bis
+ne pouvait pas s'en apercevoir puisqu'il ne compte que
+`nspname = 'public'` (`migration-restauration-repetition.yml`).
+
+Si c'est le cas, le risque s'inverse et devient plus sérieux qu'une collision :
+**le trigger ne traverse pas du tout**, personne ne le remarque — et la
+**première inscription après la bascule** crée un compte sans profil. Une
+panne qui ne se voit qu'au premier nouveau membre, c'est-à-dire au pire moment
+et sur la pire personne.
+
+**À mesurer sur la source avant le C2**, plutôt qu'à supposer dans un sens ou
+dans l'autre :
+
+```sql
+-- 1. Quels triggers auth.users porte-t-elle réellement, et vers quoi ?
+select t.tgname, n.nspname || '.' || p.proname as fonction
+  from pg_trigger t
+  join pg_class c on c.oid = t.tgrelid
+  join pg_namespace nc on nc.oid = c.relnamespace
+  join pg_proc p on p.oid = t.tgfoid
+  join pg_namespace n on n.oid = p.pronamespace
+ where nc.nspname = 'auth' and c.relname = 'users' and not t.tgisinternal;
+
+-- 2. Qui possède auth.users ? C'est ce rôle, et lui seul, qui pourra
+--    désactiver le trigger le temps d'un chargement — `postgres` n'étant PAS
+--    superutilisateur sur la cible (mesuré au lot 0-bis, § 7.4).
+select tableowner from pg_tables where schemaname = 'auth' and tablename = 'users';
+
+-- 3. `public.profiles` référence-t-elle `auth.users` ? C'est ce qui impose
+--    l'ordre de chargement au C3.
+select conname, confrelid::regclass as vers
+  from pg_constraint
+ where conrelid = 'public.profiles'::regclass and contype = 'f';
+```
+
+Les trois réponses tranchent la séquence du C3 : s'il faut recréer le trigger
+à la main sur la cible, s'il faut le désactiver le temps du chargement, et
+dans quel ordre `auth.users` et `public.profiles` doivent arriver.
+
+La garde 3 du workflow reste utile telle quelle : elle **liste** les triggers
+côté cible avant d'écrire, donc elle dira l'état réel au lieu de le supposer —
+mais elle ne remplace pas la lecture de la source ci-dessus, qui seule dit ce
+qui **devrait** s'y trouver.
 
 #### Les décisions de phase 0
 

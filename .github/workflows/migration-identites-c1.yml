@@ -172,15 +172,19 @@ jobs:
           fi
           echo "Colonnes identiques (empreinte ${src:0:8}…)."
 
-      # 3. Le piège que le lot 0-bis a laissé derrière lui. `handle_new_user`
-      #    est un trigger `after insert on auth.users` qui crée la ligne
-      #    `public.profiles` correspondante (cf. CLAUDE.md, « Pseudo »). Il a
-      #    été restauré avec le DDL. Insérer 6 comptes le fera donc FEU 6 fois
-      #    et fabriquera 6 profils — inoffensif sur un environnement de
-      #    répétition dont `public` est vide, mais à traiter au C3, où les
-      #    vrais profils sont restaurés eux aussi : les deux se percuteraient.
-      #    On ne le désactive pas ici (ça demanderait la propriété de la
-      #    table) ; on le SIGNALE, pour que la surprise n'ait pas lieu.
+      # 3. `handle_new_user` est un trigger `after insert on auth.users` qui
+      #    crée la ligne `public.profiles` correspondante (cf. CLAUDE.md,
+      #    « Pseudo »). Deux issues possibles, opposées, et on ne SAIT pas
+      #    encore laquelle (§ 7.10) : soit il a traversé au lot 0-bis et il
+      #    fera feu 6 fois ici, soit il n'a pas traversé — le dump du lot
+      #    0-bis portait le schéma `public`, or ce trigger est un objet du
+      #    schéma `auth` — et alors la première inscription après la bascule
+      #    créera un compte SANS profil.
+      #
+      #    Cette étape ne tranche pas : elle CONSTATE, avant d'écrire, ce que
+      #    la cible porte réellement. C'est la réponse qui décide de la
+      #    séquence du C3, et il vaut mieux la lire ici que la déduire d'un
+      #    profil manquant trois semaines plus tard.
       - name: Garde 3 — signaler les triggers portés par auth.users
         run: |
           set -euo pipefail
@@ -193,8 +197,10 @@ jobs:
                         and not t.tgisinternal
                       order by 1" || true
           echo "--- (aucune ligne = aucun trigger) ---"
-          echo "Un trigger ici s'exécutera à chaque compte inséré. Au C3, l'ordre"
-          echo "entre ce chargement et celui de public.profiles devra être tranché."
+          echo "AUCUNE ligne => le trigger n'a pas traversé : à recréer sur la cible,"
+          echo "                sinon la 1re inscription après bascule fera un compte sans profil."
+          echo "UNE ligne     => il fera feu à chaque compte inséré : au C3, l'ordre entre"
+          echo "                ce chargement et celui de public.profiles devra être tranché."
 
       # ─────────────────────────────────────────────────────────────
       - name: Tirer les deux tables de la source
