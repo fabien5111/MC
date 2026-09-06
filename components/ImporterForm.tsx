@@ -412,7 +412,7 @@ export function ImporterForm({
             onClick={submitText}
             disabled={busy || quotaEpuise}
             title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
@@ -489,7 +489,7 @@ export function ImporterForm({
             onClick={() => void submitPdf()}
             disabled={busy || !pdf || quotaEpuise}
             title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
@@ -570,7 +570,7 @@ export function ImporterForm({
             onClick={() => void submitPhotos()}
             disabled={busy || !photos.length || quotaEpuise}
             title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
