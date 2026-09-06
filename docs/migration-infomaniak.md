@@ -2271,9 +2271,13 @@ testable :
 | Palier | Contenu | Critères couverts | État |
 |---|---|---|---|
 | **1** | Postgres + restauration du DDL | — | **Fait le 06/09** |
-| **2** | + GoTrue v2.196.0 | 1, 2, 4 | à faire |
-| **3** | + Load Balancer, DNS, TLS | 3 | à faire |
+| **2** | + GoTrue v2.196.0 + transfert des identités | **1 ✅, 3 ✅** (donnée) | **Fait le 06/09** |
+| **3** | + Load Balancer, DNS, TLS, clés ES256 | 2, 3 (bout en bout), 4 | à faire |
 | **4** | + PostgREST | 5 | à faire |
+
+Le critère 2 glisse au palier 3 : éprouver une connexion e-mail + mot de passe
+demande d'atteindre l'API de GoTrue, donc l'exposition HTTPS que le palier 3
+apporte.
 
 #### Palier 1 — le résultat
 
@@ -2352,6 +2356,103 @@ Nommé **`pg-migration-temporaire`** exprès : le § 7.9 pose que le port 5432 n
 jamais à être exposé en production. Il ne l'est ici que le temps des opérations
 (restauration, répétition C1, chargement C3), et sa suppression fait partie de
 la définition de terminé du lot C.
+
+#### Palier 2 — GoTrue et les identités (06/09)
+
+**Deux critères de Go/No-Go tombent, dont le plus redouté.**
+
+##### Critère 1 — mesuré, et meilleur qu'espéré
+
+```
+ migrations |    derniere        identities
+------------+--------------      ------------
+         77 | 20260625000000      identities
+```
+
+**77, pas 70.** Le § 7.10 prévoyait 70 (le jeu de `v2.196.0`) et se demandait
+d'où venaient les 7 migrations de 2017-2018 en trop côté Supabase, mises sur le
+compte de l'ancienneté de la base. **L'explication est autre, et elle est
+mesurée** : c'est l'image `supabase/postgres` qui les sème dans
+`auth.schema_migrations` à l'initialisation. GoTrue a posé ses 70 par-dessus.
+
+Conséquence bien plus forte que le critère ne demandait : **le registre de
+migrations de la cible est identique à celui de la production, à la ligne
+près.** Et `auth.identities`, absente de ce que l'image pose, est née.
+
+##### Critère 3 — la donnée est intacte
+
+Le transfert (`migration-identites-c1.yml`, mode `transferer`) rend deux
+colonnes identiques :
+
+```
+──────── source ────────        ──────── cible ─────────
+avec_mot_de_passe:5             avec_mot_de_passe:5
+comptes:6                       comptes:6
+comptes_multi_identites:1       comptes_multi_identites:1
+empreinte_comptes:386877f1…     empreinte_comptes:386877f1…
+empreinte_identites:a77c3035…   empreinte_identites:a77c3035…
+identites:7                     identites:7
+```
+
+**Les empreintes md5 coïncident** — donc `provider_id` a traversé intact, et le
+compte à double identité a gardé ses deux lignes rattachées au même `user_id`.
+C'était le vrai risque du lot C.
+
+**Nuance à ne pas gommer** : le critère 3 est vert *sur la fidélité de la
+donnée*, pas encore de bout en bout. Un vrai « Se connecter avec Google » qui
+retombe sur le bon compte exige le HTTPS du palier 3.
+
+Les trois gardes du workflow ont toutes passé — niveaux de migration
+identiques, empreintes de colonnes identiques, triggers signalés.
+
+#### Quatre pièges de la plateforme, payés au prix fort
+
+Aucun n'était dans le dossier ; tous se reproduiront aux paliers 3 et 4.
+
+**1. `postgres` n'est pas superutilisateur, `supabase_admin` l'est.** Un
+`alter user supabase_auth_admin …` en tant que `postgres` échoue :
+*« is a reserved role, only superusers can modify it »*, et l'invite affiche
+`postgres=>` au lieu de `postgres=#`. L'image applique une migration nommée
+`demote-postgres.sql`. **Tout geste d'administration sur ce cluster passe par
+`supabase_admin`** — ce qui vaudra aussi pour la création du trigger
+`on_auth_user_created` en dernière étape du C3 (§ 7.10). Penser aussi à
+`-d postgres` : `psql -U supabase_admin` seul cherche une base du nom de
+l'utilisateur.
+
+**2. Le rôle `supabase_auth_admin` naît sans mot de passe.** L'image le crée en
+`CREATE USER … NOINHERIT CREATEROLE LOGIN NOREPLICATION`, sans secret. GoTrue ne
+peut donc pas s'y connecter tant qu'on ne lui en pose pas un.
+
+**3. Jelastic ne reprend pas l'`ENTRYPOINT` de l'image, et n'applique pas les
+variables à un simple redémarrage.** Deux symptômes distincts, une seule cause
+de fond — la plateforme gère les conteneurs Docker personnalisés autrement
+qu'un `docker run` :
+- le conteneur démarrait sur l'init de Jelastic (`jelinit`, `getty`, `sshd`)
+  **sans lancer GoTrue** ; le Dockerfile officiel se termine par `CMD ["auth"]`,
+  qu'il a fallu redéclarer dans **« CMD / Point d'entrée »** ;
+- les variables saisies restaient invisibles du conteneur après un
+  **redémarrage** : il faut **redéployer le conteneur** (recréation) pour
+  qu'elles soient injectées.
+
+À noter pour ne pas s'y perdre : `/proc/1/environ` reste vide de `GOTRUE_*`
+même quand tout fonctionne — Jelastic injecte les variables dans le processus
+applicatif, pas dans l'init. **Le seul juge fiable est le journal du nœud.**
+
+**4. Les chevrons des exemples finissent dans les valeurs.** L'URL de base a
+été posée avec `host=<10.101.32.133>` — chevrons compris — d'où un
+`hostname resolving error` parfaitement lisible. Même famille que les crochets
+`[YOUR-PASSWORD]` de la chaîne Supabase. **Écrire les gabarits sans
+délimiteurs.**
+
+#### La méthode qui a fait gagner le plus de temps
+
+Le journal du nœud restant vide tant que GoTrue ne démarrait pas, c'est le
+**lancement manuel du binaire** (`/usr/local/bin/auth` en Web SSH) qui a tout
+débloqué : il a affiché en une ligne
+`required key API_EXTERNAL_URL missing value`, prouvant du même coup que
+l'image était saine et que seul l'acheminement de la configuration était en
+cause. **Devant un conteneur muet, lancer le processus à la main plutôt que
+d'interroger la plateforme.**
 
 ---
 
@@ -2582,12 +2683,15 @@ expire le 19/09**, seule échéance dure du lot C.
 dernière activité, purge en quatrième passe du cron des abonnements,
 annoncée au membre dans « Mes imports ».
 
-**La phase 0 du C1 est close, et le palier 1 du lot C est franchi**
-(§ 7.10, § 7.11) : l'environnement `jepatisse` tourne à Genève, le DDL y est
-restauré à **951 objets sur 951**, les quatre épreuves de fonctionnement
-passent et les `GRANT` ont voyagé. **La prochaine action est le palier 2** :
-ajouter le nœud GoTrue v2.196.0, qui validera les critères 1, 2 et 4 du
-Go/No-Go. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
+**Les paliers 1 et 2 du lot C sont franchis** (§ 7.11) : l'environnement
+`jepatisse` tourne à Genève, le DDL y est restauré à **951 objets sur 951**,
+GoTrue v2.196.0 a hissé le schéma `auth` jusqu'à `20260625000000` (**77
+migrations, identique à la production**), et les **6 comptes / 7 identités**
+sont transférés avec des **empreintes md5 identiques des deux côtés** — donc
+`provider_id` intact, et le compte à double identité préservé. **La prochaine
+action est le palier 3** : Load Balancer, DNS `auth.jepatisse.com`, Let's
+Encrypt et clés ES256, qui débloqueront les critères 2, 4 et la vérification de
+bout en bout du 3. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
 pas passer par un artefact GitHub** : il porte des adresses e-mail et des
 empreintes bcrypt, sur un dépôt public.
 
