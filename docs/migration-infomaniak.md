@@ -1835,34 +1835,153 @@ ou `provider_id` faux, GoTrue passe au rattrapage par adresse e-mail
 utilisateur, ou en créer un nouveau, selon la configuration. Ça n'échoue pas,
 ça diverge.
 
-#### Inventaire des réglages à reporter (les valeurs restent à relever)
+#### Inventaire des réglages — mesuré le 06/09 sur les sept écrans
 
-Noms extraits des sources de `supabase/auth` v2.196.0 (préfixe `GOTRUE_`,
-`envconfig` en majuscules avec `_`). Un réglage oublié ne provoque pas
-d'erreur : il change le comportement de l'authentification, silencieusement.
+Les sept écrans de `Authentication` ont été capturés et lus un par un. Noms de
+variables extraits des sources de `supabase/auth` v2.196.0 (préfixe `GOTRUE_`).
+Un réglage oublié ne provoque pas d'erreur : il change le comportement de
+l'authentification, silencieusement.
+
+**Doctrine posée à cette occasion, à ne jamais rouvrir** : ce dépôt est
+**public**, et GitHub scanne activement les dépôts publics à la recherche du
+motif d'une clé d'accès AWS (`AKIA[0-9A-Z]{16}`) — avec un partenariat AWS qui
+peut **révoquer automatiquement** la clé dès détection. Committer un
+identifiant SMTP SES dans ce fichier casserait donc l'envoi d'e-mail en
+production, sans lien avec la migration. **Aucune valeur de ce motif ne doit
+jamais apparaître dans ce dossier ni dans le dépôt** — même l'identifiant seul,
+sans le secret.
 
 **Socle — sans équivalent dans le tableau de bord, à poser au C2 :**
 
 | Variable | Contenu |
 |---|---|
 | `API_EXTERNAL_URL` | **obligatoire** — `https://auth.jepatisse.com` (§ exigence produit du C2) |
-| `GOTRUE_DB_DATABASE_URL` | **obligatoire** — connexion PostgreSQL |
+| `GOTRUE_DB_DATABASE_URL` | **obligatoire** — connexion PostgreSQL, en `supabase_auth_admin` (§ séquence du C3) |
 | `GOTRUE_DB_NAMESPACE` | schéma, défaut `auth` — à laisser tel quel |
-| `GOTRUE_SITE_URL` | **obligatoire** — `https://www.jepatisse.com` |
+| `GOTRUE_SITE_URL` | **obligatoire** — voir ci-dessous, ce n'est pas ce qui était supposé |
 | `GOTRUE_JWT_SECRET` / `_KEY_ID` / `_KEYS` | cf. la procédure ES256 ci-dessus |
 | `GOTRUE_API_PORT` | défaut `8081` |
 
-**À relever écran par écran dans Supabase → Authentication :**
+**Correction : le Site URL réel n'est pas celui qui avait été supposé.** Une
+version antérieure de cette section portait `https://www.jepatisse.com` — une
+projection vers le domaine canonique visé, pas une lecture. La mesure donne
+**`https://dev.jepatisse.com/`**, cohérent avec `CLAUDE.md` : `www` sert encore
+`COMING_SOON`, `dev` est la vraie URL de production pour les testeurs. Aucune
+entrée `www.jepatisse.com` dans les Redirect URLs ne le contredit.
 
-| Écran | Variables correspondantes |
-|---|---|
-| Providers → Email | `GOTRUE_MAILER_AUTOCONFIRM`, `GOTRUE_DISABLE_SIGNUP`, `GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED`, `GOTRUE_MAILER_OTP_EXP`, `GOTRUE_PASSWORD_MIN_LENGTH`, `GOTRUE_PASSWORD_REQUIRED_CHARACTERS`, `GOTRUE_PASSWORD_HIBP_ENABLED` |
-| Providers → Google | `GOTRUE_EXTERNAL_GOOGLE_ENABLED`, `_CLIENT_ID`, `_SECRET`, `_REDIRECT_URI` |
-| Sessions | `GOTRUE_SESSIONS_TIMEBOX`, `GOTRUE_SESSIONS_INACTIVITY_TIMEOUT`, `GOTRUE_SESSIONS_SINGLE_PER_USER`, `GOTRUE_JWT_EXP` |
-| URL Configuration | `GOTRUE_SITE_URL`, `GOTRUE_URI_ALLOW_LIST` |
-| Emails → SMTP | `GOTRUE_SMTP_HOST`, `_PORT`, `_USER`, `_PASS`, `_ADMIN_EMAIL`, `_SENDER_NAME`, `_MAX_FREQUENCY` |
-| Rate Limits | `GOTRUE_RATE_LIMIT_EMAIL_SENT` (défaut 30), `_VERIFY` (30), `_TOKEN_REFRESH` (150), `_OTP` (30), `_ANONYMOUS_USERS` (30) |
-| Attack Protection | `GOTRUE_SECURITY_CAPTCHA_ENABLED` / `_PROVIDER` / `_SECRET`, `GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED` (défaut **true**), `_REFRESH_TOKEN_REUSE_INTERVAL`, `GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION` |
+**Point laissé ouvert, à trancher avant le C3, pas avant** : `www.jepatisse.com`
+sera-t-il ouvert au public au moment de la bascule, ou `dev.jepatisse.com`
+restera-t-il l'unique porte d'entrée ? La réponse décide de la valeur réelle de
+`GOTRUE_SITE_URL` et `GOTRUE_URI_ALLOW_LIST` sur la cible.
+
+**Providers → Email (+ User Signups, en haut de la même page) :**
+
+| Réglage | Valeur mesurée | Variable |
+|---|---|---|
+| Allow new users to sign up | activé | `GOTRUE_DISABLE_SIGNUP=false` |
+| Allow manual linking | désactivé | `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=false` |
+| Allow anonymous sign-ins | désactivé | *(pas de connexion anonyme en usage)* |
+| Confirm email | activé | `GOTRUE_MAILER_AUTOCONFIRM=false` |
+| Secure email change | activé | `GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED=true` |
+| Secure password change | désactivé | `GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION=false` |
+| Require current password when updating | désactivé | `GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD=false` |
+| Prevent use of leaked passwords | désactivé (Pro requis) | `GOTRUE_PASSWORD_HIBP_ENABLED=false` |
+| Minimum password length | 6 | `GOTRUE_PASSWORD_MIN_LENGTH=6` |
+| Password requirements | aucun | `GOTRUE_PASSWORD_REQUIRED_CHARACTERS=` (vide) |
+| Email OTP expiration | 3600 s | `GOTRUE_MAILER_OTP_EXP=3600` |
+
+**Correction** : `UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION` et son voisin
+vivent sur l'écran **Email**, pas sous *Attack Protection* comme la première
+passe de cette section le classait — corrigé ci-dessus et dans le tableau des
+écrans à relever plus bas.
+
+**Providers → Google :**
+
+| Réglage | Valeur mesurée | Variable |
+|---|---|---|
+| Enable Sign in with Google | activé | `GOTRUE_EXTERNAL_GOOGLE_ENABLED=true` |
+| Client IDs | `183044094481-…apps.googleusercontent.com` | `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` (non secret — Google le conçoit pour apparaître côté client) |
+| Allow users without an email | désactivé | `GOTRUE_EXTERNAL_GOOGLE_EMAIL_OPTIONAL=false` |
+| Callback URL actuelle | `https://acbabqolghhyxksouaye.supabase.co/auth/v1/callback` | — |
+
+**À faire au C2, avant la fenêtre du C3 (§ exigence produit du C2)** : ajouter
+`https://auth.jepatisse.com/auth/v1/callback` aux URI de redirection
+autorisées dans Google Cloud Console, et poser cette valeur dans
+`GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI`. L'ancienne reste utile jusqu'à la
+bascule effective. Le Client Secret se reprend directement depuis Google Cloud
+Console — jamais capturé (protocole ci-dessous).
+
+**Sessions :**
+
+| Réglage | Valeur mesurée | Variable |
+|---|---|---|
+| Enforce single session per user | désactivé | `GOTRUE_SESSIONS_SINGLE_PER_USER=false` |
+| Time-box user sessions | 0 (never) | `GOTRUE_SESSIONS_TIMEBOX` — voir correction ci-dessous |
+| Inactivity timeout | 0 (never) | `GOTRUE_SESSIONS_INACTIVITY_TIMEOUT` — idem |
+| Access token expiry time | 900 s | `GOTRUE_JWT_EXP=900` |
+| Detect and revoke compromised refresh tokens | activé | `GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED=true` |
+| Refresh token reuse interval | 10 s | `GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL=10` |
+
+**Correction au piège annoncé plus haut dans cette section.** Il avait été
+présenté comme un risque de régression introduit par la migration. La capture
+dit autre chose : le panneau porte la mention *« Configuring user sessions is
+only available on the Pro Plan »* — ces deux réglages sont **déjà** figés à
+« never » aujourd'hui, non par choix mais parce que le plan actuel ne permet
+pas de les régler. **Ne rien renseigner sur la cible reproduit exactement le
+comportement actuel** ; ce n'est plus un piège à éviter, c'est une parité à
+préserver. Amélioration possible, hors sujet de la migration : régler un vrai
+TTL devient possible une fois auto-hébergé, ce que le plan Supabase actuel
+interdit.
+
+**Emails → SMTP :**
+
+| Réglage | Valeur mesurée | Variable |
+|---|---|---|
+| Sender email address | `noreply@jepatisse.com` | `GOTRUE_SMTP_ADMIN_EMAIL` |
+| Sender name | `Fabien - Je pâtisse !` | `GOTRUE_SMTP_SENDER_NAME` |
+| Host | `email-smtp.eu-west-3.amazonaws.com` | `GOTRUE_SMTP_HOST` |
+| Port | 465 | `GOTRUE_SMTP_PORT` |
+| Minimum interval per user | 60 s | `GOTRUE_SMTP_MAX_FREQUENCY=60` |
+| Username | *(identifiant AWS — jamais dans ce dépôt, cf. doctrine ci-dessus)* | `GOTRUE_SMTP_USER` |
+| Password | masqué, **irrécupérable** une fois enregistré | `GOTRUE_SMTP_PASS` |
+
+Le panneau Supabase l'écrit lui-même : *« this password cannot be viewed once
+saved »* — confirmation directe du protocole déjà posé. **À faire au C2** :
+générer une **nouvelle** paire d'identifiants SMTP dans la console SES (région
+`eu-west-3`), pour le même expéditeur. L'ancienne paire reste valide tant
+qu'elle n'est pas révoquée : aucune coupure du service actuel pendant la
+préparation.
+
+**Rate Limits** — tous les chiffres mesurés coïncident avec les valeurs par
+défaut de GoTrue :
+
+| Réglage | Valeur | Variable | Défaut |
+|---|---|---|---|
+| Sending emails | 30/h | `GOTRUE_RATE_LIMIT_EMAIL_SENT` | 30 |
+| Sending SMS | 30/h | `GOTRUE_RATE_LIMIT_SMS_SENT` | 30 |
+| Token refreshes | 150/5min | `GOTRUE_RATE_LIMIT_TOKEN_REFRESH` | 150 |
+| Token verifications | 30/5min | `GOTRUE_RATE_LIMIT_VERIFY` | 30 |
+| Anonymous users | 30/h | `GOTRUE_RATE_LIMIT_ANONYMOUS_USERS` | 30 |
+| Web3 sign-ups/sign-ins | 30/5min | `GOTRUE_RATE_LIMIT_WEB3` | 30 |
+| IP Address Forwarding | désactivé | `GOTRUE_SECURITY_SB_FORWARDED_FOR_ENABLED=false` | false |
+
+Une ligne (« Rate limit for sign-ups and sign-ins », 30/5min) n'a pas de
+correspondance certaine dans les champs relevés dans le code — sa valeur
+coïncide de toute façon avec le défaut probable, donc sans conséquence
+pratique ; le nom exact reste à confirmer au C2. **Conséquence générale** :
+aucune de ces variables n'est strictement nécessaire sur la cible, tout
+coïncidant avec les défauts — les documenter explicitement évite qu'un défaut
+qui change de valeur dans une future version de GoTrue rompe silencieusement
+la parité.
+
+**Attack Protection :**
+
+| Réglage | Valeur mesurée | Variable |
+|---|---|---|
+| Enable Captcha protection | désactivé | `GOTRUE_SECURITY_CAPTCHA_ENABLED=false` |
+| Prevent use of leaked passwords | désactivé | `GOTRUE_PASSWORD_HIBP_ENABLED=false` (doublon de l'écran Email) |
+
+Captcha désactivé : aucun secret de ce type à gérer, une inconnue de moins.
 
 **Protocole de relevé — ce qui se capture, et ce qui ne se capture JAMAIS.**
 
@@ -1872,45 +1991,28 @@ un fil de conversation, parfois dans un dépôt, souvent dans un dossier
 
 | Écran | À capturer | À NE PAS capturer |
 |---|---|---|
-| Providers → Email | tout | — |
+| Providers → Email (+ User Signups) | tout | — |
 | Providers → Google | *Client ID*, *Callback URL* | **le Client Secret** |
 | Sessions | tout | — |
 | URL Configuration | tout | — |
-| Emails → SMTP | hôte, port, utilisateur, expéditeur | **le mot de passe** |
+| Emails → SMTP | hôte, port, expéditeur | **le nom d'utilisateur ET le mot de passe** (§ doctrine AWS ci-dessus — l'identifiant seul suffit à déclencher un scan) |
 | Rate Limits | tout | — |
-| Attack Protection | l'état des interrupteurs | **le secret du captcha** |
+| Attack Protection | l'état des interrupteurs | **le secret du captcha**, s'il est activé |
 
-**Les trois secrets ne se relèvent pas depuis Supabase, ils se reprennent à la
+**Les secrets ne se relèvent pas depuis Supabase, ils se reprennent à la
 source** — ce qui vaut mieux, parce que le tableau de bord les masque de toute
 façon :
 
 - `GOTRUE_EXTERNAL_GOOGLE_SECRET` → Google Cloud Console, écran des
   identifiants OAuth. C'est le même secret, il n'y a rien à régénérer.
-- `GOTRUE_SMTP_PASS` → identifiants SMTP **SES**. Ils ne sont téléchargeables
-  qu'à leur création : s'ils ont été perdus, il faut en générer une nouvelle
-  paire (l'ancienne reste valide entre-temps, la bascule est donc sans
-  coupure).
-- `GOTRUE_SECURITY_CAPTCHA_SECRET` → console du fournisseur de captcha, **si**
-  l'écran Attack Protection le montre activé.
+- `GOTRUE_SMTP_USER` / `_PASS` → nouvelle paire d'identifiants SES (§ ci-dessus,
+  l'ancienne est irrécupérable et l'identifiant ne doit pas transiter par ce
+  dépôt même seul).
+- `GOTRUE_SECURITY_CAPTCHA_SECRET` → sans objet, captcha désactivé.
 
-Ces trois valeurs vont **directement** du tableau de bord d'origine aux
-variables d'environnement de la cible. Elles ne transitent ni par une capture,
-ni par ce dépôt, ni par une conversation.
-
-**Trois valeurs par défaut qui piègent si on ne les regarde pas :**
-
-- `GOTRUE_SESSIONS_TIMEBOX` et `_INACTIVITY_TIMEOUT` sont des **pointeurs sans
-  valeur par défaut** : non renseignés, les sessions **n'expirent jamais**. Le
-  TTL réglé côté Supabase — celui dont dépend la fenêtre de révocation
-  documentée dans `CLAUDE.md` — doit donc être reporté explicitement, sinon la
-  contrepartie assumée de `getClaims()` passe de « quelques heures » à
-  « jamais ».
-- `GOTRUE_MAILER_AUTOCONFIRM` à `true` **supprime la confirmation d'adresse à
-  l'inscription**. C'est un `false` par défaut, donc l'oubli va dans le bon
-  sens — mais un report machinal depuis un `.env` d'exemple, non.
-- `GOTRUE_SMTP_*` doit viser **SES**, déjà en production pour les
-  notifications d'abonnement et le module contact (`lib/email.ts`). Pas de
-  second fournisseur à introduire ici.
+Ces valeurs vont **directement** du tableau de bord ou de la console d'origine
+aux variables d'environnement de la cible. Elles ne transitent ni par une
+capture, ni par ce dépôt, ni par une conversation.
 
 #### Le workflow du transfert — `migration-identites-c1.yml`
 
