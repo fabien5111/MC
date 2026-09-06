@@ -1879,6 +1879,62 @@ d'erreur : il change le comportement de l'authentification, silencieusement.
   notifications d'abonnement et le module contact (`lib/email.ts`). Pas de
   second fournisseur à introduire ici.
 
+#### Le workflow du transfert — `migration-identites-c1.yml`
+
+Écrit en phase 0, pour ne pas l'écrire sous la pression de l'essai. Deux
+modes : `verifier` (aucune écriture, à jouer avant **et** après) et
+`transferer`, qui exige le mot exact `REMPLACER` — même doctrine que la
+réconciliation du lot B4, un geste destructeur ne se déclenche pas par
+inadvertance.
+
+**Le blocage du dépôt public est tenu par la construction du fichier**, pas
+seulement par l'intention : aucun `upload-artifact`, aucune ligne de données
+sur la sortie standard, et `-v VERBOSITY=terse` sur les `psql` qui écrivent —
+sans lui, une erreur de `COPY` réaffiche la **ligne fautive**, c'est-à-dire une
+adresse e-mail et une empreinte bcrypt.
+
+**Trois gardes avant la moindre écriture**, chacune adossée à un échec qu'on
+préfère lire là plutôt que diagnostiquer après :
+
+1. **Niveaux de migration identiques** des deux côtés. C'est le contrôle
+   automatique de l'alignement de version : un GoTrue en retard produit des
+   colonnes manquantes, un ≥ v2.197.0 ajoute SCIM et fait diverger le schéma
+   pendant la répétition.
+2. **Empreinte des colonnes** des deux tables, comparée sans être affichée. Un
+   `COPY` sur des colonnes divergentes échoue au milieu — ou réussit en
+   perdant une valeur.
+3. **Signalement des triggers portés par `auth.users`** — voir ci-dessous.
+
+Le chargement se fait en **deux fichiers séparés, users puis identities** :
+`auth.identities` porte une clé étrangère vers `auth.users` et
+`pg_dump --data-only` n'ordonne pas ses tables selon les dépendances. Séparer
+garantit l'ordre sans recourir à `--disable-triggers`, qui exigerait le
+superutilisateur. Chaque fichier est chargé en une transaction : un chargement
+à moitié fait laisserait des comptes **sans identité** — exactement l'état où
+GoTrue fabrique un doublon à la première connexion Google.
+
+La preuve finale est une requête jouée à l'identique des deux côtés (motif du
+lot 0-bis, transposé aux données) : décomptes, nombre de comptes à identités
+multiples, et **empreintes md5** de `provider|provider_id|user_id` et de
+`id|email|a_un_mot_de_passe`. Publiable telle quelle dans un journal, et
+suffisante pour dire que `provider_id` est arrivé intact.
+
+#### Le trigger `handle_new_user`, à trancher au C3
+
+En écrivant le workflow, un piège hérité du lot 0-bis est apparu.
+`handle_new_user` est un trigger `after insert on auth.users` qui crée la ligne
+`public.profiles` correspondante (cf. `CLAUDE.md`, « Pseudo ») — et il a été
+restauré avec le DDL. **Insérer les 6 comptes le fera donc feu 6 fois.**
+
+Sans conséquence au C1 : l'environnement de répétition a un `public` vide, six
+profils squelettes n'y gênent personne. **Au C3, si :** les vrais
+`public.profiles` sont restaurés eux aussi, et les deux se percuteraient — soit
+le trigger crée le profil avant la restauration et celle-ci bute sur la clé
+primaire, soit l'inverse. L'ordre des deux chargements, et le sort du trigger
+pendant l'opération, sont à trancher **avant** la bascule, pas pendant. Le
+workflow ne le désactive pas (ça demanderait la propriété de la table) : il le
+**signale**, pour que la surprise n'ait pas lieu.
+
 #### Les décisions de phase 0
 
 - **`auth.sessions` (15) et `auth.refresh_tokens` (50) ne sont pas migrées.**
