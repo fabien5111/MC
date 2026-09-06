@@ -462,7 +462,7 @@ export function BatchWidget({
                 </label>
               )}
               {peutAjusterIA && (
-                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed text-on-surface-variant' : ' cursor-pointer'}`} title={iaTooltip}>
+                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
                   <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} disabled={iaEpuise} />
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
@@ -520,7 +520,7 @@ export function BatchWidget({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
                 </label>
-                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed text-on-surface-variant' : ' cursor-pointer'}`} title={iaTooltip}>
+                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
                   <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} disabled={iaEpuise} />
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
