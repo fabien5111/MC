@@ -1984,6 +1984,7 @@ export type Database = {
           source_type: string
           source_url: string | null
           statut: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -2000,6 +2001,7 @@ export type Database = {
           source_type: string
           source_url?: string | null
           statut?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -2016,6 +2018,7 @@ export type Database = {
           source_type?: string
           source_url?: string | null
           statut?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
