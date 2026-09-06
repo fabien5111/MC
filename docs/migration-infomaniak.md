@@ -1808,6 +1808,77 @@ celle que produit `decodePublicKey` de `supabase/auth` (`use` posé à `sig`,
 que celui qu'on déploiera — ce qui recoupe le constat du schéma `auth` amont
 pur ci-dessus.
 
+#### Ce qui protège réellement le compte à double identité
+
+Le critère 3 se formulait comme une inquiétude ; le code le rend vérifiable.
+`GetAccountLinkingResult` (`internal/models/linking.go`) commence par :
+
+```go
+if identity, terr := FindIdentityByIdAndProvider(tx, sub, providerName); terr == nil {
+    // account exists  →  Decision: AccountExists, User: <l'utilisateur de cette identité>
+```
+
+**La toute première recherche porte sur `(provider, provider_id)`.** Si la ligne
+`auth.identities` existe avec le bon `provider_id` — le `sub` que Google
+renvoie — GoTrue rend l'utilisateur rattaché, et **toute la configuration de
+liaison de comptes devient hors sujet** : elle ne gouverne que le cas où
+l'identité est *absente*.
+
+Conséquence pratique, et elle simplifie le C1 : **ce qui protège le compte à
+double identité, c'est la fidélité de la colonne `provider_id`, pas un
+réglage.** Il n'y a pas de `GOTRUE_*` à trouver pour ça — il y a une colonne à
+migrer sans l'abîmer.
+
+Et l'inverse explique pourquoi la panne serait silencieuse : identité absente
+ou `provider_id` faux, GoTrue passe au rattrapage par adresse e-mail
+(`IsDuplicatedEmail` dans le domaine de liaison) — qui peut retrouver le bon
+utilisateur, ou en créer un nouveau, selon la configuration. Ça n'échoue pas,
+ça diverge.
+
+#### Inventaire des réglages à reporter (les valeurs restent à relever)
+
+Noms extraits des sources de `supabase/auth` v2.196.0 (préfixe `GOTRUE_`,
+`envconfig` en majuscules avec `_`). Un réglage oublié ne provoque pas
+d'erreur : il change le comportement de l'authentification, silencieusement.
+
+**Socle — sans équivalent dans le tableau de bord, à poser au C2 :**
+
+| Variable | Contenu |
+|---|---|
+| `API_EXTERNAL_URL` | **obligatoire** — `https://auth.jepatisse.com` (§ exigence produit du C2) |
+| `GOTRUE_DB_DATABASE_URL` | **obligatoire** — connexion PostgreSQL |
+| `GOTRUE_DB_NAMESPACE` | schéma, défaut `auth` — à laisser tel quel |
+| `GOTRUE_SITE_URL` | **obligatoire** — `https://www.jepatisse.com` |
+| `GOTRUE_JWT_SECRET` / `_KEY_ID` / `_KEYS` | cf. la procédure ES256 ci-dessus |
+| `GOTRUE_API_PORT` | défaut `8081` |
+
+**À relever écran par écran dans Supabase → Authentication :**
+
+| Écran | Variables correspondantes |
+|---|---|
+| Providers → Email | `GOTRUE_MAILER_AUTOCONFIRM`, `GOTRUE_DISABLE_SIGNUP`, `GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED`, `GOTRUE_MAILER_OTP_EXP`, `GOTRUE_PASSWORD_MIN_LENGTH`, `GOTRUE_PASSWORD_REQUIRED_CHARACTERS`, `GOTRUE_PASSWORD_HIBP_ENABLED` |
+| Providers → Google | `GOTRUE_EXTERNAL_GOOGLE_ENABLED`, `_CLIENT_ID`, `_SECRET`, `_REDIRECT_URI` |
+| Sessions | `GOTRUE_SESSIONS_TIMEBOX`, `GOTRUE_SESSIONS_INACTIVITY_TIMEOUT`, `GOTRUE_SESSIONS_SINGLE_PER_USER`, `GOTRUE_JWT_EXP` |
+| URL Configuration | `GOTRUE_SITE_URL`, `GOTRUE_URI_ALLOW_LIST` |
+| Emails → SMTP | `GOTRUE_SMTP_HOST`, `_PORT`, `_USER`, `_PASS`, `_ADMIN_EMAIL`, `_SENDER_NAME`, `_MAX_FREQUENCY` |
+| Rate Limits | `GOTRUE_RATE_LIMIT_EMAIL_SENT` (défaut 30), `_VERIFY` (30), `_TOKEN_REFRESH` (150), `_OTP` (30), `_ANONYMOUS_USERS` (30) |
+| Attack Protection | `GOTRUE_SECURITY_CAPTCHA_ENABLED` / `_PROVIDER` / `_SECRET`, `GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED` (défaut **true**), `_REFRESH_TOKEN_REUSE_INTERVAL`, `GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION` |
+
+**Trois valeurs par défaut qui piègent si on ne les regarde pas :**
+
+- `GOTRUE_SESSIONS_TIMEBOX` et `_INACTIVITY_TIMEOUT` sont des **pointeurs sans
+  valeur par défaut** : non renseignés, les sessions **n'expirent jamais**. Le
+  TTL réglé côté Supabase — celui dont dépend la fenêtre de révocation
+  documentée dans `CLAUDE.md` — doit donc être reporté explicitement, sinon la
+  contrepartie assumée de `getClaims()` passe de « quelques heures » à
+  « jamais ».
+- `GOTRUE_MAILER_AUTOCONFIRM` à `true` **supprime la confirmation d'adresse à
+  l'inscription**. C'est un `false` par défaut, donc l'oubli va dans le bon
+  sens — mais un report machinal depuis un `.env` d'exemple, non.
+- `GOTRUE_SMTP_*` doit viser **SES**, déjà en production pour les
+  notifications d'abonnement et le module contact (`lib/email.ts`). Pas de
+  second fournisseur à introduire ici.
+
 #### Les décisions de phase 0
 
 - **`auth.sessions` (15) et `auth.refresh_tokens` (50) ne sont pas migrées.**
