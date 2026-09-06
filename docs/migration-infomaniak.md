@@ -2232,9 +2232,29 @@ Deux corollaires pour le C2 :
   l'exigence produit du C2 (un domaine à nous sur l'écran Google).
 - **La paire ES256** (`GOTRUE_JWT_KEYS`) se génère hors ligne, et le jeu de
   clés doit contenir **aussi** le secret symétrique actuel.
-- **Les quatre secrets GitHub du lot 0-bis sont à recréer** (§ 10.3) — dont le
-  mot de passe de la base Supabase, qui n'a toujours pas été renouvelé depuis.
-  L'occasion de le faire est ici : le recréer d'abord, l'enregistrer ensuite.
+- **Sur les quatre secrets GitHub du lot 0-bis (§ 10.3), un seul est créable
+  en phase 0.** Correction d'une consigne trop large, du même travers que celle
+  sur le DNS ci-dessus : `VZ_PG_HOST`, `VZ_PG_PORT` et `VZ_PG_PASSWORD`
+  décrivent l'environnement Virtuozzo, supprimé à la fin du lot 0-bis et qui ne
+  réexistera qu'au C2. Ils n'ont aucune valeur à recevoir avant.
+
+  **Seul `SUPABASE_DB_URL` est actionnable**, et c'est celui qui porte la
+  rotation du mot de passe restée en suspens. Dans cet ordre : renouveler le
+  mot de passe d'abord (Supabase → Project Settings → Database), composer la
+  chaîne ensuite — le secret ne contient ainsi jamais un mot de passe ayant
+  déjà transité par un secret précédent.
+
+  **La rotation est sans risque pour le site** : vérifié le 07/09, aucune
+  chaîne `postgres://` n'existe dans le code applicatif (cf. § 7.9, point 2 —
+  l'application ne parle à la base que par HTTPS). Seuls `psql`/`pg_dump` s'en
+  servent, c'est-à-dire l'outillage de migration lui-même. Reste à vérifier
+  hors dépôt : un client SQL de bureau qui porterait ce mot de passe.
+
+  **La chaîne doit être celle du « Session pooler », port 5432** — la connexion
+  directe ne résout qu'en IPv6 (les runners GitHub sont en IPv4) et le pooler
+  transactionnel (6543) coupe les sessions longues et fait échouer `pg_dump`.
+  Les workflows portent une garde qui refuse les deux mauvaises formes avant de
+  tirer quoi que ce soit.
 
 ---
 
