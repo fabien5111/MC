@@ -1942,8 +1942,17 @@ Si c'est le cas, le risque s'inverse et devient plus sérieux qu'une collision :
 panne qui ne se voit qu'au premier nouveau membre, c'est-à-dire au pire moment
 et sur la pire personne.
 
-**À mesurer sur la source avant le C2**, plutôt qu'à supposer dans un sens ou
-dans l'autre :
+**Mesuré le 06/09 sur la source** (les trois requêtes ci-dessous) :
+
+| Question | Réponse |
+|---|---|
+| Trigger sur `auth.users` | **`on_auth_user_created` → `public.handle_new_user`** |
+| Propriétaire de `auth.users` | **`supabase_auth_admin`** |
+| FK de `public.profiles` | **`profiles_id_fkey` → `auth.users`** |
+
+Les trois se combinent en une seule contrainte, et elle décide de la séquence
+du C3 — voir la sous-section suivante. Les requêtes, conservées pour être
+rejouables :
 
 ```sql
 -- 1. Quels triggers auth.users porte-t-elle réellement, et vers quoi ?
@@ -1975,6 +1984,53 @@ La garde 3 du workflow reste utile telle quelle : elle **liste** les triggers
 côté cible avant d'écrire, donc elle dira l'état réel au lieu de le supposer —
 mais elle ne remplace pas la lecture de la source ci-dessus, qui seule dit ce
 qui **devrait** s'y trouver.
+
+#### La séquence de chargement du C3, désormais déterminée
+
+Les trois mesures ci-dessus s'enchaînent en un raisonnement qui ne laisse
+qu'une porte :
+
+1. **`profiles.id` référence `auth.users`** → `auth.users` doit être chargée
+   **avant** `public.profiles`. Pas de choix.
+2. **`on_auth_user_created` fait feu `after insert on auth.users`** et crée la
+   ligne `profiles` correspondante → charger `auth.users` avec le trigger en
+   place fabrique 6 profils squelettes.
+3. **Charger ensuite les vrais `public.profiles`** buterait donc sur la clé
+   primaire des 6 mêmes lignes.
+4. **Le désactiver n'est pas gratuit** : `auth.users` appartient à
+   `supabase_auth_admin`, et `postgres` **n'est pas superutilisateur** sur la
+   cible (§ 7.4). Il faudrait que `postgres` soit membre de ce rôle pour
+   `set role` puis `alter table … disable trigger` — vraisemblable, mais à
+   vérifier plutôt qu'à espérer au milieu d'une fenêtre de maintenance.
+
+**Séquence retenue — créer le trigger en DERNIER.** Elle contourne le
+problème au lieu de le désamorcer, et referme du même coup le risque
+d'absence silencieuse :
+
+| # | Étape | Pourquoi là |
+|---|---|---|
+| 1 | GoTrue v2.196.0 démarre et crée le schéma `auth` | il en est le maître, § 7.10 |
+| 2 | Restauration du DDL `public` | tables et contraintes en place, **sans données** |
+| 3 | Chargement de `auth.users` puis `auth.identities` | FK respectée ; **aucun trigger encore posé, donc aucun profil fabriqué** |
+| 4 | Chargement des données `public`, `profiles` comprise | les `auth.users` existent : la FK passe |
+| 5 | **Création de `on_auth_user_created`** | dernier geste, explicite et vérifiable |
+
+L'étape 5 n'est pas une formalité : c'est elle qui garantit que le trigger
+existe **après** la migration. Sans elle, la panne décrite plus haut — une
+première inscription qui crée un compte sans profil — passerait inaperçue
+jusqu'au premier nouveau membre. En faire une étape numérotée, c'est la rendre
+impossible à oublier.
+
+Deux corollaires pour le C2 :
+
+- **GoTrue doit se connecter en `supabase_auth_admin`**, pas en `postgres` :
+  c'est le propriétaire de `auth.users` sur la source, et les `GRANT`
+  restaurés au lot 0-bis s'y adossent. Un schéma `auth` créé sous un autre
+  rôle produirait des droits divergents, sans erreur visible.
+- **Les définitions exactes du trigger et de sa fonction** (`pg_get_triggerdef`,
+  `pg_get_functiondef`) sont à relever sur la source au moment du C3 et à
+  garder hors du dépôt : ce dépôt est public, et le lot 0-bis a précisément
+  pris soin (`VERBOSITY=terse`) de ne pas y publier de corps de fonction.
 
 #### Les décisions de phase 0
 
