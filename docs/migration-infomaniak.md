@@ -2211,11 +2211,18 @@ Deux corollaires pour le C2 :
      HTTP exige que le domaine résolve **déjà** vers l'environnement.
 
   Créer l'enregistrement avant l'étape 1 le ferait pointer dans le vide et
-  imposerait de le refaire. **Le seul vrai prérequis de phase 0** est donc de
-  savoir **où est gérée la zone DNS de `jepatisse.com`** (registrar,
-  Infomaniak, ou serveurs de noms délégués à Vercel — `www` et `dev` y
-  résolvent déjà) et de vérifier qu'on y a la main. C'est le seul point qui
-  pourrait surprendre au C2.
+  imposerait de le refaire. **Le seul vrai prérequis de phase 0** était donc de
+  savoir où est gérée la zone DNS de `jepatisse.com` — et **c'est mesuré
+  (07/09) : la zone est chez Infomaniak**, les serveurs de noms déclarés étant
+  `ns11.infomaniak.ch` et `ns12.infomaniak.ch`. Ni Vercel, ni un registrar
+  tiers. **Le DNS et l'environnement Virtuozzo vivront donc dans le même
+  manager**, sans aller-retour entre deux fournisseurs au moment du C2.
+
+  Piège de navigation constaté au passage, à connaître pour ne pas le
+  rechercher deux fois : l'écran « Serveur DNS » du manager ne liste que les
+  enregistrements **NS** (la déclaration des serveurs de noms). Les
+  enregistrements A/CNAME — `www`, `dev`, et bientôt `auth` — vivent dans
+  l'**éditeur de zone**, un écran distinct.
 - **Conséquence de topologie pour le C2 : il faut un nœud Load Balancer devant
   GoTrue.** Le § 4.3 note que Virtuozzo fournit Let's Encrypt gratuitement
   « sur le nœud Load Balancer » ; exposer GoTrue par un Endpoint TCP nu — comme
