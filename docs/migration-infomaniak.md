@@ -200,7 +200,10 @@ l'utilise : **il n'y a rien à porter de ce côté.**
 
 ### 2.4 Comptes et surface SQL
 
-- **7 identités** : 4 e-mail, 3 Google.
+- **6 comptes pour 7 identités** : 4 e-mail, 3 Google — donc **un compte porte
+  les deux** (mesuré le 06/09, § 7.10). La formulation « 7 identités » employée
+  ailleurs dans ce dossier désignait des comptes ; c'est une identité de plus
+  que de comptes, et cet écart est précisément le cas le plus délicat du C1.
 - **252 fonctions** dans `public`, **320 policies RLS**, **25 triggers**.
 
 Le compte de triggers est celui de la requête documentée en § 7.2 : **schéma
@@ -1540,7 +1543,7 @@ Google **avant** la bascule, pas pendant.
 | Sous-lot | Contenu | Livrable |
 |---|---|---|
 | **C0** | Mesures et arbitrages, aucun code | Cette section |
-| **C1** | Répétition GoTrue (phase 3 jamais jouée) + migration des 7 identités sur un environnement de test | Le vrai Go/No-Go restant |
+| **C1** | Répétition GoTrue (phase 3 jamais jouée) + migration des 7 identités sur un environnement de test | Le vrai Go/No-Go restant — **phase 0 en § 7.10** |
 | **C2** | Infrastructure : nœuds Postgres, PostgREST, GoTrue ; SMTP via SES (déjà en place) ; OAuth Google ; clés JWT asymétriques | Environnement reproductible, sans bascule |
 | **C3** | Bascule : `COMING_SOON` → dump → restore → trois variables → vérification → réouverture | Le seul moment risqué, et il est réversible |
 | **C4** | `wal-g` (PITR, § 4.5), retrait de Supabase | Définition de terminé |
@@ -1553,6 +1556,140 @@ l'URL Supabase est écrite en dur dans
 redirection autorisées côté Google** doivent porter le nouvel hôte d'auth
 avant la bascule (voir l'exigence produit ci-dessus) — les déclarer pendant
 la fenêtre casserait la connexion Google le temps de la propagation.
+
+### 7.10 Lot C1 — phase 0 : ce qui se prépare hors chrono (06/09)
+
+Le lot 0-bis a mesuré ce que vaut une phase 0 : trois faux départs absorbés
+**avant** de monter l'environnement, et tout le reste joué en une matinée
+(§ 7.4). Même méthode ici, avec une raison de plus — l'essai expire le 19/09.
+
+#### Le blocage à poser avant d'écrire quoi que ce soit
+
+**Ce dump-là ne peut pas passer par GitHub.** Le lot 0-bis dumpait du DDL :
+aucune donnée. Le C1 dumpe `auth.users` et `auth.identities`, c'est-à-dire des
+**adresses e-mail et des empreintes bcrypt de mots de passe**. Le dépôt
+`fabien5111/mc` est **public** : un artefact d'un dépôt public se télécharge
+sans authentification, et un journal de job se lit de même.
+
+Conséquence directe sur le mode opératoire : le C1 **ne peut pas reprendre le
+motif « dump → artefact → restore »** du § 7.2. Il lui faut un job unique qui
+dumpe et restaure dans la même exécution, sans `upload-artifact`, sans
+`pg_dump` redirigé vers un fichier conservé, et sans qu'aucune ligne de
+données n'atteigne la sortie standard. C'est faisable — la restauration du lot
+0-bis enchaînait déjà les deux — mais c'est une contrainte à poser avant
+d'écrire le workflow, pas à découvrir en le relisant.
+
+#### Ce que le C1 doit prouver (les critères de Go/No-Go)
+
+Une répétition qui ne dit pas d'avance ce qu'elle vérifie ne prouve rien :
+
+1. **GoTrue démarre sur le schéma restauré** sans rejouer ni casser ses
+   propres migrations.
+2. **Un compte e-mail + mot de passe se connecte** — les empreintes bcrypt de
+   Supabase sont lisibles telles quelles par le GoTrue auto-hébergé.
+3. **Un compte Google se reconnecte et retombe sur la MÊME ligne `profiles`.**
+   C'est le critère le plus important et le plus silencieux : si
+   `auth.identities.provider_id` n'a pas suivi, la connexion Google **crée un
+   nouvel utilisateur**, donc un nouveau profil — et le membre perd son carnet
+   entier sans qu'aucune erreur ne s'affiche. À tester **en priorité sur le
+   compte qui porte deux identités** (mesure ci-dessous) : c'est le seul où
+   les deux portes d'entrée doivent aboutir au même `user_id`.
+4. **Le JWKS est servi au chemin qu'interroge `supabase-js`**
+   (`/auth/v1/.well-known/jwks.json`) et `getClaims()` vérifie localement,
+   sans aller-retour (c'est le gain de ~65 % du trafic base, § 7.9 point 1).
+5. **PostgREST accepte le jeton et la RLS s'applique** : une lecture qui doit
+   échouer échoue. Un jeton accepté sans RLS serait pire qu'un jeton refusé.
+
+#### Les mesures à prendre maintenant, dans l'éditeur SQL Supabase
+
+Trois lectures, aucune écriture. **Ne recopier que les décomptes et les
+numéros de version** — jamais une adresse e-mail ni une empreinte.
+
+```sql
+-- A. Quelles tables du schéma auth portent réellement des données.
+select relname as tab, n_live_tup as lignes
+  from pg_stat_user_tables
+ where schemaname = 'auth' and n_live_tup > 0
+ order by n_live_tup desc;
+
+-- B. Le niveau de migration de GoTrue : c'est lui qui désigne la version à
+--    déployer. Un GoTrue plus ancien que le schéma qu'on lui donne rejouera
+--    des migrations sur une base qui les a déjà.
+select version from auth.schema_migrations order by version desc limit 5;
+
+-- C. La forme des 7 identités (décomptes seulement).
+select provider, count(*) from auth.identities group by provider;
+select count(*) as total,
+       count(*) filter (where encrypted_password is not null) as avec_mot_de_passe
+  from auth.users;
+```
+
+#### Ce que les mesures ont donné (06/09)
+
+| Table `auth` | Lignes | Sort |
+|---|---|---|
+| `schema_migrations` | 77 | gérée par GoTrue lui-même — **pas des données** |
+| `refresh_tokens` | 50 | **non migrée** (décision ci-dessous) |
+| `flow_state` | 34 | non migrée — états PKCE transitoires |
+| `sessions` | 15 | **non migrée** |
+| `mfa_amr_claims` | 15 | non migrée — adossée aux sessions |
+| `identities` | **7** | **migrée** |
+| `users` | **6** | **migrée** |
+| `one_time_tokens` | 1 | non migrée — jeton en cours de validité, transitoire |
+
+Deux enseignements, dont un qui n'était pas prévu.
+
+**1. Il y a 6 comptes pour 7 identités : un compte porte à la fois un mot de
+passe et un compte Google.** Le dossier écrivait « 7 identités » en pensant
+« 7 comptes » depuis le début — l'écart n'est pas cosmétique, c'est le cas
+limite du critère 3. Sur ce compte-là, la connexion Google doit retrouver
+l'utilisateur **déjà créé par le mot de passe**, ce qui suppose que les deux
+lignes d'`identities` aient suivi *et* pointent vers le même `user_id`. Si le
+lien casse, le membre se retrouve avec deux comptes — et le carnet reste
+attaché à celui qu'il n'utilisera pas. **La répétition doit tester ce compte
+en priorité, et par ses deux portes d'entrée.** À vérifier aussi côté GoTrue
+auto-hébergé : le rattachement automatique d'identités par adresse e-mail n'y
+a pas forcément le même réglage par défaut que chez Supabase.
+
+**2. Aucun facteur MFA n'est enrôlé** — `mfa_factors` n'apparaît pas dans les
+tables peuplées, seule `mfa_amr_claims` l'est (elle enregistre *comment* une
+session s'est authentifiée, pas un second facteur). Une inconnue de moins.
+
+**Le niveau de migration de GoTrue est `20260625000000`** (77 migrations
+appliquées). C'est ce numéro, et non une version marketing, qui désigne
+l'image à déployer : il faut la release de `supabase/auth` dont le répertoire
+`migrations/` contient ce fichier, et **pas une plus ancienne** — un GoTrue en
+retard rejouerait des migrations sur un schéma qui les a déjà.
+
+**Conséquence sur la stratégie de restauration** : plutôt que de restaurer le
+schéma `auth` de Supabase (DDL + `schema_migrations`), **laisser le GoTrue
+aligné créer son propre schéma au démarrage**, puis n'insérer que `users` et
+`identities`. Deux avantages décisifs :
+- aucun conflit possible entre les migrations dumpées et celles que GoTrue
+  veut appliquer ;
+- la charge de données sensibles tombe à **13 lignes**, ce qui rend le
+  blocage GitHub ci-dessus trivial à contourner (un job unique, quelques
+  `insert`, rien à stocker).
+
+#### Les décisions de phase 0
+
+- **`auth.sessions` (15) et `auth.refresh_tokens` (50) ne sont pas migrées.**
+  Les migrer éviterait toute déconnexion ; ne pas les migrer force une
+  reconnexion unique. À six comptes, la reconnexion est indolore et supprime
+  une classe entière de risque — des sessions pointant vers un serveur d'auth
+  qui ne les connaît pas. **Tranché : on ne les migre pas, on prévient.** À
+  noter que ce
+  n'est pas contradictoire avec le § 7.9 point 1 : la clé symétrique conservée
+  fait que les jetons déjà émis restent *vérifiables*, mais leur
+  rafraîchissement, lui, a besoin de la ligne de session.
+- **Le sous-domaine `auth.jepatisse.com`** est à réserver côté DNS dès la
+  phase 0 : il conditionne l'exigence produit du C2 ci-dessus et la
+  déclaration des URI de redirection Google, qui doit précéder la bascule.
+- **La paire ES256** (`GOTRUE_JWT_KEYS`) se génère hors ligne, et le jeu de
+  clés doit contenir **aussi** le secret symétrique actuel.
+- **Les quatre secrets GitHub du lot 0-bis sont à recréer** (§ 10.3) — dont le
+  mot de passe de la base Supabase, qui n'a toujours pas été renouvelé depuis.
+  L'occasion de le faire est ici : le recréer d'abord, l'enregistrer ensuite.
 
 ---
 
@@ -1779,13 +1916,19 @@ sont à recréer (§ 10.3).
 lot B n'a rien laissé derrière. **L'essai Virtuozzo a démarré le 05/09 : il
 expire le 19/09**, seule échéance dure du lot C.
 
-**Deux points restés ouverts, à ne pas perdre** :
-- `imports.recette` porte encore **4,7 Mo de data-URL sur 18 brouillons** —
-  dernier gisement d'images en base, exclu du lot B en connaissance de cause
-  (JSON, pas colonne scalaire). Aucune rétention n'existe sur cette table
-  (§ 7.9). Décision produit en attente.
-- `BlogEditor.insertImage()` écrit une data-URL dans `articles.content`
-  (jsonb), hors périmètre de la bascule par colonne — non traité (§ 7.5).
+**La rétention d'`imports` est en place** (§ 7.9) : 30 jours depuis la
+dernière activité, purge en quatrième passe du cron des abonnements,
+annoncée au membre dans « Mes imports ».
+
+**La prochaine action est la phase 0 du C1 (§ 7.10)** : trois lectures SQL à
+prendre, la version de GoTrue à relever, le sous-domaine `auth.jepatisse.com`
+à réserver, les quatre secrets du lot 0-bis à recréer. Et une contrainte à ne
+pas manquer — **ce dump-là ne peut pas passer par un artefact GitHub** : il
+porte des adresses e-mail et des empreintes bcrypt, sur un dépôt public.
+
+**Point resté ouvert, à ne pas perdre** : `BlogEditor.insertImage()` écrit une
+data-URL dans `articles.content` (jsonb), hors périmètre de la bascule par
+colonne — non traité (§ 7.5).
 
 **À faire avant d'oublier** : supprimer l'environnement `mc-restore-test` et son
 Endpoint (§ 7.2 phase 4), et faire tourner le mot de passe de la base Supabase,
