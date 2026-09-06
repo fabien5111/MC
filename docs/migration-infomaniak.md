@@ -1895,21 +1895,42 @@ vivent sur l'écran **Email**, pas sous *Attack Protection* comme la première
 passe de cette section le classait — corrigé ci-dessus et dans le tableau des
 écrans à relever plus bas.
 
-**Providers → Google :**
+**Providers → Google — le client a changé depuis la première mesure (07/09).**
+
+Le client mesuré le 06/09 (`183044094481-…`) appartenait à un projet Google
+Cloud lié au compte `contact@jepatisse.com`, **suspendu par Google** (appel en
+cours, issue et délai inconnus). Plutôt que de dépendre de l'issue de cet
+appel — un processus externe, sans garantie de délai — la connexion a été
+**basculée dès maintenant** sur un nouveau client, créé sous le projet Google
+Cloud « Je pâtisse ! » (`722174024982`, ex-« Maryse-club-com »), que le compte
+qui opère ce dépôt contrôle directement. Testé et fonctionnel le 07/09.
 
 | Réglage | Valeur mesurée | Variable |
 |---|---|---|
 | Enable Sign in with Google | activé | `GOTRUE_EXTERNAL_GOOGLE_ENABLED=true` |
-| Client IDs | `183044094481-…apps.googleusercontent.com` | `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` (non secret — Google le conçoit pour apparaître côté client) |
+| Client IDs | `722174024982-ipls9f17v63a5ilvomodb232qtqriv2u.apps.googleusercontent.com` | `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` (non secret — Google le conçoit pour apparaître côté client) |
 | Allow users without an email | désactivé | `GOTRUE_EXTERNAL_GOOGLE_EMAIL_OPTIONAL=false` |
 | Callback URL actuelle | `https://acbabqolghhyxksouaye.supabase.co/auth/v1/callback` | — |
+| Callback URL future (C2/C3) | `https://auth.jepatisse.com/auth/v1/callback` | **déjà ajoutée** aux URI de redirection autorisées de ce client |
 
-**À faire au C2, avant la fenêtre du C3 (§ exigence produit du C2)** : ajouter
-`https://auth.jepatisse.com/auth/v1/callback` aux URI de redirection
-autorisées dans Google Cloud Console, et poser cette valeur dans
-`GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI`. L'ancienne reste utile jusqu'à la
-bascule effective. Le Client Secret se reprend directement depuis Google Cloud
-Console — jamais capturé (protocole ci-dessous).
+**Les deux callback URLs sont déjà enregistrées sur le nouveau client** — pas
+seulement l'actuelle : ça évite un second aller-retour dans Google Cloud
+Console au moment du C3, où il ne restera qu'à poser
+`GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI = https://auth.jepatisse.com/auth/v1/callback`
+côté GoTrue. Le Client Secret se reprend directement depuis Google Cloud
+Console (ou, plus simple, depuis le bouton *Reveal* du champ *Client Secret*
+sur cet écran de Supabase lui-même, qui le stocke indépendamment de l'accès au
+compte Google) — jamais capturé (protocole ci-dessous).
+
+**Point cosmétique laissé ouvert, sans conséquence fonctionnelle** : le nom
+d'application (« Je pâtisse ! », réglé dans `Branding` du nouveau projet) ne
+remplace pas encore le domaine brut sur l'écran de consentement Google. C'est
+un comportement documenté comme non garanti tant que la redirection reste sur
+un sous-domaine partagé `*.supabase.co`, y compris après vérification de
+domaine — un
+[ticket resté sans réponse chez Supabase](https://github.com/supabase/supabase/issues/33387)
+le confirme. Attendu pour se résoudre proprement une fois la redirection
+passée sur `auth.jepatisse.com` au C2 ; pas de raison de s'y acharner avant.
 
 **Sessions :**
 
