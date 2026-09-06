@@ -1655,11 +1655,9 @@ a pas forcément le même réglage par défaut que chez Supabase.
 tables peuplées, seule `mfa_amr_claims` l'est (elle enregistre *comment* une
 session s'est authentifiée, pas un second facteur). Une inconnue de moins.
 
-**Le niveau de migration de GoTrue est `20260625000000`** (77 migrations
-appliquées). C'est ce numéro, et non une version marketing, qui désigne
-l'image à déployer : il faut la release de `supabase/auth` dont le répertoire
-`migrations/` contient ce fichier, et **pas une plus ancienne** — un GoTrue en
-retard rejouerait des migrations sur un schéma qui les a déjà.
+**Le niveau de migration de GoTrue est `20260625000000`** (77 lignes dans
+`auth.schema_migrations`). C'est ce numéro, et non une version marketing, qui
+désigne l'image à déployer — la correspondance est établie ci-dessous.
 
 **Conséquence sur la stratégie de restauration** : plutôt que de restaurer le
 schéma `auth` de Supabase (DDL + `schema_migrations`), **laisser le GoTrue
@@ -1670,6 +1668,67 @@ aligné créer son propre schéma au démarrage**, puis n'insérer que `users` e
 - la charge de données sensibles tombe à **13 lignes**, ce qui rend le
   blocage GitHub ci-dessus trivial à contourner (un job unique, quelques
   `insert`, rien à stocker).
+
+#### Quelle image `supabase/auth` déployer (mesuré le 06/09)
+
+Le numéro relevé (`20260625000000`) a été retrouvé dans le dépôt amont plutôt
+que deviné — la méthode se rejoue telle quelle si la question se repose :
+
+```bash
+git clone --filter=blob:none --no-checkout https://github.com/supabase/auth.git
+git sparse-checkout set --no-cone migrations && git checkout
+# le commit qui introduit la migration, puis les tags qui le contiennent
+git log -1 --format=%H -- migrations/20260625000000_*.up.sql
+git tag --contains <ce commit> --sort=creatordate | head
+```
+
+| Repère | Valeur |
+|---|---|
+| Migration en tête chez Supabase | `20260625000000_add_custom_claims_allowlist` |
+| Première release stable qui la contient | **`v2.192.0`** |
+| Migration **suivante** en amont | `20260821000000_add_scim_users` |
+| Première release stable qui contient celle-là | `v2.197.0` |
+
+**Fenêtre compatible : `v2.192.0` à `v2.196.0` incluse.** Dans cette fenêtre,
+le jeu de migrations se termine exactement là où Supabase s'est arrêté — le
+schéma produit est celui d'aujourd'hui, ni en avance ni en retard.
+**`v2.196.0` est la version retenue** : dernière du créneau, donc corrections
+les plus récentes, sans le saut de schéma qu'introduit la 2.197.
+
+À partir de `v2.197.0`, GoTrue appliquerait de lui-même les migrations SCIM et
+codes de secours au démarrage. Ce n'est pas dangereux en soi — c'est une
+montée de version ordinaire — mais ça ferait diverger le schéma de la source
+**pendant la répétition**, c'est-à-dire au seul moment où l'on veut comparer
+deux états identiques. À faire après la bascule, séparément.
+
+#### Un écart de sept migrations, levé
+
+`auth.schema_migrations` compte **77 lignes** chez Supabase, alors que
+`v2.196.0` n'embarque que **70 fichiers** de migration. L'explication probable
+est le fichier `00_init_auth_schema` : GoTrue a fusionné à un moment ses
+migrations les plus anciennes en une seule, mais une base créée **avant** cette
+fusion conserve les lignes d'origine, une par migration jouée à l'époque. Le
+décompte serait alors un artefact d'ancienneté, sans conséquence.
+
+**Probable n'est pas mesuré**, et l'autre explication possible — Supabase
+applique sur `auth` des migrations qui lui sont propres — aurait, elle, des
+conséquences directes : une colonne présente à la source et absente en amont
+ferait échouer l'insertion des 13 lignes, ou pire, la ferait réussir en
+perdant silencieusement une valeur. La liste des 77 versions appliquées a donc
+été comparée aux 70 de `v2.196.0`.
+
+**Verdict : c'est bien la fusion, et l'écart est clos.** Les sept versions
+inconnues du dépôt amont sont `20171026211738`, `20171026211808`,
+`20171026211834`, `20180103212743`, `20180108183307`, `20180119214651` et
+`20180125194653` — **toutes d'octobre 2017 à janvier 2018**, c'est-à-dire
+exactement les migrations d'origine que `00_init_auth_schema` a plus tard
+absorbées. La base date d'avant la fusion et en garde la trace.
+
+Le contrôle inverse compte autant, et il est vide : **aucune des 70 migrations
+de `v2.196.0` ne manque à l'appel.** Le schéma `auth` de ce projet est donc du
+GoTrue amont pur, arrêté exactement à `20260625000000` — aucune migration
+propre à Supabase, rien de spécifique à désamorcer, et `v2.196.0` produira le
+même schéma colonne pour colonne.
 
 #### Les décisions de phase 0
 
