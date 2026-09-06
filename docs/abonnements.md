@@ -200,6 +200,21 @@ maximum), comme un abonné payant. Deux options écartées, à reconsidérer si
 le coût des essais devenait un problème réel : exclure les essais du
 grandfathering pour les seuls quotas de flux IA, ou pour tout droit.
 
+**Même traitement pour l'import et le mode projet (JEP-77, suite)** : même
+défaut, mêmes correctifs, sur les deux autres quotas de flux IA.
+`app/importer/page.tsx` lit `import_ia_mensuel` via `checkQuota()` quand
+l'écran est déjà accessible ; les trois boutons « Importer » (texte, PDF,
+photos) de `ImporterForm` sont désactivés avec infobulle une fois le quota
+atteint. `app/projets/[id]/page.tsx` lit `mode_projet_ia_mensuel` de la même
+façon et transmet le résultat à `ProjectWizard` puis `ComponentResolver` :
+« Demander une proposition à l'IA » (§5.4, `/api/projet/composant`) est
+désactivé une fois le droit absent ou le quota atteint. Non touché : l'appel
+à `/api/projet/structure` (étape 1 → 2), best-effort par construction et
+sans bouton dédié — la proposition manquante s'y signale déjà après coup, ce
+que la spec (§12) considère comme acceptable pour ce chemin précis. Les
+trois boutons partagent le même repère visuel : `disabled:cursor-not-allowed`
+en plus de l'opacité déjà posée sur l'état désactivé.
+
 ---
 
 ## 4. Cache — ce qui peut l'être et ce qui ne le doit pas

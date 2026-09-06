@@ -67,6 +67,8 @@ export function ComponentResolver({
   componentIndex,
   componentIds,
   units,
+  peutGenererIA = true,
+  quotaProjetIA = null,
   onClose,
   onDone,
 }: {
@@ -77,6 +79,13 @@ export function ComponentResolver({
   componentIndex: number;
   componentIds: number[];
   units: string[];
+  // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
+  // vérifié avant de monter cette fenêtre).
+  peutGenererIA?: boolean;
+  // État du quota (`mc_check_quota`, affichage seulement) : grise « Demander
+  // une proposition à l'IA » une fois épuisé, plutôt que de laisser
+  // découvrir le refus après un clic (JEP-77, même motif que BatchWidget).
+  quotaProjetIA?: { allowed: boolean; limit?: number; usage?: number } | null;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -87,6 +96,13 @@ export function ComponentResolver({
   const [terme, setTerme] = useState(component.name);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
+
+  const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
+  const iaTooltip = !peutGenererIA
+    ? "Génération de composant par IA non incluse dans votre formule."
+    : iaEpuise
+      ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}).`
+      : undefined;
 
   // Brouillon de contenu, alimenté soit par une proposition de l'IA, soit
   // par la saisie à la main. Les deux passent par le même éditeur, et le
@@ -328,7 +344,13 @@ export function ComponentResolver({
             )}
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-              <button type="button" onClick={() => void demanderIA()} className={btnGhost}>
+              <button
+                type="button"
+                onClick={() => void demanderIA()}
+                disabled={!peutGenererIA || iaEpuise}
+                title={iaTooltip}
+                className={`${btnGhost} disabled:cursor-not-allowed`}
+              >
                 Demander une proposition à l’IA
               </button>
               <button type="button" onClick={saisirAMain} className={btnGhost}>
