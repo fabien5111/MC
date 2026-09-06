@@ -1794,10 +1794,19 @@ en circulation deviendront invérifiables à la bascule.
 **Sans conséquence pratique** — on a déjà tranché de ne pas migrer les sessions,
 donc tout le monde se reconnecte une fois de toute façon. Mais la *raison*
 avancée au § 7.9 était fausse, et quelqu'un pourrait s'y appuyer pour décider
-l'inverse en croyant les jetons préservés. À vérifier d'un coup d'œil avant le
-C2, en ouvrant `https://<projet>.supabase.co/auth/v1/.well-known/jwks.json` :
-un jeu de clés `EC` confirme l'asymétrique, un jeu vide voudrait dire HS256 et
-rendrait au § 7.9 sa validité.
+l'inverse en croyant les jetons préservés.
+
+**Vérifié le 06/09** sur `/auth/v1/.well-known/jwks.json` du projet : le jeu de
+clés contient **une seule clé, `EC` / `P-256` / `ES256`**, `use: "sig"`,
+`key_ops: ["verify"]`, `kid` `ae1c8c47-e33b-479b-80e8-38c53132ef72`. Le projet
+signe donc bien en asymétrique, la correction ci-dessus s'applique, et ce `kid`
+est celui qui disparaîtra à la bascule.
+
+Détail qui corrobore autre chose au passage : cette forme est **exactement**
+celle que produit `decodePublicKey` de `supabase/auth` (`use` posé à `sig`,
+`key_ops` réduit à `verify`). Le service hébergé tourne donc sur le même GoTrue
+que celui qu'on déploiera — ce qui recoupe le constat du schéma `auth` amont
+pur ci-dessus.
 
 #### Les décisions de phase 0
 
