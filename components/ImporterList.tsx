@@ -3,11 +3,18 @@
 // Liste « Mes imports » de la page /importer : lien vers la relecture, lien
 // vers la recette créée le cas échéant, suppression (uniquement tant
 // qu'aucune recette n'est rattachée) et coût IA réservé aux admins.
+//
+// Porte aussi l'ANNONCE de la rétention (§ 7.9). Une purge automatique qui ne
+// se dit nulle part est indiscernable d'une perte de données : la mention
+// générale est en tête, et l'échéance n'apparaît ligne par ligne que dans la
+// dernière semaine — dater chaque import trente jours à l'avance
+// transformerait la liste en compte à rebours.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { RETENTION_JOURS, dateSuppression, suppressionProche } from '@/lib/imports-retention';
 import type { ImportRow } from '@/lib/imports';
 
 const STATUT_LBL: Record<string, [string, string]> = {
@@ -44,6 +51,11 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
   return (
     <div className="flex flex-col">
       <LoadingOverlay visible={busy} label="Suppression en cours…" />
+      <p className="pb-3 text-[12.5px] text-on-surface-variant">
+        Vos imports sont conservés {RETENTION_JOURS} jours après leur dernière modification, puis
+        supprimés automatiquement. La recette créée à partir d’un import, elle, reste dans votre
+        carnet.
+      </p>
       {list.map((i) => {
         const recette = (i.recette ?? {}) as { titre?: string };
         const alertes = Array.isArray(i.alertes) ? (i.alertes as string[]) : [];
@@ -83,9 +95,18 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
                 {i.cost_usd != null ? `${i.cost_usd.toFixed(3)} $` : '— $'}
               </span>
             )}
-            <span className="text-sm text-on-surface-variant">
-              {new Date(i.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-            </span>
+            {suppressionProche(i.updated_at) ? (
+              <span
+                className="text-sm text-error"
+                title={`Sans modification, cet import sera supprimé le ${dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Le rouvrir repart pour ${RETENTION_JOURS} jours.`}
+              >
+                ⌛ {dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              </span>
+            ) : (
+              <span className="text-sm text-on-surface-variant">
+                {new Date(i.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
             {i.recipe_id ? (
               <Link
                 href={`/recette/${i.recipe_id}`}

@@ -1,6 +1,7 @@
-// Route Handler — tâche planifiée quotidienne (spec §7.5, §10).
+// Route Handler — tâche planifiée quotidienne (spec §7.5, §10), plus le
+// ménage nocturne de la base.
 //
-// Trois passes, dans cet ordre :
+// Quatre passes, dans cet ordre :
 //  1. Transition ACTIF → EXPIRE des abonnements dont la date de fin est
 //     dépassée. Le calcul des droits n'en dépend PAS — `mc_effective_rights`
 //     teste `ends_at > now()` en direct — cette passe ne fait que
@@ -24,6 +25,16 @@
 // que de récupérer indéfiniment un retard, qui serait de toute façon un
 // symptôme à traiter à la main, pas à automatiser.
 //
+//  4. Purge des imports expirés (docs/migration-infomaniak.md § 7.9).
+//
+// **Pourquoi la purge est ICI et non dans son propre cron** : le plan Vercel
+// Hobby plafonne le nombre de tâches planifiées, et `vercel.json` en déclare
+// déjà deux (celle-ci et contact-jira). Une troisième entrée serait refusée.
+// Cette route est la passe de ménage quotidienne la plus proche — d'où
+// l'accueil, explicite plutôt que subi. À redécouper si le projet passe en
+// Pro. La passe est isolée du reste : son échec est signalé dans la réponse,
+// jamais propagé aux notifications d'abonnement, qui comptent pour le membre.
+//
 // Aucun cache à invalider (contrairement au §7.5 de la spécification) :
 // les droits d'un membre ne sont jamais mis en cache entre deux requêtes
 // (`cache()` React, par requête uniquement — cf. docs/abonnements.md §4).
@@ -34,6 +45,7 @@ import { claimNotification, createNotification, getNotifyEmailPreference } from 
 import { lostFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
 import { sendEmailBestEffort } from '@/lib/email';
+import { purgerImportsExpires } from '@/lib/imports-retention-data';
 
 export const maxDuration = 60;
 
@@ -183,11 +195,16 @@ export async function GET(req: Request) {
     else notifiesJ3++;
   }
 
+  // ── Passe 4 : ménage — imports expirés ───────────────────────
+  const menage = await purgerImportsExpires(maintenant);
+
   return NextResponse.json({
     ok: true,
     expirees: expirees?.length ?? 0,
     notifiesExpiration,
     notifiesJ3,
     notifiesJ1,
+    importsPurges: menage.supprimes,
+    ...(menage.erreur ? { importsPurgeErreur: menage.erreur } : {}),
   });
 }
