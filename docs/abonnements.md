@@ -147,7 +147,7 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `listes_courses_max` | STOCK | trigger sur `shopping_lists` |
 | `partage_carnet_prive_max` | STOCK | trigger sur `book_shares` |
 | `import_ia_mensuel` | FLUX | `/api/import-url`, `/api/transcribe-photo` |
-| `ajustement_ia_mensuel` | FLUX | `/api/scale-recipe` |
+| `ajustement_ia_mensuel` | FLUX | `/api/scale-recipe`, `BatchWidget` (JEP-77) |
 | `mode_projet_ia_mensuel` | FLUX | `/api/projet/structure`, `/api/projet/composant` |
 | `mode_projet` | binaire | `/projets/*`, `/api/projet`, portée « Projets » du carnet |
 | `ecran_relecture_import` | binaire | `/importer`, `/relecture` |
@@ -157,6 +157,19 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `reordonnancement_etapes` | binaire | `PlanningDayView` (`/en-cuisine`) |
 | `fusion_listes_courses` | binaire | `CuisineContent` (`/en-cuisine`) |
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
+
+**Correctif JEP-77** : `BatchWidget` gardait son troisième mode d'ajustement
+(« Ajuster les quantités par IA ») derrière `isAdmin`, un reliquat du
+prototype antérieur au lot 5 — jamais raccordé à `ajustement_ia_mensuel`.
+Un membre en essai avait donc le quota réservé côté serveur
+(`/api/scale-recipe`) mais aucun bouton pour l'utiliser sur une recette en
+`units` ou `mold`, tandis qu'une recette en `dimensions` l'exposait à tout le
+monde sans aucune garde. Les trois branches lisent désormais
+`canAccess(droits, 'ajustement_ia_mensuel')` (calculé une fois dans
+`app/recette/[id]/page.tsx`, prop `peutAjusterIA`). Sur `dimensions`, seul
+mode d'ajustement de ce type de recette, l'absence du droit replie sur une
+saisie manuelle du coefficient plutôt que de retirer tout moyen d'ajuster —
+même doctrine que §9 (l'existant reste, seul l'ajout est bridé).
 
 ---
 

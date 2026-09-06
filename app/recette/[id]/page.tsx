@@ -8,6 +8,8 @@ import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { canAccess } from '@/lib/entitlements';
+import { getEntitlements } from '@/lib/entitlements-data';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
 import { fmtNum, batchFactor } from '@/lib/recipe-plan';
@@ -100,14 +102,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
     isOwner ? getRecipeShareInfo(recipe.id, recipe.author_id, recipe.status) : Promise.resolve(undefined),
-    // Admin : débloque le mode d'ajustement des quantités par IA dans la
-    // création d'une fournée. Gratuit depuis le chantier 3 : dérivé du profil
-    // déjà chargé par le `Header` (mémoïsation par requête).
+    // Admin : sert au bandeau de modération et à `RecetteToc`, sans rapport
+    // avec l'ajustement par IA ci-dessous (droit d'abonnement depuis JEP-77).
     user ? isAdmin(user.id) : Promise.resolve(false),
     // Noms seuls : le sélecteur « Ajouter à une liste » n'affiche que ça, il
     // n'a aucune raison de tirer les articles de toutes les listes.
@@ -117,7 +118,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
     user ? getRecipeCompletedBatches(user.id, recipe.id) : Promise.resolve([]),
     isProject ? getProjectCredits(recipe.id) : Promise.resolve([]),
     isProject && isOwner ? getProjectTrials(recipe.id) : Promise.resolve([]),
+    // Droits d'abonnement — sert au mode d'ajustement des quantités par IA
+    // dans la création d'une fournée (`ajustement_ia_mensuel`, cf.
+    // docs/abonnements.md §3). Mémoïsé par requête, aucune requête de plus si
+    // une autre partie de la page l'a déjà lu.
+    user ? getEntitlements(user.id) : Promise.resolve({}),
   ]);
+  const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -370,7 +377,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               rail. Une fournée créée quitte cette fiche pour vivre sur son
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
-          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} isAdmin={userIsAdmin} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} />
           {isProject && isOwner && (
             // Historique des essais (spec §7.5 : reste consultable après
             // validation) — `canLaunch={false}` : lancer une fournée passe
