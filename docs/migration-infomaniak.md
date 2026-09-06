@@ -1701,7 +1701,7 @@ montée de version ordinaire — mais ça ferait diverger le schéma de la sourc
 **pendant la répétition**, c'est-à-dire au seul moment où l'on veut comparer
 deux états identiques. À faire après la bascule, séparément.
 
-#### Un écart de sept migrations, à lever avant le C1
+#### Un écart de sept migrations, levé
 
 `auth.schema_migrations` compte **77 lignes** chez Supabase, alors que
 `v2.196.0` n'embarque que **70 fichiers** de migration. L'explication probable
@@ -1714,13 +1714,21 @@ décompte serait alors un artefact d'ancienneté, sans conséquence.
 applique sur `auth` des migrations qui lui sont propres — aurait, elle, des
 conséquences directes : une colonne présente à la source et absente en amont
 ferait échouer l'insertion des 13 lignes, ou pire, la ferait réussir en
-perdant silencieusement une valeur. Une requête tranche, en ne renvoyant que
-les versions inconnues du dépôt amont (cf. la requête de diff donnée en
-conversation) :
+perdant silencieusement une valeur. La liste des 77 versions appliquées a donc
+été comparée aux 70 de `v2.196.0`.
 
-- si les sept sont **antérieures à 2021**, c'est la fusion, et on passe ;
-- si l'une est **récente**, il faut lire ce qu'elle fait à `auth.users` ou
-  `auth.identities` avant d'aller plus loin.
+**Verdict : c'est bien la fusion, et l'écart est clos.** Les sept versions
+inconnues du dépôt amont sont `20171026211738`, `20171026211808`,
+`20171026211834`, `20180103212743`, `20180108183307`, `20180119214651` et
+`20180125194653` — **toutes d'octobre 2017 à janvier 2018**, c'est-à-dire
+exactement les migrations d'origine que `00_init_auth_schema` a plus tard
+absorbées. La base date d'avant la fusion et en garde la trace.
+
+Le contrôle inverse compte autant, et il est vide : **aucune des 70 migrations
+de `v2.196.0` ne manque à l'appel.** Le schéma `auth` de ce projet est donc du
+GoTrue amont pur, arrêté exactement à `20260625000000` — aucune migration
+propre à Supabase, rien de spécifique à désamorcer, et `v2.196.0` produira le
+même schéma colonne pour colonne.
 
 #### Les décisions de phase 0
 
