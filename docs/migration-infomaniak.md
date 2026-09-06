@@ -200,7 +200,10 @@ l'utilise : **il n'y a rien à porter de ce côté.**
 
 ### 2.4 Comptes et surface SQL
 
-- **7 identités** : 4 e-mail, 3 Google.
+- **6 comptes pour 7 identités** : 4 e-mail, 3 Google — donc **un compte porte
+  les deux** (mesuré le 06/09, § 7.10). La formulation « 7 identités » employée
+  ailleurs dans ce dossier désignait des comptes ; c'est une identité de plus
+  que de comptes, et cet écart est précisément le cas le plus délicat du C1.
 - **252 fonctions** dans `public`, **320 policies RLS**, **25 triggers**.
 
 Le compte de triggers est celui de la requête documentée en § 7.2 : **schéma
@@ -1588,7 +1591,9 @@ Une répétition qui ne dit pas d'avance ce qu'elle vérifie ne prouve rien :
    C'est le critère le plus important et le plus silencieux : si
    `auth.identities.provider_id` n'a pas suivi, la connexion Google **crée un
    nouvel utilisateur**, donc un nouveau profil — et le membre perd son carnet
-   entier sans qu'aucune erreur ne s'affiche.
+   entier sans qu'aucune erreur ne s'affiche. À tester **en priorité sur le
+   compte qui porte deux identités** (mesure ci-dessous) : c'est le seul où
+   les deux portes d'entrée doivent aboutir au même `user_id`.
 4. **Le JWKS est servi au chemin qu'interroge `supabase-js`**
    (`/auth/v1/.well-known/jwks.json`) et `getClaims()` vérifie localement,
    sans aller-retour (c'est le gain de ~65 % du trafic base, § 7.9 point 1).
@@ -1619,13 +1624,61 @@ select count(*) as total,
   from auth.users;
 ```
 
+#### Ce que les mesures ont donné (06/09)
+
+| Table `auth` | Lignes | Sort |
+|---|---|---|
+| `schema_migrations` | 77 | gérée par GoTrue lui-même — **pas des données** |
+| `refresh_tokens` | 50 | **non migrée** (décision ci-dessous) |
+| `flow_state` | 34 | non migrée — états PKCE transitoires |
+| `sessions` | 15 | **non migrée** |
+| `mfa_amr_claims` | 15 | non migrée — adossée aux sessions |
+| `identities` | **7** | **migrée** |
+| `users` | **6** | **migrée** |
+| `one_time_tokens` | 1 | non migrée — jeton en cours de validité, transitoire |
+
+Deux enseignements, dont un qui n'était pas prévu.
+
+**1. Il y a 6 comptes pour 7 identités : un compte porte à la fois un mot de
+passe et un compte Google.** Le dossier écrivait « 7 identités » en pensant
+« 7 comptes » depuis le début — l'écart n'est pas cosmétique, c'est le cas
+limite du critère 3. Sur ce compte-là, la connexion Google doit retrouver
+l'utilisateur **déjà créé par le mot de passe**, ce qui suppose que les deux
+lignes d'`identities` aient suivi *et* pointent vers le même `user_id`. Si le
+lien casse, le membre se retrouve avec deux comptes — et le carnet reste
+attaché à celui qu'il n'utilisera pas. **La répétition doit tester ce compte
+en priorité, et par ses deux portes d'entrée.** À vérifier aussi côté GoTrue
+auto-hébergé : le rattachement automatique d'identités par adresse e-mail n'y
+a pas forcément le même réglage par défaut que chez Supabase.
+
+**2. Aucun facteur MFA n'est enrôlé** — `mfa_factors` n'apparaît pas dans les
+tables peuplées, seule `mfa_amr_claims` l'est (elle enregistre *comment* une
+session s'est authentifiée, pas un second facteur). Une inconnue de moins.
+
+**Le niveau de migration de GoTrue est `20260625000000`** (77 migrations
+appliquées). C'est ce numéro, et non une version marketing, qui désigne
+l'image à déployer : il faut la release de `supabase/auth` dont le répertoire
+`migrations/` contient ce fichier, et **pas une plus ancienne** — un GoTrue en
+retard rejouerait des migrations sur un schéma qui les a déjà.
+
+**Conséquence sur la stratégie de restauration** : plutôt que de restaurer le
+schéma `auth` de Supabase (DDL + `schema_migrations`), **laisser le GoTrue
+aligné créer son propre schéma au démarrage**, puis n'insérer que `users` et
+`identities`. Deux avantages décisifs :
+- aucun conflit possible entre les migrations dumpées et celles que GoTrue
+  veut appliquer ;
+- la charge de données sensibles tombe à **13 lignes**, ce qui rend le
+  blocage GitHub ci-dessus trivial à contourner (un job unique, quelques
+  `insert`, rien à stocker).
+
 #### Les décisions de phase 0
 
-- **Migrer ou non `auth.sessions` / `auth.refresh_tokens`.** Les migrer évite
-  toute déconnexion ; ne pas les migrer force une reconnexion unique. À sept
-  comptes, la reconnexion est indolore et supprime une classe entière de
-  risque — des sessions pointant vers un serveur d'auth qui ne les connaît
-  pas. **Recommandation : ne pas les migrer, et prévenir.** À noter que ce
+- **`auth.sessions` (15) et `auth.refresh_tokens` (50) ne sont pas migrées.**
+  Les migrer éviterait toute déconnexion ; ne pas les migrer force une
+  reconnexion unique. À six comptes, la reconnexion est indolore et supprime
+  une classe entière de risque — des sessions pointant vers un serveur d'auth
+  qui ne les connaît pas. **Tranché : on ne les migre pas, on prévient.** À
+  noter que ce
   n'est pas contradictoire avec le § 7.9 point 1 : la clé symétrique conservée
   fait que les jetons déjà émis restent *vérifiables*, mais leur
   rafraîchissement, lui, a besoin de la ligne de session.
