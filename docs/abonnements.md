@@ -147,7 +147,7 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `listes_courses_max` | STOCK | trigger sur `shopping_lists` |
 | `partage_carnet_prive_max` | STOCK | trigger sur `book_shares` |
 | `import_ia_mensuel` | FLUX | `/api/import-url`, `/api/transcribe-photo` |
-| `ajustement_ia_mensuel` | FLUX | `/api/scale-recipe` |
+| `ajustement_ia_mensuel` | FLUX | `/api/scale-recipe`, `BatchWidget` (JEP-77) |
 | `mode_projet_ia_mensuel` | FLUX | `/api/projet/structure`, `/api/projet/composant` |
 | `mode_projet` | binaire | `/projets/*`, `/api/projet`, portée « Projets » du carnet |
 | `ecran_relecture_import` | binaire | `/importer`, `/relecture` |
@@ -157,6 +157,63 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `reordonnancement_etapes` | binaire | `PlanningDayView` (`/en-cuisine`) |
 | `fusion_listes_courses` | binaire | `CuisineContent` (`/en-cuisine`) |
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
+
+**Correctif JEP-77** : `BatchWidget` gardait son troisième mode d'ajustement
+(« Ajuster les quantités par IA ») derrière `isAdmin`, un reliquat du
+prototype antérieur au lot 5 — jamais raccordé à `ajustement_ia_mensuel`.
+Un membre en essai avait donc le quota réservé côté serveur
+(`/api/scale-recipe`) mais aucun bouton pour l'utiliser sur une recette en
+`units` ou `mold`, tandis qu'une recette en `dimensions` l'exposait à tout le
+monde sans aucune garde. Les trois branches lisent désormais
+`canAccess(droits, 'ajustement_ia_mensuel')` (calculé une fois dans
+`app/recette/[id]/page.tsx`, prop `peutAjusterIA`). Sur `dimensions`, seul
+mode d'ajustement de ce type de recette, l'absence du droit replie sur une
+saisie manuelle du coefficient plutôt que de retirer tout moyen d'ajuster —
+même doctrine que §9 (l'existant reste, seul l'ajout est bridé).
+
+**Quota épuisé signalé avant le clic (JEP-77, suite)** : le mode IA de
+`BatchWidget` restait sélectionnable même une fois le crédit mensuel
+consommé — le refus n'apparaissait qu'après un appel à `/api/scale-recipe`
+raté. La page lit désormais `mc_check_quota` (lecture d'affichage seule,
+§1.3 — jamais une garde, qui reste `mc_consume` au moment de l'appel), via
+`checkQuota()` dans `lib/entitlements-data.ts`, et seulement quand
+`peutAjusterIA` est déjà vrai (pas de round-trip pour qui n'a de toute façon
+pas le droit). Volontairement PAS `mc_usage_report` : réservé aux écrans de
+jauges (cinq comptages), disproportionné pour une seule fonctionnalité sur
+la page la plus visitée du site. Le radio IA (`units`, `mold`) est
+`disabled` avec un `title` donnant l'usage et la limite ; sur `dimensions`,
+seul mode d'ajustement disponible, le quota épuisé replie sur le même
+coefficient manuel que l'absence de droit, avec un message distinct (« le
+crédit se renouvelle à la prochaine période » plutôt qu'un renvoi vers
+`/plans`, puisque le droit existe déjà).
+
+**Constat en cours d'investigation, sans correctif** : un test manuel sur un
+essai a montré 5 ajustements IA acceptés pour une limite affichée à 3 en
+back-office. Ce n'était pas un bug de `mc_effective_rights` : la souscription
+d'essai était figée sur une version de `PRO_ESSAI` antérieure à la baisse de
+limite (5 → 3), et §1.1 (« la préservation des conditions ne vaut que pour
+les abonnements TRIAL, PAID et GIFT ») fait délibérément gagner le maximum
+entre la version souscrite et la version courante du même plan. Décision
+prise en session (2026-09-06) : **conserver ce comportement** — un essai
+garde la limite en vigueur à son démarrage jusqu'à son expiration (7 jours
+maximum), comme un abonné payant. Deux options écartées, à reconsidérer si
+le coût des essais devenait un problème réel : exclure les essais du
+grandfathering pour les seuls quotas de flux IA, ou pour tout droit.
+
+**Même traitement pour l'import et le mode projet (JEP-77, suite)** : même
+défaut, mêmes correctifs, sur les deux autres quotas de flux IA.
+`app/importer/page.tsx` lit `import_ia_mensuel` via `checkQuota()` quand
+l'écran est déjà accessible ; les trois boutons « Importer » (texte, PDF,
+photos) de `ImporterForm` sont désactivés avec infobulle une fois le quota
+atteint. `app/projets/[id]/page.tsx` lit `mode_projet_ia_mensuel` de la même
+façon et transmet le résultat à `ProjectWizard` puis `ComponentResolver` :
+« Demander une proposition à l'IA » (§5.4, `/api/projet/composant`) est
+désactivé une fois le droit absent ou le quota atteint. Non touché : l'appel
+à `/api/projet/structure` (étape 1 → 2), best-effort par construction et
+sans bouton dédié — la proposition manquante s'y signale déjà après coup, ce
+que la spec (§12) considère comme acceptable pour ce chemin précis. Les
+trois boutons partagent le même repère visuel : `disabled:cursor-not-allowed`
+en plus de l'opacité déjà posée sur l'état désactivé.
 
 ---
 

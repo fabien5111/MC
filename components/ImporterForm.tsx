@@ -53,7 +53,17 @@ const tailleLisible = (octets: number): string =>
     ? `${Math.max(1, Math.round(octets / 1024))} Ko`
     : `${(octets / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
 
-export function ImporterForm() {
+export function ImporterForm({
+  quotaImport = null,
+}: {
+  // État du quota `import_ia_mensuel` (`mc_check_quota`, affichage seulement
+  // — le vrai refus reste porté par `mc_consume` dans /api/import-url) :
+  // `null` si la lecture a échoué ou n'a pas eu lieu (best-effort, cf.
+  // lib/entitlements-data.ts). Sert à griser les boutons « Importer » une
+  // fois le quota mensuel épuisé, plutôt que de laisser découvrir le refus
+  // après une tentative (JEP-77, même motif que BatchWidget).
+  quotaImport?: { allowed: boolean; limit?: number; usage?: number } | null;
+} = {}) {
   const router = useRouter();
   const dialog = useDialog();
   const [onglet, setOnglet] = useState<Onglet>('texte');
@@ -67,6 +77,11 @@ export function ImporterForm() {
   const [photos, setPhotos] = useState<PhotoChoisie[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+
+  const quotaEpuise = quotaImport != null && !quotaImport.allowed;
+  const quotaTooltip = quotaEpuise
+    ? `Quota d'imports par IA atteint ce mois-ci (${quotaImport?.usage ?? quotaImport?.limit}/${quotaImport?.limit}).`
+    : undefined;
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
   // Elle passe par Supabase (RLS) plutôt que par la route : des data-URL
@@ -395,8 +410,9 @@ export function ImporterForm() {
           <button
             type="button"
             onClick={submitText}
-            disabled={busy}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
+            disabled={busy || quotaEpuise}
+            title={quotaTooltip}
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
@@ -471,8 +487,9 @@ export function ImporterForm() {
           <button
             type="button"
             onClick={() => void submitPdf()}
-            disabled={busy || !pdf}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+            disabled={busy || !pdf || quotaEpuise}
+            title={quotaTooltip}
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>
@@ -551,8 +568,9 @@ export function ImporterForm() {
           <button
             type="button"
             onClick={() => void submitPhotos()}
-            disabled={busy || !photos.length}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:hover:shadow-none disabled:active:scale-100"
+            disabled={busy || !photos.length || quotaEpuise}
+            title={quotaTooltip}
+            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
           </button>

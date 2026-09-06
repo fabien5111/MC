@@ -70,6 +70,8 @@ export function ProjectWizard({
   unitRefs,
   recipe,
   trials,
+  peutGenererIA = true,
+  quotaProjetIA = null,
 }: {
   project: ProjectFull;
   moldTypes: MoldType[];
@@ -83,6 +85,14 @@ export function ProjectWizard({
   // pas pu être lue — le bloc des essais est alors simplement absent.
   recipe: RecipeFull | null;
   trials: ProjectTrial[];
+  // Droit `mode_projet_ia_mensuel` (défaut `true` : la page a déjà vérifié
+  // l'accès de base au mode projet avant de monter ce composant, seul le
+  // gate spécifique aux générations IA transite ici).
+  peutGenererIA?: boolean;
+  // État du quota (`mc_check_quota`, affichage seulement — la garde réelle
+  // reste `mc_consume`), transmis à `ComponentResolver` pour griser
+  // « Demander une proposition à l'IA » une fois épuisé (JEP-77).
+  quotaProjetIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -782,6 +792,8 @@ export function ProjectWizard({
           componentIndex={ordered.findIndex((c) => c.id === resolving.id)}
           componentIds={ordered.map((c) => c.id)}
           units={units}
+          peutGenererIA={peutGenererIA}
+          quotaProjetIA={quotaProjetIA}
           onClose={() => setResolving(null)}
           // La modale n'emporte pas sa propre resynchronisation : elle écrit,
           // ce parent-ci rafraîchit (il reste monté), puis la fenêtre se

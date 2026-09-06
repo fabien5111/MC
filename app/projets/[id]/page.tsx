@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
+import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
@@ -75,6 +75,14 @@ export default async function ProjetPage({ params }: Params) {
     getRecipeFull(id, 'lecture'),
     getProjectTrials(id),
   ]);
+  // Droit + quota des générations IA du mode projet (`mode_projet_ia_mensuel`,
+  // §/api/projet/structure, /api/projet/composant) — lecture d'affichage
+  // seule (`mc_check_quota`, §1.3 docs/abonnements.md, JEP-77) pour griser
+  // « Demander une proposition à l'IA » (ComponentResolver) une fois le
+  // quota mensuel atteint, plutôt que de laisser découvrir le refus après un
+  // clic.
+  const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
+  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
 
   return (
     <>
@@ -92,6 +100,8 @@ export default async function ProjetPage({ params }: Params) {
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
           recipe={recipe}
           trials={trials}
+          peutGenererIA={peutGenererIA}
+          quotaProjetIA={quotaProjetIA}
         />
       </main>
       <Footer />

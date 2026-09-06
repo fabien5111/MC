@@ -21,6 +21,7 @@
 // modification manuelle dans ce modèle.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
@@ -61,15 +62,25 @@ export function BatchWidget({
   moldTypes,
   ingredients,
   existingBatch,
-  isAdmin = false,
+  peutAjusterIA = false,
+  quotaIA = null,
 }: {
   recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
   existingBatch?: BatchFull | null;
-  // Réservé aux administrateurs pour le moment : ajustement des quantités par IA
-  // (texte libre) proposé comme troisième mode d'ajustement dans le mode « unités ».
-  isAdmin?: boolean;
+  // Droit d'abonnement `ajustement_ia_mensuel` (cf. docs/abonnements.md §3,
+  // JEP-77) : ajustement des quantités par IA (texte libre), proposé comme
+  // troisième mode d'ajustement dans les modes « unités » et « moule ». Sur
+  // une recette en dimensions libres, c'est le seul mode d'ajustement — sans
+  // ce droit, un coefficient manuel reste offert à la place (cf. `aiBlock`).
+  peutAjusterIA?: boolean;
+  // État du quota (`mc_check_quota`, affichage seulement) quand `peutAjusterIA`
+  // est vrai : `null` si le droit n'a jamais été vérifié (droit absent) ou si
+  // la lecture a échoué (best-effort, cf. lib/entitlements-data.ts). Sert
+  // uniquement à griser le mode IA une fois le quota mensuel épuisé — le vrai
+  // refus reste porté par `mc_consume` au moment de l'appel.
+  quotaIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -79,6 +90,15 @@ export function BatchWidget({
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
+
+  // Quota épuisé malgré le droit : le mode IA reste listé (le membre sait
+  // qu'il y a droit) mais n'est plus sélectionnable, avec l'explication en
+  // infobulle plutôt qu'un message qui n'apparaîtrait qu'après un clic dans
+  // le vide.
+  const iaEpuise = peutAjusterIA && quotaIA != null && !quotaIA.allowed;
+  const iaTooltip = iaEpuise
+    ? `Quota d'ajustements par IA atteint ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}).`
+    : undefined;
 
   const yInfo = yieldInfo(recipe);
   const moldSummary = [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null;
@@ -441,9 +461,9 @@ export function BatchWidget({
                   <input type="radio" name="umode" checked={uMode === 'ing'} onChange={() => setUMode('ing')} /> Ajuster par quantité d&apos;un ingrédient
                 </label>
               )}
-              {isAdmin && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} />
+              {peutAjusterIA && (
+                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
+                  <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} disabled={iaEpuise} />
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
                     Ajuster les quantités par IA
@@ -495,13 +515,13 @@ export function BatchWidget({
 
         {recipe.measure_type === 'mold' && (
           <div className="flex flex-col gap-4">
-            {isAdmin && (
+            {peutAjusterIA && (
               <div className="flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} />
+                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
+                  <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} disabled={iaEpuise} />
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
                     Ajuster les quantités par IA
@@ -560,7 +580,40 @@ export function BatchWidget({
         {recipe.measure_type === 'dimensions' && (
           <div className="flex flex-col gap-4">
             {qtyInfoBlock}
-            {aiBlock}
+            {peutAjusterIA && !iaEpuise ? (
+              aiBlock
+            ) : (
+              // Sans le droit, ou le droit mais quota épuisé, l'IA reste le
+              // seul mode d'ajustement proposé aux autres formules — mais
+              // c'est aussi le SEUL mode d'ajustement de ce type de recette :
+              // le retirer entièrement laisserait ces membres sans aucun
+              // moyen d'ajuster une recette en dimensions libres. Un
+              // coefficient manuel préserve l'existant (§9,
+              // docs/abonnements.md), l'IA restant réservée à qui y a droit
+              // et n'a pas épuisé son quota du mois.
+              <div className="flex flex-col gap-3" style={{ maxWidth: '28rem' }}>
+                <div className="flex items-end gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className={LBL}>Coefficient d&apos;ajustement</label>
+                    <input type="number" min={0} step="any" value={aiCoef} onChange={(e) => setAiCoef(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
+                  </div>
+                  <span className="text-xs text-on-surface-variant pb-2">Laissez vide pour garder la recette telle quelle.</span>
+                </div>
+                <p className="text-xs text-on-surface-variant">
+                  {iaEpuise ? (
+                    <>Quota d&apos;ajustements par IA atteint ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — le crédit se renouvelle à la prochaine période.</>
+                  ) : (
+                    <>
+                      Ajustement automatique par IA non inclus dans votre formule —{' '}
+                      <Link href="/plans" className="text-primary underline">
+                        voir les formules
+                      </Link>
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

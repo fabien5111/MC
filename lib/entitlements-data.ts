@@ -333,3 +333,27 @@ export async function refundQuota(key: string, n = 1): Promise<void> {
     console.error('entitlements/refund:', err);
   }
 }
+
+export type QuotaStatus = { allowed: boolean; limit?: number; usage?: number };
+
+/**
+ * Lecture seule d'un quota de flux, pour l'AFFICHAGE uniquement (`mc_check_quota`,
+ * §1.3) — jamais comme garde avant écriture, celle-ci reste `mc_consume` au
+ * moment de l'appel IA. Plus léger que `getUsageReport` (`mc_usage_report`,
+ * cinq comptages, réservé aux jauges) : une seule fonctionnalité, à n'appeler
+ * que là où un bouton doit refléter l'état réel du quota (JEP-77 : « Ajuster
+ * les quantités par IA » de `BatchWidget`).
+ *
+ * Best-effort : une panne de lecture laisse le bouton actif plutôt que de le
+ * griser à tort — le vrai refus, lui, reste porté par `mc_consume`.
+ */
+export const checkQuota = cache(async (userId: string, key: string): Promise<QuotaStatus> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('mc_check_quota', { p_user_id: userId, p_key: key });
+  if (error) {
+    console.error('entitlements/check_quota:', error.message);
+    return { allowed: true };
+  }
+  const d = data as { allowed?: boolean; limit?: number; usage?: number } | null;
+  return { allowed: d?.allowed ?? true, limit: d?.limit, usage: d?.usage };
+});

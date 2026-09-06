@@ -8,7 +8,7 @@ import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
 import { canAccess, blockingMessage } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, getGrid } from '@/lib/entitlements-data';
+import { getCurrentPlan, getEntitlements, getGrid, checkQuota } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
@@ -37,6 +37,11 @@ export default async function ImporterPage() {
         limite: null,
         usage: 0,
       });
+  // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md,
+  // JEP-77) : grise les boutons « Importer » une fois le quota mensuel
+  // épuisé, plutôt que de laisser découvrir le refus après une tentative.
+  // Seulement quand l'écran est déjà accessible.
+  const quotaImport = peutImporter ? await checkQuota(user.id, 'import_ia_mensuel') : null;
 
   // Quota du jour (UTC), comme la version vanilla.
   const debutJour = new Date();
@@ -61,7 +66,7 @@ export default async function ImporterPage() {
         </p>
 
         {peutImporter ? (
-          <ImporterForm />
+          <ImporterForm quotaImport={quotaImport} />
         ) : (
           messageBloque && (
             <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
