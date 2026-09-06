@@ -171,6 +171,35 @@ mode d'ajustement de ce type de recette, l'absence du droit replie sur une
 saisie manuelle du coefficient plutôt que de retirer tout moyen d'ajuster —
 même doctrine que §9 (l'existant reste, seul l'ajout est bridé).
 
+**Quota épuisé signalé avant le clic (JEP-77, suite)** : le mode IA de
+`BatchWidget` restait sélectionnable même une fois le crédit mensuel
+consommé — le refus n'apparaissait qu'après un appel à `/api/scale-recipe`
+raté. La page lit désormais `mc_check_quota` (lecture d'affichage seule,
+§1.3 — jamais une garde, qui reste `mc_consume` au moment de l'appel), via
+`checkQuota()` dans `lib/entitlements-data.ts`, et seulement quand
+`peutAjusterIA` est déjà vrai (pas de round-trip pour qui n'a de toute façon
+pas le droit). Volontairement PAS `mc_usage_report` : réservé aux écrans de
+jauges (cinq comptages), disproportionné pour une seule fonctionnalité sur
+la page la plus visitée du site. Le radio IA (`units`, `mold`) est
+`disabled` avec un `title` donnant l'usage et la limite ; sur `dimensions`,
+seul mode d'ajustement disponible, le quota épuisé replie sur le même
+coefficient manuel que l'absence de droit, avec un message distinct (« le
+crédit se renouvelle à la prochaine période » plutôt qu'un renvoi vers
+`/plans`, puisque le droit existe déjà).
+
+**Constat en cours d'investigation, sans correctif** : un test manuel sur un
+essai a montré 5 ajustements IA acceptés pour une limite affichée à 3 en
+back-office. Ce n'était pas un bug de `mc_effective_rights` : la souscription
+d'essai était figée sur une version de `PRO_ESSAI` antérieure à la baisse de
+limite (5 → 3), et §1.1 (« la préservation des conditions ne vaut que pour
+les abonnements TRIAL, PAID et GIFT ») fait délibérément gagner le maximum
+entre la version souscrite et la version courante du même plan. Décision
+prise en session (2026-09-06) : **conserver ce comportement** — un essai
+garde la limite en vigueur à son démarrage jusqu'à son expiration (7 jours
+maximum), comme un abonné payant. Deux options écartées, à reconsidérer si
+le coût des essais devenait un problème réel : exclure les essais du
+grandfathering pour les seuls quotas de flux IA, ou pour tout droit.
+
 ---
 
 ## 4. Cache — ce qui peut l'être et ce qui ne le doit pas

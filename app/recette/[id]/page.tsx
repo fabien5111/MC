@@ -9,7 +9,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
-import { getEntitlements } from '@/lib/entitlements-data';
+import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
 import { fmtNum, batchFactor } from '@/lib/recipe-plan';
@@ -125,6 +125,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
     user ? getEntitlements(user.id) : Promise.resolve({}),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
+  // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md) :
+  // seulement quand le droit existe déjà, pour ne pas payer cet aller-retour
+  // aux membres qui n'ont de toute façon pas accès à l'ajustement par IA.
+  const quotaIA = user && peutAjusterIA ? await checkQuota(user.id, 'ajustement_ia_mensuel') : null;
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -377,7 +381,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               rail. Une fournée créée quitte cette fiche pour vivre sur son
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
-          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} />
           {isProject && isOwner && (
             // Historique des essais (spec §7.5 : reste consultable après
             // validation) — `canLaunch={false}` : lancer une fournée passe
