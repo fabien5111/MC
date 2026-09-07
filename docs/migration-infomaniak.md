@@ -2272,7 +2272,7 @@ testable :
 |---|---|---|---|
 | **1** | Postgres + restauration du DDL | — | **Fait le 06/09** |
 | **2** | + GoTrue v2.196.0 + transfert des identités | **1 ✅, 3 ✅** (donnée) | **Fait le 06/09** |
-| **3** | + Load Balancer, DNS, TLS, clés ES256 | 2, 3 (bout en bout), 4 | à faire |
+| **3** | + Load Balancer, DNS, TLS, clés ES256 | **2 ✅, 3 ✅** (bout en bout), **4 ✅** | **Fait le 07/09** |
 | **4** | + PostgREST | 5 | à faire |
 
 Le critère 2 glisse au palier 3 : éprouver une connexion e-mail + mot de passe
@@ -2486,7 +2486,7 @@ l'image était saine et que seul l'acheminement de la configuration était en
 cause. **Devant un conteneur muet, lancer le processus à la main plutôt que
 d'interroger la plateforme.**
 
-#### Palier 3 (07/09) — le critère 2, franchi après un effacement complet
+#### Palier 3 (07/09) — quatre critères sur cinq, après un effacement complet
 
 ##### `GOTRUE_JWT_AUD` n'a pas de valeur par défaut
 
@@ -2560,11 +2560,133 @@ schéma `auth`, et la restauration n'emploie ni `--clean` ni `drop schema`.
 | `last_sign_in_at` à l'instant du test | GoTrue **écrit** aussi dans la base, pas seulement lit |
 | en-tête `{"alg":"HS256"}` | la signature est encore symétrique : le critère 4 reste devant |
 
-##### Reste au palier 3
+##### L'exposition HTTPS — DNS, certificat, et le rôle de Kong
 
-CNAME `auth.jepatisse.com` vers l'Équilibrage, Let's Encrypt (le fichier
-`ssl.conf.disabled` attend déjà dans `conf.d/`), puis les clés ES256 et le JWKS
-— critère 4, et vérification de bout en bout du critère 3.
+Quatre gestes, dans un ordre que rien ne permet d'intervertir : chacun est le
+prérequis du suivant.
+
+1. **Relever le nom d'hôte de l'environnement** — `jepatisse.jcloud-ver-jpe.ik-server.com`,
+   lu dans *Paramètres → Domaines personnalisés*, jamais dans un champ de
+   formulaire. C'est le nom de l'**environnement**, pas celui du nœud : il suit
+   automatiquement le point d'entrée si la topologie bouge, quand un
+   `node216115-…` se périmerait.
+2. **Le CNAME**, dans l'**éditeur de zone** du manager Infomaniak (l'écran
+   « Serveur DNS » ne liste que les NS et ne sait pas créer un CNAME). TTL à
+   300 s le temps de la mise au point.
+3. **Affecter le domaine à l'environnement.** Sur un équilibreur **partagé**,
+   l'aiguillage se fait par l'en-tête `Host` : sans cette déclaration, la
+   plateforme reçoit la requête — le DNS y mène — mais ne sait à quel
+   environnement la remettre.
+4. **Let's Encrypt**, par le module (survol de la ligne du nœud → *Modules
+   complémentaires*, ou le Marketplace ; il n'est **pas** dans le panneau
+   *Paramètres*). Il renomme `ssl.conf.disabled` en `ssl.conf` et réécrit la
+   configuration : **ne pas y toucher à la main**, ce serait écrasé au premier
+   renouvellement.
+
+Mesuré à chaque étape plutôt que supposé : la résolution DNS depuis l'extérieur
+(`auth.jepatisse.com` → CNAME → `185.172.100.59` / `.60`, sans domaine dupliqué
+en fin de cible, le piège classique du point final manquant), puis le JSON de
+GoTrue en clair, puis en HTTPS avec cadenas.
+
+**L'Équilibrage doit tenir le rôle de Kong.** L'URI de redirection enregistrée
+chez Google est `https://auth.jepatisse.com/auth/v1/callback`, or GoTrue sert son
+retour sur `/callback` : en relayant la racine telle quelle, Google aurait
+renvoyé le navigateur sur un chemin inconnu — 404, tout à la fin du parcours,
+après le consentement. Le préfixe `/auth/v1` n'est pas propre à Google : c'est la
+forme que prend toute l'API Supabase côté application (`supabase-js` appelle
+`<url>/auth/v1/token`, PostgREST sera sur `/rest/v1/`). D'où, dans
+`conf.d/ssl.conf`, **avant** la `location /` :
+
+```nginx
+    location /auth/v1/ {
+        set $upstream_name common;
+        rewrite ^/auth/v1/(.*)$ /$1 break;
+        …
+        include conf.d/ssl.upstreams.inc;
+        proxy_pass http://$upstream_name;
+    }
+```
+
+Deux points non évidents. **`$upstream_name` est posé DANS la `location /`**
+(`set $upstream_name common;`), pas au niveau du `server` : une nouvelle
+`location` ne l'hérite pas, et l'oublier enverrait le relais vers une valeur
+vide — panne qui ne se verrait qu'au retour de Google. Et **la réécriture est
+obligatoire** : `proxy_pass` portant une *variable* et aucune URI, NGINX
+transmet le chemin tel quel ; le `proxy_pass http://amont/;` qui retire
+habituellement le préfixe est ici inutilisable.
+
+Ce bloc vit dans un fichier géré par le module Let's Encrypt : **à revérifier
+après toute réinstallation ou reconfiguration du module**, même vigilance que
+pour les lignes `upstream` de `nginx-jelastic.conf`.
+
+**Deux détails d'exploitation, payés en tours de boucle** : l'icône
+*Configuration* d'un nœud n'apparaît qu'au survol, à l'extrémité droite de la
+ligne du **groupe** (pas de la sous-ligne « ID nœud »), et `sudo` n'est pas
+utilisable en Web SSH — le compte du conteneur n'a pas de mot de passe. Un
+rechargement de NGINX passe donc par le bouton *Redémarrer* de l'interface.
+Sur l'Équilibrage, ce redémarrage est sans enjeu : le nœud ne porte aucune
+donnée.
+
+##### Critère 3, de bout en bout — et l'asymétrie qui coûte un tour
+
+Variables Google posées sur le nœud Auth, puis **redéploiement** (piège 3,
+troisième récidive : un `provider is not enabled` persistant venait de là).
+
+**`GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` mais `GOTRUE_EXTERNAL_GOOGLE_SECRET`** —
+sans `CLIENT_` sur le second. Google nomme pourtant ses deux champs *Client ID*
+et *Client Secret* : écrire `…_CLIENT_SECRET` est l'erreur naturelle, et elle ne
+produit aucun avertissement — la variable est ignorée, le champ reste vide, et
+l'erreur (`missing OAuth secret`) n'arrive qu'à la première tentative.
+
+`GOTRUE_SITE_URL` a été réglé **provisoirement** sur
+`https://auth.jepatisse.com/auth/v1/health` : c'est là que GoTrue renvoie le
+navigateur avec le jeton dans le fragment. Le renvoyer sur `https://dev.jepatisse.com/`
+— sa vraie valeur — aurait déposé un jeton signé par **cette** instance sur un
+site qui tourne encore sur Supabase, où `supabase-js` l'aurait ramassé.
+
+**La preuve se lit en base, jamais à l'écran.** Un parcours qui aboutit a
+exactement le même aspect qu'il ait reconnu le compte ou qu'il en ait créé un
+septième :
+
+```
+avant : comptes 6 | identites 7 | derniere_connexion 11:40:49
+après : comptes 6 | identites 7 | derniere_connexion 19:16:54
+```
+
+Comptes et identités inchangés : `provider_id` a bien servi de clé de
+rattachement. C'était le vrai risque du lot C.
+
+##### Critère 4 — les clés ES256, générées dans le navigateur
+
+`scripts/jwt-es256.mjs` suppose un terminal avec Node : inutilisable ici (§ 10.1).
+La paire est donc générée **dans la console du navigateur** par `crypto.subtle`,
+ce qui règle les trois contraintes d'un coup — la clé naît sur le poste, ne passe
+ni par ce dépôt public, ni par une capture, ni par une conversation, et ne sort
+que vers le champ Jelastic :
+
+```js
+(async()=>{const kid='mc-es256-2026-09';const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);const priv=await crypto.subtle.exportKey('jwk',kp.privateKey);const pub=await crypto.subtle.exportKey('jwk',kp.publicKey);Object.assign(priv,{kid,alg:'ES256',use:'sig',key_ops:['sign','verify']});Object.assign(pub,{kid,alg:'ES256',use:'sig',key_ops:['verify']});console.log('GOTRUE_JWT_KEYS = '+JSON.stringify([priv]));console.log('PGRST_JWT_SECRET = '+JSON.stringify({keys:[pub]}));})()
+```
+
+**Deux mesures, pas une** — parce qu'un JWKS irréprochable ne prouve rien sur la
+signature réellement émise, et que c'est exactement là que se referme le piège du
+champ `alg` :
+
+| Mesure | Résultat |
+|---|---|
+| `/auth/v1/.well-known/jwks.json` | une clé `EC` / `P-256` / `ES256`, `use: "sig"`, `key_ops: ["verify"]`, `kid` `mc-es256-2026-09` |
+| en-tête d'un `access_token` réel | `{"alg":"ES256","kid":"mc-es256-2026-09","typ":"JWT"}` |
+
+La forme du JWKS est **identique** à celle relevée le 06/09 sur le projet
+Supabase — ce que `getClaims()` consomme déjà, sans autre changement côté
+application que l'URL. Le `"ext":true` que republie GoTrue est un résidu du
+drapeau *extractable* de WebCrypto, sans effet sur la vérification.
+
+##### Reste au palier 4
+
+PostgREST : un nœud, la variable `PGRST_JWT_SECRET` (l'**objet** `{"keys":[…]}`
+des JWK publiques, mise de côté à la génération), et une `location /rest/v1/` sur
+l'Équilibrage — le même bloc que ci-dessus, avec un autre amont.
 
 **À revérifier après toute modification de topologie** : Jelastic régénère
 `nginx-jelastic.conf`, et les deux lignes `upstream` y repointent alors vers le
@@ -2602,6 +2724,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | La signature TempURL est émise **préfixée** du nom du condensat (`sha256:<hex>`), « la forme documentée par Swift », la forme nue n'étant qu'une tolérance | **Exactement l'inverse sur ce cluster.** La forme préfixée est refusée en 401 — encodée (`sha256%3A…`, ce que produit `URLSearchParams`) comme non encodée — et seule la forme **nue** est acceptée. Mesuré le 05/09 en tentant un dépôt réel sur les douze combinaisons possibles (`object-storage-diagnostic-signature.yml`), après que trois hypothèses successives (clé, hôte, préfixe `/object`) eurent été écartées une à une. Le commentaire d'origine raisonnait sur la documentation Swift générique, jamais sur une mesure — et `allowed_digests`, que la sonde du B0 avait bien lu, dit quels condensats sont acceptés, pas sous quelle forme. Verrouillé par un test (`lib/storage.test.ts`). |
 | Le chemin signé commence par `/v1/AUTH_<projet>` | **Chez Infomaniak il commence par `/object/v1/AUTH_<projet>`**, et ce segment fait partie intégrante du chemin à signer : une signature calculée sans lui est refusée en 401 (même diagnostic). `SWIFT_STORAGE_URL` doit donc reprendre telle quelle la racine rendue par `swift auth`, sans rien y retrancher. |
 | Le mot de passe de `supabase_auth_admin` est bon — « mesuré » par `psql -h 127.0.0.1 -W` | **Le test ne prouvait rien.** Le `pg_hba.conf` de l'image accepte `127.0.0.1/32` en `trust`, donc sans vérifier : l'invite affichée vient de psql, pas du serveur, et n'importe quelle valeur passe. Le mot de passe était faux, et l'heure suivante a été perdue à chercher ailleurs. **Un test d'authentification doit emprunter le même chemin réseau que le client qu'il simule** (§ 7.11, piège 6). |
+| La paire ES256 se génère avec `scripts/jwt-es256.mjs` (§ 7.10) | **Inutilisable en pratique** : le script suppose un terminal avec Node, or tout le développement se fait en ligne (§ 10.1) — la contrainte la plus structurante du dossier, oubliée au moment d'écrire l'outil. La paire est générée dans la **console du navigateur** par `crypto.subtle`, ce qui satisfait mieux la doctrine de départ : la clé privée naît sur le poste et ne passe ni par ce dépôt public, ni par une capture, ni par une conversation. Le script reste valable pour qui dispose d'un terminal. |
 
 ---
 
@@ -2800,19 +2923,35 @@ expire le 19/09**, seule échéance dure du lot C.
 dernière activité, purge en quatrième passe du cron des abonnements,
 annoncée au membre dans « Mes imports ».
 
-**Les paliers 1 et 2 du lot C sont franchis, et le critère 2 avec eux**
-(§ 7.11) : l'environnement `jepatisse` tourne à Genève, le DDL y est restauré à
-**951 objets sur 951**, GoTrue v2.196.0 a hissé le schéma `auth` jusqu'à
-`20260625000000` (**77 migrations, identique à la production**), les **6 comptes
-/ 7 identités** sont transférés avec des **empreintes md5 identiques des deux
-côtés** — donc `provider_id` intact et le compte à double identité préservé — et
-une **connexion e-mail + mot de passe rend un `access_token`** portant les deux
-identités rattachées au même `user_id`. Tout cela a dû être **rechargé une
-fois** : un redéploiement du nœud Postgres sans volume déclaré avait effacé la
-base (§ 7.11, piège 5). La reconstruction complète prend une heure et sa
-séquence est écrite. **La prochaine action est la suite du palier 3** : DNS
-`auth.jepatisse.com`, Let's Encrypt et clés ES256, qui débloqueront le critère 4
-et la vérification de bout en bout du 3. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
+**Les paliers 1 à 3 du lot C sont franchis, et quatre critères de Go/No-Go sur
+cinq avec eux** (§ 7.11). L'environnement `jepatisse` tourne à Genève, le DDL y
+est restauré à **951 objets sur 951**, GoTrue v2.196.0 a hissé le schéma `auth`
+jusqu'à `20260625000000` (**77 migrations, identique à la production**), et les
+**6 comptes / 7 identités** ont été transférés avec des **empreintes md5
+identiques des deux côtés**. `https://auth.jepatisse.com` est servi en TLS par
+le nœud Équilibrage, qui tient le rôle de Kong sur `/auth/v1/`. Les quatre
+critères mesurés :
+
+| Critère | Preuve |
+|---|---|
+| 1 — registre de migrations | `77 / 20260625000000` |
+| 2 — e-mail + mot de passe | `access_token` portant les deux identités du même `user_id` |
+| 3 — Google, bout en bout | comptes et identités **inchangés** (6 / 7), `last_sign_in_at` avancé |
+| 4 — signature asymétrique | `{"alg":"ES256","kid":"mc-es256-2026-09"}` et JWKS conforme |
+
+Tout cela a dû être **rechargé une fois** : un redéploiement du nœud Postgres
+sans volume déclaré avait effacé la base (§ 7.11, piège 5). La reconstruction
+complète prend une heure et sa séquence est écrite. **La prochaine action est le
+palier 4** : PostgREST, `PGRST_JWT_SECRET` et une `location /rest/v1/` sur
+l'Équilibrage — le critère 5.
+
+**Trois choses à ne pas perdre entre deux sessions** :
+- **`GOTRUE_SITE_URL` porte une valeur de test** (`https://auth.jepatisse.com/auth/v1/health`)
+  et doit reprendre `https://dev.jepatisse.com/` à la bascule — la laisser
+  ainsi renverrait les membres sur une page de santé après connexion ;
+- le **TTL du CNAME est à 300 s**, à remonter une fois la bascule éprouvée ;
+- l'**Endpoint `pg-migration-temporaire`** est toujours ouvert : sa suppression
+  fait partie de la définition de terminé du lot C (§ 7.9). Contrainte à ne pas perdre de vue — **le dump des identités ne peut
 pas passer par un artefact GitHub** : il porte des adresses e-mail et des
 empreintes bcrypt, sur un dépôt public.
 
