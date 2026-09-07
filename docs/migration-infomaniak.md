@@ -2405,7 +2405,7 @@ retombe sur le bon compte exige le HTTPS du palier 3.
 Les trois gardes du workflow ont toutes passé — niveaux de migration
 identiques, empreintes de colonnes identiques, triggers signalés.
 
-#### Quatre pièges de la plateforme, payés au prix fort
+#### Six pièges de la plateforme, payés au prix fort
 
 Aucun n'était dans le dossier ; tous se reproduiront aux paliers 3 et 4.
 
@@ -2444,6 +2444,38 @@ applicatif, pas dans l'init. **Le seul juge fiable est le journal du nœud.**
 `[YOUR-PASSWORD]` de la chaîne Supabase. **Écrire les gabarits sans
 délimiteurs.**
 
+**5. Sans volume déclaré, un redéploiement du nœud Postgres détruit la base.**
+`/var/lib/postgresql/data` vit dans la couche du conteneur : un
+**redéploiement** — c'est-à-dire une recréation depuis l'image — le remplace
+par un répertoire vide, où l'image rejoue son initialisation. Constaté le 07/09
+au prix fort : `auth.users` vide, `public` sans une seule table, et
+`pg_postmaster_start_time()` calé sur l'heure du redéploiement.
+
+Le piège se referme d'autant plus facilement que le piège 3 ci-dessus impose le
+redéploiement comme **seul** moyen d'appliquer une variable au nœud Auth :
+lancé au niveau de l'**environnement** plutôt que depuis la ligne du nœud, il
+emporte Postgres avec lui. Deux règles, non négociables :
+
+- déclarer `/var/lib/postgresql/data` en volume (nœud → *Paramètres
+  additionnels* → *Volumes*) **avant tout chargement** ;
+- le nœud Postgres se **redémarre**, ne se redéploie jamais — et un
+  redéploiement se lance depuis la ligne d'un nœud, jamais depuis
+  l'environnement.
+
+Et la persistance se **prouve** plutôt qu'elle ne se suppose : créer une table
+témoin, redéployer, la relire. Trois commandes, avant de recharger 951 objets
+sur une hypothèse.
+
+**6. `host all all 127.0.0.1/32 trust` rend tout test de mot de passe local
+sans valeur.** Le `pg_hba.conf` de l'image accepte la boucle locale **sans
+vérifier**. Un `psql -U <rôle> -h 127.0.0.1 -W` affiche pourtant une invite —
+c'est psql qui la produit, avant de se connecter — et réussit quelle que soit
+la valeur saisie. D'où une conclusion tirée à tort le 07/09 (« le mot de passe
+est bon ») alors qu'il était faux, et une heure perdue à chercher ailleurs.
+**Éprouver un mot de passe passe par l'IP du nœud** (`-h 10.101.32.133`), qui
+tombe sur `host all all 10.0.0.0/8 scram-sha-256` — la règle qu'empruntent
+réellement les autres nœuds.
+
 #### La méthode qui a fait gagner le plus de temps
 
 Le journal du nœud restant vide tant que GoTrue ne démarrait pas, c'est le
@@ -2453,6 +2485,90 @@ débloqué : il a affiché en une ligne
 l'image était saine et que seul l'acheminement de la configuration était en
 cause. **Devant un conteneur muet, lancer le processus à la main plutôt que
 d'interroger la plateforme.**
+
+#### Palier 3 (07/09) — le critère 2, franchi après un effacement complet
+
+##### `GOTRUE_JWT_AUD` n'a pas de valeur par défaut
+
+Première connexion e-mail + mot de passe : `invalid_credentials`, sur un compte
+dont l'état était pourtant irréprochable en base (confirmé, empreinte `$2a$`,
+ni banni ni supprimé). La cause est dans les sources de GoTrue, pas dans la
+donnée : le champ `Aud` de la configuration JWT
+(`internal/conf/configuration.go`) ne porte **aucune balise de défaut**, et
+`requestAud()` (`internal/api/helpers.go`) se termine par `return config.JWT.Aud` — la chaîne vide, quand la requête n'a ni
+en-tête `X-JWT-AUD` ni jeton. GoTrue cherchait donc `aud = ''` quand les comptes
+transférés portent `aud = 'authenticated'`, et signalait l'absence par le même
+message générique qu'un mot de passe faux.
+
+**`GOTRUE_JWT_AUD=authenticated` est donc à poser dès le montage du nœud Auth**,
+au même titre que `API_EXTERNAL_URL`. À retenir aussi comme méthode : l'en-tête
+`X-JWT-AUD` est lu **avant** la configuration, ce qui permet de trancher en une
+requête entre « la variable n'est pas reprise » et « le mot de passe est faux »
+— deux causes que l'API rend volontairement indiscernables.
+
+##### La base effacée sous les pieds, et ce qu'elle a appris
+
+Entre deux redéploiements du nœud Auth, la base a été réinitialisée : zéro
+compte, zéro identité, **zéro table dans `public`** — les paliers 1 et 2
+intégralement perdus. Cause : les pièges 5 et 6 ci-dessus, le premier pour
+l'effacement, le second pour l'heure passée à chercher ailleurs.
+
+Rien n'était irréparable, et c'est le point à retenir : **tout ce qui avait été
+chargé était reproductible**, le DDL depuis un dump de production, les identités
+depuis `migration-identites-c1.yml`. La production n'a jamais été touchée. Coût
+réel : du temps.
+
+##### La reconstruction, éprouvée en une heure
+
+Séquence exacte, à rejouer telle quelle en cas de récidive — et qui vaut mode
+opératoire pour le chargement du C3 :
+
+1. déclarer le volume, redéployer une dernière fois **volontairement** (c'est ce
+   redéploiement qui le crée), puis **prouver** la persistance par une table
+   témoin ;
+2. relever l'état de la base neuve — attendu `0 | 5 | 7` (tables `public`,
+   tables `auth`, migrations) : le schéma `auth` d'époque 2021 que pose l'image ;
+3. vérifier que l'Endpoint `pg-migration-temporaire` porte toujours le même
+   *Public Port* qu'avant le redéploiement, et le reporter dans les secrets ;
+4. `migration-restauration-repetition.yml` en mode `restaurer` — le DDL de
+   `public`. Le workflow joint la cible **avant** de tirer le dump de
+   production : un port ou un mot de passe faux échoue en quelques secondes,
+   sans consommer de quota Supabase ;
+5. `migration-identites-c1.yml` en mode `transferer`.
+
+Deux étapes du plan initial se sont révélées inutiles, et pour la même raison :
+GoTrue avait déjà rejoué ses migrations sur la base neuve (**23 tables `auth`,
+77 migrations**), ce qui prouvait *du même coup* qu'il ouvrait sa connexion —
+donc que le mot de passe de `supabase_auth_admin` était cohérent avec
+`GOTRUE_DB_DATABASE_URL`. **Un effet observé vaut vérification** : inutile de
+tester ce dont on vient de constater la conséquence.
+
+Nuance d'ordre, sans conséquence mesurée : la restauration s'est cette fois
+exécutée sur une base où GoTrue était **déjà passé**, alors qu'au palier 1 elle
+le précédait. L'inventaire est resté complet — `supabase db dump` ne sort pas le
+schéma `auth`, et la restauration n'emploie ni `--clean` ni `drop schema`.
+
+##### Ce que le jeton prouve, au-delà du critère 2
+
+| Constat dans la charge utile | Ce qu'il valide |
+|---|---|
+| `"aud":"authenticated"` | la variable est prise en configuration, pas seulement forçable par en-tête |
+| `identities` porte `email` **et** `google` | le compte à double identité a gardé ses deux lignes |
+| `sub` / `provider_id` identiques sur les deux | la clé de rattachement Google a traversé intacte — le vrai risque du lot C |
+| même `user_id` sur les deux identités | le rattachement n'a pas été rompu par le transfert |
+| `created_at` / `email_confirmed_at` d'origine | ce n'est pas un compte recréé, les horodatages ont voyagé |
+| `last_sign_in_at` à l'instant du test | GoTrue **écrit** aussi dans la base, pas seulement lit |
+| en-tête `{"alg":"HS256"}` | la signature est encore symétrique : le critère 4 reste devant |
+
+##### Reste au palier 3
+
+CNAME `auth.jepatisse.com` vers l'Équilibrage, Let's Encrypt (le fichier
+`ssl.conf.disabled` attend déjà dans `conf.d/`), puis les clés ES256 et le JWKS
+— critère 4, et vérification de bout en bout du critère 3.
+
+**À revérifier après toute modification de topologie** : Jelastic régénère
+`nginx-jelastic.conf`, et les deux lignes `upstream` y repointent alors vers le
+nœud Postgres. Elles doivent viser le nœud Auth, port 8081.
 
 ---
 
@@ -2485,6 +2601,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | L'endpoint du stockage objet est `s3.pub2.infomaniak.cloud` (§ 10.2, retenu depuis le B0) | **Faux — c'est `s3.pub1`.** Découvert le 05/09 en testant le B3 en production : tous les dépôts signés échouaient en 401 malgré des clés TempURL correctement posées et identiques des deux côtés (Vercel, conteneur). La cause était `SWIFT_STORAGE_URL` sur Vercel, réglée sur `pub2` — un hôte qui ne connaît ni les conteneurs ni les clés du bon compte. Confirmé en comparant à la sortie réelle de `swift auth` (`object-storage-afficher-url.yml`, nouveau workflow diagnostique). Aucune vérification directe contre le cluster n'avait été faite avant cette valeur : elle avait été retenue par déduction/lecture d'écran, jamais mesurée comme le reste du § 10.2. |
 | La signature TempURL est émise **préfixée** du nom du condensat (`sha256:<hex>`), « la forme documentée par Swift », la forme nue n'étant qu'une tolérance | **Exactement l'inverse sur ce cluster.** La forme préfixée est refusée en 401 — encodée (`sha256%3A…`, ce que produit `URLSearchParams`) comme non encodée — et seule la forme **nue** est acceptée. Mesuré le 05/09 en tentant un dépôt réel sur les douze combinaisons possibles (`object-storage-diagnostic-signature.yml`), après que trois hypothèses successives (clé, hôte, préfixe `/object`) eurent été écartées une à une. Le commentaire d'origine raisonnait sur la documentation Swift générique, jamais sur une mesure — et `allowed_digests`, que la sonde du B0 avait bien lu, dit quels condensats sont acceptés, pas sous quelle forme. Verrouillé par un test (`lib/storage.test.ts`). |
 | Le chemin signé commence par `/v1/AUTH_<projet>` | **Chez Infomaniak il commence par `/object/v1/AUTH_<projet>`**, et ce segment fait partie intégrante du chemin à signer : une signature calculée sans lui est refusée en 401 (même diagnostic). `SWIFT_STORAGE_URL` doit donc reprendre telle quelle la racine rendue par `swift auth`, sans rien y retrancher. |
+| Le mot de passe de `supabase_auth_admin` est bon — « mesuré » par `psql -h 127.0.0.1 -W` | **Le test ne prouvait rien.** Le `pg_hba.conf` de l'image accepte `127.0.0.1/32` en `trust`, donc sans vérifier : l'invite affichée vient de psql, pas du serveur, et n'importe quelle valeur passe. Le mot de passe était faux, et l'heure suivante a été perdue à chercher ailleurs. **Un test d'authentification doit emprunter le même chemin réseau que le client qu'il simule** (§ 7.11, piège 6). |
 
 ---
 
@@ -2683,15 +2800,19 @@ expire le 19/09**, seule échéance dure du lot C.
 dernière activité, purge en quatrième passe du cron des abonnements,
 annoncée au membre dans « Mes imports ».
 
-**Les paliers 1 et 2 du lot C sont franchis** (§ 7.11) : l'environnement
-`jepatisse` tourne à Genève, le DDL y est restauré à **951 objets sur 951**,
-GoTrue v2.196.0 a hissé le schéma `auth` jusqu'à `20260625000000` (**77
-migrations, identique à la production**), et les **6 comptes / 7 identités**
-sont transférés avec des **empreintes md5 identiques des deux côtés** — donc
-`provider_id` intact, et le compte à double identité préservé. **La prochaine
-action est le palier 3** : Load Balancer, DNS `auth.jepatisse.com`, Let's
-Encrypt et clés ES256, qui débloqueront les critères 2, 4 et la vérification de
-bout en bout du 3. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
+**Les paliers 1 et 2 du lot C sont franchis, et le critère 2 avec eux**
+(§ 7.11) : l'environnement `jepatisse` tourne à Genève, le DDL y est restauré à
+**951 objets sur 951**, GoTrue v2.196.0 a hissé le schéma `auth` jusqu'à
+`20260625000000` (**77 migrations, identique à la production**), les **6 comptes
+/ 7 identités** sont transférés avec des **empreintes md5 identiques des deux
+côtés** — donc `provider_id` intact et le compte à double identité préservé — et
+une **connexion e-mail + mot de passe rend un `access_token`** portant les deux
+identités rattachées au même `user_id`. Tout cela a dû être **rechargé une
+fois** : un redéploiement du nœud Postgres sans volume déclaré avait effacé la
+base (§ 7.11, piège 5). La reconstruction complète prend une heure et sa
+séquence est écrite. **La prochaine action est la suite du palier 3** : DNS
+`auth.jepatisse.com`, Let's Encrypt et clés ES256, qui débloqueront le critère 4
+et la vérification de bout en bout du 3. Contrainte à ne pas perdre de vue — **le dump des identités ne peut
 pas passer par un artefact GitHub** : il porte des adresses e-mail et des
 empreintes bcrypt, sur un dépôt public.
 
