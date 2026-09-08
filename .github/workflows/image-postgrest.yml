@@ -1,0 +1,72 @@
+name: Image — PostgREST pour Virtuozzo
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Construit et publie sur GHCR l'image décrite par docker/postgrest/Dockerfile :
+# le binaire officiel de PostgREST, reposé sur une base Debian pour que
+# Jelastic accepte de le déployer en conteneur personnalisé (§ 7.11).
+#
+# Aucun secret n'entre dans l'image, et le GITHUB_TOKEN de l'exécution suffit à
+# publier sur GHCR — rien à créer dans les secrets du dépôt.
+#
+# APRÈS LA PREMIÈRE CONSTRUCTION : le paquet naît privé. Le rendre public une
+# fois (dépôt > Packages > le paquet > Package settings > Change visibility),
+# sans quoi Jelastic ne pourra pas le tirer.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Étiquette de l'image officielle postgrest/postgrest à reposer sur
+          Debian. Sert aussi d'étiquette à l'image publiée : ce qui tourne chez
+          Infomaniak est donc lisible dans ce dépôt.
+        required: true
+        default: v12.2.12
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Se connecter à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Composer le nom du paquet
+        run: |
+          set -euo pipefail
+          # GHCR n'accepte que des minuscules ; le nom du dépôt en porte.
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-postgrest" >> "$GITHUB_ENV"
+
+      - name: Construire et publier
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/postgrest
+          platforms: linux/amd64
+          build-args: POSTGREST_VERSION=${{ inputs.version }}
+          push: true
+          tags: ${{ env.IMAGE }}:${{ inputs.version }}
+
+      - name: Éprouver l'image publiée
+        run: |
+          set -euo pipefail
+          # Un `docker build` réussi ne prouve pas que le binaire s'exécute sur
+          # la base Debian : le chemin copié depuis l'image `scratch` pourrait
+          # être bon et la bibliothèque manquante. On le lance vraiment.
+          echo "--- image : $IMAGE:${{ inputs.version }} ---"
+          docker run --rm "$IMAGE:${{ inputs.version }}" postgrest --version
+
+      - name: Rappeler la suite
+        run: |
+          echo "Image à déclarer dans Jelastic : $IMAGE:${{ inputs.version }}"
+          echo "Si le tirage échoue en « unauthorized », le paquet GHCR est"
+          echo "encore privé — le passer en public une fois (cf. en-tête)."
