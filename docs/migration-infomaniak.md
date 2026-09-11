@@ -3051,6 +3051,81 @@ données sur la sortie standard, `-v VERBOSITY=terse` sur tout `psql`
 
 ---
 
+### 7.13 Le gel des écritures, et le déroulé du C3 (11/09)
+
+En relisant `middleware.ts` avant de lancer la bascule, un trou est apparu que
+rien dans ce dossier n'avait relevé — et il aurait produit une perte de données
+silencieuse.
+
+#### `COMING_SOON` ne gèle rien de ce qu'il faut geler
+
+```js
+if (process.env.COMING_SOON === 'true' && host !== TESTER_HOST) {
+```
+
+**`dev.jepatisse.com` est explicitement exempté**, par conception : c'est ce
+qui permet aux testeurs de travailler pendant que la page d'attente couvre le
+grand public. Sauf que `dev.jepatisse.com` **est** la seule production réelle à
+ce stade (`CLAUDE.md`, § Domaines). Engager `COMING_SOON` pour une bascule
+aurait donc laissé les testeurs écrire sur l'**ancien** Supabase pendant toute
+la fenêtre — des écritures absentes du dump final, donc perdues à la
+réouverture, et invisibles jusqu'au jour où quelqu'un chercherait une recette
+qu'il croit avoir enregistrée.
+
+D'où `MAINTENANCE_FREEZE`, ajoutée pour cette fenêtre : un **503** sur tous les
+domaines, sans exemption. Le 503 plutôt qu'une page d'attente n'est pas
+cosmétique — c'est le code d'une indisponibilité planifiée, et il évite qu'un
+moteur d'indexation prenne la page pour le nouveau contenu du site.
+
+#### Trois canaux d'écriture, trois protections différentes
+
+Le point à ne pas se raconter : **aucun middleware ne peut geler la totalité
+des écritures**, parce que toutes ne passent pas par Vercel.
+
+| Canal | Gelé par | Reste à faire |
+|---|---|---|
+| Chargements de page (les deux domaines) | `MAINTENANCE_FREEZE` | — |
+| Crons Vercel (`/api/cron/*`) | **rien** — `/api/*` est hors du `matcher` du middleware | Choisir une fenêtre qui évite **02:00 et 02:30 UTC** (`vercel.json`) |
+| Navigateur → Supabase en direct (`supabase-js`) | **rien** — ces appels ne transitent jamais par Vercel | Demander la fermeture des onglets ; fenêtre courte ; **vérifier les décomptes après le dump** |
+
+Le troisième canal est le seul qui ne se ferme pas techniquement. Il se traite
+par la mesure, pas par la confiance : les décomptes par table du workflow de
+chargement (§ 7.12) sont rejoués **après** la bascule contre l'ancienne base,
+et toute divergence désigne une écriture tardive, nommément.
+
+#### Déroulé, avec ses points d'arrêt
+
+Écrit avant l'exécution, pour ne pas l'improviser sous pression — même méthode
+que la phase 0 du § 7.10.
+
+| # | Étape | Point d'arrêt |
+|---|---|---|
+| 1 | `MAINTENANCE_FREEZE=true` sur Vercel + redéploiement | Vérifier un 503 sur **les deux** domaines avant de continuer |
+| 2 | Prévenir les testeurs, fermeture des onglets | — |
+| 3 | `migration-restauration-repetition.yml` mode `restaurer` — DDL frais | `951 objets sur 951`, zéro erreur |
+| 4 | `migration-identites-c1.yml` mode `transferer` | Les six lignes de preuve identiques des deux côtés |
+| 5 | `migration-donnees-c3.yml` mode `verifier` **d'abord** | Lecture seule : confirme que les cinq gardes passent |
+| 6 | `migration-donnees-c3.yml` mode `charger` | Décompte par table identique + trigger recréé |
+| 7 | `GOTRUE_SITE_URL` remis sur `https://dev.jepatisse.com/` (nœud Auth), redéploiement | Il porte encore la valeur de test du palier 3 |
+| 8 | Les trois variables Vercel vers la nouvelle instance | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
+| 9 | Redéploiement **sans cache de build** | Les `NEXT_PUBLIC_*` sont inlinées au build (§ 7.9) |
+| 10 | Vérifications : connexion e-mail, connexion Google, une lecture, une écriture | — |
+| 11 | Retirer `MAINTENANCE_FREEZE` + redéploiement | Réouverture |
+| 12 | Rejouer les décomptes contre l'**ancienne** base | Toute divergence = écriture tardive à reporter à la main |
+
+**Le retour arrière reste gratuit jusqu'à l'étape 11** : tant que
+`MAINTENANCE_FREEZE` tient et qu'aucune écriture n'a eu lieu sur la nouvelle
+base, revenir consiste à remettre les trois anciennes variables et à
+redéployer. C'est ce qui fait du C3 une opération réversible plutôt qu'un saut.
+
+**Les dépendances codées en dur du § 7.9** restent à reprendre dans la foulée,
+hors fenêtre : `.github/workflows/object-storage-reconciliation.yml` porte
+l'URL Supabase en dur, et `scripts/gen-types.mjs` interroge l'API de Supabase
+par `--project-id` — `npm run gen:types` cessera de fonctionner et devra
+passer à `--db-url`.
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter

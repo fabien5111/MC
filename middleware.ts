@@ -11,6 +11,38 @@ import { matchBlogArticleSlug, isGoneSlug, goneArticleResponse } from './lib/blo
 const TESTER_HOST = 'dev.jepatisse.com';
 
 export async function middleware(request: NextRequest) {
+  // Gel de maintenance — fenêtre de bascule du lot C
+  // (docs/migration-infomaniak.md § 7.13). Absent par défaut : sans la
+  // variable, ce bloc n'existe pas.
+  //
+  // **Distinct de `COMING_SOON`, et il fallait qu'il le soit** : celui-ci
+  // exempte explicitement `dev.jepatisse.com` (ci-dessous), qui est la seule
+  // production réelle à ce stade — il ne gèle donc rien de ce qu'on cherche à
+  // geler. Ici aucun domaine n'est exempté, et la réponse est un 503 plutôt
+  // qu'une page d'attente : c'est le code qui correspond à une
+  // indisponibilité planifiée, et il évite qu'un moteur d'indexation prenne
+  // la page d'attente pour le nouveau contenu du site.
+  //
+  // CE QUE CE GEL NE COUVRE PAS — à traiter autrement le jour de la bascule :
+  //  - `/api/*` n'est pas dans le `matcher` (cf. `config` en bas de fichier),
+  //    donc les crons Vercel continuent de tourner. Ils s'exécutent à 02:00 et
+  //    02:30 UTC (`vercel.json`) : il suffit que la fenêtre évite ce créneau.
+  //  - les écritures directes du navigateur vers Supabase — `supabase-js`
+  //    parle à l'API REST sans passer par Vercel, donc un onglet ouvert avant
+  //    le gel peut encore écrire. Aucun middleware ne peut l'intercepter :
+  //    d'où la consigne de fermer les onglets, et la comparaison des
+  //    décomptes après le dump plutôt qu'une confiance aveugle.
+  if (process.env.MAINTENANCE_FREEZE === 'true') {
+    return new NextResponse('Maintenance en cours. Le site rouvre dans quelques minutes.', {
+      status: 503,
+      headers: {
+        'Retry-After': '900',
+        'Cache-Control': 'no-store',
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
+
   // Bascule avant le rafraîchissement de session : la page d'attente n'a rien
   // à faire dépendre d'une session Supabase.
   const host = request.headers.get('host')?.split(':')[0].toLowerCase();
