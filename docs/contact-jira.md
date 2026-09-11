@@ -33,27 +33,35 @@ demande dans le back-office ne touche jamais au ticket Jira.
 Chacune est un arbitrage rendu après lecture du code existant. Les changer
 demande de rouvrir le raisonnement, pas seulement le code.
 
-### 2.1 Les e-mails passent par AWS SES, pas par un fournisseur HTTP
+### 2.1 Les e-mails passent par SMTP, pas par un fournisseur HTTP
 
 La spécification (§10.0) proscrivait SMTP au motif que « les ports sortants
 sont peu fiables depuis les fonctions serverless », et prescrivait Resend,
 Postmark ou Brevo via `EMAIL_API_KEY`.
 
 Ce motif est **contredit par la production** : `lib/email.ts` envoie déjà par
-SMTP AWS SES depuis Vercel, pour l'outil de test du back-office comme pour le
-cron d'expiration d'abonnement. Introduire un second fournisseur, ce serait
-deux réputations d'expédition, deux jeux de DNS (SPF/DKIM/DMARC) et deux
+SMTP depuis Vercel, pour l'outil de test du back-office comme pour le cron
+d'expiration d'abonnement. Introduire un second fournisseur, ce serait deux
+réputations d'expédition, deux jeux de DNS (SPF/DKIM/DMARC) et deux
 implémentations — exactement la désynchronisation que l'en-tête de
 `lib/email.ts` documente avoir voulu éviter en fusionnant `lib/mail.ts`.
 
 → `EMAIL_API_KEY` et `EMAIL_FROM` n'existent pas. Tout passe par
-`sendEmail` / `sendEmailBestEffort` et l'expéditeur `SES_SENDER_EMAIL`.
+`sendEmail` / `sendEmailBestEffort` et l'expéditeur `EMAIL_SENDER`.
 
-**Conséquence à connaître.** Tant que le compte SES est en bac à sable, seules
-les adresses vérifiées reçoivent. `sendEmailBestEffort` avale l'échec par
-conception : l'erreur atterrit dans `deploy_email_error` / `admin_notify_error`
-et remonte au bandeau d'anomalies du back-office, jamais à l'écran du membre.
-Rien à changer dans le code le jour où l'accès production est accordé.
+**Le fournisseur SMTP a changé depuis l'écriture initiale de cette section**,
+sans que ce raisonnement ait à être rouvert : AWS SES a été retiré à la
+migration Infomaniak au profit de Brevo (docs/migration-infomaniak.md
+§ 7.9 bis), justement parce que le point suivant — le bac à sable — restait
+sans issue. La doctrine « un seul fournisseur SMTP » qui a fait écarter
+`EMAIL_API_KEY` reste entièrement valable ; seul son nom a changé.
+
+**Conséquence historique, résolue.** Tant que le compte SES était en bac à
+sable, seules les adresses vérifiées recevaient. `sendEmailBestEffort` avalait
+l'échec par conception : l'erreur atterrissait dans `deploy_email_error` /
+`admin_notify_error` et remontait au bandeau d'anomalies du back-office,
+jamais à l'écran du membre. Ce point n'a plus d'objet depuis le passage à
+Brevo, qui n'exige aucune validation d'adresse au coup par coup.
 
 ### 2.2 L'e-mail de déploiement part immédiatement
 
@@ -156,10 +164,10 @@ lecture, pas l'écran.
 
 Les notifications in-app existent déjà (`notifications`, `NotificationBell`,
 `createNotification`). Un membre **connecté** reçoit donc la notification en
-plus de l'e-mail, pour un appel de fonction déjà écrit. C'est le seul canal
-qui atteint réellement un membre tant que SES est en bac à sable, et cela
-livre à moitié le « suivi du statut visible par le membre » que la
-spécification repoussait hors périmètre.
+plus de l'e-mail, pour un appel de fonction déjà écrit. C'était le seul canal
+qui atteignait réellement un membre tant que SES restait en bac à sable
+(§2.1, résolu par le passage à Brevo) ; il livre à moitié le « suivi du statut
+visible par le membre » que la spécification repoussait hors périmètre.
 
 ---
 
@@ -393,7 +401,7 @@ puisqu'il ne laisse aucune trace.
 | `CONTACT_NOTIFICATION_TO` | Destinataire des notifications d'administration |
 
 Déjà en place, réutilisées telles quelles : `SUPABASE_SERVICE_ROLE_KEY`,
-`CRON_SECRET`, `SES_SMTP_*`, `SES_SENDER_EMAIL`.
+`CRON_SECRET`, `SMTP_*`, `EMAIL_SENDER`.
 
 **Un seul jeu de variables** : Vercel scope par Environnement (Production /
 Preview / Development), jamais par domaine personnalisé, et
@@ -811,9 +819,9 @@ rouvrir les cinq lots un par un :
 5. **`is_admin_user()`** se comporte comme attendu pour les policies de
    lecture du back-office (§12.6) — sans quoi `/admin/contact` reste
    silencieusement vide pour un vrai administrateur.
-6. **Compte SES sorti du bac à sable**, ou adresses de test vérifiées —
-   sans quoi aucun e-mail (notification admin, réponse, déploiement)
-   n'atteint un destinataire non vérifié.
+6. **Sans objet depuis le passage à Brevo** (§2.1) — un compte SES en bac à
+   sable exigeait des adresses de test vérifiées une par une ; Brevo n'a pas
+   cette limite.
 7. **Statut `Déployé` créé dans Jira** (§10), avec la vérification
    `createmeta` (champs obligatoires du projet).
 8. **Toutes les variables d'environnement** listées au §9 renseignées sur

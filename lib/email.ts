@@ -1,10 +1,15 @@
 // Envoi d'e-mails applicatifs (hors e-mails Supabase Auth, qui passent par
-// leur propre config SMTP côté dashboard Supabase) via le SMTP AWS SES du
-// domaine — client SMTP unique pour l'outil de test du back-office
-// (app/admin/test-email) ET les notifications d'abonnement par e-mail
-// (app/api/cron/abonnements) : un seul jeu de variables d'environnement pour
-// un seul fournisseur, plutôt que deux implémentations qui se seraient
-// silencieusement désynchronisées.
+// leur propre config SMTP côté dashboard Supabase) via un SMTP unique —
+// client commun à l'outil de test du back-office (app/admin/test-email) ET
+// aux notifications d'abonnement par e-mail (app/api/cron/abonnements) : un
+// seul jeu de variables d'environnement pour un seul fournisseur, plutôt que
+// deux implémentations qui se seraient silencieusement désynchronisées.
+//
+// Fournisseur Brevo depuis la migration Infomaniak (docs/migration-infomaniak.md
+// § 7.9 bis) — AWS SES a été retiré : le compte restait en bac à sable sans
+// perspective de sortie, ce qui n'atteignait aucun destinataire non vérifié.
+// Les variables gardent un nom neutre vis-à-vis du fournisseur : SMTP est un
+// protocole standard, rien dans le code n'est spécifique à Brevo.
 //
 // Deux façons d'appeler, pour deux contextes différents :
 //  - `sendEmail` lève `MissingSmtpConfigError` (ou l'erreur d'envoi telle
@@ -16,23 +21,11 @@
 //    l'information du membre, il ne doit jamais interrompre le traitement
 //    des autres abonnements de la même passe.
 import nodemailer from 'nodemailer';
-import { estSupprimee } from '@/lib/ses-notifications-data';
 
 export class MissingSmtpConfigError extends Error {
   constructor() {
-    super('Configuration SMTP manquante (variables SES_SMTP_HOST / SES_SMTP_PORT / SES_SMTP_USER / SES_SMTP_PASSWORD / SES_SENDER_EMAIL).');
+    super('Configuration SMTP manquante (variables SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / EMAIL_SENDER).');
     this.name = 'MissingSmtpConfigError';
-  }
-}
-
-// Adresse ayant signalé un bounce définitif ou une plainte (cf.
-// `app/api/ses/webhook`) : SES suspendrait de lui-même l'envoi vers ces
-// adresses après un certain nombre d'échecs, au détriment de la réputation
-// du domaine — autant ne jamais tenter l'envoi.
-export class SuppressedEmailError extends Error {
-  constructor(to: string) {
-    super(`Envoi bloqué : ${to} a signalé un bounce définitif ou une plainte.`);
-    this.name = 'SuppressedEmailError';
   }
 }
 
@@ -42,10 +35,8 @@ export class SuppressedEmailError extends Error {
 export type EmailAEnvoyer = { to: string; subject: string; text: string; html?: string; replyTo?: string };
 
 export async function sendEmail({ to, subject, text, html, replyTo }: EmailAEnvoyer): Promise<void> {
-  const { SES_SMTP_HOST: host, SES_SMTP_PORT: port, SES_SMTP_USER: user, SES_SMTP_PASSWORD: pass, SES_SENDER_EMAIL: from } = process.env;
+  const { SMTP_HOST: host, SMTP_PORT: port, SMTP_USER: user, SMTP_PASSWORD: pass, EMAIL_SENDER: from } = process.env;
   if (!host || !port || !user || !pass || !from) throw new MissingSmtpConfigError();
-
-  if (await estSupprimee(to)) throw new SuppressedEmailError(to);
 
   const transport = nodemailer.createTransport({
     host,
