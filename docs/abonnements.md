@@ -336,12 +336,15 @@ après coup — l'hypothèse initiale de leur absence était fausse, cf. §2).
 
 ## 7. Lot 8 — cron, notifications, e-mail : décisions
 
-### Prestataire retenu : AWS SES en SMTP
+### Prestataire retenu à l'origine : AWS SES en SMTP
 
 Choix du produit, pas le mien : SES exposé en SMTP standard, donc `lib/email.ts`
-ne connaît rien d'AWS — cinq variables génériques (`SES_SMTP_HOST`,
-`SES_SMTP_PORT`, `SES_SMTP_USER`, `SES_SMTP_PASSWORD`, `SES_SENDER_EMAIL`).
-Changer de prestataire un jour ne touchera que l'environnement, jamais le code.
+ne connaissait rien d'AWS — cinq variables déjà génériques
+(`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_SENDER`).
+Changer de prestataire un jour ne toucherait que l'environnement, jamais le
+code — prédiction vérifiée : SES a été retiré au profit de Brevo à la
+migration Infomaniak (docs/migration-infomaniak.md § 7.9 bis), sans une seule
+ligne changée dans `lib/email.ts` en dehors du nom des variables lui-même.
 
 **Un seul client SMTP, deux façons de l'appeler.** `lib/email.ts` existait déjà
 sur `main` (PR #170, outil de test `/admin/test-email`, ajouté pendant que ce
@@ -513,9 +516,10 @@ local, même motif que `ads` dans `PartnersManager`).
 
 Variables d'environnement à configurer avant mise en production (cf.
 `.env.local.example`) : `TRIAL_EMAIL_SALT` (essai gratuit, lot 6), `CRON_SECRET`
-(tâche planifiée), `SES_SMTP_HOST` / `SES_SMTP_PORT` / `SES_SMTP_USER` /
-`SES_SMTP_PASSWORD` / `SES_SENDER_EMAIL` (e-mail, AWS SES — partagées avec
-l'outil de test `/admin/test-email` de la PR #170). Sans elles : l'essai
+(tâche planifiée), `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` /
+`SMTP_PASSWORD` / `EMAIL_SENDER` (e-mail, Brevo depuis la migration
+Infomaniak — partagées avec l'outil de test `/admin/test-email` de la
+PR #170). Sans elles : l'essai
 gratuit refuse de démarrer, le cron refuse toute requête (503, jamais une
 route ouverte par défaut), et les e-mails ne partent pas silencieusement —
 rien de tout cela n'empêche le reste du site de fonctionner.

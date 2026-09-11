@@ -980,24 +980,21 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   automatique. Un membre connecté reçoit aussi une notification in-app,
   indépendante du canal e-mail (elle ne dépend que de `user_id`, pas d'une
   adresse ni du succès de l'envoi).
-- **E-mails par SES** (`lib/email.ts`, déjà en production pour les
-  notifications d'abonnement) — pas de second fournisseur.
-- **Liste de suppression des bounces/complaints** (`email_suppressions`,
-  `lib/ses-notifications-data.ts`) : `POST /api/ses/webhook` reçoit les
-  notifications SNS d'un topic abonné à l'identité SES vérifiée (bounce
-  permanent, plainte) et y enregistre l'adresse — `lib/email.ts` consulte
-  cette table avant tout envoi (`SuppressedEmailError`) et ne tente jamais
-  l'envoi vers une adresse qui y figure. **Aucun secret partagé** : SNS ne
-  propose pas de HMAC comme le webhook Jira, la seule protection est la
-  vérification de signature RSA du message (`lib/ses-webhook.ts`,
-  certificat téléchargé à l'URL fournie par SNS, hôte vérifié
-  `sns.*.amazonaws.com` pour écarter tout SSRF). Best-effort dans les deux
-  sens (écriture à la réception, lecture avant envoi) : une panne Supabase
-  ne doit jamais ni faire réessayer indéfiniment le webhook SNS, ni bloquer
-  l'envoi normal d'un e-mail. `lib/ses-types.ts` déclare la table à la main
-  en attendant sa présence dans `lib/database.types.ts` après
-  `npm run gen:types`. Abonnement HTTPS créé côté console AWS, hors de la
-  portée de ce dépôt.
+- **E-mails par SMTP Brevo** (`lib/email.ts`, déjà en production pour les
+  notifications d'abonnement) — pas de second fournisseur. **AWS SES a été
+  retiré** à la migration Infomaniak (docs/migration-infomaniak.md § 7.9 bis) :
+  le compte restait en bac à sable sans perspective de sortie, ce qui
+  n'atteignait aucun destinataire non vérifié. Les variables portent un nom
+  neutre (`SMTP_*`, `EMAIL_SENDER`) plutôt que celui d'un fournisseur.
+- **Aucune liste de suppression locale des bounces/complaints.** SES en
+  portait une (`email_suppressions`, alimentée par un webhook SNS) : Brevo
+  tient la sienne côté serveur et refuse de lui-même les adresses ayant
+  rebondi — la protection de réputation ne disparaît pas, elle change de
+  main. Ce qui disparaît, c'est la visibilité locale sur ces adresses. La
+  table `email_suppressions` reste en base, non lue et non écrite par
+  l'application — même doctrine que `profiles.followers_count` (« les
+  supprimer est une migration séparée, hors périmètre »). Un webhook Brevo
+  pour la réalimenter est un chantier possible, non entamé.
 - **Back-office** : `/admin/contact`, réservé à l'admin complet
   (`requireFullAdmin()`), fenêtre des 200 demandes les plus récentes plutôt
   qu'une pagination serveur complète, filtres statut/type en cases à cocher
@@ -1266,6 +1263,8 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 | `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
 | `CRON_SECRET` | Protège les routes planifiées (`/api/cron/*`) — Vercel ajoute automatiquement l'en-tête `Authorization: Bearer <CRON_SECRET>` à ses appels programmés dès que la variable existe | Serveur uniquement |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Client SMTP unique (`lib/email.ts`) — Brevo depuis la migration Infomaniak | Serveur uniquement |
+| `EMAIL_SENDER` | Adresse d'expédition des e-mails applicatifs (`noreply@jepatisse.com`) | Serveur uniquement |
 | `CONTACT_NOTIFICATION_TO` | Destinataire de la notification à chaque nouvelle demande de contact | Serveur uniquement |
 | `EMAIL_REPLY_TO` | Adresse « répondre à » des e-mails transactionnels du module contact | Serveur uniquement |
 | `CONTACT_FORM_SECRET` | Signe le jeton anti-robot du formulaire de contact (délai minimum) — absent : dégradé, jamais bloquant | Serveur uniquement |

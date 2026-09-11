@@ -1544,7 +1544,7 @@ Google **avant** la bascule, pas pendant.
 |---|---|---|
 | **C0** | Mesures et arbitrages, aucun code | Cette section |
 | **C1** | Répétition GoTrue (phase 3 jamais jouée) + migration des 7 identités sur un environnement de test | Le vrai Go/No-Go restant — **phase 0 en § 7.10** |
-| **C2** | Infrastructure : nœuds Postgres, PostgREST, GoTrue ; SMTP via SES (déjà en place) ; OAuth Google ; clés JWT asymétriques | Environnement reproductible, sans bascule |
+| **C2** | Infrastructure : nœuds Postgres, PostgREST, GoTrue ; SMTP via Brevo (§ 7.9 bis, SES retiré) ; OAuth Google ; clés JWT asymétriques | Environnement reproductible, sans bascule |
 | **C3** | Bascule : `COMING_SOON` → dump → restore → trois variables → vérification → réouverture | Le seul moment risqué, et il est réversible |
 | **C4** | `wal-g` (PITR, § 4.5), retrait de Supabase | Définition de terminé |
 
@@ -1556,6 +1556,142 @@ l'URL Supabase est écrite en dur dans
 redirection autorisées côté Google** doivent porter le nouvel hôte d'auth
 avant la bascule (voir l'exigence produit ci-dessus) — les déclarer pendant
 la fenêtre casserait la connexion Google le temps de la propagation.
+
+### 7.9 bis Retrait d'AWS SES, remplacé par Brevo (11/09)
+
+Une tâche de préparation banale — configurer le SMTP de GoTrue pour le C3 —
+a fait remonter un blocage qui n'avait rien à voir avec la migration : **le
+compte AWS SES restait en bac à sable, sans perspective de sortie**, exactement
+le point que docs/contact-jira.md § 2.1 signalait comme « conséquence à
+connaître » depuis l'écriture du module contact. Tant que le site n'est pas
+ouvert, ça ne se voit pas — six comptes, tous vérifiés à la main. Ça serait
+devenu un mur au premier inscrit inconnu.
+
+**Décision : un remplacement complet, pas une cohabitation qui traînerait.**
+Le site n'étant pas en production, aucune raison de ménager un retour arrière
+long — la seule prudence gardée a été de prouver Brevo avant de couper SES,
+jamais l'inverse.
+
+#### Pourquoi avant le C3, pas pendant
+
+Même raisonnement que l'arbitrage « C d'abord, A ensuite » du § 8 : mener la
+bascule d'infrastructure et un changement de fournisseur d'e-mail le même jour
+additionne deux causes de panne possibles sans rien simplifier. Brevo est
+éprouvable **dès aujourd'hui sur la production actuelle**, sans rien attendre
+du C3 :
+
+- les e-mails applicatifs partent de Vercel par SMTP nu (`lib/email.ts`,
+  aucun SDK AWS) → cinq variables à changer, sans toucher une ligne de code ;
+- les e-mails d'authentification partent du SMTP configuré **dans le tableau
+  de bord Supabase** → un formulaire à remplir, pas un déploiement.
+
+Résultat : la configuration SMTP posée sur GoTrue au C2 sera une configuration
+**déjà prouvée en production**, pas une inconnue de plus le jour de la bascule.
+
+#### DNS : trois enregistrements déjà en place, un seul manquant
+
+Mesuré plutôt que supposé, en reprenant la même méthode qu'au § 7.11 — la
+résolution DNS depuis l'extérieur plutôt qu'une capture d'écran :
+
+| Enregistrement | État constaté |
+|---|---|
+| Code de vérification Brevo (`brevo-code:…`) | déjà posé |
+| DKIM (`brevo1._domainkey` → CNAME `b1.jepatisse-com.dkim.brevo.com`) | déjà posé, clé RSA 400 caractères servie par la cible |
+| DMARC (`p=none`, `rua` vers Brevo) | déjà posé — le bon réglage pendant un changement de fournisseur : collecte des rapports sans rien rejeter |
+| SPF | **Brevo absent** — seule pièce manquante |
+
+**Le SPF s'est modifié en deux temps, jamais en un seul geste avec la coupure
+de SES.** D'abord l'ajout, SES conservé :
+
+```
+v=spf1 include:spf.infomaniak.ch include:amazonses.com include:spf.brevo.com -all
+```
+
+Avant d'ajouter un troisième `include`, le compte de résolutions DNS a été
+mesuré — au-delà de 10, SPF tombe en `PermError` et invalide **tous** les
+envois, Brevo comme Infomaniak :
+
+```
+include:spf.infomaniak.ch  = 3 résolutions
+include:amazonses.com      = 1 résolution
+include:spf.brevo.com      = 1 résolution
+                              ─────────────
+                              5 sur 10 — marge large
+```
+
+Puis, une fois les deux tests réels passés (ci-dessous), le retrait de SES,
+en modifiant le **même** enregistrement TXT plutôt qu'en en créant un second
+— deux `v=spf1` sur le même nom produisent le même `PermError` :
+
+```
+v=spf1 include:spf.infomaniak.ch include:spf.brevo.com -all
+```
+
+#### Deux pièges payés en configurant les clés SMTP
+
+**Le blocage par IP autorisées, activé par défaut à la création d'une clé
+SMTP Brevo, est structurellement incompatible avec un envoi depuis Vercel.**
+Les fonctions serverless sortent par un pool d'adresses partagées, changeantes
+à chaque invocation — aucune liste à déclarer ne peut le satisfaire. Piège
+sérieux : l'interrupteur se présente comme une bonne pratique de sécurité, pas
+comme un interrupteur d'arrêt. **À retenir pour le C2** : ce blocage
+redeviendra utilisable une fois GoTrue sur Infomaniak, qui a des IP stables
+(`185.172.100.59` / `.60`) — mais toujours pas pour les e-mails applicatifs
+tant qu'ils partent de Vercel.
+
+**Le champ « Connexion » (login SMTP) n'est pas l'adresse du compte Brevo.**
+Brevo génère un login de la forme `bNNNNNNNN@smtp-brevo.com`, visible sur le
+même écran que le mot de passe SMTP — mais rien n'empêche de saisir l'adresse
+e-mail du compte à la place, qui a la même forme superficielle. Les deux
+erreurs (blocage IP actif, mauvais login) produisaient le même symptôme :
+`535 5.7.8 Authentication failed`, un refus **au niveau SMTP** — donc hôte et
+port déjà corrects, connexion et TLS déjà négociés, seule l'authentification
+rejetée. Corrigés un par un, jamais ensemble, pour savoir lequel des deux
+avait agi.
+
+#### La preuve retenue : l'e-mail reçu, jamais la réponse de l'API
+
+Même doctrine que pour GoTrue auto-hébergé (§ 7.11) : une réponse vide de
+l'API de réinitialisation ne prouve rien — elle est volontairement identique
+qu'une adresse existe ou non. **Seul l'e-mail effectivement reçu compte.**
+Deux tests réels, sur deux chemins distincts :
+
+| Chemin | Test | Résultat |
+|---|---|---|
+| `lib/email.ts` (Vercel) | `/admin/test-email` vers une adresse réelle | reçu (en spam, cf. ci-dessous) |
+| Supabase Auth (tableau de bord) | vrai flux « mot de passe oublié » sur `dev.jepatisse.com` | reçu |
+
+**Le premier message est arrivé dans les spams, et c'est attendu, pas un
+échec.** Un domaine qui vient d'ajouter un nouveau fournisseur d'envoi part
+sans réputation pour cette route, même avec SPF/DKIM corrects — Gmail applique
+une méfiance transitoire. `p=none` en DMARC est justement le réglage qui
+convient pendant cette phase. Rien à corriger : le volume et la régularité
+d'envoi construisent la réputation avec le temps, sans action sur le DNS ni
+le code.
+
+#### Nettoyage du code — une PR séparée, après les deux tests
+
+Retiré : `lib/ses-webhook.ts`, `lib/ses-notifications-data.ts`,
+`lib/ses-types.ts`, `app/api/ses/webhook/route.ts` (308 lignes), les deux
+points d'appel dans `lib/email.ts` (`estSupprimee`, `SuppressedEmailError`).
+Renommé, dans le même mouvement : `SES_SMTP_*` / `SES_SENDER_EMAIL` →
+`SMTP_*` / `EMAIL_SENDER` — un nom neutre vis-à-vis du fournisseur, puisque
+`lib/email.ts` n'a jamais rien connu d'AWS (SMTP nu depuis l'origine, cf.
+docs/abonnements.md § 7).
+
+**`email_suppressions` reste en base, mais n'est plus ni lue ni écrite** —
+même doctrine que `profiles.followers_count` (CLAUDE.md, « Réglages du
+compte ») : supprimer une table est une migration séparée, jamais un
+sous-produit d'un autre chantier. Ce n'est pas une régression de protection :
+Brevo tient sa propre liste de suppression côté serveur et refuse de
+lui-même les adresses ayant rebondi. Ce qui disparaît, c'est la *visibilité
+locale* sur ces adresses, pas la protection de la réputation du domaine. Un
+webhook Brevo pour la réalimenter reste possible, non entamé, sans urgence.
+
+**Conséquence collatérale, positive** : le dossier portait une doctrine
+entière sur le motif `AKIA[0-9A-Z]{16}` que GitHub scanne sur les dépôts
+publics (§ 7.10). Elle reste valable en principe, mais n'a plus d'objet
+concret — l'application ne détient plus aucun identifiant AWS, nulle part.
 
 ### 7.10 Lot C1 — phase 0 : ce qui se prépare hors chrono (06/09)
 
@@ -1851,6 +1987,12 @@ production, sans lien avec la migration. **Aucune valeur de ce motif ne doit
 jamais apparaître dans ce dossier ni dans le dépôt** — même l'identifiant seul,
 sans le secret.
 
+**Sans objet depuis le retrait de SES** (§ 7.9 bis) : l'application ne détient
+plus aucun identifiant AWS, nulle part. La classe de risque entière a disparu,
+pas seulement été gérée. Le principe général — ne jamais faire transiter un
+secret par ce dépôt, quel qu'en soit le fournisseur — reste, lui, valable pour
+toujours.
+
 **Socle — sans équivalent dans le tableau de bord, à poser au C2 :**
 
 | Variable | Contenu |
@@ -1967,11 +2109,14 @@ interdit.
 | Password | masqué, **irrécupérable** une fois enregistré | `GOTRUE_SMTP_PASS` |
 
 Le panneau Supabase l'écrit lui-même : *« this password cannot be viewed once
-saved »* — confirmation directe du protocole déjà posé. **À faire au C2** :
-générer une **nouvelle** paire d'identifiants SMTP dans la console SES (région
-`eu-west-3`), pour le même expéditeur. L'ancienne paire reste valide tant
-qu'elle n'est pas révoquée : aucune coupure du service actuel pendant la
-préparation.
+saved »* — confirmation directe du protocole déjà posé.
+
+**Ce qui a effectivement été fait diffère de ce qui était prévu ici, et en
+mieux : pas une nouvelle paire SES, un changement de fournisseur.** Voir
+§ 7.9 bis — Brevo remplace SES, à la fois pour `lib/email.ts` et pour ce
+panneau SMTP. Les lignes `GOTRUE_SMTP_*` ci-dessus restent justes dans leur
+structure (mêmes noms de variables côté GoTrue), seules les valeurs
+`Host`/`Username`/`Password` changent de fournisseur.
 
 **Rate Limits** — tous les chiffres mesurés coïncident avec les valeurs par
 défaut de GoTrue :
@@ -2026,9 +2171,10 @@ façon :
 
 - `GOTRUE_EXTERNAL_GOOGLE_SECRET` → Google Cloud Console, écran des
   identifiants OAuth. C'est le même secret, il n'y a rien à régénérer.
-- `GOTRUE_SMTP_USER` / `_PASS` → nouvelle paire d'identifiants SES (§ ci-dessus,
-  l'ancienne est irrécupérable et l'identifiant ne doit pas transiter par ce
-  dépôt même seul).
+- `GOTRUE_SMTP_USER` / `_PASS` → identifiants SMTP Brevo (§ 7.9 bis), pris
+  directement dans leur console. L'ancienne paire SES est irrécupérable de
+  toute façon, et un identifiant AWS ne doit jamais transiter par ce dépôt
+  même seul — mais la question ne se pose plus, SES étant retiré.
 - `GOTRUE_SECURITY_CAPTCHA_SECRET` → sans objet, captcha désactivé.
 
 Ces valeurs vont **directement** du tableau de bord ou de la console d'origine
@@ -2843,6 +2989,66 @@ lecture — aucune trace ne subsiste.
 | 4 — signature ES256 + JWKS | `{"alg":"ES256","kid":"mc-es256-2026-09"}` |
 | 5 — PostgREST + RLS | brouillon invisible en anonyme, publié visible |
 
+### 7.12 Le workflow qui transporte les données (11/09)
+
+Les deux workflows de migration existants ne couvrent pas les données
+applicatives : celui du lot 0-bis ne transporte que du **DDL**
+(`migration-restauration-repetition.yml`), celui des identités que le schéma
+**`auth`** (`migration-identites-c1.yml`). Recettes, profils, fournées, idées
+et messages de contact n'avaient aucun véhicule — la pièce manquante du C3,
+écrite dans `migration-donnees-c3.yml`. Le détail complet (SQL, garde par
+garde) vit dans les commentaires du fichier ; ce qui suit en retient les
+décisions.
+
+**Sa place dans la séquence du § 7.10** — étapes 4 et 5, les deux dernières :
+
+```
+1. GoTrue crée le schéma auth                    (fait, palier 2)
+2. DDL public, sans données                       (migration-restauration-repetition.yml)
+3. auth.users puis auth.identities                (migration-identites-c1.yml)
+4. Données public, profiles comprise              ← ce workflow
+5. Création de on_auth_user_created               ← ce workflow, dernier geste
+```
+
+**Ce qui a décidé de la conception : faire taire les triggers de
+l'application pendant le chargement.** Pas un confort — le dump porte le
+*résultat* des triggers, pas leur déclencheur ; les rejouer, c'est les
+appliquer deux fois. `ideas_check_quota` (5 idées / 24 h / membre) ferait
+carrément **échouer** un chargement en masse. `comments_recompute_recipe_rating`
+réécrirait les notes moyennes par-dessus celles du dump. D'où
+`session_replication_role = replica` le temps du chargement — qui se délègue
+proprement, contrairement à `--disable-triggers` qui exigerait le
+superutilisateur que `postgres` n'est pas sur cette image (§ 7.11, piège 1).
+
+**Cinq gardes avant la première écriture** : `auth.users` déjà chargée et à
+parité de comptes avec la source (l'ordre du § 7.10 rendu mécanique) ; les
+tables de `public` identiques des deux côtés ; `postgres` capable de régler
+`session_replication_role` et membre de `supabase_auth_admin` — sinon le
+message rend la commande `GRANT` exacte à jouer une fois — ; et aucune clé
+étrangère hors de `public` ne référençant `public`, pour borner le
+`truncate … cascade`.
+
+**Une étape écrite puis retirée, avant le commit.** Une « revalidation des
+clés étrangères » par `ALTER TABLE … VALIDATE CONSTRAINT` aurait été un
+**no-op silencieux** : le mode `replica` contourne les FK sans les marquer
+invalides, donc PostgreSQL les croit déjà valides et ne revérifie rien.
+L'étape aurait affiché « tout tient » sans avoir rien mesuré — un contrôle
+faux est pire qu'un contrôle absent (même doctrine que les compteurs par
+facette de la recherche avancée, CLAUDE.md). Remplacée par le seul contrôle
+qui ait du sens : les profils sans compte `auth`, la couture entre les deux
+chargements séparés dans le temps.
+
+**La preuve** : un décompte exact par table, `query_to_xml` plutôt que
+`n_live_tup` — ce dernier est une estimation de l'autovacuum, fausse de
+plusieurs pourcents juste après un chargement en masse, précisément le moment
+où on l'interroge.
+
+Doctrine de confidentialité reprise à l'identique de
+`migration-identites-c1.yml` : aucun `upload-artifact`, aucune ligne de
+données sur la sortie standard, `-v VERBOSITY=terse` sur tout `psql`
+écrivant, et la définition du trigger lue sur la source puis appliquée
+**sans être affichée**.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -3096,14 +3302,24 @@ Tout cela a dû être **rechargé une fois** au palier 3 : un redéploiement du
 nœud Postgres sans volume déclaré avait effacé la base (§ 7.11, piège 5). La
 reconstruction complète prend une heure et sa séquence est écrite.
 
-**Un septième piège, découvert au palier 4, à ne pas rouvrir à la bascule
-finale** : le trigger `on_auth_user_created` sur `auth.users` n'est couvert
-par **aucun** des deux outils de migration — la restauration DDL s'arrête à
-`public`, le transfert d'identités se cantonne à `auth.users`/`auth.identities`
-par doctrine de sécurité. Sans lui, les comptes migrés s'authentifient mais
-n'ont aucune ligne `profiles` : `getProfile()` y rendrait `null`. **À poser à
-la main sur la cible finale**, avec le même correctif qu'ici (§ 7.11) : le
-trigger, puis un backfill des profils manquants.
+**Un septième piège, découvert au palier 4** : le trigger `on_auth_user_created`
+sur `auth.users` n'est couvert par **aucun** des deux outils de migration
+d'origine — la restauration DDL s'arrête à `public`, le transfert d'identités
+se cantonne à `auth.users`/`auth.identities` par doctrine de sécurité. Sans
+lui, les comptes migrés s'authentifient mais n'ont aucune ligne `profiles` :
+`getProfile()` y rendrait `null`. **Réglé pour la vraie bascule** : le
+workflow `migration-donnees-c3.yml` (§ 7.12) le recrée lui-même comme dernier
+geste, sa définition lue sur la source et jamais affichée. `jepatisse` a été
+remis dans l'état que ce workflow attend le 11/09 — trigger et 6 profils
+supprimés, `auth.users` inchangée à 6 comptes.
+
+**La préparation du C3, entièrement close le 11/09** : conversion de l'essai
+en payant, workflow de chargement des données écrit et fusionné, clés `anon`
+et `service_role` frappées et éprouvées (`anon` → 1 recette visible,
+`service_role` → 2 — RLS respectée pour l'une, contournée pour l'autre),
+SMTP basculé sur Brevo et testé deux fois en réel (§ 7.9 bis), `jepatisse`
+remis à l'état attendu. **Rien ne reste à préparer hors chrono avant la
+bascule elle-même.**
 
 **Trois choses à ne pas perdre entre deux sessions** :
 - **`GOTRUE_SITE_URL` porte une valeur de test** (`https://auth.jepatisse.com/auth/v1/health`)

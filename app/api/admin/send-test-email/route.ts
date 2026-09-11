@@ -1,5 +1,5 @@
 // Route Handler — envoi d'un e-mail de test depuis le back-office, pour
-// vérifier la configuration SMTP (AWS SES) sans passer par le flux
+// vérifier la configuration SMTP (Brevo) sans passer par le flux
 // d'inscription Supabase. Fermée au gestionnaire, comme les autres routes
 // /api/admin/* (cf. CLAUDE.md, « Rôles du back-office »).
 import { NextResponse } from 'next/server';
