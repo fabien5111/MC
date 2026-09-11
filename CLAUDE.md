@@ -1263,6 +1263,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
 | `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
 | `CRON_SECRET` | Protège les routes planifiées (`/api/cron/*`) — Vercel ajoute automatiquement l'en-tête `Authorization: Bearer <CRON_SECRET>` à ses appels programmés dès que la variable existe | Serveur uniquement |
+| `MAINTENANCE_FREEZE` | `true` bloque **tout** le site par un 503, les deux domaines compris — fenêtre de bascule uniquement, à retirer après. Contrairement à `COMING_SOON`, n'exempte pas `dev.jepatisse.com` ; ne couvre ni `/api/*` ni les écritures directes du navigateur vers Supabase (cf. en-tête de `middleware.ts`) | Serveur uniquement |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Client SMTP unique (`lib/email.ts`) — Brevo depuis la migration Infomaniak | Serveur uniquement |
 | `EMAIL_SENDER` | Adresse d'expédition des e-mails applicatifs (`noreply@jepatisse.com`) | Serveur uniquement |
 | `CONTACT_NOTIFICATION_TO` | Destinataire de la notification à chaque nouvelle demande de contact | Serveur uniquement |
