@@ -63,6 +63,13 @@ on:
           transfert vide `auth.identities` puis `auth.users` sur la cible
           avant de charger — un geste destructeur ne se déclenche pas par
           inadvertance (même doctrine que la réconciliation du lot B4).
+          PORTÉE RÉELLE DU VIDAGE, plus large que ces deux tables : le
+          `truncate ... cascade` descend dans TOUT ce qui référence
+          `auth.users`, à commencer par `public.profiles` — donc, de proche
+          en proche, tout le schéma `public`. Inoffensif AVANT le chargement
+          des données (`public` est vide à ce moment-là), catastrophique
+          après : ne JAMAIS rejouer ce mode une fois
+          migration-donnees-c3.yml passé en « charger ».
         required: false
         default: ''
 
@@ -234,6 +241,13 @@ jobs:
           # bouge. Un chargement à moitié fait laisserait des comptes sans
           # identité — précisément l'état où GoTrue crée un DOUBLON à la
           # première connexion Google (§ 7.10).
+          #
+          # `cascade` ne s'arrête PAS à `auth` : `public.profiles.id`
+          # référence `auth.users`, donc le truncate emporte `profiles`, et
+          # avec elle tout `public` de proche en proche. C'est sans effet
+          # tant que `public` est vide — l'ordre du C3 le garantit, les
+          # données arrivent APRÈS — mais ça fait de ce mode une arme à ne
+          # plus jamais rejouer une fois le site basculé (§ 7.14).
           # `-v VERBOSITY=terse` n'est pas décoratif ICI : sans lui, une erreur
           # de COPY réaffiche la LIGNE fautive — c'est-à-dire une adresse
           # e-mail et une empreinte bcrypt, dans un journal public. C'est une
