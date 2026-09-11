@@ -73,6 +73,10 @@ on:
           Pour « charger » uniquement : taper exactement REMPLACER. Le
           chargement vide TOUTES les tables du schéma `public` de la cible
           avant d'écrire — même doctrine que le transfert d'identités.
+          ATTENTION : une fois le site basculé et rouvert (C3 étape 11), ce
+          mode est DÉFINITIVEMENT hors d'usage — il effacerait toutes les
+          écritures des membres depuis la bascule. Seul « verifier » reste
+          jouable ensuite.
         required: false
         default: ''
 
@@ -411,14 +415,71 @@ jobs:
           total_dst=$(awk -F: '{s+=$2} END {print s+0}' compte-cible.txt)
           printf 'lignes au total — source : %s / cible : %s\n' "$total_src" "$total_dst"
 
-          if diff -q compte-source.txt compte-cible.txt > /dev/null; then
+          # ─── Le SENS de l'écart, pas seulement son existence ───
+          #
+          # La version d'origine exigeait l'égalité stricte. Juste après un
+          # chargement, c'est le bon critère. Mais ce workflow est AUSSI
+          # l'étape 12 du C3 (§ 7.13) : on le rejoue en mode « verifier »
+          # APRÈS la réouverture, pour débusquer une écriture qui aurait
+          # franchi le gel. À ce moment-là les deux bases ont légitimement
+          # divergé — le site tourne sur la cible — et exiger l'égalité
+          # rendait ce contrôle rouge par construction (mesuré le 11/09,
+          # § 7.14 : ad_events +11, visit_sessions +2, de la simple
+          # télémétrie de navigation).
+          #
+          # Ce qu'on cherche réellement n'est pas la différence, c'est sa
+          # DIRECTION :
+          #   cible  > source  → écrit sur la NOUVELLE base depuis la
+          #                      bascule. Normal, c'est la production.
+          #   source > cible   → écrit sur l'ANCIENNE base après le dump :
+          #                      une écriture a franchi le gel. C'est le
+          #                      seul cas qui demande une reprise à la main,
+          #                      et c'est pour lui que l'étape 12 existe.
+          awk -F: '
+          NR==FNR { s[$1]=$2; next }
+          { c[$1]=$2 }
+          END {
+            for (t in s) {
+              if (!(t in c))            printf "MANQUE\t%s\tsource=%s\tcible=absente\n", t, s[t];
+              else if (s[t]+0 > c[t]+0) printf "SOURCE_DEVANT\t%s\tsource=%s\tcible=%s\n", t, s[t], c[t];
+              else if (s[t]+0 < c[t]+0) printf "CIBLE_DEVANT\t%s\tsource=%s\tcible=%s\n", t, s[t], c[t];
+            }
+            for (t in c) if (!(t in s)) printf "MANQUE\t%s\tsource=absente\tcible=%s\n", t, c[t];
+          }' compte-source.txt compte-cible.txt | LC_ALL=C sort > ecarts.txt
+
+          source_devant=$(grep -c '^SOURCE_DEVANT' ecarts.txt || true)
+          cible_devant=$(grep -c '^CIBLE_DEVANT'  ecarts.txt || true)
+          manques=$(grep -c '^MANQUE'             ecarts.txt || true)
+
+          if [ ! -s ecarts.txt ]; then
             echo "IDENTIQUE — chaque table de public porte le même nombre de lignes"
-            echo "des deux côtés. Le chargement du C3 est fidèle."
-          else
-            echo "DIVERGENCE, table par table :"
-            diff compte-source.txt compte-cible.txt || true
+            echo "des deux côtés."
+            exit 0
+          fi
+
+          cat ecarts.txt
+
+          if [ "$manques" != "0" ]; then
+            echo "ÉCHEC — $manques table(s) présente(s) d'un seul côté."
             exit 1
           fi
+
+          if [ "$source_devant" != "0" ]; then
+            echo "ÉCHEC — $source_devant table(s) où la SOURCE est devant :"
+            echo "des lignes ont été écrites sur l'ancienne base après le dump."
+            echo "À reporter à la main sur la cible, table par table."
+            exit 1
+          fi
+
+          if [ "${{ inputs.mode }}" = "charger" ]; then
+            echo "ÉCHEC — $cible_devant écart(s) juste après un chargement :"
+            echo "à cet instant précis les deux bases doivent être identiques."
+            exit 1
+          fi
+
+          echo "GO — $cible_devant table(s) en avance côté CIBLE, aucune côté source."
+          echo "Ce sens-là est celui de la production : rien n'a franchi le gel,"
+          echo "il n'y a aucune écriture à reporter."
 
       # Le runner meurt de toute façon, mais l'effacement explicite dit
       # l'intention : ces fichiers ne survivent à aucune étape.
@@ -428,4 +489,4 @@ jobs:
           rm -f donnees.sql chargement.sql vider.sql \
                 triggers.sql supprimer-triggers.sql creer-trigger.sql \
                 tables.sql tables-source.txt tables-cible.txt \
-                compte.sql compte-source.txt compte-cible.txt
+                compte.sql compte-source.txt compte-cible.txt ecarts.txt

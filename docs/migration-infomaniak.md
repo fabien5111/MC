@@ -1679,6 +1679,13 @@ Renommé, dans le même mouvement : `SES_SMTP_*` / `SES_SENDER_EMAIL` →
 `lib/email.ts` n'a jamais rien connu d'AWS (SMTP nu depuis l'origine, cf.
 docs/abonnements.md § 7).
 
+**Ce renommage n'a PAS été répercuté sur Vercel, et ça s'est vu le 11/09**
+(§ 7.14) : les variables y sont restées sous leurs anciens noms, l'outil de
+test du back-office est tombé sur un `Configuration SMTP manquante` en pleine
+bascule, et le test Brevo qui avait validé le fournisseur tournait sur le code
+d'avant cette PR. **Une PR qui renomme une variable d'environnement doit
+nommer explicitement le geste correspondant côté hébergeur.**
+
 **`email_suppressions` reste en base, mais n'est plus ni lue ni écrite** —
 même doctrine que `profiles.followers_count` (CLAUDE.md, « Réglages du
 compte ») : supprimer une table est une migration séparée, jamais un
@@ -2104,7 +2111,7 @@ interdit.
 | Sender name | `Fabien - Je pâtisse !` | `GOTRUE_SMTP_SENDER_NAME` |
 | Host | `email-smtp.eu-west-3.amazonaws.com` | `GOTRUE_SMTP_HOST` |
 | Port | 465 | `GOTRUE_SMTP_PORT` |
-| Minimum interval per user | 60 s | `GOTRUE_SMTP_MAX_FREQUENCY=60` |
+| Minimum interval per user | 60 s | `GOTRUE_SMTP_MAX_FREQUENCY=60s` — **l'unité est obligatoire**, c'est un `time.Duration` (§ 7.14) |
 | Username | *(identifiant AWS — jamais dans ce dépôt, cf. doctrine ci-dessus)* | `GOTRUE_SMTP_USER` |
 | Password | masqué, **irrécupérable** une fois enregistré | `GOTRUE_SMTP_PASS` |
 
@@ -3109,7 +3116,7 @@ que la phase 0 du § 7.10.
 | 7 | `GOTRUE_SITE_URL` remis sur `https://dev.jepatisse.com/` (nœud Auth), redéploiement | Il porte encore la valeur de test du palier 3 |
 | 8 | Les trois variables Vercel vers la nouvelle instance | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 | 9 | Redéploiement **sans cache de build** | Les `NEXT_PUBLIC_*` sont inlinées au build (§ 7.9) |
-| 10 | Vérifications : connexion e-mail, connexion Google, une lecture, une écriture | — |
+| 10 | Vérifications : connexion e-mail, connexion Google, une lecture, une écriture | **Infaisable sous gel** — découpée en 10a (sondes `/api/*`, hors `matcher`) et 10b fusionnée avec l'étape 11, cf. § 7.14 |
 | 11 | Retirer `MAINTENANCE_FREEZE` + redéploiement | Réouverture |
 | 12 | Rejouer les décomptes contre l'**ancienne** base | Toute divergence = écriture tardive à reporter à la main |
 
@@ -3123,6 +3130,237 @@ hors fenêtre : `.github/workflows/object-storage-reconciliation.yml` porte
 l'URL Supabase en dur, et `scripts/gen-types.mjs` interroge l'API de Supabase
 par `--project-id` — `npm run gen:types` cessera de fonctionner et devra
 passer à `--db-url`.
+
+---
+
+### 7.14 Le C3 exécuté — ce que la bascule a appris (11/09)
+
+Le lot C est **terminé** : `dev.jepatisse.com` tourne sur la base Infomaniak.
+Le déroulé du § 7.13 a tenu dans ses grandes lignes ; ce qui suit consigne les
+écarts, parce qu'ils se reproduiront.
+
+#### Ce qui a été mesuré
+
+| Contrôle | Résultat |
+|---|---|
+| DDL `public` transporté | `951 objets sur 951`, aucun manquant |
+| Épreuves fonctionnelles | `mc_norm`, `pg_trgm`, `recipes.fts`, `btree_gist@public` |
+| Identités | 6 comptes, 7 identités, 1 compte à double identité, empreintes `md5` identiques |
+| Données `public` | décompte identique table par table |
+| `on_auth_user_created` | reposé et vérifié |
+| Connexion e-mail, connexion Google | ✅ |
+| Lecture anonyme, lecture authentifiée, écriture navigateur | ✅ |
+| E-mail sortant (Brevo) | ✅ |
+| Étape 12 — écritures ayant franchi le gel | **aucune** |
+
+L'étape 12 mérite sa ligne : `ad_events` +11 et `visit_sessions` +2 **côté
+cible**, aucune table où la source soit devant. Le troisième canal d'écriture
+du § 7.13 — navigateur → Supabase en direct, celui qu'aucun middleware ne peut
+fermer — n'a rien laissé passer.
+
+#### Trois verdicts rouges par construction
+
+Trois fois dans la journée, un workflow a rendu un échec alors que la mesure
+qu'il portait était bonne. Chaque fois, le même défaut : **un critère écrit
+pour un seul état du système, appliqué à un autre.**
+
+1. **`migration-restauration-repetition.yml`, mode `restaurer`** — « NO-GO,
+   661 erreurs », quand l'inventaire disait 951 objets sur 951 et que les
+   quatre épreuves passaient. Les 661 étaient des `already exists` : la cible
+   portait déjà le DDL depuis le palier 2. Un verdict qui ne peut
+   structurellement pas être vert au second passage n'est pas un garde-fou.
+   **Corrigé** : les collisions sont comptées à part et ne bloquent plus.
+2. **`migration-donnees-c3.yml`, mode `verifier` avant chargement** — la
+   comparaison table par table n'est pas conditionnée par le mode, et la cible
+   était encore vide. Rouge obligatoire.
+3. **Le même, en étape 12** — cette fois la cible est en avance, légitimement,
+   puisque le site tourne dessus. **Corrigé** : ce qui compte n'est pas
+   l'écart mais son **sens**. `source > cible` est un échec (une écriture a
+   franchi le gel, à reporter à la main) ; `cible > source` est la production
+   qui vit. L'égalité stricte n'est exigée qu'en mode `charger`.
+
+Leçon générale : **un contrôle doit énoncer l'état dans lequel il est valable**,
+sinon il consomme, en pleine fenêtre, le temps de démontrer qu'il se trompe.
+
+#### `truncate … cascade` sort de `auth`
+
+`migration-identites-c1.yml` vide la cible par
+`truncate auth.identities, auth.users cascade`. Or `public.profiles.id`
+référence `auth.users` : la cascade emporte `profiles`, et de proche en proche
+**tout le schéma `public`**.
+
+Inoffensif dans l'ordre du C3 — les données arrivent après — et
+**catastrophique ensuite** : rejouer ce mode une fois le site basculé viderait
+le carnet entier, sans confirmation autre que le `REMPLACER` déjà tapé. Le
+champ de confirmation l'annonce désormais, et le mode `charger` du workflow de
+données porte le même avertissement.
+
+#### Les durées de GoTrue exigent une unité
+
+Le § 7.11 relevait `GOTRUE_SMTP_MAX_FREQUENCY=60` depuis le panneau Supabase,
+qui affiche « 60 » sous un libellé en secondes. `MaxFrequency` est un
+`time.Duration` côté Go : `envconfig` refuse la valeur nue, GoTrue s'arrête au
+démarrage, et l'équilibreur sert une page « temporarily unavailable » qui ne
+dit rien de la cause.
+
+```
+fatal — assigning GOTRUE_SMTP_MAX_FREQUENCY to MaxFrequency:
+converting '60' to type time.Duration: missing unit in duration "60"
+```
+
+La valeur juste est **`60s`**. À vérifier de la même façon sur
+`GOTRUE_SESSIONS_TIMEBOX` et `GOTRUE_SESSIONS_INACTIVITY_TIMEOUT`, mêmes types.
+
+**Le diagnostic qui a fonctionné, et qui vaut d'être répété** : un `curl` local
+sur le nœud (`http://127.0.0.1:9999/health`) sépare en une commande « le
+service est mort » de « le service tourne mais l'équilibreur ne le joint pas ».
+Deux causes, symptômes identiques.
+
+#### Renommer une variable dans le code ne la renomme pas dans Vercel
+
+La PR de retrait d'AWS SES (§ 7.9 bis) a renommé `SES_SMTP_*` /
+`SES_SENDER_EMAIL` → `SMTP_*` / `EMAIL_SENDER`. Les variables Vercel sont
+restées sous leurs anciens noms. Personne ne l'a vu parce que le test Brevo qui
+avait validé la bascule tournait sur le code d'**avant** cette PR : l'outil de
+test du back-office est tombé le jour de la migration, sur un
+`Configuration SMTP manquante` qu'on a d'abord pris pour un dégât collatéral.
+
+**Règle à tenir : une PR qui renomme une variable d'environnement doit nommer
+explicitement le geste correspondant côté hébergeur**, et l'énoncer dans sa
+description. Le code et la configuration ne sont pas dans le même dépôt.
+
+#### Chez Vercel, un `NEXT_PUBLIC_*` ne peut plus être de type `Secret`
+
+Les deux variables publiques dataient de juillet, avant la distinction
+`Secret` / `Config`, et Vercel **refuse désormais l'enregistrement** de cette
+combinaison : un `NEXT_PUBLIC_` est inliné dans le bundle navigateur, le
+marquer secret est un mensonge que l'outil ne laisse plus passer. Et un secret
+enregistré ne se convertit pas en place — il faut **supprimer puis recréer** en
+`Config`.
+
+Sans conséquence de sécurité : la clé `anon` est publique par construction,
+c'est la RLS qui protège. `SUPABASE_SERVICE_ROLE_KEY`, elle, reste `Secret` et
+ne doit jamais recevoir ce préfixe.
+
+#### Le trou qui n'était nulle part dans ce dossier : CORS
+
+**Supabase ne fournissait pas seulement une base, il fournissait une
+passerelle.** Kong posait les en-têtes `Access-Control-*` sur chaque réponse.
+En la remplaçant par un nginx qui relaie, personne n'a repris ce rôle — et
+**tout le chemin navigateur → API** est tombé : `getUser()`, les écritures de
+`useMutation`, les favoris, les votes.
+
+Ce qui a rendu le diagnostic long, c'est que **rien de ce qu'on avait éprouvé
+ne touchait ce chemin** :
+
+- les sondes `/api/*` partent de Vercel, pas d'un navigateur ;
+- les `fetch` de vérification étaient joués depuis la console **sur
+  `auth.jepatisse.com`** — même origine, donc pas de préflight ;
+- les connexions e-mail et Google passent par `/auth/callback`, côté serveur.
+
+Trois contrôles verts, et le geste le plus banal du site cassé. **Un test
+depuis la bonne origine n'est pas un détail de mise en œuvre, c'est ce qui
+distingue le test du chemin réel.**
+
+Et le symptôme trompait : cliquer un cœur renvoyait à l'**accueil**.
+`FavoriteHeart` appelle `supabase.auth.getUser()` (réseau, bloqué par CORS),
+n'obtient rien, et pousse vers `/connexion` ; or `/connexion` voit la session
+par `getCurrentUser()` — claims vérifiés **localement**, sans réseau — et
+redirige vers `/`. Les deux niveaux de vérification du § Authentification de
+`CLAUDE.md` divergeaient, et le rebond ressemblait à une déconnexion.
+
+##### Le piège dans le correctif : `rewrite … break` coupe `if` et `set`
+
+Le bloc CORS posé **après** la ligne déjà présente —
+
+```nginx
+rewrite ^/auth/v1/(.*)$ /$1 break;
+```
+
+— est resté sans effet. `break` termine le traitement du **module rewrite**
+dans ce `location` : les `if` et les `set` qui suivent ne s'exécutent jamais.
+Les `add_header`, eux, appartiennent au module *headers* et s'appliquaient
+quand même — d'où une réponse qui portait `Access-Control-Allow-Credentials`
+mais **pas** `Access-Control-Allow-Origin` (variable jamais affectée), et un
+préflight relayé à l'amont qui répondait `405`.
+
+**Le bloc CORS doit être en tête du `location`, avant `set $upstream_name` et
+avant `rewrite`.** Et il en faut un dans **chacun** des deux blocs, `/auth/v1/`
+et `/rest/v1/` : le premier porte l'authentification, le second l'écriture.
+
+Deux commandes ont tranché là où le navigateur ne disait rien d'utile :
+
+```sh
+nginx -T | grep -n "cors_origin"          # la configuration EFFECTIVE, includes résolus
+curl -sSI -X OPTIONS <url> -H 'Origin: …' -H 'Access-Control-Request-Method: GET'
+```
+
+`nginx -t` valide la syntaxe ; `nginx -T` montre ce que nginx a réellement en
+mémoire. La distinction a évité de chercher un rechargement manquant qui
+n'existait pas.
+
+#### L'étape 10 du § 7.13 est infaisable telle qu'écrite
+
+Elle demande de vérifier connexion et écriture **pendant** le gel. Or
+`MAINTENANCE_FREEZE` répond 503 sur tout chargement de page, sans exemption —
+c'est sa raison d'être. Deux ajustements, à reporter dans le mode opératoire :
+
+- **`/api/*` est hors du `matcher` du middleware**, donc les Route Handlers
+  répondent sous gel. `GET /api/ingredients?q=far` et
+  `GET /api/recherche/compte` éprouvent URL, clé `anon`, vérification ES256,
+  RLS, RPC et données chargées — **sans rouvrir le site**. C'est le contrôle
+  qui a pris la place de l'étape 10a.
+- **Ce que ces sondes ne couvrent pas** : le bundle **navigateur** (elles sont
+  serveur), et tout ce qui est inter-origines. D'où la fusion 10b + 11 — lever
+  le gel, être le premier visiteur, prévenir les testeurs seulement ensuite.
+
+**Attention à la lecture des sondes** : `lib/search.ts` **avale** les erreurs
+(`console.error` puis `return []`). Un `200 {"items":[]}` ne distingue donc pas
+« aucun résultat » de « la base a refusé ». Les journaux d'exécution Vercel
+portent le vrai message, et c'est là qu'on a lu le `JWSError` qui a désigné une
+clé `anon` fausse.
+
+#### Frapper les jetons applicatifs n'était outillé nulle part
+
+`scripts/jwt-es256.mjs` générait la paire de clés et sa forme publique, mais
+pas les jetons `anon` / `service_role`. Il a fallu les produire dans la console
+du navigateur par `crypto.subtle`, en pleine bascule.
+
+Le script porte désormais un verbe **`frapper`**. Le piège à ne pas réintroduire
+est écrit dans son commentaire : **`dsaEncoding: 'ieee-p1363'`**. JWS attend la
+signature en `R||S` brut ; sans ce réglage Node produit du DER, revérifie son
+propre jeton sans broncher, et PostgREST le refuse par un `401` sans message.
+
+Et un rappel qui a fait perdre du temps : **ces jetons ne sont pas des secrets
+à retrouver**, ce sont des affirmations signées. PostgREST ne tient aucune liste
+de jetons valides, il vérifie une signature contre le JWKS. Un jeton refrappé
+vaut l'original ; seule la **clé privée** est irremplaçable.
+
+#### Deux gabarits, deux faux diagnostics
+
+`TON_JETON_ANON` collé tel quel dans un `fetch`, comme `LA_CLE_` au palier 3, a
+produit une erreur (`Expected 3 parts; got 1`) qu'on a d'abord prise pour un
+symptôme. **Ne pas donner de texte à substituer** : faire déclarer la valeur
+dans une variable d'abord (`const A = "…"`), puis l'utiliser — il n'y a alors
+plus rien à remplacer au milieu d'une commande.
+
+#### Ce qui reste
+
+- **Lot A** — Vercel → Node.js sur Virtuozzo, délibérément après le lot C.
+- **`wal-g`** (PITR), décommissionnement de Supabase, fermeture de l'Endpoint
+  `pg-migration-temporaire`, remontée du TTL du CNAME (300 s pendant la
+  bascule).
+- **Dépendances codées en dur** :
+  `.github/workflows/object-storage-reconciliation.yml` porte l'URL Supabase,
+  et `scripts/gen-types.mjs` interroge l'API par `--project-id` — `npm run
+  gen:types` cessera de fonctionner et devra passer à `--db-url`.
+- **`CLAUDE.md` décrit encore Supabase comme l'hébergeur de la base.** C'est
+  désormais faux et ça induira en erreur une session future : à reprendre une
+  fois le lot A tranché, pour ne pas écrire deux fois la même section.
+- **`revoke supabase_auth_admin from postgres`** si on veut resserrer après
+  coup — le droit n'était nécessaire qu'à la création du trigger final.
+- **Les jetons `anon` / `service_role` expirent en 2036.** Rien ne le
+  rappellera.
 
 ---
 
@@ -3158,6 +3396,15 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le mot de passe de `supabase_auth_admin` est bon — « mesuré » par `psql -h 127.0.0.1 -W` | **Le test ne prouvait rien.** Le `pg_hba.conf` de l'image accepte `127.0.0.1/32` en `trust`, donc sans vérifier : l'invite affichée vient de psql, pas du serveur, et n'importe quelle valeur passe. Le mot de passe était faux, et l'heure suivante a été perdue à chercher ailleurs. **Un test d'authentification doit emprunter le même chemin réseau que le client qu'il simule** (§ 7.11, piège 6). |
 | La paire ES256 se génère avec `scripts/jwt-es256.mjs` (§ 7.10) | **Inutilisable en pratique** : le script suppose un terminal avec Node, or tout le développement se fait en ligne (§ 10.1) — la contrainte la plus structurante du dossier, oubliée au moment d'écrire l'outil. La paire est générée dans la **console du navigateur** par `crypto.subtle`, ce qui satisfait mieux la doctrine de départ : la clé privée naît sur le poste et ne passe ni par ce dépôt public, ni par une capture, ni par une conversation. Le script reste valable pour qui dispose d'un terminal. |
 | `recipes.has_hero_image` est une colonne ordinaire, insérable comme les autres (§ 7.11, mesuré via `information_schema.columns`) | **Incomplet.** La requête ne lisait que `column_default`, jamais `is_generated` : c'est une colonne **générée** (`GENERATED ALWAYS AS … STORED`), que PostgreSQL refuse en écriture directe (`cannot insert a non-DEFAULT value into column`). Sans conséquence pour le critère 5 — il suffisait de l'omettre de l'insertion de test — mais une leçon générale : une colonne `NOT NULL` sans `column_default` visible n'est pas forcément « à fournir soi-même », elle peut être générée. |
+| Le verdict d'un workflow de migration est un garde-fou | **Trois fois rouge par construction le 11/09** (§ 7.14). Un critère écrit pour un seul état du système — cible vierge, cible fraîchement chargée — devient un faux négatif dès qu'on rejoue. Un contrôle doit énoncer l'état dans lequel il est valable, sinon il coûte, en pleine fenêtre, le temps de démontrer qu'il se trompe. |
+| `truncate auth.identities, auth.users cascade` ne vide que ces deux tables | **La cascade sort de `auth`.** `public.profiles.id` référence `auth.users` : le truncate emporte `profiles`, et de proche en proche tout `public`. Sans effet dans l'ordre du C3 (les données arrivent après), destructeur ensuite — ce mode ne doit plus jamais être rejoué une fois le site basculé (§ 7.14). |
+| `GOTRUE_SMTP_MAX_FREQUENCY=60`, relevé du panneau Supabase | **`60s`.** C'est un `time.Duration` : `envconfig` refuse la valeur nue et GoTrue s'arrête au démarrage, l'équilibreur servant une page d'erreur qui ne dit rien de la cause. Le panneau Supabase affiche « 60 » sous un libellé en secondes — l'unité est perdue à la lecture (§ 7.14). |
+| Retirer AWS SES, c'est changer le code (§ 7.9 bis) | **Incomplet** : les variables Vercel sont restées sous leurs anciens noms `SES_SMTP_*`, et l'envoi d'e-mail est tombé le jour de la bascule. Le test Brevo qui avait validé le fournisseur tournait sur le code d'avant la PR. Une PR qui renomme une variable d'environnement doit nommer le geste côté hébergeur (§ 7.14). |
+| Changer la valeur d'une variable Vercel est un geste anodin | **Faux pour un `NEXT_PUBLIC_*` de type `Secret`** : Vercel refuse désormais cette combinaison, et un secret enregistré ne se convertit pas en place — il faut supprimer puis recréer en `Config` (§ 7.14). |
+| Remplacer Supabase par GoTrue + PostgREST derrière nginx suffit à servir l'API | **Il manquait CORS.** Supabase ne fournissait pas qu'une base : sa passerelle posait les en-têtes `Access-Control-*`. Sans eux, tout le chemin navigateur → API tombe — favoris, votes, écritures de `useMutation` — alors que les lectures serveur, la connexion e-mail et la connexion Google continuent de fonctionner. Le trou n'était nulle part dans ce dossier (§ 7.14). |
+| Un `fetch` de vérification depuis la console prouve que l'API répond | **Pas s'il part de la même origine.** Les essais joués depuis `auth.jepatisse.com` ne déclenchent aucun préflight : ils ne touchaient pas le chemin cassé. Un test doit emprunter l'origine réelle du client qu'il simule — même famille que le `psql -h 127.0.0.1` du § 7.11. |
+| L'étape 10 du § 7.13 se joue pendant le gel | **Infaisable** : `MAINTENANCE_FREEZE` renvoie 503 sur toute page, sans exemption. Les sondes `/api/*` (hors `matcher`) couvrent la lecture sous gel ; le reste impose de lever le gel et d'être le premier visiteur (§ 7.14). |
+| Une sonde `/api/*` qui rend `200` prouve que la lecture fonctionne | **Non** : `lib/search.ts` avale ses erreurs (`console.error` puis `return []`). Un `200 {"items":[]}` ne distingue pas « aucun résultat » de « la base a refusé ». Le vrai message est dans les journaux d'exécution Vercel (§ 7.14). |
 
 ---
 
@@ -3302,7 +3549,20 @@ pas applicable telle quelle.
   de workflow y sont téléchargeables par n'importe qui. Aucun workflow de
   migration ne doit déposer un dump en artefact ni l'afficher (§ 7.2).
 
-### 10.4 Prochaine action — le lot C (migration de la base)
+### 10.4 Où en est la migration
+
+**Le lot C est TERMINÉ** — bascule exécutée le 11/09/2026 :
+`dev.jepatisse.com` tourne sur la base Infomaniak (Virtuozzo Cloud), GoTrue
+auto-hébergé et PostgREST derrière `auth.jepatisse.com`. Les mesures de
+clôture, les sept trouvailles de l'exécution et ce qui reste à faire sont au
+**§ 7.14** — à lire avant toute reprise.
+
+**Prochaine action : le lot A** (Vercel → Node.js sur Virtuozzo), plus la
+définition de terminé du lot C (`wal-g`, décommissionnement de Supabase,
+fermeture de l'Endpoint temporaire).
+
+Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
+comprendre pourquoi il a cette forme.
 
 **Le lot 0-bis est terminé, et c'est un GO** (§ 7.4). **Le lot B est
 TERMINÉ**, écrit *et* exécuté en production le 05/09 (§ 7.5 à § 7.8) :

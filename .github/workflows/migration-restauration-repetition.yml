@@ -284,9 +284,33 @@ jobs:
             verdict=1
           fi
 
-          if [ -f erreurs-schema.log ] && grep -q 'ERROR' erreurs-schema.log; then
-            echo "NO-GO — la restauration du schéma a produit $(grep -c 'ERROR' erreurs-schema.log) erreur(s)."
-            verdict=1
+          # Toutes les erreurs ne se valent pas, et la version d'origine les
+          # comptait en bloc. Conséquence mesurée le 11/09 pendant la bascule
+          # du C3 (§ 7.14) : rejoué sur une cible qui portait DÉJÀ le DDL
+          # (posé au palier 2), ce workflow a rendu « NO-GO — 661 erreurs »
+          # alors que l'inventaire disait 951 objets sur 951, aucun manquant,
+          # et que les quatre épreuves fonctionnelles passaient. Les 661
+          # étaient des « already exists » : le résultat NORMAL d'un rejeu.
+          #
+          # Un verdict qui ne peut structurellement pas être vert au second
+          # passage n'est pas un garde-fou, c'est un faux négatif — et il
+          # coûte, en pleine fenêtre de maintenance, le temps de démontrer
+          # qu'il se trompe. On sépare donc les deux populations.
+          COLLISION='already exists|existe déjà'
+          if [ -f erreurs-schema.log ]; then
+            collisions=$(grep 'ERROR' erreurs-schema.log | grep -cE "$COLLISION" || true)
+            reelles=$(grep 'ERROR' erreurs-schema.log | grep -vcE "$COLLISION" || true)
+
+            if [ "$collisions" != "0" ]; then
+              echo "$collisions collision(s) « already exists » — la cible portait déjà ces objets."
+              echo "Attendu sur un rejeu ; ne bloque pas. L'inventaire ci-dessus est la vraie preuve."
+            fi
+
+            if [ "$reelles" != "0" ]; then
+              echo "NO-GO — $reelles erreur(s) de restauration qui ne sont PAS des collisions :"
+              grep 'ERROR' erreurs-schema.log | grep -vE "$COLLISION"
+              verdict=1
+            fi
           fi
 
           if [ "$verdict" = 0 ]; then
