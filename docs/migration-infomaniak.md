@@ -2273,7 +2273,7 @@ testable :
 | **1** | Postgres + restauration du DDL | — | **Fait le 06/09** |
 | **2** | + GoTrue v2.196.0 + transfert des identités | **1 ✅, 3 ✅** (donnée) | **Fait le 06/09** |
 | **3** | + Load Balancer, DNS, TLS, clés ES256 | **2 ✅, 3 ✅** (bout en bout), **4 ✅** | **Fait le 07/09** |
-| **4** | + PostgREST | 5 | à faire |
+| **4** | + PostgREST | **5 ✅** | **Fait le 08/09** |
 
 Le critère 2 glisse au palier 3 : éprouver une connexion e-mail + mot de passe
 demande d'atteindre l'API de GoTrue, donc l'exposition HTTPS que le palier 3
@@ -2486,7 +2486,7 @@ l'image était saine et que seul l'acheminement de la configuration était en
 cause. **Devant un conteneur muet, lancer le processus à la main plutôt que
 d'interroger la plateforme.**
 
-#### Palier 3 (07/09) — quatre critères sur cinq, après un effacement complet
+#### Paliers 3 et 4 (07-08/09) — les cinq critères, après un effacement complet
 
 ##### `GOTRUE_JWT_AUD` n'a pas de valeur par défaut
 
@@ -2682,15 +2682,166 @@ Supabase — ce que `getClaims()` consomme déjà, sans autre changement côté
 application que l'URL. Le `"ext":true` que republie GoTrue est un résidu du
 drapeau *extractable* de WebCrypto, sans effet sur la vérification.
 
-##### Reste au palier 4
+##### Palier 4 (08/09) — PostgREST, et le lot C au complet
 
-PostgREST : un nœud, la variable `PGRST_JWT_SECRET` (l'**objet** `{"keys":[…]}`
-des JWK publiques, mise de côté à la génération), et une `location /rest/v1/` sur
-l'Équilibrage — le même bloc que ci-dessus, avec un autre amont.
+L'image officielle `postgrest/postgrest` est `FROM scratch` (un binaire
+Haskell statique, sans système de base) : Jelastic refuse de la déployer en
+conteneur personnalisé, exactement le message qui avait accueilli la
+première tentative (*« L'image repose sur un modèle de système d'exploitation
+non pris en charge »*). Plutôt que de sortir ce nœud du cycle commun
+« variable → redéploiement » en le passant sur un Docker Engine à part, un
+`Dockerfile` (`docker/postgrest/Dockerfile`) repose le binaire officiel, pris
+tel quel dans l'image épinglée `v12.2.12`, sur `debian:bookworm-slim`.
+`.github/workflows/image-postgrest.yml` la construit, la publie sur GHCR, puis
+**exécute réellement `postgrest --version`** sur l'image publiée — un build
+réussi ne prouve pas que le binaire tourne, le chemin copié pouvant être bon
+et une bibliothèque manquer.
 
-**À revérifier après toute modification de topologie** : Jelastic régénère
-`nginx-jelastic.conf`, et les deux lignes `upstream` y repointent alors vers le
-nœud Postgres. Elles doivent viser le nœud Auth, port 8081.
+**La version `v12.2.12` a été choisie par prudence, pas par obligation** :
+`db-use-legacy-gucs` a disparu en v13, mais la fonction `auth.uid()` restaurée
+depuis la production gère déjà les deux formes (`request.jwt.claim.sub` et
+`request.jwt.claims`), mesuré avant de choisir :
+
+```sql
+select pg_get_functiondef('auth.uid'::regproc);
+```
+
+Reste à généraliser cette mesure aux autres fonctions `auth.*` et aux
+fonctions maison (`is_admin_user()`, `owns_recipe()`…) avant d'envisager une
+montée en version — hors périmètre du lot C.
+
+**Piège 3, quatrième récidive.** Le conteneur créé sans que le champ
+« CMD / Point d'entrée » soit renseigné démarre sur l'init de Jelastic seul
+(`systemd`, `jelinit`) sans jamais lancer PostgREST — `ps aux` le montre
+directement, sans même avoir besoin du lancement manuel qui avait servi pour
+GoTrue. `postgrest` suffit comme valeur.
+
+**Le mot de passe d'`authenticator` révèle une variante du piège 4.**
+`authenticator`, comme `supabase_auth_admin` la veille, naît sans mot de
+passe : posé, puis vérifié par `-h 10.101.32.133` (jamais `127.0.0.1`, en
+`trust`). Premier essai en échec — `password authentication failed` — avec un
+symptôme qui a évité un débogage à l'aveugle :
+
+```
+echo -n "$PGRST_DB_URI" | sed -E 's|^postgres://[^:]+:||; s|@.*$||' | wc -c
+```
+
+rendait **18**, pas 48. Un `sed` coupant au *premier* `@` plutôt qu'au
+*dernier* aurait pu tronquer un mot de passe contenant lui-même ce caractère —
+la variante de la famille des délimiteurs (chevrons, crochets) déjà repérée
+deux fois. Résolu en repartant d'une valeur hexadécimale, posée aux deux bouts
+sans jamais transiter par la conversation.
+
+**Le bloc `/rest/v1/` diffère de `/auth/v1/` sur un point assumé** : l'amont y
+est écrit **en dur** (`proxy_pass http://10.101.27.200:3000;`), l'indirection
+`$upstream_name` de GoTrue ne s'appliquant qu'au nœud désigné par `common`.
+**Conséquence à retenir** : recréer le nœud PostgREST change son IP interne,
+et cette ligne devra suivre — contrairement au bloc `/auth/v1/`, protégé par
+l'indirection.
+
+##### Le septième piège — un trigger qu'aucune restauration ne couvre
+
+Le test du critère 5 a d'abord semblé bloqué par l'absence de recette à
+tester (base neuve, DDL seul) — en cherchant un `author_id` pour insérer une
+ligne de test, `select count(*) from public.profiles` a rendu **0**, alors
+que `auth.users` en porte 6.
+
+**Ce n'était pas un manque de données de test, mais une vraie panne
+silencieuse.** La fonction `public.handle_new_user()` existait bien — restaurée
+avec le DDL, elle vit dans `public` — mais le **trigger** `on_auth_user_created`
+sur `auth.users`, lui, était absent :
+
+```sql
+select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;
+-- (0 rows)
+```
+
+**La cause tient à la frontière que chaque outil du dossier respecte
+scrupuleusement, et qui a fini par créer un angle mort entre eux.**
+`supabase db dump` ne restaure que ce qui vit dans `public` : la fonction est
+passée, la déclaration du trigger sur `auth.users` — objet du schéma `auth` —
+non. `migration-identites-c1.yml`, de son côté, se cantonne exactement à
+`auth.users` et `auth.identities`, par doctrine de sécurité (aucune donnée
+`public` n'a à transiter par un workflow qui manipule des empreintes bcrypt).
+**Aucun des deux ne pouvait, par construction, poser ce trigger** — ni ne s'en
+attribuait la responsabilité. C'est exactement le risque déjà pointé comme
+non mesuré au § 7.9 (« le trigger a été restauré » affirmé sans preuve) : cette
+fois la preuve existe, et confirme l'absence.
+
+**Conséquence, avant correction** : les 6 comptes migrés s'authentifiaient
+(critères 2 et 3, tous deux verts) mais n'avaient **aucune ligne `profiles`**
+— `getProfile()`, l'accesseur unique du profil courant dont dérivent
+`requireUser()`, `isAdmin()`, `isManager()`, aurait rendu `null` pour chacun
+d'eux au premier chargement de page réel. L'authentification fonctionnait,
+le compte derrière aurait été inutilisable.
+
+**Correctif en deux temps, parce qu'un trigger ne joue qu'à l'insertion** —
+le recréer seul n'aurait rien fait pour les 6 comptes déjà présents :
+
+```sql
+-- 1. Rattraper les 6 profils manquants, avec la MÊME logique que le trigger
+insert into public.profiles (id, full_name, avatar_url, email, provider)
+select
+  u.id,
+  u.raw_user_meta_data->>'full_name',
+  u.raw_user_meta_data->>'avatar_url',
+  u.email,
+  coalesce(u.raw_app_meta_data->>'provider', 'email')
+from auth.users u
+left join public.profiles p on p.id = u.id
+where p.id is null
+on conflict (id) do update
+  set email    = coalesce(excluded.email, profiles.email),
+      provider = coalesce(excluded.provider, profiles.provider);
+
+-- 2. Recréer le trigger, pour les connexions futures
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+```
+
+Vérifié : 6 profils, trigger `tgenabled = 'O'`.
+
+**À reporter dans la définition de terminé du lot C** : ce trigger devra être
+posé sur l'environnement de production réelle au moment de la bascule finale,
+par le même geste — aucun des deux workflows existants ne le fera à sa place.
+
+##### Le critère 5, mesuré par différence plutôt que par comptage
+
+Un `count()` seul ne prouve rien sur une base vide : la même valeur (`0`)
+sortirait que la RLS fonctionne ou qu'elle soit absente. La preuve retenue
+isole la variable voulue — deux recettes de statuts différents, un seul rôle
+interrogé :
+
+```sql
+insert into public.recipes (author_id, title, status)
+select id, 'TEST RLS — publiée', 'published' from public.profiles limit 1;
+insert into public.recipes (author_id, title, status)
+select id, 'TEST RLS — brouillon', 'draft' from public.profiles limit 1;
+```
+
+(`has_hero_image` volontairement omise : colonne **générée**, une deuxième
+lecture de `information_schema.columns` restée incomplète la veille — je
+n'avais lu que `column_default`, pas `is_generated`.)
+
+```
+https://auth.jepatisse.com/rest/v1/recipes?select=title,status
+→ [{"title":"TEST RLS — publiée","status":"published"}]
+```
+
+Seule la ligne publiée apparaît en `anon` : PostgREST fait respecter la RLS de
+bout en bout. Les deux lignes de test sont supprimées immédiatement après
+lecture — aucune trace ne subsiste.
+
+##### Le lot C au complet — cinq critères sur cinq
+
+| Critère | Preuve |
+|---|---|
+| 1 — registre de migrations identique | `77 / 20260625000000` |
+| 2 — e-mail + mot de passe | `access_token` valide, `aud: authenticated` |
+| 3 — Google, bout en bout | 6 comptes / 7 identités inchangés, `last_sign_in_at` avancé |
+| 4 — signature ES256 + JWKS | `{"alg":"ES256","kid":"mc-es256-2026-09"}` |
+| 5 — PostgREST + RLS | brouillon invisible en anonyme, publié visible |
 
 ---
 
@@ -2725,6 +2876,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le chemin signé commence par `/v1/AUTH_<projet>` | **Chez Infomaniak il commence par `/object/v1/AUTH_<projet>`**, et ce segment fait partie intégrante du chemin à signer : une signature calculée sans lui est refusée en 401 (même diagnostic). `SWIFT_STORAGE_URL` doit donc reprendre telle quelle la racine rendue par `swift auth`, sans rien y retrancher. |
 | Le mot de passe de `supabase_auth_admin` est bon — « mesuré » par `psql -h 127.0.0.1 -W` | **Le test ne prouvait rien.** Le `pg_hba.conf` de l'image accepte `127.0.0.1/32` en `trust`, donc sans vérifier : l'invite affichée vient de psql, pas du serveur, et n'importe quelle valeur passe. Le mot de passe était faux, et l'heure suivante a été perdue à chercher ailleurs. **Un test d'authentification doit emprunter le même chemin réseau que le client qu'il simule** (§ 7.11, piège 6). |
 | La paire ES256 se génère avec `scripts/jwt-es256.mjs` (§ 7.10) | **Inutilisable en pratique** : le script suppose un terminal avec Node, or tout le développement se fait en ligne (§ 10.1) — la contrainte la plus structurante du dossier, oubliée au moment d'écrire l'outil. La paire est générée dans la **console du navigateur** par `crypto.subtle`, ce qui satisfait mieux la doctrine de départ : la clé privée naît sur le poste et ne passe ni par ce dépôt public, ni par une capture, ni par une conversation. Le script reste valable pour qui dispose d'un terminal. |
+| `recipes.has_hero_image` est une colonne ordinaire, insérable comme les autres (§ 7.11, mesuré via `information_schema.columns`) | **Incomplet.** La requête ne lisait que `column_default`, jamais `is_generated` : c'est une colonne **générée** (`GENERATED ALWAYS AS … STORED`), que PostgreSQL refuse en écriture directe (`cannot insert a non-DEFAULT value into column`). Sans conséquence pour le critère 5 — il suffisait de l'omettre de l'insertion de test — mais une leçon générale : une colonne `NOT NULL` sans `column_default` visible n'est pas forcément « à fournir soi-même », elle peut être générée. |
 
 ---
 
@@ -2923,14 +3075,14 @@ expire le 19/09**, seule échéance dure du lot C.
 dernière activité, purge en quatrième passe du cron des abonnements,
 annoncée au membre dans « Mes imports ».
 
-**Les paliers 1 à 3 du lot C sont franchis, et quatre critères de Go/No-Go sur
-cinq avec eux** (§ 7.11). L'environnement `jepatisse` tourne à Genève, le DDL y
-est restauré à **951 objets sur 951**, GoTrue v2.196.0 a hissé le schéma `auth`
-jusqu'à `20260625000000` (**77 migrations, identique à la production**), et les
+**Le lot C est franchi — les cinq critères de Go/No-Go au vert** (§ 7.11).
+L'environnement `jepatisse` tourne à Genève, le DDL y est restauré à
+**951 objets sur 951**, GoTrue v2.196.0 a hissé le schéma `auth` jusqu'à
+`20260625000000` (**77 migrations, identique à la production**), les
 **6 comptes / 7 identités** ont été transférés avec des **empreintes md5
-identiques des deux côtés**. `https://auth.jepatisse.com` est servi en TLS par
-le nœud Équilibrage, qui tient le rôle de Kong sur `/auth/v1/`. Les quatre
-critères mesurés :
+identiques des deux côtés**, et PostgREST fait respecter la RLS de bout en
+bout. `https://auth.jepatisse.com` est servi en TLS par le nœud Équilibrage,
+qui tient le rôle de Kong sur `/auth/v1/` et `/rest/v1/`.
 
 | Critère | Preuve |
 |---|---|
@@ -2938,12 +3090,20 @@ critères mesurés :
 | 2 — e-mail + mot de passe | `access_token` portant les deux identités du même `user_id` |
 | 3 — Google, bout en bout | comptes et identités **inchangés** (6 / 7), `last_sign_in_at` avancé |
 | 4 — signature asymétrique | `{"alg":"ES256","kid":"mc-es256-2026-09"}` et JWKS conforme |
+| 5 — PostgREST + RLS | brouillon invisible en anonyme, publié visible |
 
-Tout cela a dû être **rechargé une fois** : un redéploiement du nœud Postgres
-sans volume déclaré avait effacé la base (§ 7.11, piège 5). La reconstruction
-complète prend une heure et sa séquence est écrite. **La prochaine action est le
-palier 4** : PostgREST, `PGRST_JWT_SECRET` et une `location /rest/v1/` sur
-l'Équilibrage — le critère 5.
+Tout cela a dû être **rechargé une fois** au palier 3 : un redéploiement du
+nœud Postgres sans volume déclaré avait effacé la base (§ 7.11, piège 5). La
+reconstruction complète prend une heure et sa séquence est écrite.
+
+**Un septième piège, découvert au palier 4, à ne pas rouvrir à la bascule
+finale** : le trigger `on_auth_user_created` sur `auth.users` n'est couvert
+par **aucun** des deux outils de migration — la restauration DDL s'arrête à
+`public`, le transfert d'identités se cantonne à `auth.users`/`auth.identities`
+par doctrine de sécurité. Sans lui, les comptes migrés s'authentifient mais
+n'ont aucune ligne `profiles` : `getProfile()` y rendrait `null`. **À poser à
+la main sur la cible finale**, avec le même correctif qu'ici (§ 7.11) : le
+trigger, puis un backfill des profils manquants.
 
 **Trois choses à ne pas perdre entre deux sessions** :
 - **`GOTRUE_SITE_URL` porte une valeur de test** (`https://auth.jepatisse.com/auth/v1/health`)
