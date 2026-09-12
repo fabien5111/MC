@@ -3946,6 +3946,177 @@ l'application tourne : le démarrage suivant répond alors « NodeJS application
 is already started » sans rien lancer. Nettoyer par `pm2 kill` avant tout
 nouvel essai.
 
+#### Phase 1 — la bascule de `dev.jepatisse.com` (12/09), bloquée au TLS
+
+**Où ça en est :** `dev.jepatisse.com` pointe sur `jepatisse-app` et **l'application
+répond en HTTP de bout en bout** (200 mesuré depuis un nœud extérieur à
+l'environnement). **Le HTTPS n'est pas servi** — le nœud Équilibrage n'a aucune
+connectivité sortante, ce qui empêche le module Let's Encrypt de s'installer.
+Diagnostic complet et ticket support en fin de section.
+
+Décision prise en cours de route, et qui a bien tenu : plutôt que de tester sur
+le domaine technique de l'environnement, **avancer la bascule de
+`dev.jepatisse.com`**. Le motif CORS du nœud Équilibrage de `jepatisse`
+n'autorise que `^https://(dev|www)\.jepatisse\.com$` et `GOTRUE_SITE_URL` vaut
+déjà `https://dev.jepatisse.com/` : sur le domaine technique, **aucune écriture
+ni aucune connexion n'aurait pu être testée**. Les deux rustines qu'il aurait
+fallu poser (motif nginx, liste GoTrue) touchaient des nœuds de production pour
+un domaine jetable.
+
+##### Les 34 variables, et pourquoi la table de `CLAUDE.md` ne suffisait pas
+
+L'inventaire a été refait **depuis le code** (`process.env.`, destructurations,
+et l'accesseur `env()` de `lib/storage-data.ts`) plutôt que recopié depuis la
+documentation. Bien lui en a pris : **six variables lues par l'application ne
+figuraient pas** dans la table de `CLAUDE.md` — `EXTERNAL_SEARCH_MODEL`,
+`MODERATION_MODEL`, `IMPORT_USD_EUR`, `TRIAL_EMAIL_SALT`, et les quatre
+`JIRA_STATUS_IN_PROGRESS` / `IN_TEST` avec leurs `_ID`.
+
+Deux points de vigilance sur les secrets, Vercel ne réaffichant jamais une
+valeur marquée *Sensitive* :
+
+- **`TRIAL_EMAIL_SALT` est le seul irrécupérable.** Il sale les empreintes
+  d'e-mail de `trials` (éligibilité à l'essai gratuit) : ni retrouvable, ni
+  recalculable. Mesuré avant de trancher — **une seule ligne dans la table,
+  rattachée à un compte connu** — d'où la régénération sans risque. À traiter
+  autrement une fois le site ouvert.
+- Les jetons `anon` / `service_role` ne sont pas des secrets à retrouver mais
+  des affirmations signées (§ 7.14) : refrappables tant qu'on a la clé privée.
+
+##### Trois environnements qui ne se synchronisent pas
+
+C'est le piège qui a coûté le plus de tours de boucle de la journée. Sur cette
+pile, une variable existe dans **trois endroits distincts**, et ils divergent :
+
+| Endroit | Ce qui l'alimente |
+|---|---|
+| Le panneau **Variables** de la console | la saisie |
+| Le **processus applicatif** (pm2) | le panneau, au démarrage du nœud **ou** via `pm2 restart --update-env` |
+| La **session Web SSH** | le panneau, **à l'ouverture de la session seulement** |
+
+Et le point non évident : **`pm2 restart --update-env` propage l'environnement
+du shell qui lance la commande**, pas celui du panneau. Depuis une session
+ouverte avant la modification, il repropage donc l'ancienne valeur — en donnant
+toutes les apparences d'avoir agi. Le remède est d'**ouvrir une session
+neuve** ; le redémarrage du nœud depuis la console marche aussi.
+
+Corollaire pour les builds : **construire depuis une session dont on a vérifié
+l'environnement complet**, en une ligne :
+
+```sh
+printenv NEXT_PUBLIC_SUPABASE_URL; printenv NEXT_PUBLIC_SITE_URL; printenv NEXT_PUBLIC_SUPABASE_ANON_KEY | cut -c1-15
+```
+
+Passer *une* variable explicitement en laissant les autres à l'héritage est
+pire que tout : ça produit un build mi-juste, mi-vide — ce qui est exactement
+arrivé (ci-dessous).
+
+##### `pm2 env` affiche `CLÉ: valeur`
+
+Pas `CLÉ=valeur`. Un contrôle par motif ancré sur `NOM=` ne trouve rien et fait
+conclure à une variable absente. Deux fausses alertes payées à ce détail.
+
+##### Les `NEXT_PUBLIC_*` comptent aux DEUX moments
+
+Idée reçue corrigée en cours de route : ces variables ne sont pas seulement
+« inlinées au build ». Elles le sont **pour le bundle navigateur**, mais le
+code serveur **relit `process.env` à l'exécution**. D'où deux pannes distinctes,
+toutes deux silencieuses :
+
+- **Bonne au build, absente du panneau** → le rendu serveur régénère avec
+  l'ancienne valeur. Constaté sur `sitemap.xml` : le module compilé portait la
+  bonne URL, le corps servi la mauvaise. Les horodatages l'ont prouvé — le
+  `.body` était **postérieur au build**, régénéré par la revalidation ISR
+  d'une minute.
+- **Absente au build** → le bundle navigateur fige `undefined`, et
+  `createBrowserClient` lève : **« Application error: a client-side exception »**,
+  sans la moindre erreur côté serveur.
+
+**Le contrôle qui marche est fonctionnel, jamais textuel.** Un `grep` sur le
+bundle aurait dit « tout va bien » dans les deux cas. C'est `curl` sur
+`/sitemap.xml` — construit à partir de `siteUrl()` — qui a révélé l'écart.
+Piège dans le piège : chercher le domaine dans `.next/server` donne un faux
+positif, `middleware.js` le portant **en dur** (exemption de la page d'attente).
+
+##### Tout redémarrage du nœud élague les devDependencies
+
+`NODE_ENV=production` étant désormais permanente, l'installation que la pile
+relance à chaque démarrage saute les `devDependencies`. Le build suivant échoue
+alors sur `Can't resolve '@/lib/...'` — message qui accuse le code du projet,
+alors que la cause est l'absence de `typescript`, sans lequel Next ne lit plus
+les alias de chemins de `tsconfig.json`. **Troisième message trompeur de la
+série.**
+
+D'où la **commande canonique de construction sur ce nœud** :
+
+```sh
+cd /home/jelastic/ROOT && npm ci --include=dev && rm -rf .next && NODE_ENV=production npm run build
+```
+
+Rencontré deux fois : après un redémarrage du nœud, puis après l'installation
+de Let's Encrypt qui en provoque un.
+
+##### La bascule DNS elle-même — sans accroc
+
+Le § 7.11 avait raison sur toute la ligne, et son insistance a payé :
+
+- **le CNAME vise le nom d'hôte de l'ENVIRONNEMENT**, jamais celui du nœud.
+  Quand l'ajout de l'équilibreur a déplacé le point d'entrée, l'IP est passée
+  de `195.15.233.39` à `195.15.204.255` **sans aucune modification DNS** ;
+- **affecter le domaine à l'environnement** (Paramètres → Domaines
+  personnalisés) est un geste distinct du DNS, à faire avant : sur équilibreur
+  partagé, l'aiguillage se fait par l'en-tête `Host` ;
+- pas de domaine dupliqué en fin de cible, le piège du point final évité.
+
+##### Le TLS : ce qu'on a appris, et le blocage
+
+**Un nœud applicatif Node.js natif ne peut pas terminer le TLS.** Le module
+Let's Encrypt est bien proposé sur un tel environnement et s'installe sans
+erreur — mais il n'a aucun serveur web à configurer. Mesure sans appel : après
+installation, **seul le 3000 écoutait**, rien en 443. Le port 80 répondait grâce
+à la redirection `nft` que la pile installe (80 → port applicatif détecté) ; il
+n'existe **aucun équivalent pour le 443**.
+
+*Leçon de méthode* : la présence d'un module dans la liste ne dit pas qu'il a de
+quoi travailler. Ce point avait été identifié comme risque avant la bascule,
+puis écarté à tort en voyant le module proposé — il aurait fallu vérifier ce qui
+écoutait sur 443 **avant** de basculer le DNS, pas après.
+
+D'où l'ajout d'un **nœud Équilibrage NGINX** (216664, 1 cloudlet réservé). Son
+chaînage interne est vérifié : `10.101.29.249:80` **et** `:3000` répondent 200
+depuis l'équilibreur.
+
+**Le blocage restant n'est pas de configuration.** Le nœud 216664 n'a **aucune
+connectivité sortante** — toute connexion TCP externe expire, en 80 comme en
+443, alors que le DNS résout. Le module Let's Encrypt échoue donc dès sa
+première étape, en téléchargeant son script de validation depuis
+`fastly.jsdelivr.net` (8 IP tentées, toutes en délai dépassé).
+
+| Fait | Mesure |
+|---|---|
+| Sortie externe depuis 216664 | ❌ délai dépassé (80 et 443) |
+| Sortie externe depuis les autres nœuds | ✅ 302/308 — la NAT de la plateforme fonctionne, et eux n'ont pas non plus d'IP publique |
+| Réseau interne depuis 216664 | ✅ 200 vers l'application |
+| Adresse du nœud | `10.101.13.230` seule ; `default dev venet0 scope link` |
+| Redémarrage du nœud | sans effet |
+
+C'est un défaut de provisionnement réseau, à porter au **support Infomaniak**.
+**Plan B si l'attente se prolonge** : obtenir le certificat depuis un nœud qui a
+une sortie réseau (validation DNS-01 par enregistrement TXT dans la zone), puis
+le déposer sur l'équilibreur via le **SSL personnalisé** de la console — ça
+supprime entièrement la dépendance à jsDelivr.
+
+**Attention au quota** : Let's Encrypt plafonne à 5 certificats identiques par
+semaine et par nom. Deux tentatives consommées le 12/09.
+
+##### Deux réglages repérés pour la suite, non instruits
+
+- **Git-Push-Deploy Add-On** (« Simple CI/CD pipeline for Git projects »), à
+  comparer au sondage périodique du gestionnaire de déploiement pour la phase 4.
+- **`HOT_DEPLOY`** et **`APP_FILE`**, variables de la pile vues au panneau.
+  `APP_FILE` aurait été une alternative à `ecosystem.config.js` — écartée à
+  raison : elle vit dans la console, le fichier vit dans le dépôt.
+
 #### Ce qui reste non vérifié
 
 - ~~La mémoire de construction sur le nœud~~ — **tranché en phase 0** : 25,7 s
@@ -4019,6 +4190,9 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | pgBackRest en « repo host » est la seule voie de planification qui ne soit pas un contournement | **Arbitrage inversé le 12/09.** Le repo host suppose une configuration côté nœud Équilibrage qui ne vivrait dans aucun volume déclaré — effacée au premier redéploiement, exactement le défaut qu'on reproche par ailleurs à `pgbackrest` lui-même. `pg_cron` range la planification dans `cron.job`, dans le répertoire de données : c'est la seule des trois voies qui survive à un redéploiement. « Détourner un mécanisme SQL » était le moindre défaut (§ 7.15). |
 | Les piles natives de Jelastic offrent un planificateur de tâches, contrairement au calque Docker (§ 7.15) | **Faux sur cette offre.** Le seul « scheduler » proposé aux add-ons d'un nœud natif est **Env Start/Stop**, qui met l'environnement en veille et le réveille — l'installer en croyant y gagner un cron programmerait l'extinction du site. Aucun planificateur de tâches nulle part : les deux crons applicatifs passent donc par un workflow GitHub Actions, seul mécanisme qui survive à l'infrastructure et dont l'échec se voie (§ 7.16). |
 | « A et C atterrissent sur la même plateforme, donc application et base colocalisées » (§ 7.3) | **Pas dans le même environnement.** Le moteur d'un environnement Jelastic est figé à sa création, et celui de `jepatisse` est verrouillé par l'image Docker `supabase/postgres` occupant l'étage applicatif : les piles natives y sont grisées. Application et base partageront la plateforme et la région, pas l'environnement — ce qui protège au passage la base d'un redéploiement applicatif, le geste le plus fréquent du site (§ 7.16). |
+| Le module Let's Encrypt étant proposé sur un environnement Node.js natif, le TLS y est réalisable | **Non — il n'a rien à configurer.** Un nœud applicatif natif n'embarque aucun serveur web : après installation, seul le port applicatif écoutait, rien en 443. Le port 80 ne répondait que par la redirection `nft` de la pile, qui n'a pas d'équivalent en 443. **La présence d'un module dans la liste ne dit pas qu'il a de quoi travailler** — ce risque, identifié avant la bascule, a été écarté à tort en voyant le module proposé, au lieu de vérifier ce qui écoutait sur 443 (§ 7.16). |
+| Les `NEXT_PUBLIC_*` sont « inlinées au build », donc un changement impose une reconstruction — et rien d'autre | **Elles comptent aux deux moments.** Inlinées pour le bundle **navigateur**, mais le code **serveur** relit `process.env` à l'exécution. D'où deux pannes distinctes et silencieuses : bonne au build mais absente du panneau → le rendu serveur régénère avec l'ancienne valeur ; absente au build → le bundle fige `undefined` et le navigateur lève une exception, sans aucune erreur côté serveur. Le contrôle qui vaut est fonctionnel (`curl` sur une page qui en dérive), jamais un `grep` sur le bundle (§ 7.16). |
+| `pm2 restart --update-env` recharge les variables du panneau | **Il propage l'environnement du shell appelant.** Depuis une session ouverte avant la modification, il repropage l'ancienne valeur avec toutes les apparences d'avoir agi. Ouvrir une session neuve, ou redémarrer le nœud (§ 7.16). |
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 
@@ -4195,11 +4369,22 @@ sur la plateforme, trois décisions structurantes arrêtées — nouvel
 environnement en pile Node.js 22.x native, crons portés par GitHub Actions,
 déploiement Git construisant sur le nœud. **Rien n'est encore créé.**
 
-**Prochaine action** : la phase 0 du § 7.16 — recharger le solde Virtuozzo
-(€45,52), créer l'environnement et vérifier que le build passe sur le nœud,
-ce qui est le seul point qui puisse réellement échouer. Puis le
-décommissionnement de Supabase — en vérifiant d'abord si l'ancienne base y
-porte ses propres tâches `pg_cron` avant de la couper.
+**La phase 0 est franchie et la bascule de `dev.jepatisse.com` est faite**
+(§ 7.16, 12/09) : l'environnement `jepatisse-app` sert l'application, les
+34 variables sont posées, le DNS pointe sur Virtuozzo et **le HTTP répond de
+bout en bout**. Un nœud Équilibrage NGINX a été ajouté, son chaînage interne
+vérifié.
+
+**Un seul point bloque : le HTTPS.** Le nœud Équilibrage 216664 n'a aucune
+connectivité sortante — défaut de provisionnement réseau, insensible au
+redémarrage — ce qui empêche le module Let's Encrypt de télécharger son script
+de validation. Ticket support à ouvrir ; plan B par DNS-01 et SSL personnalisé
+décrit au § 7.16.
+
+**Prochaine action** : débloquer ce TLS, puis la vérification fonctionnelle
+complète sur `dev.jepatisse.com` (écritures, authentification, e-mail, photos).
+Puis le décommissionnement de Supabase — en vérifiant d'abord si l'ancienne
+base porte ses propres tâches `pg_cron` avant de la couper.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
