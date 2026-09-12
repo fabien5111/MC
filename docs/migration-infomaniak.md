@@ -3524,7 +3524,7 @@ database size: 39.5MB → repo1 backup size: 7.9MB
 | Une sauvegarde complète | ✅ 12/09 10:20 |
 | **Restauration éprouvée** | ✅ **jouée le 12/09** — voir ci-dessous |
 | PITR depuis cette sauvegarde | ✅ mesuré, WAL rejoués depuis S3 |
-| Sauvegarde complète périodique | ❌ aucun planificateur |
+| Sauvegarde complète périodique | ✅ planifiée le 12/09 avec `pg_cron` — voir ci-dessous |
 | Résistance au redéploiement | ❌ le binaire est un paquet `apk` |
 
 #### La restauration, éprouvée pour de bon
@@ -3607,7 +3607,7 @@ su postgres -c 'pgbackrest --stanza=jepatisse check'
 À faire immédiatement, avant toute autre vérification. C'est le défaut résiduel
 de cette installation, et il est nommé plutôt que contourné par un bricolage.
 
-#### La planification reste à traiter
+#### La planification, posée avec `pg_cron`
 
 Un calque Docker de Virtuozzo **n'a pas de démon cron** (`crond` absent, rien
 dans `/etc/crontabs` qui soit lu) et **le menu du calque n'offre aucun
@@ -3617,15 +3617,49 @@ explique le dossier `cron` du nœud Équilibrage.
 | Voie | Pour | Contre |
 |---|---|---|
 | Lancer `crond` dans le conteneur | Cinq minutes | Meurt à chaque redémarrage, panne silencieuse |
-| `pg_cron` + `COPY … FROM PROGRAM` | La planification vit dans la base, donc dans le volume — elle survit à tout. **`pg_cron` est DÉJÀ dans `shared_preload_libraries`** (relevé le 12/09) : aucun redémarrage à prévoir | Détourne un mécanisme SQL pour lancer un shell |
-| **pgBackRest en « repo host »** depuis le nœud Équilibrage, qui a un vrai cron | L'architecture prévue par l'outil | SSH entre nœuds, clé, configuration des deux côtés |
+| **`pg_cron` + `COPY … TO PROGRAM`** | La planification vit dans `cron.job`, donc **dans le répertoire de données** — elle survit à tout redéploiement du nœud, y compris à la perte de `pgbackrest` lui-même (§ ci-dessus). `pg_cron` est déjà dans `shared_preload_libraries` (relevé le 12/09) : aucun redémarrage à prévoir. Les échecs sont journalisés dans `cron.job_run_details`, sans rien à interroger côté système | Détourne un mécanisme SQL pour lancer un shell |
+| pgBackRest en « repo host » depuis le nœud Équilibrage, qui a un vrai cron | L'architecture prévue par l'outil | SSH entre nœuds, clé à poser des deux côtés, **et une configuration qui vivrait hors de tout volume déclaré** — donc effacée au premier redéploiement du nœud Équilibrage, exactement le défaut qu'on cherche à éviter |
 
-**La troisième est la seule qui ne soit pas un contournement.** À traiter avec
-la restauration d'essai.
+**C'est `pg_cron` qui a été retenu**, en sens inverse du jugement porté ici la
+veille (§ 8) : la troisième voie a l'architecture la plus propre, mais elle
+range l'état qui compte (la planification) dans un endroit qui ne survit pas
+à un redéploiement — le même défaut que celui déjà nommé pour `pgbackrest`.
+« Détourner un mécanisme SQL » était le moindre défaut.
 
-Sans planification, l'archivage continu tourne quand même : c'est lui qui porte
-le PITR. Ce qui manque est le point de départ périodique — et, à terme, une
-rétention qui ne laisse pas les WAL s'accumuler indéfiniment dans le dépôt.
+**Mode opératoire, joué le 12/09 :**
+
+```sh
+psql -h 127.0.0.1 -U supabase_admin -d postgres <<'SQL'
+create extension if not exists pg_cron;
+select cron.schedule('sauvegarde-quotidienne', '30 3 * * *',
+  $$copy (select 1) to program '/usr/bin/pgbackrest --stanza=jepatisse backup --type=full'$$);
+SQL
+```
+
+Le worker de fond de `pg_cron` a été vérifié en conditions réelles, pas
+supposé actif : une tâche jetable (`select cron.schedule('essai-planificateur',
+'* * * * *', 'select 1')`) a produit cinq lignes `succeeded` consécutives dans
+`cron.job_run_details` avant d'être retirée (`cron.unschedule`).
+
+| Contrôle | Résultat |
+|---|---|
+| `cron.timezone` | `GMT` — `30 3 * * *` tombe donc à 5 h 30 heure française en été, 4 h 30 en hiver |
+| `cron.job` | une seule ligne : `sauvegarde-quotidienne`, `username = supabase_admin`, `database = postgres`, `active = t` |
+
+**Le rôle appelant compte.** `cron.schedule` enregistre le rôle qui l'a
+invoqué, et c'est sous lui que la commande est rejouée chaque nuit.
+`COPY … TO PROGRAM` exige `pg_execute_server_program` : `supabase_admin` l'a
+par sa superutilisation. Programmée par `postgres` (non superutilisateur sur
+cette image, cf. § 7.15 plus haut), la tâche aurait échoué chaque nuit, sans
+autre trace que `cron.job_run_details` — table que personne ne consulte sans
+raison de le faire.
+
+**Ce que la planification apportait aussi, sans qu'on l'ait cherché en premier
+lieu : la rétention.** `repo1-retention-full=7` ne s'évalue qu'à l'occasion
+d'une sauvegarde complète — sans point de départ périodique, aucune expiration
+n'avait jamais eu lieu, et les WAL se seraient accumulés indéfiniment dans le
+dépôt S3. La planification ne posait donc pas seulement le point de reprise
+du PITR, elle était la condition pour que la rétention existe.
 
 ---
 
@@ -3674,6 +3708,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le PITR se fera avec `wal-g`, « une demi-journée » (§ 4.5) | **Ni l'outil ni la durée.** Les binaires wal-g sont liés à la glibc, le conteneur est en Alpine/musl : c'est **pgBackRest** qui a été retenu, packagé par Alpine. Et la matinée est passée sur les endpoints de stockage, pas sur l'outil (§ 7.15). |
 | Un réglage PostgreSQL se pose dans `postgresql.conf` | **Pas sur cette plateforme.** `/etc/postgresql/` n'est pas un volume déclaré : un réglage y disparaîtrait au redéploiement. `ALTER SYSTEM` écrit dans `postgresql.auto.conf`, **dans le répertoire de données**, seul chemin persistant — et il faut le rôle `supabase_admin`, `postgres` n'étant pas superutilisateur (§ 7.15). |
 | Un conteneur Docker de Virtuozzo peut exécuter une tâche planifiée | **Faux** : pas de démon cron, et le menu du calque n'offre aucun planificateur — Jelastic n'en propose que pour ses piles natives. La sauvegarde complète périodique reste à construire autrement (§ 7.15). |
+| pgBackRest en « repo host » est la seule voie de planification qui ne soit pas un contournement | **Arbitrage inversé le 12/09.** Le repo host suppose une configuration côté nœud Équilibrage qui ne vivrait dans aucun volume déclaré — effacée au premier redéploiement, exactement le défaut qu'on reproche par ailleurs à `pgbackrest` lui-même. `pg_cron` range la planification dans `cron.job`, dans le répertoire de données : c'est la seule des trois voies qui survive à un redéploiement. « Détourner un mécanisme SQL » était le moindre défaut (§ 7.15). |
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 
@@ -3834,12 +3869,20 @@ et une **restauration réellement jouée** : WAL rejoués depuis S3, décomptes
 identiques à la production, dépôt non pollué. L'Endpoint temporaire a été
 fermé.
 
-**Il reste un manque nommé** : aucune planification des sauvegardes complètes
-— un calque Docker de Virtuozzo n'a pas de planificateur. `pg_cron` étant déjà
-préchargé, la voie la plus courte s'est raccourcie.
+**Planification : posée le 12/09 avec `pg_cron`** (§ 7.15) — sauvegarde
+complète quotidienne à 3 h 30 GMT, portée par `cron.job` dans le répertoire de
+données, vérifiée par un job d'essai avant d'être retirée. C'était le dernier
+manque nommé du dispositif PITR.
 
-**Prochaine action** : la planification des sauvegardes complètes, puis le
-lot A (Vercel → Node.js sur Virtuozzo) et le décommissionnement de Supabase.
+**Il reste un manque nommé** : `pgbackrest` est un paquet `apk`, effacé par
+tout redéploiement du nœud Postgres — la tâche planifiée échouerait alors
+chaque nuit sans autre trace que `cron.job_run_details`, table que rien ne
+signale à consulter. Exposer la fraîcheur de la dernière sauvegarde par une
+route `/api/cron/*` reste à construire.
+
+**Prochaine action** : le lot A (Vercel → Node.js sur Virtuozzo) et le
+décommissionnement de Supabase — en vérifiant d'abord si l'ancienne base y
+porte ses propres tâches `pg_cron` avant de la couper.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
