@@ -3663,6 +3663,213 @@ du PITR, elle était la condition pour que la rétention existe.
 
 ---
 
+### 7.16 Lot A — Vercel → Node.js sur Virtuozzo (plan, 12/09)
+
+Le lot A n'avait jamais été instruit : le § 7.3 le dimensionne (1-2 jours,
+aucune dépendance) et le § 1.1 énumère ses sept accroches, mais rien n'avait
+été vérifié sur la plateforme. Cette section porte la reconnaissance faite le
+12/09 et le plan qui en découle. **Rien n'a encore été créé** — le solde du
+compte Virtuozzo est à €45,52, et la première décision est de le recharger.
+
+#### Ce que la reconnaissance a établi
+
+| Question | Réponse mesurée |
+|---|---|
+| Pile Node.js native | ✅ **disponible**, versions 22.x LTS (jusqu'à 22.23.2), variante **`-pm2`** |
+| L'application peut-elle rejoindre l'environnement `jepatisse` ? | ❌ **Non en pile native** — voir ci-dessous |
+| Planificateur de tâches natif | ❌ **inexistant** — voir le faux ami ci-dessous |
+| `GOTRUE_SITE_URL` | ✅ correct (`https://dev.jepatisse.com/`), la note du § 10.5 est antérieure à la bascule |
+| Projet Vercel `dev_jp` | ✅ **détaché du dépôt** — le point ouvert du § 6.2 se referme sans travail |
+| Solde Virtuozzo | **€45,52** — quelques semaines à la consommation actuelle |
+
+**La topologie réelle de `jepatisse`**, relevée au passage et utile à toute
+session future :
+
+| Étage | Rôle | Nœud | Version |
+|---|---|---|---|
+| Équilibrage | NGINX, terminaison TLS de `auth.jepatisse.com` | **216115** | `1.30.4-almalinux-9` |
+| Serveurs d'application | PostgreSQL | **216075** | `17.6.1.165` |
+| Image Docker | GoTrue | **216114** | `v2.196.0` |
+| Image Docker 2 | PostgREST | **216242** | `v12.2.12` |
+
+#### Pourquoi l'application ne peut pas rejoindre `jepatisse`
+
+Le moteur d'un environnement Jelastic est **figé à sa création**. L'éditeur de
+topologie d'un environnement existant n'ajoute que ce qui est compatible avec
+ce moteur — conteneurs Docker, base, cache, stockage, équilibreur, VPS — et
+les onglets de piles par langage y sont grisés. Ici l'étage « Serveurs
+d'application » est occupé par une **image Docker personnalisée**
+(`supabase/postgres`), ce qui verrouille toutes les piles natives.
+
+Les onglets ne redeviennent actifs que dans l'assistant **« Nouvel
+environnement »**.
+
+**Ce que ça change par rapport au § 7.3**, qui annonçait « application et base
+colocalisées » : elles le seront sur la même **plateforme** et dans la même
+région (Genève DC2), pas dans le même **environnement**. C'est une contrainte
+subie, mais elle se lit aussi comme une protection : le § 7.11 (piège 5)
+raconte qu'un redéploiement du nœud Postgres a effacé la base. Un
+redéploiement applicatif — le geste le plus fréquent de la vie du site — ne
+peut structurellement pas atteindre la base s'il vit dans un autre
+environnement.
+
+#### Le faux ami du planificateur
+
+Les add-ons d'un nœud natif proposent un **« Env Start/Stop Scheduler »**. Ce
+n'est **pas** un planificateur de tâches : il met l'environnement entier en
+veille et le réveille à heure fixe, pour économiser des ressources. L'installer
+en croyant y gagner un cron reviendrait à programmer l'extinction du site.
+
+Aucun planificateur de tâches n'est proposé, ni sur la pile native, ni sur le
+calque Docker (§ 7.15). La question se règle donc ailleurs — et mieux.
+
+#### Décision 1 — un nouvel environnement, pile Node.js 22.x native
+
+Retenu contre l'alternative « un conteneur Docker de plus dans `jepatisse` »,
+qui reproduirait exactement la contrainte du § 7.15 (runtime et outils
+effacés à chaque redéploiement, image à construire et à maintenir) sans rien
+apporter que l'illusion d'un environnement unique.
+
+La pile native apporte pm2 (redémarrage automatique du processus), le
+déploiement Git intégré, et un runtime tenu par la plateforme.
+
+**Contrainte de configuration à ne pas manquer** : le redimensionnement
+horizontal doit rester à **une seule instance**. `unstable_cache` et
+`revalidateTag` (8 fichiers, cf. § 1.1) sont mémorisés **par processus** :
+à deux instances, une invalidation prononcée sur l'une laisserait l'autre
+servir la valeur périmée, sans erreur ni symptôme visible. Passer à plusieurs
+instances impose d'abord un `cacheHandler` partagé (Redis) — un chantier à
+part entière, hors périmètre du lot A.
+
+#### Décision 2 — les crons portés par GitHub Actions
+
+Les deux tâches de `vercel.json` sont de simples routes HTTP protégées par un
+en-tête `Authorization: Bearer $CRON_SECRET` (`app/api/cron/abonnements`,
+`app/api/cron/contact-jira`). N'importe quel appelant HTTP à heure fixe
+convient. Jugés sur les deux critères que le § 7.15 a établis pour les
+sauvegardes :
+
+| Mécanisme | Survit à un redéploiement | Échec visible |
+|---|---|---|
+| `crond` sur le nœud (dossier `cron` du gestionnaire de configuration) | à vérifier | ❌ silencieux — le défaut même de `pgbackrest` |
+| `pg_cron` + `pg_net` sur le nœud Postgres | ✅ | ⚠️ dans `cron.job_run_details`, que rien ne signale |
+| **Workflow GitHub Actions planifié** | ✅ **indépendant de l'infrastructure** | ✅ **onglet Actions + e-mail automatique** |
+
+La troisième est retenue. Elle est aussi la seule qui ne dépende pas de ce
+qu'on est précisément en train de changer.
+
+Deux réserves, ni l'une ni l'autre bloquante : les tâches planifiées de GitHub
+peuvent partir avec 15 à 30 minutes de retard aux heures chargées — sans effet
+sur un travail nocturne dont les passes sont idempotentes et bornées, ce que
+l'en-tête de `abonnements/route.ts` documente déjà ; et GitHub désactive un
+workflow planifié après 60 jours sans activité sur le dépôt.
+
+**Bénéfice secondaire** : le plafond du plan Vercel Hobby disparaît. C'est lui
+qui avait forcé la purge des imports à s'installer dans la route des
+abonnements plutôt que dans son propre cron — arbitrage explicitement assumé
+en tête de ce fichier, et désormais réversible.
+
+#### Décision 3 — déploiement Git, construction sur le nœud
+
+Trois voies étaient possibles :
+
+| Voie | Où vivent les `NEXT_PUBLIC_*` | Coût |
+|---|---|---|
+| **Git natif, `npm ci && npm run build` sur le nœud** | **Un seul endroit** : les Variables du nœud | Ressources de construction sur le nœud |
+| Construction dans Actions, artefact déposé | GitHub **et** nœud | `output: 'standalone'` à ajouter, pipeline à écrire |
+| Image Docker via GHCR (motif éprouvé pour PostgREST, `image-postgrest.yml`) | GitHub **et** nœud | Retour au calque Docker, Dockerfile à maintenir |
+
+**La première est retenue, et le critère est l'historique de ce dossier.** La
+famille d'erreurs qui a coûté le plus cher pendant le lot C est celle des
+variables d'environnement éclatées entre deux endroits : `SES_SMTP_*` renommées
+dans le code mais pas chez l'hébergeur (§ 7.14), la clé `anon` fausse pendant
+une heure, le refus Vercel des `NEXT_PUBLIC_*` de type `Secret`. Les
+`NEXT_PUBLIC_*` étant **inlinées au build**, toute voie qui construit ailleurs
+que sur le nœud impose de les tenir à jour à deux endroits, avec la garantie
+qu'un jour l'un des deux sera oublié.
+
+**Le risque à surveiller est la mémoire de construction.** Un `next build`
+demande couramment 1 à 2 Go ; le nœud est proposé à 4 cloudlets réservés
+(512 Mio). La parade tient à la facturation à l'usage : **réserver bas et
+plafonner haut** — les cloudlets dynamiques ne sont facturés que consommés,
+donc une limite de mise à l'échelle à 16 ou 24 cloudlets ne coûte rien au
+repos et donne au build la mémoire dont il a besoin. Si ça ne suffit pas, la
+voie de repli est la deuxième du tableau, avec sa contrepartie assumée.
+
+#### Les sept accroches du § 1.1, revisitées
+
+| Accroche | Ce qu'elle devient |
+|---|---|
+| `vercel.json` — 2 crons | Workflow GitHub Actions planifié (décision 2). Le fichier disparaît |
+| `maxDuration` (20 routes) | Déclarations inertes hors serverless, à laisser en place. **`HARD_DEADLINE_MS = 54_000` (`app/api/moderation-recette/route.ts`) peut être relevé** — c'est le bénéfice fonctionnel annoncé au § 1.1 |
+| `VERCEL_GIT_COMMIT_SHA` (`app/sw.js/route.ts`, `app/contact/page.tsx`) | **À remplacer — le nom du cache PWA en dépend.** Sans valeur, tous les déploiements partageraient un nom de cache et le service worker cesserait de se purger (§ « Installation (PWA) » de `CLAUDE.md`) |
+| `VERCEL_URL` (`lib/site-url.ts`) | À remplacer par une variable posée sur le nœud |
+| Middleware `runtime: 'nodejs'` | Natif, rien à faire |
+| `unstable_cache` + `revalidateTag` | OK **à une seule instance** — cf. la contrainte de la décision 1 |
+| `next/image` | 0 fichier. Reste à nettoyer : `next.config.mjs` déclare encore `images.remotePatterns` vers `acbabqolghhyxksouaye.supabase.co`, inerte mais faux depuis le C3 |
+
+#### Mode opératoire
+
+**Phase 0 — hors chrono, rien de public**
+1. Recharger le solde Virtuozzo (€45,52 ne tient pas la durée du lot).
+2. Créer l'environnement : pile **Node.js 22.x LTS**, variante `pm2`,
+   4 cloudlets réservés, **limite de mise à l'échelle haute** (16-24),
+   redimensionnement horizontal **non dynamique, 1 instance**. Le nommer
+   explicitement plutôt que d'accepter `env-XXXXXXX`.
+3. Poser **toutes** les variables d'environnement sur le nœud. La liste de
+   référence est la table de `CLAUDE.md` — **pas celle de `DEPLOY.md`**, restée
+   sur l'ancien Supabase.
+4. Brancher le dépôt Git, déployer, vérifier que `npm ci && npm run build`
+   passe sur le nœud. **C'est le point qui peut échouer** ; il échoue
+   gratuitement, sur le domaine `*.jcloud-ver-jpe.ik-server.com` fourni avec
+   l'environnement.
+
+**Phase 1 — parité fonctionnelle, sur le domaine de l'environnement**
+La checklist de `DEPLOY.md` (accueil, connexion e-mail et Google, `/profil`,
+`/creer`, `/importer`, `/admin`) plus ce que le C3 a appris à ne pas
+supposer : une écriture depuis le navigateur (favori, vote) pour éprouver le
+chemin CORS, et un envoi d'e-mail réel.
+**Piège hérité du § 7.14** : une sonde `/api/*` qui rend `200` ne prouve rien,
+`lib/search.ts` avalant ses erreurs. Lire les journaux du nœud.
+
+**Phase 2 — les crons**
+Écrire le workflow planifié, le déclencher **à la main** d'abord
+(`workflow_dispatch`), vérifier les deux routes contre le domaine de
+l'environnement avant toute bascule DNS.
+
+**Phase 3 — bascule DNS**
+Abaisser le TTL avant, `dev.jepatisse.com` d'abord — c'est l'URL des testeurs
+et la seule qui compte à ce stade —, puis `www.jepatisse.com` et les
+redirections. Remonter le TTL une fois éprouvé. **À faire au même passage** :
+remonter le TTL du CNAME `auth.jepatisse.com`, resté à 300 s depuis le C3.
+
+**Phase 4 — décommissionnement et documentation**
+Retirer le projet Vercel, supprimer `vercel.json`, réécrire `DEPLOY.md` (il
+documente encore Vercel *et* l'ancien Supabase), et reprendre `CLAUDE.md` —
+que le § 7.14 laissait justement en attente du lot A « pour ne pas écrire deux
+fois la même section ».
+
+#### Ce qui reste non vérifié
+
+- **La mémoire de construction sur le nœud** — le risque principal, testé
+  gratuitement en phase 0.
+- **Le TLS du nouvel environnement** : add-on Let's Encrypt ou SSL intégré,
+  non instruit.
+- **Le déclenchement du déploiement Git** : bouton manuel ou webhook sur push.
+- **La variante `-pm2` en 22.x** : constatée sur la 26.x, supposée identique.
+- **Les preview deployments par branche disparaissent** (§ 1.1). Aucune
+  reconstruction n'est prévue par ce plan ; c'est une perte assumée, à
+  réexaminer si elle se fait sentir.
+
+#### Définition de terminé
+
+`www.jepatisse.com` et `dev.jepatisse.com` servis depuis Virtuozzo, les deux
+crons exécutés au moins une fois par GitHub Actions avec leur trace,
+le projet Vercel retiré, `vercel.json` supprimé, `DEPLOY.md` et `CLAUDE.md`
+remis à l'état réel.
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -3709,6 +3916,8 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Un réglage PostgreSQL se pose dans `postgresql.conf` | **Pas sur cette plateforme.** `/etc/postgresql/` n'est pas un volume déclaré : un réglage y disparaîtrait au redéploiement. `ALTER SYSTEM` écrit dans `postgresql.auto.conf`, **dans le répertoire de données**, seul chemin persistant — et il faut le rôle `supabase_admin`, `postgres` n'étant pas superutilisateur (§ 7.15). |
 | Un conteneur Docker de Virtuozzo peut exécuter une tâche planifiée | **Faux** : pas de démon cron, et le menu du calque n'offre aucun planificateur — Jelastic n'en propose que pour ses piles natives. La sauvegarde complète périodique reste à construire autrement (§ 7.15). |
 | pgBackRest en « repo host » est la seule voie de planification qui ne soit pas un contournement | **Arbitrage inversé le 12/09.** Le repo host suppose une configuration côté nœud Équilibrage qui ne vivrait dans aucun volume déclaré — effacée au premier redéploiement, exactement le défaut qu'on reproche par ailleurs à `pgbackrest` lui-même. `pg_cron` range la planification dans `cron.job`, dans le répertoire de données : c'est la seule des trois voies qui survive à un redéploiement. « Détourner un mécanisme SQL » était le moindre défaut (§ 7.15). |
+| Les piles natives de Jelastic offrent un planificateur de tâches, contrairement au calque Docker (§ 7.15) | **Faux sur cette offre.** Le seul « scheduler » proposé aux add-ons d'un nœud natif est **Env Start/Stop**, qui met l'environnement en veille et le réveille — l'installer en croyant y gagner un cron programmerait l'extinction du site. Aucun planificateur de tâches nulle part : les deux crons applicatifs passent donc par un workflow GitHub Actions, seul mécanisme qui survive à l'infrastructure et dont l'échec se voie (§ 7.16). |
+| « A et C atterrissent sur la même plateforme, donc application et base colocalisées » (§ 7.3) | **Pas dans le même environnement.** Le moteur d'un environnement Jelastic est figé à sa création, et celui de `jepatisse` est verrouillé par l'image Docker `supabase/postgres` occupant l'étage applicatif : les piles natives y sont grisées. Application et base partageront la plateforme et la région, pas l'environnement — ce qui protège au passage la base d'un redéploiement applicatif, le geste le plus fréquent du site (§ 7.16). |
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 
@@ -3880,7 +4089,14 @@ chaque nuit sans autre trace que `cron.job_run_details`, table que rien ne
 signale à consulter. Exposer la fraîcheur de la dernière sauvegarde par une
 route `/api/cron/*` reste à construire.
 
-**Prochaine action** : le lot A (Vercel → Node.js sur Virtuozzo) et le
+**Le lot A est instruit et planifié** (§ 7.16, 12/09) : reconnaissance faite
+sur la plateforme, trois décisions structurantes arrêtées — nouvel
+environnement en pile Node.js 22.x native, crons portés par GitHub Actions,
+déploiement Git construisant sur le nœud. **Rien n'est encore créé.**
+
+**Prochaine action** : la phase 0 du § 7.16 — recharger le solde Virtuozzo
+(€45,52), créer l'environnement et vérifier que le build passe sur le nœud,
+ce qui est le seul point qui puisse réellement échouer. Puis le
 décommissionnement de Supabase — en vérifiant d'abord si l'ancienne base y
 porte ses propres tâches `pg_cron` avant de la couper.
 
