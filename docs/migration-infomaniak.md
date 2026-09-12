@@ -3849,14 +3849,115 @@ documente encore Vercel *et* l'ancien Supabase), et reprendre `CLAUDE.md` —
 que le § 7.14 laissait justement en attente du lot A « pour ne pas écrire deux
 fois la même section ».
 
+#### Phase 0 exécutée le 12/09 — le risque principal est levé
+
+L'environnement **`jepatisse-app`** (nœud **216658**, Node.js **22.23.2-pm2**,
+Genève DC2) est créé, le dépôt branché en Git sur `main`, et **le build passe
+sur le nœud**.
+
+| Mesure | Résultat |
+|---|---|
+| Compilation | ✅ **25,7 s**, aucun `Killed`, aucun dépassement de tas |
+| Mémoire du nœud | 3072 Mo au total, **3015 Mo disponibles** — le plafond à 24 cloudlets est effectif (24 × 128 Mio) |
+| Reproductibilité | Empreintes des chunks partagés **identiques** à un build joué ailleurs sur le même verrouillage |
+| Coût mesuré | plancher **€0,009/h** (≈ 6,60 €/mois), plafond théorique €0,074/h |
+
+**Le plancher ne bouge pas quand on relève le plafond** : à 8 cloudlets de
+limite la fourchette était €0,009–€0,024, à 24 elle est €0,009–€0,074. La
+stratégie « réserver bas, plafonner haut » du § 7.16 est donc vérifiée, pas
+seulement plausible — et le `next build`, quelques minutes à pleine charge,
+coûte moins d'un centime par déploiement.
+
+##### Piège 1 — `NODE_ENV=development` fait échouer le build en accusant le code
+
+La pile Node.js de Jelastic pose `NODE_ENV=development` par défaut. Avec cette
+valeur, `next build` compile puis **échoue à la génération des pages
+statiques** :
+
+```
+✓ Compiled successfully in 25.7s
+Error: <Html> should not be imported outside of pages/_document.
+Error occurred prerendering page "/404".
+Export encountered an error on /_error: /404, exiting the build.
+```
+
+**Le message désigne le code, la cause est l'environnement.** Aucun fichier du
+projet n'importe `next/document`, et il n'existe pas de dossier `pages/`.
+Établi par expérience contrôlée — même code, même `node_modules`, seule la
+variable change :
+
+| `NODE_ENV` | Résultat |
+|---|---|
+| non défini | build complet, code de sortie 0 |
+| `development` | échec identique à celui du nœud, code de sortie 1 |
+
+Next.js le signale d'ailleurs en amont du journal (`⚠ You are using a
+non-standard "NODE_ENV" value`), mais la ligne se perd dans la sortie.
+
+**Couplage à connaître** : poser `NODE_ENV=production` réarme le piège
+inverse — `npm install` saute alors les `devDependencies`, dont dépendent
+`tailwindcss`, `postcss` et `typescript`, tous nécessaires au build. La
+séquence cohérente est donc :
+
+| Étape | Commande |
+|---|---|
+| Installation | `npm ci --include=dev` — le drapeau explicite, indépendant de `NODE_ENV` |
+| Construction | `NODE_ENV=production npm run build` |
+| Exécution | `NODE_ENV=production` |
+
+##### Piège 2 — la pile ne lit jamais `scripts.start`
+
+Le service `nodejs` refusait de démarrer sur un « Failed to start » sans
+détail. La cause est dans `/usr/local/sbin/nodejs`, ligne 224 :
+
+```sh
+[ ! -f "${ROOT_DIR}/${PROCESS_MANAGER_FILE}" ] && ( [ -z "${APP_FILE}" ] || [ ! -f "${ROOT_DIR}/${APP_FILE}" ] ) && { echo_failure; return 1; }
+```
+
+En variante **pm2**, `PROCESS_MANAGER_FILE` vaut `ecosystem.config.js`
+(ligne 88) ; `APP_FILE` est détecté **par nom de fichier** parmi `server.js`,
+`app.js`, `index.js` et leurs variantes CoffeeScript (ligne 80). Un projet App
+Router n'en a aucun, et **le script ne consulte jamais `scripts.start` sur ce
+chemin**. Il manquait donc un seul fichier.
+
+D'où **`ecosystem.config.js`**, à la racine du dépôt. Un `server.js` aurait
+aussi satisfait la pile, mais un serveur Next.js personnalisé désactive une
+partie de l'optimisation statique. Trois choses y sont inscrites, et c'est
+l'intérêt de ce fichier par rapport à un réglage de console :
+
+- **`instances: 1`** — la contrainte du cache (`unstable_cache` mémorisé par
+  processus) devient une ligne versionnée accompagnée de son explication,
+  plutôt qu'un réglage qu'on relève un jour en croyant bien faire ;
+- **`NODE_ENV: 'production'`**, pour que le piège 1 ne dépende pas d'une
+  variable de console ;
+- **`max_memory_restart: '2G'`** — redémarrer avant la limite du conteneur
+  plutôt que se faire tuer par le noyau, qui ne laisse aucune trace lisible.
+
+Bon à savoir pour la suite : la pile **détecte elle-même** le port écouté par
+l'application et installe une redirection `nft` du 80 vers lui (lignes
+185-198). Aucun port n'est imposé — on le fixe seulement pour rendre cette
+détection déterministe.
+
+##### Un effet de bord à ne pas reproduire
+
+Un `pm2 list` lancé pour diagnostiquer **crée un démon pm2**. La ligne 213 du
+script détecte tout processus `pm2` de l'utilisateur `nodejs` et en conclut que
+l'application tourne : le démarrage suivant répond alors « NodeJS application
+is already started » sans rien lancer. Nettoyer par `pm2 kill` avant tout
+nouvel essai.
+
 #### Ce qui reste non vérifié
 
-- **La mémoire de construction sur le nœud** — le risque principal, testé
-  gratuitement en phase 0.
+- ~~La mémoire de construction sur le nœud~~ — **tranché en phase 0** : 25,7 s
+  de compilation, 3 Go disponibles. La voie de repli (construction dans
+  GitHub Actions) n'a pas lieu d'être.
 - **Le TLS du nouvel environnement** : add-on Let's Encrypt ou SSL intégré,
   non instruit.
-- **Le déclenchement du déploiement Git** : bouton manuel ou webhook sur push.
-- **La variante `-pm2` en 22.x** : constatée sur la 26.x, supposée identique.
+- ~~Le déclenchement du déploiement Git~~ — **les deux existent** : déploiement
+  manuel, ou « Vérifier et auto-déployer les mises à jour » par sondage
+  périodique (intervalle réglable). Laissé manuel tant que la validation est
+  en cours ; à trancher en phase 4.
+- ~~La variante `-pm2` en 22.x~~ — **confirmée** : `22.23.2-pm2` retenue.
 - **Les preview deployments par branche disparaissent** (§ 1.1). Aucune
   reconstruction n'est prévue par ce plan ; c'est une perte assumée, à
   réexaminer si elle se fait sentir.
