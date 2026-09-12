@@ -3522,16 +3522,74 @@ database size: 39.5MB → repo1 backup size: 7.9MB
 |---|---|
 | Archivage continu des WAL vers S3 | ✅ automatique, réglé dans le volume, survit aux redémarrages |
 | Une sauvegarde complète | ✅ 12/09 10:20 |
-| PITR depuis cette sauvegarde | ✅ *en théorie* — voir ci-dessous |
+| **Restauration éprouvée** | ✅ **jouée le 12/09** — voir ci-dessous |
+| PITR depuis cette sauvegarde | ✅ mesuré, WAL rejoués depuis S3 |
 | Sauvegarde complète périodique | ❌ aucun planificateur |
 | Résistance au redéploiement | ❌ le binaire est un paquet `apk` |
-| **Restauration éprouvée** | ❌ **jamais jouée** |
 
-**La dernière ligne est la plus importante.** Tant qu'une restauration n'a pas
-été effectuée pour de bon, on a des sauvegardes plausibles, pas une reprise
-prouvée. La base fait 40 Mo et le nœud a 2,7 Go libres : l'exercice est
-faisable sur place, avec un second postmaster sur un autre port. Il reste à
-faire, et il est le vrai livrable de ce chantier.
+#### La restauration, éprouvée pour de bon
+
+Une sauvegarde jamais restaurée est une hypothèse. Celle-ci ne l'est plus :
+restaurée sur le nœud lui-même, dans un répertoire à part, avec un second
+postmaster — la base fait 40 Mo, le disque en a 2,5 Go de libre, l'exercice
+tient sur place. C'est rare, et il faut en profiter tant que c'est vrai.
+
+**Ce que le journal a montré**, et qui est la moitié qu'aucune sauvegarde ne
+prouve toute seule :
+
+```
+restored log file "000000010000000000000007" from archive
+restored log file "000000010000000000000008" from archive
+redo done at 0/8000168
+selected new timeline ID: 2
+archive recovery complete
+database system is ready to accept connections
+```
+
+`archive-get` est allé chercher les WAL sur S3 et les a rejoués. La chaîne
+fonctionne dans les deux sens.
+
+| Contrôle | Résultat |
+|---|---|
+| Base restaurée | `recipes=72`, `profiles=6`, `auth_users=6` — identiques à la production |
+| Production pendant l'exercice | intacte |
+| Dépôt après la promotion de la copie | `0000000100000000` seul — **aucune trace de la ligne temporelle 2** |
+
+##### Les trois garde-fous, et pourquoi chacun
+
+L'instance d'essai démarre avec ces options **en ligne de commande**, qui
+priment sur `postgresql.conf` comme sur le `postgresql.auto.conf` restauré :
+
+| Option | Ce qu'elle empêche |
+|---|---|
+| `-c data_directory=<répertoire d'essai>` | **La plus importante.** `postgresql.conf` porte `data_directory = '/var/lib/postgresql/data'` (ligne 42) — et cette directive **l'emporte sur le `-D`**. Sans cette option, l'instance d'essai démarrerait sur la base **vivante**. |
+| `-c archive_mode=off` | Que la copie, une fois promue sur une nouvelle ligne temporelle, pousse ses propres WAL dans le dépôt et brouille l'historique. Vérifié après coup : le dépôt ne porte aucun `00000002`. |
+| `-c shared_preload_libraries=` | Que `pg_cron` et `pg_net` — tous deux préchargés en production — lancent des tâches planifiées et des appels réseau sortants depuis une copie. |
+
+Trois autres options isolent sans protéger : `port=5433`,
+`unix_socket_directories=/tmp/pgrestore`, `listen_addresses=` (aucune écoute
+TCP).
+
+##### Le mode opératoire, réutilisable
+
+1. `install -d -o postgres -g postgres -m 700 <répertoire d'essai> /tmp/pgrestore`
+2. Garde : vérifier que la cible **n'est pas** `/var/lib/postgresql/data` et
+   qu'elle est vide.
+3. `pgbackrest --stanza=jepatisse --pg1-path=<répertoire d'essai> restore` —
+   **`--pg1-path` explicite**, sans quoi pgBackRest viderait la production.
+4. Démarrer avec `pg_ctl -D <répertoire d'essai>` et les six options
+   ci-dessus, `config_file` pointant sur celui de la production (il n'est pas
+   dans la sauvegarde, vivant hors du répertoire de données).
+5. Comparer les décomptes, vérifier que le dépôt n'a pas reçu de nouvelle
+   ligne temporelle.
+6. `pg_ctl -m fast stop`, puis effacer le répertoire d'essai.
+
+**Un piège de forme, rencontré à l'étape 4** : le Web SSH insère une ligne
+vide entre les lignes collées. Une commande écrite sur plusieurs lignes avec
+des barres obliques inverses de continuation se coupe donc à la première —
+`pg_ctl` reçoit ses options mais pas son verbe (`pg_ctl: no operation
+specified`). Écrire ce genre de commande **sur une seule ligne**, ou la
+générer par `printf`.
 
 #### ⚠️ Après tout redéploiement du nœud Postgres
 
@@ -3559,7 +3617,7 @@ explique le dossier `cron` du nœud Équilibrage.
 | Voie | Pour | Contre |
 |---|---|---|
 | Lancer `crond` dans le conteneur | Cinq minutes | Meurt à chaque redémarrage, panne silencieuse |
-| `pg_cron` + `COPY … FROM PROGRAM` | La planification vit dans la base, donc dans le volume | Détourne un mécanisme SQL ; exige `shared_preload_libraries`, donc un redémarrage |
+| `pg_cron` + `COPY … FROM PROGRAM` | La planification vit dans la base, donc dans le volume — elle survit à tout. **`pg_cron` est DÉJÀ dans `shared_preload_libraries`** (relevé le 12/09) : aucun redémarrage à prévoir | Détourne un mécanisme SQL pour lancer un shell |
 | **pgBackRest en « repo host »** depuis le nœud Équilibrage, qui a un vrai cron | L'architecture prévue par l'outil | SSH entre nœuds, clé, configuration des deux côtés |
 
 **La troisième est la seule qui ne soit pas un contournement.** À traiter avec
@@ -3616,6 +3674,8 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le PITR se fera avec `wal-g`, « une demi-journée » (§ 4.5) | **Ni l'outil ni la durée.** Les binaires wal-g sont liés à la glibc, le conteneur est en Alpine/musl : c'est **pgBackRest** qui a été retenu, packagé par Alpine. Et la matinée est passée sur les endpoints de stockage, pas sur l'outil (§ 7.15). |
 | Un réglage PostgreSQL se pose dans `postgresql.conf` | **Pas sur cette plateforme.** `/etc/postgresql/` n'est pas un volume déclaré : un réglage y disparaîtrait au redéploiement. `ALTER SYSTEM` écrit dans `postgresql.auto.conf`, **dans le répertoire de données**, seul chemin persistant — et il faut le rôle `supabase_admin`, `postgres` n'étant pas superutilisateur (§ 7.15). |
 | Un conteneur Docker de Virtuozzo peut exécuter une tâche planifiée | **Faux** : pas de démon cron, et le menu du calque n'offre aucun planificateur — Jelastic n'en propose que pour ses piles natives. La sauvegarde complète périodique reste à construire autrement (§ 7.15). |
+| `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
+| Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 
 ---
 
@@ -3768,14 +3828,18 @@ auto-hébergé et PostgREST derrière `auth.jepatisse.com`. Les mesures de
 clôture, les sept trouvailles de l'exécution et ce qui reste à faire sont au
 **§ 7.14** — à lire avant toute reprise.
 
-**Sauvegarde et PITR : posés le 12/09 avec pgBackRest** (§ 7.15) —
-archivage continu vers le stockage objet, une sauvegarde complète, et deux
-manques nommés : **la restauration n'a jamais été jouée**, et il n'y a aucune
-planification. L'Endpoint temporaire a été fermé.
+**Sauvegarde et PITR : posés et ÉPROUVÉS le 12/09 avec pgBackRest**
+(§ 7.15) — archivage continu vers le stockage objet, une sauvegarde complète,
+et une **restauration réellement jouée** : WAL rejoués depuis S3, décomptes
+identiques à la production, dépôt non pollué. L'Endpoint temporaire a été
+fermé.
 
-**Prochaine action** : la restauration d'essai (§ 7.15), puis la planification
-des sauvegardes complètes, puis le lot A (Vercel → Node.js sur Virtuozzo) et
-le décommissionnement de Supabase.
+**Il reste un manque nommé** : aucune planification des sauvegardes complètes
+— un calque Docker de Virtuozzo n'a pas de planificateur. `pg_cron` étant déjà
+préchargé, la voie la plus courte s'est raccourcie.
+
+**Prochaine action** : la planification des sauvegardes complètes, puis le
+lot A (Vercel → Node.js sur Virtuozzo) et le décommissionnement de Supabase.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
