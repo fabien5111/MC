@@ -397,7 +397,11 @@ base source (§ 2.3), l'image ne l'y mettra pas d'elle-même.
 
 **Le PITR n'est pas fourni, et ce n'est pas « un chantier à part ».** Avec
 `supabase/postgres` d'un côté et un bucket S3 déjà validé de l'autre,
-l'archivage WAL (`wal-g`) représente une demi-journée. Il appartient à la
+l'archivage WAL (`wal-g`) représente une demi-journée. *(Fait le 12/09 — mais
+avec **pgBackRest**, pas wal-g, dont les binaires sont liés à la glibc alors
+que le conteneur est en Alpine/musl. Et il a fallu une matinée, pas une
+demi-journée : l'outil n'était pas le sujet, les endpoints de stockage l'ont
+été. Cf. § 7.15.)* Il appartient à la
 **définition de terminé du lot C**, pas à un projet qu'on repousse : le moment
 où il deviendra nécessaire — des abonnés payants — est celui où il sera trop
 tard pour l'ajouter tranquillement. D'ici là, un `pg_dump` nocturne vers le
@@ -3364,6 +3368,209 @@ plus rien à remplacer au milieu d'une commande.
 
 ---
 
+### 7.15 Sauvegarde et PITR — pgBackRest (12/09)
+
+La bascule du C3 a laissé la base sans aucune sauvegarde : Supabase en gardait
+une copie figée au midi du 11/09, et ce filet disparaîtra avec le
+décommissionnement. Le § 4.5 annonçait `wal-g` en « une demi-journée ». Ce
+qui suit consigne ce qui a réellement été fait, et pourquoi ce n'est pas
+`wal-g`.
+
+#### Ce n'est pas wal-g, parce que le conteneur est en Alpine
+
+```
+NAME="Alpine Linux" 3.23.5   ·   musl libc 1.2.5   ·   x86_64
+```
+
+Les binaires publiés par wal-g sont liés à la **glibc**. Sur musl, l'éditeur
+de liens refuse — ce n'est pas une incompatibilité subtile. Restaient : le
+compiler sur le conteneur de la base de production (avec une chaîne Go qui
+disparaîtrait au premier redéploiement), le compiler en statique ailleurs, ou
+`gcompat`. Aucune de ces voies n'est raisonnable pour l'outil dont dépend la
+reprise.
+
+**`pgbackrest` est packagé par Alpine** (`apk add pgbackrest`, version 2.57.0).
+Un `apk add` au lieu d'une chaîne de compilation sur une base de production :
+l'arbitrage n'a pas demandé longtemps. C'est un outil de PITR d'un sérieux
+équivalent, avec S3 natif, rétention et restauration documentée.
+
+#### L'architecture retenue
+
+| Élément | Valeur |
+|---|---|
+| Dépôt | S3, conteneur **privé** `jp-pgbackup` (jamais `jp-photos`, public) |
+| Endpoint | `s3.pub1.infomaniak.cloud`, `uri-style=path` (obligatoire hors AWS) |
+| Identifiants | Paire EC2 créée par `openstack ec2 credentials create`, **sur le nœud** |
+| Configuration | `/etc/pgbackrest/pgbackrest.conf`, **volume déclaré** |
+| Réglages PostgreSQL | `ALTER SYSTEM` → `postgresql.auto.conf`, dans le volume de données |
+| Archivage | continu, `archive_timeout = 300` (perte bornée à cinq minutes) |
+| Rétention | 7 sauvegardes complètes |
+
+**La configuration ne doit PAS vivre dans le répertoire de données**, bien
+qu'il soit le seul volume préexistant : `pgbackrest restore` vide `PGDATA`
+avant de le reconstruire. La configuration y serait détruite au moment précis
+où l'on en a le plus besoin. D'où le second volume — ce n'est pas de
+l'élégance, c'est une condition de la restauration.
+
+#### Trois clients OpenStack, trois endpoints — la cause enfin comprise
+
+Le § 8 consignait depuis le 05/09 que « l'endpoint est `pub1`, pas `pub2` »,
+avec pour explication une lecture d'écran erronée. **L'explication était
+incomplète, et la vraie cause a coûté une heure ce matin.**
+
+| Client | Endpoint atteint |
+|---|---|
+| `openstack container create` | **pub2** |
+| `swift`, avec `OS_REGION_NAME=dc4-a` | **pub2** |
+| Horizon (Stockage d'objet) | **pub2** |
+| `swift` sur le runner GitHub, avec la région du secret | **pub1** |
+| L'application et les clés TempURL | **pub1** |
+
+**C'est `OS_REGION_NAME` qui choisit le cluster de stockage.** Le catalogue ne
+ment pas : il contient plusieurs régions, chacune avec son endpoint. La valeur
+`dc4-a` relevée au § 10.2 est celle du *compute* ; appliquée au stockage, elle
+mène à un cluster où les conteneurs du projet n'existent pas. Même identifiant
+de projet des deux côtés, deux espaces de noms distincts.
+
+Conséquence concrète : un `jp-pgbackup` a été créé sur pub2, visible dans
+Horizon, **et invisible de pgBackRest**, qui répondait `NoSuchBucket` sur
+pub1. Le conteneur `test-photos` supprimé depuis Horizon existe toujours sur
+pub1, pour la même raison.
+
+**Le seul geste fiable** — celui qui ne dépend d'aucune résolution de
+catalogue — est une requête Swift directe sur l'URL forcée :
+
+```sh
+TOK=$(swift auth | sed -n 's/^export OS_AUTH_TOKEN=//p')
+curl -X PUT -H "X-Auth-Token: $TOK" \
+  https://s3.pub1.infomaniak.cloud/object/v1/AUTH_<projet>/jp-pgbackup
+```
+
+`s3cmd mb` avait été tenté d'abord et échoue en `SignatureDoesNotMatch` — alors
+que `s3cmd ls` passe avec les mêmes clés. La création de bucket envoie un corps
+XML (`LocationConstraint`) que s3cmd et le middleware `s3api` de Swift ne
+signent pas de la même façon. Un `PUT` Swift avec un jeton n'a aucune signature
+à calculer : c'est ce qui a marché.
+
+#### Ce que la plateforme impose, et qui n'était écrit nulle part
+
+**`postgres` n'est pas superutilisateur** (piège 1 du § 7.11, qui ressort) :
+`ALTER SYSTEM SET archive_command` est refusé. Le geste passe par
+`supabase_admin`, joignable sans mot de passe sur la boucle locale.
+
+**pgBackRest exige cinq privilèges** pour un utilisateur non superutilisateur.
+Les poser d'un coup évite de les découvrir un par un, chacun au prix d'un
+échec :
+
+```sql
+grant pg_read_all_settings to postgres;
+grant execute on function pg_catalog.pg_create_restore_point(text) to postgres;
+grant execute on function pg_catalog.pg_backup_start(text, boolean) to postgres;
+grant execute on function pg_catalog.pg_backup_stop(boolean) to postgres;
+grant execute on function pg_catalog.pg_switch_wal() to postgres;
+```
+
+**`apk add pgbackrest` tire `postgresql18`** en dépendance et se déclare
+« version par défaut », sur un conteneur qui sert PostgreSQL 17.6. **Sans
+effet** : l'image supabase/postgres sert ses binaires par Nix, qui passe devant
+dans le `PATH` (`command -v psql` → `/nix/var/nix/profiles/default/bin/psql`,
+en 17.6). Vérifié plutôt que déduit des deux avertissements de `pg_versions`.
+
+**`SHOW archive_command` affiche `(disabled)`** tant que `archive_mode` est à
+`off` — c'est une convention d'affichage, pas une valeur manquante. La valeur
+réelle se lit dans `postgresql.auto.conf`. Le temps perdu à croire que
+l'`ALTER SYSTEM` avait échoué se compte en minutes, mais il se répétera si ce
+n'est pas écrit.
+
+**`archive_command` doit porter un chemin absolu** (`/usr/bin/pgbackrest`) :
+elle s'exécute avec l'environnement du serveur, pas celui du shell.
+
+#### La procédure, telle qu'elle a fonctionné
+
+1. Déclarer le volume `/etc/pgbackrest`, **redéployer** le nœud (un volume ne
+   prend effet qu'au redéploiement).
+2. `apk add pgbackrest` — **après** le redéploiement, sinon il est perdu.
+3. Créer la paire EC2 sur le nœud, et le conteneur par `PUT` Swift sur l'URL
+   forcée (ci-dessus).
+4. Écrire `/etc/pgbackrest/pgbackrest.conf` (`chown postgres`, `chmod 600`).
+5. **`pgbackrest repo-ls`** — éprouve le dépôt S3 **sans toucher à
+   PostgreSQL**. C'est le contrôle qui a évité tous les risques : trois
+   erreurs de configuration ont été corrigées ici, archivage encore éteint.
+6. `ALTER SYSTEM` (`archive_command`, `archive_timeout`) en `supabase_admin`,
+   puis `pg_reload_conf()`.
+7. **`stanza-create` AVANT le redémarrage** — pgBackRest l'accepte avec
+   `archive_mode = off`, ce qui réduit à zéro la fenêtre où des WAL
+   s'accumuleraient sans dépôt structuré.
+8. `ALTER SYSTEM SET archive_mode = 'on'`, puis **redémarrer le nœud** —
+   « Redémarrer », jamais « Redéployer » : un redémarrage conserve le système
+   de fichiers, donc `pgbackrest`.
+9. Les cinq `GRANT`, puis `check`, puis `backup --type=full`.
+
+Résultat mesuré :
+
+```
+WAL segment 000000010000000000000004 successfully archived to
+  '/pgbackrest/archive/jepatisse/17-1/…gz' on repo1
+
+full backup: 20260912-102023F
+database size: 39.5MB → repo1 backup size: 7.9MB
+```
+
+#### Ce qui est protégé, et ce qui ne l'est pas
+
+| | État |
+|---|---|
+| Archivage continu des WAL vers S3 | ✅ automatique, réglé dans le volume, survit aux redémarrages |
+| Une sauvegarde complète | ✅ 12/09 10:20 |
+| PITR depuis cette sauvegarde | ✅ *en théorie* — voir ci-dessous |
+| Sauvegarde complète périodique | ❌ aucun planificateur |
+| Résistance au redéploiement | ❌ le binaire est un paquet `apk` |
+| **Restauration éprouvée** | ❌ **jamais jouée** |
+
+**La dernière ligne est la plus importante.** Tant qu'une restauration n'a pas
+été effectuée pour de bon, on a des sauvegardes plausibles, pas une reprise
+prouvée. La base fait 40 Mo et le nœud a 2,7 Go libres : l'exercice est
+faisable sur place, avec un second postmaster sur un autre port. Il reste à
+faire, et il est le vrai livrable de ce chantier.
+
+#### ⚠️ Après tout redéploiement du nœud Postgres
+
+`pgbackrest` est installé par `apk` : **un redéploiement l'efface.**
+`archive_mode` reste actif (il vit dans `postgresql.auto.conf`, donc dans le
+volume), la commande d'archivage échoue à chaque segment, et `pg_wal` grossit
+**sans qu'aucun message ne le signale** — jusqu'à saturer les 2,7 Go et bloquer
+les écritures.
+
+```sh
+apk add --no-cache pgbackrest
+su postgres -c 'pgbackrest --stanza=jepatisse check'
+```
+
+À faire immédiatement, avant toute autre vérification. C'est le défaut résiduel
+de cette installation, et il est nommé plutôt que contourné par un bricolage.
+
+#### La planification reste à traiter
+
+Un calque Docker de Virtuozzo **n'a pas de démon cron** (`crond` absent, rien
+dans `/etc/crontabs` qui soit lu) et **le menu du calque n'offre aucun
+planificateur** — Jelastic n'en propose que pour ses piles natives, ce qui
+explique le dossier `cron` du nœud Équilibrage.
+
+| Voie | Pour | Contre |
+|---|---|---|
+| Lancer `crond` dans le conteneur | Cinq minutes | Meurt à chaque redémarrage, panne silencieuse |
+| `pg_cron` + `COPY … FROM PROGRAM` | La planification vit dans la base, donc dans le volume | Détourne un mécanisme SQL ; exige `shared_preload_libraries`, donc un redémarrage |
+| **pgBackRest en « repo host »** depuis le nœud Équilibrage, qui a un vrai cron | L'architecture prévue par l'outil | SSH entre nœuds, clé, configuration des deux côtés |
+
+**La troisième est la seule qui ne soit pas un contournement.** À traiter avec
+la restauration d'essai.
+
+Sans planification, l'archivage continu tourne quand même : c'est lui qui porte
+le PITR. Ce qui manque est le point de départ périodique — et, à terme, une
+rétention qui ne laisse pas les WAL s'accumuler indéfiniment dans le dépôt.
+
+---
+
 ## 8. Corrections apportées en cours d'étude
 
 Consignées parce qu'elles expliquent pourquoi le plan a bougé, et pour éviter
@@ -3405,6 +3612,10 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Un `fetch` de vérification depuis la console prouve que l'API répond | **Pas s'il part de la même origine.** Les essais joués depuis `auth.jepatisse.com` ne déclenchent aucun préflight : ils ne touchaient pas le chemin cassé. Un test doit emprunter l'origine réelle du client qu'il simule — même famille que le `psql -h 127.0.0.1` du § 7.11. |
 | L'étape 10 du § 7.13 se joue pendant le gel | **Infaisable** : `MAINTENANCE_FREEZE` renvoie 503 sur toute page, sans exemption. Les sondes `/api/*` (hors `matcher`) couvrent la lecture sous gel ; le reste impose de lever le gel et d'être le premier visiteur (§ 7.14). |
 | Une sonde `/api/*` qui rend `200` prouve que la lecture fonctionne | **Non** : `lib/search.ts` avale ses erreurs (`console.error` puis `return []`). Un `200 {"items":[]}` ne distingue pas « aucun résultat » de « la base a refusé ». Le vrai message est dans les journaux d'exécution Vercel (§ 7.14). |
+| L'endpoint de stockage `pub2` avait été retenu « par déduction / lecture d'écran » (§ 8, 05/09) | **Explication incomplète.** La vraie cause est `OS_REGION_NAME` : le catalogue contient plusieurs régions, chacune avec son endpoint de stockage. `dc4-a` (la région *compute* du § 10.2) mène à pub2, où les conteneurs du projet n'existent pas. Trois clients, trois résultats : `openstack` et Horizon → pub2, `swift` selon sa région, l'application → pub1 (§ 7.15). |
+| Le PITR se fera avec `wal-g`, « une demi-journée » (§ 4.5) | **Ni l'outil ni la durée.** Les binaires wal-g sont liés à la glibc, le conteneur est en Alpine/musl : c'est **pgBackRest** qui a été retenu, packagé par Alpine. Et la matinée est passée sur les endpoints de stockage, pas sur l'outil (§ 7.15). |
+| Un réglage PostgreSQL se pose dans `postgresql.conf` | **Pas sur cette plateforme.** `/etc/postgresql/` n'est pas un volume déclaré : un réglage y disparaîtrait au redéploiement. `ALTER SYSTEM` écrit dans `postgresql.auto.conf`, **dans le répertoire de données**, seul chemin persistant — et il faut le rôle `supabase_admin`, `postgres` n'étant pas superutilisateur (§ 7.15). |
+| Un conteneur Docker de Virtuozzo peut exécuter une tâche planifiée | **Faux** : pas de démon cron, et le menu du calque n'offre aucun planificateur — Jelastic n'en propose que pour ses piles natives. La sauvegarde complète périodique reste à construire autrement (§ 7.15). |
 
 ---
 
@@ -3557,9 +3768,14 @@ auto-hébergé et PostgREST derrière `auth.jepatisse.com`. Les mesures de
 clôture, les sept trouvailles de l'exécution et ce qui reste à faire sont au
 **§ 7.14** — à lire avant toute reprise.
 
-**Prochaine action : le lot A** (Vercel → Node.js sur Virtuozzo), plus la
-définition de terminé du lot C (`wal-g`, décommissionnement de Supabase,
-fermeture de l'Endpoint temporaire).
+**Sauvegarde et PITR : posés le 12/09 avec pgBackRest** (§ 7.15) —
+archivage continu vers le stockage objet, une sauvegarde complète, et deux
+manques nommés : **la restauration n'a jamais été jouée**, et il n'y a aucune
+planification. L'Endpoint temporaire a été fermé.
+
+**Prochaine action** : la restauration d'essai (§ 7.15), puis la planification
+des sauvegardes complètes, puis le lot A (Vercel → Node.js sur Virtuozzo) et
+le décommissionnement de Supabase.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
