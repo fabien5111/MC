@@ -3946,13 +3946,13 @@ l'application tourne : le démarrage suivant répond alors « NodeJS application
 is already started » sans rien lancer. Nettoyer par `pm2 kill` avant tout
 nouvel essai.
 
-#### Phase 1 — la bascule de `dev.jepatisse.com` (12/09), bloquée au TLS
+#### Phase 1 — la bascule de `dev.jepatisse.com` (12-13/09)
 
-**Où ça en est :** `dev.jepatisse.com` pointe sur `jepatisse-app` et **l'application
-répond en HTTP de bout en bout** (200 mesuré depuis un nœud extérieur à
-l'environnement). **Le HTTPS n'est pas servi** — le nœud Équilibrage n'a aucune
-connectivité sortante, ce qui empêche le module Let's Encrypt de s'installer.
-Diagnostic complet et ticket support en fin de section.
+**Où ça en est : c'est fait.** `dev.jepatisse.com` est servi par
+`jepatisse-app` en **HTTPS**, certificat Let's Encrypt valide, derrière son
+propre équilibreur NGINX. Le TLS a bloqué une soirée sur une cause qui n'était
+pas celle qu'on croyait — voir la fin de section, c'est la trouvaille la plus
+réutilisable du lot.
 
 Décision prise en cours de route, et qui a bien tenu : plutôt que de tester sur
 le domaine technique de l'environnement, **avancer la bascule de
@@ -4086,37 +4086,67 @@ D'où l'ajout d'un **nœud Équilibrage NGINX** (216664, 1 cloudlet réservé). 
 chaînage interne est vérifié : `10.101.29.249:80` **et** `:3000` répondent 200
 depuis l'équilibreur.
 
-**Le blocage restant n'est pas de configuration.** Le nœud 216664 n'a **aucune
-connectivité sortante** — toute connexion TCP externe expire, en 80 comme en
-443, alors que le DNS résout. Le module Let's Encrypt échoue donc dès sa
-première étape, en téléchargeant son script de validation depuis
-`fastly.jsdelivr.net` (8 IP tentées, toutes en délai dépassé).
+**Un nœud à qui l'on ajoute une IP publique APRÈS sa création perd sa sortie
+réseau.** C'est ce qui a bloqué le TLS pendant une soirée, et la cause n'a rien
+d'un défaut de la plateforme : c'est un **ordre d'opérations**.
 
-| Fait | Mesure |
+Le premier équilibreur (216664) a été créé en mode **SLB** — accès par
+l'équilibreur partagé de la plateforme, sans IP publique. L'IP dédiée lui a été
+attribuée ensuite. Or les deux modes sont exclusifs, et la console le dit
+elle-même au moment de la bascule : *« L'option Accès via les SLB pour la couche
+Équilibrage a été automatiquement désactivée. »* Faite après coup, cette
+bascule ne recâble que **l'entrant**.
+
+| Fait mesuré sur 216664 | Résultat |
 |---|---|
-| Sortie externe depuis 216664 | ❌ délai dépassé (80 et 443) |
-| Sortie externe depuis les autres nœuds | ✅ 302/308 — la NAT de la plateforme fonctionne, et eux n'ont pas non plus d'IP publique |
-| Réseau interne depuis 216664 | ✅ 200 vers l'application |
-| **Trafic entrant** | ✅ **200** depuis Internet sur `http://dev.jepatisse.com/` — le nœud reçoit et répond |
-| Adresses du nœud | `195.15.204.255/32` sur `venet0:0` (**l'IP publique est bien liée**), `10.101.13.230/16` sur `venet0:1` ; `default dev venet0 scope link` |
+| Trafic **entrant** depuis Internet | ✅ **200** sur `http://dev.jepatisse.com/` |
+| Réseau **interne** | ✅ 200 vers l'application |
+| Sortie **externe** (80 et 443) | ❌ délai dépassé, alors que le DNS résout |
+| Adresses | `195.15.204.255/32` sur `venet0:0`, `10.101.13.230/16` sur `venet0:1` |
 | Redémarrage du nœud | sans effet |
 
-**Le défaut est donc purement sortant** : le conteneur porte son IP publique,
-reçoit les requêtes venues d'Internet et y répond — mais aucune connexion qu'il
-initie n'aboutit. C'est un défaut de routage côté hôte, pas une affaire de
-configuration du conteneur, et il est à porter au **support Infomaniak**.
+**La mesure qui a isolé la variable** : le nœud **216115**, l'équilibreur de
+l'environnement `jepatisse`, est de **même type** et porte lui aussi une **IP
+publique** — il joint `https://fastly.jsdelivr.net/` en 301 sans difficulté.
+Un équilibreur à IP publique sort donc parfaitement sur cette plateforme, et le
+216664 était bien anormal. Sans cette comparaison, on aurait conclu à une
+restriction générale.
 
-*Mesure d'abord mal lue* : `ip route` avait fait conclure que l'IP publique
-n'était pas liée. Elle l'est — `ip route` ne montre pas les adresses, seul
-`ip addr` le dit. L'erreur n'a pas porté à conséquence, mais elle aurait
-envoyé le support chercher du mauvais côté.
-**Plan B si l'attente se prolonge** : obtenir le certificat depuis un nœud qui a
-une sortie réseau (validation DNS-01 par enregistrement TXT dans la zone), puis
-le déposer sur l'équilibreur via le **SSL personnalisé** de la console — ça
-supprime entièrement la dépendance à jsDelivr.
+**Le remède, et la règle à retenir** : supprimer l'étage Équilibrage, le
+recréer **avec l'IPv4 publique cochée dès l'écran de création**. Le nouveau
+nœud sort immédiatement (301 vers jsDelivr), Let's Encrypt s'installe, et
+`https://dev.jepatisse.com` répond avec un certificat valide.
 
-**Attention au quota** : Let's Encrypt plafonne à 5 certificats identiques par
-semaine et par nom. Deux tentatives consommées le 12/09.
+> **Sur cette plateforme, l'IP publique se pose à la création d'un nœud, jamais
+> après.** L'ajouter ensuite laisse le routage sortant à moitié appliqué, sans
+> qu'aucun message ne le signale.
+
+**Le CNAME a suivi trois fois sans intervention** — IP partagée, puis
+`195.15.204.255`, puis `84.16.70.52` — parce qu'il vise le **nom d'hôte de
+l'environnement** et non celui d'un nœud. C'est l'insistance du § 7.11 qui paie,
+et elle a évité trois modifications DNS dans une phase déjà chargée.
+
+**Résultat mesuré depuis l'extérieur :**
+
+```
+https://dev.jepatisse.com/ → 200, 181 608 octets
+subject : CN=dev.jepatisse.com
+issuer  : Let's Encrypt
+expire  : 12/12/2026
+```
+
+*Deux erreurs de méthode payées ici, et consignées parce qu'elles se
+ressemblent.* `ip route` avait fait conclure que l'IP publique n'était pas liée
+— seul `ip addr` le dit. Et le diagnostic « défaut de plateforme, ticket
+support » a été formulé **avant** d'avoir lu la documentation de l'éditeur et
+avant d'avoir isolé la variable : le ticket serait parti pour rien. La
+documentation confirmait par ailleurs que l'ajout d'un équilibreur NGINX **avec
+IP publique** est la configuration prescrite pour Let's Encrypt sur une pile
+Node.js — ce qu'on avait déduit de la mesure, mais qu'une lecture aurait donné
+d'emblée.
+
+**Quota Let's Encrypt** : 5 certificats identiques par semaine et par nom.
+Trois tentatives consommées le 12/09, une réussie le 13/09.
 
 ##### Deux réglages repérés pour la suite, non instruits
 
@@ -4202,6 +4232,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le module Let's Encrypt étant proposé sur un environnement Node.js natif, le TLS y est réalisable | **Non — il n'a rien à configurer.** Un nœud applicatif natif n'embarque aucun serveur web : après installation, seul le port applicatif écoutait, rien en 443. Le port 80 ne répondait que par la redirection `nft` de la pile, qui n'a pas d'équivalent en 443. **La présence d'un module dans la liste ne dit pas qu'il a de quoi travailler** — ce risque, identifié avant la bascule, a été écarté à tort en voyant le module proposé, au lieu de vérifier ce qui écoutait sur 443 (§ 7.16). |
 | Les `NEXT_PUBLIC_*` sont « inlinées au build », donc un changement impose une reconstruction — et rien d'autre | **Elles comptent aux deux moments.** Inlinées pour le bundle **navigateur**, mais le code **serveur** relit `process.env` à l'exécution. D'où deux pannes distinctes et silencieuses : bonne au build mais absente du panneau → le rendu serveur régénère avec l'ancienne valeur ; absente au build → le bundle fige `undefined` et le navigateur lève une exception, sans aucune erreur côté serveur. Le contrôle qui vaut est fonctionnel (`curl` sur une page qui en dérive), jamais un `grep` sur le bundle (§ 7.16). |
 | `pm2 restart --update-env` recharge les variables du panneau | **Il propage l'environnement du shell appelant.** Depuis une session ouverte avant la modification, il repropage l'ancienne valeur avec toutes les apparences d'avoir agi. Ouvrir une session neuve, ou redémarrer le nœud (§ 7.16). |
+| Un nœud Virtuozzo sans connectivité sortante est un défaut de la plateforme, à porter au support | **C'est un ordre d'opérations.** Une IP publique **ajoutée après** la création d'un nœud ne recâble que l'entrant : le sortant reste muet, sans message. Posée **dès l'écran de création**, tout fonctionne immédiatement. Isolé en comparant avec un équilibreur de même type et à IP publique, qui sortait très bien. Le ticket support était rédigé et serait parti pour rien (§ 7.16). |
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 
@@ -4384,16 +4415,17 @@ déploiement Git construisant sur le nœud. **Rien n'est encore créé.**
 bout en bout**. Un nœud Équilibrage NGINX a été ajouté, son chaînage interne
 vérifié.
 
-**Un seul point bloque : le HTTPS.** Le nœud Équilibrage 216664 n'a aucune
-connectivité sortante — défaut de provisionnement réseau, insensible au
-redémarrage — ce qui empêche le module Let's Encrypt de télécharger son script
-de validation. Ticket support à ouvrir ; plan B par DNS-01 et SSL personnalisé
-décrit au § 7.16.
+**Le HTTPS fonctionne depuis le 13/09** : `https://dev.jepatisse.com` répond 200
+avec un certificat Let's Encrypt valide. Le blocage de la veille n'était pas un
+défaut de plateforme mais un ordre d'opérations — **une IP publique ajoutée
+après la création d'un nœud lui coupe sa sortie réseau** ; posée dès la
+création, tout fonctionne du premier coup (§ 7.16).
 
-**Prochaine action** : débloquer ce TLS, puis la vérification fonctionnelle
-complète sur `dev.jepatisse.com` (écritures, authentification, e-mail, photos).
-Puis le décommissionnement de Supabase — en vérifiant d'abord si l'ancienne
-base porte ses propres tâches `pg_cron` avant de la couper.
+**Prochaine action** : la vérification fonctionnelle complète sur
+`dev.jepatisse.com` — écritures depuis le navigateur (le chemin CORS),
+connexion e-mail et Google, envoi d'e-mail, photos, une route IA. Puis le
+décommissionnement de Supabase — en vérifiant d'abord si l'ancienne base porte
+ses propres tâches `pg_cron` avant de la couper.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
