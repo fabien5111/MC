@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/auth';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { IMPERSONATION_TTL_MINUTES, getAdminImpersonationAccess } from '@/lib/impersonation';
+import { siteUrl } from '@/lib/site-url';
 import { modeLabel } from '@/lib/impersonation-types';
 
 export async function POST(req: Request) {
@@ -125,7 +126,11 @@ export async function POST(req: Request) {
     label: `Lien généré par ${me.email ?? user.email} — mode ${modeLabel(mode)}`,
   });
 
-  const origin = new URL(req.url).origin;
+  // URL ABSOLUE indispensable : ce lien est rendu à l'admin puis ouvert
+  // plus tard, hors de tout contexte de navigation. `req.url` vaudrait
+  // `localhost:3000` derrière l'équilibreur (cf. `lib/redirection.ts`) —
+  // le lien serait inutilisable, et rien ne l'aurait signalé.
+  const origin = siteUrl();
   const url = `${origin}/auth/impersonation?token_hash=${encodeURIComponent(
     link.properties.hashed_token,
   )}&session=${session.id}`;
