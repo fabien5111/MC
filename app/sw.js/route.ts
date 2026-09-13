@@ -24,7 +24,7 @@ const DISABLED = process.env.PWA_DISABLE_SERVICE_WORKER === 'true';
 // Un identifiant de déploiement fait naturellement office de version de
 // cache : chaque déploiement purge donc le précédent à l'activation, sans
 // numéro à incrémenter à la main et sans risque d'oubli.
-const CACHE_NAME = `mc-pwa-${process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'}`;
+const CACHE_NAME = `mc-pwa-${process.env.APP_BUILD_ID ?? 'dev'}`;
 
 const PRECACHE_URLS = ['/hors-ligne', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 

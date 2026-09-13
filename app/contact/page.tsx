@@ -30,7 +30,7 @@ export default async function ContactPage({
   // Version de l'application déployée, capturée côté serveur : purement
   // diagnostique (jointe au ticket Jira en cas de bug), jamais une preuve —
   // le champ voyage en clair jusqu'au navigateur et en revient tel quel.
-  const appVersion = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null;
+  const appVersion = process.env.APP_BUILD_ID?.slice(0, 7) ?? null;
 
   return (
     <>
