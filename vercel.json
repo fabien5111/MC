@@ -1,6 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/cron/abonnements", "schedule": "0 2 * * *" },
-    { "path": "/api/cron/contact-jira", "schedule": "30 2 * * *" }
-  ]
-}

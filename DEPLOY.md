@@ -96,8 +96,8 @@ sur le bundle.
 | Tâche | Où | Cadence |
 |---|---|---|
 | Sauvegarde complète pgBackRest | `pg_cron`, dans la base (nœud 216075) | 3 h 30 GMT |
-| `/api/cron/abonnements` | `vercel.json` — **à porter sur GitHub Actions** (phase 2 du lot A) | 2 h 00 |
-| `/api/cron/contact-jira` | `vercel.json` — **à porter sur GitHub Actions** | 2 h 30 |
+| `/api/cron/abonnements` | `.github/workflows/cron-abonnements.yml` | 2 h 00 |
+| `/api/cron/contact-jira` | `.github/workflows/cron-contact-jira.yml` | 2 h 30 |
 
 Virtuozzo n'offre **aucun** planificateur de tâches, ni sur les nœuds Docker
 ni sur les piles natives : le seul « scheduler » proposé est Env Start/Stop,
@@ -147,12 +147,8 @@ Deux symptômes trompeurs, rencontrés en vrai :
 
 ## Résidu Vercel
 
-Le projet **`mc`** sert encore `www.jepatisse.com`, `jepatisse.com` et les
-deux `.fr` (redirections), avec `COMING_SOON=true` en Production. Ses
-variables pointent déjà sur la base Infomaniak — il ne dépend plus de
-Supabase.
-
-À faire pour clore le lot A : porter les deux crons sur GitHub Actions,
-basculer le DNS de `www`, retirer le projet Vercel, supprimer `vercel.json`.
-Un second projet Vercel, **`dev_jp`**, déploie le même dépôt sur
-`mc-oqp7.vercel.app` sans domaine propre — à détacher.
+**Aucun domaine ne pointe plus sur Vercel** depuis la phase 3 du lot A
+(§ 7.21) — les quatre domaines publics sont sur Infomaniak, et les deux crons
+tournent depuis GitHub Actions. Le projet **`mc`** reste techniquement en
+place (URL `*.vercel.app`, aucun domaine attaché) : à retirer, avec le second
+projet **`dev_jp`** (`mc-oqp7.vercel.app`), pour clore la phase 4.
