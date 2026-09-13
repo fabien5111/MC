@@ -4708,6 +4708,36 @@ https://dev.jepatisse.com/             -> HSTS présent, contenu réel
 /.well-known/acme-challenge/test       -> 404 (non redirigé)
 ```
 
+### 7.22 Phase 4 du lot A — le retrait de Vercel, en trois temps (13/09)
+
+L'ordre est la seule chose qui compte ici : **rebasculer, vérifier, retirer**
+— jamais dans un autre ordre, sous peine de faire disparaître les crons en
+silence, exactement le risque nommé au § 7.19.
+
+1. **`BASE_URL` des deux workflows** passe de `dev.jepatisse.com` à
+   `www.jepatisse.com`, le domaine canonique depuis la phase 3. Sans risque
+   même sous `COMING_SOON` : `/api/*` est exempté de la page d'attente par
+   `middleware.ts`.
+2. **Vérification réelle, pas supposée** : les deux workflows relancés à la
+   main contre `www` :
+   ```
+   Abonnements : 0 expiré(s), 1 notification(s), 1 import(s) purgé(s)
+   Jira        : 2 ticket(s) examiné(s), 2 synchronisé(s)
+   ```
+   Le compteur d'imports purgés tombe de **20 à 1** entre le premier passage
+   (§ 7.19, qui rattrapait un vrai retard des crons Vercel) et celui-ci — la
+   confirmation que le rythme quotidien normal est bien de l'ordre de
+   l'unité, et que la route fonctionne aussi bien via `www` que via `dev`.
+3. **`vercel.json` supprimé.** Recherché dans tout le dépôt avant de le
+   retirer : aucune référence ne le *lit* au runtime, seulement des mentions
+   documentaires (`middleware.ts`, `route.ts`, plusieurs `.md`) — mises à jour
+   dans le même geste plutôt que laissées à décrire un fichier qui n'existe
+   plus.
+
+**Reste, hors du dépôt** : retirer les deux projets Vercel (`mc`, `dev_jp`)
+depuis leur tableau de bord — le seul des quatre gestes de cette phase sans
+retour arrière, et qui n'a pas d'API accessible depuis cette session.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -5033,15 +5063,18 @@ deux protections que Vercel fournissait sans qu'on les demande. Vérifié en
 clôture — `http://dev.jepatisse.com/` rend 301, `https://` porte
 `Strict-Transport-Security`, l'exemption ACME répond sans redirection.
 
+**Phase 4 du lot A presque close** (§ 7.22, 13/09) : les crons pointent sur
+`www`, vérifiés en réel (compteurs cohérents avec un rythme quotidien normal),
+`vercel.json` supprimé du dépôt — plus aucune référence à un fichier qui
+n'existe plus. **Ne reste, hors du dépôt, que le retrait des deux projets
+Vercel** (`mc`, `dev_jp`) depuis leur tableau de bord : le seul geste des
+quatre sans retour arrière, et sans API accessible depuis cette session.
+
 **Ce qui reste avant de clore le lot A** :
 1. attendre l'émission du certificat des deux apex (en cours au moment
    d'écrire — la validation ACME ne démarre qu'après propagation DNS) ;
 2. remonter les TTL une fois éprouvé ;
-3. **phase 4** : retirer les projets Vercel `mc` et `dev_jp`, supprimer
-   `vercel.json`, et passer `BASE_URL` à `www` dans les deux workflows de
-   cron. **La phase 4 ne peut pas précéder la vérification des workflows** :
-   retirer Vercel avant que les crons ne vivent ailleurs les ferait
-   disparaître en silence.
+3. retirer les deux projets Vercel depuis leur tableau de bord.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
 `auth.jepatisse.com` (mesuré à **60 s**, et non 300 s comme affirmé

@@ -1066,8 +1066,8 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   service_role).
 - **Tâche planifiée** : `GET /api/cron/contact-jira` (réconciliation
   quotidienne, filet de sécurité — Jira ne réessaie jamais un webhook
-  échoué), déclarée dans `vercel.json` à 2 h 30, après le cron
-  d'abonnements.
+  échoué), portée par `.github/workflows/cron-contact-jira.yml` à 2 h 30
+  UTC, après le cron d'abonnements.
 
 ## Réglages du compte
 
@@ -1335,21 +1335,25 @@ Historique de la migration depuis Vercel + Supabase :
   `proxy_read_timeout` de l'équilibreur (60 s par défaut) qui borne désormais
   une route longue. Un import IA coupé se présente en **504 de l'équilibreur**,
   pas en erreur applicative.
-- **Domaines** : `www.jepatisse.com` est le domaine canonique — `jepatisse.com`
-  y redirige (308), `jepatisse.fr` et `www.jepatisse.fr` aussi (301). C'est le
-  futur domaine public — **encore servi par Vercel**, où il affiche la page
-  d'attente `COMING_SOON` ; ne pas le prendre pour cible lors d'une
-  vérification. **`dev.jepatisse.com`** est l'URL de production réelle, servie
-  depuis Virtuozzo : c'est elle qu'il faut utiliser pour vérifier qu'un
-  correctif se comporte comme attendu. `middleware.ts` exempte spécifiquement
-  `dev.jepatisse.com` de la page d'attente (comparaison sur l'en-tête `Host`)
-  — sans quoi les testeurs tomberaient eux aussi dessus.
-- **Résidu Vercel, à retirer** : le projet `mc` sert encore les domaines
-  ci-dessus et porte les deux crons de `vercel.json` ; un second projet
-  `dev_jp` déploie le même dépôt sur `mc-oqp7.vercel.app`, sans domaine
-  propre. Leurs variables pointent déjà sur la base Infomaniak. Clore le lot A
-  suppose de porter les crons sur GitHub Actions, basculer le DNS de `www`,
-  puis retirer les deux projets et `vercel.json`.
+- **Domaines, tous sur Infomaniak depuis la phase 3 du lot A** (§ 7.21).
+  `www.jepatisse.com` est le domaine canonique, servi par Virtuozzo (CNAME
+  vers l'hôte de l'environnement) et affichant la page d'attente
+  `COMING_SOON` — posée sur le nœud applicatif, plus sur Vercel. `jepatisse.com`
+  et les deux `.fr` redirigent en 301 via la **redirection web** du manager
+  Infomaniak (pas de CNAME à l'apex, qui l'interdit). **`dev.jepatisse.com`**
+  reste l'URL des testeurs, exemptée de la page d'attente par `middleware.ts`
+  (comparaison sur `Host`) — c'est elle qu'il faut utiliser pour vérifier
+  qu'un correctif se comporte comme attendu tant que `COMING_SOON` est posé.
+- **Redirection HTTP → HTTPS et HSTS** posés sur l'équilibreur (§ 7.21,
+  fichiers `nginx-jelastic.conf` et `conf.d/ssl.conf` du nœud 216680) — deux
+  protections que Vercel fournissait sans qu'on les demande, et qui manquaient
+  à la bascule.
+- **Résidu Vercel, à retirer** : le projet `mc` ne sert plus aucun domaine
+  (URL `*.vercel.app` seule) ; un second projet `dev_jp` déploie le même
+  dépôt sur `mc-oqp7.vercel.app`, sans domaine propre non plus. Les deux
+  crons tournent depuis GitHub Actions
+  (`.github/workflows/cron-*.yml`) ; `vercel.json` a disparu. Ne reste que le
+  retrait des deux projets eux-mêmes (phase 4).
 
 ## Commandes
 
