@@ -4333,7 +4333,7 @@ la coupure ne menace donc rien de public.
 
 | # | Dépendance | Traitement |
 |---|---|---|
-| 1 | Tâches `pg_cron` éventuelles sur l'ancienne base | **À inspecter avant la coupure** — reste à faire |
+| 1 | Tâches `pg_cron` éventuelles sur l'ancienne base | **Aucune** — `cron.job` n'existe pas |
 | 2 | Vercel (`www` + préversions) | Déjà sur `auth.jepatisse.com` — rien à faire |
 | 3 | `scripts/gen-types.mjs` | `--project-id` → `--db-url` |
 | 4 | `.github/workflows/gen-types.yml` | `SUPABASE_ACCESS_TOKEN` → `GEN_TYPES_DB_URL` |
@@ -4366,6 +4366,14 @@ L'historique Git le conserve, et le § 7.12 documente son fonctionnement.
 l'ancien projet fait échouer le job en 401. Le commentaire a été corrigé avant
 d'entrer dans le dépôt. Un avertissement inexact est pire qu'absent : il
 oriente le prochain diagnostic dans la mauvaise direction.
+
+**L'ancienne base ne portait aucune tâche planifiée** : `cron.job` n'y existe
+pas — l'extension n'a jamais été installée. Cohérent, et il fallait quand même
+le vérifier : Supabase gérait ses sauvegardes lui-même, sans passer par la
+base, et les deux crons applicatifs vivaient dans `vercel.json`. Aucune Edge
+Function non plus (pas de dossier `supabase/` dans le dépôt), ni d'appel
+`pg_net` / `net.http_post` qui aurait pu porter une planification déguisée.
+**Rien à reporter avant la coupure.**
 
 **Ce que la documentation disait de faux, au passage.** `CLAUDE.md` annonçait
 encore « Images stockées en data-URL directement en base — pas de bucket de
@@ -4640,13 +4648,14 @@ et `README.md` sont réécrits. **Plus aucune référence à
 `acbabqolghhyxksouaye` dans le code, les workflows ou la documentation
 courante.**
 
-**Il reste deux gestes avant de couper**, dans cet ordre :
-1. **Inspecter les tâches `pg_cron` de l'ancienne base** — une tâche oubliée
-   disparaîtrait sans laisser de trace ;
-2. mettre à jour la **valeur** du secret `SUPABASE_SERVICE_ROLE_KEY` (GitHub)
-   avec la clé `service_role` frappée au C3, et rejouer
-   `object-storage-reconciliation.yml` **avant** la coupure, pour vérifier
-   qu'il lit bien la nouvelle base.
+**Les sept dépendances sont traitées.** L'ancienne base ne porte aucune tâche
+planifiée (`cron.job` n'existe pas, aucune Edge Function, aucun `pg_net`) :
+il n'y avait rien à reporter.
+
+**Il reste un seul geste avant de couper** : mettre à jour la **valeur** du
+secret `SUPABASE_SERVICE_ROLE_KEY` (GitHub) avec la clé `service_role` frappée
+au C3, et rejouer `object-storage-reconciliation.yml` **pendant que la source
+est encore debout** — c'est la dernière vérification qui exige les deux côtés.
 
 Puis seulement, supprimer le projet Supabase.
 
