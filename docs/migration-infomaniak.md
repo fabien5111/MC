@@ -4183,7 +4183,8 @@ remis à l'état réel.
 
 Six points contrôlés sur `dev.jepatisse.com` après la bascule de l'application
 (§ 7.16) : connexion e-mail, connexion Google, mot de passe oublié, dépôt de
-photo, une route IA, le lien « en tant que ». Deux échecs, un seul traité ici.
+photo, une route IA, le lien « en tant que ». Deux échecs, tous deux résolus —
+et **aucun des deux n'était ce que son message d'erreur annonçait**.
 
 **Le dépôt de photo échouait en « CORS Missing Allow Origin »** sur le `PUT`
 signé vers `s3.pub1.infomaniak.cloud`, alors que le préflight `OPTIONS`
@@ -4221,6 +4222,59 @@ de signature (§ 8, 05/09), le symptôme visible (CORS) et la cause réelle
 requête. Le réflexe qui a tranché les deux fois est le même : mesurer la paire
 OPTIONS/PUT réelle avec les en-têtes complets plutôt que de raisonner sur ce
 que le navigateur affiche.
+
+#### Le mot de passe oublié — `GOTRUE_SMTP_PASS` jamais posée, puis jamais lue
+
+`POST /auth/v1/recover` renvoyait **500**, avec un CORS parfaitement correct
+(`access-control-allow-origin: https://dev.jepatisse.com` présent) : GoTrue
+répondait réellement mal. Le corps de 70 octets que supabase-js affiche comme
+`{}` ne dit rien ; **le journal du nœud, lui, donnait la cause en clair** —
+`535 "5.7.8 Authentication failed"`.
+
+**Le nœud GoTrue a son propre SMTP.** `GOTRUE_SMTP_*` (nœud 216114) n'a rien à
+voir avec les `SMTP_*` de `lib/email.ts` (nœud applicatif) : deux processus,
+deux jeux de variables, deux saisies. La clé Brevo n'avait été posée que d'un
+côté au C3, et **`GOTRUE_SMTP_PASS` était purement absente** — GoTrue
+s'authentifiait avec un mot de passe vide. Personne ne l'avait vu parce que
+c'était le **premier envoi d'e-mail par GoTrue depuis la bascule** : la
+connexion par e-mail lit un mot de passe, elle n'en envoie pas.
+
+**Puis la variable posée n'a pas suffi, et c'est le vrai enseignement.** Après
+l'avoir renseignée et « redémarré » le nœud, le `535` est resté rigoureusement
+identique. Trois mesures ont désigné le coupable :
+
+| Mesure | Résultat |
+|---|---|
+| `verify()` nodemailer depuis le nœud applicatif, mêmes hôte/port/utilisateur/secret | `AUTH OK` — le secret est bon, le chemin réseau aussi |
+| `GOTRUE_SMTP_PASS` dans `/.jelenv` (nœud 216114) | **présente** — la plateforme l'a bien persistée |
+| `GOTRUE_SMTP_PASS` dans `/proc/<pid>/environ` du processus GoTrue | **absente** |
+
+Puis la preuve, en deux horodatages : processus GoTrue démarré le **11/09 à
+13:43:50** (jour de la bascule C3), `/.jelenv` écrit le **13/09 à 13:28:04**.
+**Le processus tournait depuis deux jours avec l'environnement d'avant la
+pose.** Le contrôle de redémarrage employé rechargeait le service sans
+re-exécuter le lanceur.
+
+C'est le pendant, sur un nœud Docker, du piège `pm2 restart --update-env` du
+§ 7.16 : **le fichier d'environnement est à jour, le processus ne l'a jamais
+relu.** La règle générale qui vaut pour les deux types de nœud :
+*l'environnement qui décide est celui du processus, jamais celui du panneau ni
+celui du fichier* — `pm2 env <id>` côté pile native, `/proc/<pid>/environ` côté
+Docker.
+
+**Deux pièges d'observation à connaître sur un nœud Docker Jelastic** :
+- **PID 1 n'est pas l'application** : c'est le lanceur de la plateforme
+  (`/usr/bin/launcher … -e /.jelenv`), qui n'a pas les variables de
+  l'application. Sonder `/proc/1/environ` renvoie un faux négatif — il faut
+  d'abord trouver le vrai PID (`pgrep -f /usr/local/bin/auth`).
+- **`/.jelenv` est le fichier d'environnement que le lanceur lit au démarrage** :
+  comparer sa date de modification à celle de `/proc/<pid>` dit en un coup
+  d'œil si le processus a rechargé ou non.
+
+Résolu par un redémarrage qui recrée réellement le conteneur (nouveau PID,
+`GOTRUE_SMTP_PASS` de 90 caractères présente dans l'environnement du
+processus), vérifié **avant** de rouvrir le navigateur — même discipline que
+pour la clé TempURL. E-mail de réinitialisation reçu.
 
 ---
 
@@ -4279,6 +4333,9 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
 | Un dépôt de photo qui échoue en « CORS Missing Allow Origin » désigne une panne de configuration CORS | **Pas forcément.** Un refus de signature TempURL (401) sort du middleware `tempurl`, **avant** le contrôleur d'objet qui pose les en-têtes CORS de la réponse — le navigateur affiche alors un refus CORS, jamais le 401 réel. La cause était `SWIFT_TEMPURL_KEY_PHOTOS` désynchronisée entre le nœud Virtuozzo et le conteneur, le CORS du conteneur étant, lui, correctement posé depuis le 05/09 (§ 7.17). |
+| Le piège « le processus n'a pas relu son environnement » est propre à `pm2` et aux piles natives (§ 7.16) | **Il existe aussi sur un nœud Docker, en pire** : là, `/.jelenv` portait bien la variable et le panneau l'affichait, mais le processus GoTrue tournait depuis deux jours sans l'avoir lue — le contrôle de redémarrage employé rechargeait le service sans re-exécuter le lanceur. La règle vaut pour les deux types de nœud : **l'environnement qui décide est celui du processus** (`pm2 env <id>`, ou `/proc/<pid>/environ`), jamais celui du panneau ni celui du fichier (§ 7.17). |
+| Sur un nœud Docker, `/proc/1/environ` donne l'environnement de l'application | **Non — PID 1 est le lanceur de la plateforme** (`/usr/bin/launcher … -e /.jelenv`), qui ne porte pas les variables applicatives. Y chercher une variable renvoie un faux négatif, et a failli faire conclure à tort que la pose n'avait pas pris. Trouver d'abord le vrai PID (`pgrep -f`) (§ 7.17). |
+| Les `GOTRUE_SMTP_*` du nœud Auth sont couvertes par la configuration SMTP de l'application | **Deux jeux distincts, deux saisies.** `lib/email.ts` lit `SMTP_*` sur le nœud applicatif ; GoTrue lit `GOTRUE_SMTP_*` sur le sien. La clé Brevo n'avait été posée que d'un côté au C3, et le trou n'a été visible qu'au **premier envoi d'e-mail par GoTrue** — la connexion par e-mail lit un mot de passe, elle n'en envoie pas (§ 7.17). |
 
 ---
 
@@ -4466,14 +4523,16 @@ après la création d'un nœud lui coupe sa sortie réseau** ; posée dès la
 création, tout fonctionne du premier coup (§ 7.16).
 
 **Vérification fonctionnelle en cours** (§ 7.17, 13/09) : connexion e-mail et
-Google OK. Le dépôt de photo, en échec apparent CORS, était en réalité une
-clé TempURL désynchronisée entre le nœud et le conteneur — **résolu** par
-rotation complète. **Reste ouvert** : le mot de passe oublié (GoTrue renvoie
-500 sur `/auth/v1/recover`, cause non encore établie — le journal du nœud
-GoTrue **216114** reste à lire), une route IA (import copier/coller), et le
+Google OK. Les **deux pannes trouvées sont résolues**, et aucune des deux
+n'était ce que son message annonçait — le dépôt de photo (« erreur CORS » qui
+était un 401 de signature TempURL) et le mot de passe oublié (500 de GoTrue
+qui était un `535` SMTP, sur une variable posée mais jamais relue par le
+processus). **Reste à vérifier** : une route IA (import copier/coller) et le
 lien « en tant que » (jamais vu fonctionner depuis sa correction à l'aveugle,
-PR #259). Puis le décommissionnement de Supabase — en vérifiant d'abord si
-l'ancienne base porte ses propres tâches `pg_cron` avant de la couper.
+PR #259 — le chemin `/auth/callback` de `redirigerVers` vient toutefois d'être
+validé par le lien de réinitialisation). Puis le décommissionnement de
+Supabase — en vérifiant d'abord si l'ancienne base porte ses propres tâches
+`pg_cron` avant de la couper.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
