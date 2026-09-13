@@ -1,0 +1,102 @@
+name: Cron — abonnements et ménage nocturne
+
+# Remplace la tâche planifiée que `vercel.json` portait à 2 h 00 (§ 7.16,
+# phase 2 du lot A). Virtuozzo n'offre AUCUN planificateur — ni sur les nœuds
+# Docker, ni sur les piles natives : le seul « scheduler » proposé est
+# Env Start/Stop, qui éteint l'environnement. GitHub Actions est donc le seul
+# mécanisme qui survive à l'infrastructure et dont l'échec se voie.
+#
+# Ce que la route fait : expiration des abonnements, notifications J-3 / J-1 /
+# J+1, purge des imports expirés. Détail et doctrine d'idempotence dans
+# `app/api/cron/abonnements/route.ts`.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# TROIS DIFFÉRENCES AVEC VERCEL, à connaître avant de s'y fier
+# ─────────────────────────────────────────────────────────────────────────
+#   1. **L'en-tête d'autorisation n'est plus automatique.** Vercel ajoutait
+#      `Authorization: Bearer <CRON_SECRET>` de lui-même dès que la variable
+#      existait ; ici c'est à ce workflow de le poser, et le secret
+#      `CRON_SECRET` doit exister CÔTÉ GITHUB (Settings > Secrets and
+#      variables > Actions) avec exactement la valeur du nœud applicatif.
+#      Sans lui, la route répond 401 chaque nuit.
+#   2. **L'horaire est indicatif.** GitHub retarde régulièrement les tâches
+#      planifiées (dix minutes à une heure) et en saute parfois. C'est
+#      tolérable ici : la route borne ses fenêtres à sept jours en arrière,
+#      donc une nuit manquée se rattrape. Plusieurs de suite, non — d'où
+#      `workflow_dispatch`, qui permet de rejouer à la main.
+#   3. **Une tâche planifiée est désactivée après 60 jours sans activité du
+#      dépôt.** GitHub prévient par e-mail avant de le faire.
+#
+# L'heure est en **UTC**, comme l'était celle de `vercel.json`.
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  abonnements:
+    runs-on: ubuntu-latest
+    env:
+      # Codée en dur plutôt que rangée dans une variable GitHub : une valeur
+      # versionnée et relue en revue vaut mieux qu'un réglage invisible dans
+      # une interface (même arbitrage que le refus d'`APP_FILE`, § 7.16).
+      # À PASSER À https://www.jepatisse.com à la phase 3 du lot A, quand ce
+      # domaine sera servi depuis Virtuozzo.
+      BASE_URL: https://dev.jepatisse.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Vérifier que le secret est posé
+        run: |
+          set -euo pipefail
+          # Un secret absent produirait un 401 que le rapport ci-dessous
+          # signalerait très bien — mais après avoir réveillé la route pour
+          # rien. Autant refuser tout de suite, avec le bon message.
+          [ -n "$CRON_SECRET" ] || {
+            echo "::error::Le secret CRON_SECRET est absent côté GitHub."
+            echo "Settings > Secrets and variables > Actions — même valeur que sur le nœud applicatif."
+            exit 1
+          }
+
+      - name: Appeler /api/cron/abonnements
+        run: |
+          set -euo pipefail
+
+          # `--max-time 120`, pas 60 : la route déclare `maxDuration = 60`,
+          # une directive Vercel désormais inerte. C'est le
+          # `proxy_read_timeout` de l'équilibreur NGINX (60 s par défaut) qui
+          # borne réellement. Une limite client plus longue laisse voir le
+          # 504 de l'équilibreur au lieu de le masquer par un timeout de curl,
+          # qui n'apprendrait rien.
+          code=$(curl -sS -o reponse.json -w '%{http_code}' \
+            --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron/abonnements")
+
+          echo "HTTP $code"
+          cat reponse.json
+          echo
+
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::La route a répondu $code."
+            exit 1
+          fi
+
+          # Un 2xx ne suffit pas : la route rend toujours du JSON, et c'est
+          # `ok` qui porte le verdict.
+          if [ "$(jq -r '.ok // false' reponse.json)" != "true" ]; then
+            echo "::error::Réponse 2xx mais « ok » absent ou faux."
+            exit 1
+          fi
+
+          # La passe de ménage est volontairement isolée des notifications :
+          # son échec est signalé dans la réponse, jamais propagé (cf. l'en-tête
+          # de la route). On le remonte donc en AVERTISSEMENT, pas en échec.
+          # À savoir : un avertissement GitHub n'envoie aucun e-mail. Si cette
+          # purge échouait toutes les nuits, rien ne le signalerait — manque
+          # nommé, consigné au § 7.19.
+          purge_err=$(jq -r '.importsPurgeErreur // empty' reponse.json)
+          if [ -n "$purge_err" ]; then
+            echo "::warning::Purge des imports en échec : $purge_err"
+          fi
+
+          echo "Abonnements : $(jq -r '"\(.expirees) expiré(s), \(.notifiesExpiration + .notifiesJ3 + .notifiesJ1) notification(s), \(.importsPurges) import(s) purgé(s)"' reponse.json)"

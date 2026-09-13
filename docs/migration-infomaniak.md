@@ -4419,6 +4419,66 @@ avant le lot B, terminé le 05/09. Une affirmation périmée dans un fichier
 d'orientation ne se contente pas d'être fausse : elle est lue en premier, et
 sur ce point précis elle aurait conduit à réintroduire des data-URL.
 
+### 7.19 Les crons portés sur GitHub Actions (13/09) — phase 2 du lot A
+
+`.github/workflows/cron-abonnements.yml` (2 h 00 UTC) et
+`cron-contact-jira.yml` (2 h 30 UTC) remplacent les deux entrées de
+`vercel.json`. Virtuozzo n'offre **aucun** planificateur — ni sur les nœuds
+Docker ni sur les piles natives, le seul « scheduler » proposé étant Env
+Start/Stop, qui éteint l'environnement (§ 7.16). GitHub Actions est donc le
+seul mécanisme qui survive à l'infrastructure et dont l'échec se voie.
+
+**Le recouvrement est sûr, et c'est lui qui permet une reprise sans trou.**
+Tant que `vercel.json` coexiste avec ces workflows, les deux ordonnanceurs
+tirent sur les mêmes routes — sans dégât, parce que les deux sont
+explicitement idempotentes : `abonnements` réserve chaque envoi par
+`claimNotification` sous une contrainte d'unicité, et `decisionSynchroJira`
+teste l'idempotence en premier. La bascule n'a donc pas à être synchronisée à
+la minute, et `vercel.json` peut partir plus tard, une fois les workflows vus
+au vert.
+
+**Trois différences avec Vercel, assumées plutôt que découvertes :**
+
+| | Vercel | GitHub Actions |
+|---|---|---|
+| En-tête `Authorization` | posé automatiquement dès que `CRON_SECRET` existe | **au workflow de le poser**, et le secret doit exister côté GitHub |
+| Ponctualité | à l'heure | retards fréquents (10 à 60 min), passages parfois **sautés** |
+| Durée de vie | illimitée | **désactivation automatique après 60 jours** sans activité du dépôt |
+
+Les retards sont tolérables : `contact-jira` est un filet de sécurité qui
+reprend du même état le lendemain, et `abonnements` borne ses fenêtres à sept
+jours en arrière. Un passage sauté n'est pas grave, **plusieurs de suite le
+seraient** — d'où `workflow_dispatch` sur les deux, pour rejouer à la main.
+
+**Trois choix de conception :**
+- **Deux fichiers, pas un à deux jobs** : chaque échec s'attribue tout seul
+  dans la liste des Actions, et l'un se rejoue sans l'autre.
+- **L'écart de 30 minutes est conservé** : l'application tourne en
+  `instances: 1` (contrainte de justesse, cf. `ecosystem.config.js`), deux
+  requêtes d'une minute superposées se partageraient le même processus.
+- **URL codée en dur**, pas rangée dans une variable GitHub — une valeur
+  versionnée et relue en revue vaut mieux qu'un réglage invisible dans une
+  interface. Même arbitrage que le refus d'`APP_FILE` (§ 7.16). **À passer à
+  `www.jepatisse.com` en phase 3**, et le commentaire du fichier le dit.
+
+**Le verdict tient en trois niveaux, parce qu'un code HTTP ne suffit pas** :
+non-2xx → échec ; `ok` absent ou faux dans le JSON → échec ;
+`importsPurgeErreur` présent → **avertissement**, la route isolant délibérément
+cette passe des notifications. Les six réponses possibles (nuit calme, nuit
+active, purge en échec, 401, 503, 504 en HTML de l'équilibreur) ont été
+rejouées avant le commit — le 504 rend du HTML, ce qui faisait écrire à `jq`
+une erreur de parsing juste avant le message utile ; corrigé par un repli.
+
+**`--max-time 120`, pas 60** : la route déclare `maxDuration = 60`, une
+directive Vercel désormais inerte. C'est le `proxy_read_timeout` de
+l'équilibreur qui borne réellement (§ 7.17), et une limite client plus longue
+laisse voir son 504 au lieu de le masquer par un timeout de curl.
+
+**Manque nommé** : un `::warning::` GitHub n'envoie aucun e-mail. Si la purge
+des imports échouait toutes les nuits, le workflow resterait vert et personne
+ne le verrait. Même famille que le `pgbackrest` effacé par un redéploiement
+(§ 10.4) — une alerte réelle sur ces deux points reste à construire.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4703,6 +4763,27 @@ le retour arrière. **À vérifier au matin suivant** :
   nuit suffit donc à tout couvrir.
 
 Si les deux crons sont verts, la suppression définitive est sans risque.
+
+**Phase 2 du lot A faite : les crons sont portés sur GitHub Actions**
+(§ 7.19, 13/09) — `cron-abonnements.yml` (2 h 00 UTC) et
+`cron-contact-jira.yml` (2 h 30 UTC), avec `workflow_dispatch` pour rejouer un
+passage manqué. Le recouvrement avec `vercel.json` est **sans dégât** (les
+deux routes sont idempotentes), ce qui permet de retirer Vercel plus tard,
+sans trou.
+
+**Deux gestes avant de s'y fier** :
+1. poser le secret **`CRON_SECRET` côté GitHub** (Settings → Secrets →
+   Actions), avec exactement la valeur du nœud applicatif — Vercel posait
+   l'en-tête `Authorization` tout seul, GitHub non ;
+2. lancer les deux workflows à la main et lire les rapports. C'est **là** que
+   se fait la vérification, pas à la nuit suivante.
+
+**Puis, pour clore le lot A** : basculer le DNS de `www.jepatisse.com`
+(phase 3 — et passer alors `BASE_URL` à `www` dans les deux workflows), puis
+retirer les projets Vercel `mc` et `dev_jp` et supprimer `vercel.json`
+(phase 4). **La phase 4 ne peut pas précéder la vérification des workflows** :
+retirer Vercel avant que les crons ne vivent ailleurs les ferait disparaître
+en silence.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
 `auth.jepatisse.com` (toujours à 300 s depuis le C3), et un risque latent
