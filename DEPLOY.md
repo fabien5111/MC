@@ -34,7 +34,70 @@ base.
 Région : **Genève**. Application et base partagent la plateforme et la région
 — aucune requête ne traverse une frontière réseau lointaine.
 
-## Construire et déployer l'application
+## Déployer `main` automatiquement (GitHub Actions)
+
+`.github/workflows/deploiement-app.yml` rejoue la procédure manuelle ci-dessous
+sur le nœud, à chaque push sur `main` (ou à la demande, avec une branche au
+choix). Il existe parce qu'une fusion sur `main` ne changeait **rien** au site
+tant que personne n'ouvrait le Web SSH : `www` et `dev.jepatisse.com` étant
+servis par le même nœud depuis le même build, « c'est fusionné » et « c'est en
+ligne » n'avaient aucun rapport.
+
+Il reprend aussi un rôle qui tenait à Vercel sans que ce soit voulu :
+`jira-deploiement.yml` se déclenche sur `deployment_status`, un événement émis
+par les **projets Vercel résiduels**. Leur suppression (phase 4) aurait arrêté
+la chaîne « ticket → Déployé → e-mail au demandeur » en silence. Le workflow
+appelle désormais `jira-deploiement.yml` directement — et pas via l'événement,
+qu'un `deployment_status` créé avec le `GITHUB_TOKEN` du dépôt **ne déclenche
+jamais** (GitHub coupe là pour éviter les boucles).
+
+**Désarmé par défaut.** Sans la variable de dépôt `DEPLOIEMENT_ACTIF` à
+`true`, le workflow va au bout mais ne touche pas le nœud : il journalise ce
+qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
+
+### Ce qu'il fait, dans l'ordre
+
+1. **Barrière sur le runner** : `npm ci`, `typecheck`, `lint`, la suite de
+   tests, puis `build`. Ce n'est pas du zèle — la procédure du nœud fait
+   `rm -rf .next` **avant** de construire : une construction qui échoue
+   là-bas laisse le site sans build. Un commit qui ne compile pas ne doit
+   jamais atteindre cette fenêtre.
+2. **Déploiement** : `scripts/deploiement-app.sh` est envoyé au nœud par
+   l'entrée standard (la version exécutée est donc toujours celle du commit
+   déployé), qui fait `git fetch` + `git reset --hard <sha>`, la commande
+   canonique de construction, puis `pm2 restart`.
+3. **Vérification fonctionnelle** : le déploiement n'est réussi qu'après un
+   HTTP 200 réellement obtenu. Un `pm2 restart` qui rend la main ne prouve
+   pas qu'une page s'affiche.
+4. **Jira** : les tickets cités dans les 50 derniers commits passent à
+   « Déployé » — sous réserve de `JIRA_DEPLOY_ACTIF`, inchangé.
+
+### Ce qu'il faut lui donner
+
+**Où :** Settings > Secrets and variables > Actions, sur le dépôt GitHub.
+
+| Nom | Type | Rôle |
+|---|---|---|
+| `DEPLOIEMENT_ACTIF` | Variable | `true` arme le workflow. Absente = simulation. |
+| `DEPLOY_SSH_HOST` | Secret | Hôte SSH du nœud (console Infomaniak → accès SSH). |
+| `DEPLOY_SSH_USER` | Secret | Utilisateur SSH de la passerelle Jelastic. |
+| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante, déposée dans le compte Jelastic. |
+| `DEPLOY_SSH_KNOWN_HOSTS` | Secret | Clé d'hôte épinglée. Absente : acceptée à la volée, avec un avertissement. |
+| `DEPLOY_SSH_PORT` | Variable | Port SSH, `3022` par défaut. |
+| `RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
+| `APP_PM2` | Variable | Nom pm2 de l'application, `je-patisse` par défaut. |
+| `URL_VERIFICATION` | Variable | `https://dev.jepatisse.com` par défaut — seul hôte exempté de `COMING_SOON`, donc le seul qui prouve que le site répond. |
+
+**Prérequis non vérifiable depuis le dépôt** : le nœud doit pouvoir lire le
+dépôt privé (`git fetch`), donc porter une clé de déploiement ou des
+identifiants git. Le script s'arrête avec un message explicite si
+`/home/jelastic/ROOT` n'est pas un clone git — c'est le cas si le nœud est
+alimenté par le panneau Git de Jelastic plutôt que par un clone classique.
+
+La procédure manuelle ci-dessous reste valable et reste la porte de sortie :
+elle est ce que le workflow exécute, ni plus ni moins.
+
+## Construire et déployer l'application (à la main)
 
 Le code est déployé depuis Git, puis **construit sur le nœud**.
 
@@ -154,3 +217,12 @@ Deux symptômes trompeurs, rencontrés en vrai :
 tournent depuis GitHub Actions. Le projet **`mc`** reste techniquement en
 place (URL `*.vercel.app`, aucun domaine attaché) : à retirer, avec le second
 projet **`dev_jp`** (`mc-oqp7.vercel.app`), pour clore la phase 4.
+
+**Ce qui bloquait cette suppression sans que ça se voie** : ces deux projets
+construisent encore le dépôt à chaque push, et c'est leur `deployment_status`
+qui déclenchait `jira-deploiement.yml`. Les supprimer aurait arrêté la chaîne
+« ticket → Déployé → e-mail au demandeur » sans le moindre message d'erreur —
+des déploiements réussis, et plus un seul ticket transitionné. Depuis
+`deploiement-app.yml` (voir « Déployer `main` automatiquement »), la chaîne ne
+dépend plus d'eux : **la phase 4 peut être close une fois ce workflow armé et
+observé sur un vrai déploiement.**
