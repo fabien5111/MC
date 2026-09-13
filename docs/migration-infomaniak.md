@@ -4179,6 +4179,49 @@ crons exécutés au moins une fois par GitHub Actions avec leur trace,
 le projet Vercel retiré, `vercel.json` supprimé, `DEPLOY.md` et `CLAUDE.md`
 remis à l'état réel.
 
+### 7.17 Vérification fonctionnelle post-lot A (13/09)
+
+Six points contrôlés sur `dev.jepatisse.com` après la bascule de l'application
+(§ 7.16) : connexion e-mail, connexion Google, mot de passe oublié, dépôt de
+photo, une route IA, le lien « en tant que ». Deux échecs, un seul traité ici.
+
+**Le dépôt de photo échouait en « CORS Missing Allow Origin »** sur le `PUT`
+signé vers `s3.pub1.infomaniak.cloud`, alors que le préflight `OPTIONS`
+répondait `200` avec `access-control-allow-origin: *`. Le conteneur `jp-photos`
+a été vérifié conforme (métadonnées CORS posées le 05/09, relues à l'identique)
+et `SWIFT_STORAGE_URL` correct sur le nœud — les deux hypothèses les plus
+probables, écartées par la mesure plutôt que supposées bonnes.
+
+**La cause réelle : `SWIFT_TEMPURL_KEY_PHOTOS` sur le nœud Virtuozzo ne
+correspondait plus à la clé posée sur le conteneur.** Une signature refusée
+par le middleware `tempurl` sort en 401 **avant** le contrôleur d'objet — donc
+avant que Swift n'ajoute les en-têtes CORS de la réponse. Le navigateur ne
+voit alors aucun `Access-Control-Allow-Origin` sur un 401 qui, sans CORS, se
+présente comme s'il n'existait pas : Chrome l'affiche comme un refus CORS,
+jamais comme un 401. **Un refus de signature TempURL se déguise en panne CORS
+dès qu'il ne porte pas lui-même les en-têtes CORS.**
+
+Diagnostic mené depuis le nœud applicatif lui-même (`node -e`, en réutilisant
+l'environnement réel via `pm2 env 0` plutôt que celui, différent, du shell de
+la console — cf. § 7.16), en reproduisant exactement le chemin et la forme de
+signature validés le 05/09 (§ 8) : chemin, condensat et forme identiques,
+horloges du nœud et du cluster concordantes à la seconde. Seule la clé
+différait — 20 caractères non hexadécimaux sur le nœud, quand la clé valide
+fait 64 caractères hexadécimaux. Résolu par une **rotation complète** (nouvelle
+paire de clés, posée dans cet ordre : secrets GitHub, conteneurs via
+*Poser les clés TempURL des conteneurs*, variables du nœud, redémarrage) plutôt
+que par une restauration de l'ancienne valeur — un secret GitHub ne se relit
+pas, rien n'aurait permis de vérifier qu'une valeur notée à la main était la
+bonne. Confirmé par un dépôt réel (`201`) avant de rouvrir le navigateur.
+Aucun code n'a changé : `lib/storage-data.ts` signait déjà juste.
+
+**Leçon de méthode** : sur cette panne comme sur celle du 401 de préfixe/forme
+de signature (§ 8, 05/09), le symptôme visible (CORS) et la cause réelle
+(authentification) appartiennent à deux couches différentes de la même
+requête. Le réflexe qui a tranché les deux fois est le même : mesurer la paire
+OPTIONS/PUT réelle avec les en-têtes complets plutôt que de raisonner sur ce
+que le navigateur affiche.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4235,6 +4278,7 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Un nœud Virtuozzo sans connectivité sortante est un défaut de la plateforme, à porter au support | **C'est un ordre d'opérations.** Une IP publique **ajoutée après** la création d'un nœud ne recâble que l'entrant : le sortant reste muet, sans message. Posée **dès l'écran de création**, tout fonctionne immédiatement. Isolé en comparant avec un équilibreur de même type et à IP publique, qui sortait très bien. Le ticket support était rédigé et serait parti pour rien (§ 7.16). |
 | `pg_ctl -D <répertoire>` désigne le répertoire de données de l'instance qu'on démarre | **Pas si `postgresql.conf` porte `data_directory`** — et celui de cette image le porte (ligne 42, vers `/var/lib/postgresql/data`). La directive du fichier l'emporte sur `-D`. Une instance de restauration d'essai démarrée sans `-c data_directory=…` aurait tourné sur la base **vivante** (§ 7.15). |
 | Une sauvegarde restaurable se déduit d'un `backup` réussi | **Non** : elle se joue. La restauration du 12/09 est ce qui a prouvé `archive-get`, c'est-à-dire la moitié de la chaîne qu'un `archive-push` vert ne dit rien de (§ 7.15). |
+| Un dépôt de photo qui échoue en « CORS Missing Allow Origin » désigne une panne de configuration CORS | **Pas forcément.** Un refus de signature TempURL (401) sort du middleware `tempurl`, **avant** le contrôleur d'objet qui pose les en-têtes CORS de la réponse — le navigateur affiche alors un refus CORS, jamais le 401 réel. La cause était `SWIFT_TEMPURL_KEY_PHOTOS` désynchronisée entre le nœud Virtuozzo et le conteneur, le CORS du conteneur étant, lui, correctement posé depuis le 05/09 (§ 7.17). |
 
 ---
 
@@ -4421,11 +4465,15 @@ défaut de plateforme mais un ordre d'opérations — **une IP publique ajoutée
 après la création d'un nœud lui coupe sa sortie réseau** ; posée dès la
 création, tout fonctionne du premier coup (§ 7.16).
 
-**Prochaine action** : la vérification fonctionnelle complète sur
-`dev.jepatisse.com` — écritures depuis le navigateur (le chemin CORS),
-connexion e-mail et Google, envoi d'e-mail, photos, une route IA. Puis le
-décommissionnement de Supabase — en vérifiant d'abord si l'ancienne base porte
-ses propres tâches `pg_cron` avant de la couper.
+**Vérification fonctionnelle en cours** (§ 7.17, 13/09) : connexion e-mail et
+Google OK. Le dépôt de photo, en échec apparent CORS, était en réalité une
+clé TempURL désynchronisée entre le nœud et le conteneur — **résolu** par
+rotation complète. **Reste ouvert** : le mot de passe oublié (GoTrue renvoie
+500 sur `/auth/v1/recover`, cause non encore établie — le journal du nœud
+GoTrue **216114** reste à lire), une route IA (import copier/coller), et le
+lien « en tant que » (jamais vu fonctionner depuis sa correction à l'aveugle,
+PR #259). Puis le décommissionnement de Supabase — en vérifiant d'abord si
+l'ancienne base porte ses propres tâches `pg_cron` avant de la couper.
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
