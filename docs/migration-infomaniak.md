@@ -4733,10 +4733,13 @@ silence, exactement le risque nommé au § 7.19.
    documentaires (`middleware.ts`, `route.ts`, plusieurs `.md`) — mises à jour
    dans le même geste plutôt que laissées à décrire un fichier qui n'existe
    plus.
+4. **Les deux projets Vercel (`mc`, `dev_jp`) supprimés** depuis leur tableau
+   de bord — le seul des quatre gestes sans retour arrière, et sans API
+   accessible depuis cette session : c'est l'utilisateur qui l'a exécuté.
 
-**Reste, hors du dépôt** : retirer les deux projets Vercel (`mc`, `dev_jp`)
-depuis leur tableau de bord — le seul des quatre gestes de cette phase sans
-retour arrière, et qui n'a pas d'API accessible depuis cette session.
+**Phase 4 close. Plus aucune trace de Vercel** dans le dépôt ni dans
+l'infrastructure servie — les quatre domaines publics, les deux crons et
+l'application elle-même tournent entièrement sur Infomaniak.
 
 ---
 
@@ -5063,18 +5066,19 @@ deux protections que Vercel fournissait sans qu'on les demande. Vérifié en
 clôture — `http://dev.jepatisse.com/` rend 301, `https://` porte
 `Strict-Transport-Security`, l'exemption ACME répond sans redirection.
 
-**Phase 4 du lot A presque close** (§ 7.22, 13/09) : les crons pointent sur
-`www`, vérifiés en réel (compteurs cohérents avec un rythme quotidien normal),
-`vercel.json` supprimé du dépôt — plus aucune référence à un fichier qui
-n'existe plus. **Ne reste, hors du dépôt, que le retrait des deux projets
-Vercel** (`mc`, `dev_jp`) depuis leur tableau de bord : le seul geste des
-quatre sans retour arrière, et sans API accessible depuis cette session.
+**Phase 4 du lot A CLOSE** (§ 7.22, 13/09) : les crons pointent sur `www`,
+vérifiés en réel, `vercel.json` supprimé du dépôt, et **les deux projets
+Vercel (`mc`, `dev_jp`) supprimés** depuis leur tableau de bord. Plus aucune
+trace de Vercel dans le dépôt ni dans l'infrastructure servie.
 
-**Ce qui reste avant de clore le lot A** :
-1. attendre l'émission du certificat des deux apex (en cours au moment
-   d'écrire — la validation ACME ne démarre qu'après propagation DNS) ;
-2. remonter les TTL une fois éprouvé ;
-3. retirer les deux projets Vercel depuis leur tableau de bord.
+**Le lot A est TERMINÉ.** Les quatre phases sont closes : environnement et
+build (0), bascule applicative (1), crons sur GitHub Actions (2), domaines
+publics et protections HTTPS (3), retrait de Vercel (4).
+
+**Ce qui reste, et qui se résout tout seul avec le temps** :
+1. l'émission du certificat des deux apex (la validation ACME ne démarre
+   qu'après propagation DNS, déjà en cours au moment d'écrire) ;
+2. remonter les TTL une fois la bascule éprouvée quelques jours.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
 `auth.jepatisse.com` (mesuré à **60 s**, et non 300 s comme affirmé

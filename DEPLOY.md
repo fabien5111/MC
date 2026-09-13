@@ -1,15 +1,17 @@
 # Déploiement
 
-Le site tourne sur **Infomaniak** — Virtuozzo Cloud pour l'application et la
-base, Public Cloud (Swift) pour les photos. La migration depuis Vercel +
-Supabase est documentée pas à pas dans `docs/migration-infomaniak.md` ; ce
-fichier ne décrit que l'état courant et les gestes d'exploitation.
+Le site tourne entièrement sur **Infomaniak** — Virtuozzo Cloud pour
+l'application et la base, Public Cloud (Swift) pour les photos. La migration
+depuis Vercel + Supabase, achevée le 13/09/2026, est documentée pas à pas
+dans `docs/migration-infomaniak.md` ; ce fichier ne décrit que l'état courant
+et les gestes d'exploitation.
 
-> **Bascule en cours.** `dev.jepatisse.com` est servi depuis Virtuozzo.
-> `www.jepatisse.com` et les domaines de redirection sont **encore sur
-> Vercel** (phase 3 du lot A, § 7.16 du dossier de migration) — ils affichent
-> la page d'attente `COMING_SOON`. Les deux hébergements pointent sur la
-> **même** base Infomaniak.
+> **Le site n'est pas encore ouvert au public.** `www.jepatisse.com`,
+> `jepatisse.com`, `jepatisse.fr` et `www.jepatisse.fr` sont tous servis
+> depuis Virtuozzo, mais `COMING_SOON=true` sur le nœud applicatif affiche la
+> page d'attente sur tous sauf `dev.jepatisse.com` (exempté par
+> `middleware.ts`, comparaison sur `Host`). Ouvrir le site est un simple
+> retrait de cette variable.
 
 ## Les environnements Virtuozzo
 
