@@ -4536,6 +4536,126 @@ Ils viennent de l'être à la main, en pleine lumière, et ils sont verts
 (§ 7.19). La suppression définitive du projet Supabase est donc sans risque
 dès maintenant ; la pause n'est plus qu'un délai de courtoisie.
 
+### 7.21 Phase 3 du lot A — la bascule DNS des domaines publics (13/09)
+
+Les quatre domaines encore servis par Vercel sont passés à Infomaniak. Deux
+mécanismes différents, parce que trois de ces domaines ne servent rien.
+
+| Domaine | Avant | Après |
+|---|---|---|
+| `www.jepatisse.com` | CNAME → `…vercel-dns-017.com` | CNAME → `jepatisse-app.jcloud-ver-jpe.ik-server.com` |
+| `www.jepatisse.fr` | CNAME → Vercel | CNAME → même hôte d'environnement |
+| `jepatisse.com` | A → `216.198.79.1` (Vercel) | A → `84.16.66.164` — **redirection web Infomaniak**, 301 vers `https://www.jepatisse.com/` |
+| `jepatisse.fr` | A → `216.198.79.1` | idem |
+
+#### Une décision produit était cachée dans une tâche DNS
+
+**`COMING_SOON` n'existait pas sur le nœud Virtuozzo.** Le middleware
+n'exemptant que `dev.jepatisse.com` par comparaison sur `Host`, basculer `www`
+l'aurait rendu **public à la seconde de la propagation** : la phase 3 n'était
+pas un déménagement, c'était une mise en ligne.
+
+La variable a donc été posée à `true` **avant** de toucher au DNS. Découpler
+les deux était le point important : une mise en ligne et une manœuvre
+d'infrastructure n'ont ni la même nature, ni le même moment opportun, et les
+fondre revient à décider de l'une par accident en exécutant l'autre. La mise
+en ligne se réduit désormais à **retirer une variable** — réversible en une
+minute, sans DNS ni TLS dans l'équation.
+
+**Le contrôle qui vaut est le comportement, pas la variable** : `pm2 env 0`
+disait `true` alors que la page d'attente ne sortait pas encore. Ce qui a
+tranché, c'est deux `curl` sur le nœud avec deux en-têtes `Host` différents —
+un hôte quelconque doit rendre « Bientôt disponible », `dev.jepatisse.com`
+doit rendre le site réel. Le second est le plus important : il prouve que
+l'exemption tient et que les testeurs ne sont pas coupés au passage.
+
+#### L'apex ne peut pas prendre de CNAME — d'où deux mécanismes
+
+Un CNAME est interdit à la racine d'une zone. Or ce qui a sauvé la phase 1,
+c'est justement le CNAME vers le **nom d'hôte de l'environnement**, qui a
+suivi trois changements d'IP sans intervention (§ 7.16) ; un `A` à l'apex
+perdrait cette propriété et casserait en silence au prochain changement de
+topologie.
+
+La sortie est que **les trois domaines autres que `www.jepatisse.com` ne
+servent rien** : ils redirigent. Ils n'ont donc aucune raison d'atteindre
+l'application. La **redirection web** du manager Infomaniak (écran distinct de
+l'éditeur de zone, sur la fiche du domaine) résout les trois problèmes d'un
+coup — pas d'apex à faire résoudre chez nous, pas de nom supplémentaire sur le
+certificat, rien à maintenir dans NGINX. Elle reconfigure l'enregistrement `A`
+elle-même vers son propre service.
+
+Deux pièges de ce formulaire :
+- **La case « Rediriger également le sous-domaine www » est cochée par
+  défaut** et devait être décochée : `www` a désormais son propre CNAME vers
+  Virtuozzo, et la laisser cochée aurait mis les deux mécanismes en
+  concurrence sur le même nom.
+- **« Une redirection existe déjà, confirmez le remplacement »** — il fallait
+  cocher « Écraser la configuration existante » sans savoir jusqu'où allait
+  l'écrasement. Un **instantané complet de la zone** a donc été pris avant :
+  `MX`, SPF, DKIM Brevo (`brevo1._domainkey`), `_dmarc`, les vérifications
+  Google et Brevo, et les CNAME déjà posés. Vérification après coup : **tout a
+  survécu**, seul l'`A` de l'apex a changé. Deux TXT sont apparus (`p|https`,
+  `1|www.jepatisse.com`) — c'est ainsi qu'Infomaniak encode la redirection
+  dans la zone.
+
+L'instantané n'a pas servi, et c'est précisément pourquoi il fallait le
+prendre : la perte d'un `MX` ou d'un DKIM ne se voit pas le jour même, elle se
+voit à l'e-mail qui n'arrive pas trois jours plus tard.
+
+#### `www.jepatisse.fr` sert l'application au lieu de rediriger
+
+Écart assumé vis-à-vis de l'architecture d'origine, qui faisait rediriger les
+deux domaines `.fr` vers le canonique. Il porte désormais son propre CNAME
+vers Virtuozzo et se retrouve donc sur le certificat. Sans conséquence
+visible tant que `COMING_SOON` est posé (les deux `www` rendent la même page
+d'attente) ; **à réexaminer avant la mise en ligne**, deux domaines servant le
+même contenu sans canonique explicite étant une gêne pour l'indexation.
+
+#### Deux protections que Vercel fournissait, et que personne n'avait vérifiées
+
+Mesuré pendant cette phase :
+
+```
+http://dev.jepatisse.com/  ->  200, aucune redirection
+Strict-Transport-Security  ->  absent
+```
+
+**L'équilibreur sert le site en clair sur le port 80 et n'émet pas de HSTS.**
+Vercel forçait HTTPS de lui-même. C'est la même famille que le trou CORS du
+§ 7.14 : *ce que l'ancien hébergeur faisait gratuitement ne se voit qu'une
+fois parti.*
+
+Sans gravité tant que `www` n'affiche qu'une page d'attente. **Ça le devient
+le jour de la mise en ligne** — et comme celle-ci ne tient plus qu'à une
+variable, c'est à traiter avant. Le correctif va dans un fichier de
+`conf.d/`, jamais dans `nginx-jelastic.conf` que la plateforme régénère, et
+demande deux précautions : il existe déjà un bloc `server` sur le port 80, et
+une redirection aveugle peut casser la validation ACME au renouvellement —
+qui échouerait **dans 90 jours**, en silence.
+
+Ce manque a d'ailleurs coûté trois échanges le jour même : Chrome, qui masque
+le préfixe `www.` dans sa barre d'adresse et réutilise volontiers l'entrée
+précédente, affichait « Non sécurisé » sur une page chargée en HTTP — pris à
+tort pour un défaut de certificat. **La mesure depuis le nœud a tranché en une
+commande** (`HTTP/2 200`, certificat validé) là où trois lectures de
+navigateur n'y étaient pas parvenues.
+
+#### État à la clôture de la phase
+
+- Certificat Let's Encrypt de l'équilibreur : `dev.jepatisse.com`,
+  `www.jepatisse.com`, `www.jepatisse.fr` — vérifié par `openssl s_client`
+  **depuis le nœud**, la vue depuis un poste extérieur pouvant être celle d'un
+  proxy intercepteur plutôt que celle de l'origine.
+- Les deux apex redirigent en 301 (`http://jepatisse.com/` →
+  `https://www.jepatisse.com/`), **certificat des apex encore en émission** au
+  moment d'écrire — la validation ne peut commencer qu'une fois le DNS
+  propagé, ce qui venait de se faire.
+- **Reste à faire** : remonter les TTL une fois éprouvé (60 s sur les `www`,
+  300 s sur les apex), et **`auth.jepatisse.com` est à 60 s, non 300 s** comme
+  l'affirmait le § 10.4 — la consigne de le remonter reste, la valeur était
+  fausse.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4596,6 +4716,10 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | Le piège « le processus n'a pas relu son environnement » est propre à `pm2` et aux piles natives (§ 7.16) | **Il existe aussi sur un nœud Docker, en pire** : là, `/.jelenv` portait bien la variable et le panneau l'affichait, mais le processus GoTrue tournait depuis deux jours sans l'avoir lue — le contrôle de redémarrage employé rechargeait le service sans re-exécuter le lanceur. La règle vaut pour les deux types de nœud : **l'environnement qui décide est celui du processus** (`pm2 env <id>`, ou `/proc/<pid>/environ`), jamais celui du panneau ni celui du fichier (§ 7.17). |
 | Sur un nœud Docker, `/proc/1/environ` donne l'environnement de l'application | **Non — PID 1 est le lanceur de la plateforme** (`/usr/bin/launcher … -e /.jelenv`), qui ne porte pas les variables applicatives. Y chercher une variable renvoie un faux négatif, et a failli faire conclure à tort que la pose n'avait pas pris. Trouver d'abord le vrai PID (`pgrep -f`) (§ 7.17). |
 | Les `GOTRUE_SMTP_*` du nœud Auth sont couvertes par la configuration SMTP de l'application | **Deux jeux distincts, deux saisies.** `lib/email.ts` lit `SMTP_*` sur le nœud applicatif ; GoTrue lit `GOTRUE_SMTP_*` sur le sien. La clé Brevo n'avait été posée que d'un côté au C3, et le trou n'a été visible qu'au **premier envoi d'e-mail par GoTrue** — la connexion par e-mail lit un mot de passe, elle n'en envoie pas (§ 7.17). |
+| La phase 3 du lot A est une manœuvre DNS | **Elle contenait une décision produit.** `COMING_SOON` n'existait pas sur le nœud Virtuozzo : basculer `www` l'aurait rendu **public à la seconde de la propagation**. Poser la variable d'abord découple la mise en ligne de la migration — sans quoi on décide de l'une en exécutant l'autre (§ 7.21). |
+| L'équilibreur Virtuozzo se comporte comme Vercel une fois le domaine basculé | **Il manque deux protections que Vercel fournissait sans qu'on les demande** : aucune redirection HTTP → HTTPS (`http://dev.jepatisse.com/` rend `200`) et aucun en-tête `Strict-Transport-Security`. Même famille que le trou CORS du § 7.14 (§ 7.21). |
+| Le TTL du CNAME `auth.jepatisse.com` est à 300 s (§ 10.4) | **Mesuré à 60 s.** La consigne de le remonter reste valable, la valeur affirmée était fausse (§ 7.21). |
+| Ce qu'un navigateur affiche vaut mesure | **Non.** Chrome masque le préfixe `www.` et réutilise l'entrée précédente de sa barre d'adresse : « Non sécurisé » sur une page en HTTP a été pris pour un défaut de certificat, trois échanges durant. Un `curl` depuis le nœud a tranché en une commande (§ 7.21). |
 
 ---
 
@@ -4841,15 +4965,30 @@ de crons Vercel diront en une minute si les passages des dernières nuits ont
 réussi — s'ils étaient morts depuis la bascule, ce serait une panne
 silencieuse de plusieurs jours.
 
-**Puis, pour clore le lot A** : basculer le DNS de `www.jepatisse.com`
-(phase 3 — et passer alors `BASE_URL` à `www` dans les deux workflows), puis
-retirer les projets Vercel `mc` et `dev_jp` et supprimer `vercel.json`
-(phase 4). **La phase 4 ne peut pas précéder la vérification des workflows** :
-retirer Vercel avant que les crons ne vivent ailleurs les ferait disparaître
-en silence.
+**Phase 3 du lot A faite : les quatre domaines publics sont sur Infomaniak**
+(§ 7.21, 13/09). `www.jepatisse.com` et `www.jepatisse.fr` en CNAME vers
+l'hôte de l'environnement, certificat Let's Encrypt étendu aux trois noms ;
+les deux apex en **redirection web Infomaniak** (301 vers
+`https://www.jepatisse.com/`), ce qui évite d'avoir à résoudre le problème du
+CNAME interdit à la racine. **`COMING_SOON=true` a été posé sur le nœud
+AVANT** la bascule : sans quoi `www` serait devenu public à la propagation.
+
+**Ce qui reste avant de clore le lot A** :
+1. attendre l'émission du certificat des deux apex (en cours au moment
+   d'écrire — la validation ACME ne démarre qu'après propagation DNS) ;
+2. **poser la redirection HTTP → HTTPS et le HSTS** sur l'équilibreur — deux
+   protections que Vercel fournissait et qui manquent (§ 7.21). À faire
+   **avant** la mise en ligne, qui ne tient plus qu'au retrait d'une variable ;
+3. remonter les TTL une fois éprouvé ;
+4. **phase 4** : retirer les projets Vercel `mc` et `dev_jp`, supprimer
+   `vercel.json`, et passer `BASE_URL` à `www` dans les deux workflows de
+   cron. **La phase 4 ne peut pas précéder la vérification des workflows** :
+   retirer Vercel avant que les crons ne vivent ailleurs les ferait
+   disparaître en silence.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
-`auth.jepatisse.com` (toujours à 300 s depuis le C3), et un risque latent
+`auth.jepatisse.com` (mesuré à **60 s**, et non 300 s comme affirmé
+précédemment), et un risque latent
 identifié au § 7.17 — le `proxy_read_timeout` de 60 s de l'équilibreur, qui
 remplace le `maxDuration` de Vercel et pourrait couper un import IA long
 (symptôme : 504 de l'équilibreur, pas une erreur applicative).
