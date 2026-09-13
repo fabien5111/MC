@@ -4479,6 +4479,63 @@ des imports échouait toutes les nuits, le workflow resterait vert et personne
 ne le verrait. Même famille que le `pgbackrest` effacé par un redéploiement
 (§ 10.4) — une alerte réelle sur ces deux points reste à construire.
 
+#### Les deux premiers passages — et un chiffre qui interroge
+
+Lancés à la main le 13/09, tous deux verts :
+
+```
+Abonnements : 1 expiré(s), 1 notification(s), 20 import(s) purgé(s)
+Jira        : 2 ticket(s) examiné(s), 2 synchronisé(s)
+```
+
+Ils n'ont pas tourné à vide, ce qui apprend davantage qu'un passage sans
+effet : la chaîne complète est prouvée d'un coup — secret GitHub, en-tête
+`Authorization` posé à la main, route, base Infomaniak, **envoi Brevo** (la
+notification d'expiration est réellement partie) et **API Jira** (deux statuts
+réconciliés).
+
+**Point ouvert : 20 imports purgés et 2 tickets à synchroniser, ce n'est pas
+une journée de retard ordinaire.** Si les crons Vercel avaient tourné
+correctement ces dernières nuits, la purge ne trouverait qu'un jour d'imports
+arrivés à échéance et la réconciliation ne rattraperait que les webhooks
+réellement manqués. Ce n'est pas une preuve — une salve de tests d'il y a une
+trentaine de jours expliquerait les 20, et deux webhooks peuvent se perdre —
+mais **le soupçon est bon marché à lever** : les journaux de crons Vercel
+(projet `mc` → *Cron Jobs*, ou *Logs* filtrés sur `/api/cron/`) diront en une
+minute si les passages des dernières nuits ont réussi. Si les crons Vercel
+étaient morts depuis la bascule, ce serait une panne silencieuse de plusieurs
+jours — exactement le risque que ce paragraphe documente.
+
+### 7.20 Supabase en pause, et le site tient (13/09)
+
+Projet `acbabqolghhyxksouaye` mis en pause depuis *Settings → General*. **Le
+bouton n'existe que sur le plan gratuit** : Supabase ne permet pas de mettre
+en pause un projet Pro, il faut alors rétrograder l'organisation d'abord (ce
+qui reste faisable ici — la base pèse 27 Mo, très loin des 500 Mo du plan
+gratuit). Bon à savoir pour qui relira : un projet gratuit se met de toute
+façon en pause seul après une semaine d'inactivité.
+
+**Vérification faite dans la foulée, et pas sur un code HTTP.** Un 200 ne
+prouve rien : `lib/search.ts` avale ses erreurs et rend une liste vide, un
+`200` sur l'accueil ne distingue donc pas « la base répond » de « la base a
+refusé » (§ 7.14). Ce qui a été mesuré, c'est le **contenu** de la page :
+
+| Indicateur | Relevé |
+|---|---|
+| Page d'accueil | 181 608 octets |
+| Fiches recettes distinctes | 12 |
+| Profils d'auteurs | 2 |
+| URLs de photos vers `s3.pub1.infomaniak.cloud` | 113 |
+
+Des recettes lues sur la base Infomaniak, des photos servies par le stockage
+objet, **avec Supabase éteint**. Rien ne dépend plus de l'ancien hébergeur.
+
+**La nuit d'observation prévue au § 7.18 n'a plus d'objet.** Elle ne devait
+couvrir qu'un seul chemin — les deux crons, jamais exercés depuis la bascule.
+Ils viennent de l'être à la main, en pleine lumière, et ils sont verts
+(§ 7.19). La suppression définitive du projet Supabase est donc sans risque
+dès maintenant ; la pause n'est plus qu'un délai de courtoisie.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4753,16 +4810,15 @@ il n'y avait rien à reporter.
 réaligné, `object-storage-reconciliation.yml` rejoué avec les deux côtés
 debout — 357 clés lues depuis `auth.jepatisse.com`, aucun 401, 0 orphelin.
 
-**Le projet Supabase est mis en PAUSE, pas supprimé** — pause d'abord, parce
-qu'elle place le système dans exactement l'état d'une coupure tout en gardant
-le retour arrière. **À vérifier au matin suivant** :
-- `dev.jepatisse.com` et `www.jepatisse.com` répondent (verdict immédiat) ;
-- les **deux crons de `vercel.json`** ont tourné — 2 h 00 (abonnements) et
-  2 h 30 (contact/Jira), à lire dans les journaux Vercel. C'est le seul chemin
-  jamais exercé depuis la bascule, et il ne passe qu'une fois par jour : une
-  nuit suffit donc à tout couvrir.
+**Le projet Supabase est EN PAUSE, et le site tient** (§ 7.20, 13/09).
+Vérifié sur le contenu, pas sur un code HTTP — l'accueil rend 12 fiches
+recettes, 2 profils d'auteurs et 113 URLs de photos du stockage objet, avec
+Supabase éteint. **Rien ne dépend plus de l'ancien hébergeur.**
 
-Si les deux crons sont verts, la suppression définitive est sans risque.
+**La nuit d'observation initialement prévue n'a plus d'objet** : elle ne
+devait couvrir que les deux crons, jamais exercés depuis la bascule. Ils l'ont
+été à la main, et ils sont verts (§ 7.19). **La suppression définitive est
+sans risque dès maintenant** ; la pause n'est plus qu'un délai de courtoisie.
 
 **Phase 2 du lot A faite : les crons sont portés sur GitHub Actions**
 (§ 7.19, 13/09) — `cron-abonnements.yml` (2 h 00 UTC) et
@@ -4771,12 +4827,19 @@ passage manqué. Le recouvrement avec `vercel.json` est **sans dégât** (les
 deux routes sont idempotentes), ce qui permet de retirer Vercel plus tard,
 sans trou.
 
-**Deux gestes avant de s'y fier** :
-1. poser le secret **`CRON_SECRET` côté GitHub** (Settings → Secrets →
-   Actions), avec exactement la valeur du nœud applicatif — Vercel posait
-   l'en-tête `Authorization` tout seul, GitHub non ;
-2. lancer les deux workflows à la main et lire les rapports. C'est **là** que
-   se fait la vérification, pas à la nuit suivante.
+**Secret posé et les deux workflows éprouvés à la main** (§ 7.19) :
+
+```
+Abonnements : 1 expiré(s), 1 notification(s), 20 import(s) purgé(s)
+Jira        : 2 ticket(s) examiné(s), 2 synchronisé(s)
+```
+
+Ils n'ont pas tourné à vide — la chaîne complète est donc prouvée, envoi Brevo
+et API Jira compris. **Un point ouvert cependant** : 20 imports purgés et
+2 tickets à synchroniser, ce n'est pas un retard d'une journée. Les journaux
+de crons Vercel diront en une minute si les passages des dernières nuits ont
+réussi — s'ils étaient morts depuis la bascule, ce serait une panne
+silencieuse de plusieurs jours.
 
 **Puis, pour clore le lot A** : basculer le DNS de `www.jepatisse.com`
 (phase 3 — et passer alors `BASE_URL` à `www` dans les deux workflows), puis
