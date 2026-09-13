@@ -1,15 +1,21 @@
 # Je pâtisse !
 
 Site de partage de recettes de pâtisserie. **Next.js App Router + TypeScript +
-Tailwind CSS**, avec Supabase (auth, base de données).
+Tailwind CSS**, sur une pile Supabase auto-hébergée chez Infomaniak (auth,
+base de données).
 
 ## Stack
 
 - **Next.js 15** (App Router, Route Handlers)
 - **TypeScript** (strict)
 - **Tailwind CSS 3** — design system dans `tailwind.config.ts`
-- **Supabase** via `@supabase/ssr` — auth par cookies, vérifiable côté serveur
-  (`lib/supabase/{client,server,middleware}.ts`)
+- **PostgreSQL 17.6**, **GoTrue** et **PostgREST** auto-hébergés sur Virtuozzo
+  Cloud (Infomaniak), joints par `@supabase/ssr` — auth par cookies,
+  vérifiable côté serveur (`lib/supabase/{client,server,middleware}.ts`). Le
+  client reste `@supabase/supabase-js` : c'est la même API, sans le service
+  managé.
+- **Stockage objet Swift** (Infomaniak Public Cloud) pour les photos, en dépôt
+  signé direct navigateur → conteneur (`lib/storage*.ts`)
 
 ## Démarrer
 
@@ -28,17 +34,24 @@ Auth/RLS via la session (cookies).
 
 ## Types de la base
 
-`lib/database.types.ts` est la source de vérité pour les types Supabase. Pour
-le régénérer depuis la base live :
+`lib/database.types.ts` est la source de vérité pour les types de la base — à
+régénérer, jamais à éditer à la main.
+
+La base n'est plus un projet Supabase managé : la génération passe désormais
+par une **chaîne de connexion PostgreSQL**, et non plus par une référence de
+projet. Comme le port 5432 n'est pas exposé en production, il faut ouvrir un
+**Endpoint temporaire** sur le nœud PostgreSQL le temps de l'opération, puis
+le refermer.
 
 ```bash
-export SUPABASE_ACCESS_TOKEN=<ton_token>   # https://supabase.com/dashboard/account/tokens
+export GEN_TYPES_DB_URL=postgresql://postgres:<mdp>@<hôte>:<port>/postgres
 npm run gen:types                          # écrase lib/database.types.ts
 npm run typecheck                          # repérer les écarts éventuels
 ```
 
 Un workflow GitHub Actions (`.github/workflows/gen-types.yml`, lancement
-manuel) fait la même chose et committe le résultat sur la branche choisie.
+manuel) fait la même chose et committe le résultat sur la branche choisie ;
+son en-tête décrit le mode opératoire complet, Endpoint compris.
 
 ## Variables d'environnement
 

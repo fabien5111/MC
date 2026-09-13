@@ -4316,6 +4316,64 @@ d'hébergeur, et elle ne se signale qu'au premier usage réel de chaque
 variable — d'où des pannes qui se révèlent une à une, longtemps après la
 bascule, plutôt qu'en bloc le jour J.
 
+### 7.18 Décommissionnement de Supabase — le démêlage (13/09)
+
+Couper le projet Supabase n'est pas un geste mais un démêlage : sept
+dépendances réparties sur l'application, les workflows et la documentation.
+Elles ont été recensées **avant** toute coupure, et traitées pendant que la
+source était encore debout — c'est la seule fenêtre où l'on peut comparer les
+deux côtés.
+
+**Question préalable, levée en premier** : `www.jepatisse.com` et les domaines
+de redirection sont **encore servis par Vercel** (la phase 3 du lot A n'est
+pas faite). Couper Supabase les casserait si leur `NEXT_PUBLIC_SUPABASE_URL`
+pointait encore dessus. Vérifié au panneau Vercel : elle vaut
+`https://auth.jepatisse.com` depuis le C3. **Le résidu Vercel est déjà sevré**,
+la coupure ne menace donc rien de public.
+
+| # | Dépendance | Traitement |
+|---|---|---|
+| 1 | Tâches `pg_cron` éventuelles sur l'ancienne base | **À inspecter avant la coupure** — reste à faire |
+| 2 | Vercel (`www` + préversions) | Déjà sur `auth.jepatisse.com` — rien à faire |
+| 3 | `scripts/gen-types.mjs` | `--project-id` → `--db-url` |
+| 4 | `.github/workflows/gen-types.yml` | `SUPABASE_ACCESS_TOKEN` → `GEN_TYPES_DB_URL` |
+| 5 | `object-storage-reconciliation.yml` | URL repointée sur `auth.jepatisse.com` |
+| 6 | Quatre workflows `migration-*.yml` | **Retirés** |
+| 7 | `DEPLOY.md`, `CLAUDE.md`, `README.md` | Réécrits |
+
+**La génération des types redevient une opération manuelle, et c'est
+délibéré.** Il n'y a plus de « référence de projet » à interroger, seulement
+un PostgreSQL — or le port 5432 n'est pas exposé (§ 7.9) et n'a pas à l'être
+pour une opération aussi rare. Le mode opératoire reprend celui des migrations
+C1 et C3 : ouvrir un Endpoint temporaire sur le nœud PostgreSQL, poser la
+chaîne dans `GEN_TYPES_DB_URL`, régénérer, **refermer l'Endpoint**. Le
+workflow rappelle cette dernière étape en `if: always()` — un Endpoint oublié
+laisse la base joignable depuis tout l'Internet. La friction est le prix d'un
+accès direct qui ne subsiste pas entre deux usages.
+
+**Les quatre workflows de migration sont retirés, pour la sûreté avant la
+propreté.** Ils lisent la source et deviennent inutilisables ; mais surtout
+`migration-donnees-c3.yml` contient un `truncate auth.identities, auth.users
+cascade` dont le § 8 rappelle qu'il **emporte tout `public` par cascade** et
+qu'il est destructeur une fois le site basculé. Un fichier qu'on ne peut plus
+jouer utilement, mais qui peut encore détruire, n'a pas sa place dans l'arbre.
+L'historique Git le conserve, et le § 7.12 documente son fonctionnement.
+
+**Un piège écarté par la lecture du code** : le commentaire posé sur
+`SUPABASE_SERVICE_ROLE_KEY` annonçait d'abord qu'une clé périmée produirait
+« un rapport vide, qui ressemble à aucun orphelin ». C'est faux —
+`reconcilier_stockage.py` appelle `raise_for_status()`, et un JWT signé par
+l'ancien projet fait échouer le job en 401. Le commentaire a été corrigé avant
+d'entrer dans le dépôt. Un avertissement inexact est pire qu'absent : il
+oriente le prochain diagnostic dans la mauvaise direction.
+
+**Ce que la documentation disait de faux, au passage.** `CLAUDE.md` annonçait
+encore « Images stockées en data-URL directement en base — pas de bucket de
+stockage ni de CDN », dans les *Repères* que lit chaque session. C'était vrai
+avant le lot B, terminé le 05/09. Une affirmation périmée dans un fichier
+d'orientation ne se contente pas d'être fausse : elle est lue en premier, et
+sur ce point précis elle aurait conduit à réintroduire des data-URL.
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4572,14 +4630,25 @@ jamais relue par le processus). Toutes deux venaient de la **ressaisie
 manuelle des 34 variables au lot A** ; ni le code, ni la base, ni le réseau
 n'étaient en cause.
 
-**Prochaine action : le décommissionnement de Supabase.** Il entraîne, au-delà
-de la coupure elle-même :
-- vérifier d'abord si l'ancienne base porte ses propres tâches `pg_cron` ;
-- `scripts/gen-types.mjs` — passer de `--project-id` à `--db-url` ;
-- l'URL Supabase codée en dur dans
-  `.github/workflows/object-storage-reconciliation.yml` ;
-- réécrire `DEPLOY.md` et `CLAUDE.md`, qui décrivent toujours Vercel +
-  Supabase comme l'hébergement.
+**Le décommissionnement de Supabase est PRÉPARÉ, pas encore exécuté**
+(§ 7.18, 13/09). Six des sept dépendances sont traitées : le résidu Vercel
+était déjà sevré (`NEXT_PUBLIC_SUPABASE_URL` vaut `https://auth.jepatisse.com`
+depuis le C3), la génération des types passe par `--db-url` et un Endpoint
+temporaire, le workflow de réconciliation vise `auth.jepatisse.com`, les
+quatre workflows `migration-*.yml` sont retirés, et `DEPLOY.md`, `CLAUDE.md`
+et `README.md` sont réécrits. **Plus aucune référence à
+`acbabqolghhyxksouaye` dans le code, les workflows ou la documentation
+courante.**
+
+**Il reste deux gestes avant de couper**, dans cet ordre :
+1. **Inspecter les tâches `pg_cron` de l'ancienne base** — une tâche oubliée
+   disparaîtrait sans laisser de trace ;
+2. mettre à jour la **valeur** du secret `SUPABASE_SERVICE_ROLE_KEY` (GitHub)
+   avec la clé `service_role` frappée au C3, et rejouer
+   `object-storage-reconciliation.yml` **avant** la coupure, pour vérifier
+   qu'il lit bien la nouvelle base.
+
+Puis seulement, supprimer le projet Supabase.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
 `auth.jepatisse.com` (toujours à 300 s depuis le C3), et un risque latent
