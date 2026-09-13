@@ -4375,6 +4375,43 @@ Function non plus (pas de dossier `supabase/` dans le dépôt), ni d'appel
 `pg_net` / `net.http_post` qui aurait pu porter une planification déguisée.
 **Rien à reporter avant la coupure.**
 
+**La dernière vérification, jouée avec les deux côtés debout** (13/09) :
+`object-storage-reconciliation.yml` relancé sur `jp-photos` après réalignement
+du secret `SUPABASE_SERVICE_ROLE_KEY` sur la clé frappée au C3.
+
+```
+Conteneur : jp-photos
+Objets dans le conteneur : 359
+Clés référencées en base : 357
+Orphelins trouvés : 0
+```
+
+357 clés lues depuis `auth.jepatisse.com` sans 401 : la clé est bien celle de
+la base Infomaniak, et PostgREST répond. C'était le dernier point qui exigeait
+la source encore vivante — après la coupure, on ne pourrait plus distinguer
+« le workflow est mal configuré » de « la source a disparu ».
+
+Deux détails du relevé, pour qui le relira :
+- **359 objets pour 357 références.** Les deux en écart ne sont rattachés à
+  rien mais datent de moins de 24 h : `reconcilier_stockage.py` les ignore
+  (`if modifie > seuil: continue`). Ce sont selon toute vraisemblance des
+  photos déposées pendant les essais du § 7.17 dont la recette n'a pas été
+  enregistrée — le dépôt aboutit, la ligne en base n'existe jamais. C'est
+  exactement le cas que ce workflow existe pour rattraper ; ils partiront au
+  prochain passage hors marge de grâce.
+- Le run a été lancé avec `CONFIRMER: SUPPRIMER` plutôt qu'en rapport à sec.
+  Sans conséquence — aucun orphelin n'a été retenu — mais c'est le résultat
+  qui l'a voulu, pas le garde-fou.
+
+**Pause plutôt que suppression, et ce n'est pas de la timidité.** Mettre le
+projet Supabase en pause place le système dans **exactement** l'état d'une
+coupure, en gardant le retour arrière : c'est un test réversible de la
+suppression. La fenêtre utile est courte — une seule nuit — parce que le seul
+chemin jamais exercé depuis la bascule est celui des **deux crons de
+`vercel.json`** (2 h 00 et 2 h 30), qui ne tournent qu'une fois par jour. Le
+site, lui, se prononce immédiatement. Si au matin les deux crons ont tourné et
+que `dev.jepatisse.com` répond, plus rien ne dépend de Supabase.
+
 **Ce que la documentation disait de faux, au passage.** `CLAUDE.md` annonçait
 encore « Images stockées en data-URL directement en base — pas de bucket de
 stockage ni de CDN », dans les *Repères* que lit chaque session. C'était vrai
@@ -4652,12 +4689,20 @@ courante.**
 planifiée (`cron.job` n'existe pas, aucune Edge Function, aucun `pg_net`) :
 il n'y avait rien à reporter.
 
-**Il reste un seul geste avant de couper** : mettre à jour la **valeur** du
-secret `SUPABASE_SERVICE_ROLE_KEY` (GitHub) avec la clé `service_role` frappée
-au C3, et rejouer `object-storage-reconciliation.yml` **pendant que la source
-est encore debout** — c'est la dernière vérification qui exige les deux côtés.
+**La dernière vérification est passée** (13/09) : secret `service_role`
+réaligné, `object-storage-reconciliation.yml` rejoué avec les deux côtés
+debout — 357 clés lues depuis `auth.jepatisse.com`, aucun 401, 0 orphelin.
 
-Puis seulement, supprimer le projet Supabase.
+**Le projet Supabase est mis en PAUSE, pas supprimé** — pause d'abord, parce
+qu'elle place le système dans exactement l'état d'une coupure tout en gardant
+le retour arrière. **À vérifier au matin suivant** :
+- `dev.jepatisse.com` et `www.jepatisse.com` répondent (verdict immédiat) ;
+- les **deux crons de `vercel.json`** ont tourné — 2 h 00 (abonnements) et
+  2 h 30 (contact/Jira), à lire dans les journaux Vercel. C'est le seul chemin
+  jamais exercé depuis la bascule, et il ne passe qu'une fois par jour : une
+  nuit suffit donc à tout couvrir.
+
+Si les deux crons sont verts, la suppression définitive est sans risque.
 
 **Deux points de rangement, sans urgence** : remonter le TTL du CNAME
 `auth.jepatisse.com` (toujours à 300 s depuis le C3), et un risque latent
