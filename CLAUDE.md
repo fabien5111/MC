@@ -8,9 +8,10 @@ le service managé.
 
 ## Repères pour travailler sur ce dépôt
 
-- **Production** : `dev.jepatisse.com` est l'URL réelle, servie depuis
-  Virtuozzo. `www.jepatisse.com` est encore sur Vercel et affiche la page
-  d'attente — voir « Déploiement ». Ne pousser sur `main` que du code vérifié.
+- **Production** : `www.jepatisse.com` et `dev.jepatisse.com` sont tous deux
+  servis depuis Virtuozzo — `www` affiche la page d'attente `COMING_SOON`,
+  `dev` en est exempté et sert le site réel (voir « Déploiement »). Ne
+  pousser sur `main` que du code vérifié.
 - **Vérification** avant tout push : `npm run typecheck` (et `npm run build`
   pour les changements structurels).
 - **Langue** : code commenté en français, UI en français ; les messages de
