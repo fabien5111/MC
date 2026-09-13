@@ -12,6 +12,22 @@ le service managé.
   servis depuis Virtuozzo — `www` affiche la page d'attente `COMING_SOON`,
   `dev` en est exempté et sert le site réel (voir « Déploiement »). Ne
   pousser sur `main` que du code vérifié.
+- **L'utilisateur travaille exclusivement en ligne, jamais en local** — pas de
+  terminal sur sa machine, pas de client SSH installé. Toute action côté
+  infrastructure (Virtuozzo, DNS Infomaniak, secrets GitHub…) doit donc
+  préciser **« Où : »** avant la manœuvre — quel nœud (216658 applicatif,
+  216680 équilibreur, 216075 PostgreSQL, 216114 GoTrue, 216242 PostgREST),
+  et par quel canal (console Infomaniak / *Configuration manager* / Web SSH
+  du nœud). Ne jamais supposer qu'une commande shell est possible sans avoir
+  nommé le nœud.
+- **Une action posée dans un panneau ne prouve pas qu'un processus l'a
+  reçue.** Après toute variable ou fichier modifié côté Virtuozzo, vérifier
+  l'état **du processus**, pas celui de l'interface — `pm2 env <id>` sur la
+  pile Node.js, `/proc/<pid>/environ` du vrai PID sur un nœud Docker (jamais
+  `/proc/1/environ`, qui est le lanceur de la plateforme). Ce contrôle a
+  tranché plusieurs pannes coûteuses le 13/09 (§ 7.17, § 7.21 du dossier de
+  migration) — un panneau à jour et un processus à jour sont deux choses
+  différentes.
 - **Vérification** avant tout push : `npm run typecheck` (et `npm run build`
   pour les changements structurels).
 - **Langue** : code commenté en français, UI en français ; les messages de
@@ -28,8 +44,12 @@ le service managé.
   `articles.content`, hors périmètre.)
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
-  conversation (bloc de code SQL), pour être copiée-collée dans l'éditeur
-  SQL de Supabase.
+  conversation (bloc de code SQL), pour être copiée-collée dans une session
+  SQL contre la base Infomaniak — **il n'y a plus d'éditeur SQL permanent**
+  depuis la bascule du 11/09 : le port 5432 n'est pas exposé, il faut un
+  Endpoint temporaire sur le nœud PostgreSQL (216075), même mode opératoire
+  que `npm run gen:types` (§ 7.9 du dossier de migration). Outil client à
+  confirmer avec l'utilisateur au moment venu — pas d'hypothèse à faire ici.
 
 ---
 
