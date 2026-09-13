@@ -4097,10 +4097,19 @@ première étape, en téléchargeant son script de validation depuis
 | Sortie externe depuis 216664 | ❌ délai dépassé (80 et 443) |
 | Sortie externe depuis les autres nœuds | ✅ 302/308 — la NAT de la plateforme fonctionne, et eux n'ont pas non plus d'IP publique |
 | Réseau interne depuis 216664 | ✅ 200 vers l'application |
-| Adresse du nœud | `10.101.13.230` seule ; `default dev venet0 scope link` |
+| **Trafic entrant** | ✅ **200** depuis Internet sur `http://dev.jepatisse.com/` — le nœud reçoit et répond |
+| Adresses du nœud | `195.15.204.255/32` sur `venet0:0` (**l'IP publique est bien liée**), `10.101.13.230/16` sur `venet0:1` ; `default dev venet0 scope link` |
 | Redémarrage du nœud | sans effet |
 
-C'est un défaut de provisionnement réseau, à porter au **support Infomaniak**.
+**Le défaut est donc purement sortant** : le conteneur porte son IP publique,
+reçoit les requêtes venues d'Internet et y répond — mais aucune connexion qu'il
+initie n'aboutit. C'est un défaut de routage côté hôte, pas une affaire de
+configuration du conteneur, et il est à porter au **support Infomaniak**.
+
+*Mesure d'abord mal lue* : `ip route` avait fait conclure que l'IP publique
+n'était pas liée. Elle l'est — `ip route` ne montre pas les adresses, seul
+`ip addr` le dit. L'erreur n'a pas porté à conséquence, mais elle aurait
+envoyé le support chercher du mauvais côté.
 **Plan B si l'attente se prolonge** : obtenir le certificat depuis un nœud qui a
 une sortie réseau (validation DNS-01 par enregistrement TXT dans la zone), puis
 le déposer sur l'équilibreur via le **SSL personnalisé** de la console — ça
