@@ -4182,9 +4182,22 @@ remis à l'état réel.
 ### 7.17 Vérification fonctionnelle post-lot A (13/09)
 
 Six points contrôlés sur `dev.jepatisse.com` après la bascule de l'application
-(§ 7.16) : connexion e-mail, connexion Google, mot de passe oublié, dépôt de
-photo, une route IA, le lien « en tant que ». Deux échecs, tous deux résolus —
-et **aucun des deux n'était ce que son message d'erreur annonçait**.
+(§ 7.16). **Vérification close le 13/09 : les six passent.**
+
+| # | Point | Verdict |
+|---|---|---|
+| 1 | Connexion e-mail + mot de passe | OK |
+| 2 | Connexion Google (OAuth) | OK |
+| 3 | Mot de passe oublié | **échec, résolu** — `GOTRUE_SMTP_PASS` |
+| 4 | Dépôt de photo | **échec, résolu** — clé TempURL |
+| 5 | Route IA (import copier/coller) | OK |
+| 6 | Lien « en tant que » | OK — valide `redirigerVers()` (PR #259), jamais éprouvé jusque-là |
+
+Deux échecs, tous deux résolus — et **aucun des deux n'était ce que son
+message d'erreur annonçait**. Ils partagent la même forme : une variable
+d'environnement ressaisie au lot A qui n'est pas celle que le processus
+utilise, et un symptôme qui désigne une couche innocente (le CORS dans un cas,
+un 500 opaque dans l'autre).
 
 **Le dépôt de photo échouait en « CORS Missing Allow Origin »** sur le `PUT`
 signé vers `s3.pub1.infomaniak.cloud`, alors que le préflight `OPTIONS`
@@ -4275,6 +4288,33 @@ Résolu par un redémarrage qui recrée réellement le conteneur (nouveau PID,
 `GOTRUE_SMTP_PASS` de 90 caractères présente dans l'environnement du
 processus), vérifié **avant** de rouvrir le navigateur — même discipline que
 pour la clé TempURL. E-mail de réinitialisation reçu.
+
+#### La route IA, et un risque latent qu'elle n'a pas déclenché
+
+L'import par copier/coller passe. La clé `ANTHROPIC_API_KEY` a été validée
+avant le test par un appel à `GET /v1/models` — endpoint gratuit, qui
+distingue une clé invalide d'une panne de route sans rien facturer.
+
+**Risque à connaître pour la suite** : `export const maxDuration = 60` était
+une directive **Vercel**, inerte sur Virtuozzo. C'est désormais le
+`proxy_read_timeout` de l'équilibreur NGINX qui arbitre, **60 s par défaut**.
+L'import testé est passé sous cette borne, mais un texte plus long — ou
+l'import par photos, qui enchaîne transcription puis structuration — peut la
+franchir. Le symptôme serait un **504 de l'équilibreur**, pas une erreur
+applicative : ne pas chercher la cause dans le code. Le correctif, si le cas
+se présente, est un `proxy_read_timeout` relevé dans un fichier **séparé** de
+`conf.d/` — jamais dans `nginx-jelastic.conf`, que la plateforme régénère
+(§ 7.16).
+
+#### Ce que les deux pannes disent du lot A
+
+Les 34 variables d'environnement ont été ressaisies à la main au lot A, et
+**les deux seules pannes trouvées viennent de là**. Ni le code, ni la base, ni
+le réseau, ni la configuration des conteneurs objet n'étaient en cause. La
+ressaisie manuelle d'un jeu de secrets est le point faible d'une migration
+d'hébergeur, et elle ne se signale qu'au premier usage réel de chaque
+variable — d'où des pannes qui se révèlent une à une, longtemps après la
+bascule, plutôt qu'en bloc le jour J.
 
 ---
 
@@ -4522,17 +4562,30 @@ défaut de plateforme mais un ordre d'opérations — **une IP publique ajoutée
 après la création d'un nœud lui coupe sa sortie réseau** ; posée dès la
 création, tout fonctionne du premier coup (§ 7.16).
 
-**Vérification fonctionnelle en cours** (§ 7.17, 13/09) : connexion e-mail et
-Google OK. Les **deux pannes trouvées sont résolues**, et aucune des deux
-n'était ce que son message annonçait — le dépôt de photo (« erreur CORS » qui
-était un 401 de signature TempURL) et le mot de passe oublié (500 de GoTrue
-qui était un `535` SMTP, sur une variable posée mais jamais relue par le
-processus). **Reste à vérifier** : une route IA (import copier/coller) et le
-lien « en tant que » (jamais vu fonctionner depuis sa correction à l'aveugle,
-PR #259 — le chemin `/auth/callback` de `redirigerVers` vient toutefois d'être
-validé par le lien de réinitialisation). Puis le décommissionnement de
-Supabase — en vérifiant d'abord si l'ancienne base porte ses propres tâches
-`pg_cron` avant de la couper.
+**La vérification fonctionnelle est TERMINÉE — six points sur six** (§ 7.17,
+13/09) : connexions e-mail et Google, mot de passe oublié, dépôt de photo,
+route IA, lien « en tant que ». Les **deux pannes trouvées sont résolues**, et
+aucune des deux n'était ce que son message annonçait — le dépôt de photo
+(« erreur CORS » qui était un 401 de signature TempURL) et le mot de passe
+oublié (500 de GoTrue qui était un `535` SMTP, sur une variable posée mais
+jamais relue par le processus). Toutes deux venaient de la **ressaisie
+manuelle des 34 variables au lot A** ; ni le code, ni la base, ni le réseau
+n'étaient en cause.
+
+**Prochaine action : le décommissionnement de Supabase.** Il entraîne, au-delà
+de la coupure elle-même :
+- vérifier d'abord si l'ancienne base porte ses propres tâches `pg_cron` ;
+- `scripts/gen-types.mjs` — passer de `--project-id` à `--db-url` ;
+- l'URL Supabase codée en dur dans
+  `.github/workflows/object-storage-reconciliation.yml` ;
+- réécrire `DEPLOY.md` et `CLAUDE.md`, qui décrivent toujours Vercel +
+  Supabase comme l'hébergement.
+
+**Deux points de rangement, sans urgence** : remonter le TTL du CNAME
+`auth.jepatisse.com` (toujours à 300 s depuis le C3), et un risque latent
+identifié au § 7.17 — le `proxy_read_timeout` de 60 s de l'équilibreur, qui
+remplace le `maxDuration` de Vercel et pourrait couper un import IA long
+(symptôme : 504 de l'équilibreur, pas une erreur applicative).
 
 Ce qui suit décrit le plan du lot C tel qu'il a été conçu, et reste utile pour
 comprendre pourquoi il a cette forme.
