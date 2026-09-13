@@ -40,9 +40,10 @@ jobs:
       # Codée en dur plutôt que rangée dans une variable GitHub : une valeur
       # versionnée et relue en revue vaut mieux qu'un réglage invisible dans
       # une interface (même arbitrage que le refus d'`APP_FILE`, § 7.16).
-      # À PASSER À https://www.jepatisse.com à la phase 3 du lot A, quand ce
-      # domaine sera servi depuis Virtuozzo.
-      BASE_URL: https://dev.jepatisse.com
+      # Domaine canonique depuis la phase 3 du lot A (§ 7.21, 13/09) —
+      # `/api/*` est exempté de la page d'attente par `middleware.ts`, donc
+      # cette route répond normalement même tant que `COMING_SOON` est posé.
+      BASE_URL: https://www.jepatisse.com
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - name: Vérifier que le secret est posé
