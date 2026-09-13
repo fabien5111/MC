@@ -31,7 +31,7 @@ node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY
 node scripts/jira.mjs chercher "assignee = currentUser() AND sprint IN openSprints()" --max 50
 node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
 node scripts/jira.mjs demarrer MC-123                 # → « En cours », au tout début du développement
-node scripts/jira.mjs envoyer-en-test MC-123          # → « En cours de test », juste après le push de la branche
+node scripts/jira.mjs envoyer-en-test MC-123          # → « Revue en cours », juste après le push de la branche
 ```
 
 Variables requises dans l'environnement de la session : `JIRA_BASE_URL`,
@@ -61,7 +61,7 @@ appelant l'API à la main.
    ticket (outillage, documentation) se règle par le label `sans-jira`, jamais
    en inventant une clé.
 5. **Envoyer en test** (`envoyer-en-test`) juste après le push de la branche
-   (ou l'ouverture de la PR) — fait passer le ticket à « En cours de test ».
+   (ou l'ouverture de la PR) — fait passer le ticket à « Revue en cours ».
    C'est la fin du travail de la session sur ce ticket, pas le déploiement :
    le passage à « Déployé » reste un geste ultérieur, humain ou piloté par le
    lot 3 (`.github/workflows/jira-deploiement.yml`), jamais par ce verbe.
@@ -70,8 +70,8 @@ appelant l'API à la main.
 ## Limites, volontaires
 
 - **Deux verbes de transition seulement, chacun borné à un seul statut
-  cible** (`demarrer` → « En cours », `envoyer-en-test` → « En cours de
-  test »), et tous deux **refusent explicitement** toute transition qui
+  cible** (`demarrer` → « En cours », `envoyer-en-test` → « Revue en
+  cours »), et tous deux **refusent explicitement** toute transition qui
   mènerait au statut « Déployé » — même si une erreur de configuration
   (`JIRA_STATUS_IN_PROGRESS` / `JIRA_STATUS_IN_TEST` mal renseignées)
   désignait ce statut par erreur. Faire passer un ticket à « Déployé »
