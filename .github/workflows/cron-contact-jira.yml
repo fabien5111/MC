@@ -1,0 +1,76 @@
+name: Cron — réconciliation Jira du module contact
+
+# Remplace la tâche planifiée que `vercel.json` portait à 2 h 30 (§ 7.16,
+# phase 2 du lot A). Mêmes raisons et mêmes trois différences avec Vercel que
+# `cron-abonnements.yml` — s'y reporter plutôt que de les relire ici.
+#
+# Ce que la route fait : elle rattrape les changements de statut Jira dont le
+# webhook n'a pas été délivré. **Jira ne réessaie jamais un webhook échoué**,
+# c'est tout l'objet de ce filet de sécurité (docs/contact-jira.md §9.3). Un
+# passage manqué se rattrape donc le lendemain, sans perte — la réconciliation
+# repart du même état.
+#
+# **Trente minutes après les abonnements, et ce n'est pas cosmétique** :
+# l'application tourne en `instances: 1` (contrainte de justesse, cf.
+# `ecosystem.config.js`). Deux requêtes d'une minute superposées se
+# partageraient le même processus. L'écart de `vercel.json` est conservé tel
+# quel.
+#
+# L'heure est en **UTC**.
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  contact-jira:
+    runs-on: ubuntu-latest
+    env:
+      # À PASSER À https://www.jepatisse.com à la phase 3 du lot A.
+      BASE_URL: https://dev.jepatisse.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Vérifier que le secret est posé
+        run: |
+          set -euo pipefail
+          [ -n "$CRON_SECRET" ] || {
+            echo "::error::Le secret CRON_SECRET est absent côté GitHub."
+            echo "Settings > Secrets and variables > Actions — même valeur que sur le nœud applicatif."
+            exit 1
+          }
+
+      - name: Appeler /api/cron/contact-jira
+        run: |
+          set -euo pipefail
+
+          # `--max-time 120` : cf. le commentaire de cron-abonnements.yml —
+          # c'est le proxy_read_timeout de l'équilibreur qui borne, pas le
+          # `maxDuration` de la route.
+          code=$(curl -sS -o reponse.json -w '%{http_code}' \
+            --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron/contact-jira")
+
+          echo "HTTP $code"
+          cat reponse.json
+          echo
+
+          # La route rend 502 quand Jira est injoignable ou refuse
+          # l'authentification. C'est un vrai échec à signaler — rien n'est
+          # perdu pour autant, la passe du lendemain reprend du même état.
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            # `2>/dev/null` et repli : un 504 de l'équilibreur rend du HTML,
+            # pas du JSON. Sans ça, jq écrirait une erreur de parsing juste
+            # avant le message utile — du bruit à l'endroit où on cherche la
+            # cause.
+            detail=$(jq -r '.erreur // empty' reponse.json 2>/dev/null || true)
+            echo "::error::La route a répondu $code — ${detail:-corps non JSON, voir ci-dessus}"
+            exit 1
+          fi
+
+          if [ "$(jq -r '.ok // false' reponse.json)" != "true" ]; then
+            echo "::error::Réponse 2xx mais « ok » absent ou faux."
+            exit 1
+          fi
+
+          echo "Jira : $(jq -r '"\(.examinees) ticket(s) examiné(s), \(.synchronisees) synchronisé(s)"' reponse.json)"
