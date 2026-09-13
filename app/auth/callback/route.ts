@@ -8,8 +8,8 @@
 // `profiles`, le pseudo validé voyage donc dans les métadonnées du compte
 // jusqu'ici. Un compte arrivé par Google, lui, n'a pas de pseudo du tout —
 // on le renvoie vers `/choix-pseudo` avant toute autre destination.
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { redirigerVers } from '@/lib/redirection';
 import { aChoisiSonPseudo, enregistrerPseudo, pseudoDisponible } from '@/lib/pseudo-data';
 import { validerPseudo } from '@/lib/pseudo';
 
@@ -50,7 +50,9 @@ async function destinationApresConnexion(next: string): Promise<string> {
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  // `origin` n'est volontairement PAS déduit de `request.url` : derrière
+  // l'équilibreur, il vaut `localhost:3000` (cf. `lib/redirection.ts`).
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const next = safeNext(searchParams.get('next'));
 
@@ -58,9 +60,9 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${await destinationApresConnexion(next)}`);
+      return redirigerVers(await destinationApresConnexion(next));
     }
   }
 
-  return NextResponse.redirect(`${origin}/connexion?error=auth`);
+  return redirigerVers('/connexion?error=auth');
 }

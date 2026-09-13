@@ -8,22 +8,24 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { IMPERSONATION_COOKIE, modeLabel } from '@/lib/impersonation-types';
+import { redirigerVers } from '@/lib/redirection';
 
-function fail(origin: string, motif: string) {
-  return NextResponse.redirect(`${origin}/connexion?error=${motif}`);
+function fail(motif: string) {
+  return redirigerVers(`/connexion?error=${motif}`);
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  // Pas d'origine reconstruite : voir `lib/redirection.ts`.
+  const { searchParams } = new URL(request.url);
   const tokenHash = searchParams.get('token_hash');
   const sessionId = searchParams.get('session');
-  if (!tokenHash || !sessionId) return fail(origin, 'impersonation');
+  if (!tokenHash || !sessionId) return fail('impersonation');
 
   let admin;
   try {
     admin = createAdminClient();
   } catch (e) {
-    if (e instanceof MissingServiceKeyError) return fail(origin, 'impersonation');
+    if (e instanceof MissingServiceKeyError) return fail('impersonation');
     throw e;
   }
 
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
     session.ended_at ||
     new Date(session.expires_at).getTime() <= Date.now()
   ) {
-    return fail(origin, 'impersonation_expiree');
+    return fail('impersonation_expiree');
   }
 
   const supabase = await createClient();
@@ -53,7 +55,7 @@ export async function GET(request: Request) {
     // Jeton invalide, périmé, ou ne correspondant pas au membre visé : on ne
     // laisse surtout pas une session ouverte derrière soi.
     await supabase.auth.signOut();
-    return fail(origin, 'impersonation_expiree');
+    return fail('impersonation_expiree');
   }
 
   const now = new Date().toISOString();
@@ -90,7 +92,7 @@ export async function GET(request: Request) {
   // retirer. Et le retirer ne débriderait rien — la RLS
   // (`public.is_read_only_session()`) lit la table en SQL, pas le cookie.
   const restant = Math.ceil((new Date(session.expires_at).getTime() - Date.now()) / 1000);
-  const response = NextResponse.redirect(`${origin}/carnet`);
+  const response = redirigerVers('/carnet');
   response.cookies.set(IMPERSONATION_COOKIE, '1', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
