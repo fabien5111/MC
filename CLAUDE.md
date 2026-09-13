@@ -1,21 +1,30 @@
 # Je pâtisse ! — Documentation technique
 
 Site de partage de recettes de pâtisserie. Application web full-stack
-TypeScript, déployée sur Vercel, avec Supabase comme backend (base de
-données, authentification).
+TypeScript, hébergée chez **Infomaniak** — application et base sur Virtuozzo
+Cloud (Genève), photos sur le stockage objet Swift. La pile d'authentification
+et d'API est **Supabase auto-hébergée** (PostgreSQL + GoTrue + PostgREST), pas
+le service managé.
 
 ## Repères pour travailler sur ce dépôt
 
-- **Production** : la branche `main` est déployée automatiquement sur Vercel
-  (projet `mc`). Ne pousser sur `main` que du code vérifié.
+- **Production** : `dev.jepatisse.com` est l'URL réelle, servie depuis
+  Virtuozzo. `www.jepatisse.com` est encore sur Vercel et affiche la page
+  d'attente — voir « Déploiement ». Ne pousser sur `main` que du code vérifié.
 - **Vérification** avant tout push : `npm run typecheck` (et `npm run build`
   pour les changements structurels).
 - **Langue** : code commenté en français, UI en français ; les messages de
   commit sont en français.
-- **Types Supabase** : ne jamais éditer `lib/database.types.ts` à la main —
-  le régénérer (`npm run gen:types` ou workflow GitHub Actions).
-- **Images** : stockées en data-URL en base (pas de bucket) — compression
-  côté client via `lib/images.ts` / composant `ImageSlot`.
+- **Types de la base** : ne jamais éditer `lib/database.types.ts` à la main —
+  le régénérer (`npm run gen:types` ou workflow GitHub Actions). La génération
+  passe par une chaîne de connexion PostgreSQL (`GEN_TYPES_DB_URL`) et un
+  Endpoint temporaire, plus par une référence de projet Supabase.
+- **Images** : déposées sur le **stockage objet Swift** par le navigateur, via
+  une URL signée mintée par `/api/stockage/televersement` — les octets ne
+  transitent jamais par l'application. Compression côté client via
+  `lib/images.ts` / composant `ImageSlot`. (Les data-URL en base sont
+  l'ancien modèle, entièrement repris par le lot B ; il n'en reste que dans
+  `articles.content`, hors périmètre.)
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans l'éditeur
@@ -31,10 +40,11 @@ données, authentification).
 | Langage | **TypeScript** (mode strict) | 5.7 |
 | UI | **React** (Server + Client Components) | 19 |
 | Styles | **Tailwind CSS** (design tokens dans `tailwind.config.ts`) | 3.4 |
-| Backend | **Supabase** (PostgreSQL, Auth, RLS) | — |
+| Backend | **Supabase auto-hébergée** — PostgreSQL + GoTrue + PostgREST, RLS | PG 17.6 |
 | Client Supabase | `@supabase/supabase-js` + `@supabase/ssr` (auth par cookies) | 2.x / 0.12 |
+| Stockage | **Swift** (Infomaniak Public Cloud), dépôt signé TempURL | — |
 | IA | **API Anthropic (Claude)** — import et ajustement de recettes | `claude-haiku-4-5` (structuration) / `claude-sonnet-5` (lecture de photos) |
-| Hébergement | **Vercel** (fonctions serverless, projet `mc`, région Francfort) | Node 22.x |
+| Hébergement | **Infomaniak Virtuozzo Cloud** (Genève) — pile Node.js native + `pm2`, derrière un équilibreur NGINX | Node 22.x |
 
 ## Architecture
 
@@ -1202,10 +1212,17 @@ principales :
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).
-- **Images stockées en data-URL** directement en base (compression côté
-  client dans `lib/images.ts` — pas de bucket de stockage ni de CDN).
-- Régénération des types : `npm run gen:types` (token Supabase requis) ou
-  workflow GitHub Actions manuel (`.github/workflows/gen-types.yml`).
+- **Images sur le stockage objet Swift**, pas en base : les colonnes portent
+  une URL. Le dépôt est un `PUT` direct navigateur → conteneur, autorisé par
+  une signature TempURL mintée par `/api/stockage/televersement` — les octets
+  ne traversent jamais l'application. Compression côté client dans
+  `lib/images.ts`. Deux conteneurs, `jp-photos` (public) et `jp-contact`
+  (privé, données personnelles), cloisonnés par des clés de signature
+  distinctes.
+- Régénération des types : `npm run gen:types` (chaîne de connexion
+  `GEN_TYPES_DB_URL` + Endpoint temporaire sur le nœud PostgreSQL) ou workflow
+  GitHub Actions manuel (`.github/workflows/gen-types.yml`), dont l'en-tête
+  décrit le mode opératoire.
 
 ## Routes IA (API Anthropic)
 
@@ -1261,8 +1278,8 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `PSEUDO_MODERATION_MODEL` | Modèle du contrôle des pseudos à l'inscription (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `COMMENT_MODERATION_MODEL` | Modèle du score IA sur les avis d'une fournée terminée (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `IMPORT_DAILY_QUOTA` | Quota d'imports/jour (optionnel) | Serveur uniquement |
-| `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — scopée à l'environnement Production Vercel. Voir « Domaines » ci-dessous : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
-| `CRON_SECRET` | Protège les routes planifiées (`/api/cron/*`) — Vercel ajoute automatiquement l'en-tête `Authorization: Bearer <CRON_SECRET>` à ses appels programmés dès que la variable existe | Serveur uniquement |
+| `COMING_SOON` | `true` affiche la page d'attente (`/bientot-disponible`) à la place du site — posée sur le projet Vercel résiduel, qui sert encore `www.jepatisse.com`. Voir « Domaines » : `dev.jepatisse.com` en est exempté par `middleware.ts`, quel que soit ce réglage. | Serveur uniquement |
+| `CRON_SECRET` | Protège les routes planifiées (`/api/cron/*`) : l'appelant doit envoyer `Authorization: Bearer <CRON_SECRET>`. Vercel l'ajoutait automatiquement à ses appels programmés ; une fois les crons portés sur GitHub Actions, c'est au workflow de poser l'en-tête. | Serveur uniquement |
 | `MAINTENANCE_FREEZE` | `true` bloque **tout** le site par un 503, les deux domaines compris — fenêtre de bascule uniquement, à retirer après. Contrairement à `COMING_SOON`, n'exempte pas `dev.jepatisse.com` ; ne couvre ni `/api/*` ni les écritures directes du navigateur vers Supabase (cf. en-tête de `middleware.ts`) | Serveur uniquement |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Client SMTP unique (`lib/email.ts`) — Brevo depuis la migration Infomaniak | Serveur uniquement |
 | `EMAIL_SENDER` | Adresse d'expédition des e-mails applicatifs (`noreply@jepatisse.com`) | Serveur uniquement |
@@ -1277,41 +1294,62 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SWIFT_STORAGE_URL` | Racine du stockage objet, telle que la rend `swift auth` (`https://<hôte>/v1/AUTH_<projet>`) — lot B | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
-| `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Un changement ne prend effet qu'au prochain déploiement Vercel (variable lue côté serveur, pas au build). | Serveur uniquement |
+| `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
 
 ## Déploiement
 
-- **Vercel**, projet **`mc`** (anciennement `mc-snowy`), branche de production
-  `main`, racine du dépôt (framework preset **Next.js**, Node **22.x** — voir
-  `DEPLOY.md`). Tous les domaines ci-dessous appartiennent à ce projet — un
-  déploiement sur `main` les met donc tous à jour automatiquement.
-- **Région des fonctions : Francfort**, la même que le projet Supabase. Elles
-  étaient à Washington : chaque requête base traversait l'Atlantique, et une
-  page en enchaîne plusieurs — dont certaines en série (cf.
-  `docs/audit-egress-supabase.md`). Un changement de région n'a d'effet
-  qu'après **redéploiement**.
-- **Un second projet Vercel, `dev_jp`, déploie le même dépôt** sur
-  `mc-oqp7.vercel.app`, sans domaine propre. Chaque push construit donc deux
-  fois, et cette URL sert une copie publiquement joignable du site sur la
-  **même** base Supabase. À détacher du dépôt s'il n'a plus d'usage.
-- Les variables `NEXT_PUBLIC_*` étant inlinées au build, tout changement
-  nécessite un redéploiement **sans cache de build**.
-- Côté Supabase : Site URL + Redirect URLs (`https://<domaine>/**`) dans
-  Authentication → URL Configuration.
+Mode opératoire complet, pièges de construction compris : **`DEPLOY.md`**.
+Historique de la migration depuis Vercel + Supabase :
+`docs/migration-infomaniak.md`.
+
+- **Deux environnements Virtuozzo, à Genève.** `jepatisse-app` porte
+  l'application (pile Node.js 22.x native + `pm2`, nœud 216658) derrière son
+  équilibreur NGINX (216680). `jepatisse` porte la base (PostgreSQL 17.6,
+  216075), GoTrue (216114) et PostgREST (216242) derrière l'équilibreur qui
+  sert `auth.jepatisse.com` (216115) et y tient le rôle de Kong sur
+  `/auth/v1/` et `/rest/v1/`. Deux environnements et non un seul : le moteur
+  d'un environnement Jelastic est figé à sa création, et l'image Docker de la
+  base y interdit les piles natives. Effet heureux : un redéploiement
+  applicatif ne peut pas atteindre la base.
+- **Le déploiement construit sur le nœud**, il n'est pas automatique sur push.
+  La commande canonique et les trois pièges qu'elle contourne sont dans
+  `DEPLOY.md` — ne pas l'improviser.
+- **`pm2` ne lit jamais `scripts.start`** : c'est `ecosystem.config.js` qui
+  pilote le démarrage, avec `instances: 1`. Ce n'est pas un réglage de charge
+  mais une **contrainte de justesse** — `unstable_cache` et `revalidateTag`
+  sont par processus, plusieurs instances désynchroniseraient les
+  référentiels.
+- **Le panneau de variables n'est pas l'environnement du processus.** Après
+  toute modification, vérifier avec `pm2 env 0 | grep <NOM>` et redémarrer le
+  nœud ; `pm2 restart --update-env` propage le shell appelant, donc parfois
+  l'ancienne valeur. Sur un nœud Docker, lire `/proc/<pid>/environ` du vrai
+  processus — **pas** `/proc/1/environ`, qui est le lanceur de la plateforme.
+  Ce piège a coûté deux pannes le 13/09 (§ 7.17 du dossier).
+- Les `NEXT_PUBLIC_*` comptent **aux deux moments** : inlinées dans le bundle
+  navigateur au build, relues dans `process.env` par le code serveur à
+  l'exécution. Un changement impose donc une reconstruction **et** une valeur
+  juste dans le panneau.
+- **`maxDuration` est une directive Vercel, inerte ici.** C'est le
+  `proxy_read_timeout` de l'équilibreur (60 s par défaut) qui borne désormais
+  une route longue. Un import IA coupé se présente en **504 de l'équilibreur**,
+  pas en erreur applicative.
 - **Domaines** : `www.jepatisse.com` est le domaine canonique — `jepatisse.com`
   y redirige (308), `jepatisse.fr` et `www.jepatisse.fr` aussi (301). C'est le
-  futur domaine public — affiche pour l'instant la page d'attente `COMING_SOON` aux
-  visiteurs, ne pas le prendre pour cible lors d'une vérification en
-  production. **`dev.jepatisse.com`** est l'URL de production réelle à ce
-  stade, réservée aux testeurs (accès restreint) : c'est elle qu'il faut
-  utiliser pour vérifier qu'un correctif déployé sur `main` se comporte comme
-  attendu. Comme les deux domaines partagent désormais le même projet Vercel
-  (et donc le même scope Production pour `COMING_SOON`), c'est
-  `middleware.ts` qui exempte spécifiquement `dev.jepatisse.com` de la page
-  d'attente (comparaison sur l'en-tête `Host`) — sans quoi les testeurs
-  tomberaient eux aussi dessus.
+  futur domaine public — **encore servi par Vercel**, où il affiche la page
+  d'attente `COMING_SOON` ; ne pas le prendre pour cible lors d'une
+  vérification. **`dev.jepatisse.com`** est l'URL de production réelle, servie
+  depuis Virtuozzo : c'est elle qu'il faut utiliser pour vérifier qu'un
+  correctif se comporte comme attendu. `middleware.ts` exempte spécifiquement
+  `dev.jepatisse.com` de la page d'attente (comparaison sur l'en-tête `Host`)
+  — sans quoi les testeurs tomberaient eux aussi dessus.
+- **Résidu Vercel, à retirer** : le projet `mc` sert encore les domaines
+  ci-dessus et porte les deux crons de `vercel.json` ; un second projet
+  `dev_jp` déploie le même dépôt sur `mc-oqp7.vercel.app`, sans domaine
+  propre. Leurs variables pointent déjà sur la base Infomaniak. Clore le lot A
+  suppose de porter les crons sur GitHub Actions, basculer le DNS de `www`,
+  puis retirer les deux projets et `vercel.json`.
 
 ## Commandes
 

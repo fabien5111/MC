@@ -1,9 +1,30 @@
-name: Régénérer les types Supabase
+name: Régénérer les types de la base
 
 # Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
 # Régénère lib/database.types.ts depuis la base live et le committe sur la
-# branche cible. Nécessite le secret SUPABASE_ACCESS_TOKEN (Settings > Secrets
-# and variables > Actions).
+# branche cible.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# MODE OPÉRATOIRE — trois gestes, dont deux hors de GitHub
+# ─────────────────────────────────────────────────────────────────────────
+# La base n'est plus hébergée par Supabase mais par Infomaniak (Virtuozzo
+# Cloud), et **le port 5432 n'y est pas exposé** (§ 7.9 du dossier de
+# migration). Ce workflow ne peut donc pas joindre la base en permanence, et
+# c'est voulu : aucun accès direct ne subsiste entre deux régénérations.
+#
+#   1. Console Infomaniak → environnement `jepatisse` → nœud PostgreSQL →
+#      ajouter un **Endpoint** sur le port 5432. Noter l'hôte et le port
+#      publics qu'il rend.
+#   2. Settings > Secrets and variables > Actions → poser (ou mettre à jour)
+#      GEN_TYPES_DB_URL :
+#        postgresql://postgres:<mot de passe>@<hôte>:<port>/postgres
+#   3. Lancer ce workflow, puis **REFERMER l'Endpoint**. Cette dernière étape
+#      n'est pas une politesse : l'Endpoint laisse la base joignable depuis
+#      tout l'Internet tant qu'il existe.
+#
+# Le secret garde une valeur périmée entre deux usages (l'Endpoint change de
+# port à chaque ouverture) — c'est sans danger, le workflow échoue alors à la
+# connexion sans rien écrire.
 on:
   workflow_dispatch:
     inputs:
@@ -31,13 +52,14 @@ jobs:
 
       # Passe par scripts/gen-types.mjs (npm run gen:types) et non par une
       # redirection directe : le shell tronquerait lib/database.types.ts avant
-      # même de lancer la CLI, si bien qu'un jeton expiré ferait COMMITTER le
-      # message d'erreur JSON à la place des types. Le script n'écrit la cible
-      # qu'une fois la génération réellement aboutie, et sort en échec sinon.
+      # même de lancer la CLI, si bien qu'une connexion refusée ferait
+      # COMMITTER le message d'erreur JSON à la place des types. Le script
+      # n'écrit la cible qu'une fois la génération réellement aboutie, et sort
+      # en échec sinon.
       # Aucun `npm ci` nécessaire : il ne tire que des modules natifs de Node.
-      - name: Générer les types depuis Supabase
+      - name: Générer les types depuis la base
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          GEN_TYPES_DB_URL: ${{ secrets.GEN_TYPES_DB_URL }}
         run: npm run gen:types
 
       - name: Committer si le fichier a changé
@@ -49,5 +71,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add lib/database.types.ts
-          git commit -m "Types : régénération authentique depuis Supabase (gen types)"
+          git commit -m "Types : régénération authentique depuis la base (gen types)"
           git push origin HEAD:${{ inputs.branch }}
+
+      - name: Rappeler de refermer l'Endpoint
+        if: always()
+        run: |
+          echo "N'OUBLIEZ PAS de refermer l'Endpoint 5432 du nœud PostgreSQL."
+          echo "Tant qu'il existe, la base est joignable depuis tout l'Internet."

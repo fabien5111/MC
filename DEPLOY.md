@@ -1,89 +1,158 @@
-# Déploiement sur Vercel
+# Déploiement
 
-Le dépôt est la racine du projet Vercel **`mc`** (anciennement `mc-snowy` —
-le domaine `mc-snowy.vercel.app` en garde la trace) : pas de sous-dossier
-`Root Directory` à configurer, Vercel détecte Next.js directement.
+Le site tourne sur **Infomaniak** — Virtuozzo Cloud pour l'application et la
+base, Public Cloud (Swift) pour les photos. La migration depuis Vercel +
+Supabase est documentée pas à pas dans `docs/migration-infomaniak.md` ; ce
+fichier ne décrit que l'état courant et les gestes d'exploitation.
 
-**Région des fonctions : Francfort**, la même que le projet Supabase. Ce n'est
-pas cosmétique : les fonctions étaient à Washington, ce qui faisait traverser
-l'Atlantique à **chaque** requête base. Une page en enchaîne plusieurs, dont
-certaines en série. Un changement de région ne prend effet qu'au
-**redéploiement**.
+> **Bascule en cours.** `dev.jepatisse.com` est servi depuis Virtuozzo.
+> `www.jepatisse.com` et les domaines de redirection sont **encore sur
+> Vercel** (phase 3 du lot A, § 7.16 du dossier de migration) — ils affichent
+> la page d'attente `COMING_SOON`. Les deux hébergements pointent sur la
+> **même** base Infomaniak.
+
+## Les environnements Virtuozzo
+
+Deux environnements distincts, et c'est structurel : le moteur d'un
+environnement Jelastic est figé à sa création. `jepatisse` porte une image
+Docker à l'étage applicatif, ce qui y interdit les piles natives — d'où un
+second environnement pour l'application. L'effet de bord est heureux : un
+redéploiement applicatif, le geste le plus fréquent, ne peut pas atteindre la
+base.
+
+| Environnement | Nœud | Rôle |
+|---|---|---|
+| `jepatisse-app` | 216658 | Application Next.js (pile Node.js 22.x native, `pm2`) |
+| `jepatisse-app` | 216680 | Équilibreur NGINX — TLS de `dev.jepatisse.com` |
+| `jepatisse` | 216115 | Équilibreur NGINX — TLS de `auth.jepatisse.com`, tient le rôle de Kong sur `/auth/v1/` et `/rest/v1/` |
+| `jepatisse` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
+| `jepatisse` | 216114 | GoTrue (authentification) |
+| `jepatisse` | 216242 | PostgREST (API REST sur la base) |
+
+Région : **Genève**. Application et base partagent la plateforme et la région
+— aucune requête ne traverse une frontière réseau lointaine.
+
+## Construire et déployer l'application
+
+Le code est déployé depuis Git, puis **construit sur le nœud**.
+
+**Où :** Web SSH du nœud **216658**.
+
+```bash
+cd /home/jelastic/ROOT && npm ci --include=dev && rm -rf .next && NODE_ENV=production npm run build
+```
+
+Trois détails qui ont chacun coûté une panne :
+
+- **`--include=dev` est obligatoire.** Avec `NODE_ENV=production` dans
+  l'environnement, l'installation de la pile élague les devDependencies ;
+  sans `typescript`, Next ne sait plus lire les alias de chemins de
+  `tsconfig.json` et la construction échoue sur `Can't resolve '@/lib/...'`.
+- **`NODE_ENV=production` est obligatoire aussi.** La pile démarre en
+  `development` par défaut, ce qui fait échouer la génération de `/404` sur
+  un message trompeur (`<Html> should not be imported outside of
+  pages/_document`) qui n'a rien à voir avec le code.
+- **`ecosystem.config.js` pilote le démarrage.** La pile est en variante
+  `-pm2` et ne lit **jamais** `scripts.start` du `package.json`.
+
+À rejouer après tout redémarrage du nœud et après une installation Let's
+Encrypt, qui en déclenche une elle-même.
 
 ## Variables d'environnement
 
-Dans **Settings → Environment Variables** du projet :
+Posées dans le panneau **Variables** du nœud applicatif (216658), pas dans un
+fichier. La liste complète et le rôle de chacune sont dans `CLAUDE.md`.
 
-| Nom | Valeur | Portée |
-|-----|--------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://acbabqolghhyxksouaye.supabase.co` | Production + Preview |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_lWH25Aszggrc6ZttxyMTig_XwXs_IAG` | Production + Preview |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(Supabase → Settings → API Keys → **Secret keys** : `sb_secret_…`. Équivalent historique : Settings → API → `service_role`)* | Production + Preview |
-| `ANTHROPIC_API_KEY` | *(clé Anthropic — jamais préfixée `NEXT_PUBLIC_`)* | Production + Preview |
-| `IMPORT_MODEL` | `claude-haiku-4-5` *(optionnel, valeur par défaut)* | Production + Preview |
-| `IMPORT_DAILY_QUOTA` | `20` *(optionnel, valeur par défaut)* | Production + Preview |
-| `COMING_SOON` | `true` | **Production uniquement** |
+**Le piège à connaître, il a coûté deux pannes le 13/09** : le panneau et le
+processus sont deux choses différentes. Après avoir modifié une variable,
+vérifier ce que le **processus** a réellement reçu :
 
-Les deux `NEXT_PUBLIC_*` sont inlinées au build : elles doivent exister avant
-le déploiement. `ANTHROPIC_API_KEY` sert aux routes `/api/import-url` et
-`/api/scale-recipe`.
+```bash
+pm2 env 0 | grep <NOM_DE_LA_VARIABLE>
+```
 
-`SUPABASE_SERVICE_ROLE_KEY` **contourne la RLS** : à marquer *Sensitive* dans
-Vercel, à ne jamais préfixer `NEXT_PUBLIC_` ni committer. Elle n'est lue que
-par `lib/supabase/admin.ts`, utilisé uniquement par les routes serveur de la
-connexion « en tant que » (génération du lien temporaire et journal d'audit).
-Sans elle, ces routes renvoient 503 avec un message explicite ; le reste du
-site fonctionne normalement. Contrairement aux `NEXT_PUBLIC_*`, elle est lue
-au runtime : un simple redéploiement suffit, sans vider le cache de build.
+`pm2 restart --update-env` ne suffit pas — il propage l'environnement du shell
+appelant, donc l'ancienne valeur si la session était ouverte avant la
+modification. **Redémarrer le nœud**, puis revérifier.
 
-## Authentification Supabase
+Sur un nœud Docker (GoTrue, PostgREST), l'équivalent est
+`/proc/<pid>/environ` du vrai processus — **pas** `/proc/1/environ`, qui est
+le lanceur de la plateforme et ne porte pas les variables applicatives :
 
-Dans le **dashboard Supabase → Authentication → URL Configuration** :
+```bash
+P=$(pgrep -f '/usr/local/bin/auth' | tail -1); tr '\0' '\n' < /proc/$P/environ | grep GOTRUE_
+```
 
-1. **Site URL** : le domaine de production.
-2. **Redirect URLs** : `https://<domaine>/**` (couvre `/auth/callback` et les
-   liens de confirmation d'e-mail). Côté Google (console OAuth),
-   l'URL de callback reste celle de Supabase
-   (`…supabase.co/auth/v1/callback`) — rien à changer là.
+Les `NEXT_PUBLIC_*` comptent **aux deux moments** : inlinées dans le bundle
+navigateur au build, et relues dans `process.env` par le code serveur à
+l'exécution. Une valeur changée sans reconstruction laisse donc le navigateur
+sur l'ancienne ; une valeur absente au build fige `undefined` dans le bundle
+et lève une exception côté client sans aucune trace côté serveur. Le contrôle
+qui vaut est fonctionnel (charger une page qui en dérive), jamais un `grep`
+sur le bundle.
+
+## Tâches planifiées
+
+| Tâche | Où | Cadence |
+|---|---|---|
+| Sauvegarde complète pgBackRest | `pg_cron`, dans la base (nœud 216075) | 3 h 30 GMT |
+| `/api/cron/abonnements` | `vercel.json` — **à porter sur GitHub Actions** (phase 2 du lot A) | 2 h 00 |
+| `/api/cron/contact-jira` | `vercel.json` — **à porter sur GitHub Actions** | 2 h 30 |
+
+Virtuozzo n'offre **aucun** planificateur de tâches, ni sur les nœuds Docker
+ni sur les piles natives : le seul « scheduler » proposé est Env Start/Stop,
+qui éteint l'environnement. D'où `pg_cron` pour la base, et GitHub Actions
+pour les deux crons applicatifs.
+
+**Après tout redéploiement du nœud PostgreSQL**, `pgbackrest` disparaît (c'est
+un paquet `apk`) et la sauvegarde nocturne échoue en silence. À rejouer :
+
+```bash
+apk add --no-cache pgbackrest && pgbackrest --stanza=jepatisse check
+```
+
+## Certificats
+
+Let's Encrypt, installé par l'add-on du nœud équilibreur. Le renouvellement
+est automatique.
+
+**Après une réinstallation ou un changement de topologie**, revérifier
+`/etc/nginx/nginx-jelastic.conf` : la plateforme le régénère, ce qui efface le
+relèvement des tampons d'en-têtes (`client_header_buffer_size 4k`,
+`large_client_header_buffers 8 32k`) posé pour les cookies de session. Les
+réglages qui doivent survivre vont dans un fichier séparé de
+`/etc/nginx/conf.d/`.
 
 ## Vérifier après déploiement
 
-- [ ] `/` s'affiche (accueil, recettes)
-- [ ] `/connexion` : connexion e-mail **et** Google
-- [ ] `/profil` accessible une fois connecté (sinon → redirigé vers `/connexion`)
-- [ ] `/creer` : créer une recette → apparaît dans le carnet et sur `/recette/[id]`
-- [ ] `/importer` : import d'une URL → brouillon → `/relecture/[id]` → création
-- [ ] `/admin` (avec un compte `role = admin`) : dashboard + les 5 sous-écrans
+Six points, ceux de la vérification du 13/09 (§ 7.17) :
 
-## Notes
+- [ ] `/` s'affiche, et `/connexion` accepte e-mail **et** Google
+- [ ] mot de passe oublié : l'e-mail arrive réellement
+- [ ] `/creer` : enregistrer une recette **avec photos** (exerce le dépôt signé
+      vers le stockage objet)
+- [ ] `/importer` : import par copier/coller (exerce `ANTHROPIC_API_KEY`)
+- [ ] `/admin` avec un compte `role = admin`, et le lien « en tant que »
+- [ ] `/profil` accessible connecté, redirigé vers `/connexion` sinon
 
-- **Node** : épinglé à `22.x` (`package.json` → `engines`, `.nvmrc`). Vercel
-  s'aligne automatiquement.
-- **Durée des fonctions** : `/api/import-url` déclare `maxDuration = 60`
-  (analyse IA des recettes longues). Vérifie que le plan Vercel l'autorise
-  (Hobby : 60 s max ; Pro : jusqu'à 300 s).
-- **Images** : les photos sont stockées en data-URL dans la base — pas de
-  bucket ni de CDN d'images à configurer.
-- **Types Supabase** : voir `README.md` (section « Types de la base ») pour
-  régénérer `lib/database.types.ts`.
-- **Domaines du projet `mc`** — tous en **Production**, un seul déploiement
-  les met tous à jour :
+Deux symptômes trompeurs, rencontrés en vrai :
 
-  | Domaine | Rôle |
-  |---|---|
-  | `www.jepatisse.com` | canonique |
-  | `jepatisse.com` | 308 → `www.jepatisse.com` |
-  | `jepatisse.fr`, `www.jepatisse.fr` | 301 → `www.jepatisse.com` |
-  | `dev.jepatisse.com` | URL réelle des testeurs |
-  | `mc-snowy.vercel.app` | domaine Vercel d'origine |
+- **« CORS Missing Allow Origin » sur un dépôt de photo** n'est presque jamais
+  du CORS : un refus de signature TempURL (401) sort avant le contrôleur
+  d'objet qui pose les en-têtes CORS. Vérifier
+  `SWIFT_TEMPURL_KEY_PHOTOS` contre la clé du conteneur.
+- **Un 504 sur un import IA** vient de l'équilibreur, pas du code :
+  `proxy_read_timeout` vaut 60 s par défaut, et `maxDuration` était une
+  directive Vercel, inerte ici.
 
-  `COMING_SOON=true` (scopée Production) affiche la page d'attente sur tous ;
-  `middleware.ts` exempte spécifiquement `dev.jepatisse.com` (comparaison sur
-  `Host`) pour que les testeurs gardent accès au site réel.
+## Résidu Vercel
 
-- **Un second projet Vercel, `dev_jp`, déploie le même dépôt.** Il ne porte
-  aucun domaine propre, seulement `mc-oqp7.vercel.app`. Conséquences à
-  connaître : chaque push construit **deux fois**, et cette URL sert une copie
-  publiquement joignable du site, branchée sur la **même** base Supabase.
-  Vérifier que `COMING_SOON` y est bien positionnée, ou détacher le projet du
-  dépôt s'il n'a plus d'usage.
+Le projet **`mc`** sert encore `www.jepatisse.com`, `jepatisse.com` et les
+deux `.fr` (redirections), avec `COMING_SOON=true` en Production. Ses
+variables pointent déjà sur la base Infomaniak — il ne dépend plus de
+Supabase.
+
+À faire pour clore le lot A : porter les deux crons sur GitHub Actions,
+basculer le DNS de `www`, retirer le projet Vercel, supprimer `vercel.json`.
+Un second projet Vercel, **`dev_jp`**, déploie le même dépôt sur
+`mc-oqp7.vercel.app` sans domaine propre — à détacher.

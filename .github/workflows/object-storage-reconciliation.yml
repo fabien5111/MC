@@ -72,9 +72,21 @@ jobs:
       OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
       OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
       OS_IDENTITY_API_VERSION: '3'
+      # Le nom reste `SUPABASE_*` alors que l'hébergement a changé, et c'est
+      # volontaire : l'application parle toujours à `@supabase/supabase-js`,
+      # simplement contre un GoTrue et un PostgREST auto-hébergés. Ce sont les
+      # mêmes noms que ses propres variables (CLAUDE.md) — les renommer ici
+      # les désaccorderait du reste sans rien clarifier.
+      #
+      # ATTENTION : la VALEUR de ce secret doit être la clé `service_role`
+      # frappée au C3 pour la base Infomaniak, pas celle de l'ancien projet
+      # Supabase. Les deux sont des JWT de même forme, mais la signature est
+      # vérifiée : une clé de l'ancien projet fait échouer le job en 401
+      # (`raise_for_status`), sans rapport trompeur — c'est le bon
+      # comportement, encore faut-il savoir quoi corriger.
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      # Publique — inlinée au build de l'application (CLAUDE.md), pas un secret.
-      SUPABASE_URL: https://acbabqolghhyxksouaye.supabase.co
+      # Publique — c'est l'URL que le navigateur appelle déjà, pas un secret.
+      SUPABASE_URL: https://auth.jepatisse.com
       CONTENEUR: ${{ inputs.conteneur }}
       HEURES_GRACE: ${{ inputs.heures_grace }}
       CONFIRMER: ${{ inputs.confirmer_suppression }}
