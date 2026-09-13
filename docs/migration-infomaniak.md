@@ -4656,6 +4656,58 @@ navigateur n'y étaient pas parvenues.
   l'affirmait le § 10.4 — la consigne de le remonter reste, la valeur était
   fausse.
 
+#### La redirection HTTP → HTTPS et le HSTS, posés (13/09)
+
+Deux fichiers, deux natures de fragilité, pour les mêmes raisons que les
+tampons d'en-têtes du § 7.16 : **régénérés par la plateforme**, à revérifier
+après toute manipulation qui les touche.
+
+- **`nginx-jelastic.conf` (port 80)** — via le *Configuration manager* de la
+  console, `/etc/nginx/` n'étant pas toujours modifiable en shell (ça l'était
+  ici pour `conf.d/`, mais pas pour ce fichier précis). `location /` proxiait
+  tout vers l'application avec une logique de cookie collant ; elle n'a aucune
+  raison de tourner sur une requête qui va être redirigée immédiatement.
+  Remplacée par `return 301 https://$host$request_uri;`, précédée d'une
+  exemption `location ^~ /.well-known/acme-challenge/` par précaution.
+- **`conf.d/ssl.conf` (port 443)** — HSTS ajouté **dans la même `location /`**
+  que les `add_header` déjà présents (`alt-svc`, `Set-Cookie … Secure`), pas
+  dans un fichier séparé au niveau `http`. **Piège vérifié avant d'écrire** :
+  dès qu'un bloc plus précis (`server` ou `location`) déclare un seul
+  `add_header`, NGINX efface **tous** ceux hérités du niveau au-dessus — un
+  HSTS posé ailleurs ne serait jamais sorti sur ce chemin, silencieusement.
+  Plusieurs `add_header` dans le même bloc, en revanche, s'additionnent sans
+  problème.
+
+**Une bonne nouvelle inattendue, tirée de la lecture plutôt que supposée** :
+`location /` du port 80 proxiait déjà tout le trafic vers l'application, sans
+aucune route pour `/.well-known/acme-challenge/`, et les certificats se sont
+pourtant émis normalement le jour même (dont l'extension à deux nouveaux
+domaines). **La validation Let's Encrypt de cette plateforme ne dépend donc
+pas de ce vhost** — le risque redouté en tête de section ne s'est pas
+matérialisé. L'exemption a été posée quand même, par précaution, sans en
+avoir eu la preuve qu'elle serait nécessaire.
+
+**Rechargement à chaud impossible** : le processus maître NGINX appartient à
+`root`, la session Web SSH est `nginx`. `nginx -s reload` échoue en
+`kill(...) failed (1: Operation not permitted)`, `sudo` demande un mot de
+passe qu'il ne fallait pas chercher à deviner. La voie correcte est le
+**redémarrage du nœud depuis la console** — même geste que pour une variable
+d'environnement sur un nœud applicatif, appliqué ici à l'équilibreur.
+
+**Un 503 transitoire a suivi le redémarrage**, mesuré depuis l'extérieur alors
+que la boucle locale (`curl … 127.0.0.1`) rendait déjà le bon 301. La leçon,
+répétée depuis le début de cette phase : **la mesure en boucle locale sur le
+nœud isole ce qui est à nous** (configuration, processus) **de ce qui ne
+l'est pas** (une couche devant le nœud, encore chaude de son redémarrage). Le
+503 a disparu d'une revérification à l'autre, sans qu'on touche à rien.
+
+**Vérifié en clôture** :
+```
+http://dev.jepatisse.com/              -> 301 vers https://dev.jepatisse.com/
+https://dev.jepatisse.com/             -> HSTS présent, contenu réel
+/.well-known/acme-challenge/test       -> 404 (non redirigé)
+```
+
 ---
 
 ## 8. Corrections apportées en cours d'étude
@@ -4720,6 +4772,9 @@ qu'on ne réintroduise les raisonnements qu'elles ont invalidés.
 | L'équilibreur Virtuozzo se comporte comme Vercel une fois le domaine basculé | **Il manque deux protections que Vercel fournissait sans qu'on les demande** : aucune redirection HTTP → HTTPS (`http://dev.jepatisse.com/` rend `200`) et aucun en-tête `Strict-Transport-Security`. Même famille que le trou CORS du § 7.14 (§ 7.21). |
 | Le TTL du CNAME `auth.jepatisse.com` est à 300 s (§ 10.4) | **Mesuré à 60 s.** La consigne de le remonter reste valable, la valeur affirmée était fausse (§ 7.21). |
 | Ce qu'un navigateur affiche vaut mesure | **Non.** Chrome masque le préfixe `www.` et réutilise l'entrée précédente de sa barre d'adresse : « Non sécurisé » sur une page en HTTP a été pris pour un défaut de certificat, trois échanges durant. Un `curl` depuis le nœud a tranché en une commande (§ 7.21). |
+| Un fichier lisible en shell (`cat`, `sed -n`) l'est aussi en écriture | **Pas forcément.** `conf.d/ssl.conf` était modifiable en shell (testé avant d'agir), `nginx-jelastic.conf` non — même racine, permissions différentes selon le fichier. Vérifier plutôt que supposer, comme pour tout le reste de cette migration (§ 7.21). |
+| `nginx -s reload` suffit à appliquer une configuration NGINX modifiée | **Pas quand le processus maître appartient à `root` et la session shell à un autre utilisateur.** `kill(...) failed (1: Operation not permitted)`. La voie correcte sur cette plateforme est le redémarrage du nœud depuis la console (§ 7.21). |
+| Un fichier `conf.d/` séparé, au niveau `http`, suffit à ajouter un en-tête `add_header` global | **Faux dès qu'un bloc plus précis (`server` ou `location`) déclare son propre `add_header`.** NGINX efface alors tous ceux hérités du niveau au-dessus — un HSTS posé ailleurs que dans le bloc qui porte déjà `alt-svc` et `Set-Cookie` ne serait jamais sorti, silencieusement (§ 7.21). |
 
 ---
 
@@ -4973,14 +5028,16 @@ les deux apex en **redirection web Infomaniak** (301 vers
 CNAME interdit à la racine. **`COMING_SOON=true` a été posé sur le nœud
 AVANT** la bascule : sans quoi `www` serait devenu public à la propagation.
 
+**La redirection HTTP → HTTPS et le HSTS sont posés** (§ 7.21, 13/09) : les
+deux protections que Vercel fournissait sans qu'on les demande. Vérifié en
+clôture — `http://dev.jepatisse.com/` rend 301, `https://` porte
+`Strict-Transport-Security`, l'exemption ACME répond sans redirection.
+
 **Ce qui reste avant de clore le lot A** :
 1. attendre l'émission du certificat des deux apex (en cours au moment
    d'écrire — la validation ACME ne démarre qu'après propagation DNS) ;
-2. **poser la redirection HTTP → HTTPS et le HSTS** sur l'équilibreur — deux
-   protections que Vercel fournissait et qui manquent (§ 7.21). À faire
-   **avant** la mise en ligne, qui ne tient plus qu'au retrait d'une variable ;
-3. remonter les TTL une fois éprouvé ;
-4. **phase 4** : retirer les projets Vercel `mc` et `dev_jp`, supprimer
+2. remonter les TTL une fois éprouvé ;
+3. **phase 4** : retirer les projets Vercel `mc` et `dev_jp`, supprimer
    `vercel.json`, et passer `BASE_URL` à `www` dans les deux workflows de
    cron. **La phase 4 ne peut pas précéder la vérification des workflows** :
    retirer Vercel avant que les crons ne vivent ailleurs les ferait
