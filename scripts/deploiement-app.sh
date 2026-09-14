@@ -47,6 +47,43 @@ echo "── Déploiement de $SHA dans $RACINE (application pm2 « $APP_PM2 ») 
 
 cd "$RACINE" || echouer "Répertoire $RACINE introuvable sur le nœud."
 
+# LE PIÈGE DE LA SESSION NON INTERACTIVE — relevé du 14/09 sur le nœud 216658.
+# `node`, `npm` et `pm2` y vivent sous /opt/.nvm/versions/node/<version>/bin,
+# un répertoire que le PATH ne doit qu'au profil du shell INTERACTIF. Une
+# commande lancée par `ssh … 'bash -s'` n'ouvre ni shell de connexion ni shell
+# interactif : selon la façon dont bash a été construit, `~/.bashrc` peut
+# n'être jamais lu — et `npm ci` échoue alors sur un « command not found » dès
+# la première ligne utile, alors que la même commande marche parfaitement dans
+# le Web SSH. On résout donc le répertoire ici plutôt que de parier sur un
+# profil qu'on ne contrôle pas.
+#
+# Premier passage : le répertoire qui porte npm ET pm2, c'est-à-dire la
+# version de Node sous laquelle la plateforme fait réellement tourner
+# l'application. Second passage, plus tolérant, si les deux sont dissociés.
+if ! command -v npm >/dev/null 2>&1 || ! command -v pm2 >/dev/null 2>&1; then
+  for repertoire in /opt/.nvm/versions/node/*/bin "$HOME"/.nvm/versions/node/*/bin; do
+    if [ -x "$repertoire/npm" ] && [ -x "$repertoire/pm2" ]; then
+      PATH="$repertoire:$PATH"
+      echo "   PATH complété : $repertoire"
+      break
+    fi
+  done
+fi
+if ! command -v npm >/dev/null 2>&1; then
+  for repertoire in /opt/.nvm/versions/node/*/bin "$HOME"/.nvm/versions/node/*/bin; do
+    if [ -x "$repertoire/npm" ]; then
+      PATH="$repertoire:$PATH"
+      echo "   PATH complété : $repertoire"
+      break
+    fi
+  done
+fi
+export PATH
+
+command -v node >/dev/null 2>&1 || echouer "node introuvable sur le nœud, même après résolution du PATH. Vérifier l'installation de la pile Node.js."
+command -v npm >/dev/null 2>&1 || echouer "npm introuvable sur le nœud, même après résolution du PATH. Vérifier l'installation de la pile Node.js."
+echo "   node $(node -v) · npm $(npm -v)"
+
 # Le dépôt doit être un clone git classique. S'il ne l'est pas (déploiement
 # piloté par le panneau Jelastic, archive déposée à la main…), on s'arrête
 # plutôt que de tenter une mise à jour qui n'a pas de sens ici : c'est un
@@ -58,7 +95,7 @@ cd "$RACINE" || echouer "Répertoire $RACINE introuvable sur le nœud."
 # déployer silencieusement un commit plus récent qu'un push arrivé entre le
 # déclenchement et l'exécution — le contrôle amont ne l'aurait pas vérifié.
 echo "→ Récupération du code"
-git fetch --prune origin || echouer "« git fetch » a échoué — le nœud doit pouvoir lire le dépôt privé (clé de déploiement ou identifiants git côté nœud)."
+git fetch --prune origin || echouer "« git fetch » a échoué — le nœud doit pouvoir lire le dépôt privé sans interaction. Le remote étant en HTTPS, vérifier l'assistant d'identifiants : « git config --get credential.helper » sur le nœud. Un assistant « store » (fichier) marche sans session ; un « cache » expire et ne reviendra pas tout seul dans un déploiement automatique."
 git reset --hard "$SHA" || echouer "« git reset --hard $SHA » a échoué — le commit n'a pas été récupéré."
 git --no-pager log -1 --format='   %h %s (%an, %ad)' --date=short
 
@@ -78,7 +115,7 @@ PM2=""
 if command -v pm2 >/dev/null 2>&1; then
   PM2="pm2"
 else
-  for chemin in /usr/local/bin/pm2 /usr/bin/pm2 /opt/repo/node_modules/.bin/pm2 "$HOME/.npm-global/bin/pm2"; do
+  for chemin in /usr/local/bin/pm2 /usr/bin/pm2 /opt/.nvm/versions/node/*/bin/pm2 "$HOME"/.nvm/versions/node/*/bin/pm2 "$HOME/.npm-global/bin/pm2"; do
     if [ -x "$chemin" ]; then
       PM2="$chemin"
       break
