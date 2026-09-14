@@ -148,8 +148,35 @@ jobs:
             exit 1
           fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$CLE" > ~/.ssh/id_deploiement
+
+          # DEUX FORMATS ACCEPTÉS, et ce n'est pas du luxe. Une clé privée
+          # OpenSSH se copie depuis un terminal web, où les retours à la ligne
+          # et l'habillage du texte la mutilent sans que rien ne le signale :
+          # l'en-tête et le pied restent lisibles, l'empreinte se calcule
+          # encore (elle ne vient que de la partie publique), et l'échec
+          # n'apparaît qu'au moment de s'en servir, sous la forme obscure
+          # « error in libcrypto ». D'où l'acceptation d'une forme base64 sur
+          # UNE seule ligne, immunisée contre l'habillage.
+          CLE_PROPRE=$(printf '%s' "$CLE" | tr -d '\r')
+          if printf '%s' "$CLE_PROPRE" | grep -q -- '-----BEGIN'; then
+            printf '%s\n' "$CLE_PROPRE" > ~/.ssh/id_deploiement
+          else
+            if ! printf '%s' "$CLE_PROPRE" | tr -d ' \n' | base64 -d > ~/.ssh/id_deploiement 2>/dev/null; then
+              echo "::error::DEPLOY_SSH_KEY n'est ni une clé OpenSSH (« -----BEGIN … ») ni du base64 décodable."
+              exit 1
+            fi
+          fi
           chmod 600 ~/.ssh/id_deploiement
+
+          # Contrôle qui engage VRAIMENT la partie privée : dériver la clé
+          # publique impose de la déchiffrer entièrement. `ssh-keygen -lf`, lui,
+          # se contente de la partie publique et déclare bonne une clé tronquée
+          # — c'est exactement ce qui a fait perdre un passage.
+          if ! ssh-keygen -y -f ~/.ssh/id_deploiement > /dev/null 2>&1; then
+            echo "::error::DEPLOY_SSH_KEY est illisible : la partie privée est tronquée ou altérée (typiquement un collage depuis un terminal web). La recoller en base64 sur une seule ligne — cf. DEPLOY.md."
+            exit 1
+          fi
+          echo "Clé privée valide : $(ssh-keygen -y -f ~/.ssh/id_deploiement | ssh-keygen -lf -)"
           if [ -n "$HOTES_CONNUS" ]; then
             printf '%s\n' "$HOTES_CONNUS" > ~/.ssh/known_hosts
           else

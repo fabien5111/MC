@@ -81,7 +81,7 @@ qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
 | `DEPLOIEMENT_ACTIF` | Variable | `true` arme le workflow. Absente = simulation. |
 | `DEPLOY_SSH_HOST` | Secret | Hôte SSH du nœud (console Infomaniak → accès SSH). |
 | `DEPLOY_SSH_USER` | Secret | Utilisateur SSH de la passerelle Jelastic. |
-| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante, déposée dans le compte Jelastic. |
+| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante (voir ci-dessous : **la coller en base64 sur une seule ligne**). |
 | `DEPLOY_SSH_KNOWN_HOSTS` | Secret | Clé d'hôte épinglée. Absente : acceptée à la volée, avec un avertissement. |
 | `DEPLOY_SSH_PORT` | Variable | Port SSH, `3022` par défaut. |
 | `RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
@@ -111,6 +111,23 @@ Deux conséquences à garder en tête :
   se lit dans l'onglet **SFTP / Accès SSH direct**, en sélectionnant le nœud
   dans la liste déroulante : elle y est donnée telle quelle, champ *Nom
   d'utilisateur*.
+
+- **La clé privée se transmet en base64, sur une seule ligne.** Elle est
+  générée sur le nœud, donc recopiée depuis un terminal web — où l'habillage
+  du texte la mutile sans rien signaler. Le piège est qu'une clé ainsi
+  tronquée **paraît valide** : l'en-tête et le pied subsistent, et
+  `ssh-keygen -lf` en calcule encore l'empreinte, qui ne dépend que de la
+  partie publique. L'échec n'arrive qu'à l'usage, sous la forme
+  « `Load key … error in libcrypto` » suivie d'un `Permission denied` — qui
+  envoie chercher un problème de droits là où il n'y a qu'un fichier abîmé.
+  Un indice discret le trahit : `ssh-keygen -lf` affiche « no comment », le
+  commentaire de la clé vivant justement dans la partie privée.
+
+  Sur le nœud : `base64 ~/.ssh/deploiement_github | tr -d '\n'`, et ce bloc
+  d'une ligne va dans le secret. Le workflow accepte les deux formes (PEM
+  brut ou base64), retire les retours chariot, puis **vérifie la partie
+  privée** en dérivant la clé publique (`ssh-keygen -y`) — un contrôle qui,
+  contrairement à l'empreinte, échoue vraiment sur une clé tronquée.
 
   **Le symptôme, si on se trompe d'ordre**, ne ressemble pas à un problème de
   compte : `Connection closed by <ip> port 3022`, sans « Permission denied »
