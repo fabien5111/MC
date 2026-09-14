@@ -140,6 +140,7 @@ jobs:
         env:
           CLE: ${{ secrets.DEPLOY_SSH_KEY }}
           HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
+          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
           PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
           HOTES_CONNUS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
         run: |
@@ -194,13 +195,52 @@ jobs:
             exit 1
           fi
           echo "Clé privée valide : $(ssh-keygen -y -f ~/.ssh/id_deploiement | ssh-keygen -lf -)"
+
+          # L'hôte et le compte subissent le même sort que la clé : ils sont
+          # recopiés à la main dans des secrets, donc sujets aux espaces, aux
+          # retours à la ligne et au texte voisin. Un hôte pollué ne produit
+          # qu'un « hostname contains invalid characters » qui ne dit ni quel
+          # secret est en cause, ni ce qu'il contient. On nettoie, on contrôle,
+          # et on annonce des longueurs — jamais le contenu.
+          HOTE_PROPRE=$(printf '%s' "$HOTE" | tr -d '[:space:]')
+          UTILISATEUR_PROPRE=$(printf '%s' "$UTILISATEUR" | tr -d '[:space:]')
+          echo "Hôte : ${#HOTE_PROPRE} caractères · compte : ${#UTILISATEUR_PROPRE} caractères."
+          if ! printf '%s' "$HOTE_PROPRE" | grep -qE '^[A-Za-z0-9.-]+$'; then
+            echo "::error::DEPLOY_SSH_HOST ne ressemble pas à un nom d'hôte (lettres, chiffres, points et tirets seulement). Attendu ici : gate.jpe.infomaniak.com — vérifier qu'aucun autre contenu n'y a été collé par mégarde."
+            exit 1
+          fi
+          if ! printf '%s' "$UTILISATEUR_PROPRE" | grep -qE '^[A-Za-z0-9._-]+$'; then
+            echo "::error::DEPLOY_SSH_USER ne ressemble pas à un compte. Attendu ici : <numéro de nœud>-<identifiant>, soit 216658-11487 (cf. DEPLOY.md)."
+            exit 1
+          fi
+
           if [ -n "$HOTES_CONNUS" ]; then
             printf '%s\n' "$HOTES_CONNUS" > ~/.ssh/known_hosts
           else
             echo "::warning::DEPLOY_SSH_KNOWN_HOSTS absent — clé d'hôte acceptée sans vérification."
-            ssh-keyscan -p "$PORT" "$HOTE" >> ~/.ssh/known_hosts 2>/dev/null || true
+            ssh-keyscan -p "$PORT" "$HOTE_PROPRE" >> ~/.ssh/known_hosts 2>/dev/null || true
           fi
           chmod 600 ~/.ssh/known_hosts
+
+          # UN SEUL ENDROIT QUI CONNAÎT LA CONNEXION. Les paramètres vivaient
+          # jusqu'ici en triple — préparation, diagnostic, déploiement —, chacun
+          # rebâtissant la même cible à coups de `${UTILISATEUR:+…}@$HOTE`. Trois
+          # occasions de diverger, sur un point où l'erreur ne se lit pas. Le
+          # fichier de configuration nomme la cible une fois : les étapes
+          # suivantes disent `ssh noeud-app`, sans secret ni expression.
+          cat > ~/.ssh/config <<CONFIG
+          Host noeud-app
+            HostName $HOTE_PROPRE
+            User $UTILISATEUR_PROPRE
+            Port $PORT
+            IdentityFile ~/.ssh/id_deploiement
+            IdentitiesOnly yes
+            BatchMode yes
+            ConnectTimeout 15
+            ServerAliveInterval 30
+            ServerAliveCountMax 20
+          CONFIG
+          chmod 600 ~/.ssh/config
 
       # DIAGNOSTIC — n'ouvre la connexion que pour la regarder, et ne déploie
       # rien. Existe parce qu'un échec d'authentification SSH ne dit, dans le
@@ -215,23 +255,13 @@ jobs:
       # vient chercher, pas un verdict.
       - name: Tester la connexion SSH (diagnostic)
         if: steps.armement.outputs.arme == 'true' && inputs.test_connexion
-        env:
-          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
-          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
-          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
         run: |
           echo "── Empreinte de la clé privée utilisée ──"
           echo "À comparer avec celle affichée par le trousseau Jelastic :"
           ssh-keygen -lf ~/.ssh/id_deploiement || echo "::error::Clé illisible — le secret DEPLOY_SSH_KEY est probablement tronqué ou mal collé."
           echo
-          echo "── Forme du compte utilisé ──"
-          echo "Longueur : ${#UTILISATEUR} caractères · contient un tiret : $(case "$UTILISATEUR" in *-*) echo oui;; *) echo NON;; esac)"
-          echo
           echo "── Connexion (verbeux) ──"
-          ssh -vv -i ~/.ssh/id_deploiement -p "$PORT" \
-              -o BatchMode=yes -o ConnectTimeout=15 \
-              "${UTILISATEUR:+$UTILISATEUR@}$HOTE" \
-              'echo CONNEXION_OK; id; pwd' 2>&1 | tail -60 || true
+          ssh -vv noeud-app 'echo CONNEXION_OK; id; pwd' 2>&1 | tail -60 || true
           echo
           echo "Mode test : aucun déploiement n'a été tenté."
 
@@ -256,18 +286,11 @@ jobs:
       - name: Construire et redémarrer sur le nœud
         if: steps.armement.outputs.arme == 'true' && !inputs.test_connexion
         env:
-          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
-          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
-          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
           RACINE: ${{ vars.RACINE_APP || '/home/jelastic/ROOT' }}
           APP_PM2: ${{ vars.APP_PM2 || 'je-patisse' }}
           SHA: ${{ steps.revision.outputs.sha }}
         run: |
-          ssh -i ~/.ssh/id_deploiement -p "$PORT" \
-              -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
-              -o BatchMode=yes \
-              "${UTILISATEUR:+$UTILISATEUR@}$HOTE" \
-              'bash -s' -- "$SHA" "$RACINE" "$APP_PM2" < scripts/deploiement-app.sh
+          ssh noeud-app 'bash -s' -- "$SHA" "$RACINE" "$APP_PM2" < scripts/deploiement-app.sh
 
       # `pm2 restart` rend la main avant que Next ait fini de démarrer : on
       # réessaie plutôt que de conclure sur la première réponse. L'URL par
