@@ -88,11 +88,29 @@ qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
 | `APP_PM2` | Variable | Nom pm2 de l'application, `je-patisse` par défaut. |
 | `URL_VERIFICATION` | Variable | `https://dev.jepatisse.com` par défaut — seul hôte exempté de `COMING_SOON`, donc le seul qui prouve que le site répond. |
 
-**Prérequis non vérifiable depuis le dépôt** : le nœud doit pouvoir lire le
-dépôt privé (`git fetch`), donc porter une clé de déploiement ou des
-identifiants git. Le script s'arrête avec un message explicite si
-`/home/jelastic/ROOT` n'est pas un clone git — c'est le cas si le nœud est
-alimenté par le panneau Git de Jelastic plutôt que par un clone classique.
+**État du nœud, relevé le 14/09 avant la première mise en service** :
+`/home/jelastic/ROOT` est bien un clone git (remote HTTPS sur
+`github.com/fabien5111/MC`), `git fetch` y aboutit **sans aucun identifiant**
+— le dépôt est public, la lecture est anonyme, et rien ne peut donc expirer
+côté droits. `pm2` y fait tourner `je-patisse`, sous Node 22.23.2.
+
+Deux conséquences à garder en tête :
+
+- **`node`, `npm` et `pm2` vivent sous `/opt/.nvm/versions/node/<version>/bin`**,
+  un répertoire que le PATH ne doit qu'au profil du shell *interactif*. Une
+  commande lancée par `ssh … 'bash -s'` ne le voit pas : `scripts/deploiement-app.sh`
+  résout donc ce répertoire lui-même. Ne pas retirer ce bloc en croyant
+  simplifier — sans lui, `npm ci` échoue sur un « command not found » alors
+  que la même commande marche parfaitement dans le Web SSH.
+- **Le compte SSH de la passerelle s'adresse au conteneur**, pas au compte :
+  `11487-216658@gate.jpe.infomaniak.com` (`<identifiant>-<numéro de nœud>`).
+  La chaîne que le tableau de bord affiche (`11487@gate…`) est celle d'un
+  accès humain, qui ouvre un menu interactif de choix du conteneur — sans
+  personne pour y répondre, un déploiement automatique n'irait nulle part.
+
+Le script s'arrête avec un message explicite si `/home/jelastic/ROOT` cessait
+d'être un clone git — ce serait le cas si le nœud passait au panneau Git de
+Jelastic plutôt qu'à un clone classique.
 
 La procédure manuelle ci-dessous reste valable et reste la porte de sortie :
 elle est ce que le workflow exécute, ni plus ni moins.

@@ -95,7 +95,7 @@ echo "   node $(node -v) · npm $(npm -v)"
 # déployer silencieusement un commit plus récent qu'un push arrivé entre le
 # déclenchement et l'exécution — le contrôle amont ne l'aurait pas vérifié.
 echo "→ Récupération du code"
-git fetch --prune origin || echouer "« git fetch » a échoué — le nœud doit pouvoir lire le dépôt privé sans interaction. Le remote étant en HTTPS, vérifier l'assistant d'identifiants : « git config --get credential.helper » sur le nœud. Un assistant « store » (fichier) marche sans session ; un « cache » expire et ne reviendra pas tout seul dans un déploiement automatique."
+git fetch --prune origin || echouer "« git fetch » a échoué. Le dépôt étant PUBLIC et le remote en HTTPS, la récupération est anonyme : aucun identifiant n'entre en jeu, chercher donc du côté du réseau sortant du nœud, pas des droits. Si le dépôt devenait privé un jour, c'est ici que ça casserait — il faudrait alors poser un assistant d'identifiants « store » sur le nœud (« cache » expire et ne revient pas tout seul dans un déploiement automatique)."
 git reset --hard "$SHA" || echouer "« git reset --hard $SHA » a échoué — le commit n'a pas été récupéré."
 git --no-pager log -1 --format='   %h %s (%an, %ad)' --date=short
 
