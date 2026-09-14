@@ -20,6 +20,21 @@ name: Jira — passer en « Déployé »
 #     qu'un ticket au statut « développé, pas encore en ligne » ; un ticket
 #     déjà déployé, en cours ou rouvert est laissé tel quel.
 #
+# TROIS ENTRÉES, UN SEUL TRAITEMENT. `deployment_status` (Vercel, tant que les
+# projets résiduels existent), `workflow_dispatch` (rattrapage à la main) et
+# `workflow_call` — c'est par là que `deploiement-app.yml` appelle ce workflow
+# après avoir déployé le nœud applicatif lui-même. Cet appel direct n'est pas
+# un raffinement : un `deployment_status` créé avec le GITHUB_TOKEN du dépôt
+# ne déclenche aucun workflow (GitHub coupe là pour éviter les boucles), donc
+# s'en remettre à l'événement aurait laissé la chaîne muette dès la
+# suppression des projets Vercel. Aucun garde-fou ne bouge au passage :
+# JIRA_DEPLOY_ACTIF commande toujours, et l'appelant ne peut que DEMANDER une
+# écriture, jamais l'obtenir d'un workflow désarmé.
+#
+# Les deux entrées explicites se reconnaissent à `inputs.ref`, non vide
+# seulement dans leur cas — `github.event_name` ne sert pas ici, il porte
+# l'événement de l'APPELANT (`push`) sur un `workflow_call`, jamais le sien.
+#
 # Cf. docs/outillage-jira.md §3.
 on:
   deployment_status:
@@ -37,6 +52,22 @@ on:
         description: Ne rien écrire dans Jira
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      ref:
+        description: Branche ou SHA dont on lit les commits
+        required: true
+        type: string
+      profondeur:
+        description: Nombre de commits à examiner
+        required: false
+        default: '50'
+        type: string
+      simulation:
+        description: Ne rien écrire dans Jira
+        required: false
+        default: true
+        type: boolean
 
 # Deux déploiements production simultanés (projet `mc` et projet `dev_jp`)
 # liraient et transitionneraient le même ticket en même temps. On les met à la
@@ -51,7 +82,7 @@ permissions:
 jobs:
   deployer:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      inputs.ref != '' ||
       (github.event.deployment_status.state == 'success' &&
        (startsWith(github.event.deployment.environment, 'Production') ||
         startsWith(github.event.deployment.environment, 'production')))
@@ -60,7 +91,7 @@ jobs:
       - name: Récupérer la révision déployée
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.deployment.sha }}
+          ref: ${{ inputs.ref != '' && inputs.ref || github.event.deployment.sha }}
           # De quoi lire les derniers commits, sans cloner tout l'historique.
           fetch-depth: 100
 
@@ -87,8 +118,8 @@ jobs:
           JIRA_STATUS_DEPLOYED: ${{ vars.JIRA_STATUS_DEPLOYED }}
           JIRA_STATUS_DEPLOYED_ID: ${{ vars.JIRA_STATUS_DEPLOYED_ID }}
           ACTIF: ${{ vars.JIRA_DEPLOY_ACTIF }}
-          SIMULATION_DEMANDEE: ${{ github.event_name == 'workflow_dispatch' && inputs.simulation || false }}
-          PROFONDEUR: ${{ github.event_name == 'workflow_dispatch' && inputs.profondeur || 50 }}
+          SIMULATION_DEMANDEE: ${{ inputs.ref != '' && inputs.simulation || false }}
+          PROFONDEUR: ${{ inputs.ref != '' && inputs.profondeur || 50 }}
           ENVIRONNEMENT: ${{ github.event.deployment.environment }}
           URL_DEPLOIEMENT: ${{ github.event.deployment_status.environment_url }}
         run: |

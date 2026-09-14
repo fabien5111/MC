@@ -1,0 +1,242 @@
+name: Déploiement — application
+
+# Déploie `main` sur le nœud applicatif (216658), vérifie que le site répond,
+# puis fait passer à « Déployé » les tickets Jira cités dans les commits.
+#
+# POURQUOI CE WORKFLOW EXISTE — deux manques, pas un :
+#
+#  1. UNE FUSION SUR `main` NE CHANGEAIT RIEN AU SITE. Le code n'atteignait la
+#     production que si quelqu'un ouvrait le Web SSH du nœud et rejouait la
+#     commande de DEPLOY.md à la main. `www` et `dev.jepatisse.com` étant
+#     servis par le même nœud depuis le même build, « c'est fusionné » et
+#     « c'est en ligne » étaient deux choses sans rapport.
+#  2. LA CHAÎNE JIRA TENAIT À VERCEL. `jira-deploiement.yml` se déclenche sur
+#     l'événement `deployment_status` — émis aujourd'hui par les deux projets
+#     Vercel résiduels, qui construisent encore ce dépôt à chaque push. Le
+#     jour où la phase 4 de la migration les supprime, la chaîne « ticket →
+#     Déployé → e-mail au demandeur » s'arrête sans un bruit. Ce workflow la
+#     reprend, en appelant `jira-deploiement.yml` directement (voir plus bas).
+#
+# TROIS GARDE-FOUS, dans cet ordre :
+#
+#  1. BARRIÈRE AVANT LE NŒUD. `typecheck`, `build` et la suite de tests
+#     tournent d'abord sur le runner. Ce n'est pas du zèle : la procédure du
+#     nœud fait `rm -rf .next` AVANT de construire, donc une construction qui
+#     échoue là-bas laisse le site sans build. Un commit qui ne compile pas ne
+#     doit jamais atteindre cette fenêtre.
+#  2. DÉSARMÉ PAR DÉFAUT. Sans la variable de dépôt `DEPLOIEMENT_ACTIF` à
+#     « true », le workflow va au bout mais ne touche jamais le nœud : il
+#     journalise ce qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`
+#     (jira-deploiement.yml), et seule façon honnête de livrer un workflow
+#     qu'on ne peut pas essayer avant d'avoir les accès.
+#  3. VÉRIFICATION FONCTIONNELLE. Le déploiement n'est déclaré réussi — et
+#     Jira n'est appelé — qu'après un HTTP 200 réellement obtenu sur le site.
+#     Un `pm2 restart` qui rend la main ne prouve pas qu'une page s'affiche.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branche ou SHA à déployer
+        required: true
+        default: main
+
+# Jamais deux déploiements en même temps sur le même nœud : le second
+# écraserait le `.next` que le premier est en train d'écrire. `cancel-in-progress`
+# reste à false — annuler un déploiement en cours de construction laisserait
+# précisément le site dans l'état sans build que le garde-fou 1 cherche à
+# éviter.
+concurrency:
+  group: deploiement-app
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  controle:
+    name: Contrôle avant déploiement
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Les `NEXT_PUBLIC_*` sont lues au build : sans fichier, la construction
+      # échoue sur le runner pour une raison qui n'a rien à voir avec le
+      # commit. On pose le modèle du dépôt — ses valeurs ne servent qu'à faire
+      # exister les variables, le build qui compte est celui du nœud, avec les
+      # vraies valeurs du panneau Virtuozzo.
+      - name: Poser les variables publiques du modèle
+        run: cp .env.local.example .env.local
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  deployer:
+    name: Construire et redémarrer le nœud
+    needs: controle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+      arme: ${{ steps.armement.outputs.arme }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Révision à déployer
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # L'interrupteur d'armement est lu ici, et son résultat porté en sortie
+      # de travail : le travail `jira` en dépend, ce qui garantit qu'un
+      # workflow désarmé ne transitionne aucun ticket — l'e-mail au demandeur
+      # est irréversible (docs/contact-jira.md §2).
+      - name: Vérifier l'armement
+        id: armement
+        env:
+          ACTIF: ${{ vars.DEPLOIEMENT_ACTIF }}
+        run: |
+          if [ "$ACTIF" = "true" ]; then
+            echo "arme=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "arme=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DEPLOIEMENT_ACTIF n'est pas « true » — SIMULATION : le nœud ne sera pas touché."
+            echo "Armer : Settings > Secrets and variables > Actions > Variables > DEPLOIEMENT_ACTIF = true"
+          fi
+
+      - name: Ce qui serait fait (simulation)
+        if: steps.armement.outputs.arme != 'true'
+        env:
+          SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          echo "Déploiement simulé de $SHA sur le nœud applicatif."
+          echo "Commande distante : bash -s -- $SHA <racine> <app pm2> < scripts/deploiement-app.sh"
+          bash -n scripts/deploiement-app.sh && echo "Script distant : syntaxe valide."
+
+      # Clé d'hôte épinglée quand le secret est fourni. À défaut on l'accepte
+      # à la volée, en le disant : une connexion de déploiement porte une clé
+      # privée, l'accepter sans vérifier revient à faire confiance au premier
+      # serveur qui répond.
+      - name: Préparer la connexion SSH
+        if: steps.armement.outputs.arme == 'true'
+        env:
+          CLE: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
+          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
+          HOTES_CONNUS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$CLE" ] || [ -z "$HOTE" ]; then
+            echo "::error::DEPLOY_SSH_KEY et DEPLOY_SSH_HOST sont requis pour déployer (voir DEPLOY.md)."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$CLE" > ~/.ssh/id_deploiement
+          chmod 600 ~/.ssh/id_deploiement
+          if [ -n "$HOTES_CONNUS" ]; then
+            printf '%s\n' "$HOTES_CONNUS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::DEPLOY_SSH_KNOWN_HOSTS absent — clé d'hôte acceptée sans vérification."
+            ssh-keyscan -p "$PORT" "$HOTE" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Ouvrir le déploiement GitHub
+        if: steps.armement.outputs.arme == 'true'
+        id: deploiement
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/deployments" --input - --jq '.id' <<JSON
+          {"ref":"$SHA","environment":"production","auto_merge":false,"required_contexts":[],"description":"Déploiement automatique du nœud applicatif"}
+          JSON
+          )
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      # Le script distant est envoyé par l'entrée standard : la version
+      # exécutée est celle du commit déployé, rien à maintenir sur le nœud.
+      # Les gardes-en-vie sont là parce qu'un `npm ci` + `next build` tient
+      # plusieurs minutes sans écrire une ligne — sans eux, la connexion tombe
+      # au milieu d'une construction.
+      - name: Construire et redémarrer sur le nœud
+        if: steps.armement.outputs.arme == 'true'
+        env:
+          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
+          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
+          RACINE: ${{ vars.RACINE_APP || '/home/jelastic/ROOT' }}
+          APP_PM2: ${{ vars.APP_PM2 || 'je-patisse' }}
+          SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          ssh -i ~/.ssh/id_deploiement -p "$PORT" \
+              -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+              -o BatchMode=yes \
+              "${UTILISATEUR:+$UTILISATEUR@}$HOTE" \
+              'bash -s' -- "$SHA" "$RACINE" "$APP_PM2" < scripts/deploiement-app.sh
+
+      # `pm2 restart` rend la main avant que Next ait fini de démarrer : on
+      # réessaie plutôt que de conclure sur la première réponse. L'URL par
+      # défaut est `dev.jepatisse.com`, seul hôte exempté de COMING_SOON —
+      # interroger `www` ne prouverait que l'affichage de la page d'attente.
+      - name: Vérifier que le site répond
+        if: steps.armement.outputs.arme == 'true'
+        env:
+          URL: ${{ vars.URL_VERIFICATION || 'https://dev.jepatisse.com' }}
+        run: |
+          for essai in $(seq 1 12); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo 000)
+            echo "Essai $essai : HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Site en ligne : $URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL ne répond pas 200 après deux minutes — déploiement considéré en échec."
+          exit 1
+
+      - name: Clore le déploiement GitHub
+        if: always() && steps.deploiement.outputs.id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ steps.deploiement.outputs.id }}
+          ETAT: ${{ job.status == 'success' && 'success' || 'failure' }}
+          URL: ${{ vars.URL_VERIFICATION || 'https://dev.jepatisse.com' }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/deployments/$ID/statuses" --input - >/dev/null <<JSON
+          {"state":"$ETAT","environment_url":"$URL","description":"Déploiement du nœud applicatif"}
+          JSON
+
+  # POURQUOI UN APPEL DIRECT, ET PAS L'ÉVÉNEMENT. Un `deployment_status` créé
+  # avec le GITHUB_TOKEN du dépôt ne déclenche AUCUN workflow — GitHub coupe
+  # là pour éviter les boucles. Compter sur l'événement posé juste au-dessus
+  # aurait donc produit exactement la panne silencieuse qu'on cherche à
+  # éviter : des déploiements réussis, et plus un seul ticket transitionné.
+  # `jira-deploiement.yml` est donc appelé comme workflow réutilisable, ce qui
+  # ne contourne aucun de ses garde-fous : `JIRA_DEPLOY_ACTIF` continue de
+  # forcer la simulation tant qu'il n'est pas armé, et le script reste
+  # idempotent.
+  jira:
+    name: Tickets Jira déployés
+    needs: deployer
+    if: needs.deployer.outputs.arme == 'true'
+    uses: ./.github/workflows/jira-deploiement.yml
+    with:
+      ref: ${{ needs.deployer.outputs.sha }}
+      profondeur: '50'
+      simulation: false
+    secrets: inherit
