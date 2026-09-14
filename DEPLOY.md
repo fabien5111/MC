@@ -81,7 +81,7 @@ qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
 | `DEPLOIEMENT_ACTIF` | Variable | `true` arme le workflow. Absente = simulation. |
 | `DEPLOY_SSH_HOST` | Secret | Hôte SSH du nœud (console Infomaniak → accès SSH). |
 | `DEPLOY_SSH_USER` | Secret | Utilisateur SSH de la passerelle Jelastic. |
-| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante, déposée dans le compte Jelastic. |
+| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante (voir ci-dessous : **la coller en base64 sur une seule ligne**). |
 | `DEPLOY_SSH_KNOWN_HOSTS` | Secret | Clé d'hôte épinglée. Absente : acceptée à la volée, avec un avertissement. |
 | `DEPLOY_SSH_PORT` | Variable | Port SSH, `3022` par défaut. |
 | `RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
@@ -103,10 +103,40 @@ Deux conséquences à garder en tête :
   simplifier — sans lui, `npm ci` échoue sur un « command not found » alors
   que la même commande marche parfaitement dans le Web SSH.
 - **Le compte SSH de la passerelle s'adresse au conteneur**, pas au compte :
-  `11487-216658@gate.jpe.infomaniak.com` (`<identifiant>-<numéro de nœud>`).
-  La chaîne que le tableau de bord affiche (`11487@gate…`) est celle d'un
-  accès humain, qui ouvre un menu interactif de choix du conteneur — sans
-  personne pour y répondre, un déploiement automatique n'irait nulle part.
+  `216658-11487@gate.jpe.infomaniak.com`, soit **`<numéro de nœud>-<identifiant>`**
+  — dans cet ordre, et c'est contre-intuitif. La chaîne mise en avant par le
+  tableau de bord (onglet *Connexion SSH*, `11487@gate…`) est celle d'un accès
+  **humain** : elle ouvre un menu interactif de choix du conteneur, que rien
+  ne peut renseigner dans un déploiement automatique. La forme par conteneur
+  se lit dans l'onglet **SFTP / Accès SSH direct**, en sélectionnant le nœud
+  dans la liste déroulante : elle y est donnée telle quelle, champ *Nom
+  d'utilisateur*.
+
+- **La clé privée se transmet en base64, sur une seule ligne.** Elle est
+  générée sur le nœud, donc recopiée depuis un terminal web — où l'habillage
+  du texte la mutile sans rien signaler. Le piège est qu'une clé ainsi
+  tronquée **paraît valide** : l'en-tête et le pied subsistent, et
+  `ssh-keygen -lf` en calcule encore l'empreinte, qui ne dépend que de la
+  partie publique. L'échec n'arrive qu'à l'usage, sous la forme
+  « `Load key … error in libcrypto` » suivie d'un `Permission denied` — qui
+  envoie chercher un problème de droits là où il n'y a qu'un fichier abîmé.
+  Un indice discret le trahit : `ssh-keygen -lf` affiche « no comment », le
+  commentaire de la clé vivant justement dans la partie privée.
+
+  Sur le nœud : `base64 ~/.ssh/deploiement_github | tr -d '\n'`, et ce bloc
+  d'une ligne va dans le secret. Le workflow accepte les deux formes (PEM
+  brut ou base64), retire les retours chariot, puis **vérifie la partie
+  privée** en dérivant la clé publique (`ssh-keygen -y`) — un contrôle qui,
+  contrairement à l'empreinte, échoue vraiment sur une clé tronquée.
+
+  **Le symptôme, si on se trompe d'ordre**, ne ressemble pas à un problème de
+  compte : `Connection closed by <ip> port 3022`, sans « Permission denied »
+  ni la moindre mention de clé. La passerelle (`JSSHProxy`) raccroche dès la
+  lecture du nom d'utilisateur, **avant** d'avoir proposé la moindre méthode
+  d'authentification — ce qui envoie chercher du côté de la clé, où il n'y a
+  rien à trouver. D'où le mode `test_connexion` du workflow : en verbeux, la
+  distinction est immédiate (une clé refusée, elle, produit un
+  « Offering public key » suivi d'un « Permission denied »).
 
 Le script s'arrête avec un message explicite si `/home/jelastic/ROOT` cessait
 d'être un clone git — ce serait le cas si le nœud passait au panneau Git de
