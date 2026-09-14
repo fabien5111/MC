@@ -158,11 +158,28 @@ jobs:
           # « error in libcrypto ». D'où l'acceptation d'une forme base64 sur
           # UNE seule ligne, immunisée contre l'habillage.
           CLE_PROPRE=$(printf '%s' "$CLE" | tr -d '\r')
+
+          # Ce que le secret contient RÉELLEMENT, avant toute tentative. Rien
+          # n'est révélé du contenu : seulement des longueurs et des comptes —
+          # de quoi distinguer un collage tronqué (longueur inattendue) d'un
+          # collage pollué (caractères hors alphabet), les deux échecs qu'on a
+          # rencontrés, sans jamais rien écrire de la clé dans un journal.
+          BRUT=$(printf '%s' "$CLE_PROPRE" | tr -d ' \n')
+          FILTRE=$(printf '%s' "$BRUT" | tr -cd 'A-Za-z0-9+/=')
+          echo "Secret reçu : ${#CLE_PROPRE} caractères (${#BRUT} hors espaces, ${#FILTRE} dans l'alphabet base64)."
           if printf '%s' "$CLE_PROPRE" | grep -q -- '-----BEGIN'; then
+            echo "Forme détectée : clé OpenSSH (« -----BEGIN … »)."
             printf '%s\n' "$CLE_PROPRE" > ~/.ssh/id_deploiement
           else
-            if ! printf '%s' "$CLE_PROPRE" | tr -d ' \n' | base64 -d > ~/.ssh/id_deploiement 2>/dev/null; then
-              echo "::error::DEPLOY_SSH_KEY n'est ni une clé OpenSSH (« -----BEGIN … ») ni du base64 décodable."
+            echo "Forme détectée : base64."
+            if [ "${#FILTRE}" -ne "${#BRUT}" ]; then
+              echo "::warning::$(( ${#BRUT} - ${#FILTRE} )) caractère(s) hors alphabet base64 écartés — du texte voisin a probablement été copié avec la clé."
+            fi
+            # Tolérant à l'entrée, strict à la sortie : on écarte ce qui n'est
+            # pas du base64 plutôt que d'échouer sur un caractère parasite, et
+            # c'est la validation ci-dessous qui tranche pour de bon.
+            if ! printf '%s' "$FILTRE" | base64 -d > ~/.ssh/id_deploiement 2>/dev/null; then
+              echo "::error::DEPLOY_SSH_KEY n'est ni une clé OpenSSH (« -----BEGIN … ») ni du base64 décodable. Longueur reçue : ${#FILTRE} caractères — à comparer avec celle annoncée par le nœud (cf. DEPLOY.md). Une longueur plus courte signe un collage tronqué."
               exit 1
             fi
           fi
