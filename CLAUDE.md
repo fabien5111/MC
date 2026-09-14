@@ -20,6 +20,18 @@ le service managé.
   et par quel canal (console Infomaniak / *Configuration manager* / Web SSH
   du nœud). Ne jamais supposer qu'une commande shell est possible sans avoir
   nommé le nœud.
+- **Une commande destinée au Web SSH tient sur UNE seule ligne**, enchaînée
+  par `&&` ou `;` — jamais un bloc de plusieurs lignes, ni une boucle, ni un
+  `if` déplié. Un bloc collé dans un terminal web s'exécute ligne par ligne,
+  mélange sa sortie aux invites intermédiaires, et rend le résultat
+  inexploitable à la copie. Corollaire, plus important encore : **quand la
+  sortie doit être recopiée ailleurs** (clé, jeton, empreinte, chaîne de
+  connexion), elle doit être produite **sur une seule ligne, seule** — sans
+  titre, sans repère, sans ligne voisine. Tout ce qui l'entoure finit copié
+  avec elle : c'est ce qui a mutilé deux fois la clé de déploiement
+  (§ « Déployer `main` automatiquement » de `DEPLOY.md`). Une valeur qu'on
+  veut vérifier se demande par une **seconde** commande, pas en ajoutant une
+  ligne à la première.
 - **Une action posée dans un panneau ne prouve pas qu'un processus l'a
   reçue.** Après toute variable ou fichier modifié côté Virtuozzo, vérifier
   l'état **du processus**, pas celui de l'interface — `pm2 env <id>` sur la
