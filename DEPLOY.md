@@ -103,10 +103,23 @@ Deux conséquences à garder en tête :
   simplifier — sans lui, `npm ci` échoue sur un « command not found » alors
   que la même commande marche parfaitement dans le Web SSH.
 - **Le compte SSH de la passerelle s'adresse au conteneur**, pas au compte :
-  `11487-216658@gate.jpe.infomaniak.com` (`<identifiant>-<numéro de nœud>`).
-  La chaîne que le tableau de bord affiche (`11487@gate…`) est celle d'un
-  accès humain, qui ouvre un menu interactif de choix du conteneur — sans
-  personne pour y répondre, un déploiement automatique n'irait nulle part.
+  `216658-11487@gate.jpe.infomaniak.com`, soit **`<numéro de nœud>-<identifiant>`**
+  — dans cet ordre, et c'est contre-intuitif. La chaîne mise en avant par le
+  tableau de bord (onglet *Connexion SSH*, `11487@gate…`) est celle d'un accès
+  **humain** : elle ouvre un menu interactif de choix du conteneur, que rien
+  ne peut renseigner dans un déploiement automatique. La forme par conteneur
+  se lit dans l'onglet **SFTP / Accès SSH direct**, en sélectionnant le nœud
+  dans la liste déroulante : elle y est donnée telle quelle, champ *Nom
+  d'utilisateur*.
+
+  **Le symptôme, si on se trompe d'ordre**, ne ressemble pas à un problème de
+  compte : `Connection closed by <ip> port 3022`, sans « Permission denied »
+  ni la moindre mention de clé. La passerelle (`JSSHProxy`) raccroche dès la
+  lecture du nom d'utilisateur, **avant** d'avoir proposé la moindre méthode
+  d'authentification — ce qui envoie chercher du côté de la clé, où il n'y a
+  rien à trouver. D'où le mode `test_connexion` du workflow : en verbeux, la
+  distinction est immédiate (une clé refusée, elle, produit un
+  « Offering public key » suivi d'un « Permission denied »).
 
 Le script s'arrête avec un message explicite si `/home/jelastic/ROOT` cessait
 d'être un clone git — ce serait le cas si le nœud passait au panneau Git de
