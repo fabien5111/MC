@@ -41,6 +41,10 @@ on:
         description: Branche ou SHA à déployer
         required: true
         default: main
+      test_connexion:
+        description: Tester SEULEMENT la connexion SSH (ne déploie rien)
+        type: boolean
+        default: false
 
 # Jamais deux déploiements en même temps sur le même nœud : le second
 # écraserait le `.next` que le premier est en train d'écrire. `cancel-in-progress`
@@ -154,8 +158,41 @@ jobs:
           fi
           chmod 600 ~/.ssh/known_hosts
 
+      # DIAGNOSTIC — n'ouvre la connexion que pour la regarder, et ne déploie
+      # rien. Existe parce qu'un échec d'authentification SSH ne dit, dans le
+      # journal d'un déploiement normal, qu'une seule chose : « Connection
+      # closed ». Ça ne distingue pas une clé refusée d'un compte que la
+      # passerelle ne sait pas router — deux pannes qui se corrigent à des
+      # endroits opposés. Le mode verbeux tranche, et l'empreinte de la clé
+      # permet de vérifier d'un coup d'œil qu'elle est bien celle enregistrée
+      # dans le trousseau Jelastic.
+      #
+      # Volontairement tolérant à l'échec (`|| true`) : c'est le journal qu'on
+      # vient chercher, pas un verdict.
+      - name: Tester la connexion SSH (diagnostic)
+        if: steps.armement.outputs.arme == 'true' && inputs.test_connexion
+        env:
+          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
+          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
+        run: |
+          echo "── Empreinte de la clé privée utilisée ──"
+          echo "À comparer avec celle affichée par le trousseau Jelastic :"
+          ssh-keygen -lf ~/.ssh/id_deploiement || echo "::error::Clé illisible — le secret DEPLOY_SSH_KEY est probablement tronqué ou mal collé."
+          echo
+          echo "── Forme du compte utilisé ──"
+          echo "Longueur : ${#UTILISATEUR} caractères · contient un tiret : $(case "$UTILISATEUR" in *-*) echo oui;; *) echo NON;; esac)"
+          echo
+          echo "── Connexion (verbeux) ──"
+          ssh -vv -i ~/.ssh/id_deploiement -p "$PORT" \
+              -o BatchMode=yes -o ConnectTimeout=15 \
+              "${UTILISATEUR:+$UTILISATEUR@}$HOTE" \
+              'echo CONNEXION_OK; id; pwd' 2>&1 | tail -60 || true
+          echo
+          echo "Mode test : aucun déploiement n'a été tenté."
+
       - name: Ouvrir le déploiement GitHub
-        if: steps.armement.outputs.arme == 'true'
+        if: steps.armement.outputs.arme == 'true' && !inputs.test_connexion
         id: deploiement
         env:
           GH_TOKEN: ${{ github.token }}
@@ -173,7 +210,7 @@ jobs:
       # plusieurs minutes sans écrire une ligne — sans eux, la connexion tombe
       # au milieu d'une construction.
       - name: Construire et redémarrer sur le nœud
-        if: steps.armement.outputs.arme == 'true'
+        if: steps.armement.outputs.arme == 'true' && !inputs.test_connexion
         env:
           HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
           UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
@@ -193,7 +230,7 @@ jobs:
       # défaut est `dev.jepatisse.com`, seul hôte exempté de COMING_SOON —
       # interroger `www` ne prouverait que l'affichage de la page d'attente.
       - name: Vérifier que le site répond
-        if: steps.armement.outputs.arme == 'true'
+        if: steps.armement.outputs.arme == 'true' && !inputs.test_connexion
         env:
           URL: ${{ vars.URL_VERIFICATION || 'https://dev.jepatisse.com' }}
         run: |
@@ -233,7 +270,12 @@ jobs:
   jira:
     name: Tickets Jira déployés
     needs: deployer
-    if: needs.deployer.outputs.arme == 'true'
+    # `!inputs.test_connexion` n'est pas une précaution de style : un test de
+    # connexion ne déploie rien, il n'a donc rien à annoncer à Jira. Sans
+    # cette condition, éprouver la connexion ferait passer des tickets à
+    # « Déployé » et partir l'e-mail irréversible au demandeur
+    # (docs/contact-jira.md §2) pour un déploiement qui n'a pas eu lieu.
+    if: needs.deployer.outputs.arme == 'true' && !inputs.test_connexion
     uses: ./.github/workflows/jira-deploiement.yml
     with:
       ref: ${{ needs.deployer.outputs.sha }}
