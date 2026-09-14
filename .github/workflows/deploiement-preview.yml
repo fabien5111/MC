@@ -1,0 +1,229 @@
+name: Déploiement — aperçu d'une PR
+
+# Déploie la branche d'une PR sur le nœud d'aperçu, et commente son URL sur la
+# PR. C'est le palier qui manquait : jusqu'ici, entre « je fusionne » et « c'est
+# en ligne sur le nœud qui sert dev et www », il n'y avait rien.
+#
+# L'ÉTIQUETTE EST L'AUTORISATION, et ce n'est pas un détail d'ergonomie. Ce
+# dépôt est public : n'importe qui peut ouvrir une PR. Or un aperçu construit
+# du code sur une vraie machine, avec de vrais secrets. Poser une étiquette
+# demande le droit d'écriture sur le dépôt — c'est donc un geste délibéré de
+# quelqu'un qui a lu le code. Un aperçu ne part jamais du seul fait qu'une PR
+# existe.
+#
+# CE QU'IL NE FAIT PAS, VOLONTAIREMENT :
+#
+#  - Il n'appelle pas Jira. Un aperçu n'est pas un déploiement : annoncer
+#    « Déployé » ferait partir l'e-mail irréversible au demandeur
+#    (docs/contact-jira.md §2) pour du code qui n'est allé nulle part.
+#  - Il n'ouvre pas de déploiement GitHub « production ». L'historique des
+#    déploiements doit rester celui de ce qui sert les visiteurs.
+#  - Il ne touche jamais au nœud 216658. L'aperçu a son propre nœud, et c'est
+#    la raison d'être du dispositif : une construction d'aperçu ne doit pas
+#    disputer son processeur au site qui répond aux visiteurs.
+#
+# UN SEUL CRÉNEAU. Un seul nœud d'aperçu, donc une seule PR à la fois. Le
+# workflow refuse de démarrer si une autre PR ouverte porte déjà l'étiquette,
+# plutôt que d'écraser en silence l'aperçu de quelqu'un d'autre.
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, closed]
+
+# Jamais deux constructions simultanées sur le même nœud d'aperçu : la seconde
+# écraserait le `.next` que la première est en train d'écrire. Même raison
+# qu'en production, et `cancel-in-progress` reste à false pour la même raison —
+# une construction interrompue laisse le nœud sans build.
+concurrency:
+  group: deploiement-preview
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  ETIQUETTE: preview
+
+jobs:
+  controle:
+    name: Contrôle avant aperçu
+    # Se déclenche à la pose de l'étiquette et à chaque push tant qu'elle est
+    # là. Les événements de retrait et de fermeture vont au travail `liberer`.
+    if: >-
+      github.event.action != 'unlabeled' &&
+      github.event.action != 'closed' &&
+      contains(github.event.pull_request.labels.*.name, 'preview')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Poser les variables publiques du modèle
+        run: cp .env.local.example .env.local
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  deployer:
+    name: Déployer l'aperçu
+    needs: controle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Le créneau est unique : on vérifie qu'aucune AUTRE PR ouverte ne porte
+      # l'étiquette. Sans ce contrôle, étiqueter une deuxième PR écraserait
+      # l'aperçu de la première sans que personne ne le voie — et son auteur
+      # testerait le code d'un autre en croyant tester le sien.
+      - name: Vérifier que le créneau est libre
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          autres=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+            --jq "[.[] | select(any(.labels[]; .name == \"$ETIQUETTE\")) | select(.number != $PR) | .number] | join(\", \")")
+          if [ -n "$autres" ]; then
+            echo "::error::Créneau d'aperçu déjà pris par la ou les PR #$autres. Retirer l'étiquette « $ETIQUETTE » de celle-ci avant d'en demander un nouveau — il n'y a qu'un nœud d'aperçu."
+            exit 1
+          fi
+          echo "Créneau libre."
+
+      - name: Préparer la connexion SSH
+        uses: ./.github/actions/preparer-connexion-ssh
+        with:
+          cle: ${{ secrets.PREVIEW_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          hote: ${{ secrets.PREVIEW_SSH_HOST || secrets.DEPLOY_SSH_HOST }}
+          utilisateur: ${{ secrets.PREVIEW_SSH_USER }}
+          port: ${{ vars.PREVIEW_SSH_PORT || vars.DEPLOY_SSH_PORT || '3022' }}
+          hotes-connus: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          alias: noeud-preview
+          prefixe-secret: PREVIEW_SSH
+
+      # Le même script que la production, sans une ligne de différence : c'est
+      # tout l'intérêt d'un aperçu. Un script à part finirait par diverger, et
+      # l'aperçu cesserait de prouver quoi que ce soit sur le déploiement réel.
+      - name: Construire et redémarrer sur le nœud d'aperçu
+        env:
+          RACINE: ${{ vars.PREVIEW_RACINE_APP || '/home/jelastic/ROOT' }}
+          APP_PM2: ${{ vars.PREVIEW_APP_PM2 || 'je-patisse' }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          ssh noeud-preview 'bash -s' -- "$SHA" "$RACINE" "$APP_PM2" < scripts/deploiement-app.sh
+
+      - name: Vérifier que l'aperçu répond
+        env:
+          URL: ${{ vars.PREVIEW_URL || 'https://preview.jepatisse.com' }}
+        run: |
+          for essai in $(seq 1 12); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo 000)
+            echo "Essai $essai : HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Aperçu en ligne : $URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL ne répond pas 200 après deux minutes — aperçu considéré en échec."
+          exit 1
+
+      # Un commentaire mis à jour, jamais empilé : à dix pushes sur une PR, dix
+      # commentaires identiques noieraient la conversation. Le marqueur invisible
+      # sert à retrouver le nôtre.
+      - name: Commenter l'URL sur la PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ vars.PREVIEW_URL || 'https://preview.jepatisse.com' }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          ETAT_TRAVAIL: ${{ job.status }}
+        run: |
+          marqueur="<!-- apercu-pr -->"
+          if [ "$ETAT_TRAVAIL" = "success" ]; then
+            corps="$marqueur
+          ### 🔍 Aperçu déployé
+
+          **$URL**
+
+          Commit \`$(printf '%s' "$SHA" | cut -c1-7)\` · mis à jour le $(date -u '+%d/%m/%Y à %H:%M UTC').
+
+          Ce nœud est distinct de celui qui sert \`dev\` et \`www\`, mais il interroge **la même base de données** : un test destructif s'y voit en vrai."
+          else
+            corps="$marqueur
+          ### 🔍 Aperçu — échec
+
+          Le déploiement de l'aperçu a échoué pour le commit \`$(printf '%s' "$SHA" | cut -c1-7)\`. Voir [le journal]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+          fi
+
+          existant=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marqueur\")) | .id] | first // empty")
+          if [ -n "$existant" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existant" -f body="$corps" > /dev/null
+            echo "Commentaire mis à jour."
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$corps" > /dev/null
+            echo "Commentaire publié."
+          fi
+
+  # LIBÉRER LE CRÉNEAU. Sans ce travail, une PR fermée continuerait de tenir le
+  # nœud d'aperçu, et la suivante se verrait refuser le créneau par un contrôle
+  # qui aurait raison sur la forme et tort sur le fond.
+  liberer:
+    name: Libérer le créneau d'aperçu
+    if: >-
+      (github.event.action == 'unlabeled' && github.event.label.name == 'preview') ||
+      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'preview'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Préparer la connexion SSH
+        uses: ./.github/actions/preparer-connexion-ssh
+        with:
+          cle: ${{ secrets.PREVIEW_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          hote: ${{ secrets.PREVIEW_SSH_HOST || secrets.DEPLOY_SSH_HOST }}
+          utilisateur: ${{ secrets.PREVIEW_SSH_USER }}
+          port: ${{ vars.PREVIEW_SSH_PORT || vars.DEPLOY_SSH_PORT || '3022' }}
+          hotes-connus: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          alias: noeud-preview
+          prefixe-secret: PREVIEW_SSH
+
+      # Arrêt seulement : ni suppression du code, ni reconstruction. Le prochain
+      # aperçu écrasera tout de toute façon, et un nœud qu'on vide est un nœud
+      # qu'on ne peut plus inspecter quand on cherche à comprendre après coup.
+      - name: Arrêter l'aperçu
+        env:
+          APP_PM2: ${{ vars.PREVIEW_APP_PM2 || 'je-patisse' }}
+        run: |
+          ssh noeud-preview "pm2 stop '$APP_PM2' || true; pm2 list" || \
+            echo "::warning::Arrêt de l'aperçu impossible — le créneau est libéré côté étiquette, le processus distant tourne peut-être encore."
+
+      - name: Signaler la libération sur la PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          marqueur="<!-- apercu-pr -->"
+          corps="$marqueur
+          ### 🔍 Aperçu arrêté
+
+          Le créneau est libre : une autre PR peut maintenant recevoir l'étiquette « preview »."
+          existant=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marqueur\")) | .id] | first // empty")
+          if [ -n "$existant" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existant" -f body="$corps" > /dev/null
+          fi

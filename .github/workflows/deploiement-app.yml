@@ -131,116 +131,21 @@ jobs:
           echo "Commande distante : bash -s -- $SHA <racine> <app pm2> < scripts/deploiement-app.sh"
           bash -n scripts/deploiement-app.sh && echo "Script distant : syntaxe valide."
 
-      # Clé d'hôte épinglée quand le secret est fourni. À défaut on l'accepte
-      # à la volée, en le disant : une connexion de déploiement porte une clé
-      # privée, l'accepter sans vérifier revient à faire confiance au premier
-      # serveur qui répond.
+      # Validation et écriture de ~/.ssh/config déléguées à l'action commune :
+      # `deploiement-preview.yml` s'en sert aussi, et cette logique est née de
+      # quatre pannes dont aucune ne se lisait dans son message d'erreur. Deux
+      # copies auraient fini par diverger.
       - name: Préparer la connexion SSH
         if: steps.armement.outputs.arme == 'true'
-        env:
-          CLE: ${{ secrets.DEPLOY_SSH_KEY }}
-          HOTE: ${{ secrets.DEPLOY_SSH_HOST }}
-          UTILISATEUR: ${{ secrets.DEPLOY_SSH_USER }}
-          PORT: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
-          HOTES_CONNUS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
-        run: |
-          if [ -z "$CLE" ] || [ -z "$HOTE" ]; then
-            echo "::error::DEPLOY_SSH_KEY et DEPLOY_SSH_HOST sont requis pour déployer (voir DEPLOY.md)."
-            exit 1
-          fi
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-
-          # DEUX FORMATS ACCEPTÉS, et ce n'est pas du luxe. Une clé privée
-          # OpenSSH se copie depuis un terminal web, où les retours à la ligne
-          # et l'habillage du texte la mutilent sans que rien ne le signale :
-          # l'en-tête et le pied restent lisibles, l'empreinte se calcule
-          # encore (elle ne vient que de la partie publique), et l'échec
-          # n'apparaît qu'au moment de s'en servir, sous la forme obscure
-          # « error in libcrypto ». D'où l'acceptation d'une forme base64 sur
-          # UNE seule ligne, immunisée contre l'habillage.
-          CLE_PROPRE=$(printf '%s' "$CLE" | tr -d '\r')
-
-          # Ce que le secret contient RÉELLEMENT, avant toute tentative. Rien
-          # n'est révélé du contenu : seulement des longueurs et des comptes —
-          # de quoi distinguer un collage tronqué (longueur inattendue) d'un
-          # collage pollué (caractères hors alphabet), les deux échecs qu'on a
-          # rencontrés, sans jamais rien écrire de la clé dans un journal.
-          BRUT=$(printf '%s' "$CLE_PROPRE" | tr -d ' \n')
-          FILTRE=$(printf '%s' "$BRUT" | tr -cd 'A-Za-z0-9+/=')
-          echo "Secret reçu : ${#CLE_PROPRE} caractères (${#BRUT} hors espaces, ${#FILTRE} dans l'alphabet base64)."
-          if printf '%s' "$CLE_PROPRE" | grep -q -- '-----BEGIN'; then
-            echo "Forme détectée : clé OpenSSH (« -----BEGIN … »)."
-            printf '%s\n' "$CLE_PROPRE" > ~/.ssh/id_deploiement
-          else
-            echo "Forme détectée : base64."
-            if [ "${#FILTRE}" -ne "${#BRUT}" ]; then
-              echo "::warning::$(( ${#BRUT} - ${#FILTRE} )) caractère(s) hors alphabet base64 écartés — du texte voisin a probablement été copié avec la clé."
-            fi
-            # Tolérant à l'entrée, strict à la sortie : on écarte ce qui n'est
-            # pas du base64 plutôt que d'échouer sur un caractère parasite, et
-            # c'est la validation ci-dessous qui tranche pour de bon.
-            if ! printf '%s' "$FILTRE" | base64 -d > ~/.ssh/id_deploiement 2>/dev/null; then
-              echo "::error::DEPLOY_SSH_KEY n'est ni une clé OpenSSH (« -----BEGIN … ») ni du base64 décodable. Longueur reçue : ${#FILTRE} caractères — à comparer avec celle annoncée par le nœud (cf. DEPLOY.md). Une longueur plus courte signe un collage tronqué."
-              exit 1
-            fi
-          fi
-          chmod 600 ~/.ssh/id_deploiement
-
-          # Contrôle qui engage VRAIMENT la partie privée : dériver la clé
-          # publique impose de la déchiffrer entièrement. `ssh-keygen -lf`, lui,
-          # se contente de la partie publique et déclare bonne une clé tronquée
-          # — c'est exactement ce qui a fait perdre un passage.
-          if ! ssh-keygen -y -f ~/.ssh/id_deploiement > /dev/null 2>&1; then
-            echo "::error::DEPLOY_SSH_KEY est illisible : la partie privée est tronquée ou altérée (typiquement un collage depuis un terminal web). La recoller en base64 sur une seule ligne — cf. DEPLOY.md."
-            exit 1
-          fi
-          echo "Clé privée valide : $(ssh-keygen -y -f ~/.ssh/id_deploiement | ssh-keygen -lf -)"
-
-          # L'hôte et le compte subissent le même sort que la clé : ils sont
-          # recopiés à la main dans des secrets, donc sujets aux espaces, aux
-          # retours à la ligne et au texte voisin. Un hôte pollué ne produit
-          # qu'un « hostname contains invalid characters » qui ne dit ni quel
-          # secret est en cause, ni ce qu'il contient. On nettoie, on contrôle,
-          # et on annonce des longueurs — jamais le contenu.
-          HOTE_PROPRE=$(printf '%s' "$HOTE" | tr -d '[:space:]')
-          UTILISATEUR_PROPRE=$(printf '%s' "$UTILISATEUR" | tr -d '[:space:]')
-          echo "Hôte : ${#HOTE_PROPRE} caractères · compte : ${#UTILISATEUR_PROPRE} caractères."
-          if ! printf '%s' "$HOTE_PROPRE" | grep -qE '^[A-Za-z0-9.-]+$'; then
-            echo "::error::DEPLOY_SSH_HOST ne ressemble pas à un nom d'hôte (lettres, chiffres, points et tirets seulement). Attendu ici : gate.jpe.infomaniak.com — vérifier qu'aucun autre contenu n'y a été collé par mégarde."
-            exit 1
-          fi
-          if ! printf '%s' "$UTILISATEUR_PROPRE" | grep -qE '^[A-Za-z0-9._-]+$'; then
-            echo "::error::DEPLOY_SSH_USER ne ressemble pas à un compte. Attendu ici : <numéro de nœud>-<identifiant>, soit 216658-11487 (cf. DEPLOY.md)."
-            exit 1
-          fi
-
-          if [ -n "$HOTES_CONNUS" ]; then
-            printf '%s\n' "$HOTES_CONNUS" > ~/.ssh/known_hosts
-          else
-            echo "::warning::DEPLOY_SSH_KNOWN_HOSTS absent — clé d'hôte acceptée sans vérification."
-            ssh-keyscan -p "$PORT" "$HOTE_PROPRE" >> ~/.ssh/known_hosts 2>/dev/null || true
-          fi
-          chmod 600 ~/.ssh/known_hosts
-
-          # UN SEUL ENDROIT QUI CONNAÎT LA CONNEXION. Les paramètres vivaient
-          # jusqu'ici en triple — préparation, diagnostic, déploiement —, chacun
-          # rebâtissant la même cible à coups de `${UTILISATEUR:+…}@$HOTE`. Trois
-          # occasions de diverger, sur un point où l'erreur ne se lit pas. Le
-          # fichier de configuration nomme la cible une fois : les étapes
-          # suivantes disent `ssh noeud-app`, sans secret ni expression.
-          cat > ~/.ssh/config <<CONFIG
-          Host noeud-app
-            HostName $HOTE_PROPRE
-            User $UTILISATEUR_PROPRE
-            Port $PORT
-            IdentityFile ~/.ssh/id_deploiement
-            IdentitiesOnly yes
-            BatchMode yes
-            ConnectTimeout 15
-            ServerAliveInterval 30
-            ServerAliveCountMax 20
-          CONFIG
-          chmod 600 ~/.ssh/config
+        uses: ./.github/actions/preparer-connexion-ssh
+        with:
+          cle: ${{ secrets.DEPLOY_SSH_KEY }}
+          hote: ${{ secrets.DEPLOY_SSH_HOST }}
+          utilisateur: ${{ secrets.DEPLOY_SSH_USER }}
+          port: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
+          hotes-connus: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          alias: noeud-app
+          prefixe-secret: DEPLOY_SSH
 
       # DIAGNOSTIC — n'ouvre la connexion que pour la regarder, et ne déploie
       # rien. Existe parce qu'un échec d'authentification SSH ne dit, dans le

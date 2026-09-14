@@ -145,6 +145,93 @@ Jelastic plutôt qu'à un clone classique.
 La procédure manuelle ci-dessous reste valable et reste la porte de sortie :
 elle est ce que le workflow exécute, ni plus ni moins.
 
+## Aperçu d'une PR (`preview.jepatisse.com`)
+
+Le palier qui manquait. Jusqu'ici, entre « je fusionne » et « c'est en ligne sur
+le nœud qui sert `dev` **et** `www` », il n'y avait rien : le premier endroit où
+l'on pouvait regarder une correction était déjà le nœud de tout le monde.
+
+`.github/workflows/deploiement-preview.yml` déploie la branche d'une PR sur un
+**nœud d'aperçu distinct**, et commente son URL sur la PR.
+
+### L'étiquette est l'autorisation
+
+L'aperçu ne part **jamais** du seul fait qu'une PR existe : il faut poser
+l'étiquette **`preview`** dessus. Ce n'est pas de l'ergonomie, c'est la
+sécurité du dispositif — ce dépôt est **public**, n'importe qui peut ouvrir une
+PR, et un aperçu construit du code sur une vraie machine avec de vrais secrets.
+Or poser une étiquette exige le droit d'écriture sur le dépôt : c'est donc
+forcément le geste délibéré de quelqu'un qui a lu le code.
+
+Retirer l'étiquette, ou fermer la PR, arrête l'aperçu et libère le créneau.
+
+### Un seul créneau, et il est annoncé
+
+Un seul nœud d'aperçu, donc **une PR à la fois**. Le workflow refuse de démarrer
+si une autre PR ouverte porte déjà l'étiquette, en la nommant — plutôt que
+d'écraser en silence l'aperçu d'un autre, qui testerait alors du code qui n'est
+pas le sien sans s'en apercevoir.
+
+### Ce qu'un aperçu ne prouve pas
+
+**La base de données est la même.** Le nœud est séparé, pas les données : un
+aperçu interroge le même PostgreSQL que `dev` et `www`. Un test destructif s'y
+voit en vrai, et une PR qui suppose une migration SQL ne peut pas être essayée
+tant que cette migration n'est pas appliquée à la base commune — ce qui affecte
+aussitôt tout le monde. C'est le plafond du dispositif, quelle que soit
+l'infrastructure : le commentaire déposé sur la PR le rappelle à chaque fois.
+
+### Ce qu'il ne fait pas, volontairement
+
+- **Pas d'appel à Jira.** Un aperçu n'est pas un déploiement : annoncer
+  « Déployé » ferait partir l'e-mail irréversible au demandeur
+  (`docs/contact-jira.md` §2) pour du code qui n'est allé nulle part.
+- **Pas de déploiement GitHub « production ».** L'historique des déploiements
+  doit rester celui de ce qui sert les visiteurs.
+- **Il ne touche jamais au nœud 216658.** C'est la raison d'être d'un nœud
+  séparé : une construction d'aperçu ne doit pas disputer son processeur au
+  site qui répond aux visiteurs.
+
+### Le même script que la production
+
+`scripts/deploiement-app.sh` est utilisé **sans une ligne de différence** par
+les deux workflows, et la validation des secrets SSH est une action commune
+(`.github/actions/preparer-connexion-ssh`). Un script d'aperçu séparé finirait
+par diverger — et l'aperçu cesserait alors de prouver quoi que ce soit sur le
+déploiement réel, ce qui est pourtant tout son objet.
+
+### Ce qu'il faut lui donner
+
+**Où :** Settings > Secrets and variables > Actions, sur le dépôt GitHub.
+
+| Nom | Type | Rôle |
+|---|---|---|
+| `PREVIEW_SSH_USER` | Secret | Compte du nœud d'aperçu, `<numéro de nœud>-11487`. **Seul secret réellement nouveau.** |
+| `PREVIEW_SSH_HOST` | Secret | Facultatif — à défaut, `DEPLOY_SSH_HOST` est réutilisé (même passerelle). |
+| `PREVIEW_SSH_KEY` | Secret | Facultatif — à défaut, `DEPLOY_SSH_KEY` est réutilisée. La clé publique étant enregistrée sur le **compte** Jelastic, elle ouvre déjà tous ses nœuds. |
+| `PREVIEW_URL` | Variable | `https://preview.jepatisse.com` par défaut. |
+| `PREVIEW_RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
+| `PREVIEW_APP_PM2` | Variable | `je-patisse` par défaut. |
+
+### Prérequis d'infrastructure
+
+**Où :** tableau de bord Jelastic, environnement `jepatisse-app`.
+
+1. **Ajouter un nœud applicatif** (pile Node.js 22.x, variante `-pm2`) à
+   l'environnement existant — pas un nouvel environnement : l'équilibreur 216680
+   doit pouvoir l'atteindre par le réseau interne.
+2. **Relever son numéro de nœud**, puis sa chaîne de connexion dans l'onglet
+   *SFTP / Accès SSH direct* — c'est `PREVIEW_SSH_USER`.
+3. **Poser les variables d'environnement** de ce nœud comme celles du 216658
+   (mêmes valeurs ; `COMING_SOON` peut y rester absent).
+4. **DNS Infomaniak** : `preview.jepatisse.com` vers la même cible que
+   `dev.jepatisse.com`.
+5. **Équilibreur 216680** : ajouter un bloc serveur pour `preview.jepatisse.com`
+   routé vers le nouveau nœud, et étendre le certificat Let's Encrypt à ce
+   domaine. Les réglages qui doivent survivre à une régénération de la
+   configuration par la plateforme vont dans `/etc/nginx/conf.d/` (cf.
+   « Certificats »).
+
 ## Construire et déployer l'application (à la main)
 
 Le code est déployé depuis Git, puis **construit sur le nœud**.
