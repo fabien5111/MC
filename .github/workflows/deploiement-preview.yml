@@ -18,9 +18,13 @@ name: Déploiement — aperçu d'une PR
 #    (docs/contact-jira.md §2) pour du code qui n'est allé nulle part.
 #  - Il n'ouvre pas de déploiement GitHub « production ». L'historique des
 #    déploiements doit rester celui de ce qui sert les visiteurs.
-#  - Il ne touche jamais au nœud 216658. L'aperçu a son propre nœud, et c'est
-#    la raison d'être du dispositif : une construction d'aperçu ne doit pas
-#    disputer son processeur au site qui répond aux visiteurs.
+#  - Il ne touche jamais au nœud 216658. L'aperçu a son propre nœud, dans son
+#    propre ENVIRONNEMENT (`jepatisse-preview`) — et ce second point a été payé
+#    cher. Le nœud d'aperçu a d'abord été ajouté comme une couche de
+#    `jepatisse-app` : la plateforme régénère alors `upstream common` sur TOUTE
+#    la couche, y a rangé le nœud d'aperçu vide, et `dev.jepatisse.com` s'est
+#    mis à servir l'application d'usine. Un `server_name` distinct dans
+#    `conf.d/` n'y change rien — l'upstream est réécrit au-dessus. Cf. DEPLOY.md.
 #
 # UN SEUL CRÉNEAU. Un seul nœud d'aperçu, donc une seule PR à la fois. Le
 # workflow refuse de démarrer si une autre PR ouverte porte déjà l'étiquette,
@@ -123,10 +127,19 @@ jobs:
         run: |
           ssh noeud-preview 'bash -s' -- "$SHA" "$RACINE" "$APP_PM2" < scripts/deploiement-app.sh
 
+      # PAS DE VALEUR PAR DÉFAUT POUR L'URL, volontairement. Elle est celle de
+      # l'environnement d'aperçu, donnée par la plateforme à sa création
+      # (`https://<environnement>.jcloud-ver-jpe.ik-server.com`) : une valeur
+      # écrite en dur ici finirait par désigner un environnement détruit, et le
+      # workflow attendrait deux minutes une réponse qui ne peut pas venir.
       - name: Vérifier que l'aperçu répond
         env:
-          URL: ${{ vars.PREVIEW_URL || 'https://preview.jepatisse.com' }}
+          URL: ${{ vars.PREVIEW_URL }}
         run: |
+          if [ -z "$URL" ]; then
+            echo "::error::La variable de dépôt PREVIEW_URL est absente — c'est l'adresse de l'environnement d'aperçu (cf. DEPLOY.md). Sans elle, rien ne permet de savoir où vérifier."
+            exit 1
+          fi
           for essai in $(seq 1 12); do
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo 000)
             echo "Essai $essai : HTTP $code"
@@ -147,7 +160,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-          URL: ${{ vars.PREVIEW_URL || 'https://preview.jepatisse.com' }}
+          URL: ${{ vars.PREVIEW_URL }}
           SHA: ${{ github.event.pull_request.head.sha }}
           ETAT_TRAVAIL: ${{ job.status }}
         run: |
@@ -160,7 +173,7 @@ jobs:
 
           Commit \`$(printf '%s' "$SHA" | cut -c1-7)\` · mis à jour le $(date -u '+%d/%m/%Y à %H:%M UTC').
 
-          Ce nœud est distinct de celui qui sert \`dev\` et \`www\`, mais il interroge **la même base de données** : un test destructif s'y voit en vrai."
+          Environnement distinct de celui qui sert \`dev\` et \`www\` — mais **la même base de données** : un test destructif s'y voit en vrai, et une PR qui suppose une migration SQL ne peut pas être essayée avant que cette migration ne soit appliquée à la base commune."
           else
             corps="$marqueur
           ### 🔍 Aperçu — échec

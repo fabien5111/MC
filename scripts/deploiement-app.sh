@@ -124,12 +124,30 @@ else
 fi
 [ -n "$PM2" ] || echouer "pm2 introuvable sur le nœud. Redémarrer l'application depuis le panneau Virtuozzo, puis signaler ce chemin manquant."
 
-# Jamais `--update-env` : il propage l'environnement du shell appelant — donc
-# celui de cette session SSH — et remplacerait les variables que la plateforme
-# a posées sur le processus. C'est exactement le piège documenté dans
-# DEPLOY.md, qui a coûté deux pannes le 13/09. Un redémarrage simple recharge
-# le code neuf en gardant l'environnement du processus.
-"$PM2" restart "$APP_PM2"
+# AMORÇAGE D'UN NŒUD VIERGE — relevé du 14/09, à la création du nœud d'aperçu.
+# `pm2 restart` échoue quand il n'a rien à redémarrer, ce qui est précisément
+# l'état d'un nœud neuf : le premier déploiement n'aurait jamais pu réussir.
+# Le démarrage n'a lieu que dans ce cas, et le contrôle qui le précède n'est
+# pas une précaution de style — un `pm2 start` inconditionnel ferait tourner un
+# SECOND processus sur le même port. La moitié des requêtes servirait alors
+# l'ancien build, sans qu'aucune erreur ne le signale nulle part.
+if "$PM2" describe "$APP_PM2" >/dev/null 2>&1; then
+  # Jamais `--update-env` : il propage l'environnement du shell appelant — donc
+  # celui de cette session SSH — et remplacerait les variables que la plateforme
+  # a posées sur le processus. C'est exactement le piège documenté dans
+  # DEPLOY.md, qui a coûté deux pannes le 13/09. Un redémarrage simple recharge
+  # le code neuf en gardant l'environnement du processus.
+  "$PM2" restart "$APP_PM2"
+else
+  echo "   « $APP_PM2 » inconnu de pm2 — premier démarrage depuis ecosystem.config.js."
+  "$PM2" start ecosystem.config.js
+  # Le nom vient de deux endroits qui peuvent diverger : le workflow (variable
+  # APP_PM2) et `ecosystem.config.js`. S'ils ne concordent pas, chaque
+  # déploiement relancerait un processus de plus en croyant amorcer un nœud
+  # vierge. On le constate tout de suite plutôt qu'au cinquième.
+  "$PM2" describe "$APP_PM2" >/dev/null 2>&1 || echouer "« $APP_PM2 » reste inconnu de pm2 après démarrage : le nom attendu par le workflow ne correspond pas à celui déclaré dans ecosystem.config.js. Aligner les deux avant de rejouer."
+  "$PM2" save || echo "   (« pm2 save » a échoué — sans conséquence sur ce déploiement.)"
+fi
 "$PM2" status
 
 echo "── Déploiement terminé sur le nœud ──"
