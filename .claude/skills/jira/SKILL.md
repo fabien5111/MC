@@ -30,8 +30,9 @@ node scripts/jira.mjs lire MC-123 --commentaires 0    # sans les commentaires
 node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
 node scripts/jira.mjs chercher "assignee = currentUser() AND sprint IN openSprints()" --max 50
 node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
-node scripts/jira.mjs demarrer MC-123                 # → « En cours », au tout début du développement
-node scripts/jira.mjs envoyer-en-test MC-123          # → « Revue en cours », juste après le push de la branche
+node scripts/jira.mjs demarrer MC-123                 # → « En cours », à la prise en charge du ticket
+node scripts/jira.mjs envoyer-en-test MC-123          # → « Revue en cours », dès que l'aperçu de PR est EN LIGNE
+node scripts/jira.mjs a-deployer MC-123               # → « A déployer », à l'envoi de la fusion vers main
 ```
 
 Variables requises dans l'environnement de la session : `JIRA_BASE_URL`,
@@ -47,11 +48,11 @@ appelant l'API à la main.
    risque, volume de contexte, modèle recommandé) à partir de ce que dit le
    ticket, **puis attendre l'OK** — un ticket Jira n'est pas une autorisation
    de développer, c'est une demande à qualifier comme une autre.
-3. **Démarrer** (`demarrer`) juste après l'OK, avant d'écrire le premier
-   code — fait passer le ticket à « En cours ». Si le ticket n'est pas au
-   statut attendu en amont de cette transition (ex. il n'est pas « Spéc
-   rédigée »), le script le signale plutôt que d'échouer en silence ; ne pas
-   forcer, en parler à l'utilisateur.
+3. **Démarrer** (`demarrer`) quand l'utilisateur demande de prendre le
+   ticket en charge, avant d'écrire le premier code — fait passer le ticket à
+   « En cours ». Si le ticket n'est pas au statut attendu en amont de cette
+   transition (ex. il n'est pas « Spéc rédigée »), le script le signale
+   plutôt que d'échouer en silence ; ne pas forcer, en parler à l'utilisateur.
 4. **Développer** sur la branche désignée, en citant la clé du ticket **en
    majuscules** dans le titre de la PR et dans les messages de commit
    (`MC-123 — …`). C'est ce qui remplit le panneau « Développement » du
@@ -60,28 +61,45 @@ appelant l'API à la main.
    la casse n'est pas un détail de style. Une PR qui n'a réellement pas de
    ticket (outillage, documentation) se règle par le label `sans-jira`, jamais
    en inventant une clé.
-5. **Envoyer en test** (`envoyer-en-test`) juste après le push de la branche
-   (ou l'ouverture de la PR) — fait passer le ticket à « Revue en cours ».
-   C'est la fin du travail de la session sur ce ticket, pas le déploiement :
-   le passage à « Déployé » reste un geste ultérieur, humain ou piloté par le
-   lot 3 (`.github/workflows/jira-deploiement.yml`), jamais par ce verbe.
-6. **Commenter** le ticket seulement si l'utilisateur le demande.
+5. **Envoyer en test** (`envoyer-en-test`) quand le développement est mis à
+   disposition sur l'environnement d'aperçu de PR — c'est-à-dire une fois
+   confirmé que l'aperçu répond (commentaire « Aperçu déployé » sur la PR),
+   jamais au seul push : un push dont la construction échoue ne met rien à
+   disposition de personne. Fait passer le ticket à « Revue en cours ».
+6. **Passer « A déployer »** (`a-deployer`) au moment d'envoyer la commande
+   de fusion vers `main` — c'est ce geste-là qui met le correctif à
+   disposition sur `dev.jepatisse.com`, pas la fusion en elle-même (le
+   déploiement peut échouer après coup). Fait passer le ticket à
+   « A déployer », le statut que surveille le lot 3
+   (`.github/workflows/jira-deploiement.yml`, `scripts/jira-deploiement.mjs`)
+   pour savoir quels tickets transitionner à la prochaine réussite.
+7. **« Déployé » n'est jamais posé par un verbe de cette skill.** Une fois le
+   déploiement de production confirmé vert, c'est le lot 3 qui transitionne
+   automatiquement les tickets cités dans les commits déployés — à condition
+   que `JIRA_DEPLOY_ACTIF` soit armé (sinon il journalise sans écrire, cf.
+   `DEPLOY.md`). Le rôle de l'agent ici se borne à **constater** la
+   transition (`lire MC-123`) et à la signaler à l'utilisateur, jamais à
+   appeler `demarrer` / `envoyer-en-test` / `a-deployer` pour l'y forcer — ces
+   trois verbes refusent d'ailleurs explicitement toute transition qui
+   mènerait à « Déployé » (cf. « Limites » ci-dessous).
+8. **Commenter** le ticket seulement si l'utilisateur le demande.
 
 ## Limites, volontaires
 
-- **Deux verbes de transition seulement, chacun borné à un seul statut
+- **Trois verbes de transition seulement, chacun borné à un seul statut
   cible** (`demarrer` → « En cours », `envoyer-en-test` → « Revue en
-  cours »), et tous deux **refusent explicitement** toute transition qui
-  mènerait au statut « Déployé » — même si une erreur de configuration
-  (`JIRA_STATUS_IN_PROGRESS` / `JIRA_STATUS_IN_TEST` mal renseignées)
-  désignait ce statut par erreur. Faire passer un ticket à « Déployé »
-  déclenche l'e-mail au demandeur, irréversible une fois parti
-  (`docs/contact-jira.md` §2) — ça reste exclusivement le travail du workflow
+  cours », `a-deployer` → « A déployer »), et tous trois **refusent
+  explicitement** toute transition qui mènerait au statut « Déployé » — même
+  si une erreur de configuration (`JIRA_STATUS_IN_PROGRESS` /
+  `JIRA_STATUS_IN_TEST` / `JIRA_STATUS_TO_DEPLOY` mal renseignées) désignait
+  ce statut par erreur. Faire passer un ticket à « Déployé » déclenche
+  l'e-mail au demandeur, irréversible une fois parti (`docs/contact-jira.md`
+  §2) — ça reste exclusivement le travail du workflow
   `.github/workflows/jira-deploiement.yml`, qui sait qu'un build production a
   réussi, jamais celui d'un agent qui développe un ticket. Pour tout autre
   changement de statut, le demander à l'utilisateur plutôt que d'improviser
-  un usage détourné de ces deux verbes.
-- **Aucun passe-plat REST générique** : cinq verbes, pas un client Jira
+  un usage détourné de ces trois verbes.
+- **Aucun passe-plat REST générique** : six verbes, pas un client Jira
   complet. Un besoin nouveau s'ajoute au script, avec son garde-fou le cas
   échéant, il ne se contourne pas avec `curl`.
 - **Un commentaire est public** sur le ticket, et les tickets issus du

@@ -23,13 +23,16 @@ configuration hors dépôt, listée à la fin de sa section.
 
 ## 1. Lot 1 — `scripts/jira.mjs`
 
-Trois verbes, pas un client Jira :
+Six verbes, pas un client Jira. Trois de lecture/écriture libre :
 
 ```bash
 node scripts/jira.mjs lire MC-123 [--commentaires N]
 node scripts/jira.mjs chercher "<JQL>" [--max N]
 node scripts/jira.mjs commenter MC-123 "<texte>"   # « - » lit l'entrée standard
 ```
+
+Et trois transitions étroitement bornées, pilotées par l'agent au rythme de
+son propre travail (`demarrer`, `envoyer-en-test`, `a-deployer` — §1.6).
 
 Variables requises : `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — les
 mêmes que le module contact, déjà déclarées dans `.env.local.example`. Elles
@@ -89,19 +92,22 @@ l'environnement. L'inverse ferait écraser sans bruit les variables d'une
 session ou d'un job CI par un fichier local oublié — c'est-à-dire viser la
 mauvaise instance Jira sans le voir.
 
-### 1.6 `demarrer` / `envoyer-en-test` — deux transitions pilotées par l'agent
+### 1.6 `demarrer` / `envoyer-en-test` / `a-deployer` — trois transitions pilotées par l'agent
 
 La session Claude qui développe un ticket a besoin de faire avancer son
-statut à deux moments : au tout début (« Spéc rédigée » → « En cours ») et
-juste après avoir poussé sa branche (« En cours » → « Revue en cours »).
-Ni l'un ni l'autre ne relève du lot 3 : ce ne sont pas des transitions
-déclenchées par un déploiement, mais par le rythme de travail de l'agent
-lui-même — d'où deux nouveaux verbes plutôt qu'un détournement du script de
-déploiement.
+statut à trois moments du cycle, chacun déclenché par un geste précis plutôt
+que par la seule écriture de code : la prise en charge (« Spéc rédigée » →
+« En cours »), la mise à disposition sur l'aperçu de PR (« En cours » →
+« Revue en cours »), et l'envoi de la fusion vers `main` (« Revue en cours »
+→ « A déployer »). Aucun des trois ne relève du lot 3 : ce ne sont pas des
+transitions déclenchées par un déploiement production, mais par le rythme de
+travail de l'agent lui-même — d'où trois verbes dédiés plutôt qu'un
+détournement du script de déploiement.
 
 ```bash
 node scripts/jira.mjs demarrer MC-123
 node scripts/jira.mjs envoyer-en-test MC-123
+node scripts/jira.mjs a-deployer MC-123
 ```
 
 **Chacun ne connaît qu'un seul statut cible**, configurable comme les
@@ -111,8 +117,20 @@ statuts du lot 3 (id d'abord, nom en repli) :
 |---|---|---|
 | `JIRA_STATUS_IN_PROGRESS` / `_ID` | Statut visé par `demarrer` | `En cours` |
 | `JIRA_STATUS_IN_TEST` / `_ID` | Statut visé par `envoyer-en-test` | `Revue en cours` |
+| `JIRA_STATUS_TO_DEPLOY` / `_ID` | Statut visé par `a-deployer` | `A déployer` |
 
-**Le garde-fou du §1.2 ne recule pas d'un pas avec ces deux verbes.** Avant
+`a-deployer` ne réutilise aucune variable propre : `JIRA_STATUS_TO_DEPLOY` /
+`_ID` existent déjà, c'est le statut de départ que `decisionDeploiement`
+(`scripts/jira-deploiement.mjs`, lot 3) surveille pour savoir quels tickets
+transitionner à la prochaine réussite de déploiement. Poser ce statut à la
+main, ici, est donc ce qui **arme** le lot 3 pour ce ticket précis — sans
+cette transition, un ticket resté en « Revue en cours » est explicitement
+laissé de côté par `decisionDeploiement` (`action: 'hors_perimetre'`), quel
+que soit le nombre de déploiements qui suivent. C'est exactement ce qui est
+arrivé à JEP-131 le 15/09 avant l'ajout de ce verbe : le déploiement #12 a
+bien tourné, mais a ignoré le ticket, resté en « Revue en cours ».
+
+**Le garde-fou du §1.2 ne recule pas d'un pas avec ces trois verbes.** Avant
 tout envoi à Jira, `resoudreTransition` (`scripts/jira.mjs`, testée) vérifie
 que la transition résolue ne mène **pas** au statut configuré comme
 « Déployé » (`JIRA_STATUS_DEPLOYED` / `_ID`, mêmes variables que le lot 3) —
@@ -130,9 +148,10 @@ précis où il ne faut pas se tromper.
 `JIRA_STATUS_IN_TEST` (et, si on veut la robustesse au renommage, leurs
 variantes `_ID`) aux variables d'environnement de l'environnement Claude
 Code — mêmes emplacements que les autres variables `JIRA_*` du lot 1.
-Aucune config Jira supplémentaire : ces deux statuts existent déjà dans le
-workflow observé (`À faire` → `Spéc rédigée` → `En cours` → `Revue en
-cours` → `À déployer` → `Déployé`).
+`JIRA_STATUS_TO_DEPLOY` y figure déjà (lot 3), rien à ajouter pour
+`a-deployer`. Aucune config Jira supplémentaire : ces trois statuts
+existent déjà dans le workflow observé (`À faire` → `Spéc rédigée` →
+`En cours` → `Revue en cours` → `A déployer` → `Déployé`).
 
 **Piège vécu (JEP-131)** : le premier réglage de `JIRA_STATUS_IN_TEST`
 visait « En cours de test », un nom jamais présent dans le workflow réel du
