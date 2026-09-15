@@ -247,8 +247,38 @@ async function envoyerEnTest(cle) {
  * `transitionner` s'applique ici comme aux deux autres verbes : si
  * `JIRA_STATUS_TO_DEPLOY` finissait par désigner « Déployé » par erreur de
  * configuration, la transition serait refusée plutôt qu'exécutée.
+ *
+ * AUCUN REPLI IMPLICITE TOLÉRÉ, contrairement à `demarrer` / `envoyer-en-test`
+ * — incident vécu le 15/09. `lireConfigStatuts` replie `aDeployerNom` sur
+ * « Terminé » et `deployeNom` sur « Déployé » quand les variables manquent :
+ * deux noms génériques, jamais ceux de ce projet, dont le vrai statut
+ * terminal s'appelle « Terminé ». Dans une session sans ces deux variables,
+ * ce repli a fait exécuter JEP-131 → « Terminé » directement : le garde-fou
+ * de `transitionner` compare la transition trouvée à `deployeNom`, resté à
+ * « Déployé » par défaut — les deux noms ne coïncidant pas, rien n'a
+ * bloqué. Une configuration absente doit arrêter la commande, comme
+ * `lireConfig()` le fait déjà pour `JIRA_BASE_URL` / `JIRA_EMAIL` /
+ * `JIRA_API_TOKEN` — jamais deviner un nom qui pourrait, par malchance,
+ * être le bon.
  */
+export function verifierConfigADeployer(env) {
+  return [
+    ['JIRA_STATUS_TO_DEPLOY', env.JIRA_STATUS_TO_DEPLOY, env.JIRA_STATUS_TO_DEPLOY_ID],
+    ['JIRA_STATUS_DEPLOYED', env.JIRA_STATUS_DEPLOYED, env.JIRA_STATUS_DEPLOYED_ID],
+  ]
+    .filter(([, nom, id]) => !nom && !id)
+    .map(([variable]) => variable);
+}
+
 async function aDeployer(cle) {
+  const manquantes = verifierConfigADeployer(process.env);
+  if (manquantes.length > 0) {
+    echouer(
+      `${manquantes.join(', ')} absente(s) de l'environnement — ce verbe refuse de deviner un nom de statut par défaut ` +
+        `(incident du 15/09 : un repli sur « Terminé » / « Déployé » a fait sauter l'étape « A déployer »). Renseigner ` +
+        `les noms réels du workflow Jira du projet avant de réessayer (cf. docs/outillage-jira.md §1.6).`,
+    );
+  }
   const statuts = lireConfigStatuts();
   await transitionner(cle, statuts.aDeployerId, statuts.aDeployerNom);
 }

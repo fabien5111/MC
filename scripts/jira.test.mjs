@@ -4,7 +4,7 @@
 // c'est justement ce qui justifie de la tester ici aussi, sinon les deux
 // versions divergeraient sans que rien ne le signale.
 import { describe, expect, it } from 'vitest';
-import { adfVersTexte, resoudreTransition, texteVersAdf } from './jira.mjs';
+import { adfVersTexte, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
 
 describe('adfVersTexte', () => {
   it('aplatit paragraphes, sauts de ligne et listes', () => {
@@ -94,3 +94,28 @@ describe('resoudreTransition', () => {
     expect(decision.transition.id).toBe('21');
   });
 });
+
+// Rejoue précisément l'incident du 15/09 : dans une session sans
+// JIRA_STATUS_TO_DEPLOY ni JIRA_STATUS_DEPLOYED, `lireConfigStatuts` replie
+// sur des noms génériques (« Terminé » / « Déployé ») qui ne sont pas ceux
+// de ce projet — et le garde-fou de `resoudreTransition` ne détecte rien
+// puisqu'il compare à ce même repli fautif. `a-deployer` doit donc refuser
+// de deviner, plutôt que de répéter la transition non voulue de JEP-131.
+describe('verifierConfigADeployer', () => {
+  it('signale les deux variables manquantes — le scénario exact de l’incident', () => {
+    expect(verifierConfigADeployer({})).toEqual(['JIRA_STATUS_TO_DEPLOY', 'JIRA_STATUS_DEPLOYED']);
+  });
+
+  it('ne signale rien quand les deux noms sont renseignés', () => {
+    expect(verifierConfigADeployer({ JIRA_STATUS_TO_DEPLOY: 'A déployer', JIRA_STATUS_DEPLOYED: 'Terminé' })).toEqual([]);
+  });
+
+  it('accepte un id à la place du nom, même priorité que memeStatut', () => {
+    expect(verifierConfigADeployer({ JIRA_STATUS_TO_DEPLOY_ID: '10010', JIRA_STATUS_DEPLOYED_ID: '10011' })).toEqual([]);
+  });
+
+  it('signale seulement la variable réellement absente', () => {
+    expect(verifierConfigADeployer({ JIRA_STATUS_TO_DEPLOY: 'A déployer' })).toEqual(['JIRA_STATUS_DEPLOYED']);
+  });
+});
+

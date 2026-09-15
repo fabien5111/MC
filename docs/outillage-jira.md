@@ -113,15 +113,24 @@ node scripts/jira.mjs a-deployer MC-123
 **Chacun ne connaît qu'un seul statut cible**, configurable comme les
 statuts du lot 3 (id d'abord, nom en repli) :
 
-| Variable | Rôle | Défaut |
+| Variable | Rôle | Défaut de code |
 |---|---|---|
 | `JIRA_STATUS_IN_PROGRESS` / `_ID` | Statut visé par `demarrer` | `En cours` |
 | `JIRA_STATUS_IN_TEST` / `_ID` | Statut visé par `envoyer-en-test` | `Revue en cours` |
-| `JIRA_STATUS_TO_DEPLOY` / `_ID` | Statut visé par `a-deployer` | `A déployer` |
+| `JIRA_STATUS_TO_DEPLOY` / `_ID` | Statut visé par `a-deployer` | `Terminé` — **jamais utilisé, voir plus bas** |
+| `JIRA_STATUS_DEPLOYED` / `_ID` | Statut protégé par le garde-fou, cf. plus bas | `Déployé` — **jamais utilisé, voir plus bas** |
 
-`a-deployer` ne réutilise aucune variable propre : `JIRA_STATUS_TO_DEPLOY` /
-`_ID` existent déjà, c'est le statut de départ que `decisionDeploiement`
-(`scripts/jira-deploiement.mjs`, lot 3) surveille pour savoir quels tickets
+Les deux premiers défauts sont sans risque : ils se sont révélés justes pour
+ce projet (« En cours » / « Revue en cours »). **Les deux derniers ne le
+sont pas** — ce sont des noms génériques, jamais ceux de ce projet, dont le
+vrai statut terminal s'appelle « Terminé » et l'intermédiaire « A déployer »
+(valeurs réelles, à poser explicitement — voir « Config restante » plus
+bas). `a-deployer` ne les utilise donc **qu'après** avoir vérifié que les
+deux variables sont explicitement renseignées ; voir le paragraphe suivant.
+
+**`a-deployer` réutilise `JIRA_STATUS_TO_DEPLOY`, la même variable que le
+lot 3** : c'est le statut de départ que `decisionDeploiement`
+(`scripts/jira-deploiement.mjs`) surveille pour savoir quels tickets
 transitionner à la prochaine réussite de déploiement. Poser ce statut à la
 main, ici, est donc ce qui **arme** le lot 3 pour ce ticket précis — sans
 cette transition, un ticket resté en « Revue en cours » est explicitement
@@ -130,28 +139,49 @@ que soit le nombre de déploiements qui suivent. C'est exactement ce qui est
 arrivé à JEP-131 le 15/09 avant l'ajout de ce verbe : le déploiement #12 a
 bien tourné, mais a ignoré le ticket, resté en « Revue en cours ».
 
-**Le garde-fou du §1.2 ne recule pas d'un pas avec ces trois verbes.** Avant
-tout envoi à Jira, `resoudreTransition` (`scripts/jira.mjs`, testée) vérifie
-que la transition résolue ne mène **pas** au statut configuré comme
+**Le garde-fou du §1.2 ne recule pas d'un pas avec ces trois verbes** — mais
+`a-deployer` porte un second garde-fou, propre à lui, né d'un incident réel.
+Avant tout envoi à Jira, `resoudreTransition` (`scripts/jira.mjs`, testée)
+vérifie que la transition résolue ne mène **pas** au statut configuré comme
 « Déployé » (`JIRA_STATUS_DEPLOYED` / `_ID`, mêmes variables que le lot 3) —
-et refuse sinon, quelle que soit la raison qui aurait pu produire cette
-correspondance (erreur de configuration, workflow Jira atypique où les deux
-statuts se confondraient). Faire passer un ticket à « Déployé » reste
-exclusivement le rôle du lot 3 : c'est cette transition-là, et elle seule,
-qui déclenche l'e-mail irréversible au demandeur (`docs/contact-jira.md`
-§2). La logique de résolution de transition (`memeStatut` /
-`trouverTransitionVers`) est partagée avec `jira-deploiement.mjs`
-(`scripts/jira-api.mjs`), pour ne pas la maintenir en double au moment
-précis où il ne faut pas se tromper.
+et refuse sinon. **Ce contrôle suppose que `deployeNom` désigne le VRAI
+statut terminal.** Le 15/09, dans une session sans `JIRA_STATUS_TO_DEPLOY`
+ni `JIRA_STATUS_DEPLOYED`, les deux replis de code (`Terminé` / `Déployé`,
+tableau ci-dessus) ont produit une transition « Revue en cours » →
+« Terminé » que le garde-fou a laissée passer : la cible trouvée
+(« Terminé ») ne coïncidait pas avec le nom protégé (« Déployé »), alors que
+« Terminé » **est** le vrai statut terminal de ce projet. JEP-131 s'est
+retrouvé transitionné jusqu'au bout en un seul appel, sans passer par
+« A déployer ». D'où le contrôle qui précède ce garde-fou dans `aDeployer()`
+(`verifierConfigADeployer`, testée) : si `JIRA_STATUS_TO_DEPLOY` **ou**
+`JIRA_STATUS_DEPLOYED` (nom ou id) manque, la commande **refuse avant tout
+appel réseau**, en nommant la variable absente — même doctrine que
+`lireConfig()` pour `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN`. Une
+configuration absente arrête la commande, elle ne lui fait jamais deviner un
+nom qui pourrait, par malchance, être le bon.
 
-**Config restante hors dépôt** : ajouter `JIRA_STATUS_IN_PROGRESS` et
-`JIRA_STATUS_IN_TEST` (et, si on veut la robustesse au renommage, leurs
-variantes `_ID`) aux variables d'environnement de l'environnement Claude
-Code — mêmes emplacements que les autres variables `JIRA_*` du lot 1.
-`JIRA_STATUS_TO_DEPLOY` y figure déjà (lot 3), rien à ajouter pour
-`a-deployer`. Aucune config Jira supplémentaire : ces trois statuts
+Faire passer un ticket à « Déployé » reste exclusivement le rôle du lot 3 :
+c'est cette transition-là, et elle seule, qui déclenche l'e-mail
+irréversible au demandeur (`docs/contact-jira.md` §2). La logique de
+résolution de transition (`memeStatut` / `trouverTransitionVers`) est
+partagée avec `jira-deploiement.mjs` (`scripts/jira-api.mjs`), pour ne pas
+la maintenir en double au moment précis où il ne faut pas se tromper.
+
+**Config restante hors dépôt, et elle est OBLIGATOIRE pour `a-deployer`** :
+ajouter aux variables d'environnement de l'environnement Claude Code (même
+emplacement que les autres variables `JIRA_*` du lot 1) :
+
+```
+JIRA_STATUS_IN_PROGRESS=En cours          # déjà posée, sans risque
+JIRA_STATUS_IN_TEST=Revue en cours        # déjà posée, sans risque
+JIRA_STATUS_TO_DEPLOY=A déployer          # valeur RÉELLE de ce projet — pas le défaut de code
+JIRA_STATUS_DEPLOYED=Terminé              # valeur RÉELLE de ce projet — pas le défaut de code
+```
+
+Les variantes `_ID` restent l'option la plus robuste (survivent à un
+renommage dans Jira). Aucune config Jira supplémentaire : ces quatre statuts
 existent déjà dans le workflow observé (`À faire` → `Spéc rédigée` →
-`En cours` → `Revue en cours` → `A déployer` → `Déployé`).
+`En cours` → `Revue en cours` → `A déployer` → `Terminé`).
 
 **Piège vécu (JEP-131)** : le premier réglage de `JIRA_STATUS_IN_TEST`
 visait « En cours de test », un nom jamais présent dans le workflow réel du

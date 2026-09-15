@@ -99,6 +99,16 @@ appelant l'API à la main.
   réussi, jamais celui d'un agent qui développe un ticket. Pour tout autre
   changement de statut, le demander à l'utilisateur plutôt que d'improviser
   un usage détourné de ces trois verbes.
+- **`a-deployer` refuse de partir si `JIRA_STATUS_TO_DEPLOY` ou
+  `JIRA_STATUS_DEPLOYED` manque dans l'environnement** — aucun repli
+  silencieux, contrairement à `demarrer` / `envoyer-en-test`. Incident vécu
+  le 15/09 : dans une session sans ces deux variables, le repli de code
+  (« Terminé » / « Déployé », des noms génériques) a laissé passer JEP-131
+  directement jusqu'à « Terminé », le vrai statut final de ce projet — le
+  garde-fou ci-dessus comparait à un nom qui n'était pas le bon. Si la
+  commande annonce ces variables absentes, les poser (valeurs réelles de ce
+  projet : `A déployer` / `Terminé`, cf. `docs/outillage-jira.md` §1.6) —
+  jamais chercher à la contourner.
 - **Aucun passe-plat REST générique** : six verbes, pas un client Jira
   complet. Un besoin nouveau s'ajoute au script, avec son garde-fou le cas
   échéant, il ne se contourne pas avec `curl`.
