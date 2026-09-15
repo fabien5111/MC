@@ -7,7 +7,7 @@
 // avec son garde-fou, plutôt que de se contourner.
 //
 // `demarrer` et `envoyer-en-test` ne connaissent qu'un seul statut cible
-// chacun (« En cours » / « En cours de test », configurables — §1.5 de
+// chacun (« En cours » / « Revue en cours », configurables — §1.5 de
 // `docs/outillage-jira.md`) et refusent, avant tout envoi, toute transition
 // qui mènerait au statut « Déployé » : c'est lui qui déclenche l'e-mail au
 // demandeur, irréversible une fois parti (`docs/contact-jira.md` §2). Cette
@@ -246,7 +246,7 @@ const USAGE = `Usage :
   node scripts/jira.mjs chercher "<JQL>" [--max N]
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
-  node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « En cours de test »)
+  node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
 
 Variables requises : JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN.
 

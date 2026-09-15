@@ -23,7 +23,16 @@ import type { CarnetParams } from '@/lib/carnet-params';
 export type SharedVia = { kind: 'direct' } | { kind: 'book'; ownerId: string };
 
 export type CarnetItem =
-  | { kind: 'mine'; recipe: UserRecipeCard }
+  | {
+      kind: 'mine';
+      recipe: UserRecipeCard;
+      // Recette dont je suis l'auteur ET que j'ai mise en favori (JEP-131) :
+      // avant ce champ, la marque n'existait que sur la variante `other`, et
+      // une recette exclue de ce bucket (cf. plus bas) y perdait son statut
+      // de favori au lieu de le porter ailleurs — elle disparaissait purement
+      // et simplement de la pastille « Favoris ».
+      favorite: boolean;
+    }
   | {
       kind: 'other';
       recipe: RecipeCardWithAllergenNames;
@@ -59,11 +68,21 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
     getSharedWithMeRecipes(userId),
   ]);
 
+  // Ensemble des recipe_id que j'ai mis en favori — sert à la fois à marquer
+  // mes propres recettes (ci-dessous) et celles des autres (plus bas). Basé
+  // sur `recipe_id`, pas sur `recipes.id` : une ligne dont la recette a
+  // disparu (`recipes` null) ne doit pas faire échouer la marque des autres.
+  const favoriteIds = new Set(favorites.map((f) => f.recipe_id));
+
   // Les projets en cours d'élaboration sont mis de côté dès le chargement :
   // ils n'entrent dans aucun compteur ni aucune portée en dehors de la leur
   // (spec §10). Un projet validé (`ready`) ou dissous, lui, reste une recette
   // ordinaire et suit exactement le chemin des autres.
-  const mineAll: Extract<CarnetItem, { kind: 'mine' }>[] = recipes.map((r) => ({ kind: 'mine', recipe: r }));
+  const mineAll: Extract<CarnetItem, { kind: 'mine' }>[] = recipes.map((r) => ({
+    kind: 'mine',
+    recipe: r,
+    favorite: favoriteIds.has(r.id),
+  }));
   const projectItems: CarnetItem[] = mineAll.filter((i) => isProjectDraft(i.recipe));
   const mineItems: CarnetItem[] = mineAll.filter((i) => !isProjectDraft(i.recipe));
 
@@ -121,7 +140,12 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   const counts = {
     all: mineItems.length + otherItems.length,
     mine: mineItems.length,
-    fav: otherItems.filter((i) => i.kind === 'other' && i.favorite).length,
+    // Les deux paniers portent chacun leur propre marque `favorite` (JEP-131) :
+    // une recette d'un autre auteur mise en favori, et une recette dont je
+    // suis l'auteur mise en favori — les deux comptent dans la pastille.
+    fav:
+      mineItems.filter((i) => i.kind === 'mine' && i.favorite).length +
+      otherItems.filter((i) => i.kind === 'other' && i.favorite).length,
     sub: otherItems.filter((i) => i.kind === 'other' && i.subscription).length,
     shared: otherItems.filter((i) => i.kind === 'other' && i.shared).length,
     proj: projectItems.length,
@@ -166,7 +190,10 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
       return false;
     }
     if (params.scope === 'mine' && item.kind !== 'mine') return false;
-    if (params.scope === 'fav' && !(item.kind === 'other' && item.favorite)) return false;
+    // JEP-131 : la portée Favoris affiche les deux variantes, chacune avec sa
+    // propre marque `favorite` — une recette dont je suis l'auteur, mise en
+    // favori, ne doit pas disparaître faute d'être une carte « other ».
+    if (params.scope === 'fav' && !item.favorite) return false;
     if (params.scope === 'sub' && !(item.kind === 'other' && item.subscription)) return false;
     if (params.scope === 'shared' && !(item.kind === 'other' && item.shared)) return false;
     if (params.statut !== 'all') {

@@ -73,7 +73,12 @@ export function lireConfigStatuts() {
     enCoursId: process.env.JIRA_STATUS_IN_PROGRESS_ID || null,
     enCoursNom: process.env.JIRA_STATUS_IN_PROGRESS || 'En cours',
     enTestId: process.env.JIRA_STATUS_IN_TEST_ID || null,
-    enTestNom: process.env.JIRA_STATUS_IN_TEST || 'En cours de test',
+    // Nom réel observé sur le workflow JEP (« Ajout données » comme les
+    // autres types) : « Revue en cours », pas « En cours de test » — corrigé
+    // après coup (JEP-131) une fois la transition testée en vrai contre
+    // Jira. Garder ce repli en phase avec la réalité du workflow, pas avec
+    // l'intitulé qu'on aurait pu deviner.
+    enTestNom: process.env.JIRA_STATUS_IN_TEST || 'Revue en cours',
   };
 }
 

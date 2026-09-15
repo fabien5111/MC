@@ -76,13 +76,17 @@ export function CarnetToolbar({
     [hrefFor, router],
   );
 
-  // La barre de statut disparaît sur Favoris et Mes abonnements : ces
-  // recettes des autres sont toujours déjà publiées et publiques, leur statut
-  // ne varie jamais. Elle reste affichée sur Partagées avec moi : une recette
-  // partagée peut être un brouillon (portée « brouillons compris » du partage
-  // de carnet, ou partage direct sans restriction de statut) — ses
-  // compteurs viennent alors de `sharedStatusCounts`, pas de `statusCounts`
-  // (cf. app/carnet/page.tsx).
+  // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
+  // abonnements, ces recettes des autres sont toujours déjà publiées et
+  // publiques, leur statut ne varie jamais. Sur Favoris, une recette dont je
+  // suis l'auteur peut porter n'importe quel statut (JEP-131 : mes propres
+  // recettes favorites y apparaissent désormais aussi) — sa barre de statut
+  // n'a simplement jamais été construite pour ce scope, `parseCarnetParams`
+  // y force `statut = 'all'`. Elle reste affichée sur Partagées avec moi :
+  // une recette partagée peut être un brouillon (portée « brouillons
+  // compris » du partage de carnet, ou partage direct sans restriction de
+  // statut) — ses compteurs viennent alors de `sharedStatusCounts`, pas de
+  // `statusCounts` (cf. app/carnet/page.tsx).
   const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub' && params.scope !== 'proj';
 
   // « Projets » n'apparaît que s'il y a quelque chose à y voir : une pastille

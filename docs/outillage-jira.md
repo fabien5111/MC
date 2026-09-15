@@ -93,7 +93,7 @@ mauvaise instance Jira sans le voir.
 
 La session Claude qui développe un ticket a besoin de faire avancer son
 statut à deux moments : au tout début (« Spéc rédigée » → « En cours ») et
-juste après avoir poussé sa branche (« En cours » → « En cours de test »).
+juste après avoir poussé sa branche (« En cours » → « Revue en cours »).
 Ni l'un ni l'autre ne relève du lot 3 : ce ne sont pas des transitions
 déclenchées par un déploiement, mais par le rythme de travail de l'agent
 lui-même — d'où deux nouveaux verbes plutôt qu'un détournement du script de
@@ -110,7 +110,7 @@ statuts du lot 3 (id d'abord, nom en repli) :
 | Variable | Rôle | Défaut |
 |---|---|---|
 | `JIRA_STATUS_IN_PROGRESS` / `_ID` | Statut visé par `demarrer` | `En cours` |
-| `JIRA_STATUS_IN_TEST` / `_ID` | Statut visé par `envoyer-en-test` | `En cours de test` |
+| `JIRA_STATUS_IN_TEST` / `_ID` | Statut visé par `envoyer-en-test` | `Revue en cours` |
 
 **Le garde-fou du §1.2 ne recule pas d'un pas avec ces deux verbes.** Avant
 tout envoi à Jira, `resoudreTransition` (`scripts/jira.mjs`, testée) vérifie
@@ -131,8 +131,19 @@ précis où il ne faut pas se tromper.
 variantes `_ID`) aux variables d'environnement de l'environnement Claude
 Code — mêmes emplacements que les autres variables `JIRA_*` du lot 1.
 Aucune config Jira supplémentaire : ces deux statuts existent déjà dans le
-workflow observé (`À faire` → `Spéc rédigée` → `En cours` → `En cours de
-test` → `À déployer` → `Déployé`).
+workflow observé (`À faire` → `Spéc rédigée` → `En cours` → `Revue en
+cours` → `À déployer` → `Déployé`).
+
+**Piège vécu (JEP-131)** : le premier réglage de `JIRA_STATUS_IN_TEST`
+visait « En cours de test », un nom jamais présent dans le workflow réel du
+projet JEP (tous types d'incident confondus) — la transition échouait
+silencieusement côté script (`Aucune transition vers « … » depuis le statut
+courant`, message volontairement sans détail sur les transitions
+disponibles). Le vrai nom, retrouvé en listant les transitions renvoyées par
+`/rest/api/3/issue/{clé}/transitions` pour un ticket bloqué, est
+« Revue en cours ». Si `envoyer-en-test` échoue à nouveau après une
+migration Jira, c'est le premier réflexe : lister ces transitions plutôt que
+de deviner un nom depuis le diagramme du workflow.
 
 **Non vérifié en session distante** : les transitions Jira interdisant tout
 raccourci (il faut une transition sortante réelle du statut courant vers la
