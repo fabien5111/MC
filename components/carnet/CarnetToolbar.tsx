@@ -19,7 +19,7 @@
 // Restent en `router.replace()` les deux contrôles qui ne peuvent pas être des
 // liens : la saisie libre (débouncée, une frappe n'est pas un clic) et le
 // menu de tri.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -53,6 +53,14 @@ export function CarnetToolbar({
   const router = useRouter();
   const pathname = usePathname();
   const { startTransition } = useCarnetTransition();
+  // Transition dédiée à la recherche, jamais celle de CarnetProvider : sans
+  // `startTransition`, la navigation devient une mise à jour urgente et le
+  // re-rendu de la grille (et la resynchronisation de `q` ci-dessous)
+  // secoue visiblement le champ pendant la frappe (JEP-54, retour terrain).
+  // Une transition à soi garde la saisie fluide sans jamais faire passer
+  // `navPending` du contexte partagé à `true` — donc sans réafficher le
+  // fouet que JEP-54 voulait justement retirer.
+  const [, startSearchTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Saisie : seul contrôle à garder un état local, parce qu'il doit réagir à
@@ -76,14 +84,15 @@ export function CarnetToolbar({
     [hrefFor, router],
   );
 
-  // Recherche (JEP-54) : hors de la transition partagée avec CarnetContent,
-  // donc `navPending` ne passe jamais à `true` pour cette navigation et le
-  // fouet plein écran ne s'affiche pas pendant la frappe — une saisie est
-  // bien plus fréquente qu'un changement de tri/scope/statut pour justifier
-  // ce voile (même doctrine que VoteButton sur la boîte à idées).
+  // Recherche (JEP-54) : sa propre transition (ci-dessus), jamais celle
+  // partagée avec CarnetContent — `navPending` ne passe donc jamais à
+  // `true` pour cette navigation et le fouet plein écran ne s'affiche pas
+  // pendant la frappe, une saisie étant bien plus fréquente qu'un
+  // changement de tri/scope/statut pour justifier ce voile (même doctrine
+  // que VoteButton sur la boîte à idées).
   const navigateSearch = useCallback(
     (next: CarnetParams) => {
-      router.replace(hrefFor(next), { scroll: false });
+      startSearchTransition(() => router.replace(hrefFor(next), { scroll: false }));
     },
     [hrefFor, router],
   );
