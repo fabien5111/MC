@@ -282,6 +282,53 @@ déploiement réel, ce qui est pourtant tout son objet.
    Attention aux **`NEXT_PUBLIC_*`** : elles sont inlinées dans le bundle **au
    build, sur ce nœud-ci**. Fausses ici, elles donnent un aperçu qui ment sans
    lever la moindre erreur.
+6. **Autoriser l'origine auprès de l'API**, sans quoi l'aperçu ne prouve rien
+   — voir la section suivante.
+
+### Deux verrous côté API, tous deux nécessaires pour se connecter sur l'aperçu
+
+Le navigateur appelle `auth.jepatisse.com` **en direct**. Deux garde-fous
+distincts, sur deux nœuds distincts de l'environnement `jepatisse`, doivent
+tous les deux connaître la nouvelle origine — un seul suffi(sai)t pour l'un
+des deux modes de connexion, mais pas pour l'autre :
+
+| Verrou | Où | Débloque |
+|---|---|---|
+| Motif CORS de `/etc/nginx/conf.d/ssl.conf` | nœud **216115** (équilibreur) | Connexion e-mail, favoris, votes — toute écriture depuis le navigateur |
+| `GOTRUE_URI_ALLOW_LIST` | nœud **216114** (GoTrue) | Connexion **Google** — c'est cette liste qui autorise GoTrue à renvoyer le navigateur vers l'aperçu une fois l'écran Google passé |
+
+**Pas de configuration côté Google Cloud Console.** L'URL de redirection
+enregistrée auprès de Google est fixe, indépendante du site d'origine —
+`GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI = https://auth.jepatisse.com/auth/v1/callback`
+— et fonctionne déjà pour toutes les origines. Seule la liste GoTrue, qui
+gouverne la redirection *finale* vers l'application, doit apprendre la
+nouvelle adresse.
+
+**Mode opératoire pour `GOTRUE_URI_ALLOW_LIST`** — même discipline que le
+motif CORS (relever l'existant, étendre, vérifier avant et après) :
+
+1. **Où :** panneau *Configuration manager* du nœud **216114** → relever la
+   valeur actuelle de `GOTRUE_URI_ALLOW_LIST` (motif à glob, séparé par des
+   virgules — ex. `https://dev.jepatisse.com/**,https://www.jepatisse.com/**`).
+2. Y ajouter `,https://<origine-a-autoriser>/**`, enregistrer.
+3. **Redémarrer le nœud** (bouton *Redémarrer les conteneurs* de la couche
+   « Auth »). Une variable posée dans le panneau ne vaut rien tant que le
+   processus ne l'a pas relue — même piège que documenté pour `pm2` dans
+   `CLAUDE.md`, ici pour un conteneur Docker BusyBox.
+4. **Vérifier sur le VRAI processus**, jamais sur PID 1 (`init`, le lanceur du
+   conteneur) : le binaire GoTrue s'appelle `auth` dans ce conteneur —
+   `ps -o pid,ppid,comm` pour le trouver, puis
+   `tr '\0' '\n' < /proc/<pid>/environ | grep GOTRUE_URI_ALLOW_LIST`. Un
+   redémarrage qui n'a pas eu lieu se voit à `ps -o pid,etime,comm` : si
+   `init` affiche un temps aussi long que les autres processus système, rien
+   n'a redémarré — vécu le 15/09, un premier clic n'avait pas visé la bonne
+   icône (« Redémarrer les conteneurs » de la couche, pas l'environnement).
+
+**Effet de bord à connaître sur le nœud d'aperçu lui-même** : fermer une PR
+étiquetée arrête l'application (`pm2 stop`, § « Le même script que la
+production » plus haut) sans la redéployer. Le prochain aperçu répond donc en
+**502** tant qu'une PR n'a pas été étiquetée `preview` à nouveau — pas une
+panne, l'état attendu entre deux aperçus.
 
 ## Construire et déployer l'application (à la main)
 

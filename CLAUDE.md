@@ -1359,6 +1359,13 @@ Historique de la migration depuis Vercel + Supabase :
   nœud d'équilibrage** depuis le tableau de bord — entre les deux, 502 sur tout,
   alors que le fichier sur disque est juste et que l'application répond en
   local. Cf. `DEPLOY.md` § « Aperçu d'une PR ».
+- **Une nouvelle origine web doit être autorisée par l'API des DEUX côtés**,
+  sinon elle ne peut ni se connecter ni écrire : le motif CORS de
+  l'équilibreur `jepatisse` (216115, `/etc/nginx/conf.d/ssl.conf`) pour toute
+  connexion et toute écriture, ET `GOTRUE_URI_ALLOW_LIST` (216114) pour la
+  connexion Google spécifiquement. Le symptôme ne nomme ni l'un ni l'autre :
+  un « Failed to fetch » de `supabase-js`. Vaut pour l'aperçu, et pour tout
+  domaine qu'on ajouterait ensuite. Mode opératoire complet dans `DEPLOY.md`.
 - **Le déploiement construit sur le nœud**, il n'est pas automatique sur push.
   La commande canonique et les trois pièges qu'elle contourne sont dans
   `DEPLOY.md` — ne pas l'improviser.
