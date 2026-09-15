@@ -1359,6 +1359,13 @@ Historique de la migration depuis Vercel + Supabase :
   nœud d'équilibrage** depuis le tableau de bord — entre les deux, 502 sur tout,
   alors que le fichier sur disque est juste et que l'application répond en
   local. Cf. `DEPLOY.md` § « Aperçu d'une PR ».
+- **Toute nouvelle origine web doit être autorisée par l'API**, sinon elle ne
+  peut ni se connecter ni écrire : le navigateur appelle `auth.jepatisse.com`
+  en direct, et l'équilibreur 216115 ne pose les en-têtes `Access-Control-*`
+  que pour les origines de son motif (`/etc/nginx/conf.d/ssl.conf`, deux blocs
+  à étendre — `/auth/v1/` et `/rest/v1/`). Le symptôme ne nomme rien : un
+  « Failed to fetch » de `supabase-js`. Vaut pour l'aperçu, et pour tout
+  domaine qu'on ajouterait ensuite. Mode opératoire complet dans `DEPLOY.md`.
 - **Le déploiement construit sur le nœud**, il n'est pas automatique sur push.
   La commande canonique et les trois pièges qu'elle contourne sont dans
   `DEPLOY.md` — ne pas l'improviser.

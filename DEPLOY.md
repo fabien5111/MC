@@ -282,6 +282,69 @@ déploiement réel, ce qui est pourtant tout son objet.
    Attention aux **`NEXT_PUBLIC_*`** : elles sont inlinées dans le bundle **au
    build, sur ce nœud-ci**. Fausses ici, elles donnent un aperçu qui ment sans
    lever la moindre erreur.
+6. **Autoriser l'origine de l'aperçu côté API** — l'étape qu'on oublie, et
+   sans laquelle l'aperçu ne sert à rien. Voir ci-dessous.
+
+### L'aperçu doit être autorisé par l'API, sinon il ne prouve rien
+
+Le navigateur appelle `auth.jepatisse.com` **en direct** : toute connexion et
+toute écriture passent par une requête d'origine croisée. L'équilibreur du
+`jepatisse` (216115) ne pose les en-têtes `Access-Control-*` que pour les
+origines de son motif — qui ne connaissait que `dev` et `www`. Une origine
+absente n'obtient qu'un « **Failed to fetch** » côté `supabase-js`, message qui
+ne nomme ni le CORS, ni le domaine en cause, ni le nœud à corriger.
+
+Le dossier de migration l'avait pourtant annoncé (§ Phase 1) : « sur le domaine
+technique, aucune écriture ni aucune connexion n'aurait pu être testée ». La
+remarque visait un domaine jetable ; elle vaut tout autant pour un
+environnement d'aperçu permanent. **Un aperçu où l'on ne peut pas se connecter
+ne prouve rien** — la moitié du site vit derrière une session.
+
+Deux verrous distincts, et le second n'est nécessaire que pour OAuth :
+
+| Verrou | Où | Ce qu'il débloque |
+|---|---|---|
+| Motif CORS de `/etc/nginx/conf.d/ssl.conf` | nœud **216115** | Connexion e-mail, favoris, votes — **toute** écriture depuis le navigateur |
+| `GOTRUE_URI_ALLOW_LIST` | nœud **216114** | Connexion **Google** et liens d'e-mail, qui sans elle reviennent sur `dev` |
+
+Le motif vit sur **deux lignes** du même fichier — un bloc `/auth/v1/`
+(authentification) et un bloc `/rest/v1/` (écritures) — qu'il faut étendre
+toutes les deux :
+
+```nginx
+if ($http_origin ~* ^https://((dev|www)\.jepatisse\.com|jepatisse-preview\.jcloud-ver-jpe\.ik-server\.com)$) {
+```
+
+Mode opératoire, **dans cet ordre** :
+
+1. `grep -n "http_origin" /etc/nginx/conf.d/ssl.conf` — relever les deux
+   numéros de ligne plutôt que de deviner.
+2. Sauvegarder le fichier, remplacer les deux lignes **par leur numéro** (ça
+   ne touche ni au placement du bloc ni au `rewrite`, donc ça évite le piège
+   du `break` décrit au § 3.1 du dossier de migration), puis `nginx -t`.
+3. `nginx -t` rouge → **on ne redémarre pas**, on restaure la sauvegarde. Le
+   nœud continue de servir avec sa configuration en mémoire, inchangée.
+4. Vert → **redémarrer le nœud 216115 depuis le tableau de bord**.
+   `nginx -s reload` est refusé depuis le Web SSH, et un fichier juste sur
+   disque que le processus n'a pas relu, c'est la panne du 14/09.
+5. Vérifier par un préflight, depuis un shell et non depuis le navigateur —
+   dont le cache et la session brouillent le diagnostic :
+
+```sh
+curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: <origine de l'aperçu>' -H 'Access-Control-Request-Method: POST' 'https://auth.jepatisse.com/auth/v1/token?grant_type=password' | grep -i '^HTTP\|access-control-allow-origin'
+```
+
+   Un code de succès **sans** ligne `access-control-allow-origin` signifie que
+   le redémarrage n'a pas pris ; un `405` que le préflight est relayé à
+   l'amont, donc que le bloc est mal placé.
+
+**À retirer le jour où l'environnement d'aperçu disparaît.** Le risque réel est
+faible — le CORS protège les identifiants du visiteur, et nos jetons vivent sur
+le domaine de l'application, jamais sur `auth.jepatisse.com` : une origine
+tierce autorisée ne pourrait faire que ce que n'importe qui fait déjà avec
+`curl` et la clé `anon`, publique par construction. Mais un nom d'environnement
+libéré est réattribuable, et une entrée qui ne désigne plus rien de connu n'a
+pas sa place dans une liste d'autorisations.
 
 ## Construire et déployer l'application (à la main)
 
