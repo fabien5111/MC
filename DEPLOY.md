@@ -30,11 +30,260 @@ base.
 | `jepatisse` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
 | `jepatisse` | 216114 | GoTrue (authentification) |
 | `jepatisse` | 216242 | PostgREST (API REST sur la base) |
+| `jepatisse-preview` | 216804 | Aperçu d'une PR (pile Node.js 22.x native, `pm2`) — voir plus bas |
 
 Région : **Genève**. Application et base partagent la plateforme et la région
 — aucune requête ne traverse une frontière réseau lointaine.
 
-## Construire et déployer l'application
+## Déployer `main` automatiquement (GitHub Actions)
+
+`.github/workflows/deploiement-app.yml` rejoue la procédure manuelle ci-dessous
+sur le nœud, à chaque push sur `main` (ou à la demande, avec une branche au
+choix). Il existe parce qu'une fusion sur `main` ne changeait **rien** au site
+tant que personne n'ouvrait le Web SSH : `www` et `dev.jepatisse.com` étant
+servis par le même nœud depuis le même build, « c'est fusionné » et « c'est en
+ligne » n'avaient aucun rapport.
+
+Il reprend aussi un rôle qui tenait à Vercel sans que ce soit voulu :
+`jira-deploiement.yml` se déclenche sur `deployment_status`, un événement émis
+par les **projets Vercel résiduels**. Leur suppression (phase 4) aurait arrêté
+la chaîne « ticket → Déployé → e-mail au demandeur » en silence. Le workflow
+appelle désormais `jira-deploiement.yml` directement — et pas via l'événement,
+qu'un `deployment_status` créé avec le `GITHUB_TOKEN` du dépôt **ne déclenche
+jamais** (GitHub coupe là pour éviter les boucles).
+
+**Désarmé par défaut.** Sans la variable de dépôt `DEPLOIEMENT_ACTIF` à
+`true`, le workflow va au bout mais ne touche pas le nœud : il journalise ce
+qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
+
+### Ce qu'il fait, dans l'ordre
+
+1. **Barrière sur le runner** : `npm ci`, `typecheck`, `lint`, la suite de
+   tests, puis `build`. Ce n'est pas du zèle — la procédure du nœud fait
+   `rm -rf .next` **avant** de construire : une construction qui échoue
+   là-bas laisse le site sans build. Un commit qui ne compile pas ne doit
+   jamais atteindre cette fenêtre.
+2. **Déploiement** : `scripts/deploiement-app.sh` est envoyé au nœud par
+   l'entrée standard (la version exécutée est donc toujours celle du commit
+   déployé), qui fait `git fetch` + `git reset --hard <sha>`, la commande
+   canonique de construction, puis `pm2 restart`.
+3. **Vérification fonctionnelle** : le déploiement n'est réussi qu'après un
+   HTTP 200 réellement obtenu. Un `pm2 restart` qui rend la main ne prouve
+   pas qu'une page s'affiche.
+4. **Jira** : les tickets cités dans les 50 derniers commits passent à
+   « Déployé » — sous réserve de `JIRA_DEPLOY_ACTIF`, inchangé.
+
+### Ce qu'il faut lui donner
+
+**Où :** Settings > Secrets and variables > Actions, sur le dépôt GitHub.
+
+| Nom | Type | Rôle |
+|---|---|---|
+| `DEPLOIEMENT_ACTIF` | Variable | `true` arme le workflow. Absente = simulation. |
+| `DEPLOY_SSH_HOST` | Secret | Hôte SSH du nœud (console Infomaniak → accès SSH). |
+| `DEPLOY_SSH_USER` | Secret | Utilisateur SSH de la passerelle Jelastic. |
+| `DEPLOY_SSH_KEY` | Secret | Clé privée correspondante (voir ci-dessous : **la coller en base64 sur une seule ligne**). |
+| `DEPLOY_SSH_KNOWN_HOSTS` | Secret | Clé d'hôte épinglée. Absente : acceptée à la volée, avec un avertissement. |
+| `DEPLOY_SSH_PORT` | Variable | Port SSH, `3022` par défaut. |
+| `RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
+| `APP_PM2` | Variable | Nom pm2 de l'application, `je-patisse` par défaut. |
+| `URL_VERIFICATION` | Variable | `https://dev.jepatisse.com` par défaut — seul hôte exempté de `COMING_SOON`, donc le seul qui prouve que le site répond. |
+
+**État du nœud, relevé le 14/09 avant la première mise en service** :
+`/home/jelastic/ROOT` est bien un clone git (remote HTTPS sur
+`github.com/fabien5111/MC`), `git fetch` y aboutit **sans aucun identifiant**
+— le dépôt est public, la lecture est anonyme, et rien ne peut donc expirer
+côté droits. `pm2` y fait tourner `je-patisse`, sous Node 22.23.2.
+
+Deux conséquences à garder en tête :
+
+- **`node`, `npm` et `pm2` vivent sous `/opt/.nvm/versions/node/<version>/bin`**,
+  un répertoire que le PATH ne doit qu'au profil du shell *interactif*. Une
+  commande lancée par `ssh … 'bash -s'` ne le voit pas : `scripts/deploiement-app.sh`
+  résout donc ce répertoire lui-même. Ne pas retirer ce bloc en croyant
+  simplifier — sans lui, `npm ci` échoue sur un « command not found » alors
+  que la même commande marche parfaitement dans le Web SSH.
+- **Le compte SSH de la passerelle s'adresse au conteneur**, pas au compte :
+  `216658-11487@gate.jpe.infomaniak.com`, soit **`<numéro de nœud>-<identifiant>`**
+  — dans cet ordre, et c'est contre-intuitif. La chaîne mise en avant par le
+  tableau de bord (onglet *Connexion SSH*, `11487@gate…`) est celle d'un accès
+  **humain** : elle ouvre un menu interactif de choix du conteneur, que rien
+  ne peut renseigner dans un déploiement automatique. La forme par conteneur
+  se lit dans l'onglet **SFTP / Accès SSH direct**, en sélectionnant le nœud
+  dans la liste déroulante : elle y est donnée telle quelle, champ *Nom
+  d'utilisateur*.
+
+- **La clé privée se transmet en base64, sur une seule ligne.** Elle est
+  générée sur le nœud, donc recopiée depuis un terminal web — où l'habillage
+  du texte la mutile sans rien signaler. Le piège est qu'une clé ainsi
+  tronquée **paraît valide** : l'en-tête et le pied subsistent, et
+  `ssh-keygen -lf` en calcule encore l'empreinte, qui ne dépend que de la
+  partie publique. L'échec n'arrive qu'à l'usage, sous la forme
+  « `Load key … error in libcrypto` » suivie d'un `Permission denied` — qui
+  envoie chercher un problème de droits là où il n'y a qu'un fichier abîmé.
+  Un indice discret le trahit : `ssh-keygen -lf` affiche « no comment », le
+  commentaire de la clé vivant justement dans la partie privée.
+
+  Sur le nœud : `base64 ~/.ssh/deploiement_github | tr -d '\n'`, et ce bloc
+  d'une ligne va dans le secret. Le workflow accepte les deux formes (PEM
+  brut ou base64), retire les retours chariot, puis **vérifie la partie
+  privée** en dérivant la clé publique (`ssh-keygen -y`) — un contrôle qui,
+  contrairement à l'empreinte, échoue vraiment sur une clé tronquée.
+
+  **Le symptôme, si on se trompe d'ordre**, ne ressemble pas à un problème de
+  compte : `Connection closed by <ip> port 3022`, sans « Permission denied »
+  ni la moindre mention de clé. La passerelle (`JSSHProxy`) raccroche dès la
+  lecture du nom d'utilisateur, **avant** d'avoir proposé la moindre méthode
+  d'authentification — ce qui envoie chercher du côté de la clé, où il n'y a
+  rien à trouver. D'où le mode `test_connexion` du workflow : en verbeux, la
+  distinction est immédiate (une clé refusée, elle, produit un
+  « Offering public key » suivi d'un « Permission denied »).
+
+Le script s'arrête avec un message explicite si `/home/jelastic/ROOT` cessait
+d'être un clone git — ce serait le cas si le nœud passait au panneau Git de
+Jelastic plutôt qu'à un clone classique.
+
+La procédure manuelle ci-dessous reste valable et reste la porte de sortie :
+elle est ce que le workflow exécute, ni plus ni moins.
+
+## Aperçu d'une PR (environnement `jepatisse-preview`)
+
+Le palier qui manquait. Jusqu'ici, entre « je fusionne » et « c'est en ligne sur
+le nœud qui sert `dev` **et** `www` », il n'y avait rien : le premier endroit où
+l'on pouvait regarder une correction était déjà le nœud de tout le monde.
+
+`.github/workflows/deploiement-preview.yml` déploie la branche d'une PR sur un
+**environnement d'aperçu distinct**, et commente son URL sur la PR.
+
+### Un ENVIRONNEMENT séparé, pas une couche — et ça a coûté une panne
+
+Le premier essai, le 14/09, a ajouté le nœud d'aperçu comme un second nœud de
+la **couche applicative de `jepatisse-app`**, en comptant sur un `server_name`
+propre dans `/etc/nginx/conf.d/` de l'équilibreur 216680 pour l'isoler. Ça ne
+tient pas : **la plateforme régénère `upstream common` à partir de la couche
+entière**, et y a rangé le nœud d'aperçu — vide, tout juste créé.
+`dev.jepatisse.com` s'est mis à répondre depuis lui, servant l'application
+Express d'usine (`Cannot GET /`). Un bloc dans `conf.d/` ne protège de rien
+ici : l'upstream est réécrit au-dessus de lui.
+
+La panne a duré au-delà du retrait de la couche, pour une deuxième raison qu'il
+faut connaître : la plateforme a bien réécrit `nginx-jelastic.conf` avec la
+bonne cible, mais le NGINX **en cours d'exécution** ne l'a jamais relu — et
+`nginx -s reload` est refusé depuis le Web SSH (`kill(…) failed (1: Operation
+not permitted)`, l'utilisateur du shell n'a pas le droit de signaler le
+master). Seul un **redémarrage du nœud d'équilibrage** depuis le tableau de
+bord referme l'écart. Symptôme pendant ce temps : 502 sur toutes les requêtes,
+alors que le nœud applicatif répond parfaitement en local et que le fichier de
+configuration sur disque est juste.
+
+**Règle qui en découle : ne jamais ajouter de nœud à la couche Node.js de
+`jepatisse-app`.** Un aperçu vit dans son propre environnement, avec sa propre
+adresse.
+
+### L'étiquette est l'autorisation
+
+L'aperçu ne part **jamais** du seul fait qu'une PR existe : il faut poser
+l'étiquette **`preview`** dessus. Ce n'est pas de l'ergonomie, c'est la
+sécurité du dispositif — ce dépôt est **public**, n'importe qui peut ouvrir une
+PR, et un aperçu construit du code sur une vraie machine avec de vrais secrets.
+Or poser une étiquette exige le droit d'écriture sur le dépôt : c'est donc
+forcément le geste délibéré de quelqu'un qui a lu le code.
+
+Retirer l'étiquette, ou fermer la PR, arrête l'aperçu et libère le créneau.
+
+### Un seul créneau, et il est annoncé
+
+Un seul nœud d'aperçu, donc **une PR à la fois**. Le workflow refuse de démarrer
+si une autre PR ouverte porte déjà l'étiquette, en la nommant — plutôt que
+d'écraser en silence l'aperçu d'un autre, qui testerait alors du code qui n'est
+pas le sien sans s'en apercevoir.
+
+### Ce qu'un aperçu ne prouve pas
+
+**La base de données est la même.** Le nœud est séparé, pas les données : un
+aperçu interroge le même PostgreSQL que `dev` et `www`. Un test destructif s'y
+voit en vrai, et une PR qui suppose une migration SQL ne peut pas être essayée
+tant que cette migration n'est pas appliquée à la base commune — ce qui affecte
+aussitôt tout le monde. C'est le plafond du dispositif, quelle que soit
+l'infrastructure : le commentaire déposé sur la PR le rappelle à chaque fois.
+
+### Ce qu'il ne fait pas, volontairement
+
+- **Pas d'appel à Jira.** Un aperçu n'est pas un déploiement : annoncer
+  « Déployé » ferait partir l'e-mail irréversible au demandeur
+  (`docs/contact-jira.md` §2) pour du code qui n'est allé nulle part.
+- **Pas de déploiement GitHub « production ».** L'historique des déploiements
+  doit rester celui de ce qui sert les visiteurs.
+- **Il ne touche jamais au nœud 216658.** C'est la raison d'être d'un
+  environnement séparé : une construction d'aperçu ne doit pas disputer son
+  processeur au site qui répond aux visiteurs — ni, on l'a appris à ses dépens,
+  pouvoir entrer dans son équilibrage.
+
+### Le même script que la production
+
+`scripts/deploiement-app.sh` est utilisé **sans une ligne de différence** par
+les deux workflows, et la validation des secrets SSH est une action commune
+(`.github/actions/preparer-connexion-ssh`). Un script d'aperçu séparé finirait
+par diverger — et l'aperçu cesserait alors de prouver quoi que ce soit sur le
+déploiement réel, ce qui est pourtant tout son objet.
+
+### Ce qu'il faut lui donner
+
+**Où :** Settings > Secrets and variables > Actions, sur le dépôt GitHub.
+
+| Nom | Type | Rôle |
+|---|---|---|
+| `PREVIEW_SSH_USER` | Secret | Compte du nœud d'aperçu, `<numéro de nœud>-11487`. **Seul secret réellement nouveau.** |
+| `PREVIEW_SSH_HOST` | Secret | Facultatif — à défaut, `DEPLOY_SSH_HOST` est réutilisé (même passerelle). |
+| `PREVIEW_SSH_KEY` | Secret | Facultatif — à défaut, `DEPLOY_SSH_KEY` est réutilisée. La clé publique étant enregistrée sur le **compte** Jelastic, elle ouvre déjà tous ses nœuds. |
+| `PREVIEW_URL` | Variable | **Obligatoire, sans valeur par défaut** — l'adresse que la plateforme donne à l'environnement d'aperçu (`https://<environnement>.jcloud-ver-jpe.ik-server.com`). Une valeur en dur dans le workflow finirait par désigner un environnement détruit. |
+| `PREVIEW_RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
+| `PREVIEW_APP_PM2` | Variable | `je-patisse` par défaut. |
+
+### Prérequis d'infrastructure
+
+**Où :** tableau de bord Jelastic, **nouvel** environnement.
+
+1. **Créer un environnement** à part — pile **Node.js 22.x** (variante `-pm2`),
+   **un seul nœud**, **pas de couche d'équilibrage**, région Genève. Cloudlets :
+   réserve 1, limite 24 — c'est la construction Next.js qui demande la mémoire,
+   et on garde le même plafond que la production pour que l'aperçu reste une
+   répétition fidèle.
+2. **Pas de domaine personnalisé.** On utilise l'adresse que la plateforme
+   donne à l'environnement, servie en HTTPS par son infrastructure partagée.
+   Un `preview.jepatisse.com` imposerait une couche d'équilibrage rien que pour
+   terminer le TLS (un nœud Node.js nu n'a pas de terminaison TLS : la pile y
+   pose une simple redirection nft depuis le port 80), plus un enregistrement
+   DNS et un certificat à renouveler — pour une URL qu'on lit dans un
+   commentaire de PR et qu'on oublie trois jours plus tard.
+3. **Relever le numéro de nœud**, puis sa chaîne de connexion dans l'onglet
+   *SFTP / Accès SSH direct* — c'est `PREVIEW_SSH_USER`. La clé SSH, elle, est
+   enregistrée sur le **compte** Jelastic : elle ouvre déjà ce nœud, rien à
+   reposer.
+4. **Amorcer le nœud** : `/home/jelastic/ROOT` doit être un **clone git** du
+   dépôt (`scripts/deploiement-app.sh` met le code à jour par `git fetch`, il ne
+   copie rien). Le premier déploiement démarre lui-même l'application depuis
+   `ecosystem.config.js` — inutile de la lancer à la main.
+5. **Poser les variables d'environnement** comme celles du 216658, **à quatre
+   exceptions près, et chacune compte** :
+   - **`COMING_SOON` absente.** `middleware.ts` n'exempte que
+     `dev.jepatisse.com` (comparaison sur `Host`) : posée ici, elle servirait la
+     page d'attente à la place de l'aperçu.
+   - **`SMTP_*` et `JIRA_*` absentes.** Un aperçu ne doit pouvoir ni envoyer un
+     e-mail à un demandeur réel, ni créer un ticket. `lib/jira.ts` nomme la
+     variable manquante et rend une erreur — il ne plante pas.
+   - **`CRON_SECRET` absente.** Aucune tâche planifiée ne vise l'aperçu ; la
+     poser n'ouvrirait qu'une porte.
+   - **`PWA_DISABLE_SERVICE_WORKER=true`.** L'aperçu est une origine distincte,
+     son service worker ne peut donc pas polluer `dev` ni `www` — mais un cache
+     de worker sur un build qui change à chaque push n'apporte rien et brouille
+     ce qu'on vient vérifier.
+
+   Attention aux **`NEXT_PUBLIC_*`** : elles sont inlinées dans le bundle **au
+   build, sur ce nœud-ci**. Fausses ici, elles donnent un aperçu qui ment sans
+   lever la moindre erreur.
+
+## Construire et déployer l'application (à la main)
 
 Le code est déployé depuis Git, puis **construit sur le nœud**.
 
@@ -154,3 +403,12 @@ Deux symptômes trompeurs, rencontrés en vrai :
 tournent depuis GitHub Actions. Le projet **`mc`** reste techniquement en
 place (URL `*.vercel.app`, aucun domaine attaché) : à retirer, avec le second
 projet **`dev_jp`** (`mc-oqp7.vercel.app`), pour clore la phase 4.
+
+**Ce qui bloquait cette suppression sans que ça se voie** : ces deux projets
+construisent encore le dépôt à chaque push, et c'est leur `deployment_status`
+qui déclenchait `jira-deploiement.yml`. Les supprimer aurait arrêté la chaîne
+« ticket → Déployé → e-mail au demandeur » sans le moindre message d'erreur —
+des déploiements réussis, et plus un seul ticket transitionné. Depuis
+`deploiement-app.yml` (voir « Déployer `main` automatiquement »), la chaîne ne
+dépend plus d'eux : **la phase 4 peut être close une fois ce workflow armé et
+observé sur un vrai déploiement.**

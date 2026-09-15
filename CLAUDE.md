@@ -20,6 +20,18 @@ le service managé.
   et par quel canal (console Infomaniak / *Configuration manager* / Web SSH
   du nœud). Ne jamais supposer qu'une commande shell est possible sans avoir
   nommé le nœud.
+- **Une commande destinée au Web SSH tient sur UNE seule ligne**, enchaînée
+  par `&&` ou `;` — jamais un bloc de plusieurs lignes, ni une boucle, ni un
+  `if` déplié. Un bloc collé dans un terminal web s'exécute ligne par ligne,
+  mélange sa sortie aux invites intermédiaires, et rend le résultat
+  inexploitable à la copie. Corollaire, plus important encore : **quand la
+  sortie doit être recopiée ailleurs** (clé, jeton, empreinte, chaîne de
+  connexion), elle doit être produite **sur une seule ligne, seule** — sans
+  titre, sans repère, sans ligne voisine. Tout ce qui l'entoure finit copié
+  avec elle : c'est ce qui a mutilé deux fois la clé de déploiement
+  (§ « Déployer `main` automatiquement » de `DEPLOY.md`). Une valeur qu'on
+  veut vérifier se demande par une **seconde** commande, pas en ajoutant une
+  ligne à la première.
 - **Une action posée dans un panneau ne prouve pas qu'un processus l'a
   reçue.** Après toute variable ou fichier modifié côté Virtuozzo, vérifier
   l'état **du processus**, pas celui de l'interface — `pm2 env <id>` sur la
@@ -1333,7 +1345,20 @@ Historique de la migration depuis Vercel + Supabase :
   `/auth/v1/` et `/rest/v1/`. Deux environnements et non un seul : le moteur
   d'un environnement Jelastic est figé à sa création, et l'image Docker de la
   base y interdit les piles natives. Effet heureux : un redéploiement
-  applicatif ne peut pas atteindre la base.
+  applicatif ne peut pas atteindre la base. Un troisième,
+  `jepatisse-preview` (216804), sert les aperçus de PR.
+- **Ne jamais ajouter de nœud à la couche applicative de `jepatisse-app`.** La
+  plateforme régénère `upstream common` à partir de la **couche entière** : un
+  nœud ajouté s'y retrouve rangé, et l'équilibreur envoie des visiteurs dessus.
+  Un `server_name` propre dans `conf.d/` n'y change rien, l'upstream est réécrit
+  au-dessus. C'est ce qui a mis `dev.jepatisse.com` en panne le 14/09 — il
+  servait l'application Express d'usine d'un nœud vide. Un besoin de nœud
+  supplémentaire se règle par un **environnement séparé** (c'est ce qu'est
+  `jepatisse-preview`). Corollaire : `nginx -s reload` étant refusé depuis le
+  Web SSH, une configuration régénérée n'est relue que par un **redémarrage du
+  nœud d'équilibrage** depuis le tableau de bord — entre les deux, 502 sur tout,
+  alors que le fichier sur disque est juste et que l'application répond en
+  local. Cf. `DEPLOY.md` § « Aperçu d'une PR ».
 - **Le déploiement construit sur le nœud**, il n'est pas automatique sur push.
   La commande canonique et les trois pièges qu'elle contourne sont dans
   `DEPLOY.md` — ne pas l'improviser.
