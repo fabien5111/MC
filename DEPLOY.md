@@ -30,6 +30,7 @@ base.
 | `jepatisse` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
 | `jepatisse` | 216114 | GoTrue (authentification) |
 | `jepatisse` | 216242 | PostgREST (API REST sur la base) |
+| `jepatisse-preview` | 216804 | Aperçu d'une PR (pile Node.js 22.x native, `pm2`) — voir plus bas |
 
 Région : **Genève**. Application et base partagent la plateforme et la région
 — aucune requête ne traverse une frontière réseau lointaine.
@@ -144,6 +145,143 @@ Jelastic plutôt qu'à un clone classique.
 
 La procédure manuelle ci-dessous reste valable et reste la porte de sortie :
 elle est ce que le workflow exécute, ni plus ni moins.
+
+## Aperçu d'une PR (environnement `jepatisse-preview`)
+
+Le palier qui manquait. Jusqu'ici, entre « je fusionne » et « c'est en ligne sur
+le nœud qui sert `dev` **et** `www` », il n'y avait rien : le premier endroit où
+l'on pouvait regarder une correction était déjà le nœud de tout le monde.
+
+`.github/workflows/deploiement-preview.yml` déploie la branche d'une PR sur un
+**environnement d'aperçu distinct**, et commente son URL sur la PR.
+
+### Un ENVIRONNEMENT séparé, pas une couche — et ça a coûté une panne
+
+Le premier essai, le 14/09, a ajouté le nœud d'aperçu comme un second nœud de
+la **couche applicative de `jepatisse-app`**, en comptant sur un `server_name`
+propre dans `/etc/nginx/conf.d/` de l'équilibreur 216680 pour l'isoler. Ça ne
+tient pas : **la plateforme régénère `upstream common` à partir de la couche
+entière**, et y a rangé le nœud d'aperçu — vide, tout juste créé.
+`dev.jepatisse.com` s'est mis à répondre depuis lui, servant l'application
+Express d'usine (`Cannot GET /`). Un bloc dans `conf.d/` ne protège de rien
+ici : l'upstream est réécrit au-dessus de lui.
+
+La panne a duré au-delà du retrait de la couche, pour une deuxième raison qu'il
+faut connaître : la plateforme a bien réécrit `nginx-jelastic.conf` avec la
+bonne cible, mais le NGINX **en cours d'exécution** ne l'a jamais relu — et
+`nginx -s reload` est refusé depuis le Web SSH (`kill(…) failed (1: Operation
+not permitted)`, l'utilisateur du shell n'a pas le droit de signaler le
+master). Seul un **redémarrage du nœud d'équilibrage** depuis le tableau de
+bord referme l'écart. Symptôme pendant ce temps : 502 sur toutes les requêtes,
+alors que le nœud applicatif répond parfaitement en local et que le fichier de
+configuration sur disque est juste.
+
+**Règle qui en découle : ne jamais ajouter de nœud à la couche Node.js de
+`jepatisse-app`.** Un aperçu vit dans son propre environnement, avec sa propre
+adresse.
+
+### L'étiquette est l'autorisation
+
+L'aperçu ne part **jamais** du seul fait qu'une PR existe : il faut poser
+l'étiquette **`preview`** dessus. Ce n'est pas de l'ergonomie, c'est la
+sécurité du dispositif — ce dépôt est **public**, n'importe qui peut ouvrir une
+PR, et un aperçu construit du code sur une vraie machine avec de vrais secrets.
+Or poser une étiquette exige le droit d'écriture sur le dépôt : c'est donc
+forcément le geste délibéré de quelqu'un qui a lu le code.
+
+Retirer l'étiquette, ou fermer la PR, arrête l'aperçu et libère le créneau.
+
+### Un seul créneau, et il est annoncé
+
+Un seul nœud d'aperçu, donc **une PR à la fois**. Le workflow refuse de démarrer
+si une autre PR ouverte porte déjà l'étiquette, en la nommant — plutôt que
+d'écraser en silence l'aperçu d'un autre, qui testerait alors du code qui n'est
+pas le sien sans s'en apercevoir.
+
+### Ce qu'un aperçu ne prouve pas
+
+**La base de données est la même.** Le nœud est séparé, pas les données : un
+aperçu interroge le même PostgreSQL que `dev` et `www`. Un test destructif s'y
+voit en vrai, et une PR qui suppose une migration SQL ne peut pas être essayée
+tant que cette migration n'est pas appliquée à la base commune — ce qui affecte
+aussitôt tout le monde. C'est le plafond du dispositif, quelle que soit
+l'infrastructure : le commentaire déposé sur la PR le rappelle à chaque fois.
+
+### Ce qu'il ne fait pas, volontairement
+
+- **Pas d'appel à Jira.** Un aperçu n'est pas un déploiement : annoncer
+  « Déployé » ferait partir l'e-mail irréversible au demandeur
+  (`docs/contact-jira.md` §2) pour du code qui n'est allé nulle part.
+- **Pas de déploiement GitHub « production ».** L'historique des déploiements
+  doit rester celui de ce qui sert les visiteurs.
+- **Il ne touche jamais au nœud 216658.** C'est la raison d'être d'un
+  environnement séparé : une construction d'aperçu ne doit pas disputer son
+  processeur au site qui répond aux visiteurs — ni, on l'a appris à ses dépens,
+  pouvoir entrer dans son équilibrage.
+
+### Le même script que la production
+
+`scripts/deploiement-app.sh` est utilisé **sans une ligne de différence** par
+les deux workflows, et la validation des secrets SSH est une action commune
+(`.github/actions/preparer-connexion-ssh`). Un script d'aperçu séparé finirait
+par diverger — et l'aperçu cesserait alors de prouver quoi que ce soit sur le
+déploiement réel, ce qui est pourtant tout son objet.
+
+### Ce qu'il faut lui donner
+
+**Où :** Settings > Secrets and variables > Actions, sur le dépôt GitHub.
+
+| Nom | Type | Rôle |
+|---|---|---|
+| `PREVIEW_SSH_USER` | Secret | Compte du nœud d'aperçu, `<numéro de nœud>-11487`. **Seul secret réellement nouveau.** |
+| `PREVIEW_SSH_HOST` | Secret | Facultatif — à défaut, `DEPLOY_SSH_HOST` est réutilisé (même passerelle). |
+| `PREVIEW_SSH_KEY` | Secret | Facultatif — à défaut, `DEPLOY_SSH_KEY` est réutilisée. La clé publique étant enregistrée sur le **compte** Jelastic, elle ouvre déjà tous ses nœuds. |
+| `PREVIEW_URL` | Variable | **Obligatoire, sans valeur par défaut** — l'adresse que la plateforme donne à l'environnement d'aperçu (`https://<environnement>.jcloud-ver-jpe.ik-server.com`). Une valeur en dur dans le workflow finirait par désigner un environnement détruit. |
+| `PREVIEW_RACINE_APP` | Variable | `/home/jelastic/ROOT` par défaut. |
+| `PREVIEW_APP_PM2` | Variable | `je-patisse` par défaut. |
+
+### Prérequis d'infrastructure
+
+**Où :** tableau de bord Jelastic, **nouvel** environnement.
+
+1. **Créer un environnement** à part — pile **Node.js 22.x** (variante `-pm2`),
+   **un seul nœud**, **pas de couche d'équilibrage**, région Genève. Cloudlets :
+   réserve 1, limite 24 — c'est la construction Next.js qui demande la mémoire,
+   et on garde le même plafond que la production pour que l'aperçu reste une
+   répétition fidèle.
+2. **Pas de domaine personnalisé.** On utilise l'adresse que la plateforme
+   donne à l'environnement, servie en HTTPS par son infrastructure partagée.
+   Un `preview.jepatisse.com` imposerait une couche d'équilibrage rien que pour
+   terminer le TLS (un nœud Node.js nu n'a pas de terminaison TLS : la pile y
+   pose une simple redirection nft depuis le port 80), plus un enregistrement
+   DNS et un certificat à renouveler — pour une URL qu'on lit dans un
+   commentaire de PR et qu'on oublie trois jours plus tard.
+3. **Relever le numéro de nœud**, puis sa chaîne de connexion dans l'onglet
+   *SFTP / Accès SSH direct* — c'est `PREVIEW_SSH_USER`. La clé SSH, elle, est
+   enregistrée sur le **compte** Jelastic : elle ouvre déjà ce nœud, rien à
+   reposer.
+4. **Amorcer le nœud** : `/home/jelastic/ROOT` doit être un **clone git** du
+   dépôt (`scripts/deploiement-app.sh` met le code à jour par `git fetch`, il ne
+   copie rien). Le premier déploiement démarre lui-même l'application depuis
+   `ecosystem.config.js` — inutile de la lancer à la main.
+5. **Poser les variables d'environnement** comme celles du 216658, **à quatre
+   exceptions près, et chacune compte** :
+   - **`COMING_SOON` absente.** `middleware.ts` n'exempte que
+     `dev.jepatisse.com` (comparaison sur `Host`) : posée ici, elle servirait la
+     page d'attente à la place de l'aperçu.
+   - **`SMTP_*` et `JIRA_*` absentes.** Un aperçu ne doit pouvoir ni envoyer un
+     e-mail à un demandeur réel, ni créer un ticket. `lib/jira.ts` nomme la
+     variable manquante et rend une erreur — il ne plante pas.
+   - **`CRON_SECRET` absente.** Aucune tâche planifiée ne vise l'aperçu ; la
+     poser n'ouvrirait qu'une porte.
+   - **`PWA_DISABLE_SERVICE_WORKER=true`.** L'aperçu est une origine distincte,
+     son service worker ne peut donc pas polluer `dev` ni `www` — mais un cache
+     de worker sur un build qui change à chaque push n'apporte rien et brouille
+     ce qu'on vient vérifier.
+
+   Attention aux **`NEXT_PUBLIC_*`** : elles sont inlinées dans le bundle **au
+   build, sur ce nœud-ci**. Fausses ici, elles donnent un aperçu qui ment sans
+   lever la moindre erreur.
 
 ## Construire et déployer l'application (à la main)
 
