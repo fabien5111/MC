@@ -1347,6 +1347,14 @@ Historique de la migration depuis Vercel + Supabase :
   base y interdit les piles natives. Effet heureux : un redéploiement
   applicatif ne peut pas atteindre la base. Un troisième,
   `jepatisse-preview` (216804), sert les aperçus de PR.
+- **Après avoir poussé/créé une PR, vérifier la disponibilité de l'étiquette
+  `preview`** (un seul nœud d'aperçu, une PR à la fois — cf. `DEPLOY.md`
+  § « Aperçu d'une PR ») : lister les PR ouvertes portant déjà `preview`.
+  Toujours **annoncer le résultat** à l'utilisateur (créneau libre, ou déjà
+  pris par telle PR). Si le créneau est libre, **proposer** de poser
+  l'étiquette sur la PR courante plutôt que la poser d'emblée — c'est un
+  geste délibéré (construction sur une vraie machine avec de vrais secrets),
+  pas une étape automatique du push.
 - **Ne jamais ajouter de nœud à la couche applicative de `jepatisse-app`.** La
   plateforme régénère `upstream common` à partir de la **couche entière** : un
   nœud ajouté s'y retrouve rangé, et l'équilibreur envoie des visiteurs dessus.
