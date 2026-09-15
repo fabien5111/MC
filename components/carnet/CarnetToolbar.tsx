@@ -76,6 +76,18 @@ export function CarnetToolbar({
     [hrefFor, router],
   );
 
+  // Recherche (JEP-54) : hors de la transition partagée avec CarnetContent,
+  // donc `navPending` ne passe jamais à `true` pour cette navigation et le
+  // fouet plein écran ne s'affiche pas pendant la frappe — une saisie est
+  // bien plus fréquente qu'un changement de tri/scope/statut pour justifier
+  // ce voile (même doctrine que VoteButton sur la boîte à idées).
+  const navigateSearch = useCallback(
+    (next: CarnetParams) => {
+      router.replace(hrefFor(next), { scroll: false });
+    },
+    [hrefFor, router],
+  );
+
   // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
   // abonnements, ces recettes des autres sont toujours déjà publiées et
   // publiques, leur statut ne varie jamais. Sur Favoris, une recette dont je
@@ -140,7 +152,7 @@ export function CarnetToolbar({
                 onChange={(e) => {
                   setQ(e.target.value);
                   if (timer.current) clearTimeout(timer.current);
-                  timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
+                  timer.current = setTimeout(() => navigateSearch({ ...params, q: e.target.value }), DEBOUNCE_MS);
                 }}
                 placeholder="Chercher dans mon carnet…"
                 className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
@@ -202,7 +214,7 @@ export function CarnetToolbar({
               onChange={(e) => {
                 setQ(e.target.value);
                 if (timer.current) clearTimeout(timer.current);
-                timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
+                timer.current = setTimeout(() => navigateSearch({ ...params, q: e.target.value }), DEBOUNCE_MS);
               }}
               placeholder="Chercher dans mon carnet…"
               className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
