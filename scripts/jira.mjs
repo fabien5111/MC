@@ -1,19 +1,22 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Cinq verbes : `lire`, `chercher`, `commenter`, et deux verbes de
-// transition étroitement bornés, `demarrer` et `envoyer-en-test`. Toujours
-// PAS de passe-plat REST générique : un besoin nouveau s'ajoute au script,
-// avec son garde-fou, plutôt que de se contourner.
+// Six verbes : `lire`, `chercher`, `commenter`, et trois verbes de
+// transition étroitement bornés, `demarrer`, `envoyer-en-test` et
+// `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
+// nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
+// contourner.
 //
-// `demarrer` et `envoyer-en-test` ne connaissent qu'un seul statut cible
-// chacun (« En cours » / « Revue en cours », configurables — §1.5 de
+// Ces trois verbes ne connaissent qu'un seul statut cible chacun (« En
+// cours » / « Revue en cours » / « A déployer », configurables — §1.5 de
 // `docs/outillage-jira.md`) et refusent, avant tout envoi, toute transition
 // qui mènerait au statut « Déployé » : c'est lui qui déclenche l'e-mail au
 // demandeur, irréversible une fois parti (`docs/contact-jira.md` §2). Cette
 // transition-là reste exclusivement le rôle du lot 3
 // (`scripts/jira-deploiement.mjs`), dans une chaîne de déploiement — jamais
-// d'un agent qui développe un ticket.
+// d'un agent qui développe un ticket. `a-deployer` ne fait que poser le
+// ticket sur la ligne de départ de ce lot 3 ; c'est lui, plus tard, qui
+// constate qu'un déploiement a réussi et qui seul écrit « Déployé ».
 //
 // Script en JS pur, non importable depuis `lib/jira.ts` (TypeScript, compilé
 // par Next) : l'authentification Basic (`scripts/jira-api.mjs`) et la
@@ -237,6 +240,49 @@ async function envoyerEnTest(cle) {
   await transitionner(cle, statuts.enTestId, statuts.enTestNom);
 }
 
+/**
+ * Pose le ticket sur le statut que `jira-deploiement.mjs` (lot 3) surveille
+ * comme point de départ (`decisionDeploiement`, `aDeployerId`/`aDeployerNom`
+ * — mêmes variables, aucune n'est ajoutée pour ce verbe). Le garde-fou de
+ * `transitionner` s'applique ici comme aux deux autres verbes : si
+ * `JIRA_STATUS_TO_DEPLOY` finissait par désigner « Déployé » par erreur de
+ * configuration, la transition serait refusée plutôt qu'exécutée.
+ *
+ * AUCUN REPLI IMPLICITE TOLÉRÉ, contrairement à `demarrer` / `envoyer-en-test`
+ * — incident vécu le 15/09. `lireConfigStatuts` replie `aDeployerNom` sur
+ * « Terminé » et `deployeNom` sur « Déployé » quand les variables manquent :
+ * deux noms génériques, jamais ceux de ce projet, dont le vrai statut
+ * terminal s'appelle « Terminé ». Dans une session sans ces deux variables,
+ * ce repli a fait exécuter JEP-131 → « Terminé » directement : le garde-fou
+ * de `transitionner` compare la transition trouvée à `deployeNom`, resté à
+ * « Déployé » par défaut — les deux noms ne coïncidant pas, rien n'a
+ * bloqué. Une configuration absente doit arrêter la commande, comme
+ * `lireConfig()` le fait déjà pour `JIRA_BASE_URL` / `JIRA_EMAIL` /
+ * `JIRA_API_TOKEN` — jamais deviner un nom qui pourrait, par malchance,
+ * être le bon.
+ */
+export function verifierConfigADeployer(env) {
+  return [
+    ['JIRA_STATUS_TO_DEPLOY', env.JIRA_STATUS_TO_DEPLOY, env.JIRA_STATUS_TO_DEPLOY_ID],
+    ['JIRA_STATUS_DEPLOYED', env.JIRA_STATUS_DEPLOYED, env.JIRA_STATUS_DEPLOYED_ID],
+  ]
+    .filter(([, nom, id]) => !nom && !id)
+    .map(([variable]) => variable);
+}
+
+async function aDeployer(cle) {
+  const manquantes = verifierConfigADeployer(process.env);
+  if (manquantes.length > 0) {
+    echouer(
+      `${manquantes.join(', ')} absente(s) de l'environnement — ce verbe refuse de deviner un nom de statut par défaut ` +
+        `(incident du 15/09 : un repli sur « Terminé » / « Déployé » a fait sauter l'étape « A déployer »). Renseigner ` +
+        `les noms réels du workflow Jira du projet avant de réessayer (cf. docs/outillage-jira.md §1.6).`,
+    );
+  }
+  const statuts = lireConfigStatuts();
+  await transitionner(cle, statuts.aDeployerId, statuts.aDeployerNom);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Ligne de commande
 // ─────────────────────────────────────────────────────────────────────────
@@ -247,6 +293,7 @@ const USAGE = `Usage :
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
+  node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
 
 Variables requises : JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN.
 
@@ -255,7 +302,8 @@ Exemples :
   node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
   node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
   node scripts/jira.mjs demarrer MC-123
-  node scripts/jira.mjs envoyer-en-test MC-123`;
+  node scripts/jira.mjs envoyer-en-test MC-123
+  node scripts/jira.mjs a-deployer MC-123`;
 
 function echouer(message) {
   console.error(message);
@@ -321,6 +369,13 @@ async function main(argv) {
     const cle = args[0];
     if (!cle) echouer(`Clé de ticket manquante.\n\n${USAGE}`);
     await envoyerEnTest(cle);
+    return;
+  }
+
+  if (verbe === 'a-deployer') {
+    const cle = args[0];
+    if (!cle) echouer(`Clé de ticket manquante.\n\n${USAGE}`);
+    await aDeployer(cle);
     return;
   }
 
