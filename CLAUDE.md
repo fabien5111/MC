@@ -392,11 +392,26 @@ remontant** en dessous.
   calcule « tous les filtres sauf celui-ci » ; un compteur faux est pire
   qu'absent.
 - **Spinner** : le fouet plein écran couvre tout rafraîchissement des
-  résultats — réglage d'une facette, validation du tiroir, « Charger plus ».
+  résultats — réglage d'une facette, validation du tiroir, « Charger plus » —
+  **sauf la saisie du champ texte**, qui navigue en `silent` (d'où
+  `showOverlay = pending && !silentNav.current` dans `SearchProvider`) : un
+  voile qui clignote à chaque pause de frappe cache le champ qu'on est en
+  train de remplir. Même doctrine que le carnet (JEP-54).
   Il est déclaré à un seul endroit (`components/search/SearchResults.tsx`) :
   plusieurs `LoadingOverlay` montés en même temps empileraient leurs voiles.
   Un délai de 120 ms avant affichage (le même que `NavigationSpinner`) évite
   le clignotement sur un rafraîchissement instantané.
+- **L'état optimiste ne se laisse pas écraser par l'écho de sa propre
+  navigation.** `SearchProvider` resynchronise `criteria` sur les critères du
+  serveur, mais cet écho revient en retard du debounce plus du rendu : appliqué
+  tel quel, il réécrivait `criteria.q` — donc le champ — avec une valeur
+  périmée, et les lettres tapées entre-temps étaient perdues. Il n'est donc
+  appliqué que si le changement vient d'**ailleurs** (retour arrière, lien
+  partagé), repéré en comparant l'empreinte des derniers critères posés
+  localement. Le drapeau retombe en fin de navigation, jamais entre deux
+  lettres (un debounce armé le maintient) — sans quoi un écran resterait
+  désynchronisé de son URL. Vaut pour tout ce qui est débouncé : le texte
+  **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
 
