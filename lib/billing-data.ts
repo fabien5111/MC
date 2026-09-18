@@ -119,17 +119,6 @@ export async function appelStripe<T>(
 
 // ── Correspondance prix ↔ plan ──────────────────────────────
 
-// `billing_prices`, `billing_customers` et `billing_events` ne sont pas encore
-// dans lib/database.types.ts tant que la migration n'a pas été suivie d'un
-// `npm run gen:types` — accès non typés en attendant, même motif que
-// `notifications` dans notifications-data.ts et `ads` dans PartnersManager.
-// Les quatre casts de ce fichier sont à retirer d'un bloc à la régénération.
-type PrixFiltre = {
-  eq: (col: string, value: string) => PrixFiltre;
-  maybeSingle: () => PromiseLike<{ data: { external_price_id: string } | null }>;
-};
-type PrixSelect = { select: (cols: string) => PrixFiltre };
-
 export type Periodicite = 'MONTHLY' | 'YEARLY';
 
 /**
@@ -147,13 +136,20 @@ export type Periodicite = 'MONTHLY' | 'YEARLY';
 export async function resoudrePrixStripe(planCode: string, periodicite: Periodicite): Promise<string | null> {
   const { mode } = configStripe();
   const admin = createAdminClient();
-  // Jointure sur `plans` plutôt qu'un identifiant numérique : le reste du
-  // chantier raisonne en CODE de plan (`mc_admin_grant_subscription`,
-  // `mc_start_trial`, `mc_simulate_subscribe` prennent tous `p_plan_code`),
-  // et un `plan_id` obligerait chaque appelant à résoudre le plan d'abord.
-  const { data } = await (admin.from('billing_prices' as never) as unknown as PrixSelect)
-    .select('external_price_id, plans!inner(code)')
-    .eq('plans.code', planCode)
+  // Le plan est résolu par son CODE, comme partout ailleurs dans le chantier
+  // (`mc_admin_grant_subscription`, `mc_start_trial`, `mc_simulate_subscribe`
+  // prennent tous `p_plan_code`) — un `plan_id` obligerait chaque appelant à
+  // le résoudre d'abord. Deux lectures plutôt qu'un filtre sur ressource
+  // embarquée : c'est le geste que fait déjà `app/plans/page.tsx`, et ça
+  // reste lisible. Le coût ne compte pas ici — on est sur un clic d'achat,
+  // pas sur un rendu de page.
+  const { data: plan } = await admin.from('plans').select('id').eq('code', planCode).maybeSingle();
+  if (!plan) return null;
+
+  const { data } = await admin
+    .from('billing_prices')
+    .select('external_price_id')
+    .eq('plan_id', plan.id)
     .eq('mode', mode)
     .eq('periodicity', periodicite)
     .eq('provider', 'stripe')
@@ -162,17 +158,6 @@ export async function resoudrePrixStripe(planCode: string, periodicite: Periodic
 }
 
 // ── Client Stripe d'un membre ───────────────────────────────
-
-type ClientSelect = {
-  select: (cols: string) => {
-    eq: (col: string, value: string) => {
-      maybeSingle: () => PromiseLike<{ data: { external_customer_id: string } | null }>;
-    };
-  };
-};
-type ClientUpsert = {
-  upsert: (values: unknown, options: { onConflict: string }) => PromiseLike<{ error: { message: string } | null }>;
-};
 
 /**
  * Identifiant client Stripe du membre, s'il en a un.
@@ -186,7 +171,8 @@ type ClientUpsert = {
  */
 export const getIdClientStripe = cache(async (userId: string): Promise<string | null> => {
   const supabase = await createClient();
-  const { data } = await (supabase.from('billing_customers' as never) as unknown as ClientSelect)
+  const { data } = await supabase
+    .from('billing_customers')
     .select('external_customer_id')
     .eq('user_id', userId)
     .maybeSingle();
@@ -201,7 +187,7 @@ export const getIdClientStripe = cache(async (userId: string): Promise<string | 
  */
 export async function enregistrerClientStripe(userId: string, customerId: string): Promise<void> {
   const admin = createAdminClient();
-  const { error } = await (admin.from('billing_customers' as never) as unknown as ClientUpsert).upsert(
+  const { error } = await admin.from('billing_customers').upsert(
     { user_id: userId, provider: 'stripe', external_customer_id: customerId, updated_at: new Date().toISOString() },
     { onConflict: 'user_id' },
   );
@@ -209,11 +195,6 @@ export async function enregistrerClientStripe(userId: string, customerId: string
 }
 
 // ── Idempotence des webhooks ────────────────────────────────
-
-type RpcAppel = (fn: string, args: Record<string, unknown>) => PromiseLike<{
-  data: unknown;
-  error: { message: string } | null;
-}>;
 
 /**
  * Réserve un événement Stripe. `false` = déjà traité, ou en cours de
@@ -226,10 +207,7 @@ type RpcAppel = (fn: string, args: Record<string, unknown>) => PromiseLike<{
  */
 export async function reserverEvenementStripe(id: string, type: string): Promise<boolean> {
   const admin = createAdminClient();
-  const { data, error } = await (admin.rpc as unknown as RpcAppel)('mc_claim_billing_event', {
-    p_id: id,
-    p_type: type,
-  });
+  const { data, error } = await admin.rpc('mc_claim_billing_event', { p_id: id, p_type: type });
   if (error) throw new Error(`mc_claim_billing_event : ${error.message}`);
   return data === true;
 }
@@ -241,10 +219,10 @@ export async function cloreEvenementStripe(
   erreur?: string,
 ): Promise<void> {
   const admin = createAdminClient();
-  const { error } = await (admin.rpc as unknown as RpcAppel)('mc_finish_billing_event', {
+  const { error } = await admin.rpc('mc_finish_billing_event', {
     p_id: id,
     p_status: statut,
-    p_error: erreur ?? null,
+    p_error: erreur,
   });
   // Un échec de clôture ne doit pas faire échouer le traitement lui-même :
   // l'événement retombera en reprise après cinq minutes, et l'abonnement,
@@ -257,7 +235,14 @@ export async function cloreEvenementStripe(
 export type AbonnementStripe = {
   customerId: string;
   subscriptionId: string;
-  itemId: string | null;
+  /**
+   * Ligne d'article de l'abonnement (`si_…`), nécessaire au changement de
+   * formule. Jamais nulle : un abonnement Stripe porte toujours au moins un
+   * article, et l'appelant le lit sur l'objet `subscription` qu'il vient de
+   * recevoir — le rendre optionnel ici ferait porter au SQL un cas que
+   * l'API ne produit pas.
+   */
+  itemId: string;
   priceId: string;
   /** Statut Stripe BRUT (`active`, `past_due`, `canceled`…) — traduit en SQL. */
   statut: string;
@@ -278,7 +263,11 @@ export type AbonnementStripe = {
  */
 export async function appliquerAbonnementStripe(abo: AbonnementStripe): Promise<number> {
   const admin = createAdminClient();
-  const { data, error } = await (admin.rpc as unknown as RpcAppel)('mc_apply_stripe_subscription', {
+  // `p_user_id` et `p_waiver_accepted_at` sont OMIS plutôt que passés à
+  // `null` : ce sont les deux seuls arguments à valeur par défaut côté SQL,
+  // et un `undefined` disparaît à la sérialisation, laissant la fonction
+  // appliquer son propre défaut.
+  const { data, error } = await admin.rpc('mc_apply_stripe_subscription', {
     p_customer_id: abo.customerId,
     p_subscription_id: abo.subscriptionId,
     p_item_id: abo.itemId,
@@ -286,8 +275,8 @@ export async function appliquerAbonnementStripe(abo: AbonnementStripe): Promise<
     p_stripe_status: abo.statut,
     p_current_period_end: abo.finPeriode,
     p_cancel_at_period_end: abo.annulationProgrammee,
-    p_user_id: abo.userId ?? null,
-    p_waiver_accepted_at: abo.renonciationLe ?? null,
+    p_user_id: abo.userId ?? undefined,
+    p_waiver_accepted_at: abo.renonciationLe ?? undefined,
   });
   if (error) throw new Error(`mc_apply_stripe_subscription : ${error.message}`);
   return Number(data);
