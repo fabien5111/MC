@@ -6,6 +6,7 @@ import { PlansPage } from '@/components/plans/PlansPage';
 import { getCurrentUser } from '@/lib/auth';
 import { getPlanRows, getTrialDays } from '@/lib/data/reference';
 import { getCurrentPlan, getGrid, hasConsumedTrial, getPendingRequest } from '@/lib/entitlements-data';
+import { getAbonnementStripeCourant } from '@/lib/billing-data';
 
 export const metadata: Metadata = { title: 'Nos formules | Je pâtisse !' };
 
@@ -23,6 +24,10 @@ export default async function PlansPublicPage() {
     user ? hasConsumedTrial(user.id) : false,
     user ? getPendingRequest(user.id) : null,
   ]);
+  // Un abonnement Stripe se modifie en ligne (montée immédiate au prorata,
+  // descente à l'échéance) ; un essai ou un don administrateur gardent le
+  // parcours de demande traité à la main.
+  const abonnementStripe = user ? !!(await getAbonnementStripeCourant(user.id)) : false;
   const planIds = Object.fromEntries(planRows.map((p) => [p.code, p.id]));
 
   return (
@@ -38,6 +43,7 @@ export default async function PlansPublicPage() {
           trialConsumed={trialConsumed}
           trialDays={trialDays}
           pending={pending}
+          abonnementStripe={abonnementStripe}
         />
       </main>
       <Footer />

@@ -16,7 +16,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate } from '@/lib/format';
@@ -31,19 +30,12 @@ const COULEUR_JAUGE: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { TRIAL: 'Essai', PAID: 'Abonnement', GIFT: 'Abonnement offert' };
 
-// `mc_cancel_own_subscription` n'est pas encore dans lib/database.types.ts
-// tant que la migration n'a pas été appliquée puis régénérée — appel non
-// typé en attendant, même motif que `mc_publish_plan_version` dans
-// PlansManager.
-function rpc(): (fn: string) => PromiseLike<{ data: string | null; error: { message: string } | null }> {
-  return createClient().rpc as unknown as (fn: string) => PromiseLike<{ data: string | null; error: { message: string } | null }>;
-}
-
 export function UsageCard({
   usage,
   grid,
   currentPlan,
   trialConsumed,
+  hasStripeCustomer,
 }: {
   usage: UsageLine[];
   grid: Grid;
@@ -51,11 +43,20 @@ export function UsageCard({
   // Essai déjà consommé (tous plans confondus, §7.2) — conditionne le bouton
   // « Essayer », qui ne doit jamais être proposé une seconde fois.
   trialConsumed: boolean;
+  // Un client Stripe existe pour ce membre (billing_customers) — conditionne
+  // « Gérer mon moyen de paiement ». Survit à la fin d'un abonnement : un
+  // membre qui s'est déjà abonné une fois garde ce bouton même redevenu
+  // gratuit, pour mettre à jour une carte avant de se réabonner.
+  hasStripeCustomer: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
+  // Le voile est partagé par l'annulation et l'ouverture du portail : un
+  // libellé figé sur « Annulation… » mentirait sur la seconde.
+  const [busyLabel, setBusyLabel] = useState('Annulation…');
   const [justAnnule, setJustAnnule] = useState(false);
+  const [finPeriodeAnnulee, setFinPeriodeAnnulee] = useState<string | null>(null);
 
   const parCle = new Map(grid.features.map((f) => [f.key, f]));
   const lignes = usage
@@ -90,15 +91,40 @@ export function UsageCard({
       { okLabel: estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement', cancelLabel: 'Revenir' },
     );
     if (!ok) return;
+    setBusyLabel('Annulation…');
     setBusy(true);
     try {
-      const { error } = await rpc()('mc_cancel_own_subscription');
-      if (error) {
-        dialog.alert('Erreur : ' + error.message);
+      const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "La résiliation n'a pas pu aboutir.");
         return;
       }
       setJustAnnule(true);
+      // `router.refresh()` seul : pour un abonnement Stripe, la ligne
+      // `subscriptions` peut ne pas encore porter `cancel_requested_at` au
+      // moment de ce rendu — c'est le webhook qui l'écrit, quasi
+      // immédiatement mais pas synchrone. `justAnnule` porte l'affichage en
+      // attendant, avec la date rendue par Stripe lui-même (`data.finPeriode`),
+      // jamais une valeur qui pourrait encore être l'ancienne.
+      if (data.finPeriode) setFinPeriodeAnnulee(data.finPeriode);
       router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function gererMoyenPaiement() {
+    setBusyLabel('Ouverture du portail…');
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/portail', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data?.url) {
+        dialog.alert(data?.erreur || "Impossible d'ouvrir le portail de facturation, réessayez.");
+        return;
+      }
+      window.location.href = data.url;
     } finally {
       setBusy(false);
     }
@@ -106,7 +132,7 @@ export function UsageCard({
 
   return (
     <section className="mt-6 border border-outline-variant bg-surface-container-lowest p-8 md:p-10">
-      <LoadingOverlay visible={busy} label="Annulation…" />
+      <LoadingOverlay visible={busy} label={busyLabel} />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
@@ -114,7 +140,11 @@ export function UsageCard({
             Mon forfait — {currentPlan?.label ?? 'Gratuit'}
           </h2>
         </div>
-        {(peutEssayer || hasHigherPlan || peutSouscrire || (estPayant && !cancelRequestedAt && !justAnnule)) && (
+        {(peutEssayer ||
+          hasHigherPlan ||
+          peutSouscrire ||
+          (estPayant && !cancelRequestedAt && !justAnnule) ||
+          hasStripeCustomer) && (
           <div className="flex flex-wrap items-center gap-2">
             {peutEssayer && (
               <Link
@@ -149,6 +179,15 @@ export function UsageCard({
                 {estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement'}
               </button>
             )}
+            {hasStripeCustomer && (
+              <button
+                type="button"
+                onClick={gererMoyenPaiement}
+                className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                Gérer mon moyen de paiement
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -158,7 +197,7 @@ export function UsageCard({
           {cancelRequestedAt || justAnnule ? (
             <>
               Annulé — {TYPE_LABEL[currentPlan!.type] ?? 'Abonnement'} conservé jusqu&apos;au{' '}
-              {currentPlan!.endsAt ? formatDate(currentPlan!.endsAt) : '—'}, sans reconduction ensuite.
+              {formatDate(finPeriodeAnnulee ?? currentPlan!.endsAt) || '—'}, sans reconduction ensuite.
             </>
           ) : (
             <>
