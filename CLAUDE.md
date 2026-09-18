@@ -1546,6 +1546,21 @@ Structurer systématiquement :
 
 ###### Plan d'action
 
+#### 5. Suivi d'une tâche en attente (PR, déploiement…)
+
+Ne jamais programmer soi-même un réveil automatique récurrent quand le
+seul blocage restant est une action humaine (test manuel sur un aperçu,
+décision, validation) — un point de contrôle périodique n'a de sens que
+s'il peut trouver du nouveau sans intervention (CI en cours, conflit,
+revue). Incident vécu le 17-18/09 sur la PR #282 : six réveils horaires
+consécutifs n'ont rien trouvé de neuf, chacun rechargeant tout le contexte
+de la session pour zéro information — pur gaspillage de quota, sur une
+nuit entière où seul un test manuel restait à faire.
+
+À la place : poser la question, avec une durée conseillée (« je reviens
+vérifier dans 30 minutes, ou une autre durée te convient mieux ? »), et
+attendre l'ordre avant de programmer quoi que ce soit. Ne reprogrammer
+qu'une fois, jamais en boucle silencieuse.
 
 ---
 
