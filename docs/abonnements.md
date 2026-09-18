@@ -1069,3 +1069,27 @@ toute mise en production.
 
 Non couvert non plus, faute de prix annuel configuré : tout le chemin
 `YEARLY`, y compris le changement de périodicité, hors périmètre de la phase 1.
+
+### `NEXT_PUBLIC_SITE_URL` manquante sur l'aperçu de PR
+
+Constaté en testant le lot D sur `jepatisse-preview` (18/09) : après un
+paiement de test réussi, Stripe renvoyait vers `http://localhost:3000/reglages`
+— page morte, `ERR_CONNECTION_REFUSED`.
+
+`siteUrl()` (`lib/site-url.ts`) retombe sur `http://localhost:3000` quand ni
+`NEXT_PUBLIC_SITE_URL` ni les variables Vercel (`VERCEL_PROJECT_PRODUCTION_URL`
+/ `VERCEL_URL`, héritées de l'ancienne plateforme et absentes sur Virtuozzo) ne
+sont posées. `NEXT_PUBLIC_SITE_URL` **est** posée sur `www`/`dev`
+(docs/migration-infomaniak.md § 7.16 bis), mais ne l'avait jamais eu besoin
+d'être sur `jepatisse-preview` avant ce chantier — c'est le premier lot du
+dépôt à appeler `siteUrl()` depuis une route qui doit produire une URL absolue
+(`success_url`/`cancel_url` de Stripe Checkout, `return_url` du portail).
+
+**Pas une faille à corriger dans le code** : lire l'en-tête `Host` en repli
+aurait réintroduit exactement le risque de redirection ouverte que
+`lib/redirection.ts` documente et refuse pour cette même raison (l'équilibreur
+ayant un `server_name _` attrape-tout). La correction est de poser la
+variable, une fois, sur ce nœud — sa valeur étant stable d'un aperçu de PR à
+l'autre (§ CLAUDE.md, un seul nœud d'aperçu). Comme toute `NEXT_PUBLIC_*`,
+elle compte au build ET à l'exécution : la poser sans reconstruire ne suffit
+pas.
