@@ -833,3 +833,37 @@ conséquence — mais **le jour où Stripe encaisse, un membre qui résilie perd
 ses droits en continuant d'être prélevé.** Sa réécriture est le point le plus
 important du lot E, et les lots D (souscription) et E (gestion) ne doivent pas
 être mis en production séparément.
+
+### Lot B — pas de SDK, et un module qui ne décide rien
+
+Deux règles, posées en même temps que `lib/billing.ts` / `lib/billing-data.ts`.
+
+**Aucune dépendance `stripe`.** Ce dépôt appelle déjà ses API tierces en
+`fetch` brut (`lib/ai/claude.ts` pour Anthropic) et vérifie ses signatures de
+webhook à la main (`verifierSignatureWebhook`, `lib/jira.ts`, testée). Le SDK
+apporterait `constructEvent` — quinze lignes de HMAC déjà écrites juste à
+côté — au prix d'une dépendance qui se reconstruit sur le nœud à chaque
+déploiement. La version de l'API Stripe est donc épinglée **dans le Dashboard
+du compte**, pas dans le code : un second endroit à tenir à jour, invisible
+depuis le compte qui subit les changements, aurait vite divergé.
+
+**Le TypeScript transporte, le SQL décide.** `appliquerAbonnementStripe`
+passe à `mc_apply_stripe_subscription` le statut Stripe **brut**
+(`active`, `past_due`, `canceled`…) ; la traduction en `ACTIVE` / `CANCELLED`
+n'existe qu'en SQL. L'écrire aussi côté application en ferait deux
+implémentations d'une même règle — précisément ce que le §5 interdit pour le
+calcul des droits, pour la même raison : c'est la version SQL qui fait foi,
+puisque c'est elle qui écrit.
+
+Deux conséquences pratiques de ce lot :
+
+- **`idempotencyKey` est exigée, pas optionnelle**, sur toute écriture vers
+  Stripe : `appelStripe` réessaie une fois sur un échec transitoire, et un
+  retry de `POST` est indiscernable d'une seconde demande côté Stripe. Sans
+  cette clé, le filet anti-panne créerait un second abonnement — donc un
+  second prélèvement. La fonction lève plutôt que d'accepter un appel sans
+  elle.
+- **`resoudrePrixStripe` rend `null` plutôt que de lever** quand le plan n'a
+  pas de prix dans le mode courant. C'est ce `null` qui rend `PRO_ESSAI`
+  invendable et qui garde la formule annuelle fermée, sans qu'aucun code ne
+  connaisse le nom de l'un ni l'autre.
