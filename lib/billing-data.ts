@@ -300,3 +300,43 @@ export async function appliquerAbonnementStripe(abo: AbonnementStripe): Promise<
   if (error) throw new Error(`mc_apply_stripe_subscription : ${error.message}`);
   return Number(data);
 }
+
+// ── Résiliation et portail (lot E) ──────────────────────────
+
+export type AbonnementResiliable = {
+  id: number;
+  provider: string;
+  externalSubscriptionId: string | null;
+  type: string;
+  endsAt: string | null;
+};
+
+/**
+ * Abonnement `ACTIVE` non-`DEFAULT` du membre courant, tel qu'il faut le
+ * connaître pour décider COMMENT le résilier — un `TRIAL` ou un `GIFT` n'ont
+ * jamais d'objet Stripe, seul un `PAID` en `provider = 'stripe'` en a un.
+ *
+ * Lu avec la session (policy `subscriptions_lecture`), pas le client à
+ * privilèges : c'est une lecture de page/route ordinaire, encore soumise à la
+ * RLS comme le reste du site.
+ */
+export async function getAbonnementResiliable(userId: string): Promise<AbonnementResiliable | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('id, provider, external_subscription_id, type, ends_at')
+    .eq('user_id', userId)
+    .eq('status', 'ACTIVE')
+    .neq('type', 'DEFAULT')
+    .order('starts_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    id: data.id,
+    provider: data.provider,
+    externalSubscriptionId: data.external_subscription_id,
+    type: data.type,
+    endsAt: data.ends_at,
+  };
+}

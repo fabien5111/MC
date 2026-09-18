@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
 import {
   TOLERANCE_SIGNATURE_SEC,
+  FENETRE_IDEMPOTENCE_MS,
+  cleIdempotence,
   encoderFormulaireStripe,
   lireAbonnementStripe,
   lireClientFacture,
@@ -244,5 +246,34 @@ describe('messageEchecPaiement', () => {
     const { corps } = messageEchecPaiement(null);
     expect(corps).toContain('dans les prochains jours');
     expect(corps).not.toContain('Invalid Date');
+  });
+});
+
+describe('cleIdempotence', () => {
+  it('produit la même clé pour deux appels rapprochés', () => {
+    expect(cleIdempotence('checkout', 'u1', 'PRO', 'MONTHLY')).toBe(cleIdempotence('checkout', 'u1', 'PRO', 'MONTHLY'));
+  });
+
+  it('distingue deux membres, deux plans ou deux périodicités', () => {
+    const base = cleIdempotence('checkout', 'u1', 'PRO', 'MONTHLY');
+    expect(cleIdempotence('checkout', 'u2', 'PRO', 'MONTHLY')).not.toBe(base);
+    expect(cleIdempotence('checkout', 'u1', 'PLUS', 'MONTHLY')).not.toBe(base);
+    expect(cleIdempotence('checkout', 'u1', 'PRO', 'YEARLY')).not.toBe(base);
+  });
+
+  it('ne fige pas indéfiniment : deux fenêtres distinctes rendent deux clés', () => {
+    // Une clé stable sans limite de temps entomberait un abandon volontaire
+    // jusqu'à 24 h (cache d'idempotence Stripe) — la fenêtre glissante évite
+    // ça sans perdre la protection contre une vraie retransmission réseau.
+    const vrai = Date.now;
+    try {
+      Date.now = () => 0;
+      const premiere = cleIdempotence('resilier', 'u1', 'sub_1');
+      Date.now = () => FENETRE_IDEMPOTENCE_MS * 3;
+      const seconde = cleIdempotence('resilier', 'u1', 'sub_1');
+      expect(premiere).not.toBe(seconde);
+    } finally {
+      Date.now = vrai;
+    }
   });
 });

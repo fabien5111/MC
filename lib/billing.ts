@@ -276,3 +276,26 @@ export function messageEchecPaiement(prochaineTentativeIso: string | null): { ti
 export function isoDepuisUnixStripe(v: unknown): string | null {
   return unixVersIso(v);
 }
+
+// ── Clé d'idempotence ────────────────────────────────────────
+
+/** Largeur de la fenêtre de regroupement d'une clé d'idempotence (ms). */
+export const FENETRE_IDEMPOTENCE_MS = 10 * 60 * 1000;
+
+/**
+ * Compose une clé d'idempotence stable sur une courte fenêtre, jamais à
+ * durée indéfinie.
+ *
+ * Une clé figée sur `(membre, action)` sans limite de temps protège bien
+ * contre une vraie retransmission réseau (mobile qui coupe, `appelStripe` qui
+ * relit une réponse perdue) — c'est l'usage documenté par Stripe — mais elle
+ * entomberait aussi un abandon volontaire : Stripe cache une réponse jusqu'à
+ * 24 h, donc un membre qui revient le lendemain retenter le même geste
+ * recevrait la session périmée de la veille au lieu d'une nouvelle. La
+ * fenêtre de dix minutes couvre la vraie retransmission sans figer l'intention
+ * du membre au-delà d'une session de clic.
+ */
+export function cleIdempotence(prefixe: string, ...segments: string[]): string {
+  const fenetre = Math.floor(Date.now() / FENETRE_IDEMPOTENCE_MS);
+  return [prefixe, ...segments, String(fenetre)].join(':');
+}

@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
+import { cleIdempotence } from '@/lib/billing';
 import { appelStripe, getIdClientStripe, resoudrePrixStripe, MissingStripeConfigError, type Periodicite } from '@/lib/billing-data';
 
 export const maxDuration = 30;
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
   const origine = new URL(req.url).origin;
 
   const resultat = await appelStripe<{ url: string | null }>('/checkout/sessions', {
-    idempotencyKey: `checkout:${user.id}:${planCode}:${periodicite}`,
+    idempotencyKey: cleIdempotence('checkout', user.id, planCode, periodicite),
     corps: {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],

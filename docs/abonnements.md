@@ -947,3 +947,43 @@ erreur de configuration, jamais une panne.
 reste en base : la retirer est une migration séparée (DROP FUNCTION), à faire
 une fois ce lot éprouvé en production plutôt que dans le même geste que son
 remplacement.
+
+### Lot E (résiliation + portail) — le trou du lot A est refermé
+
+`app/api/abonnement/resilier/route.ts` et `app/api/abonnement/portail/route.ts`.
+C'était le point signalé dès l'analyse du ticket : `mc_cancel_own_subscription`
+ne parlait à aucun moment à Stripe — un membre qui résiliait aurait perdu ses
+droits en continuant d'être prélevé.
+
+**Le chemin est choisi par le `provider` de l'abonnement, jamais par un
+paramètre venu du client.** Un `TRIAL` ou un `GIFT` n'ont pas d'objet Stripe :
+`mc_cancel_own_subscription` reste appelée telle quelle, geste inchangé depuis
+avant ce lot. Un `PAID` en `provider = 'stripe'` déclenche
+`subscriptions.update(id, { cancel_at_period_end: true })` — et **la route
+n'écrit alors RIEN dans `subscriptions` elle-même** : c'est le webhook qui
+aligne la base, comme pour toute écriture Stripe (§14). La date de fin
+annoncée au membre vient de la réponse Stripe elle-même, synchrone, jamais
+d'une relecture de la base qui pourrait encore porter l'ancienne valeur le
+temps que l'événement arrive.
+
+**Le portail ne gère que le moyen de paiement.** §14 (arbitrages du lot A)
+posait déjà que résiliation et changement d'offre restent des gestes du site.
+Conséquence à régler côté Stripe, pas dans ce code : la configuration du
+portail (Dashboard → Customer portal) doit désactiver ses propres options
+d'annulation et de changement de plan — sans quoi le portail ouvrirait un
+second chemin concurrent pour le même geste.
+
+**La clé d'idempotence gagne une fenêtre de temps** (`cleIdempotence`,
+`lib/billing.ts`) plutôt qu'une clé figée sur `(membre, action)` sans limite —
+défaut relevé en écrivant la résiliation. Une clé stable indéfiniment protège
+bien contre une vraie retransmission réseau, mais entomberait un abandon
+volontaire jusqu'à 24 h (durée du cache d'idempotence Stripe) : un membre qui
+reviendrait le lendemain retenter le même geste recevrait la réponse périmée
+de la veille. La fenêtre de dix minutes garde la protection utile sans figer
+l'intention au-delà d'une session de clic. La clé du Checkout (lot D) est
+corrigée par la même occasion.
+
+**Restant du lot E, non traité ici** : changement de formule (upgrade /
+downgrade) avec prorata et authentification forte (SCA) — la partie la plus
+exposée du chantier, qui touche à de l'argent réel avec des cas limites
+(carte européenne demandant une confirmation, `payment_behavior` à choisir).

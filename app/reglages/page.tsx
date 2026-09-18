@@ -16,6 +16,7 @@ import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { getNotifyEmailPreference } from '@/lib/notifications-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
+import { getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
@@ -124,7 +125,13 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           isAdmin={admin}
           followCounts={followCounts}
         />
-        <UsageCard usage={usage} grid={grid} currentPlan={currentPlan} trialConsumed={trialConsumed} />
+        <UsageCard
+          usage={usage}
+          grid={grid}
+          currentPlan={currentPlan}
+          trialConsumed={trialConsumed}
+          hasStripeCustomer={!!(await getIdClientStripe(user.id))}
+        />
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
