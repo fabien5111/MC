@@ -912,3 +912,38 @@ déjà qu'il n'est traité qu'une fois. Réserver en plus ferait taire la deuxi�
 alerte — justement celle qui devient urgente. Le message dit explicitement que
 l'accès continue : annoncer le seul échec laisserait croire à une coupure et
 ferait résilier un membre dont la carte a simplement expiré.
+
+### Lot D — Checkout, et le retrait de la simulation
+
+`app/api/abonnement/checkout/route.ts` ouvre une session Stripe Checkout ;
+`components/plans/CheckoutWaiverDialog.tsx` porte la case de renonciation au
+droit de rétractation (§4.1) devant `PlansPage`. Remplace
+`mc_simulate_subscribe` — annoncée comme pont temporaire depuis le §13.
+
+**La route ne pose jamais de droits.** Elle demande une chose à Stripe et rend
+une URL de redirection ; seul le webhook (lot C) écrit `subscriptions`, une
+fois le paiement réellement confirmé. Un membre qui ferme l'onglet Stripe
+n'est pas abonné — c'est voulu, et c'est pourquoi `/reglages?abonnement=confirme`
+affiche « en cours d'activation », jamais « activé » : au moment du retour de
+redirection, l'écriture du webhook peut ne pas avoir encore eu lieu.
+
+**La case de renonciation est revérifiée côté serveur**, jamais sur la seule
+foi du client — doctrine constante du dépôt (« les contrôles client ne prouvent
+rien »). Un litige se tranche sur ce qui est tracé serveur (`waiver_accepted_at`,
+posé en métadonnée de l'abonnement Stripe puis recopié par le webhook), pas sur
+ce qui a été affiché à l'écran.
+
+**Fenêtre dédiée plutôt qu'un `dialog.confirm()`** : une case à cocher n'entre
+pas dans le vocabulaire du Dialog générique, et cocher-puis-cliquer est le
+geste attendu pour une mention légale — un `confirm()` ferait porter
+l'acceptation par le libellé du bouton, pas par un geste explicite et séparé.
+
+**Résolution du prix, jamais son absence en 500.** Un plan sans ligne
+`billing_prices` dans le mode courant (config back-office manquante, ou
+formule volontairement invendable comme `PRO_ESSAI`, §12) rend un 422 —
+erreur de configuration, jamais une panne.
+
+**`mc_simulate_subscribe` n'est plus appelée nulle part dans le code**, mais
+reste en base : la retirer est une migration séparée (DROP FUNCTION), à faire
+une fois ce lot éprouvé en production plutôt que dans le même geste que son
+remplacement.

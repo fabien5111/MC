@@ -21,7 +21,7 @@ import { getMesDemandes } from '@/lib/contact-member-data';
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
 
-type SearchParams = { searchParams: Promise<{ impersonation?: string }> };
+type SearchParams = { searchParams: Promise<{ impersonation?: string; abonnement?: string }> };
 
 // Ce qui reste de l'ancien `/profil` une fois son contenu parti dans ses vraies
 // maisons : les recettes et les favoris au carnet, le planning, les sessions et
@@ -35,7 +35,7 @@ type SearchParams = { searchParams: Promise<{ impersonation?: string }> };
 export default async function ReglagesPage({ searchParams }: SearchParams) {
   const user = await requireUser('/reglages');
   // Motif de redirection depuis une page d'écriture (cf. requireWritableSession).
-  const { impersonation } = await searchParams;
+  const { impersonation, abonnement } = await searchParams;
   const meta = (user.user_metadata ?? {}) as {
     full_name?: string;
     name?: string;
@@ -89,6 +89,19 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
     <>
       <Header />
       <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
+        {abonnement === 'confirme' && (
+          <p className="mt-6 flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+            <span className="material-symbols-outlined text-[20px]" aria-hidden>
+              hourglass_top
+            </span>
+            {/* Le paiement est confirmé côté Stripe, mais c'est le webhook —
+                asynchrone — qui écrit l'abonnement. Ne JAMAIS annoncer « activé »
+                ici : au moment du retour de redirection, l'écriture peut ne pas
+                avoir encore eu lieu. « Mon forfait » ci-dessous reflète l'état
+                réel dès que le webhook est passé, sans action du membre. */}
+            Paiement reçu — votre abonnement est en cours d&apos;activation, quelques instants suffisent.
+          </p>
+        )}
         {impersonation === 'lecture-seule' && (
           <p className="mt-6 flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
             <span className="material-symbols-outlined text-[20px]" aria-hidden>
