@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       ad_events: {
@@ -930,6 +925,109 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_customers: {
+        Row: {
+          created_at: string
+          external_customer_id: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_customer_id: string
+          provider?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          external_customer_id?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          attempts: number
+          error: string | null
+          id: string
+          processed_at: string | null
+          provider: string
+          received_at: string
+          status: string
+          type: string
+        }
+        Insert: {
+          attempts?: number
+          error?: string | null
+          id: string
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          status?: string
+          type: string
+        }
+        Update: {
+          attempts?: number
+          error?: string | null
+          id?: string
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      billing_prices: {
+        Row: {
+          created_at: string
+          external_price_id: string
+          id: number
+          mode: string
+          periodicity: string
+          plan_id: number
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          external_price_id: string
+          id?: never
+          mode: string
+          periodicity: string
+          plan_id: number
+          provider?: string
+        }
+        Update: {
+          created_at?: string
+          external_price_id?: string
+          id?: never
+          mode?: string
+          periodicity?: string
+          plan_id?: number
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_prices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
@@ -3590,11 +3688,13 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_at_period_end: boolean
           cancel_requested_at: string | null
           created_at: string
           created_by: string | null
           ends_at: string | null
           external_customer_id: string | null
+          external_item_id: string | null
           external_subscription_id: string | null
           id: number
           periodicity: string
@@ -3607,13 +3707,16 @@ export type Database = {
           status: string
           type: string
           user_id: string
+          waiver_accepted_at: string | null
         }
         Insert: {
+          cancel_at_period_end?: boolean
           cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
           external_customer_id?: string | null
+          external_item_id?: string | null
           external_subscription_id?: string | null
           id?: never
           periodicity?: string
@@ -3626,13 +3729,16 @@ export type Database = {
           status?: string
           type: string
           user_id: string
+          waiver_accepted_at?: string | null
         }
         Update: {
+          cancel_at_period_end?: boolean
           cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
           external_customer_id?: string | null
+          external_item_id?: string | null
           external_subscription_id?: string | null
           id?: never
           periodicity?: string
@@ -3645,6 +3751,7 @@ export type Database = {
           status?: string
           type?: string
           user_id?: string
+          waiver_accepted_at?: string | null
         }
         Relationships: [
           {
@@ -4065,10 +4172,28 @@ export type Database = {
         Args: { p_anchor: number; p_at: string }
         Returns: string
       }
+      mc_apply_stripe_subscription: {
+        Args: {
+          p_cancel_at_period_end: boolean
+          p_current_period_end: string
+          p_customer_id: string
+          p_item_id: string
+          p_price_id: string
+          p_stripe_status: string
+          p_subscription_id: string
+          p_user_id?: string
+          p_waiver_accepted_at?: string
+        }
+        Returns: number
+      }
       mc_cancel_own_subscription: { Args: never; Returns: string }
       mc_check_quota: {
         Args: { p_key: string; p_user_id: string }
         Returns: Json
+      }
+      mc_claim_billing_event: {
+        Args: { p_id: string; p_type: string }
+        Returns: boolean
       }
       mc_consume: { Args: { p_key: string; p_n?: number }; Returns: number }
       mc_effective_rights: {
@@ -4080,6 +4205,10 @@ export type Database = {
           limit_value: number
           unlimited: boolean
         }[]
+      }
+      mc_finish_billing_event: {
+        Args: { p_error?: string; p_id: string; p_status: string }
+        Returns: undefined
       }
       mc_norm: { Args: { txt: string }; Returns: string }
       mc_period_bounds: {
@@ -4336,3 +4465,4 @@ export const Constants = {
     },
   },
 } as const
+
