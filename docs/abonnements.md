@@ -717,3 +717,119 @@ vrai paiement réussi le ferait.
 - **À retirer quand un vrai prestataire sera branché** : `mc_simulate_subscribe`
   et le prompt de code sur `PlansPage.tsx` sont un pont temporaire, pas une
   fonctionnalité produit — ne pas construire dessus (remise, palier de prix…).
+
+## 14. Stripe (JEP-29) — lot A : le socle de données
+
+`mc_simulate_subscribe` (§13) était annoncée comme « un pont temporaire, pas
+une fonctionnalité produit ». JEP-29 est le jour où on la retire. La
+spécification du ticket décrit un modèle qui ignore ce chantier — colonnes
+`stripe_*` et `plan` sur `profiles` — c'est-à-dire **exactement les deux
+colonnes décommissionnées au lot 4** (§5). Elle n'est pas suivie sur ce point :
+Stripe devient une source d'écriture de plus sur `subscriptions`, pas un
+second système.
+
+### Correspondance entre la spécification du ticket et l'existant
+
+| Spec JEP-29 §3 | Ce qui est réellement écrit |
+|---|---|
+| `profiles.stripe_customer_id` | `billing_customers` + `subscriptions.external_customer_id` |
+| `profiles.stripe_subscription_id` | `subscriptions.external_subscription_id` |
+| `profiles.plan` (enum) | `subscriptions.plan_version_id` |
+| `profiles.subscription_status` | `subscriptions.status` + `.type = 'PAID'` |
+| `profiles.current_period_end` | `subscriptions.ends_at` |
+| `profiles.cancel_at_period_end` | `subscriptions.cancel_at_period_end` |
+
+### Le prix décide du plan, et c'est une donnée
+
+`billing_prices` porte la correspondance `price_id` → plan. Jamais une
+constante dans le code : la règle ESLint anti-`plan === 'PRO'` (§5) vaut aussi
+pour un identifiant Stripe qui en tiendrait lieu, et un palier ajouté ne doit
+demander aucun déploiement.
+
+La colonne `mode` (`test` / `live`) est ce qui rend la table nécessaire plutôt
+qu'une paire de colonnes sur `plans` : Stripe attribue des identifiants de prix
+**différents** dans ses deux modes, et une seule base sert les deux. Le mode se
+déduit du préfixe de `STRIPE_SECRET_KEY` (`sk_test_`), sans variable
+supplémentaire à tenir à jour — donc sans possibilité qu'elle mente.
+
+`PRO_ESSAI` n'a volontairement aucune ligne : **l'absence de prix est ce qui le
+rend invendable**, sans qu'aucun code n'ait à connaître son nom.
+
+### Le client Stripe vit dans sa propre table
+
+`billing_customers` plutôt qu'une colonne sur `profiles`, pour deux raisons :
+le lien doit survivre à la fin d'un abonnement (c'est lui qui conditionne
+l'accès au portail de gestion), et `profiles` est relue à chaque rendu de page
+avec ses colonnes énumérées (`PROFILE_COLUMNS`) — on ne l'alourdit pas pour une
+donnée que deux routes consultent.
+
+### Idempotence : réserver plutôt que constater
+
+Stripe rejoue ses webhooks — c'est une garantie de livraison, pas un cas
+limite. `mc_claim_billing_event` réserve et marque en une seule opération sur
+la clé primaire de `billing_events`, même motif que `claimNotification` (§7) et
+que `mc_consume` (§1.3). Un événement `FAILED`, ou resté `PROCESSING` plus de
+cinq minutes (processus mort en cours de route), est reprenable ; un événement
+`PROCESSED` ne revient jamais.
+
+### `past_due` ne coupe rien — arbitrage JEP-29
+
+La spécification du ticket demandait, sur `invoice.payment_failed`, une
+« rétrogradation immédiate du plan en free ». Écarté, pour trois raisons qui
+vont dans le même sens : Stripe relance lui-même une carte refusée pendant
+plusieurs semaines, le §10 de ce document pose qu'« on ne retire jamais un
+service déjà en cours », et l'infrastructure de notification (in-app +
+e-mail, lot 8) existe déjà pour prévenir le membre.
+
+`past_due` est donc mappé sur `ACTIVE`. La perte des droits n'arrive qu'à
+`customer.subscription.deleted`. **Conséquence à configurer côté Stripe** :
+la relance doit se terminer par une *annulation* de l'abonnement, jamais par
+un statut `unpaid` laissé en l'état — sinon la coupure n'arrive jamais.
+
+### Un changement de formule ouvre une ligne, il n'en réécrit pas une
+
+`mc_apply_stripe_subscription` clôt la ligne courante (`status = 'CANCELLED'`,
+même geste que `mc_admin_grant_subscription`) et en insère une nouvelle quand
+le `plan_version_id` change, alors même que l'abonnement Stripe, lui, reste le
+même. Réécrire `plan_version_id` en place aurait effacé le palier précédent de
+l'historique de la fiche membre, et brouillé le gel des conditions (§1.1), qui
+s'attache à la version **réellement souscrite**.
+
+D'où l'index unique partiel sur `external_subscription_id` **filtré sur
+`status = 'ACTIVE'`** : au plus une ligne vivante par abonnement Stripe, et
+autant de lignes d'historique qu'il le faut. Posé en même temps,
+`subscriptions_one_active_non_default` grave enfin en base l'invariant §3.5,
+jusqu'ici seulement tenu par la discipline des trois fonctions qui écrivent.
+
+### `renewal_anchor` se cale sur l'échéance Stripe, pas sur l'instant
+
+`extract(day from current_period_end)`, et non `extract(day from now())` :
+c'est cette ancre que `mc_period_bounds` utilise pour borner les quotas
+mensuels de flux. Prise sur `now()`, le crédit IA se renouvellerait un autre
+jour du mois que la facture — deux calendriers pour un seul abonnement.
+
+### Trois fonctions fermées au navigateur
+
+Contrairement à `mc_start_trial` ou `mc_cancel_own_subscription`, appelées en
+RPC depuis le client, `mc_apply_stripe_subscription`, `mc_claim_billing_event`
+et `mc_finish_billing_event` sont `revoke`d de `anon` et `authenticated` :
+elles accordent des droits payants sans contrepartie. Seul le webhook, en
+`service_role`, les atteint. Même doctrine que le module contact, où aucune
+policy d'écriture n'existe pour personne.
+
+### Mensuel seulement, annuel prévu
+
+`plan_versions.price_yearly` est nul sur les quatre plans, donc
+`hasYearlyOption()` est déjà faux et la bascule Mensuel/Annuel de `/plans` est
+déjà masquée : la phase 1 mensuelle ne demande aucun code. Ouvrir l'annuel
+plus tard sera un prix à renseigner et une ligne `billing_prices` de
+périodicité `YEARLY` à ajouter — pas un déploiement.
+
+### Ce que ce lot ne fait PAS encore, et qui compte
+
+`mc_cancel_own_subscription` (§10) reste purement SQL : elle pose une date de
+fin sans rien dire à Stripe. Tant qu'aucun paiement réel n'existe, c'est sans
+conséquence — mais **le jour où Stripe encaisse, un membre qui résilie perdrait
+ses droits en continuant d'être prélevé.** Sa réécriture est le point le plus
+important du lot E, et les lots D (souscription) et E (gestion) ne doivent pas
+être mis en production séparément.
