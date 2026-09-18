@@ -52,6 +52,9 @@ export function UsageCard({
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
+  // Le voile est partagé par l'annulation et l'ouverture du portail : un
+  // libellé figé sur « Annulation… » mentirait sur la seconde.
+  const [busyLabel, setBusyLabel] = useState('Annulation…');
   const [justAnnule, setJustAnnule] = useState(false);
   const [finPeriodeAnnulee, setFinPeriodeAnnulee] = useState<string | null>(null);
 
@@ -88,6 +91,7 @@ export function UsageCard({
       { okLabel: estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement', cancelLabel: 'Revenir' },
     );
     if (!ok) return;
+    setBusyLabel('Annulation…');
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
@@ -111,6 +115,7 @@ export function UsageCard({
   }
 
   async function gererMoyenPaiement() {
+    setBusyLabel('Ouverture du portail…');
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/portail', { method: 'POST' });
@@ -127,7 +132,7 @@ export function UsageCard({
 
   return (
     <section className="mt-6 border border-outline-variant bg-surface-container-lowest p-8 md:p-10">
-      <LoadingOverlay visible={busy} label="Annulation…" />
+      <LoadingOverlay visible={busy} label={busyLabel} />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[22px] text-primary">speed</span>

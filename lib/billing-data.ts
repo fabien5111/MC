@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   STRIPE_API_BASE,
+  codeErreurStripe,
   encoderFormulaireStripe,
   messageErreurStripe,
   modeStripe,
@@ -46,7 +47,13 @@ export function configStripe(): ConfigStripe {
   return { cleSecrete, mode: modeStripe(cleSecrete) };
 }
 
-export type ReponseStripe<T> = { ok: true; data: T } | { ok: false; status: number; message: string };
+// `code` porte le code d'erreur Stripe brut (`card_declined`,
+// `authentication_required`…) : `message` est fait pour les journaux, `code`
+// pour brancher dessus — un refus de carte et une authentification demandée
+// n'appellent pas le même message côté membre.
+export type ReponseStripe<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number; message: string; code: string | null };
 
 const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -107,12 +114,17 @@ export async function appelStripe<T>(
       resultat = await tentative();
     } catch (e2) {
       const message = (e2 as Error)?.message || (e as Error)?.message || 'appel impossible';
-      return { ok: false, status: 0, message: `Appel Stripe impossible : ${message}` };
+      return { ok: false, status: 0, message: `Appel Stripe impossible : ${message}`, code: null };
     }
   }
 
   if (resultat.status >= 400) {
-    return { ok: false, status: resultat.status, message: messageErreurStripe(resultat.body) };
+    return {
+      ok: false,
+      status: resultat.status,
+      message: messageErreurStripe(resultat.body),
+      code: codeErreurStripe(resultat.body),
+    };
   }
   return { ok: true, data: resultat.body as T };
 }
@@ -338,5 +350,53 @@ export async function getAbonnementResiliable(userId: string): Promise<Abonnemen
     externalSubscriptionId: data.external_subscription_id,
     type: data.type,
     endsAt: data.ends_at,
+  };
+}
+
+export type AbonnementStripeCourant = {
+  subscriptionId: string;
+  planCode: string;
+  planOrderIndex: number;
+  /** Périodicité RÉELLE de l'abonnement — jamais celle affichée par la page. */
+  periodicite: Periodicite;
+};
+
+/**
+ * Abonnement Stripe actif du membre, avec le RANG de son plan dans la grille.
+ *
+ * C'est ce rang — `plans.order_index`, celui-là même qui ordonne les colonnes
+ * de `/plans` — qui décide si un changement est une montée ou une descente.
+ * Jamais le code du plan : la règle ESLint du dépôt l'interdit, et un palier
+ * ajouté en back-office doit se placer tout seul.
+ *
+ * `null` quand l'abonnement courant n'est pas un abonnement Stripe (essai,
+ * don administrateur, reliquat de l'ancienne simulation) : ceux-là n'ont rien
+ * à changer chez Stripe, ils passent par la souscription normale.
+ */
+export async function getAbonnementStripeCourant(userId: string): Promise<AbonnementStripeCourant | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('external_subscription_id, periodicity, plan_versions!inner(plans!inner(code, order_index))')
+    .eq('user_id', userId)
+    .eq('status', 'ACTIVE')
+    .eq('provider', 'stripe')
+    .neq('type', 'DEFAULT')
+    .order('starts_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const plan = data?.plan_versions?.plans;
+  if (!data?.external_subscription_id || !plan) return null;
+  return {
+    subscriptionId: data.external_subscription_id,
+    planCode: plan.code,
+    planOrderIndex: plan.order_index,
+    // Un changement de FORMULE ne change pas la PÉRIODICITÉ : la lire sur
+    // l'abonnement, et non sur la bascule d'affichage de `/plans`, évite
+    // qu'un abonné annuel se retrouve programmé sur un tarif mensuel (ou
+    // qu'un mensuel soit débité d'une année au prorata) parce que la bascule
+    // était du mauvais côté au moment du clic.
+    periodicite: data.periodicity === 'YEARLY' ? 'YEARLY' : 'MONTHLY',
   };
 }

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
+import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { CheckoutWaiverDialog } from '@/components/plans/CheckoutWaiverDialog';
 import {
@@ -34,6 +35,7 @@ export function PlansPage({
   trialConsumed,
   trialDays,
   pending,
+  abonnementStripe,
 }: {
   grid: Grid;
   planIds: Record<string, number>;
@@ -47,6 +49,11 @@ export function PlansPage({
   trialConsumed: boolean;
   trialDays: number;
   pending: PendingRequest | null;
+  // L'abonnement courant est un abonnement Stripe (`provider = 'stripe'`),
+  // donc modifiable en ligne. Faux pour un essai, un don administrateur ou
+  // un reliquat de l'ancienne simulation : ceux-là n'ont rien à changer chez
+  // Stripe, et gardent le parcours de demande traité à la main.
+  abonnementStripe: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -69,7 +76,12 @@ export function PlansPage({
     return [...map.entries()].sort(([, a], [, b]) => a[0].sectionOrder - b[0].sectionOrder);
   }, [grid.features]);
 
-  const bascule = hasYearlyOption(plans);
+  // Bascule masquée pour un abonné Stripe : un changement de FORMULE ne
+  // change pas de PÉRIODICITÉ (la route la lit sur l'abonnement), et laisser
+  // la bascule afficher un tarif annuel à un abonné mensuel — ou l'inverse —
+  // ferait annoncer un montant qui n'est pas celui qui sera prélevé.
+  // Changer de périodicité reste hors périmètre de la phase 1.
+  const bascule = hasYearlyOption(plans) && !abonnementStripe;
   const currentIndex = plans.findIndex((p) => p.code === currentPlanCode);
 
   async function essayer(planCode: string, planLabel: string) {
@@ -142,12 +154,12 @@ export function PlansPage({
   // webhook, une fois le paiement réellement confirmé (cf.
   // app/api/webhooks/stripe/route.ts). Un membre qui ferme l'onglet Stripe
   // n'est pas abonné.
-  const [waiverPlan, setWaiverPlan] = useState<{ code: string; label: string } | null>(null);
+  const [waiverPlan, setWaiverPlan] = useState<{ code: string; label: string; mode: 'souscription' | 'montee' } | null>(null);
 
-  async function demarrerAbonnement(renonciationAcceptee: boolean) {
-    if (!waiverPlan) return;
-    const { code, label } = waiverPlan;
-    setWaiverPlan(null);
+  // Plan passé en argument plutôt que relu dans l'état : la fenêtre est
+  // fermée juste avant l'appel, et dépendre de la valeur encore capturée par
+  // la fermeture serait une subtilité de plus à retenir pour rien.
+  async function demarrerAbonnement(code: string, renonciationAcceptee: boolean) {
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/checkout', {
@@ -175,6 +187,50 @@ export function PlansPage({
     }
   }
 
+  async function changerFormule(planCode: string, planLabel: string, renonciationAcceptee: boolean) {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/changer', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        // Pas de périodicité transmise : la route la lit sur l'abonnement
+        // lui-même. L'envoyer d'ici ferait dépendre une facturation de la
+        // position d'une bascule d'affichage.
+        body: JSON.stringify({
+          plan: planCode,
+          renonciationRetractation: renonciationAcceptee,
+          // Jeton par CLIC : deux envois du même clic ne débitent qu'une fois,
+          // une reprise après « changez de carte » repart à neuf.
+          jeton: crypto.randomUUID(),
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "Le changement de formule n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert(
+        data?.immediat
+          ? // Comme au retour de Checkout : le paiement est fait, mais c'est le
+            // webhook qui pose le palier. Annoncer « vous êtes passé à X »
+            // alors que la grille rafraîchie affiche encore l'ancienne formule
+            // ferait douter le membre de ce qu'il vient de payer.
+            `Paiement accepté — la différence a été facturée au prorata. Votre formule ${planLabel} ` +
+              `s'active dans quelques instants.`
+          : `Changement programmé : vous gardez votre formule actuelle jusqu'au ${formatDate(data?.effetLe)}, ` +
+              `puis vous passerez à ${planLabel}.`,
+      );
+      router.refresh();
+    } catch {
+      // Même filet que `demarrerAbonnement` : sans lui, un échec réseau
+      // éteignait le voile sans un mot, et remontait en rejet non capturé
+      // par le `void` de l'appelant.
+      dialog.alert('Connexion impossible, réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function retrograder(planCode: string) {
     if (!currentPlanCode) return;
     const changements = diffRights(grid.rights[currentPlanCode] ?? {}, grid.rights[planCode] ?? {}).filter(
@@ -189,9 +245,45 @@ export function PlansPage({
     const texte = perdu.length
       ? `En repassant à ${planCode}, vous perdrez :\n${perdu.join('\n')}\n\nContinuer ?`
       : `Repasser à ${planCode} ?`;
-    const ok = await dialog.confirm(texte);
+    const plan = plans.find((p) => p.code === planCode);
+    const complement = abonnementStripe
+      ? '\n\nVous gardez votre formule actuelle jusqu’à son échéance ; aucun remboursement au prorata.'
+      : '';
+    const ok = await dialog.confirm(texte + complement);
     if (!ok) return;
+    if (abonnementStripe) {
+      // Redescendre vers la formule GRATUITE n'est pas un changement de
+      // tarif : elle n'a pas de prix chez Stripe, il n'y a rien à programmer.
+      // C'est une résiliation — l'abonnement s'arrête à l'échéance et le
+      // membre retombe sur la formule par défaut, ce que la ligne DEFAULT
+      // assure déjà toute seule.
+      if (plan?.isDefault) await resilier();
+      else await changerFormule(planCode, plan?.label ?? planCode, false);
+      return;
+    }
     await demander(planCode, annuel ? 'YEARLY' : 'MONTHLY');
+  }
+
+  async function resilier() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "La résiliation n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert(
+        data?.finPeriode
+          ? `Résiliation enregistrée : vous gardez votre formule jusqu'au ${formatDate(data.finPeriode)}.`
+          : 'Résiliation enregistrée.',
+      );
+      router.refresh();
+    } catch {
+      dialog.alert('Connexion impossible, réessayez.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -200,8 +292,20 @@ export function PlansPage({
       {waiverPlan && (
         <CheckoutWaiverDialog
           planLabel={waiverPlan.label}
+          introduction={
+            waiverPlan.mode === 'montee'
+              ? `La différence avec votre formule actuelle sera facturée immédiatement, au prorata du temps ` +
+                `restant sur la période en cours, sur votre moyen de paiement enregistré.`
+              : 'Vous allez être redirigé vers notre prestataire de paiement (Stripe) pour finaliser votre abonnement.'
+          }
+          libelleAction={waiverPlan.mode === 'montee' ? 'Confirmer le changement' : 'Continuer vers le paiement'}
           onClose={() => setWaiverPlan(null)}
-          onConfirm={() => demarrerAbonnement(true)}
+          onConfirm={() => {
+            const { code, label, mode } = waiverPlan;
+            setWaiverPlan(null);
+            if (mode === 'montee') void changerFormule(code, label, true);
+            else void demarrerAbonnement(code, true);
+          }}
         />
       )}
       <h1 className="mb-2 text-center font-display text-3xl text-primary md:text-4xl">Nos formules</h1>
@@ -299,7 +403,13 @@ export function PlansPage({
                       // (un essai reste possible, lui, sans moyen de paiement).
                       aUnTarif={tarif !== null}
                       onEssayer={() => essayer(p.code, p.label)}
-                      onAbonner={() => setWaiverPlan({ code: p.code, label: p.label })}
+                      onAbonner={() =>
+                        setWaiverPlan({
+                          code: p.code,
+                          label: p.label,
+                          mode: abonnementStripe ? 'montee' : 'souscription',
+                        })
+                      }
                       onRetrograder={() => retrograder(p.code)}
                     />
                   </th>

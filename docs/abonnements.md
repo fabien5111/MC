@@ -987,3 +987,85 @@ corrigée par la même occasion.
 downgrade) avec prorata et authentification forte (SCA) — la partie la plus
 exposée du chantier, qui touche à de l'argent réel avec des cas limites
 (carte européenne demandant une confirmation, `payment_behavior` à choisir).
+
+### Lot E (changement de formule) — deux gestes, un seul bouton
+
+`app/api/abonnement/changer/route.ts`. C'est la **grille** qui décide lequel —
+`plans.order_index`, jamais le code du plan (règle ESLint du §5 ; un palier
+ajouté en back-office doit se placer tout seul).
+
+**Montée : immédiate, au prorata, et ATOMIQUE.** `always_invoice` facture la
+différence tout de suite, `error_if_incomplete` fait échouer l'appel entier si
+ce paiement n'aboutit pas. Ce n'est pas un excès de prudence : notre propre
+arbitrage mappe `past_due` sur `ACTIVE` (§14), donc une montée installée en
+`past_due` **offrirait** le palier supérieur à qui n'a pas payé. D'où le refus
+de `default_incomplete`, qui aurait pourtant simplifié le cas SCA.
+
+Corollaire : une authentification bancaire demandée fait échouer la montée.
+C'est un cas minoritaire — le Checkout initial a déjà authentifié et créé un
+mandat, dont les prélèvements suivants sont le plus souvent exemptés — mais
+réel, et distingué du refus de carte : `messageRefusChangement` ne renvoie pas
+changer une carte qui fonctionne.
+
+**Descente : à l'échéance, sans remboursement.** Un simple changement de prix
+prendrait effet immédiatement sur l'objet Stripe, donc sur les droits (le
+webhook lit le prix courant), et retirerait des droits déjà payés. D'où
+l'échéancier (`subscription_schedules`).
+
+**On repart toujours d'un échéancier NEUF.** Réécrire les phases d'un
+échéancier en cours obligerait à réémettre ses phases passées à l'identique —
+le cas se présente dès qu'une première descente a pris effet.
+`from_subscription` rend au contraire, à tous les coups, un échéancier à une
+seule phase : la composition n'a jamais qu'un cas à traiter.
+
+**Relecture de contrôle, puis libération.** La documentation Stripe n'étant
+pas joignable depuis l'environnement de développement, la sémantique des
+phases n'a pas pu être vérifiée sur pièces. Plutôt que de faire confiance à
+« l'appel n'a pas levé », la route **relit** ce que Stripe a enregistré et
+libère l'échéancier si ce n'est pas exactement « formule actuelle jusqu'à
+l'échéance, puis la nouvelle ». Un échéancier accepté mais mal composé
+facturerait de travers, en silence et à retardement — le pire mode de
+défaillance sur de l'argent réel. `release` et jamais `cancel` : le second
+résilierait l'abonnement lui-même.
+
+**Trois interactions entre gestes, qui n'existent qu'ensemble** :
+- une montée doit d'abord **libérer** un échéancier (Stripe refuse de modifier
+  un abonnement qu'il pilote), et **remettre en place** la descente programmée
+  si le paiement échoue — sinon elle disparaîtrait en silence. Si la libération
+  échoue, la montée est abandonnée avant d'être tentée : la descente reste
+  intacte, ce qui vaut mieux qu'un échec plus loin annonçant à tort qu'elle a
+  été annulée ;
+- une **résiliation** libère elle aussi l'échéancier, sans quoi un membre ayant
+  programmé une descente ne pourrait plus arrêter ses prélèvements ;
+- une **descente sur un abonnement déjà résilié est refusée** : poser un
+  échéancier en `release` par-dessus ferait repartir la facturation au tarif
+  inférieur. Une montée, elle, vaut reprise (`cancel_at_period_end: false`) —
+  payer davantage dit assez clairement qu'on veut continuer.
+
+**Descendre vers la formule gratuite est une RÉSILIATION**, pas un changement
+de tarif : elle n'a pas de prix Stripe, il n'y a rien à programmer. La ligne
+`DEFAULT` assure déjà le retour à la formule par défaut.
+
+**La périodicité ne vient jamais du client.** Elle est lue sur l'abonnement :
+se fier à la bascule d'affichage de `/plans` débiterait une année au prorata à
+un abonné mensuel dont la bascule était du mauvais côté. La bascule est
+d'ailleurs masquée pour un abonné Stripe — changer de périodicité reste hors
+périmètre de la phase 1.
+
+**Clé d'idempotence posée par le CLIC**, pas par la requête : deux envois du
+même clic ne débitent qu'une fois, mais une reprise délibérée après « changez
+de carte » repart à neuf. Une clé stable sur dix minutes rejouerait le refus
+en cache et rendrait ce conseil inapplicable.
+
+### Ce qui reste à vérifier sur un vrai compte Stripe
+
+La documentation Stripe est inaccessible depuis l'environnement de
+développement (bloquée par la politique réseau) : la composition des phases
+d'un échéancier a été écrite sans pouvoir être confrontée aux pièces. La
+relecture de contrôle transforme une erreur de composition en échec immédiat
+plutôt qu'en facturation faussée, mais **elle ne remplace pas un essai réel** :
+un aller-retour montée puis descente sur un compte de test reste à faire avant
+toute mise en production.
+
+Non couvert non plus, faute de prix annuel configuré : tout le chemin
+`YEARLY`, y compris le changement de périodicité, hors périmètre de la phase 1.

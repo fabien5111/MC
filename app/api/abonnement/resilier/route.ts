@@ -23,7 +23,19 @@ import { appelStripe, getAbonnementResiliable, MissingStripeConfigError } from '
 
 export const maxDuration = 15;
 
-type SubscriptionStripe = { cancel_at_period_end?: boolean; current_period_end?: number; items?: { data?: { current_period_end?: number }[] } };
+type SubscriptionStripe = {
+  cancel_at_period_end?: boolean;
+  current_period_end?: number;
+  schedule?: unknown;
+  items?: { data?: { current_period_end?: number }[] };
+};
+
+/** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */
+function identifiantEcheancier(valeur: unknown): string | null {
+  if (typeof valeur === 'string') return valeur || null;
+  const id = (valeur as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && id ? id : null;
+}
 
 export async function POST() {
   const user = await getCurrentUser();
@@ -43,6 +55,32 @@ export async function POST() {
     const { data, error } = await supabase.rpc('mc_cancel_own_subscription');
     if (error) return NextResponse.json({ erreur: traduireErreurRpc(error.message) }, { status: 422 });
     return NextResponse.json({ finPeriode: data });
+  }
+
+  // **Un échéancier attaché bloque toute modification de l'abonnement.**
+  // Le cas se produit dès qu'un membre programme une descente en gamme puis
+  // décide finalement de résilier : sans cette libération, Stripe refuse et
+  // le membre se retrouve sans moyen d'arrêter ses prélèvements. Résilier
+  // prime sur un changement programmé, qui n'a plus d'objet.
+  try {
+    const lu = await appelStripe<SubscriptionStripe>(`/subscriptions/${abonnement.externalSubscriptionId}`);
+    const echeancier = lu.ok ? identifiantEcheancier(lu.data.schedule) : null;
+    if (echeancier) {
+      const libere = await appelStripe<unknown>(`/subscription_schedules/${echeancier}/release`, {
+        idempotencyKey: crypto.randomUUID(),
+        corps: {},
+      });
+      if (!libere.ok) {
+        console.error('abonnement/resilier (libération):', libere.message);
+        return NextResponse.json({ erreur: 'La résiliation a échoué, réessayez.' }, { status: 502 });
+      }
+    }
+  } catch (e) {
+    if (e instanceof MissingStripeConfigError) {
+      console.error('abonnement/resilier:', e.message);
+      return NextResponse.json({ erreur: 'La résiliation est temporairement indisponible, réessayez plus tard.' }, { status: 503 });
+    }
+    throw e;
   }
 
   let resultat;

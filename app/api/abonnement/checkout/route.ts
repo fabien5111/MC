@@ -11,6 +11,7 @@
 // tracé côté serveur, pas sur ce qui a été affiché à l'écran.
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { siteUrl } from '@/lib/site-url';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { cleIdempotence } from '@/lib/billing';
 import { appelStripe, getIdClientStripe, resoudrePrixStripe, MissingStripeConfigError, type Periodicite } from '@/lib/billing-data';
@@ -67,7 +68,14 @@ export async function POST(req: Request) {
   const customerId = await getIdClientStripe(user.id);
   const renonciationLe = new Date().toISOString();
 
-  const origine = new URL(req.url).origin;
+  // `siteUrl()` et non `new URL(req.url).origin` : derrière l'équilibreur
+  // Virtuozzo, cette dernière rend `http://localhost:3000` — l'adresse
+  // d'écoute de l'application, pas le domaine par lequel le membre est
+  // arrivé (mesuré, § 7.16 du dossier de migration). Stripe renverrait donc
+  // le membre sur une page morte après son paiement. Même outil que
+  // /api/admin/impersonate, pour la même raison : une URL ABSOLUE est
+  // nécessaire ici, une `Location` relative ne s'applique pas.
+  const origine = siteUrl();
 
   const resultat = await appelStripe<{ url: string | null }>('/checkout/sessions', {
     idempotencyKey: cleIdempotence('checkout', user.id, planCode, periodicite),

@@ -17,10 +17,17 @@ import { useState } from 'react';
 
 export function CheckoutWaiverDialog({
   planLabel,
+  introduction,
+  libelleAction,
   onClose,
   onConfirm,
 }: {
   planLabel: string;
+  // Ce qui va se passer, en toutes lettres — une souscription redirige vers
+  // Stripe, une montée en gamme débite la carte enregistrée sur-le-champ.
+  // Deux gestes qui engagent différemment, donc deux phrases distinctes.
+  introduction: string;
+  libelleAction: string;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -46,9 +53,7 @@ export function CheckoutWaiverDialog({
         </div>
 
         <div className="p-6 flex flex-col gap-4">
-          <p className="text-sm text-on-surface-variant">
-            Vous allez être redirigé vers notre prestataire de paiement (Stripe) pour finaliser votre abonnement.
-          </p>
+          <p className="text-sm text-on-surface-variant">{introduction}</p>
 
           <label className="flex items-start gap-3 rounded-lg border border-outline-variant p-3 text-sm cursor-pointer">
             <input
@@ -69,7 +74,7 @@ export function CheckoutWaiverDialog({
             onClick={onConfirm}
             className="w-full rounded-pill bg-primary px-4 py-2 text-[13px] font-semibold text-on-primary transition-colors hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Continuer vers le paiement
+            {libelleAction}
           </button>
         </div>
       </div>

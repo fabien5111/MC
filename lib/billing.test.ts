@@ -8,6 +8,12 @@ import {
   TOLERANCE_SIGNATURE_SEC,
   FENETRE_IDEMPOTENCE_MS,
   cleIdempotence,
+  codeErreurStripe,
+  echeancierConforme,
+  lirePhasesEcheancier,
+  messageRefusChangement,
+  phaseCourante,
+  sensChangement,
   encoderFormulaireStripe,
   lireAbonnementStripe,
   lireClientFacture,
@@ -275,5 +281,110 @@ describe('cleIdempotence', () => {
     } finally {
       Date.now = vrai;
     }
+  });
+});
+
+describe('sensChangement', () => {
+  it('lit le sens dans l’ordre de la grille, pas dans le code du plan', () => {
+    // Un palier ajouté en back-office doit se comporter correctement sans
+    // une ligne de code — et la règle ESLint du dépôt interdit de toute
+    // façon un `code === 'PRO'`.
+    expect(sensChangement(2, 3)).toBe('MONTEE');
+    expect(sensChangement(3, 2)).toBe('DESCENTE');
+    expect(sensChangement(2, 2)).toBe('IDENTIQUE');
+  });
+});
+
+describe('codeErreurStripe', () => {
+  it('lit le code, puis le decline_code en repli', () => {
+    expect(codeErreurStripe({ error: { code: 'card_declined' } })).toBe('card_declined');
+    expect(codeErreurStripe({ error: { decline_code: 'insufficient_funds' } })).toBe('insufficient_funds');
+    expect(codeErreurStripe({ error: {} })).toBeNull();
+    expect(codeErreurStripe(null)).toBeNull();
+  });
+});
+
+describe('messageRefusChangement', () => {
+  it('distingue une authentification demandée d’une carte refusée', () => {
+    // Les confondre enverrait la moitié des gens changer une carte qui
+    // fonctionne parfaitement.
+    expect(messageRefusChangement('authentication_required')).toContain('confirmation');
+    expect(messageRefusChangement('card_declined')).toContain('refusé');
+    expect(messageRefusChangement('authentication_required')).not.toBe(messageRefusChangement('card_declined'));
+  });
+
+  it('dit que la formule est inchangée quand le motif est inconnu', () => {
+    expect(messageRefusChangement(null)).toContain('inchangée');
+    expect(messageRefusChangement('quelque_chose_de_nouveau')).toContain('inchangée');
+  });
+});
+
+describe('lirePhasesEcheancier / echeancierConforme', () => {
+  const FIN = 1_800_000_000;
+  const echeancier = {
+    phases: [
+      { start_date: 1_797_000_000, end_date: FIN, items: [{ price: 'price_pro' }] },
+      { start_date: FIN, end_date: null, items: [{ price: 'price_plus' }] },
+    ],
+  };
+
+  it('lit les deux phases et leurs prix', () => {
+    const phases = lirePhasesEcheancier(echeancier);
+    expect(phases).toHaveLength(2);
+    expect(phases[0].priceId).toBe('price_pro');
+    expect(phases[1].priceId).toBe('price_plus');
+    expect(phases[0].endDate).toBe(FIN);
+  });
+
+  it('accepte un prix rendu en objet plutôt qu’en identifiant', () => {
+    const phases = lirePhasesEcheancier({ phases: [{ items: [{ price: { id: 'price_x' } }] }] });
+    expect(phases[0].priceId).toBe('price_x');
+  });
+
+  it('valide l’échéancier attendu', () => {
+    expect(echeancierConforme(lirePhasesEcheancier(echeancier), 'price_pro', 'price_plus', FIN)).toBe(true);
+  });
+
+  it('refuse tout échéancier qui ne dit pas exactement ce qu’on a demandé', () => {
+    // C'est ce refus qui transforme une facturation de travers, silencieuse
+    // et à retardement, en erreur immédiate suivie d'une annulation.
+    const phases = lirePhasesEcheancier(echeancier);
+    expect(echeancierConforme(phases, 'price_autre', 'price_plus', FIN)).toBe(false);
+    expect(echeancierConforme(phases, 'price_pro', 'price_autre', FIN)).toBe(false);
+    expect(echeancierConforme(phases, 'price_pro', 'price_plus', FIN + 86400)).toBe(false);
+    expect(echeancierConforme([], 'price_pro', 'price_plus', FIN)).toBe(false);
+    expect(echeancierConforme(phases.slice(0, 1), 'price_pro', 'price_plus', FIN)).toBe(false);
+  });
+
+  it('rend une liste vide sur un objet illisible', () => {
+    expect(lirePhasesEcheancier(null)).toEqual([]);
+    expect(lirePhasesEcheancier({})).toEqual([]);
+  });
+});
+
+describe('phaseCourante', () => {
+  const phases = [
+    { startDate: 1000, endDate: 2000, priceId: 'price_a' },
+    { startDate: 2000, endDate: 3000, priceId: 'price_b' },
+  ];
+
+  it('rend la phase qui encadre l’instant présent, pas la première', () => {
+    // Après qu'une première descente a pris effet, la phase 0 est PASSÉE :
+    // la reprendre ferait réémettre une date de début révolue.
+    expect(phaseCourante(phases, 1500)?.priceId).toBe('price_a');
+    expect(phaseCourante(phases, 2500)?.priceId).toBe('price_b');
+  });
+
+  it('accepte une dernière phase sans fin', () => {
+    expect(phaseCourante([{ startDate: 1000, endDate: null, priceId: 'price_a' }], 9999)?.priceId).toBe('price_a');
+  });
+
+  it('retombe sur la plus récente déjà commencée quand aucune n’encadre', () => {
+    expect(phaseCourante(phases, 3500)?.priceId).toBe('price_b');
+  });
+
+  it('rend null quand rien n’a commencé', () => {
+    expect(phaseCourante(phases, 500)).toBeNull();
+    expect(phaseCourante([], 1500)).toBeNull();
   });
 });

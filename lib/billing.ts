@@ -299,3 +299,133 @@ export function cleIdempotence(prefixe: string, ...segments: string[]): string {
   const fenetre = Math.floor(Date.now() / FENETRE_IDEMPOTENCE_MS);
   return [prefixe, ...segments, String(fenetre)].join(':');
 }
+
+// ── Changement de formule (lot E) ───────────────────────────
+
+export type SensChangement = 'MONTEE' | 'DESCENTE' | 'IDENTIQUE';
+
+/**
+ * Sens d'un changement de formule, décidé par l'ORDRE des plans dans la
+ * grille, jamais par leur code.
+ *
+ * `plans.order_index` est déjà ce qui ordonne les colonnes de `/plans` et ce
+ * sur quoi `upgradeSuggestion` s'appuie : s'en servir ici aussi évite un
+ * `if (code === 'PRO')` que la règle ESLint du dépôt interdit — et laisse un
+ * palier ajouté en back-office se comporter correctement sans une ligne de
+ * code.
+ */
+export function sensChangement(ordreCourant: number, ordreCible: number): SensChangement {
+  if (ordreCible > ordreCourant) return 'MONTEE';
+  if (ordreCible < ordreCourant) return 'DESCENTE';
+  return 'IDENTIQUE';
+}
+
+/**
+ * Code d'erreur Stripe (`card_declined`, `authentication_required`…), pour
+ * traduire un refus en message utile plutôt qu'en « une erreur est survenue ».
+ *
+ * Séparé de `messageErreurStripe`, qui compose une ligne pour les journaux :
+ * ici on veut la valeur brute, pour brancher dessus.
+ */
+export function codeErreurStripe(corps: unknown): string | null {
+  const erreur = (corps as { error?: { code?: unknown; decline_code?: unknown } } | null)?.error;
+  if (!erreur) return null;
+  if (typeof erreur.code === 'string') return erreur.code;
+  if (typeof erreur.decline_code === 'string') return erreur.decline_code;
+  return null;
+}
+
+/**
+ * Message destiné au membre quand un changement de formule payant est refusé.
+ *
+ * Deux refus se ressemblent pour la machine et pas du tout pour la personne :
+ * une carte refusée demande d'en changer, une authentification demandée
+ * demande seulement de la confirmer auprès de sa banque. Les confondre
+ * enverrait la moitié des gens changer une carte qui fonctionne.
+ */
+export function messageRefusChangement(code: string | null): string {
+  switch (code) {
+    case 'authentication_required':
+      return (
+        'Votre banque demande une confirmation pour ce paiement. Mettez à jour ou reconfirmez votre moyen ' +
+        'de paiement depuis « Gérer mon moyen de paiement », puis réessayez.'
+      );
+    case 'card_declined':
+    case 'insufficient_funds':
+    case 'expired_card':
+      return (
+        'Votre banque a refusé le paiement. Vérifiez votre moyen de paiement depuis « Gérer mon moyen de ' +
+        'paiement », puis réessayez.'
+      );
+    default:
+      return "Le changement de formule n'a pas pu aboutir. Votre formule actuelle est inchangée.";
+  }
+}
+
+export type PhaseEcheancier = {
+  startDate: number | null;
+  endDate: number | null;
+  priceId: string | null;
+};
+
+/**
+ * Lit les phases d'un échéancier Stripe (`subscription_schedule`).
+ *
+ * Sert à RELIRE ce que Stripe a réellement enregistré après une écriture,
+ * plutôt qu'à faire confiance au fait que l'appel n'a pas levé : un
+ * échéancier accepté mais mal composé facturerait le membre de travers, en
+ * silence et à retardement. C'est la contrepartie assumée d'une API dont la
+ * sémantique des phases ne se vérifie qu'à l'usage.
+ */
+export function lirePhasesEcheancier(objet: unknown): PhaseEcheancier[] {
+  const phases = (objet as { phases?: unknown } | null)?.phases;
+  if (!Array.isArray(phases)) return [];
+  return phases.map((p) => {
+    const phase = (p ?? {}) as Record<string, unknown>;
+    const articles = (phase.items as { price?: unknown }[] | undefined) ?? [];
+    return {
+      startDate: typeof phase.start_date === 'number' ? phase.start_date : null,
+      endDate: typeof phase.end_date === 'number' ? phase.end_date : null,
+      priceId: identifiant(articles[0]?.price),
+    };
+  });
+}
+
+/**
+ * Phase réellement en cours d'un échéancier, jamais « la première ».
+ *
+ * Une fois une première descente appliquée, la phase 0 est une phase PASSÉE :
+ * la reprendre comme phase courante ferait réémettre une date de début
+ * révolue et perdre la phase réelle. Le cas se produit dès qu'un membre
+ * programme une descente, la laisse s'appliquer, puis en programme une autre.
+ */
+export function phaseCourante(phases: PhaseEcheancier[], maintenantSec: number): PhaseEcheancier | null {
+  const encadrante = phases.find(
+    (p) => p.startDate !== null && p.startDate <= maintenantSec && (p.endDate === null || maintenantSec < p.endDate),
+  );
+  if (encadrante) return encadrante;
+  // Aucune phase n'encadre l'instant présent (frontière tout juste franchie,
+  // horloges décalées) : la plus récente déjà commencée est la moins fausse.
+  const commencees = phases.filter((p) => p.startDate !== null && p.startDate <= maintenantSec);
+  return commencees.length ? commencees[commencees.length - 1] : null;
+}
+
+/**
+ * Vérifie qu'un échéancier relu dit bien « la formule courante jusqu'à
+ * l'échéance, puis la nouvelle ». Faux → la route annule l'échéancier plutôt
+ * que de laisser un membre sur une facturation qu'on n'a pas comprise.
+ */
+export function echeancierConforme(
+  phases: PhaseEcheancier[],
+  prixCourant: string,
+  prixCible: string,
+  finPeriode: number,
+): boolean {
+  if (phases.length !== 2) return false;
+  const [actuelle, suivante] = phases;
+  if (actuelle.priceId !== prixCourant) return false;
+  if (suivante.priceId !== prixCible) return false;
+  if (actuelle.endDate !== finPeriode) return false;
+  if (suivante.startDate !== finPeriode) return false;
+  return true;
+}
