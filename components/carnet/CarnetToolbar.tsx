@@ -19,7 +19,7 @@
 // Restent en `router.replace()` les deux contrôles qui ne peuvent pas être des
 // liens : la saisie libre (débouncée, une frappe n'est pas un clic) et le
 // menu de tri.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -53,12 +53,54 @@ export function CarnetToolbar({
   const router = useRouter();
   const pathname = usePathname();
   const { startTransition } = useCarnetTransition();
+  // Transition dédiée à la recherche, jamais celle de CarnetProvider : sans
+  // `startTransition`, la navigation devient une mise à jour urgente et le
+  // re-rendu de la grille (et la resynchronisation de `q` ci-dessous)
+  // secoue visiblement le champ pendant la frappe (JEP-54, retour terrain).
+  // Une transition à soi garde la saisie fluide sans jamais faire passer
+  // `navPending` du contexte partagé à `true` — donc sans réafficher le
+  // fouet que JEP-54 voulait justement retirer.
+  const [searchPending, startSearchTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Saisie : seul contrôle à garder un état local, parce qu'il doit réagir à
   // chaque frappe alors que la navigation, elle, est débouncée.
   const [q, setQ] = useState(params.q);
-  useEffect(() => setQ(params.q), [params.q]);
+
+  // Dernière valeur tapée, et « une navigation de saisie est partie sans que
+  // l'URL l'ait encore rattrapée ». Sans ces deux repères, la resynchro
+  // ci-dessous réécrivait le champ avec l'écho de sa PROPRE navigation, en
+  // retard du debounce plus du rendu serveur : les lettres tapées entre-temps
+  // étaient perdues et le curseur sautait en fin de champ (mesuré sur vidéo :
+  // « préli » redevenu « pr » en 100 ms). Le défaut est antérieur à JEP-54 —
+  // le fouet plein écran le masquait en couvrant l'écran pendant toute la
+  // navigation, donc personne ne tapait pendant la resynchro.
+  const derniereSaisie = useRef(params.q);
+  const saisieEnVol = useRef(false);
+
+  useEffect(() => {
+    // L'URL a rattrapé la frappe : la saisie n'est plus en vol.
+    if (params.q === derniereSaisie.current) {
+      saisieEnVol.current = false;
+      return;
+    }
+    // Écho en retard de notre propre navigation : la frappe fait foi.
+    if (saisieEnVol.current) return;
+    // Changement venu d'ailleurs — retour arrière du navigateur, lien
+    // partagé, pastille de filtre : c'est ce que cette resynchro protège,
+    // et elle doit continuer de s'appliquer.
+    derniereSaisie.current = params.q;
+    setQ(params.q);
+  }, [params.q]);
+
+  // Fin de la navigation de saisie, que l'URL ait changé ou non : taper puis
+  // tout effacer renvoie à l'URL courante, `params.q` ne bouge alors jamais
+  // et l'effet ci-dessus ne se rejoue pas — sans ce filet, le drapeau
+  // resterait levé et une resynchro légitime serait ignorée pour toujours.
+  useEffect(() => {
+    if (!searchPending) saisieEnVol.current = false;
+  }, [searchPending]);
+
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const hrefFor = useCallback(
@@ -75,6 +117,30 @@ export function CarnetToolbar({
     },
     [hrefFor, router],
   );
+
+  // Recherche (JEP-54) : sa propre transition (ci-dessus), jamais celle
+  // partagée avec CarnetContent — `navPending` ne passe donc jamais à
+  // `true` pour cette navigation et le fouet plein écran ne s'affiche pas
+  // pendant la frappe, une saisie étant bien plus fréquente qu'un
+  // changement de tri/scope/statut pour justifier ce voile (même doctrine
+  // que VoteButton sur la boîte à idées).
+  const navigateSearch = useCallback(
+    (next: CarnetParams) => {
+      startSearchTransition(() => router.replace(hrefFor(next), { scroll: false }));
+    },
+    [hrefFor, router],
+  );
+
+  // Un seul point d'entrée pour les deux champs (desktop et mobile), montés
+  // en même temps et pilotés par le même état : dupliquer ce geste, c'était
+  // deux endroits où oublier un des deux repères ci-dessus.
+  function saisir(valeur: string) {
+    derniereSaisie.current = valeur;
+    saisieEnVol.current = true;
+    setQ(valeur);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => navigateSearch({ ...params, q: valeur }), DEBOUNCE_MS);
+  }
 
   // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
   // abonnements, ces recettes des autres sont toujours déjà publiées et
@@ -137,11 +203,7 @@ export function CarnetToolbar({
               <input
                 type="text"
                 value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  if (timer.current) clearTimeout(timer.current);
-                  timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
-                }}
+                onChange={(e) => saisir(e.target.value)}
                 placeholder="Chercher dans mon carnet…"
                 className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
               />
@@ -199,11 +261,7 @@ export function CarnetToolbar({
             <input
               type="text"
               value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                if (timer.current) clearTimeout(timer.current);
-                timer.current = setTimeout(() => navigate({ ...params, q: e.target.value }), DEBOUNCE_MS);
-              }}
+              onChange={(e) => saisir(e.target.value)}
               placeholder="Chercher dans mon carnet…"
               className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
             />

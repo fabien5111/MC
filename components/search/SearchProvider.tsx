@@ -86,11 +86,39 @@ export function SearchProvider({
   // objet reconstruit à chaque rendu, inutilisable tel quel comme dépendance.
   const serverKey = criteriaToQueryString(serverCriteria);
 
+  // Empreinte des derniers critères posés localement, et « une navigation est
+  // partie (ou attend son debounce) sans que l'URL l'ait rattrapée ». Sans ces
+  // deux repères, la resynchronisation ci-dessous réécrivait `criteria` avec
+  // l'écho de sa PROPRE navigation débouncée, en retard du debounce plus du
+  // rendu serveur : `criteria.q` étant la valeur du champ, les lettres tapées
+  // entre-temps étaient perdues et le curseur sautait en fin de champ (même
+  // défaut que `CarnetToolbar`, JEP-54). Vaut pour tout l'état optimiste, pas
+  // seulement le texte — le curseur de temps est débouncé lui aussi.
+  const derniereCle = useRef(serverKey);
+  const navEnVol = useRef(false);
+
   useEffect(() => {
+    // L'URL a rattrapé ce qu'on a posé : plus rien en vol.
+    if (serverKey === derniereCle.current) {
+      navEnVol.current = false;
+      return;
+    }
+    // Écho en retard de notre propre navigation : l'état local fait foi.
+    if (navEnVol.current) return;
+    // Changement venu d'ailleurs — retour arrière du navigateur, lien
+    // partagé : c'est ce que cette resynchronisation protège.
+    derniereCle.current = serverKey;
     setCriteria(serverCriteria);
     // serverKey résume serverCriteria ; le suivre évite une boucle de rendu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverKey]);
+
+  // Fin de navigation, mais seulement si aucune frappe n'attend son debounce :
+  // sinon le drapeau retomberait entre deux lettres, et l'écho suivant
+  // écraserait de nouveau la saisie.
+  useEffect(() => {
+    if (!pending && !timer.current) navEnVol.current = false;
+  }, [pending]);
 
   useEffect(
     () => () => {
@@ -110,26 +138,41 @@ export function SearchProvider({
     [pathname, router],
   );
 
+  // Seul point de pose de l'état optimiste : les deux repères ci-dessus s'y
+  // arment ensemble, sinon un chemin d'écriture oublierait l'un des deux.
+  const poser = useCallback((target: SearchCriteria) => {
+    derniereCle.current = criteriaToQueryString(target);
+    navEnVol.current = true;
+    setCriteria(target);
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+
   const update = useCallback(
     (next: SearchCriteria, opts?: { debounce?: boolean; silent?: boolean }) => {
       // Tout changement de critère ou de tri repart de la première page : on
       // ne concatène jamais des cartes issues de deux jeux de critères.
       const target: SearchCriteria = { ...next, shown: PAGE_SIZE };
-      setCriteria(target);
-      if (timer.current) clearTimeout(timer.current);
+      poser(target);
       if (opts?.debounce)
-        timer.current = setTimeout(() => navigate(target, opts.silent), DEBOUNCE_MS);
+        timer.current = setTimeout(() => {
+          // Remis à null avant de partir : c'est ce qui distingue « une frappe
+          // attend » de « la navigation est lancée » pour le filet ci-dessus.
+          timer.current = null;
+          navigate(target, opts.silent);
+        }, DEBOUNCE_MS);
       else navigate(target, opts?.silent);
     },
-    [navigate],
+    [navigate, poser],
   );
 
   const showMore = useCallback(() => {
     const target: SearchCriteria = { ...criteria, shown: criteria.shown + PAGE_SIZE };
-    setCriteria(target);
-    if (timer.current) clearTimeout(timer.current);
+    poser(target);
     navigate(target);
-  }, [criteria, navigate]);
+  }, [criteria, navigate, poser]);
 
   const showOverlay = pending && !silentNav.current;
 
