@@ -14,6 +14,7 @@
 // à jour, invisible depuis le compte qui subit les changements — alors que le
 // Dashboard affiche la version en vigueur et l'historique des migrations.
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { formatDate } from '@/lib/format';
 
 export const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 
@@ -137,4 +138,141 @@ export function messageErreurStripe(corps: unknown): string {
   const message = typeof erreur.message === 'string' ? erreur.message : 'erreur sans message';
   const code = typeof erreur.code === 'string' ? erreur.code : typeof erreur.type === 'string' ? erreur.type : null;
   return code ? `${message} (${code})` : message;
+}
+
+// ── Lecture des objets Stripe (lot C) ───────────────────────
+
+/**
+ * Forme normalisée d'un abonnement Stripe, telle que la route de webhook la
+ * passe à `mc_apply_stripe_subscription`.
+ *
+ * Le statut reste BRUT (`active`, `past_due`, `canceled`…) : sa traduction en
+ * `ACTIVE` / `CANCELLED` n'existe qu'en SQL, et deux implémentations de cette
+ * règle divergeraient au premier changement (§5 de `docs/abonnements.md`).
+ */
+export type AbonnementStripeBrut = {
+  subscriptionId: string;
+  customerId: string;
+  itemId: string;
+  priceId: string;
+  statut: string;
+  finPeriodeIso: string;
+  annulationProgrammee: boolean;
+  /** Métadonnée posée à l'ouverture du Checkout — absente sur les événements suivants. */
+  userId: string | null;
+  renonciationLe: string | null;
+};
+
+function texte(v: unknown): string | null {
+  return typeof v === 'string' && v.length > 0 ? v : null;
+}
+
+/** Un champ Stripe « expandable » est soit l'identifiant, soit l'objet complet. */
+function identifiant(v: unknown): string | null {
+  if (typeof v === 'string') return v || null;
+  if (v && typeof v === 'object') return texte((v as { id?: unknown }).id);
+  return null;
+}
+
+function unixVersIso(v: unknown): string | null {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return null;
+  return new Date(v * 1000).toISOString();
+}
+
+/**
+ * Normalise un objet `subscription` reçu par webhook. `null` si l'objet
+ * n'est pas exploitable — la route le signale alors en échec plutôt que
+ * d'écrire un abonnement incomplet.
+ *
+ * **La date de fin de période se lit à DEUX endroits.** Stripe l'a déplacée de
+ * l'abonnement vers ses articles dans les versions récentes de l'API. Lire un
+ * seul des deux marcherait aujourd'hui et cesserait de marcher le jour d'une
+ * montée de version faite depuis le Dashboard — sans rien casser bruyamment :
+ * l'abonnement serait simplement écrit sans échéance, donc sans expiration.
+ */
+export function lireAbonnementStripe(objet: unknown): AbonnementStripeBrut | null {
+  if (!objet || typeof objet !== 'object') return null;
+  const sub = objet as Record<string, unknown>;
+
+  const subscriptionId = texte(sub.id);
+  const customerId = identifiant(sub.customer);
+  const statut = texte(sub.status);
+  if (!subscriptionId || !customerId || !statut) return null;
+
+  const articles = (sub.items as { data?: unknown[] } | undefined)?.data;
+  const premier = Array.isArray(articles) ? (articles[0] as Record<string, unknown> | undefined) : undefined;
+  if (!premier) return null;
+
+  const itemId = texte(premier.id);
+  const priceId = identifiant(premier.price);
+  if (!itemId || !priceId) return null;
+
+  const finPeriodeIso = unixVersIso(sub.current_period_end) ?? unixVersIso(premier.current_period_end);
+  if (!finPeriodeIso) return null;
+
+  const metadata = (sub.metadata ?? {}) as Record<string, unknown>;
+
+  return {
+    subscriptionId,
+    customerId,
+    itemId,
+    priceId,
+    statut,
+    finPeriodeIso,
+    annulationProgrammee: sub.cancel_at_period_end === true,
+    userId: texte(metadata.user_id),
+    renonciationLe: texte(metadata.waiver_accepted_at),
+  };
+}
+
+/**
+ * Couple (membre, client Stripe) lisible sur une session Checkout achevée.
+ *
+ * `client_reference_id` est lu en repli de la métadonnée : c'est le champ que
+ * Stripe renvoie tel quel, sans risque qu'une métadonnée soit tronquée ou
+ * écrasée par un autre chemin de création.
+ */
+export function lireSessionCheckout(objet: unknown): { userId: string; customerId: string } | null {
+  if (!objet || typeof objet !== 'object') return null;
+  const session = objet as Record<string, unknown>;
+  const metadata = (session.metadata ?? {}) as Record<string, unknown>;
+  const userId = texte(metadata.user_id) ?? texte(session.client_reference_id);
+  const customerId = identifiant(session.customer);
+  if (!userId || !customerId) return null;
+  return { userId, customerId };
+}
+
+/** Identifiant client Stripe d'une facture, pour retrouver le membre concerné. */
+export function lireClientFacture(objet: unknown): string | null {
+  if (!objet || typeof objet !== 'object') return null;
+  return identifiant((objet as Record<string, unknown>).customer);
+}
+
+/**
+ * Message d'échec de prélèvement, notifié au membre (in-app et e-mail).
+ *
+ * **Il dit explicitement que l'accès continue.** C'est l'arbitrage JEP-29
+ * (§14) rendu lisible : la spécification d'origine coupait les droits dès le
+ * premier refus de carte, on notifie à la place. Un message qui se
+ * contenterait d'annoncer l'échec laisserait croire le contraire et ferait
+ * paniquer — ou résilier — un membre dont la carte a simplement expiré.
+ */
+export function messageEchecPaiement(prochaineTentativeIso: string | null): { titre: string; corps: string } {
+  const relance = prochaineTentativeIso
+    ? ` Une nouvelle tentative aura lieu le ${formatDate(prochaineTentativeIso)}.`
+    : ' Une nouvelle tentative aura lieu automatiquement dans les prochains jours.';
+
+  return {
+    titre: 'Paiement refusé — votre accès continue',
+    corps:
+      'Le prélèvement de votre abonnement a été refusé par votre banque. ' +
+      `Votre accès n’est pas interrompu.${relance}` +
+      '\n\nPour éviter toute interruption, mettez à jour votre moyen de paiement ' +
+      'depuis Réglages → Mon forfait.',
+  };
+}
+
+/** Horodatage Stripe (secondes) → ISO, ou `null`. Exposé pour les routes. */
+export function isoDepuisUnixStripe(v: unknown): string | null {
+  return unixVersIso(v);
 }

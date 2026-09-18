@@ -180,6 +180,25 @@ export const getIdClientStripe = cache(async (userId: string): Promise<string | 
 });
 
 /**
+ * Membre rattaché à un client Stripe — la lecture INVERSE de la précédente.
+ *
+ * Réservée au webhook, qui reçoit un identifiant client et doit retrouver le
+ * compte : pas de session à cet endroit, donc le client à privilèges. Ce
+ * n'est pas un contournement de RLS par confort — il n'y a personne dont on
+ * pourrait emprunter les droits.
+ */
+export async function getIdClientStripeAdmin(customerId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('billing_customers')
+    .select('user_id')
+    .eq('provider', 'stripe')
+    .eq('external_customer_id', customerId)
+    .maybeSingle();
+  return data?.user_id ?? null;
+}
+
+/**
  * Enregistre le client Stripe d'un membre. Écriture serveur exclusivement :
  * `billing_customers` n'a aucune policy d'écriture, pour personne — un membre
  * qui pourrait poser son `external_customer_id` pourrait désigner celui d'un

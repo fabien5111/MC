@@ -867,3 +867,48 @@ Deux conséquences pratiques de ce lot :
   pas de prix dans le mode courant. C'est ce `null` qui rend `PRO_ESSAI`
   invendable et qui garde la formule annuelle fermée, sans qu'aucun code ne
   connaisse le nom de l'un ni l'autre.
+
+### Lot C — le webhook, et les trois pièges de l'asynchrone
+
+`app/api/webhooks/stripe/route.ts` est le seul chemin qui écrit un abonnement
+Stripe. Les routes de souscription et de gestion (lots D et E) ne font que
+*demander* quelque chose à Stripe : c'est l'événement qui revient qui fait foi,
+jamais la réponse immédiate au clic. Un membre qui ferme son onglet pendant la
+redirection est abonné quand même.
+
+**1. L'ordre d'arrivée n'est pas garanti.**
+`customer.subscription.created` précède souvent `checkout.session.completed`.
+Si le membre n'était identifié que par la session de Checkout, l'abonnement
+arriverait avant qu'on sache à qui il appartient. Deux mesures, complémentaires
+et redondantes à dessein : le membre est porté par la métadonnée de
+l'ABONNEMENT lui-même (`subscription_data.metadata`, posée au lot D), et le
+rattachement du client Stripe est refait depuis les deux chemins. Chacun suffit,
+aucun n'est le prérequis de l'autre.
+
+**2. La date d'échéance se lit à deux endroits.** Stripe a déplacé
+`current_period_end` de l'abonnement vers ses articles dans les versions
+récentes de l'API. N'en lire qu'un marcherait aujourd'hui et cesserait de
+marcher au jour d'une montée de version faite depuis le Dashboard — **sans rien
+casser bruyamment** : les abonnements seraient simplement écrits sans échéance,
+donc sans expiration. `lireAbonnementStripe` lit les deux, et rend `null` si
+aucun ne répond.
+
+**3. Un objet inexploitable LÈVE, il n'est pas ignoré.** Écrire un abonnement
+sans échéance accorderait des droits sans fin, et un `200` silencieux effacerait
+la trace du problème. La route répond 500 : Stripe rejoue, l'événement repasse
+en `FAILED` donc redevient réservable, et le motif se lit dans
+`billing_events.error`.
+
+À l'inverse, trois cas repartent en `200` sans rien faire, délibérément : un
+événement déjà réservé (rejeu normal), un type non traité (un compte Stripe en
+émet des dizaines — les journaliser tous ferait de `billing_events` le journal
+de tout le compte), et une session de Checkout sans membre identifiable, qui
+peut venir d'un paiement créé à la main depuis le Dashboard.
+
+**`invoice.payment_failed` ne réserve pas de notification.** Contrairement au
+cron d'expiration, qui passe par `claimNotification`, chaque tentative de
+prélèvement produit son propre événement Stripe, et `billing_events` garantit
+déjà qu'il n'est traité qu'une fois. Réserver en plus ferait taire la deuxième
+alerte — justement celle qui devient urgente. Le message dit explicitement que
+l'accès continue : annoncer le seul échec laisserait croire à une coupure et
+ferait résilier un membre dont la carte a simplement expiré.

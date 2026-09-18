@@ -7,6 +7,10 @@ import { createHmac } from 'node:crypto';
 import {
   TOLERANCE_SIGNATURE_SEC,
   encoderFormulaireStripe,
+  lireAbonnementStripe,
+  lireClientFacture,
+  lireSessionCheckout,
+  messageEchecPaiement,
   messageErreurStripe,
   modeStripe,
   verifierSignatureStripe,
@@ -117,5 +121,128 @@ describe('messageErreurStripe', () => {
   it('ne lève pas sur une réponse illisible', () => {
     expect(messageErreurStripe(null)).toBe('réponse Stripe illisible.');
     expect(messageErreurStripe({})).toBe('réponse Stripe illisible.');
+  });
+});
+
+describe('lireAbonnementStripe', () => {
+  const base = {
+    id: 'sub_1',
+    customer: 'cus_1',
+    status: 'active',
+    cancel_at_period_end: false,
+    current_period_end: 1_800_000_000,
+    items: { data: [{ id: 'si_1', price: { id: 'price_1' } }] },
+    metadata: { user_id: 'uuid-membre', waiver_accepted_at: '2026-09-18T10:00:00.000Z' },
+  };
+
+  it('lit un abonnement complet', () => {
+    expect(lireAbonnementStripe(base)).toEqual({
+      subscriptionId: 'sub_1',
+      customerId: 'cus_1',
+      itemId: 'si_1',
+      priceId: 'price_1',
+      statut: 'active',
+      finPeriodeIso: new Date(1_800_000_000 * 1000).toISOString(),
+      annulationProgrammee: false,
+      userId: 'uuid-membre',
+      renonciationLe: '2026-09-18T10:00:00.000Z',
+    });
+  });
+
+  it('trouve l’échéance sur l’ARTICLE quand elle n’est plus sur l’abonnement', () => {
+    // Stripe a déplacé `current_period_end` vers les articles dans les
+    // versions récentes de l'API. Lire un seul des deux endroits cesserait
+    // de marcher au jour d'une montée de version faite depuis le Dashboard,
+    // en écrivant des abonnements sans échéance — donc sans expiration.
+    const { current_period_end: _retire, ...sansEcheance } = base;
+    const nouveauFormat = {
+      ...sansEcheance,
+      items: { data: [{ id: 'si_1', price: { id: 'price_1' }, current_period_end: 1_800_000_000 }] },
+    };
+    expect(lireAbonnementStripe(nouveauFormat)?.finPeriodeIso).toBe(new Date(1_800_000_000 * 1000).toISOString());
+  });
+
+  it('accepte un champ expandable rendu en objet plutôt qu’en identifiant', () => {
+    const abo = lireAbonnementStripe({ ...base, customer: { id: 'cus_2', object: 'customer' } });
+    expect(abo?.customerId).toBe('cus_2');
+  });
+
+  it('rend null sans échéance exploitable, plutôt qu’un abonnement sans fin', () => {
+    const { current_period_end: _retire, ...sansEcheance } = base;
+    expect(lireAbonnementStripe(sansEcheance)).toBeNull();
+    expect(lireAbonnementStripe({ ...base, current_period_end: 0 })).toBeNull();
+  });
+
+  it('rend null sur un objet incomplet', () => {
+    expect(lireAbonnementStripe(null)).toBeNull();
+    expect(lireAbonnementStripe({})).toBeNull();
+    expect(lireAbonnementStripe({ ...base, items: { data: [] } })).toBeNull();
+    expect(lireAbonnementStripe({ ...base, items: { data: [{ id: 'si_1' }] } })).toBeNull();
+    expect(lireAbonnementStripe({ ...base, status: '' })).toBeNull();
+  });
+
+  it('laisse le statut BRUT, sans le traduire', () => {
+    // La traduction en ACTIVE / CANCELLED n'existe qu'en SQL : deux
+    // implémentations de cette règle divergeraient au premier changement.
+    expect(lireAbonnementStripe({ ...base, status: 'past_due' })?.statut).toBe('past_due');
+    expect(lireAbonnementStripe({ ...base, status: 'canceled' })?.statut).toBe('canceled');
+  });
+
+  it('rend des métadonnées nulles quand elles sont absentes', () => {
+    const { metadata: _retire, ...sansMeta } = base;
+    const abo = lireAbonnementStripe(sansMeta);
+    expect(abo?.userId).toBeNull();
+    expect(abo?.renonciationLe).toBeNull();
+  });
+
+  it('ne lit `annulationProgrammee` que sur un vrai booléen', () => {
+    expect(lireAbonnementStripe({ ...base, cancel_at_period_end: true })?.annulationProgrammee).toBe(true);
+    expect(lireAbonnementStripe({ ...base, cancel_at_period_end: 'true' })?.annulationProgrammee).toBe(false);
+  });
+});
+
+describe('lireSessionCheckout', () => {
+  it('lit la métadonnée en priorité', () => {
+    expect(
+      lireSessionCheckout({ customer: 'cus_1', metadata: { user_id: 'u1' }, client_reference_id: 'u2' }),
+    ).toEqual({ userId: 'u1', customerId: 'cus_1' });
+  });
+
+  it('retombe sur client_reference_id', () => {
+    expect(lireSessionCheckout({ customer: 'cus_1', client_reference_id: 'u2' })).toEqual({
+      userId: 'u2',
+      customerId: 'cus_1',
+    });
+  });
+
+  it('rend null sans membre identifiable — un paiement créé à la main depuis le Dashboard', () => {
+    expect(lireSessionCheckout({ customer: 'cus_1' })).toBeNull();
+    expect(lireSessionCheckout({ metadata: { user_id: 'u1' } })).toBeNull();
+    expect(lireSessionCheckout(null)).toBeNull();
+  });
+});
+
+describe('lireClientFacture', () => {
+  it('lit l’identifiant client, en chaîne comme en objet', () => {
+    expect(lireClientFacture({ customer: 'cus_1' })).toBe('cus_1');
+    expect(lireClientFacture({ customer: { id: 'cus_2' } })).toBe('cus_2');
+    expect(lireClientFacture({})).toBeNull();
+  });
+});
+
+describe('messageEchecPaiement', () => {
+  it('dit explicitement que l’accès continue', () => {
+    // C'est l'arbitrage JEP-29 rendu lisible : un message qui annoncerait le
+    // seul échec laisserait croire à une coupure.
+    const { titre, corps } = messageEchecPaiement('2026-09-25T10:00:00.000Z');
+    expect(titre).toContain('votre accès continue');
+    expect(corps).toContain('n’est pas interrompu');
+    expect(corps).toContain('25 septembre 2026');
+  });
+
+  it('reste juste sans date de relance connue', () => {
+    const { corps } = messageEchecPaiement(null);
+    expect(corps).toContain('dans les prochains jours');
+    expect(corps).not.toContain('Invalid Date');
   });
 });
