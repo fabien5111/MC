@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { EmailChangeCard } from '@/components/profile/EmailChangeCard';
 import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
 import { FollowingCard } from '@/components/profile/FollowingCard';
 import { BookSharesCard } from '@/components/profile/BookSharesCard';
@@ -112,6 +113,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           followCounts={followCounts}
         />
         <UsageCard usage={usage} grid={grid} currentPlan={currentPlan} trialConsumed={trialConsumed} />
+        {user.email && <EmailChangeCard email={user.email} hasPassword={hasPassword} />}
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />

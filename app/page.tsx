@@ -51,8 +51,40 @@ const FALLBACK_CATEGORIES = [
   { icon: 'bolt', label: 'Express' },
 ];
 
-export default async function HomePage() {
+// GoTrue redirige ici avec ?message=/?error_code= quand son propre point de
+// vérification traite un lien de confirmation qu'il ne fait pas passer par
+// notre `/auth/callback` (cf. le changement d'adresse e-mail : la seconde des
+// deux confirmations exigées par `SECURE_EMAIL_CHANGE_ENABLED` échappe à notre
+// route). Laissé tel quel, c'est un texte brut en anglais dans la barre
+// d'adresse, invisible pour qui ne regarde pas l'URL. Traduit par une
+// correspondance exacte — jamais le texte externe affiché tel quel, même
+// motif que la modération de pseudo : un paramètre d'URL est une donnée
+// externe, pas un texte de confiance.
+//
+// GoTrue ne dit pas laquelle des deux adresses reste à confirmer. La seule
+// certitude qu'on ait, c'est l'adresse ACTUELLE du compte (le changement
+// n'étant pas encore effectif tant que les deux liens ne sont pas cliqués,
+// `user.email` n'a pas bougé) — d'où une formulation qui nomme cette adresse
+// connue plutôt que de prétendre savoir laquelle des deux a déjà été cliquée.
+function messageGoTrueTraduit(message: string, emailActuel: string | null): string | null {
+  if (message !== 'Confirmation link accepted. Please proceed to confirm link sent to the other email') return null;
+  return emailActuel
+    ? `Premier lien confirmé. Il reste à cliquer sur le second — envoyé soit à ${emailActuel} (votre adresse actuelle), soit à la nouvelle adresse demandée, selon celui que vous n'avez pas encore ouvert.`
+    : "Premier lien confirmé. Pour finaliser le changement d'adresse e-mail, cliquez aussi sur le second lien de confirmation, envoyé à votre autre adresse.";
+}
+const GOTRUE_ERROR_CODES: Record<string, string> = {
+  otp_expired: 'Ce lien de confirmation a expiré ou a déjà été utilisé. Relancez la demande depuis vos réglages.',
+};
+
+type HomeSearchParams = { searchParams: Promise<{ message?: string; error_code?: string }> };
+
+export default async function HomePage({ searchParams }: HomeSearchParams) {
+  const { message, error_code } = await searchParams;
   const user = await getCurrentUser();
+  const gotrueNotice =
+    (message && messageGoTrueTraduit(message, user?.email ?? null)) ||
+    (error_code && GOTRUE_ERROR_CODES[error_code]) ||
+    null;
   const [
     recipes,
     activeFeatured,
@@ -104,6 +136,12 @@ export default async function HomePage() {
   return (
     <>
       <Header current="accueil" />
+
+      {gotrueNotice && (
+        <p className="mx-auto mt-6 max-w-[1200px] rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-center text-sm text-on-surface-variant">
+          {gotrueNotice}
+        </p>
+      )}
 
       <HomeBanner
         web={banners.banner_home_web}
