@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirigerVers } from '@/lib/redirection';
 import { aChoisiSonPseudo, enregistrerPseudo, pseudoDisponible } from '@/lib/pseudo-data';
 import { validerPseudo } from '@/lib/pseudo';
+import { getProfile } from '@/lib/auth';
 
 function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
@@ -27,6 +28,18 @@ async function destinationApresConnexion(next: string): Promise<string> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return next;
+
+  // `profiles.email` est une copie manuelle (Admin → Membres, lien
+  // d'impersonation) : un changement d'adresse confirmé via Supabase Auth
+  // (cf. EmailChangeCard) ne la met à jour nulle part ailleurs — ce callback
+  // est le seul point de passage garanti après confirmation. `getProfile` est
+  // mémoïsé par requête : l'appel fait ici est le même que celui
+  // d'`aChoisiSonPseudo` juste après, aucune lecture supplémentaire.
+  const profil = await getProfile(user.id);
+  if (user.email && profil && profil.email !== user.email) {
+    await supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
+  }
+
   if (await aChoisiSonPseudo(user.id)) return next;
 
   // Inscription par e-mail : le pseudo a déjà été validé (unicité + IA) avant
