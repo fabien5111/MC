@@ -16,10 +16,13 @@ le service managé.
   terminal sur sa machine, pas de client SSH installé. Toute action côté
   infrastructure (Virtuozzo, DNS Infomaniak, secrets GitHub…) doit donc
   préciser **« Où : »** avant la manœuvre — quel nœud (216658 applicatif,
-  216680 équilibreur, 216075 PostgreSQL, 216114 GoTrue, 216242 PostgREST),
-  et par quel canal (console Infomaniak / *Configuration manager* / Web SSH
-  du nœud). Ne jamais supposer qu'une commande shell est possible sans avoir
-  nommé le nœud.
+  216680 équilibreur de `jepatisse-app`, 216115 équilibreur de
+  `jepatisse-bdd`, 216075 PostgreSQL, 216114 GoTrue, 216242 PostgREST,
+  217256 pgweb), et par quel canal (console Infomaniak / *Configuration
+  manager* / éditeur de configuration / Web SSH du nœud). Ne jamais supposer
+  qu'une commande shell est possible sans avoir nommé le nœud — ni qu'elle
+  s'exécutera en root : le Web SSH du nœud 216115 tourne sous l'utilisateur
+  `nginx`, sans `sudo`, et n'écrit que dans `conf.d/`.
 - **Une commande destinée au Web SSH tient sur UNE seule ligne**, enchaînée
   par `&&` ou `;` — jamais un bloc de plusieurs lignes, ni une boucle, ni un
   `if` déplié. Un bloc collé dans un terminal web s'exécute ligne par ligne,
@@ -56,12 +59,19 @@ le service managé.
   `articles.content`, hors périmètre.)
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
-  conversation (bloc de code SQL), pour être copiée-collée dans une session
-  SQL contre la base Infomaniak — **il n'y a plus d'éditeur SQL permanent**
-  depuis la bascule du 11/09 : le port 5432 n'est pas exposé, il faut un
-  Endpoint temporaire sur le nœud PostgreSQL (216075), même mode opératoire
-  que `npm run gen:types` (§ 7.9 du dossier de migration). Outil client à
-  confirmer avec l'utilisateur au moment venu — pas d'hypothèse à faire ici.
+  conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
+  l'éditeur SQL en ligne posé le 19/09/2026 :
+  `https://auth.jepatisse.com/pgweb/` (nœud 217256, rôle `pgweb_admin`,
+  mode opératoire complet dans `DEPLOY.md` § « Éditeur SQL en ligne »).
+  Deux conséquences à ne pas confondre : l'utilisateur a de nouveau une
+  console SQL permanente, mais **Claude n'y a aucun accès** — elle est
+  derrière une authentification HTTP Basic dont lui seul a les identifiants,
+  et c'est lui qui exécute. Écrire le SQL en supposant qu'il sera lu et joué
+  par un humain : commenté, idempotent quand c'est possible, jamais une
+  suite de gestes à enchaîner à l'aveugle. Le port 5432 reste fermé ; pour un
+  outil **extérieur** (le runner GitHub Actions de `npm run gen:types`), il
+  faut toujours un Endpoint temporaire sur le nœud PostgreSQL (216075),
+  § 7.9 du dossier de migration.
 
 ---
 
@@ -1352,16 +1362,16 @@ Mode opératoire complet, pièges de construction compris : **`DEPLOY.md`**.
 Historique de la migration depuis Vercel + Supabase :
 `docs/migration-infomaniak.md`.
 
-- **Deux environnements Virtuozzo, à Genève.** `jepatisse-app` porte
+- **Trois environnements Virtuozzo, à Genève.** `jepatisse-app` porte
   l'application (pile Node.js 22.x native + `pm2`, nœud 216658) derrière son
-  équilibreur NGINX (216680). `jepatisse` porte la base (PostgreSQL 17.6,
+  équilibreur NGINX (216680). `jepatisse-bdd` porte la base (PostgreSQL 17.6,
   216075), GoTrue (216114) et PostgREST (216242) derrière l'équilibreur qui
   sert `auth.jepatisse.com` (216115) et y tient le rôle de Kong sur
-  `/auth/v1/` et `/rest/v1/`. Deux environnements et non un seul : le moteur
-  d'un environnement Jelastic est figé à sa création, et l'image Docker de la
-  base y interdit les piles natives. Effet heureux : un redéploiement
-  applicatif ne peut pas atteindre la base. Un troisième,
-  `jepatisse-preview` (216804), sert les aperçus de PR.
+  `/auth/v1/` et `/rest/v1/`. Deux environnements distincts pour l'app et la
+  base, et non un seul : le moteur d'un environnement Jelastic est figé à sa
+  création, et l'image Docker de la base y interdit les piles natives. Effet
+  heureux : un redéploiement applicatif ne peut pas atteindre la base. Un
+  troisième, `jepatisse-preview` (216804), sert les aperçus de PR.
 - **Après avoir poussé/créé une PR, vérifier la disponibilité de l'étiquette
   `preview`** (un seul nœud d'aperçu, une PR à la fois — cf. `DEPLOY.md`
   § « Aperçu d'une PR ») : lister les PR ouvertes portant déjà `preview`.
@@ -1384,7 +1394,7 @@ Historique de la migration depuis Vercel + Supabase :
   local. Cf. `DEPLOY.md` § « Aperçu d'une PR ».
 - **Une nouvelle origine web doit être autorisée par l'API des DEUX côtés**,
   sinon elle ne peut ni se connecter ni écrire : le motif CORS de
-  l'équilibreur `jepatisse` (216115, `/etc/nginx/conf.d/ssl.conf`) pour toute
+  l'équilibreur `jepatisse-bdd` (216115, `/etc/nginx/conf.d/ssl.conf`) pour toute
   connexion et toute écriture, ET `GOTRUE_URI_ALLOW_LIST` (216114) pour la
   connexion Google spécifiquement. Le symptôme ne nomme ni l'un ni l'autre :
   un « Failed to fetch » de `supabase-js`. Vaut pour l'aperçu, et pour tout
