@@ -60,10 +60,18 @@ const FALLBACK_CATEGORIES = [
 // correspondance exacte — jamais le texte externe affiché tel quel, même
 // motif que la modération de pseudo : un paramètre d'URL est une donnée
 // externe, pas un texte de confiance.
-const GOTRUE_MESSAGES: Record<string, string> = {
-  'Confirmation link accepted. Please proceed to confirm link sent to the other email':
-    "Premier lien confirmé. Pour finaliser le changement d'adresse e-mail, cliquez aussi sur le second lien de confirmation, envoyé à votre autre adresse.",
-};
+//
+// GoTrue ne dit pas laquelle des deux adresses reste à confirmer. La seule
+// certitude qu'on ait, c'est l'adresse ACTUELLE du compte (le changement
+// n'étant pas encore effectif tant que les deux liens ne sont pas cliqués,
+// `user.email` n'a pas bougé) — d'où une formulation qui nomme cette adresse
+// connue plutôt que de prétendre savoir laquelle des deux a déjà été cliquée.
+function messageGoTrueTraduit(message: string, emailActuel: string | null): string | null {
+  if (message !== 'Confirmation link accepted. Please proceed to confirm link sent to the other email') return null;
+  return emailActuel
+    ? `Premier lien confirmé. Il reste à cliquer sur le second — envoyé soit à ${emailActuel} (votre adresse actuelle), soit à la nouvelle adresse demandée, selon celui que vous n'avez pas encore ouvert.`
+    : "Premier lien confirmé. Pour finaliser le changement d'adresse e-mail, cliquez aussi sur le second lien de confirmation, envoyé à votre autre adresse.";
+}
 const GOTRUE_ERROR_CODES: Record<string, string> = {
   otp_expired: 'Ce lien de confirmation a expiré ou a déjà été utilisé. Relancez la demande depuis vos réglages.',
 };
@@ -72,8 +80,11 @@ type HomeSearchParams = { searchParams: Promise<{ message?: string; error_code?:
 
 export default async function HomePage({ searchParams }: HomeSearchParams) {
   const { message, error_code } = await searchParams;
-  const gotrueNotice = (message && GOTRUE_MESSAGES[message]) || (error_code && GOTRUE_ERROR_CODES[error_code]) || null;
   const user = await getCurrentUser();
+  const gotrueNotice =
+    (message && messageGoTrueTraduit(message, user?.email ?? null)) ||
+    (error_code && GOTRUE_ERROR_CODES[error_code]) ||
+    null;
   const [
     recipes,
     activeFeatured,
