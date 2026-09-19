@@ -23,7 +23,7 @@ import { cardAllergenNames, effectiveTimes } from '@/lib/recipe-view';
 import { AllergenPictos } from '@/components/recipe/AllergenPictos';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { getFavoriteIds } from '@/lib/favorites';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, syncProfileEmail } from '@/lib/auth';
 import { getPublicSiteSettings } from '@/lib/site';
 import { getHomeCategories } from '@/lib/taxonomy';
 import { formatTime } from '@/lib/format';
@@ -81,6 +81,13 @@ type HomeSearchParams = { searchParams: Promise<{ message?: string; error_code?:
 export default async function HomePage({ searchParams }: HomeSearchParams) {
   const { message, error_code } = await searchParams;
   const user = await getCurrentUser();
+  // Filet de sécurité : la seconde confirmation d'un changement d'e-mail
+  // atterrit ici sans passer par `/auth/callback` (cf. plus haut) — sans
+  // resynchronisation posée aussi ici, `profiles.email` restait périmé tant
+  // que le membre ne déclenchait pas un autre passage par le callback
+  // (nouvelle connexion). `syncProfileEmail` ne coûte rien hors du cas rare de
+  // divergence : `getProfile` est déjà lu par le Header sur cette même page.
+  if (user) await syncProfileEmail(user.id, user.email);
   const gotrueNotice =
     (message && messageGoTrueTraduit(message, user?.email ?? null)) ||
     (error_code && GOTRUE_ERROR_CODES[error_code]) ||
