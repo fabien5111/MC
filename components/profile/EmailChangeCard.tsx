@@ -1,10 +1,16 @@
 'use client';
 
-// Changement d'adresse e-mail, depuis les réglages du compte. Même doctrine
-// que `PasswordChangeCard` : l'utilisateur est déjà connecté, rien ne garantit
-// que c'est bien lui devant le clavier (poste partagé, session laissée
-// ouverte) — on revérifie donc le mot de passe actuel avant d'envoyer la
-// demande de changement.
+// Changement d'adresse e-mail, depuis les réglages du compte.
+//
+// **Pas de réauthentification par mot de passe ici**, contrairement à
+// `PasswordChangeCard` — et ce n'est pas un oubli. La menace qu'elle
+// couvrirait (une session laissée ouverte sur un poste partagé, détournée
+// pour s'approprier le compte) est déjà couverte en amont par la double
+// confirmation de GoTrue (`SECURE_EMAIL_CHANGE_ENABLED`) : le changement
+// n'aboutit qu'après avoir cliqué un lien envoyé à l'ADRESSE ACTUELLE, que
+// l'intrus ne contrôle pas. Redemander le mot de passe ne faisait que doubler
+// cette garantie, au prix d'un champ de plus. Le jour où la double
+// confirmation serait désactivée côté serveur, il faudra la rétablir ici.
 //
 // `updateUser({ email })` ne change rien tout de suite : GoTrue envoie un
 // e-mail de confirmation à la nouvelle adresse (et, selon la configuration du
@@ -27,16 +33,14 @@ const FIELD =
 
 export function EmailChangeCard({ email, hasPassword }: { email: string; hasPassword: boolean }) {
   const { busy, mutate } = useMutation();
-  const [current, setCurrent] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const mismatch = confirmEmail.length > 0 && confirmEmail !== newEmail;
   const unchanged = newEmail.length > 0 && newEmail.trim().toLowerCase() === email.trim().toLowerCase();
-  const blocked = current.length === 0 || newEmail.length === 0 || newEmail !== confirmEmail || unchanged;
+  const blocked = newEmail.length === 0 || newEmail !== confirmEmail || unchanged;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,25 +48,15 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
     setDone(false);
     if (blocked) {
       setError(
-        unchanged
-          ? "C'est déjà votre adresse actuelle."
-          : newEmail !== confirmEmail
-            ? 'Les deux adresses ne correspondent pas.'
-            : 'Saisissez votre mot de passe actuel.',
+        unchanged ? "C'est déjà votre adresse actuelle." : 'Les deux adresses ne correspondent pas.',
       );
       return;
     }
-    const ok = await mutate(
-      async () => {
-        const supabase = createClient();
-        const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: current });
-        if (reauthError) return { error: { message: 'Mot de passe actuel incorrect.' } };
-        return supabase.auth.updateUser({ email: newEmail });
-      },
-      { errorLabel: 'Adresse e-mail', refresh: false },
-    );
+    const ok = await mutate(async () => createClient().auth.updateUser({ email: newEmail }), {
+      errorLabel: 'Adresse e-mail',
+      refresh: false,
+    });
     if (ok) {
-      setCurrent('');
       setNewEmail('');
       setConfirmEmail('');
       setDone(true);
@@ -86,33 +80,12 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
       <p className="font-body-md text-body-md text-on-surface-variant mb-6">
         Adresse actuelle : <span className="text-primary">{email}</span>
       </p>
+      {/* `autoComplete="off"` sur les deux champs : avec `email`, le navigateur
+          y remplit tout seul l'adresse du compte — c'est-à-dire précisément
+          celle qu'on cherche à REMPLACER, affichée comme si elle avait été
+          saisie. Un champ « nouvelle adresse » pré-rempli avec l'ancienne
+          n'aide personne et fait croire à une saisie en cours. */}
       <form onSubmit={submit} className="space-y-6 max-w-md">
-        <div className="space-y-1">
-          <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="current-password-email">
-            Mot de passe actuel
-          </label>
-          <div className="relative">
-            <input
-              id="current-password-email"
-              type={showPassword ? 'text' : 'password'}
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              className={FIELD}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
-            >
-              <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
-            </button>
-          </div>
-        </div>
-
         <div className="space-y-1">
           <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="new-email">
             Nouvelle adresse e-mail
@@ -121,7 +94,7 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
             id="new-email"
             type="email"
             required
-            autoComplete="email"
+            autoComplete="off"
             placeholder="vous@exemple.fr"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
@@ -137,7 +110,7 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
             id="confirm-email"
             type="email"
             required
-            autoComplete="email"
+            autoComplete="off"
             placeholder="vous@exemple.fr"
             value={confirmEmail}
             onChange={(e) => setConfirmEmail(e.target.value)}
