@@ -15,10 +15,10 @@ et les gestes d'exploitation.
 
 ## Les environnements Virtuozzo
 
-Deux environnements distincts, et c'est structurel : le moteur d'un
-environnement Jelastic est figé à sa création. `jepatisse` porte une image
-Docker à l'étage applicatif, ce qui y interdit les piles natives — d'où un
-second environnement pour l'application. L'effet de bord est heureux : un
+Trois environnements distincts, et c'est structurel : le moteur d'un
+environnement Jelastic est figé à sa création. `jepatisse-bdd` porte une
+image Docker à l'étage applicatif, ce qui y interdit les piles natives — d'où
+un second environnement pour l'application. L'effet de bord est heureux : un
 redéploiement applicatif, le geste le plus fréquent, ne peut pas atteindre la
 base.
 
@@ -26,10 +26,10 @@ base.
 |---|---|---|
 | `jepatisse-app` | 216658 | Application Next.js (pile Node.js 22.x native, `pm2`) |
 | `jepatisse-app` | 216680 | Équilibreur NGINX — TLS de `dev.jepatisse.com` |
-| `jepatisse` | 216115 | Équilibreur NGINX — TLS de `auth.jepatisse.com`, tient le rôle de Kong sur `/auth/v1/` et `/rest/v1/` |
-| `jepatisse` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
-| `jepatisse` | 216114 | GoTrue (authentification) |
-| `jepatisse` | 216242 | PostgREST (API REST sur la base) |
+| `jepatisse-bdd` | 216115 | Équilibreur NGINX — TLS de `auth.jepatisse.com`, tient le rôle de Kong sur `/auth/v1/` et `/rest/v1/` |
+| `jepatisse-bdd` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
+| `jepatisse-bdd` | 216114 | GoTrue (authentification) |
+| `jepatisse-bdd` | 216242 | PostgREST (API REST sur la base) |
 | `jepatisse-preview` | 216804 | Aperçu d'une PR (pile Node.js 22.x native, `pm2`) — voir plus bas |
 
 Région : **Genève**. Application et base partagent la plateforme et la région
@@ -288,7 +288,7 @@ déploiement réel, ce qui est pourtant tout son objet.
 ### Deux verrous côté API, tous deux nécessaires pour se connecter sur l'aperçu
 
 Le navigateur appelle `auth.jepatisse.com` **en direct**. Deux garde-fous
-distincts, sur deux nœuds distincts de l'environnement `jepatisse`, doivent
+distincts, sur deux nœuds distincts de l'environnement `jepatisse-bdd`, doivent
 tous les deux connaître la nouvelle origine — un seul suffi(sai)t pour l'un
 des deux modes de connexion, mais pas pour l'autre :
 

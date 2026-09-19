@@ -1352,16 +1352,16 @@ Mode opératoire complet, pièges de construction compris : **`DEPLOY.md`**.
 Historique de la migration depuis Vercel + Supabase :
 `docs/migration-infomaniak.md`.
 
-- **Deux environnements Virtuozzo, à Genève.** `jepatisse-app` porte
+- **Trois environnements Virtuozzo, à Genève.** `jepatisse-app` porte
   l'application (pile Node.js 22.x native + `pm2`, nœud 216658) derrière son
-  équilibreur NGINX (216680). `jepatisse` porte la base (PostgreSQL 17.6,
+  équilibreur NGINX (216680). `jepatisse-bdd` porte la base (PostgreSQL 17.6,
   216075), GoTrue (216114) et PostgREST (216242) derrière l'équilibreur qui
   sert `auth.jepatisse.com` (216115) et y tient le rôle de Kong sur
-  `/auth/v1/` et `/rest/v1/`. Deux environnements et non un seul : le moteur
-  d'un environnement Jelastic est figé à sa création, et l'image Docker de la
-  base y interdit les piles natives. Effet heureux : un redéploiement
-  applicatif ne peut pas atteindre la base. Un troisième,
-  `jepatisse-preview` (216804), sert les aperçus de PR.
+  `/auth/v1/` et `/rest/v1/`. Deux environnements distincts pour l'app et la
+  base, et non un seul : le moteur d'un environnement Jelastic est figé à sa
+  création, et l'image Docker de la base y interdit les piles natives. Effet
+  heureux : un redéploiement applicatif ne peut pas atteindre la base. Un
+  troisième, `jepatisse-preview` (216804), sert les aperçus de PR.
 - **Après avoir poussé/créé une PR, vérifier la disponibilité de l'étiquette
   `preview`** (un seul nœud d'aperçu, une PR à la fois — cf. `DEPLOY.md`
   § « Aperçu d'une PR ») : lister les PR ouvertes portant déjà `preview`.
@@ -1384,7 +1384,7 @@ Historique de la migration depuis Vercel + Supabase :
   local. Cf. `DEPLOY.md` § « Aperçu d'une PR ».
 - **Une nouvelle origine web doit être autorisée par l'API des DEUX côtés**,
   sinon elle ne peut ni se connecter ni écrire : le motif CORS de
-  l'équilibreur `jepatisse` (216115, `/etc/nginx/conf.d/ssl.conf`) pour toute
+  l'équilibreur `jepatisse-bdd` (216115, `/etc/nginx/conf.d/ssl.conf`) pour toute
   connexion et toute écriture, ET `GOTRUE_URI_ALLOW_LIST` (216114) pour la
   connexion Google spécifiquement. Le symptôme ne nomme ni l'un ni l'autre :
   un « Failed to fetch » de `supabase-js`. Vaut pour l'aperçu, et pour tout
