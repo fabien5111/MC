@@ -61,7 +61,7 @@ const FALLBACK_CATEGORIES = [
 // motif que la modération de pseudo : un paramètre d'URL est une donnée
 // externe, pas un texte de confiance.
 const GOTRUE_MESSAGES: Record<string, string> = {
-  'Confirmation link accepted. Please proceed to confirm link sent to the other email.':
+  'Confirmation link accepted. Please proceed to confirm link sent to the other email':
     "Premier lien confirmé. Pour finaliser le changement d'adresse e-mail, cliquez aussi sur le second lien de confirmation, envoyé à votre autre adresse.",
 };
 const GOTRUE_ERROR_CODES: Record<string, string> = {
