@@ -16,10 +16,13 @@ le service managé.
   terminal sur sa machine, pas de client SSH installé. Toute action côté
   infrastructure (Virtuozzo, DNS Infomaniak, secrets GitHub…) doit donc
   préciser **« Où : »** avant la manœuvre — quel nœud (216658 applicatif,
-  216680 équilibreur, 216075 PostgreSQL, 216114 GoTrue, 216242 PostgREST),
-  et par quel canal (console Infomaniak / *Configuration manager* / Web SSH
-  du nœud). Ne jamais supposer qu'une commande shell est possible sans avoir
-  nommé le nœud.
+  216680 équilibreur de `jepatisse-app`, 216115 équilibreur de
+  `jepatisse-bdd`, 216075 PostgreSQL, 216114 GoTrue, 216242 PostgREST,
+  217256 pgweb), et par quel canal (console Infomaniak / *Configuration
+  manager* / éditeur de configuration / Web SSH du nœud). Ne jamais supposer
+  qu'une commande shell est possible sans avoir nommé le nœud — ni qu'elle
+  s'exécutera en root : le Web SSH du nœud 216115 tourne sous l'utilisateur
+  `nginx`, sans `sudo`, et n'écrit que dans `conf.d/`.
 - **Une commande destinée au Web SSH tient sur UNE seule ligne**, enchaînée
   par `&&` ou `;` — jamais un bloc de plusieurs lignes, ni une boucle, ni un
   `if` déplié. Un bloc collé dans un terminal web s'exécute ligne par ligne,
@@ -56,12 +59,19 @@ le service managé.
   `articles.content`, hors périmètre.)
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
-  conversation (bloc de code SQL), pour être copiée-collée dans une session
-  SQL contre la base Infomaniak — **il n'y a plus d'éditeur SQL permanent**
-  depuis la bascule du 11/09 : le port 5432 n'est pas exposé, il faut un
-  Endpoint temporaire sur le nœud PostgreSQL (216075), même mode opératoire
-  que `npm run gen:types` (§ 7.9 du dossier de migration). Outil client à
-  confirmer avec l'utilisateur au moment venu — pas d'hypothèse à faire ici.
+  conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
+  l'éditeur SQL en ligne posé le 19/09/2026 :
+  `https://auth.jepatisse.com/pgweb/` (nœud 217256, rôle `pgweb_admin`,
+  mode opératoire complet dans `DEPLOY.md` § « Éditeur SQL en ligne »).
+  Deux conséquences à ne pas confondre : l'utilisateur a de nouveau une
+  console SQL permanente, mais **Claude n'y a aucun accès** — elle est
+  derrière une authentification HTTP Basic dont lui seul a les identifiants,
+  et c'est lui qui exécute. Écrire le SQL en supposant qu'il sera lu et joué
+  par un humain : commenté, idempotent quand c'est possible, jamais une
+  suite de gestes à enchaîner à l'aveugle. Le port 5432 reste fermé ; pour un
+  outil **extérieur** (le runner GitHub Actions de `npm run gen:types`), il
+  faut toujours un Endpoint temporaire sur le nœud PostgreSQL (216075),
+  § 7.9 du dossier de migration.
 
 ---
 

@@ -30,6 +30,7 @@ base.
 | `jepatisse-bdd` | 216075 | PostgreSQL 17.6 (image `supabase/postgres`) |
 | `jepatisse-bdd` | 216114 | GoTrue (authentification) |
 | `jepatisse-bdd` | 216242 | PostgREST (API REST sur la base) |
+| `jepatisse-bdd` | 217256 | pgweb — éditeur SQL en ligne, voir plus bas |
 | `jepatisse-preview` | 216804 | Aperçu d'une PR (pile Node.js 22.x native, `pm2`) — voir plus bas |
 
 Région : **Genève**. Application et base partagent la plateforme et la région
@@ -408,6 +409,63 @@ un paquet `apk`) et la sauvegarde nocturne échoue en silence. À rejouer :
 ```bash
 apk add --no-cache pgbackrest && pgbackrest --stanza=jepatisse check
 ```
+
+## Éditeur SQL en ligne (pgweb)
+
+**`https://auth.jepatisse.com/pgweb/`** — éditeur SQL permanent, posé le
+19/09/2026, qui remplace l'Endpoint temporaire comme outil de travail
+quotidien sur la base. Réservé à l'administrateur : l'accès est protégé par
+une authentification HTTP Basic dont lui seul a les identifiants.
+
+| Pièce | Où |
+|---|---|
+| Nœud pgweb (image `sosedoff/pgweb`) | `jepatisse-bdd`, **217256**, IP interne `10.101.26.97`, port 8081 |
+| Connexion à la base | variable `PGWEB_DATABASE_URL` du nœud 217256, rôle `pgweb_admin` vers `10.101.32.133:5432` |
+| Exposition | bloc `location /pgweb/` de `/etc/nginx/conf.d/ssl.conf` (nœud **216115**) |
+| Mot de passe Basic Auth | `/etc/nginx/conf.d/pgweb.htpasswd` (nœud 216115) |
+
+- **Le port 5432 reste fermé.** pgweb tourne *dans* l'environnement et joint
+  PostgreSQL par le réseau interne ; rien n'est exposé de plus qu'un chemin
+  HTTP derrière l'équilibreur. L'Endpoint temporaire du § `gen:types` garde
+  donc sa raison d'être — c'est la voie des outils *extérieurs* (runner
+  GitHub Actions), pas celle du navigateur.
+- **Rôle dédié `pgweb_admin`**, `LOGIN BYPASSRLS` et rien de plus. Pas
+  superutilisateur : `postgres` ne l'est pas lui-même sur cette instance et ne
+  peut donc pas le transmettre (§ 2.6 du dossier de migration). `BYPASSRLS`
+  suffit à tout le DDL et le DML de maintenance. Ne pas réutiliser le rôle
+  `postgres` ici : un accès web permanent doit pouvoir être révoqué sans
+  toucher au reste.
+- **Piège pgweb 0.17.0 — le préfixe s'écrit `pgweb`, sans `/` de tête.**
+  `SetupRoutes` fait `router.Group(Opts.Prefix)` (qui attend un chemin), mais
+  `GetHome` fait `prefix = "/" + prefix` avant un `http.StripPrefix` : avec
+  `--prefix=/pgweb` la page d'accueil est cherchée sous `//pgweb`, ne
+  correspond à aucune requête réelle, et **tout répond 404 alors que le
+  serveur tourne**. Go normalise le `/` manquant côté routage, pas côté
+  `StripPrefix` — d'où la valeur sans slash, qui satisfait les deux.
+- **Un changement de CMD ou de variable exige un *redéploiement*, pas un
+  redémarrage.** Un redémarrage relance le conteneur avec les paramètres de
+  sa *création* : le processus repart avec l'ancienne ligne de commande, et
+  `ps aux | grep pgweb` le montre — même doctrine que « le panneau n'est pas
+  l'environnement du processus ». Le journal de démarrage est dans
+  `/var/log/run.log` sur le nœud, et il nomme la vraie cause (`connection
+  refused` = mauvais hôte, `authentication failed` = mauvais mot de passe).
+- **Changer le mot de passe Basic Auth ne demande aucun redémarrage** :
+  NGINX relit `pgweb.htpasswd` à chaque requête. Une ligne sur le nœud 216115
+  suffit :
+
+```bash
+echo "pgweb:$(openssl passwd -apr1 'NOUVEAU')" > /etc/nginx/conf.d/pgweb.htpasswd
+```
+
+- **Reconnexion après inactivité.** pgweb ouvre une connexion unique au
+  démarrage et ne la rétablit pas tout seul : après ~30 min sans requête, le
+  réseau interne la coupe et l'écran « Connect » réapparaît. Le remplir
+  (`10.101.32.133` / `5432` / `pgweb_admin` / `postgres` / SSL `disable`)
+  reconnecte sans rien redéployer — c'est le serveur pgweb qui se connecte,
+  pas le navigateur. Des paramètres `keepalives` dans `PGWEB_DATABASE_URL`
+  corrigeraient la cause, essai non concluant au 19/09 et abandonné : chaque
+  redéploiement de ce nœud s'est révélé plus coûteux que le geste qu'il
+  évite.
 
 ## Certificats
 
