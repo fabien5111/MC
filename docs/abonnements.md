@@ -472,23 +472,26 @@ Deux surfaces distinctes portent ces droits : la note d'étape
 les sous-étapes n'existent que dans `BatchStepDonePanel`. Dans les trois cas,
 la règle est la même (§7.4, l'existant est préservé) : une note ou une liste
 de sous-étapes déjà saisies AVANT une rétrogradation restent affichées et
-modifiables en lecture — seul le bouton de CRÉATION (nouvelle note quand
-aucune n'existe, nouvelle sous-étape) disparaît, remplacé par un message bref
-et un lien vers `/plans`. Un droit rétabli fait réapparaître le bouton sans
-rien à migrer : rien n'a jamais été supprimé.
+modifiables en lecture — seul l'AJOUT est bridé. Un droit rétabli fait
+réapparaître le bouton sans rien à migrer : rien n'a jamais été supprimé.
 
-### `ecran_relecture_import` : portée volontairement stricte, comme `mode_projet`
+**Amendé par JEP-130 (§14)** : le bouton de création ne disparaît plus,
+remplacé par un message. Il reste affiché, grisé, avec le picto `block` et
+son motif en infobulle — y compris quand une note existe déjà, cas où plus
+rien ne s'affichait du tout.
+
+### `ecran_relecture_import` : portée stricte — DÉCISION RENVERSÉE, cf. §14
 
 `/importer` masque le formulaire (`ImporterForm`) mais garde la liste des
 imports passés visible — c'est de l'historique, jamais concerné par un
-contrôle de création. `/relecture/[id]`, en revanche, est bloquée
-**entièrement** pour un brouillon existant sans le droit, sans vue en
-lecture seule : un import non publié est un artefact intermédiaire d'un
-parcours interrompu, pas un contenu que le membre consulte ou dont il aurait
-besoin — contrairement à un projet en cours (§5c, `mode_projet`), qui reste
-lisible parce qu'il porte une intention et une structure déjà investies.
-Rien n'est supprimé pour autant : la ligne `imports` / `recipes` (brouillon)
-reste en base, seulement inatteignable tant que le droit n'est pas rétabli.
+contrôle de création. **Ce point-là n'a pas changé.**
+
+En revanche, la portée stricte posée ici sur `/relecture/[id]` (bloquée
+**entièrement** pour un brouillon existant, sans vue en lecture seule, au
+motif qu'un import non publié serait « un artefact intermédiaire d'un
+parcours interrompu ») **a été renversée par JEP-130** : voir §14. L'usage a
+tranché contre le raisonnement — un brouillon importé est un travail déjà
+payé, que son auteur doit pouvoir terminer.
 
 ### `navigation_sans_pub` : un seul point de contrôle, pas trois
 
@@ -717,3 +720,169 @@ vrai paiement réussi le ferait.
 - **À retirer quand un vrai prestataire sera branché** : `mc_simulate_subscribe`
   et le prompt de code sur `PlansPage.tsx` sont un pont temporaire, pas une
   fonctionnalité produit — ne pas construire dessus (remise, palier de prix…).
+
+## 14. JEP-130 — une seule grammaire de blocage, et la relecture ré-ouverte
+
+Deux demandes distinctes dans le même ticket : rendre lisible le blocage
+d'une action non incluse dans la formule, et laisser terminer un import déjà
+réalisé. La première change une convention d'interface partout ; la seconde
+renverse une décision de §9.
+
+### Le relevé qui a motivé le ticket : cinq grammaires, dont deux par accident
+
+Avant ce lot, un même symptôme — « cette action n'est pas dans votre
+formule » — se présentait de cinq façons, sur 18 points de contrôle :
+
+1. **bouton masqué + phrase italique** avec lien `/plans` (notes de fournée
+   et d'étape, sous-étapes) ;
+2. **bouton `disabled` + `title` natif** (les trois « Importer », les radios
+   d'ajustement par IA, la proposition de composant) ;
+3. **rien du tout** — le bouton n'existe pas, aucun mot : fusion de listes,
+   poignée de réordonnancement, remplacement d'un ingrédient par une recette,
+   et le radio IA quand c'est le DROIT qui manque (et non le quota) ;
+4. **aucun repère, refus après le clic** dans une boîte de dialogue : le
+   bouton « Projet » du carnet, rendu sans aucun contrôle de droit — le seul
+   droit binaire dans ce cas ;
+5. **message d'erreur brut** — `MC_QUOTA_EXCEEDED:listes_courses_max:3:3`
+   affiché tel quel (création d'une liste de courses, duplication d'une
+   recette). Les deux seuls chemins d'écriture que le lot 5a avait manqués —
+   ni `useMutation` ni `translateQuotaError`, parce qu'ils enchaînent
+   plusieurs requêtes. Corrigés dans ce lot (`ShoppingWidget`,
+   `RecetteToc`), indépendamment du reste.
+
+Les grammaires 3 et 4 sont les vraies fautes : une action qui n'existe pas
+ne s'explique pas. Le membre ne pouvait pas savoir que la fonctionnalité
+existait, donc pas non plus qu'elle était payante — et les trois
+fonctionnalités concernées sont parmi les plus distinctives du produit.
+
+### La règle : l'action reste visible, grisée, et dit pourquoi
+
+`components/LockedAction.tsx` porte les deux seules formes admises :
+
+- **`LockedAction`** remplace une action absente ou masquée : picto `block`
+  à la place (ou à côté) de l'icône d'origine, contenu grisé, motif en
+  infobulle.
+- **`LockedHint`** enveloppe un contrôle qui existe déjà et qui est
+  simplement `disabled` : il garde entièrement son apparence, l'enveloppe
+  n'apporte que l'infobulle. C'est l'appelant qui échange son icône contre
+  `block`.
+
+**Deux motifs, deux composants, et c'est la signature qui les sépare** —
+aucun drapeau à passer, donc aucune issue à confondre :
+
+| Composant | Cas | Issue |
+|---|---|---|
+| `LockedAction` | le droit n'est pas dans la formule | le repère **est** un lien vers `/plans` |
+| `LockedHint` | le droit existe, le crédit du mois est consommé | **aucun lien**, le contrôle reste en place |
+
+Le second reprend la doctrine posée au JEP-77 (§ « Quota épuisé signalé
+avant le clic ») : renvoyer vers `/plans` quelqu'un dont le crédit se
+renouvelle tout seul à la prochaine période serait mensonger. `LockedHint`
+ne sait structurellement pas proposer `/plans`, ce qui rend l'erreur
+impossible plutôt que déconseillée.
+
+Conséquence sur les deux contrôles qui portaient les deux motifs (le mode
+d'ajustement par IA, la proposition de composant) : sans le droit, le
+contrôle désactivé disparaît au profit du repère — un radio mort n'offre
+aucune issue — tandis qu'un crédit épuisé le conserve, désactivé, puisqu'il
+redeviendra utilisable de lui-même.
+
+### Pourquoi le picto est `block`, et permanent
+
+`block` est le seul glyphe en forme de panneau du jeu Material, et c'est
+déjà le « refusé » du site (`/admin/recettes`, bouton « Rejeter »). `lock`
+était disponible mais signifie déjà « fournée close » (`BatchView`) — or les
+deux se croiseraient précisément sur les écrans de fournée, où vivent la
+moitié des points de contrôle. `workspace_premium` (menu « Nos formules »)
+dit l'offre, pas l'interdit.
+
+Permanent, et non au survol comme le demandait la lettre du ticket : un
+repère qui n'apparaît qu'au survol n'existe pas sur un écran tactile — et
+`/en-cuisine` comme le mode Pâtisser sont d'abord des écrans de téléphone.
+
+### Infobulle en CSS, pas en JavaScript
+
+Ni état, ni portail, ni position mesurée : le repère est lui-même l'élément
+focusable, l'infobulle un bloc `absolute` révélé par `group-hover` /
+`group-focus-visible`. Un portail (motif de `lib/use-rail-tooltip.tsx`,
+imposé là-bas par un `overflow:hidden`) aurait sorti le lien de l'ordre de
+tabulation : une infobulle qu'on ne peut pas atteindre au clavier ne vaut
+pas mieux que le `title` natif qu'elle remplace, lequel ne s'affiche de
+toute façon jamais au doigt et mal sur un contrôle `disabled`.
+
+`:hover` remonte bien jusqu'à l'enveloppe d'un contrôle `disabled` — c'est
+du calcul de style, pas de la distribution d'événements, contrairement aux
+`mouseenter` que ce contrôle n'émet effectivement pas. Et `LockedHint` ne
+rend **aucune** enveloppe quand il n'y a rien à dire (`active={false}`) :
+laissée en place, elle ajouterait un arrêt de tabulation sur chaque bouton
+parfaitement utilisable.
+
+### Deux compromis assumés
+
+- **Un appui navigue.** Faute de survol sur écran tactile, un appui sur un
+  repère `kind="plan"` mène directement à `/plans`. Le geste est donc à un
+  doigt de l'action réelle qu'il remplace : un appui par erreur en pleine
+  fournée quitte l'écran. Le retour arrière le rétablit à l'identique (le
+  mode Préparer/Pâtisser vit dans l'URL, rien n'est perdu). Si l'usage le
+  démentait, le remplacement est local — un état d'ouverture dans le
+  composant seul, sans toucher aux appelants.
+- **Le repère se répète.** Une note par étape, un remplacement par
+  ingrédient : sur une fournée longue, un membre sans ces droits verra le
+  même repère vingt fois. C'est le prix de « l'action reste visible », et ça
+  remplace une règle antérieure (« pas de message sur une liste déjà
+  garnie ») dont l'effet était qu'une rétrogradation ne s'expliquait nulle
+  part sur les étapes déjà travaillées. Repli possible si l'aperçu le
+  demande : un seul repère par section plutôt que par ligne.
+
+### Ce qui reste HORS de ce lot : les cinq limites de stock
+
+Griser « Nouvelle recette », le cœur de favori, « Planifier », « Nouvelle
+liste » ou « Partager mon carnet » supposerait de **compter les objets** sur
+chaque écran qui les porte — ce que la doctrine interdit explicitement
+(`mc_usage_report` vaut cinq comptages, « réservé aux écrans de jauges,
+jamais pour un contrôle d'accès »). Ces cinq points gardent donc leur refus
+après le clic, avec le message éducatif de `mc_enforce_stock` traduit par
+`useMutation` / `translateQuotaError` — qui est correct, seul son *moment*
+est tardif.
+
+Conséquence à connaître, et c'est une incohérence apparente **voulue** :
+un bouton bridé par la formule est grisé, un bouton bridé par une limite de
+stock atteinte reste actif et refuse après le clic. La raison est qu'une
+limite de stock se libère en supprimant un objet — le bouton doit rester
+cliquable, il redeviendra utile sans changement de formule.
+
+### Le renversement : `/relecture/[id]` se termine sans le droit
+
+§9 posait cette page comme bloquée entièrement, sans vue en lecture seule,
+au motif qu'un brouillon d'import serait « un artefact intermédiaire d'un
+parcours interrompu ». C'était un raisonnement, pas une observation, et il
+était faux : un brouillon importé est un travail que le membre a demandé,
+que l'IA a effectué, et qu'il ne peut plus terminer.
+
+Ce qui rend le renversement sûr, et c'est le point à retenir :
+**la relecture ne rappelle jamais l'IA.** `RelectureEditor` n'émet aucune
+requête vers `/api` — le coût Anthropic a été payé une fois pour toutes à
+l'import. Ce que le droit protège réellement, c'est le NOUVEL import, et
+celui-là reste fermé sur `/importer`.
+
+- `/relecture/[id]` rend l'éditeur complet sans le droit, précédé d'un
+  bandeau qui dit ce qui est fermé (un nouvel import) et ce qui reste ouvert
+  (celui-ci).
+- **Le plafond de recettes n'a demandé aucun code** : `mc_enforce_stock` sur
+  `recipes` refuse déjà la publication si la formule est pleine. Le bandeau
+  ne fait que l'annoncer avant la saisie plutôt que de le laisser découvrir
+  au moment d'enregistrer — via `getUsageReport`, et seulement sur ce chemin
+  dégradé : c'est de l'affichage, jamais un contrôle, et l'écran est assez
+  rare pour en payer les cinq comptages.
+- `/importer` gagne une phrase quand le membre a des imports : sans elle,
+  rien n'indique que les liens de « Mes imports », juste en dessous, mènent
+  encore quelque part.
+- **Borne naturelle** : les imports sont purgés après 30 jours sans activité
+  (`lib/imports-retention.ts`). La fenêtre de grâce se ferme donc d'elle-même.
+  Effet de bord connu et accepté : relire remet `updated_at` à jour, donc un
+  membre sans le droit peut maintenir un brouillon en vie indéfiniment.
+
+`mode_projet` (§5c) n'est **pas** aligné sur ce renversement : un projet en
+cours reste en lecture seule. La différence est réelle — terminer une
+relecture, c'est un dernier geste sur un travail déjà fait ; continuer un
+projet, c'est en demander du nouveau à chaque étape du dialogue.

@@ -12,8 +12,6 @@ import { getCurrentPlan, getEntitlements, getGrid, checkQuota } from '@/lib/enti
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
-const QUOTA_JOUR = 20;
-
 export default async function ImporterPage() {
   const user = await requireUser('/importer');
   // Impersonation en lecture seule : l'import crée un brouillon → interdit.
@@ -43,10 +41,24 @@ export default async function ImporterPage() {
   // Seulement quand l'écran est déjà accessible.
   const quotaImport = peutImporter ? await checkQuota(user.id, 'import_ia_mensuel') : null;
 
-  // Quota du jour (UTC), comme la version vanilla.
-  const debutJour = new Date();
-  debutJour.setUTCHours(0, 0, 0, 0);
-  const aujourdhui = imports.filter((i) => new Date(i.created_at) >= debutJour).length;
+  // JEP-56 : le nombre d'imports RÉALISÉS DANS LA FORMULE remplace l'ancien
+  // compteur du jour (`IMPORT_DAILY_QUOTA`, technique et sans rapport avec le
+  // droit d'abonnement) — celui-ci reste un garde-fou anti-emballement côté
+  // route (§5, docs/abonnements.md), simplement plus affiché en permanence
+  // : un plafond journalier atteint continue de refuser explicitement au
+  // moment de l'import, sans compteur dédié (une limite qu'on ne peut de
+  // toute façon pas lever avant le lendemain n'a pas besoin d'une jauge
+  // affichée à demeure).
+  // `usage` absent = lecture en échec (best-effort, cf. `checkQuota`) : pas
+  // de chiffre à afficher plutôt qu'un nombre inventé.
+  const essai = currentPlan?.type === 'TRIAL';
+  const periode = essai ? "dans l'essai" : 'dans le mois';
+  const compteurImports =
+    quotaImport && quotaImport.usage != null
+      ? quotaImport.limit != null
+        ? `${quotaImport.usage} / ${quotaImport.limit} imports ${periode}`
+        : `${quotaImport.usage} import${quotaImport.usage > 1 ? 's' : ''} ${periode}`
+      : null;
 
   return (
     <>
@@ -56,9 +68,9 @@ export default async function ImporterPage() {
           <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
             Importer une recette
           </h1>
-          <span className="font-label-md text-label-md text-on-surface-variant">
-            {aujourdhui} / {QUOTA_JOUR} imports aujourd&apos;hui
-          </span>
+          {compteurImports && (
+            <span className="font-label-md text-label-md text-on-surface-variant">{compteurImports}</span>
+          )}
         </div>
         <p className="text-on-surface-variant mb-8">
           Collez le texte complet d&apos;une recette : elle est analysée, convertie au format du site
@@ -72,6 +84,16 @@ export default async function ImporterPage() {
             <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
               <p className="font-label-md text-[15px]">{messageBloque.titre}</p>
               <p className="mt-2 text-sm text-on-surface-variant">{messageBloque.corps}</p>
+              {/* JEP-130 : les brouillons déjà importés restent relisibles et
+                  publiables (arbitrage E). Sans cette phrase, rien n'indique
+                  que les liens de « Mes imports » juste en dessous mènent
+                  encore quelque part. */}
+              {imports.length > 0 && (
+                <p className="mt-2 text-sm text-on-surface-variant">
+                  Vos imports déjà réalisés, eux, restent accessibles plus bas : vous pouvez les relire, les
+                  corriger et les enregistrer dans votre carnet.
+                </p>
+              )}
               <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
                 Voir les formules
               </Link>

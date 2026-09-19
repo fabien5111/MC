@@ -206,6 +206,16 @@ describe('rendu des valeurs', () => {
   it('traite le non paramétré comme illimité, comme le moteur', () => {
     expect(formatRight(nonParametre, f)).toBe('Illimité');
   });
+
+  it('JEP-55 : substitue "/ mois" par "pour l’essai" sur un quota de flux, colonne d’essai seulement', () => {
+    const flux = grille.features[1]; // import_ia_mensuel, unit "imports / mois"
+    expect(formatRight(limite(3), flux, true)).toBe("3 import(s) pour l'essai");
+    expect(formatRight(limite(3), flux, false)).toBe('3 import(s) / mois');
+  });
+
+  it('JEP-55 : ne touche pas une unité sans "/ mois" (limite de stock)', () => {
+    expect(formatRight(limite(3), f, true)).toBe('3 fournée(s)');
+  });
 });
 
 describe('tarifs', () => {

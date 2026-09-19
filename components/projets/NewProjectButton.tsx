@@ -11,8 +11,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { LockedAction } from '@/components/LockedAction';
 
-export function NewProjectButton() {
+const BTN =
+  'flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
+
+export function NewProjectButton({ peutProjet = true }: { peutProjet?: boolean }) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
@@ -42,15 +46,27 @@ export function NewProjectButton() {
     }
   }
 
+  // JEP-130 : ce bouton était rendu SANS aucun contrôle de droit — le seul
+  // droit binaire dans ce cas. Le refus n'arrivait qu'après le clic, dans une
+  // boîte de dialogue, après un aller-retour vers /api/projet. Il reste à sa
+  // place, grisé, et dit pourquoi avant le clic. La route garde évidemment sa
+  // garde (`verifierAcces`) : l'interface n'est jamais la garantie.
+  if (!peutProjet) {
+    return (
+      <LockedAction
+        label="Créer un projet"
+        message="Le mode projet n'est pas inclus dans votre formule."
+        className="rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold"
+      >
+        Projet
+      </LockedAction>
+    );
+  }
+
   return (
     <>
       <LoadingOverlay visible={busy} label="Création du projet…" />
-      <button
-        type="button"
-        onClick={creer}
-        disabled={busy}
-        className="flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40"
-      >
+      <button type="button" onClick={creer} disabled={busy} className={BTN}>
         <span className="material-symbols-outlined text-[18px]">account_tree</span> Projet
       </button>
     </>
