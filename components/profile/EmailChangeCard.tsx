@@ -28,6 +28,7 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
   const [confirmEmail, setConfirmEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const mismatch = confirmEmail.length > 0 && confirmEmail !== newEmail;
   const unchanged = newEmail.length > 0 && newEmail.trim().toLowerCase() === email.trim().toLowerCase();
@@ -89,16 +90,26 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
           <label className="font-label-md text-label-md text-secondary ml-1" htmlFor="current-password-email">
             Mot de passe actuel
           </label>
-          <input
-            id="current-password-email"
-            type="password"
-            required
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            className={FIELD}
-          />
+          <div className="relative">
+            <input
+              id="current-password-email"
+              type={showPassword ? 'text' : 'password'}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              className={FIELD}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="space-y-1">
