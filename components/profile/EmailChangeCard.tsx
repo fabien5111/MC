@@ -9,9 +9,13 @@
 // `updateUser({ email })` ne change rien tout de suite : GoTrue envoie un
 // e-mail de confirmation à la nouvelle adresse (et, selon la configuration du
 // serveur d'authentification, un second à l'adresse actuelle) — le
-// changement n'est effectif qu'après avoir suivi ce lien, qui repasse par
-// `/auth/callback` comme une connexion Google ou une confirmation
-// d'inscription.
+// changement n'est effectif qu'après avoir suivi ce lien. Contrairement à une
+// connexion Google, ce lien est vérifié par jeton autoporteur
+// (`token_hash`/`verifyOtp`, cf. `/auth/callback`), pas par échange PKCE : un
+// lien reçu par e-mail est presque toujours ouvert dans un autre contexte de
+// navigation que celui qui a fait la demande. La destination après
+// confirmation (`/reglages`) est fixée dans le modèle d'e-mail GoTrue lui-même
+// — rien à passer ici.
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -53,10 +57,7 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
         const supabase = createClient();
         const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: current });
         if (reauthError) return { error: { message: 'Mot de passe actuel incorrect.' } };
-        return supabase.auth.updateUser(
-          { email: newEmail },
-          { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/reglages')}` },
-        );
+        return supabase.auth.updateUser({ email: newEmail });
       },
       { errorLabel: 'Adresse e-mail', refresh: false },
     );
