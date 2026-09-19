@@ -41,6 +41,25 @@ export async function POST(req: Request) {
     throw e;
   }
 
+  // Adresse déjà prise : contrôle AVANT l'appel, parce que GoTrue ne sait pas
+  // le dire. Une adresse déjà rattachée à un autre compte viole l'index
+  // `users_email_partial_key` d'`auth.users`, et GoTrue laisse remonter
+  // l'erreur PostgreSQL brute en 500 **au corps vide** — l'appelant ne reçoit
+  // donc aucun motif exploitable (mesuré : `AuthRetryableFetchError` avec un
+  // message réduit à `{}`, la cause n'étant lisible que dans le journal du
+  // nœud). Ce contrôle est un confort d'affichage, jamais la garantie : elle
+  // reste l'index unique en base, et `profiles.email` n'est qu'une copie, vide
+  // sur les comptes antérieurs au trigger `handle_new_user`.
+  const { data: dejaPris } = await admin
+    .from('profiles')
+    .select('id')
+    .ilike('email', newEmail)
+    .neq('id', profileId)
+    .maybeSingle();
+  if (dejaPris) {
+    return NextResponse.json({ erreur: 'Cette adresse est déjà utilisée par un autre compte.' }, { status: 409 });
+  }
+
   const { error: authError } = await admin.auth.admin.updateUserById(profileId, {
     email: newEmail,
     email_confirm: true,
@@ -51,13 +70,18 @@ export async function POST(req: Request) {
     // `JSON.stringify` quand le corps ne porte ni `msg` ni `message`), et le
     // message seul ne dit alors rien. Le code, lui, distingue un refus de
     // l'équilibreur (401/403/405) d'un chemin non routé (404) ou d'une panne
-    // GoTrue (500).
+    // GoTrue (500) — ce dernier étant le plus souvent l'adresse déjà prise
+    // que le contrôle ci-dessus n'a pas vue (copie `profiles.email` absente).
     console.error('change-member-email:', authError);
+    const piste =
+      authError.status === 500
+        ? " — cause la plus fréquente : l'adresse est déjà rattachée à un autre compte"
+        : '';
     return NextResponse.json(
       {
         erreur:
           `Changement d'adresse impossible — code ${authError.status ?? '?'} ` +
-          `(${authError.name ?? 'erreur'}) : ${authError.message || 'aucun détail'}`,
+          `(${authError.name ?? 'erreur'})${piste}.`,
       },
       { status: 502 },
     );
