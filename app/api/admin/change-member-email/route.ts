@@ -46,12 +46,21 @@ export async function POST(req: Request) {
     email_confirm: true,
   });
   if (authError) {
-    // `authError.message` est parfois vide (erreur GoTrue à la forme
-    // inattendue) — journalisé et renvoyé en détail plutôt que de laisser un
-    // message muet.
+    // Le CODE HTTP est toujours remonté, jamais seulement le message : un
+    // corps d'erreur vide donne `message === '{}'` (supabase-js retombe sur
+    // `JSON.stringify` quand le corps ne porte ni `msg` ni `message`), et le
+    // message seul ne dit alors rien. Le code, lui, distingue un refus de
+    // l'équilibreur (401/403/405) d'un chemin non routé (404) ou d'une panne
+    // GoTrue (500).
     console.error('change-member-email:', authError);
-    const detail = authError.message || `code ${authError.status ?? '?'} — ${authError.name ?? 'erreur sans détail'}`;
-    return NextResponse.json({ erreur: `Changement d'adresse impossible : ${detail}` }, { status: 502 });
+    return NextResponse.json(
+      {
+        erreur:
+          `Changement d'adresse impossible — code ${authError.status ?? '?'} ` +
+          `(${authError.name ?? 'erreur'}) : ${authError.message || 'aucun détail'}`,
+      },
+      { status: 502 },
+    );
   }
 
   // Copie manuelle (Admin → Membres, lien d'impersonation) — cf. lib/auth.ts.
