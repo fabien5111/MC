@@ -23,6 +23,7 @@ import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
+import { LockedAction } from '@/components/LockedAction';
 import type { BatchListRow } from '@/lib/profile';
 
 const dateLabel = (iso: string): string =>
@@ -256,11 +257,19 @@ export function PlanningDayView({
                         drag_indicator
                       </span>
                     ) : (
-                      // Espace réservé, sans poignée : sans droit, l'étape
-                      // n'est ni draggable ni cible de dépose (`onDragOver` /
-                      // `onDrop` du <li> parent restent inertes tant que
-                      // `dragId` ne peut jamais être posé — cf. plus haut).
-                      <span className="w-[18px] shrink-0" aria-hidden />
+                      // JEP-130 : l'espace était réservé mais vide — une
+                      // colonne de 18 px qui ne disait rien. Le repère
+                      // occupe exactement la même largeur, à la même place,
+                      // et explique enfin pourquoi la poignée manque. Sans
+                      // droit, l'étape n'est de toute façon ni draggable ni
+                      // cible de dépose (`onDragOver` / `onDrop` du <li>
+                      // parent restent inertes tant que `dragId` ne peut
+                      // jamais être posé — cf. plus haut).
+                      <LockedAction
+                        label="Réordonner cette étape dans sa journée"
+                        message="Réordonner les étapes d'une journée n'est pas inclus dans votre formule."
+                        className="shrink-0"
+                      />
                     )}
                     <Link
                       href={`/fournee/${it.planId}?mode=preparer`}

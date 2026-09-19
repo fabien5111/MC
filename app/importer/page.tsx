@@ -84,6 +84,16 @@ export default async function ImporterPage() {
             <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
               <p className="font-label-md text-[15px]">{messageBloque.titre}</p>
               <p className="mt-2 text-sm text-on-surface-variant">{messageBloque.corps}</p>
+              {/* JEP-130 : les brouillons déjà importés restent relisibles et
+                  publiables (arbitrage E). Sans cette phrase, rien n'indique
+                  que les liens de « Mes imports » juste en dessous mènent
+                  encore quelque part. */}
+              {imports.length > 0 && (
+                <p className="mt-2 text-sm text-on-surface-variant">
+                  Vos imports déjà réalisés, eux, restent accessibles plus bas : vous pouvez les relire, les
+                  corriger et les enregistrer dans votre carnet.
+                </p>
+              )}
               <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
                 Voir les formules
               </Link>
