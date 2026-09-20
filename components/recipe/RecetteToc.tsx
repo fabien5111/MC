@@ -13,6 +13,7 @@ import { RecipeToc, stepAnchorId, type TocSections, type TocStep } from '@/compo
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
+import { translateQuotaError } from '@/lib/quota-message-client';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 
 // Même seuil que `SPY_THRESHOLD` dans lib/use-toc.ts : on veut retrouver la
@@ -81,7 +82,11 @@ export function RecetteToc({
       const supabase = createClient();
       const { data, error } = await supabase.rpc('duplicate_recipe' as never, { p_recipe_id: recipeId } as never);
       if (error) {
-        dialog.alert(`Duplication impossible : ${error.message}`);
+        // Même oubli du lot 5a que dans ShoppingWidget (§15) : un plafond de
+        // recettes atteint affichait « MC_QUOTA_EXCEEDED:recettes_max:… »
+        // tel quel.
+        const educatif = await translateQuotaError(error.message);
+        dialog.alert(educatif ?? `Duplication impossible : ${error.message}`);
         setPending(null);
         return;
       }

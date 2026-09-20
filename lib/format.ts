@@ -17,9 +17,18 @@ export function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
-// Date longue + heure (fiche recette, « Dernière modification ») — même style
-// que formatDate, sans la précision à la seconde de formatDateTime (orientée
-// admin, pas utile à un visiteur).
+// Date longue + heure (fiche recette, « Dernière modification » ; fin d'essai
+// dans « Mon forfait », JEP-75) — même style que formatDate, sans la
+// précision à la seconde de formatDateTime (orientée admin, pas utile à un
+// visiteur).
+//
+// `timeZone` explicite : plusieurs appelants sont des Client Components
+// (`ContactManager`, `ContactDetail`, `UsageCard`), donc rendus une première
+// fois côté serveur (nœud Virtuozzo, sans fuseau positionné) puis
+// réhydratés côté navigateur. Sans fuseau fixé, l'heure affichée dépend de
+// qui la calcule et diffère entre les deux rendus — React abandonne
+// l'hydratation (erreur #418), cassant l'interactivité de toute la page.
+// Même piège, même correctif que `formatArticleDate` (lib/blog.ts).
 export function formatDateHeure(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('fr-FR', {
@@ -28,6 +37,7 @@ export function formatDateHeure(dateStr: string | null | undefined): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 

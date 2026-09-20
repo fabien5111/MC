@@ -31,6 +31,7 @@ import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
 import { resizePhotoForAi } from '@/lib/images';
 import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
 import { useDialog } from '@/components/Dialog';
+import { LockedHint } from '@/components/LockedAction';
 
 type Result = {
   id: number;
@@ -79,9 +80,11 @@ export function ImporterForm({
   const photoRef = useRef<HTMLInputElement>(null);
 
   const quotaEpuise = quotaImport != null && !quotaImport.allowed;
-  const quotaTooltip = quotaEpuise
-    ? `Quota d'imports par IA atteint ce mois-ci (${quotaImport?.usage ?? quotaImport?.limit}/${quotaImport?.limit}).`
-    : undefined;
+  // JEP-130 : le motif passe de `title` natif (jamais affiché au doigt, et
+  // peu fiable sur un bouton `disabled`) à la bulle de `LockedHint`. Motif
+  // « quota » et non « plan » : le droit existe, seul le crédit du mois est
+  // consommé — aucun renvoi vers /plans, il se renouvelle tout seul.
+  const quotaMessage = `Quota d'imports par IA atteint ce mois-ci (${quotaImport?.usage ?? quotaImport?.limit}/${quotaImport?.limit}). Le crédit se renouvelle à la prochaine période.`;
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
   // Elle passe par Supabase (RLS) plutôt que par la route : des data-URL
@@ -407,15 +410,17 @@ export function ImporterForm({
               className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary w-full"
             />
           </label>
-          <button
-            type="button"
-            onClick={submitText}
-            disabled={busy || quotaEpuise}
-            title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
-          </button>
+          <LockedHint message={quotaMessage} active={quotaEpuise}>
+            <button
+              type="button"
+              onClick={submitText}
+              disabled={busy || quotaEpuise}
+              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+              Importer
+            </button>
+          </LockedHint>
         </div>
       ) : onglet === 'pdf' ? (
         <div className="mb-4">
@@ -484,15 +489,17 @@ export function ImporterForm({
               e.target.value = '';
             }}
           />
-          <button
-            type="button"
-            onClick={() => void submitPdf()}
-            disabled={busy || !pdf || quotaEpuise}
-            title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-          >
-            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
-          </button>
+          <LockedHint message={quotaMessage} active={quotaEpuise}>
+            <button
+              type="button"
+              onClick={() => void submitPdf()}
+              disabled={busy || !pdf || quotaEpuise}
+              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+            >
+              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+              Importer
+            </button>
+          </LockedHint>
         </div>
       ) : (
         <div className="mb-4">
@@ -565,15 +572,17 @@ export function ImporterForm({
             températures du brouillon obtenu.
           </p>
 
-          <button
-            type="button"
-            onClick={() => void submitPhotos()}
-            disabled={busy || !photos.length || quotaEpuise}
-            title={quotaTooltip}
-            className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-          >
-            <span className="material-symbols-outlined text-[18px]">content_paste_go</span> Importer
-          </button>
+          <LockedHint message={quotaMessage} active={quotaEpuise}>
+            <button
+              type="button"
+              onClick={() => void submitPhotos()}
+              disabled={busy || !photos.length || quotaEpuise}
+              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+            >
+              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+              Importer
+            </button>
+          </LockedHint>
         </div>
       )}
 

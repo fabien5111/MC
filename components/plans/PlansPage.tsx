@@ -455,7 +455,14 @@ function FragmentSection({
             </td>
             {plans.map((p) => {
               const right = grid.rights[p.code]?.[f.key];
-              const texte = formatRight(right, f);
+              // JEP-55 : un plan inactif ne peut apparaître dans `plans` que
+              // s'il est le plan courant du membre affiché (filtre au-dessus,
+              // `p.active || p.code === currentPlanCode`) — c'est donc,
+              // structurellement, la colonne d'un plan technique d'essai
+              // (§12 docs/abonnements.md), jamais une formule qu'on peut
+              // souscrire. Pas de champ dédié à ajouter : l'invariant existe
+              // déjà.
+              const texte = formatRight(right, f, !p.active);
               return (
                 <td key={p.code} className="p-3 text-center">
                   {right?.value === 'NO' ? (

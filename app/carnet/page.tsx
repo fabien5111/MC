@@ -8,6 +8,8 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
 import { getRecipeDefaultPhoto } from '@/lib/site';
+import { canAccess } from '@/lib/entitlements';
+import { getEntitlements } from '@/lib/entitlements-data';
 import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -54,7 +56,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const params = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs] =
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits] =
     await Promise.all([
       isReadOnlySession(),
       getCarnetData(user.id),
@@ -66,6 +68,11 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       // cartes ne portent que le nom de leurs allergènes (cf. lib/recipes.ts
       // withAllergenNames), le picto est résolu au rendu (CarnetContent).
       getAllergensWithPicto(),
+      // JEP-130 : le bouton « Projet » se grise sans le droit plutôt que de
+      // laisser découvrir le refus après le clic. Lecture déjà mémoïsée par
+      // requête (`cache()`), sans coût ajouté pour les pages qui l'appellent
+      // déjà.
+      getEntitlements(user.id),
     ]);
   const filtered = applyCarnetFilters(items, params);
 
@@ -90,7 +97,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden md:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
               </div>
-              <NewProjectButton />
+              <NewProjectButton peutProjet={canAccess(droits, 'mode_projet')} />
               <Link
                 href="/importer"
                 prefetch={false}

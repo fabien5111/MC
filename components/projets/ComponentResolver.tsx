@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
 import { writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
@@ -98,11 +99,12 @@ export function ComponentResolver({
   const [chargement, setChargement] = useState(false);
 
   const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
-  const iaTooltip = !peutGenererIA
-    ? "Génération de composant par IA non incluse dans votre formule."
-    : iaEpuise
-      ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}).`
-      : undefined;
+  // JEP-130 : même repère et même bulle que partout ailleurs, à la place du
+  // `title` natif. Le motif décide de l'issue : sans le droit, /plans ;
+  // crédit épuisé, aucun lien (il se renouvelle tout seul).
+  const iaMessage = peutGenererIA
+    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    : "La proposition d'une recette de base par IA n'est pas incluse dans votre formule.";
 
   // Brouillon de contenu, alimenté soit par une proposition de l'IA, soit
   // par la saisie à la main. Les deux passent par le même éditeur, et le
@@ -344,15 +346,33 @@ export function ComponentResolver({
             )}
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-              <button
-                type="button"
-                onClick={() => void demanderIA()}
-                disabled={!peutGenererIA || iaEpuise}
-                title={iaTooltip}
-                className={`${btnGhost} disabled:cursor-not-allowed`}
-              >
-                Demander une proposition à l’IA
-              </button>
+              {!peutGenererIA ? (
+                // Sans le droit, le bouton désactivé n'offrait aucune issue :
+                // le repère le remplace et mène aux formules.
+                <LockedAction
+                  label="Demander une proposition à l’IA"
+                  message={iaMessage}
+                  className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold"
+                >
+                  Demander une proposition à l’IA
+                </LockedAction>
+              ) : (
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <button
+                    type="button"
+                    onClick={() => void demanderIA()}
+                    disabled={iaEpuise}
+                    className={`${btnGhost} flex items-center gap-1.5 disabled:cursor-not-allowed`}
+                  >
+                    {iaEpuise && (
+                      <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+                        block
+                      </span>
+                    )}
+                    Demander une proposition à l’IA
+                  </button>
+                </LockedHint>
+              )}
               <button type="button" onClick={saisirAMain} className={btnGhost}>
                 Saisir à la main
               </button>

@@ -72,6 +72,8 @@ export function MemberDetail({
   const [notes, setNotes] = useState(member.notes || '');
   const [impAccess, setImpAccess] = useState<ImpersonationMode>(member.impersonationAccess);
   const [deleting, setDeleting] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [changingEmail, setChangingEmail] = useState(false);
 
   const initials = member.fullName
     ? member.fullName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -108,6 +110,35 @@ export function MemberDetail({
     connectImpersonation(member.profileId, member.fullName || member.email);
   }
 
+  async function changerEmail() {
+    const adresse = newEmail.trim();
+    if (!adresse) return;
+    const ok = await dialog.confirm(
+      `Changer l'adresse e-mail de « ${member.fullName || member.email} » vers ${adresse} ?\n\n` +
+        "Aucun e-mail de confirmation n'est envoyé — la nouvelle adresse est immédiatement active pour la connexion.",
+    );
+    if (!ok) return;
+    setChangingEmail(true);
+    try {
+      const res = await fetch('/api/admin/change-member-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId: member.profileId, newEmail: adresse }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        dialog.alert(data?.erreur || "Changement d'adresse impossible");
+        return;
+      }
+      setNewEmail('');
+      router.refresh();
+    } catch (e) {
+      dialog.alert('Erreur réseau : ' + ((e as Error).message || "changement d'adresse impossible"));
+    } finally {
+      setChangingEmail(false);
+    }
+  }
+
   async function supprimer() {
     const ok = await dialog.confirm(
       `Supprimer « ${member.fullName || member.email} » ?\n\n` +
@@ -136,7 +167,7 @@ export function MemberDetail({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[900px] w-full space-y-6">
-      <LoadingOverlay visible={impBusy || deleting} />
+      <LoadingOverlay visible={impBusy || deleting || changingEmail} />
 
       {/* En-tête : identité + lien vers la vitrine publique */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex items-center gap-4">
@@ -336,6 +367,36 @@ export function MemberDetail({
       {member.profileId && (
         <CollapsibleSection title="Abonnement">
           <MemberSubscriptionPanel memberId={member.profileId} />
+        </CollapsibleSection>
+      )}
+
+      {/* Dépannage — changement d'adresse par l'admin, sans confirmation par
+          e-mail : le seul recours d'un membre qui a perdu l'accès à son
+          ancienne adresse, cas que le self-service (EmailChangeCard) ne peut
+          structurellement pas couvrir (double confirmation exigée). */}
+      {member.profileId && (
+        <CollapsibleSection title="Changer l'adresse e-mail" subtitle="dépannage — sans confirmation par e-mail">
+          <p className="text-xs text-on-surface-variant">
+            À réserver aux membres n&apos;ayant plus accès à leur adresse actuelle. La nouvelle adresse devient
+            immédiatement active pour la connexion, sans e-mail de confirmation.
+          </p>
+          <Row label="Nouvelle adresse e-mail">
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="nouvelle-adresse@exemple.fr"
+              className={FIELD}
+            />
+          </Row>
+          <button
+            type="button"
+            onClick={changerEmail}
+            disabled={changingEmail || !newEmail.trim()}
+            className="border border-outline-variant rounded py-2.5 px-6 text-sm font-semibold hover:bg-surface-container-high transition-colors disabled:opacity-50"
+          >
+            {changingEmail ? 'Changement en cours…' : "Changer l'adresse"}
+          </button>
         </CollapsibleSection>
       )}
 

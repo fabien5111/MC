@@ -175,6 +175,24 @@ export const getProfile = cache(async (userId: string): Promise<Profile | null> 
   return (data as Profile | null) ?? null;
 });
 
+// `profiles.email` est une copie manuelle (Admin → Membres, lien
+// d'impersonation) : un changement d'adresse confirmé via Supabase Auth ne la
+// met à jour nulle part ailleurs. Appelée à deux endroits : `/auth/callback`
+// (le chemin normal) et la page d'accueil — la double confirmation d'un
+// changement d'e-mail (`SECURE_EMAIL_CHANGE_ENABLED`) fait atterrir l'un des
+// deux liens directement sur GoTrue, qui redirige vers la racine du site sans
+// jamais passer par `/auth/callback` (cf. la traduction des messages GoTrue
+// natifs sur `app/page.tsx`). `getProfile` est mémoïsé par requête : appelée
+// depuis une page qui l'a déjà lue (Header, MobileNav…), cette fonction ne
+// coûte rien de plus qu'un test d'égalité.
+export async function syncProfileEmail(userId: string, email: string | null | undefined): Promise<void> {
+  if (!email) return;
+  const profil = await getProfile(userId);
+  if (!profil || profil.email === email) return;
+  const supabase = await createClient();
+  await supabase.from('profiles').update({ email }).eq('id', userId);
+}
+
 // Rôles applicatifs, portés par `profiles.role` (colonne texte de la base
 // live — pas d'enum PostgreSQL, comme `recipes.status`) :
 //

@@ -19,6 +19,8 @@ import { getApprovedComments } from '@/lib/reviews-data';
 import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
 import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import { recipeJsonLd } from '@/lib/recipe-jsonld';
+import { siteUrl } from '@/lib/site-url';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -50,7 +52,15 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const r = await getRecipeFull(id, 'lecture');
-  return { title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !' };
+  // Une recette non publiée ou non publique (brouillon, en modération,
+  // partage privé) reste rendue — la RLS la garde de toute façon hors de
+  // portée d'un visiteur non autorisé — mais ne doit pas être indexée
+  // (JEP-90 §8, même motif que `/blog/[slug]?preview` et `/reglages/mes-demandes`).
+  const indexable = !!r && r.status === 'published' && r.is_public !== false;
+  return {
+    title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !',
+    ...(indexable ? {} : { robots: { index: false, follow: false } }),
+  };
 }
 
 export default async function RecettePage({ params, searchParams }: Params) {
@@ -211,6 +221,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const times = effectiveTimes(recipe);
   const merged = mergeIngredients(recipe, conversions, units);
+  // JSON-LD `Recipe` (JEP-90) : construit depuis les données déjà chargées
+  // ci-dessus (`merged`, `comments`), sans requête supplémentaire. `null`
+  // pour une recette non publiée/non publique — cf. `recipeJsonLd`.
+  const jsonLd = recipeJsonLd(recipe, merged, comments, siteUrl());
   // Étapes où apparaît chaque ingrédient de la liste complète : un groupe
   // d'ingrédients partage son `order_index` avec l'étape qu'il alimente
   // (même appariement que `groupsByOrder` ci-dessus, ingrédients « de
@@ -252,6 +266,16 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   return (
     <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger -- JSON.stringify, pas du HTML.
+          // Même garde que app/blog/[slug]/page.tsx : `<` échappé pour qu'un
+          // champ contenant littéralement "</script>" (titre, description,
+          // avis d'un membre) ne puisse pas sortir de la balise.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+        />
+      )}
       <Header className="no-print" />
       <div className="no-print max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
         <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
