@@ -33,6 +33,7 @@ import { scalingCoef, scaleFromBase, type BatchFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { connexionHref } from '@/lib/nav';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -336,7 +337,10 @@ export function BatchWidget({
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      router.push('/connexion');
+      // `?planifier=1` rouvre directement ce panneau au retour, cf.
+      // `PlanContext`/`autoOpen` — sans ça, se connecter ramènerait sur la
+      // fiche mais fermée, geste à refaire depuis le début.
+      router.push(connexionHref(`${location.pathname}?planifier=1`));
       return;
     }
     const { data: batchRow, error } = await supabase

@@ -23,6 +23,7 @@ import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write
 import { promoteTrialQuantities } from '@/lib/projects-write';
 import { scaledQuantityText } from '@/lib/projects';
 import { formatDate } from '@/lib/format';
+import { connexionHref } from '@/lib/nav';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
 import { translateQuotaError } from '@/lib/quota-message-client';
@@ -95,7 +96,7 @@ export function ProjectTrials({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/connexion');
+        router.push(connexionHref(location.pathname + location.search));
         return;
       }
       const { data: batchRow, error } = await supabase

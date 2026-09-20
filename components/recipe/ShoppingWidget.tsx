@@ -12,6 +12,7 @@ import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { connexionHref } from '@/lib/nav';
 
 export function ShoppingWidget({
   recipeTitle,
@@ -54,7 +55,7 @@ export function ShoppingWidget({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/connexion');
+        router.push(connexionHref(location.pathname + location.search));
         return;
       }
       let listId: number;

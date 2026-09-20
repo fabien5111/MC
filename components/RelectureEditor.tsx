@@ -26,6 +26,7 @@ import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { televerserImage } from '@/lib/storage-client';
+import { connexionHref } from '@/lib/nav';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -957,7 +958,7 @@ export function RelectureEditor({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/connexion');
+        router.push(connexionHref(location.pathname));
         return;
       }
       const t = p.temps || {};

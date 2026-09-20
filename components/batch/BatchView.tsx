@@ -392,6 +392,17 @@ export function BatchView({
       <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
+        {/* Fil d'Ariane vers « En cuisine » : cette fiche n'avait aucun
+            retour vers sa liste d'origine, contrairement à `/courses/[id]`
+            (`ShoppingItems`), qui suit exactement ce motif. */}
+        <nav className="no-print flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-4">
+          <Link className="hover:text-primary" href="/en-cuisine">
+            En cuisine
+          </Link>
+          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          <span className="text-primary">{batch.recipe_title || 'Fournée'}</span>
+        </nav>
+
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
           <span className="flex items-center gap-3">

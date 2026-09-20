@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { connexionHref } from '@/lib/nav';
 
 export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; initialFav: boolean }) {
   const router = useRouter();
@@ -23,7 +24,8 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          // Retour au favori qu'on voulait poser, cf. `connexionHref`.
+          router.push(connexionHref(location.pathname + location.search));
           return null;
         }
         return next

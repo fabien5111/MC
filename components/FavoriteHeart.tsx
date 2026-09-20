@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { connexionHref } from '@/lib/nav';
 
 export function FavoriteHeart({
   recipeId,
@@ -34,7 +35,10 @@ export function FavoriteHeart({
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          // Ce cœur vit sur des grilles (`/carnet`, `/recherche`, l'accueil) :
+          // `location.search` restitue la portée/le tri/la recherche en cours,
+          // pas seulement la page.
+          router.push(connexionHref(location.pathname + location.search));
           return null;
         }
         return next

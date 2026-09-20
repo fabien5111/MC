@@ -77,13 +77,42 @@ export default async function RecettePage({ params, searchParams }: Params) {
   if (recipe && isProjectDraft(recipe)) redirect(`/projets/${id}`);
 
   if (!recipe) {
+    // Message propre plutôt qu'un `notFound()` : une recette peut très bien
+    // exister et rester hors de portée (brouillon, en modération, partage
+    // privé) — la RLS ne renvoie alors aucune ligne, ce qui n'est pas la
+    // même chose qu'une adresse qui ne désigne rien. Le chrome, lui, est
+    // complet : `Footer` et `MobileNav` manquaient, et sur téléphone cet
+    // écran n'offrait aucune sortie.
     return (
       <>
         <Header />
-        <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-20 text-center">
+        <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-20 pb-28 lg:pb-20 text-center">
           <p className="font-headline-md text-headline-md text-primary mb-2">Recette introuvable</p>
           <p className="text-on-surface-variant">Elle n&apos;existe pas ou n&apos;est pas accessible.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/recherche"
+              className="font-label-md bg-primary text-on-primary px-5 py-2.5 rounded-pill text-sm whitespace-nowrap hover:shadow-lg transition-all active:scale-95"
+            >
+              Chercher une recette
+            </Link>
+            <Link
+              href="/carnet"
+              prefetch={false}
+              className="font-label-md border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-pill text-sm whitespace-nowrap hover:text-primary hover:border-primary transition-colors active:scale-95"
+            >
+              Mon carnet
+            </Link>
+            <Link
+              href="/"
+              className="font-label-md border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-pill text-sm whitespace-nowrap hover:text-primary hover:border-primary transition-colors active:scale-95"
+            >
+              Accueil
+            </Link>
+          </div>
         </main>
+        <Footer />
+        <MobileNav />
       </>
     );
   }
@@ -178,7 +207,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
   const yInfo = yieldInfo(recipe);
   const level = recipe.difficulties?.level || 0;
-  const tags = (recipe.recipe_tags || []).map((t) => t.tags?.name).filter(Boolean) as string[];
+  // `slug` conservé (déjà chargé par `getRecipeFull`, cf. lib/recipes.ts) pour
+  // que chaque chip renvoie vers la même recherche par catégorie que
+  // l'accueil (`/recherche?category=`) — jusqu'ici jeté, les chips étaient de
+  // simples `<span>` sans destination.
+  const tags = (recipe.recipe_tags || [])
+    .map((t) => (t.tags ? { name: t.tags.name, slug: t.tags.slug } : null))
+    .filter((t): t is { name: string; slug: string } => t !== null);
   const groups = [...(recipe.ingredient_groups || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   // Allergènes de la recette : on part des infos contenues dans la recette
   // elle-même — le champ « allergène » (texte libre) de chaque ingrédient,
@@ -392,10 +427,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
             )}
             {tags.length > 0 && (
               <div className="no-print mt-4 border-y border-outline-variant py-4 flex gap-2 flex-wrap">
-                {tags.map((n) => (
-                  <span key={n} className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px]">
-                    {n}
-                  </span>
+                {tags.map((t) => (
+                  <Link
+                    key={t.slug}
+                    href={`/recherche?cat=${encodeURIComponent(t.slug)}`}
+                    className="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-[12px] hover:opacity-80 transition-opacity"
+                  >
+                    {t.name}
+                  </Link>
                 ))}
               </div>
             )}

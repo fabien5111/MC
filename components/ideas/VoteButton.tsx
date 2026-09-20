@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { connexionHref } from '@/lib/nav';
 
 export function VoteButton({
   ideaId,
@@ -39,7 +40,7 @@ export function VoteButton({
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          router.push(connexionHref(location.pathname + location.search));
           return null;
         }
         return next
