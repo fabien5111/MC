@@ -10,6 +10,7 @@
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
@@ -392,16 +393,18 @@ export function BatchView({
       <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
-        {/* Fil d'Ariane vers « En cuisine » : cette fiche n'avait aucun
-            retour vers sa liste d'origine, contrairement à `/courses/[id]`
-            (`ShoppingItems`), qui suit exactement ce motif. */}
-        <nav className="no-print flex items-center gap-2 text-on-surface-variant font-label-md text-[12px] mb-4">
-          <Link className="hover:text-primary" href="/en-cuisine">
-            En cuisine
-          </Link>
-          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className="text-primary">{batch.recipe_title || 'Fournée'}</span>
-        </nav>
+        {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
+            est connu (ex. « Résultats de recherche » si la fournée a été
+            lancée juste après y avoir ouvert la recette), sinon le repli
+            « En cuisine » d'origine — cette fiche n'avait auparavant aucun
+            retour, contrairement à `/courses/[id]` (`ShoppingItems`), qui
+            suit exactement ce motif. */}
+        <RetourContextuel
+          fallbackHref="/en-cuisine"
+          fallbackLabel="En cuisine"
+          currentLabel={batch.recipe_title || 'Fournée'}
+          className="no-print mb-4"
+        />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>

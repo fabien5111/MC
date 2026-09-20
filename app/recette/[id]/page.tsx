@@ -23,6 +23,7 @@ import { recipeJsonLd } from '@/lib/recipe-jsonld';
 import { siteUrl } from '@/lib/site-url';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
+import { RetourContextuel } from '@/components/RetourContextuel';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { MaryseIcon } from '@/components/MaryseIcon';
@@ -313,13 +314,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
       )}
       <Header className="no-print" />
       <div className="no-print max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
-        <div className="flex items-center gap-2 text-on-surface-variant font-label-md text-[12px]">
-          <Link className="hover:text-primary" href="/">
-            Accueil
-          </Link>
-          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className="text-primary">{recipe.title}</span>
-        </div>
+        {/* Retour contextuel : vers l'écran de liste d'où l'on vient
+            (résultats de recherche, carnet, profil…) quand il est connu,
+            sinon le repli « Accueil » d'origine. Cf. RetourContextuel. */}
+        <RetourContextuel fallbackHref="/" fallbackLabel="Accueil" currentLabel={recipe.title} />
       </div>
 
       <div className="recette-page">

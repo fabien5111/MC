@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { NavigationSpinner } from '@/components/NavigationSpinner';
+import { PreviousPathProvider } from '@/components/PreviousPathProvider';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
@@ -73,28 +74,33 @@ export default async function RootLayout({
         <ServiceWorkerRegistrar />
         {/* Bannière d'installation PWA — visiteur compris, cf. son en-tête. */}
         <InstallPwaBanner />
-        {/* Remplace window.alert()/confirm() par une modale cohérente avec le
-            design du site (cf. components/Dialog.tsx) — englobe tout le reste
-            pour que useWriteGuard/useMutation, montés plus bas, y aient accès. */}
-        <DialogProvider>
-          <ImpersonationProvider
-            value={
-              impersonation
-                ? {
-                    sessionId: impersonation.sessionId,
-                    mode: impersonation.mode,
-                    targetName: impersonation.targetName,
-                  }
-                : null
-            }
-          >
-            {impersonation && (
-              <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
-            )}
-            <VisitTracker />
-            {children}
-          </ImpersonationProvider>
-        </DialogProvider>
+        {/* Mémorise le chemin précédent pour le retour contextuel des écrans
+            de détail (`RetourContextuel`) — englobe tout le reste : c'est ce
+            qui lui permet de survivre à chaque navigation, cf. son en-tête. */}
+        <PreviousPathProvider>
+          {/* Remplace window.alert()/confirm() par une modale cohérente avec le
+              design du site (cf. components/Dialog.tsx) — englobe tout le reste
+              pour que useWriteGuard/useMutation, montés plus bas, y aient accès. */}
+          <DialogProvider>
+            <ImpersonationProvider
+              value={
+                impersonation
+                  ? {
+                      sessionId: impersonation.sessionId,
+                      mode: impersonation.mode,
+                      targetName: impersonation.targetName,
+                    }
+                  : null
+              }
+            >
+              {impersonation && (
+                <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
+              )}
+              <VisitTracker />
+              {children}
+            </ImpersonationProvider>
+          </DialogProvider>
+        </PreviousPathProvider>
       </body>
     </html>
   );
