@@ -7,7 +7,7 @@ import { MobileNav } from '@/components/MobileNav';
 import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
-import { canAccess, blockingMessage } from '@/lib/entitlements';
+import { canAccess, upgradeSuggestion } from '@/lib/entitlements';
 import { getCurrentPlan, getEntitlements, getGrid, checkQuota } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
@@ -27,14 +27,15 @@ export default async function ImporterPage() {
   // arrive (§7.4, l'existant est préservé) — seul le formulaire de NOUVEL
   // import est bridé.
   const peutImporter = canAccess(droits, 'ecran_relecture_import');
-  const messageBloque = peutImporter
-    ? null
-    : blockingMessage(grid, 'ecran_relecture_import', currentPlan?.code ?? '', {
-        autorise: false,
-        raison: 'PLAN_INSUFFISANT',
-        limite: null,
-        usage: 0,
-      });
+  // Message propre à cette page plutôt que `blockingMessage()` générique :
+  // ce dernier reprend tel quel le libellé de la grille (« Écran de
+  // relecture après import »), exact avant JEP-130 (toute la fonctionnalité
+  // était bloquée) mais trompeur depuis le renversement (§14,
+  // docs/abonnements.md) — la relecture, elle, reste accessible ; seule la
+  // création d'un NOUVEL import est fermée. Un titre qui nomme « l'écran de
+  // relecture » comme indisponible contredirait le bandeau de
+  // `/relecture/[id]`, qui dit l'inverse.
+  const suggestionImport = peutImporter ? null : upgradeSuggestion(grid, 'ecran_relecture_import', currentPlan?.code ?? '');
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md,
   // JEP-77) : grise les boutons « Importer » une fois le quota mensuel
   // épuisé, plutôt que de laisser découvrir le refus après une tentative.
@@ -80,25 +81,31 @@ export default async function ImporterPage() {
         {peutImporter ? (
           <ImporterForm quotaImport={quotaImport} />
         ) : (
-          messageBloque && (
-            <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-              <p className="font-label-md text-[15px]">{messageBloque.titre}</p>
-              <p className="mt-2 text-sm text-on-surface-variant">{messageBloque.corps}</p>
-              {/* JEP-130 : les brouillons déjà importés restent relisibles et
-                  publiables (arbitrage E). Sans cette phrase, rien n'indique
-                  que les liens de « Mes imports » juste en dessous mènent
-                  encore quelque part. */}
-              {imports.length > 0 && (
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Vos imports déjà réalisés, eux, restent accessibles plus bas : vous pouvez les relire, les
-                  corriger et les enregistrer dans votre carnet.
-                </p>
-              )}
-              <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
-                Voir les formules
-              </Link>
-            </div>
-          )
+          <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
+            <p className="font-label-md text-[15px]">Importer une nouvelle recette n&apos;est pas inclus dans votre formule</p>
+            {/* Les trois onglets du formulaire (ImporterForm) nommés
+                explicitement : la demande était de montrer CE qui est
+                fermé, pas seulement « l'import » au sens abstrait — les
+                trois méthodes sont également concernées, aucune n'est un
+                repli gratuit des deux autres. */}
+            <p className="mt-2 text-sm text-on-surface-variant">
+              Les trois méthodes — texte collé, PDF, photo — sont réservées aux formules payantes.
+              {suggestionImport && ` ${suggestionImport.planLabel} vous y donne accès.`}
+            </p>
+            {/* JEP-130 : les brouillons déjà importés restent relisibles et
+                publiables (arbitrage E). Sans cette phrase, rien n'indique
+                que les liens de « Mes imports » juste en dessous mènent
+                encore quelque part. */}
+            {imports.length > 0 && (
+              <p className="mt-2 text-sm text-on-surface-variant">
+                Vos imports déjà réalisés, eux, restent accessibles plus bas : vous pouvez les relire, les
+                corriger et les enregistrer dans votre carnet.
+              </p>
+            )}
+            <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
+              Voir les formules
+            </Link>
+          </div>
         )}
 
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>
