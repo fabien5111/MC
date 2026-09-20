@@ -35,6 +35,7 @@ import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingList
 import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { LockedAction } from '@/components/LockedAction';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -601,7 +602,7 @@ export function CuisineContent({
                       {l.created_at ? 'Créée le ' + formatDate(l.created_at) : ''}
                     </p>
                     <div className="flex shrink-0 gap-1">
-                      {droits.fusionListes && (
+                      {droits.fusionListes ? (
                         <button
                           type="button"
                           title="Fusionner avec une autre liste"
@@ -610,6 +611,17 @@ export function CuisineContent({
                         >
                           <span className="material-symbols-outlined text-[18px]">call_merge</span>
                         </button>
+                      ) : (
+                        // JEP-130 : le bouton n'était pas affiché du tout —
+                        // la fusion de deux listes est une fonctionnalité que
+                        // rien n'annonçait aux formules qui n'y ont pas
+                        // droit. La suppression, elle, reste ouverte à tous
+                        // juste à côté.
+                        <LockedAction
+                          label="Fusionner avec une autre liste"
+                          message="Fusionner deux listes de courses n'est pas inclus dans votre formule."
+                          className="rounded p-1.5"
+                        />
                       )}
                       <button
                         type="button"

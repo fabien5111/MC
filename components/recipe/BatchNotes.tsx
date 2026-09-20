@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import Link from 'next/link';
+import { LockedAction } from '@/components/LockedAction';
 
 export function BatchNotes({
   batchId,
@@ -72,21 +72,24 @@ export function BatchNotes({
       <LoadingOverlay visible={busy} label="Enregistrement…" />
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editing && canPersonalNotes && !readOnly && (
-          <button type="button" onClick={open} title={notes ? 'Modifier ma note' : 'Ajouter une note'} className="no-print text-primary hover:opacity-70">
-            <span className="material-symbols-outlined text-[18px]">{notes ? 'edit' : 'add_circle'}</span>
-          </button>
-        )}
+        {!editing &&
+          !readOnly &&
+          (canPersonalNotes ? (
+            <button type="button" onClick={open} title={notes ? 'Modifier ma note' : 'Ajouter une note'} className="no-print text-primary hover:opacity-70">
+              <span className="material-symbols-outlined text-[18px]">{notes ? 'edit' : 'add_circle'}</span>
+            </button>
+          ) : (
+            // JEP-130 : le bouton disparaissait, remplacé par une phrase
+            // quand aucune note n'existait — et par RIEN dès qu'une note
+            // était déjà là (le cas d'une rétrogradation, justement).
+            // L'action reste désormais à sa place dans les deux cas.
+            <LockedAction
+              label={notes ? 'Modifier ma note' : 'Ajouter une note'}
+              message="Les notes personnelles ne sont pas incluses dans votre formule."
+            />
+          ))}
       </div>
-      {!canPersonalNotes && !notes && !readOnly ? (
-        <p className="no-print font-body-md text-sm italic text-on-surface-variant">
-          Non incluses dans votre formule —{' '}
-          <Link href="/plans" className="text-primary underline">
-            voir les formules
-          </Link>
-          .
-        </p>
-      ) : editing ? (
+      {editing ? (
         <div className="no-print flex flex-col gap-3">
           <textarea
             value={draft}

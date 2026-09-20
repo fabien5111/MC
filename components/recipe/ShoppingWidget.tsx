@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 
@@ -122,7 +123,14 @@ export function ShoppingWidget({
       router.refresh();
       router.push(`/courses/${listId}`);
     } catch (e) {
-      dialog.alert('Erreur : ' + (e as Error).message);
+      // Ce chemin n'appelle pas `useMutation` (il enchaîne plusieurs
+      // requêtes), donc rien ne traduisait un refus de quota : la création
+      // d'une liste au-delà du plafond affichait le message PostgreSQL brut
+      // — « MC_QUOTA_EXCEEDED:listes_courses_max:3:3 ». Oubli du lot 5a,
+      // relevé au passage de JEP-130 (§14, cinquième grammaire).
+      const brut = (e as Error).message;
+      const educatif = await translateQuotaError(brut);
+      dialog.alert(educatif ?? 'Erreur : ' + brut);
       setBusy(false);
     }
   }

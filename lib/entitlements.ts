@@ -212,10 +212,19 @@ export function lostFeatureLabels(
  * listes" est faux. Plutôt que d'accorder (il faudrait connaître le genre de
  * chaque unité), le premier mot porte "(s)" une fois pour toutes : "1
  * liste(s)", "1 import(s) / mois".
+ *
+ * `essai` (JEP-55) : sur la colonne d'un plan d'essai, "/ mois" prête à
+ * confusion — un essai dure moins d'un mois (§7.2, 14 jours par défaut). Ne
+ * s'applique qu'aux unités qui portent effectivement ce suffixe : les
+ * limites de stock ("fournées", "listes"…) n'en ont pas et ne changent pas
+ * de forme.
  */
-function withPluralHint(unit: string): string {
+function withPluralHint(unit: string, essai = false): string {
   const [premier, ...reste] = unit.split(' ');
   const singulier = premier.endsWith('s') ? premier.slice(0, -1) : premier;
+  if (essai && reste.join(' ') === '/ mois') {
+    return `${singulier}(s) pour l'essai`;
+  }
   return [`${singulier}(s)`, ...reste].join(' ');
 }
 
@@ -300,12 +309,18 @@ export function coherenceIssues(grid: Grid): CoherenceIssue[] {
 
 // ── Rendu des valeurs ───────────────────────────────────────
 
-/** Libellé d'une case, pour la page publique comme pour un message de blocage. */
-export function formatRight(right: GridRight | undefined, feature: GridFeature): string {
+/**
+ * Libellé d'une case, pour la page publique comme pour un message de blocage.
+ *
+ * `essai` (JEP-55) : à passer `true` uniquement pour la colonne d'un plan
+ * technique d'essai (`plans.active = false`, §12 docs/abonnements.md) —
+ * substitue "/ mois" par "pour l'essai" sur les quotas de flux concernés.
+ */
+export function formatRight(right: GridRight | undefined, feature: GridFeature, essai = false): string {
   if (!right || right.value === 'NO') return 'Non inclus';
   if (right.value === 'YES') return 'Inclus';
   if (right.unlimited || right.limitValue === null) return 'Illimité';
-  return feature.unit ? `${right.limitValue} ${withPluralHint(feature.unit)}` : String(right.limitValue);
+  return feature.unit ? `${right.limitValue} ${withPluralHint(feature.unit, essai)}` : String(right.limitValue);
 }
 
 /**

@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatDateHeure } from '@/lib/format';
 import { gaugeLevel, isOverLimit, overLimitMessage, type Grid } from '@/lib/entitlements';
 import type { CurrentPlan, UsageLine } from '@/lib/entitlements-data';
 
@@ -71,6 +71,12 @@ export function UsageCard({
 
   const estPayant = !!currentPlan && currentPlan.type !== 'DEFAULT';
   const estEssai = currentPlan?.type === 'TRIAL';
+  // JEP-75 : l'heure de fin n'est ajoutée qu'à l'essai — un abonnement payant
+  // se termine le plus souvent à une fin de mois calendaire posée par
+  // `mc_cancel_own_subscription`, où une heure n'apporterait rien. Un essai,
+  // lui, se termine exactement 7 (ou N) jours après son démarrage, à l'heure
+  // près — une échéance qu'on peut manquer de quelques heures.
+  const formatFin = estEssai ? formatDateHeure : formatDate;
   const planActuel = grid.plans.find((p) => p.code === currentPlan?.code);
   const hasHigherPlan = grid.plans.some((p) => p.active && (!planActuel || p.orderIndex > planActuel.orderIndex));
   const peutEssayer = !estPayant && !trialConsumed && grid.plans.some((p) => p.active && p.trialAllowed);
@@ -158,14 +164,23 @@ export function UsageCard({
           {cancelRequestedAt || justAnnule ? (
             <>
               Annulé — {TYPE_LABEL[currentPlan!.type] ?? 'Abonnement'} conservé jusqu&apos;au{' '}
-              {currentPlan!.endsAt ? formatDate(currentPlan!.endsAt) : '—'}, sans reconduction ensuite.
+              {currentPlan!.endsAt ? formatFin(currentPlan!.endsAt) : '—'}, sans reconduction ensuite.
             </>
           ) : (
             <>
               {TYPE_LABEL[currentPlan!.type] ?? 'Abonnement'} —{' '}
               {currentPlan!.endsAt
-                ? `se termine le ${formatDate(currentPlan!.endsAt)}${
-                    currentPlan!.daysLeft !== null ? ` (${currentPlan!.daysLeft} jour${currentPlan!.daysLeft > 1 ? 's' : ''})` : ''
+                ? `se termine le ${formatFin(currentPlan!.endsAt)}${
+                    // Sous 48 h, l'heure déjà affichée dit tout : un
+                    // décompte arrondi au jour supérieur (`Math.ceil`) à
+                    // côté d'une heure précise ferait lire « (1 jour) » pour
+                    // une échéance dans 3 heures comme dans 23 — et
+                    // `daysLeft <= 2`, pas `<= 1` : une échéance dans 30 h
+                    // (donc sous 48 h) arrondit déjà à 2 jours
+                    // (`Math.ceil(30 / 24) === 2`), pas à 1.
+                    currentPlan!.daysLeft !== null && !(estEssai && currentPlan!.daysLeft <= 2)
+                      ? ` (${currentPlan!.daysLeft} jour${currentPlan!.daysLeft > 1 ? 's' : ''})`
+                      : ''
                   }`
                 : 'sans date de fin'}
               .
