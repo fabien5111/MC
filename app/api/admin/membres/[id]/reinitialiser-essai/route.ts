@@ -54,12 +54,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   )('mc_admin_reset_trial', { p_user_id: id, p_reason: motif, p_email_hash: emailHash });
 
   if (error) {
-    const messages: Record<string, string> = {
-      MC_SUB_FORBIDDEN: 'Réservé aux administrateurs.',
-      MC_SUB_REASON_REQUIRED: 'Motif requis.',
-    };
-    const code = error.message.split(':')[0];
-    return NextResponse.json({ erreur: messages[code] ?? "La réinitialisation n'a pas pu aboutir." }, { status: 422 });
+    // Message BRUT, pas une traduction : c'est le motif de tout le reste de
+    // ce panneau admin (`appeler()`, `MemberSubscriptionPanel.tsx`), pas
+    // celui des routes tournées vers un membre (`/api/plans/essayer`). Un
+    // administrateur qui clique ce bouton veut le diagnostic Postgres, pas
+    // un message aimable qui le lui cache.
+    console.error('reinitialiser-essai:', error.message);
+    return NextResponse.json({ erreur: 'Erreur : ' + error.message }, { status: 422 });
   }
 
   return NextResponse.json({ ok: true });
