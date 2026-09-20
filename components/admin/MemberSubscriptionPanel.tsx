@@ -140,7 +140,26 @@ export function MemberSubscriptionPanel({ memberId }: { memberId: string }) {
   async function reinitialiserEssai() {
     const motif = await dialog.prompt('Motif de la réinitialisation (obligatoire) :', { required: true });
     if (!motif) return;
-    await appeler('mc_admin_reset_trial', { p_user_id: memberId, p_reason: motif }, 'Éligibilité à l’essai réinitialisée.');
+    // Route serveur, pas d'appel RPC direct : elle seule peut calculer
+    // l'empreinte d'adresse (TRIAL_EMAIL_SALT, secret) nécessaire pour
+    // retrouver un blocage posé par un ANCIEN compte supprimé — cf. la route.
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/membres/${memberId}/reinitialiser-essai`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ motif }),
+      });
+      const resultat = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(resultat?.erreur || "La réinitialisation n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert('Éligibilité à l’essai réinitialisée.');
+      await recharger();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
