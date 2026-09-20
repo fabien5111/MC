@@ -1298,3 +1298,24 @@ souris, tactile et clavier, et qui ne navigue plus jamais par erreur.
 contrôle `disabled` (bouton, `input`), qui ne déclenche aucun événement
 `click` à intercepter — connu, non traité, moins grave qu'une navigation
 involontaire puisqu'il ne mène nulle part de toute façon.
+
+### Piège rencontré le 20/09 : `create or replace function` ne remplace pas si la signature change
+
+En ajoutant `p_email_hash` (paramètre optionnel) à `mc_admin_reset_trial`,
+`create or replace function` n'a **pas** remplacé la fonction existante — il
+en a créé une **seconde**, PostgreSQL traitant deux listes de paramètres
+différentes comme deux surcharges distinctes, jamais comme une même fonction
+à mettre à jour. Résultat : PostgREST refusait tout appel RPC avec
+`PGRST203` (« Could not choose the best candidate function »), les deux
+signatures partageant les mêmes noms sur leur préfixe commun
+(`p_user_id`, `p_reason`).
+
+Symptôme trompeur pris pour un bug de logique métier ("La réinitialisation
+n'a pas pu aboutir.") alors que la fonction n'était même pas atteinte —
+d'où l'importance d'afficher l'erreur **brute** sur un écran admin plutôt
+que de la traduire (cf. commit sur `reinitialiser-essai`).
+
+**Retenu pour toute future modification de signature d'une fonction déjà en
+production** : `drop function` de l'ancienne signature avant (ou après) le
+`create or replace` de la nouvelle — jamais l'un sans l'autre. Vérifier après
+coup avec `pg_get_function_identity_arguments` : une seule ligne attendue.
