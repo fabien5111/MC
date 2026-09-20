@@ -24,6 +24,12 @@ que fait l'étape 2 ci-dessous.
 (`jepatisse-preview`) — `STRIPE_SECRET_KEY` y est déjà posée, `$STRIPE_SECRET_KEY`
 la lit sans jamais l'afficher ni la faire transiter par le presse-papiers.
 
+**Où, pour tout le SQL de ce document :** `pgweb`
+(`https://auth.jepatisse.com/pgweb/`, rôle `pgweb_admin`) — c'est **toi** qui
+colles et exécutes chaque bloc, Claude n'y a aucun accès (authentification
+HTTP Basic dont lui seul ne connaît pas les identifiants). Les blocs sont
+écrits pour être lus avant d'être joués, pas enchaînés à l'aveugle.
+
 ---
 
 ## 0. Un membre de test dédié
@@ -32,15 +38,32 @@ Crée un compte sur `https://jepatisse-preview.jcloud-ver-jpe.ik-server.com`
 avec une adresse à toi (`toi+jep29@…`) — jamais ton compte personnel, pour ne
 pas mélanger un abonnement de test avec de vraies données.
 
-Récupère son UUID (une ligne, sur le nœud PostgreSQL **216075** — même
-prudence qu'avant : un Endpoint temporaire n'est nécessaire que pour un accès
-externe, en Web SSH la connexion est locale) :
+Récupère son UUID :
 
-```
-psql -U supabase_admin -d postgres -At -c "select id from public.profiles where email = 'toi+jep29@exemple.fr';"
+```sql
+select id from public.profiles where email = 'toi+jep29@exemple.fr';
 ```
 
 Note cet UUID, on le réutilise partout ensuite (`<uuid>` dans ce qui suit).
+
+### Piège rencontré le 20/09 : réutiliser une adresse déjà passée par un essai
+
+`trials.email_hash` (§1.4 de `docs/abonnements.md`) trace l'essai gratuit par
+une **empreinte de l'adresse**, pas par le compte : supprimer le compte met
+`trials.user_id` à `null` (`ON DELETE SET NULL`) mais la ligne — donc
+l'empreinte — reste, exprès, pour qu'un compte supprimé-recréé ne rouvre pas
+un essai. Symptôme : « L'essai n'a pas pu démarrer » sur une adresse déjà
+utilisée par un ancien compte de test.
+
+Deux façons d'en sortir, aucune ne demande de toucher `trials` directement :
+
+- **Admin → Membres** → fiche du membre → section Abonnement → réinitialiser
+  l'éligibilité à l'essai (`mc_admin_reset_trial`, motif obligatoire) — le
+  geste normal pour ce cas précis ;
+- **ou** un alias pour chaque nouveau tour de test : `toi+jep29-2@exemple.fr`.
+  La normalisation de l'empreinte ne traite le `+` que pour Gmail (§1.4) —
+  sur un autre fournisseur, l'alias compte comme une adresse entièrement
+  neuve.
 
 ---
 
@@ -50,23 +73,41 @@ Démarre l'essai normalement depuis `/plans` (« Essayer gratuitement »). Puis,
 plutôt que d'attendre 14 jours, on **recule artificiellement sa date de
 début** pour le placer directement à J-3, J-1 ou après échéance.
 
-**Se placer à J-3** (une ligne) :
+**Se placer à J-3 :**
 
-```
-psql -U supabase_admin -d postgres -c "update public.subscriptions set starts_at = now() - interval '11 days', ends_at = now() + interval '3 days' where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';"
+```sql
+update public.subscriptions
+   set starts_at = now() - interval '11 days',
+       ends_at   = now() + interval '3 days'
+ where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';
 ```
 
-**Se placer à J-1** :
+**Se placer à J-1 :**
 
-```
-psql -U supabase_admin -d postgres -c "update public.subscriptions set starts_at = now() - interval '13 days', ends_at = now() + interval '1 day' where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';"
+```sql
+update public.subscriptions
+   set starts_at = now() - interval '13 days',
+       ends_at   = now() + interval '1 day'
+ where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';
 ```
 
 **Se placer juste après l'échéance** (pour la notification J+1 et la
 transition `ACTIVE → EXPIRED`) :
 
+```sql
+update public.subscriptions
+   set starts_at = now() - interval '15 days',
+       ends_at   = now() - interval '1 day'
+ where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';
 ```
-psql -U supabase_admin -d postgres -c "update public.subscriptions set starts_at = now() - interval '15 days', ends_at = now() - interval '1 day' where user_id = '<uuid>' and type = 'TRIAL' and status = 'ACTIVE';"
+
+Vérification après chaque bascule (même session `pgweb`), pour confirmer
+avant de déclencher le cron :
+
+```sql
+select starts_at, ends_at, status
+  from public.subscriptions
+ where user_id = '<uuid>' and type = 'TRIAL';
 ```
 
 ### Déclencher le cron manuellement
@@ -113,8 +154,10 @@ le temps.
 C'est l'étape qui fait que le Checkout réel (celui de `/plans`) utilisera ce
 client plutôt que d'en créer un nouveau :
 
-```
-psql -U supabase_admin -d postgres -c "insert into public.billing_customers (user_id, provider, external_customer_id) values ('<uuid>', 'stripe', 'cus_XXXXX') on conflict (user_id) do update set external_customer_id = excluded.external_customer_id;"
+```sql
+insert into public.billing_customers (user_id, provider, external_customer_id)
+values ('<uuid>', 'stripe', 'cus_XXXXX')
+on conflict (user_id) do update set external_customer_id = excluded.external_customer_id;
 ```
 
 ### 2.3 Souscrire normalement, par l'écran
@@ -260,6 +303,6 @@ Une fois le test terminé :
   `billing_customers` du membre de test avant de recommencer une nouvelle
   horloge, sinon le prochain Checkout réutilisera le client de l'ancienne :
 
-  ```
-  psql -U supabase_admin -d postgres -c "delete from public.billing_customers where user_id = '<uuid>';"
+  ```sql
+  delete from public.billing_customers where user_id = '<uuid>';
   ```
