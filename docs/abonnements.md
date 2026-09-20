@@ -817,15 +817,13 @@ rend **aucune** enveloppe quand il n'y a rien à dire (`active={false}`) :
 laissée en place, elle ajouterait un arrêt de tabulation sur chaque bouton
 parfaitement utilisable.
 
-### Deux compromis assumés
+### Un compromis assumé
 
-- **Un appui navigue.** Faute de survol sur écran tactile, un appui sur un
-  repère `kind="plan"` mène directement à `/plans`. Le geste est donc à un
-  doigt de l'action réelle qu'il remplace : un appui par erreur en pleine
-  fournée quitte l'écran. Le retour arrière le rétablit à l'identique (le
-  mode Préparer/Pâtisser vit dans l'URL, rien n'est perdu). Si l'usage le
-  démentait, le remplacement est local — un état d'ouverture dans le
-  composant seul, sans toucher aux appelants.
+- **« Un appui navigue » — RENVERSÉ, voir plus bas.** La première version de
+  `LockedAction` faisait naviguer directement vers `/plans` au premier tap,
+  faute de survol sur écran tactile. Signalé confus à l'usage ; corrigé par
+  l'infobulle tactile décrite plus loin (§ « Correction — infobulle tactile
+  sur `LockedAction` »).
 - **Le repère se répète.** Une note par étape, un remplacement par
   ingrédient : sur une fournée longue, un membre sans ces droits verra le
   même repère vingt fois. C'est le prix de « l'action reste visible », et ça
@@ -903,3 +901,25 @@ seulement vers `IngredientExpandDialog`. Corrigé avec le même
 d'une étape déjà remplacée reste, lui, ouvert sans le droit — même
 doctrine que pour l'ingrédient (§7.4 : un remplacement déjà en place reste
 géré, seul en démarrer un nouveau est bridé).
+
+### Correction — infobulle tactile sur `LockedAction`, même principe qu'`AllergenPicto`
+
+Le compromis mobile assumé plus haut (« un appui navigue directement vers
+`/plans` ») s'est avéré réellement gênant à l'usage — retour de l'auteur du
+projet. `LockedAction` reposait sur `:hover`/`:focus`, exactement le défaut
+qui avait fait abandonner le `title` HTML sur les pictos d'allergène
+(`AllergenPicto.tsx`) : aucun des deux ne se déclenche au tap.
+
+Repris le même mécanisme — API `popover` native, positionnée manuellement
+au clic sur les coordonnées du déclencheur (un popover natif ne s'ancre pas
+via `position: relative`). Différence structurelle avec `AllergenPicto` :
+`LockedAction` doit AUSSI mener vers `/plans`, ce qu'un simple picto
+d'allergène n'a jamais eu à faire. Le repère devient donc un **bouton**
+plutôt qu'un lien direct : le clic/tap ouvre un popover contenant le motif
+et le seul lien réel vers `/plans` — un geste de plus, mais identique sur
+souris, tactile et clavier, et qui ne navigue plus jamais par erreur.
+
+`LockedHint` ne peut pas reprendre ce mécanisme : il enveloppe un vrai
+contrôle `disabled` (bouton, `input`), qui ne déclenche aucun événement
+`click` à intercepter — connu, non traité, moins grave qu'une navigation
+involontaire puisqu'il ne mène nulle part de toute façon.

@@ -14,91 +14,49 @@
 // **Deux motifs, deux composants**, et c'est la signature qui les sépare
 // plutôt qu'un drapeau — impossible de se tromper d'issue :
 //
-// - `LockedAction` — le droit n'est pas dans la formule. Le repère remplace
-//   l'action absente et EST un lien vers `/plans` : c'est la seule porte de
-//   sortie, et la page publique porte déjà tout le discours (comparaison,
-//   tarifs, essai).
+// - `LockedAction` — le droit n'est pas dans la formule. Un tap/clic révèle
+//   l'explication ET le lien vers `/plans` (voir plus bas pourquoi).
 // - `LockedHint` — le droit existe, le crédit du mois est consommé. Le
 //   contrôle reste en place, désactivé, et n'apporte que l'explication.
 //   **Aucun lien** : le crédit se renouvelle seul à la prochaine période,
 //   inviter à payer serait mensonger. Doctrine posée au JEP-77
 //   (§ « Quota épuisé signalé avant le clic »), conservée telle quelle.
 //
-// **La bulle vit dans un portail, et n'est jamais interactive.** Deux raisons
-// contraignantes, toutes deux vérifiées dans le code appelant :
+// **`LockedAction` : infobulle tactile (Popover API native), même principe
+// que `AllergenPicto`.** Un premier jet reposait sur `:hover`/`:focus` et
+// naviguait directement au premier tap sur mobile, faute de survol — l'exact
+// défaut que le `title` HTML de l'ancien picto d'allergène avait déjà pour
+// motif d'abandon. Le repère est donc un **bouton**, jamais un lien : le
+// clic/tap ouvre un popover contenant le motif et le SEUL lien réel vers
+// `/plans` — un geste supplémentaire, mais explicable et identique sur
+// souris, tactile et clavier (Entrée/Espace sur le bouton ouvrent le
+// popover ; Tab suivant atteint le lien). `LockedHint` ne peut pas
+// reprendre ce mécanisme : son contenu est un vrai contrôle `disabled`
+// (bouton, `input`), et un élément désactivé ne déclenche jamais
+// d'événement `click` à intercepter — c'est justement pour ça qu'il ne
+// porte qu'une explication, jamais de navigation.
+//
+// Élément top-layer (comme `AllergenPicto`) : il ne peut pas s'ancrer via un
+// parent `position: relative`, d'où le repositionnement manuel au clic, sur
+// les coordonnées du bouton — aligné à DROITE plutôt que centré (ces repères
+// sont presque tous en fin de ligne, et le message est plus long qu'un nom
+// d'allergène : centré, il déborderait à gauche de l'écran).
+//
+// **La bulle vit dans un portail, et n'est jamais interactive.** Deux
+// raisons contraignantes, toutes deux vérifiées dans le code appelant, et
+// qui motivent `LockedHint` (portail + `useBulle`, ci-dessous) : celui-ci
+// enveloppe un contrôle déjà existant, pas question de le remplacer par un
+// bouton.
 //
 //  1. `PlanningDayView` monte ses journées dans un `<details>` en
-//     `overflow-hidden` (arrondi) : une bulle en `absolute` y serait rognée,
-//     exactement le cas qui a imposé un portail à `lib/use-rail-tooltip.tsx`.
+//     `overflow-hidden` (arrondi) : une bulle en `absolute` y serait rognée.
 //  2. Cinq des conteneurs appelants portent déjà la classe `group`
 //     (`<details className="group">`, cartes de `CuisineContent`). Une
 //     variante `group-hover:` sur la bulle aurait donc répondu au survol de
 //     TOUT le conteneur, pas seulement du repère.
-//
-// Le lien n'est jamais DANS la bulle, toujours porté par le repère lui-même :
-// un lien à l'intérieur d'un portail sort de l'ordre de tabulation, et une
-// bulle qu'il faut survoler pour cliquer réclame un délai de grâce que le CSS
-// ne sait pas tenir. La bulle est donc purement explicative
-// (`pointer-events: none`), et c'est le repère qui navigue.
-//
-// **Compromis assumé sur mobile** : faute de survol, un appui sur un repère
-// `LockedAction` navigue directement vers `/plans`. Le geste est donc à un
-// doigt de l'action réelle qu'il remplace — un appui par erreur en pleine
-// fournée quitte l'écran. Le retour arrière le rétablit à l'identique (le
-// mode Préparer/Pâtisser vit dans l'URL, rien n'est perdu), et c'est le prix
-// d'un repère explicable d'un seul geste.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-
-type Position = { top: number; left: number };
-
-/**
- * Ouverture/fermeture et position de la bulle. Mesurée à chaque survol comme
- * dans `useRailTooltip` : le repère peut être dans une liste défilante, une
- * position retenue au montage serait fausse au premier défilement.
- */
-function useBulle() {
-  const [pos, setPos] = useState<Position | null>(null);
-
-  const montrer = useCallback((el: HTMLElement) => {
-    const r = el.getBoundingClientRect();
-    // Alignée à DROITE du repère : ces pictos sont presque tous en fin de
-    // ligne, une bulle qui pousse vers la droite sortirait de l'écran.
-    setPos({ top: r.bottom + 6, left: r.right });
-  }, []);
-
-  const cacher = useCallback(() => setPos(null), []);
-
-  // Un défilement ou un redimensionnement déplace le repère sans qu'aucun
-  // `mouseleave` ne vienne corriger la position mesurée.
-  useEffect(() => {
-    if (!pos) return;
-    window.addEventListener('scroll', cacher, true);
-    window.addEventListener('resize', cacher);
-    return () => {
-      window.removeEventListener('scroll', cacher, true);
-      window.removeEventListener('resize', cacher);
-    };
-  }, [pos, cacher]);
-
-  return { pos, montrer, cacher };
-}
-
-function Bulle({ message, pos }: { message: string; pos: Position }) {
-  return createPortal(
-    <span
-      role="tooltip"
-      // `-translate-x-full` plutôt qu'un `right` calculé : la largeur réelle
-      // n'est connue qu'après le rendu, la transformation s'en passe.
-      className="pointer-events-none fixed z-[60] w-max max-w-[min(17rem,70vw)] -translate-x-full whitespace-normal rounded bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
-      style={{ top: pos.top, left: pos.left }}
-    >
-      {message}
-    </span>,
-    document.body,
-  );
-}
 
 const PICTO = 'material-symbols-outlined shrink-0 text-[18px] leading-none';
 
@@ -124,47 +82,99 @@ export function LockedAction({
   children?: ReactNode;
   className?: string;
 }) {
-  const { pos, montrer, cacher } = useBulle();
+  const popoverId = `locked-action-${useId()}`;
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
-  const gestes = {
-    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => montrer(e.currentTarget),
-    onMouseLeave: cacher,
-    onFocus: (e: React.FocusEvent<HTMLElement>) => montrer(e.currentTarget),
-    onBlur: cacher,
-  };
-
-  // Le picto vient EN TÊTE, et remplace l'icône d'origine de l'action plutôt
-  // que de s'y ajouter : sur un bouton de 18 px, deux glyphes côte à côte ne
-  // donnent qu'une bouillie, et sur un bouton libellé, « ⊘ Ajouter une
-  // sous-étape » se lit mieux que « + Ajouter une sous-étape ⊘ », qui laisse
-  // croire un instant que l'action est disponible.
-  const contenu = (
-    <>
-      <span className={PICTO} aria-hidden>
-        block
-      </span>
-      {children}
-      {pos && <Bulle message={message} pos={pos} />}
-    </>
-  );
-
-  // `cursor-help` : le repère a l'air désactivé mais porte une explication et
-  // mène à la page des formules. La couleur grise est déclarée APRÈS
-  // `className` pour qu'un appelant qui réutilise la classe de son bouton
-  // d'origine (souvent `text-primary`) ne rende pas le repère indistinguable
-  // d'une action disponible.
-  const classes = `no-print relative inline-flex cursor-help items-center gap-1.5 ${className ?? ''} text-on-surface-variant/60`;
+  // Positionné au clic/tap, comme AllergenPicto : un popover natif ne peut
+  // pas s'ancrer sur son déclencheur via du CSS pur.
+  function toggle() {
+    const btn = btnRef.current;
+    const pop = popRef.current;
+    if (!btn || !pop) return;
+    const rect = btn.getBoundingClientRect();
+    pop.style.left = `${rect.right}px`;
+    pop.style.top = `${rect.bottom + 6}px`;
+    pop.togglePopover();
+  }
 
   return (
-    <Link
-      href="/plans"
-      prefetch={false}
-      aria-label={`${label} — non inclus dans votre formule`}
-      className={classes}
-      {...gestes}
+    <span className={`no-print relative inline-flex items-center gap-1.5 ${className ?? ''} text-on-surface-variant/60`}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        aria-label={`${label} — non inclus dans votre formule`}
+        aria-describedby={popoverId}
+        className="inline-flex cursor-help items-center gap-1.5 border-0 bg-transparent p-0"
+      >
+        <span className={PICTO} aria-hidden>
+          block
+        </span>
+        {children}
+      </button>
+      <div
+        ref={popRef}
+        id={popoverId}
+        popover="auto"
+        role="tooltip"
+        // `inset-auto m-0 border-0` reprend le reset d'AllergenPicto :
+        // l'UA pose par défaut une bordure, une marge et un centrage sur
+        // tout élément `popover`.
+        className="inset-auto m-0 w-max max-w-[min(17rem,70vw)] -translate-x-full rounded border-0 bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
+      >
+        {message}
+        <Link href="/plans" prefetch={false} className="mt-1.5 block font-label-md text-[11px] underline">
+          Voir les formules
+        </Link>
+      </div>
+    </span>
+  );
+}
+
+// ── LockedHint ──────────────────────────────────────────────────────────
+
+type Position = { top: number; left: number };
+
+/**
+ * Bulle explicative de `LockedHint` — hover/focus, jamais interactive
+ * (`pointer-events: none`) : contrairement à `LockedAction`, il n'y a rien à
+ * cliquer dedans (pas de lien, le crédit se renouvelle seul), donc pas
+ * besoin qu'elle capte le pointeur ni qu'un tap l'ouvre.
+ */
+function useBulle() {
+  const [pos, setPos] = useState<Position | null>(null);
+
+  const montrer = useCallback((el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    setPos({ top: r.bottom + 6, left: r.right });
+  }, []);
+
+  const cacher = useCallback(() => setPos(null), []);
+
+  useEffect(() => {
+    if (!pos) return;
+    window.addEventListener('scroll', cacher, true);
+    window.addEventListener('resize', cacher);
+    return () => {
+      window.removeEventListener('scroll', cacher, true);
+      window.removeEventListener('resize', cacher);
+    };
+  }, [pos, cacher]);
+
+  return { pos, montrer, cacher };
+}
+
+function Bulle({ message, pos }: { message: string; pos: Position }) {
+  return createPortal(
+    <span
+      role="tooltip"
+      className="pointer-events-none fixed z-[60] w-max max-w-[min(17rem,70vw)] -translate-x-full whitespace-normal rounded bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
+      style={{ top: pos.top, left: pos.left }}
     >
-      {contenu}
-    </Link>
+      {message}
+    </span>,
+    document.body,
   );
 }
 
@@ -175,15 +185,17 @@ export function LockedAction({
  * contrôle garde entièrement son apparence, c'est l'appelant qui décide
  * d'échanger son icône contre `block`.
  *
- * Réservée au crédit épuisé, et c'est délibéré : sans le droit, il n'y a pas
- * de contrôle à conserver, il y a une porte de sortie à offrir — c'est
- * `LockedAction` et son lien. D'où l'absence de tout drapeau de motif ici :
- * cette variante ne peut structurellement pas proposer `/plans`.
+ * Reste sur hover/focus (pas le mécanisme tactile de `LockedAction`) :
+ * `children` est un vrai contrôle `disabled` (bouton, `input`), qui ne
+ * déclenche jamais d'événement `click` — rien à intercepter pour ouvrir un
+ * popover au tap. Le `tabIndex` porté par l'enveloppe reste atteignable au
+ * clavier, contrairement au contrôle désactivé qu'elle entoure.
  *
- * Le `tabIndex` et les gestes sont portés par l'enveloppe, jamais par le
- * contrôle : un élément de formulaire `disabled` n'est ni focusable ni
- * destinataire d'événements de souris, ce qui est précisément pourquoi le
- * `title` natif qu'on remplace ne s'affichait pas de façon fiable.
+ * **Connu, non traité ici** : sur mobile, sans survol, cette bulle reste
+ * silencieuse au tap — moins grave que l'ancien défaut de `LockedAction`
+ * (elle ne navigue nulle part par erreur), mais elle n'informe pas non plus.
+ * Un vrai correctif demanderait un mécanisme différent, hors du périmètre
+ * de cette demande.
  */
 export function LockedHint({
   message,
