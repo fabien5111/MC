@@ -7,8 +7,8 @@ import { MobileNav } from '@/components/MobileNav';
 import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
-import { canAccess, upgradeSuggestion } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, getGrid, checkQuota } from '@/lib/entitlements-data';
+import { canAccess } from '@/lib/entitlements';
+import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
@@ -16,11 +16,10 @@ export default async function ImporterPage() {
   const user = await requireUser('/importer');
   // Impersonation en lecture seule : l'import crée un brouillon → interdit.
   await requireWritableSession();
-  const [imports, admin, droits, grid, currentPlan] = await Promise.all([
+  const [imports, admin, droits, currentPlan] = await Promise.all([
     getImports(user.id),
     isAdmin(user.id),
     getEntitlements(user.id),
-    getGrid(),
     getCurrentPlan(user.id),
   ]);
   // Droit d'abonnement : l'historique des imports reste visible quoi qu'il
@@ -34,8 +33,9 @@ export default async function ImporterPage() {
   // docs/abonnements.md) — la relecture, elle, reste accessible ; seule la
   // création d'un NOUVEL import est fermée. Un titre qui nomme « l'écran de
   // relecture » comme indisponible contredirait le bandeau de
-  // `/relecture/[id]`, qui dit l'inverse.
-  const suggestionImport = peutImporter ? null : upgradeSuggestion(grid, 'ecran_relecture_import', currentPlan?.code ?? '');
+  // `/relecture/[id]`, qui dit l'inverse. Pas de suggestion de plan
+  // supérieur ici (contrairement à `blockingMessage()`) : le lien « Voir
+  // les formules » juste en dessous suffit, sans dupliquer l'information.
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md,
   // JEP-77) : grise les boutons « Importer » une fois le quota mensuel
   // épuisé, plutôt que de laisser découvrir le refus après une tentative.
@@ -90,7 +90,6 @@ export default async function ImporterPage() {
                 repli gratuit des deux autres. */}
             <p className="mt-2 text-sm text-on-surface-variant">
               Les trois méthodes — texte collé, PDF, photo — sont réservées aux formules payantes.
-              {suggestionImport && ` ${suggestionImport.planLabel} vous y donne accès.`}
             </p>
             {/* JEP-130 : les brouillons déjà importés restent relisibles et
                 publiables (arbitrage E). Sans cette phrase, rien n'indique
