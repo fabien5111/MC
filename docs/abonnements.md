@@ -886,3 +886,20 @@ celui-là reste fermé sur `/importer`.
 cours reste en lecture seule. La différence est réelle — terminer une
 relecture, c'est un dernier geste sur un travail déjà fait ; continuer un
 projet, c'est en demander du nouveau à chaque étape du dialogue.
+
+### Correction — le remplacement d'une étape entière avait le même trou
+
+Relevé sur l'aperçu, après la publication du lot : `BatchView.tsx` porte un
+second bouton « Remplacer par une recette », au niveau de l'ÉTAPE cette
+fois (`StepExpandDialog`, sœur d'`IngredientExpandDialog` — remplacer toute
+une étape plutôt qu'une seule ligne d'ingrédient), gouverné par le même
+droit `remplacement_ingredient_par_recette`. `droits.remplacementIngredient`
+était déjà dans la portée du composant — utilisé juste au-dessus pour
+`BatchIngredientsEditor` — mais n'était vérifié nulle part sur ce second
+bouton, oublié du relevé initial (§14, grammaire 3 : « rien du tout »)
+faute d'avoir cherché tous les points d'entrée vers `StepExpandDialog`, pas
+seulement vers `IngredientExpandDialog`. Corrigé avec le même
+`LockedAction` que son homologue ; le bouton « Annuler le remplacement »
+d'une étape déjà remplacée reste, lui, ouvert sans le droit — même
+doctrine que pour l'ingrédient (§7.4 : un remplacement déjà en place reste
+géré, seul en démarrer un nouveau est bridé).

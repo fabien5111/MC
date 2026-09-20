@@ -27,6 +27,7 @@ import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
+import { LockedAction } from '@/components/LockedAction';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
@@ -1055,16 +1056,34 @@ function PreparerView({
                   <span>
                     {i + 1}. {s.title || 'Étape ' + (i + 1)}
                   </span>
-                  {!s.done && !replaced && !readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => setReplacingStep(s)}
-                      title="Remplacer cette étape par une recette (la fabriquer à partir d'une autre recette)"
-                      className="no-print font-normal text-primary hover:opacity-70"
-                    >
-                      <span className="material-symbols-outlined text-[18px] align-middle">swap_horiz</span>
-                    </button>
-                  )}
+                  {!s.done &&
+                    !replaced &&
+                    !readOnly &&
+                    (droits.remplacementIngredient ? (
+                      <button
+                        type="button"
+                        onClick={() => setReplacingStep(s)}
+                        title="Remplacer cette étape par une recette (la fabriquer à partir d'une autre recette)"
+                        className="no-print font-normal text-primary hover:opacity-70"
+                      >
+                        <span className="material-symbols-outlined text-[18px] align-middle">swap_horiz</span>
+                      </button>
+                    ) : (
+                      // JEP-130 : même droit que le remplacement d'un
+                      // ingrédient (BatchIngredientsEditor), oublié ici lors
+                      // du relevé initial — `droits.remplacementIngredient`
+                      // était déjà dans la portée du composant (utilisé
+                      // juste au-dessus pour BatchIngredientsEditor) mais
+                      // n'était vérifié nulle part sur ce second bouton, qui
+                      // ouvre exactement la même fenêtre (StepExpandDialog)
+                      // pour une étape entière plutôt qu'une ligne
+                      // d'ingrédient.
+                      <LockedAction
+                        label="Remplacer cette étape par une recette"
+                        message="Remplacer une étape par une recette (la fabriquer à partir d'une autre recette) n'est pas inclus dans votre formule."
+                        className="font-normal"
+                      />
+                    ))}
                 </h4>
                 {added && (
                   <span className="font-body-md text-[12px] text-green-700 font-normal">
