@@ -174,8 +174,11 @@ export function UsageCard({
                     // Sous 48 h, l'heure déjà affichée dit tout : un
                     // décompte arrondi au jour supérieur (`Math.ceil`) à
                     // côté d'une heure précise ferait lire « (1 jour) » pour
-                    // une échéance dans 3 heures comme dans 23.
-                    currentPlan!.daysLeft !== null && !(estEssai && currentPlan!.daysLeft <= 1)
+                    // une échéance dans 3 heures comme dans 23 — et
+                    // `daysLeft <= 2`, pas `<= 1` : une échéance dans 30 h
+                    // (donc sous 48 h) arrondit déjà à 2 jours
+                    // (`Math.ceil(30 / 24) === 2`), pas à 1.
+                    currentPlan!.daysLeft !== null && !(estEssai && currentPlan!.daysLeft <= 2)
                       ? ` (${currentPlan!.daysLeft} jour${currentPlan!.daysLeft > 1 ? 's' : ''})`
                       : ''
                   }`
