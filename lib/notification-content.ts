@@ -61,7 +61,16 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
       };
     }
     case 'TRIAL_J1': {
-      const corps = `Dernier jour de votre essai gratuit ${ctx.planLabel} : il se termine aujourd’hui, le ${date}.${
+      // Jamais « aujourd'hui » : `estJ1` (route du cron) est un décompte
+      // glissant en heures (≤ 24 h restantes), pas une comparaison de dates
+      // calendaires — sur un essai qui se termine tard dans la journée, la
+      // fenêtre J-1 démarre la veille au soir, sur un jour calendaire
+      // différent de `ends_at`. Affirmer « aujourd'hui » tout en affichant la
+      // date réelle produisait une phrase qui se contredisait elle-même
+      // (constaté le 21/09 : « il se termine aujourd'hui, le 22 septembre »
+      // alors qu'on était le 21). La date affichée suffit, sans readonly sur
+      // le jour calendaire du cron.
+      const corps = `Dernier jour de votre essai gratuit ${ctx.planLabel} : il se termine le ${date}.${
         perte ? `\n\nSans abonnement, vous perdrez :\n${perte}` : ''
       }`;
       return {
@@ -83,7 +92,8 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
       };
     }
     case 'SUB_J1': {
-      const corps = `Dernier jour de votre abonnement ${ctx.planLabel} : il se termine aujourd’hui, le ${date}.${
+      // Même correctif que TRIAL_J1 ci-dessus, même raison.
+      const corps = `Dernier jour de votre abonnement ${ctx.planLabel} : il se termine le ${date}.${
         perte ? `\n\nSans renouvellement, vous perdrez :\n${perte}` : ''
       }`;
       return {
