@@ -8,12 +8,22 @@ export function formatTime(minutes: number | null | undefined): string {
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 }
 
+// `timeZone` explicite, comme `formatDateHeure` ci-dessous et pour la même
+// raison : sans elle, `toLocaleDateString` prend le fuseau du RUNTIME —
+// celui du serveur (Virtuozzo, probablement UTC) au premier rendu, celui du
+// visiteur à l'hydratation React. Une date proche de minuit heure de Paris
+// pouvait donc afficher un jour différent selon qui la calculait, avec en
+// prime un risque de désaccord serveur/client sur les appelants qui sont des
+// Client Components (la plupart des 27 appelants de cette fonction).
+// Repéré le 21/09 en testant les notifications d'abonnement (JEP-29) : sans
+// rapport avec le défaut constaté ce jour-là, mais du même ordre.
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
