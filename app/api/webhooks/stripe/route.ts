@@ -22,7 +22,7 @@
 // comme l'autre suffit, aucun n'est un prérequis de l'autre.
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createNotification, getNotifyEmailPreference } from '@/lib/notifications-data';
+import { createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
 import { sendEmailBestEffort } from '@/lib/email';
 import {
   isoDepuisUnixStripe,
@@ -189,7 +189,7 @@ async function notifierEchecPaiement(objet: unknown): Promise<void> {
   // E-mail best-effort et conditionné à la préférence du membre, comme le
   // cron d'abonnements : la notification in-app, elle, part toujours — c'est
   // elle qui conditionne la continuité du service.
-  if (!(await getNotifyEmailPreference(userId))) return;
+  if (!(await getNotifyEmailPreferenceAdmin(admin, userId))) return;
 
   const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();
   if (!profil?.email) return;

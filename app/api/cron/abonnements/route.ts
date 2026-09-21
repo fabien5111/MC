@@ -41,7 +41,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGrid, getRightsForVersion } from '@/lib/entitlements-data';
-import { claimNotification, createNotification, getNotifyEmailPreference } from '@/lib/notifications-data';
+import { claimNotification, createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
 import { lostFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
 import { sendEmailBestEffort } from '@/lib/email';
@@ -102,7 +102,7 @@ async function envoyer(
 
   // Notifications in-app d'expiration toujours affichées (spec §10) : la
   // préférence ne conditionne QUE l'e-mail, jamais leur écrite ci-dessus.
-  if (profil?.email && (await getNotifyEmailPreference(ligne.user_id))) {
+  if (profil?.email && (await getNotifyEmailPreferenceAdmin(admin, ligne.user_id))) {
     await sendEmailBestEffort({ to: profil.email, subject: content.emailSubject, html: content.emailHtml, text: content.emailText });
   }
 }
