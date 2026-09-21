@@ -1096,6 +1096,30 @@ variable, une fois, sur ce nœud — sa valeur étant stable d'un aperçu de PR 
 l'autre (§ CLAUDE.md, un seul nœud d'aperçu). Comme toute `NEXT_PUBLIC_*`,
 elle compte au build ET à l'exécution : la poser sans reconstruire ne suffit
 pas.
+
+### Deux trous relevés en souscrivant pour de vrai (21/09), à traiter au lot F
+
+Constatés en déroulant `docs/test-stripe-jep29.md` § 2 sur `jepatisse-preview`
+avec une horloge de test Stripe — aucun des deux n'est un défaut du code
+existant, ce sont des manques de périmètre.
+
+**Aucun e-mail ni notification à la souscription.** `traiter()`
+(`app/api/webhooks/stripe/route.ts`) écrit l'abonnement sur
+`checkout.session.completed` et `customer.subscription.*` sans jamais appeler
+`createNotification` ni `sendEmailBestEffort` — seul `invoice.payment_failed`
+le fait (`notifierEchecPaiement`). Rien dans le ticket JEP-29 ni dans ce
+journal ne l'avait demandé ; ce n'est donc pas un oubli d'implémentation, mais
+une fonctionnalité jamais spécifiée. Stripe peut envoyer son propre reçu
+(réglage « Customer emails » du Dashboard), mais ce n'est pas un e-mail à la
+marque du site.
+
+**Le renouvellement automatique n'est jamais affirmé, seulement déduit par
+défaut.** `UsageCard.tsx` affiche « Plus — se termine le [date] (N jours). »
+pour un abonnement actif, et seule la branche annulée précise « sans
+reconduction ensuite ». L'absence de cette mention est censée signifier que
+ça se renouvelle, mais rien ne l'énonce positivement — un abonné qui découvre
+l'écran pour la première fois ne peut pas le savoir avec certitude.
+
 ## 15. JEP-130 — une seule grammaire de blocage, et la relecture ré-ouverte
 
 Deux demandes distinctes dans le même ticket : rendre lisible le blocage
