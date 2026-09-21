@@ -788,6 +788,64 @@ e-mail, lot 8) existe déjà pour prévenir le membre.
 `customer.subscription.deleted`. **Conséquence à configurer côté Stripe** :
 la relance doit se terminer par une *annulation* de l'abonnement, jamais par
 un statut `unpaid` laissé en l'état — sinon la coupure n'arrive jamais.
+**Relance vérifiée le 21/09** (Dashboard Stripe → Paiements par carte
+bancaire) : Smart Retries, 8 tentatives sur 2 semaines. Ce qui n'a **pas** été
+vérifié : le réglage « après le dernier échec » (annuler l'abonnement, vs. le
+laisser `unpaid`) — c'est lui qui porte la garantie ci-dessus, pas seulement
+l'existence des relances.
+
+### Correction (21/09) — `ends_at` avançait d'un mois pendant les relances
+
+Constaté en testant une horloge Stripe (`docs/test-stripe-jep29.md` § 2.5) :
+un abonnement `past_due`, dont la SEULE facture ouverte portait encore sur la
+période ratée (21/09 → 21/10, `attempt_count: 2`), affichait pourtant
+« se termine le 21 novembre » sur `/reglages` — un mois de grâce en trop,
+jamais accordé par Stripe.
+
+Cause : `mc_apply_stripe_subscription` recopiait `p_current_period_end` dans
+`ends_at` à chaque `customer.subscription.updated`, **sans condition de
+statut**. Or ce champ n'existe plus à la racine de l'objet `subscription` sur
+les versions d'API récentes de Stripe — il vit désormais sur
+`items.data[].current_period_end` (repli déjà anticipé par
+`lireAbonnementStripe`, `lib/billing.ts:210`). Et à ce niveau, il avance sur
+le **prochain** cycle calendaire prévu, indépendamment du sort de la facture
+en cours de relance — vérifié en confrontant l'objet `subscription` (item à
+21/11) à la liste `/v1/invoices?subscription=…` (une seule facture, ouverte,
+period_end au 21/10).
+
+**Correctif** : dans la branche de mise à jour de `mc_apply_stripe_subscription`
+(même version de plan, ligne déjà `ACTIVE`), `ends_at` ne prend
+`p_current_period_end` que si `p_stripe_status <> 'past_due'` ; sinon
+l'échéance déjà en base est conservée telle quelle :
+
+```sql
+ends_at = case when p_stripe_status = 'past_due' then v_courant.ends_at else p_current_period_end end,
+```
+
+Appliqué en base par `CREATE OR REPLACE FUNCTION` (signature strictement
+identique — cf. le piège des surcharges plus bas), sous le rôle
+`supabase_admin`, propriétaire réel de la fonction (`postgres`, utilisé sur ce
+serveur, n'est pas superuser et n'a pas pu la remplacer directement — même
+piège que `mc_admin_reset_trial`). La ligne déjà faussée par le bug
+(`subscriptions.id = 16`, compte de test) a été réparée à la main dans la
+même passe.
+
+**Non touché, faute d'avoir observé le cas** : si `p_stripe_status` devient
+directement `unpaid`/`canceled` (donc `CANCELLED` côté interne) tout en
+restant dans cette même branche (même version de plan), `ends_at` hérite
+encore du même souci. Plus rare, jamais rencontré en test — à surveiller si
+un cas réel se présente.
+
+**Comportement vérifié ensuite, pour ne pas le reprendre à tort pour un bug** :
+un paiement qui finit par réussir APRÈS une ou plusieurs relances ne fait PAS
+avancer `ends_at` à la date du paiement — Stripe acquitte la facture de la
+période déjà en cours, il n'en ouvre pas une nouvelle. L'échéance reste celle
+d'origine (21/10 dans ce test) jusqu'au prochain cycle réel (21/11) : un
+paiement en retard rattrape l'accès, il ne décale pas le rythme mensuel. Sans
+cette clarification, un futur test pourrait interpréter cette absence de
+changement comme une régression du correctif ci-dessus — c'en est au
+contraire la preuve que la deuxième moitié du mécanisme (retour à `active`)
+fonctionne bien.
 
 ### Un changement de formule ouvre une ligne, il n'en réécrit pas une
 
