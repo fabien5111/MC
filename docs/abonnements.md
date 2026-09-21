@@ -788,11 +788,10 @@ e-mail, lot 8) existe déjà pour prévenir le membre.
 `customer.subscription.deleted`. **Conséquence à configurer côté Stripe** :
 la relance doit se terminer par une *annulation* de l'abonnement, jamais par
 un statut `unpaid` laissé en l'état — sinon la coupure n'arrive jamais.
-**Relance vérifiée le 21/09** (Dashboard Stripe → Paiements par carte
-bancaire) : Smart Retries, 8 tentatives sur 2 semaines. Ce qui n'a **pas** été
-vérifié : le réglage « après le dernier échec » (annuler l'abonnement, vs. le
-laisser `unpaid`) — c'est lui qui porte la garantie ci-dessus, pas seulement
-l'existence des relances.
+**Vérifié et posé le 21/09** (Dashboard Stripe → Paiements → Gérer les échecs
+de paiement) : Smart Retries (8 tentatives sur 2 semaines), et « État de
+l'abonnement » → **annuler l'abonnement** en cas d'échec de toutes les
+tentatives — la garantie ci-dessus tient donc réellement, des deux côtés.
 
 ### Correction (21/09) — `ends_at` avançait d'un mois pendant les relances
 
