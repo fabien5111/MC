@@ -49,11 +49,7 @@ export async function POST(req: Request) {
     // Code non prévu par cette table : on le journalise pour pouvoir
     // l'ajouter à la liste plutôt que de laisser un message muet sans trace.
     if (!messages[code]) console.error('plans/essayer mc_start_trial:', error.message);
-    // TEMPORAIRE (débogage JEP-29, 20/09) : erreur brute exposée le temps de
-    // diagnostiquer sans accès aux journaux du nœud 216804 (Web SSH en
-    // panne) — à RETIRER avant toute mise en production, cette route est
-    // tournée vers un membre, jamais vers un admin.
-    return NextResponse.json({ erreur: messages[code] ?? `[debug] ${error.message}` }, { status: 422 });
+    return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer, réessayez plus tard." }, { status: 422 });
   }
 
   // Certains plans redirigent l'essai vers une version aux quotas propres

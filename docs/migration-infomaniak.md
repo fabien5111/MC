@@ -2013,6 +2013,8 @@ toujours.
 | `GOTRUE_DB_NAMESPACE` | schéma, défaut `auth` — à laisser tel quel |
 | `GOTRUE_SITE_URL` | **obligatoire** — voir ci-dessous, ce n'est pas ce qui était supposé |
 | `GOTRUE_JWT_SECRET` / `_KEY_ID` / `_KEYS` | cf. la procédure ES256 ci-dessus |
+| `GOTRUE_JWT_AUD` | **obligatoire** — `authenticated`, sans valeur par défaut (voir le piège plus bas) |
+| `GOTRUE_JWT_DEFAULT_GROUP_NAME` | **obligatoire** — `authenticated`, sans valeur par défaut non plus : absente, tout compte créé ensuite est inutilisable (voir le piège plus bas) |
 | `GOTRUE_API_PORT` | défaut `8081` |
 
 **Correction : le Site URL réel n'est pas celui qui avait été supposé.** Une
@@ -2662,6 +2664,51 @@ au même titre que `API_EXTERNAL_URL`. À retenir aussi comme méthode : l'en-t�
 `X-JWT-AUD` est lu **avant** la configuration, ce qui permet de trancher en une
 requête entre « la variable n'est pas reprise » et « le mot de passe est faux »
 — deux causes que l'API rend volontairement indiscernables.
+
+##### `GOTRUE_JWT_DEFAULT_GROUP_NAME` non plus — et le symptôme est ailleurs
+
+Même omission que la précédente, découverte le 20/09 seulement, pour une raison
+qui vaut d'être retenue : **elle ne touche que les comptes créés APRÈS la
+migration**. Tous les comptes transférés portent `auth.users.role =
+'authenticated'`, hérité du dump ; le site étant en `COMING_SOON`, plus aucune
+inscription n'a eu lieu entre le 08/09 et le 20/09. La panne dormait cinq
+semaines.
+
+Le champ `DefaultGroupName` de la configuration JWT
+(`internal/conf/configuration.go`) ne porte **aucune balise de défaut**, comme
+`Aud`. Absente, GoTrue crée chaque nouveau compte avec `role = ''` et signe ses
+jetons avec ce claim vide. PostgREST exécutant `set local role <claim>` à chaque
+requête, **toute** lecture et toute écriture passant par la session du membre
+échouent sur `role "" does not exist` — la session est valide, le membre est
+connecté, et la base lui refuse tout.
+
+Le symptôme ne nomme donc ni GoTrue ni la variable, et se présente sous des
+formes qui semblent sans rapport entre elles : `/choix-pseudo` qui **boucle**
+(l'écriture par `/api/pseudo/choisir` aboutit — clé service_role, indifférente
+au claim — mais la relecture du profil par `requireUser()` échoue, donc le
+pseudo paraît toujours absent), un essai gratuit qui refuse de démarrer, un
+carnet vide. Ce qui a tranché, en une requête :
+
+```sql
+select id, email, role, aud, created_at from auth.users order by created_at desc limit 10;
+```
+
+Les lignes récentes à `role` vide face aux anciennes à `authenticated` ne
+laissent aucune place au doute — et écartent d'un coup toutes les hypothèses
+applicatives, y compris le chantier en cours au moment de la découverte.
+
+**`GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated` est donc à poser dès le montage
+du nœud Auth**, au même titre que `GOTRUE_JWT_AUD` et `API_EXTERNAL_URL`. La
+réparation des comptes déjà créés est un `update auth.users set role =
+'authenticated' where coalesce(role, '') = ''` — suivi d'une **reconnexion**
+des membres concernés : leur jeton en cours porte encore le claim vide, la
+colonne corrigée n'étant relue qu'à l'émission du suivant.
+
+**Méthode à retenir, plus générale que ce piège** : une panne qui frappe les
+comptes **récents** et épargne les anciens ne vient jamais du code applicatif —
+il est le même pour tous. Elle vient de ce qui diffère entre deux comptes, donc
+de leur ligne en base ou de la configuration qui les a créés. Comparer les deux
+populations avant de lire une seule ligne de code.
 
 ##### La base effacée sous les pieds, et ce qu'elle a appris
 
