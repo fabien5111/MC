@@ -155,7 +155,7 @@ export function UsageCard({
         {(peutEssayer ||
           hasHigherPlan ||
           peutSouscrire ||
-          (estPayant && !cancelRequestedAt && !justAnnule) ||
+          estPayant ||
           hasStripeCustomer) && (
           <div className="flex flex-wrap items-center gap-2">
             {peutEssayer && (
@@ -180,6 +180,21 @@ export function UsageCard({
                 className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
               >
                 S&apos;abonner
+              </Link>
+            )}
+            {estPayant && (
+              // Sans ce lien, un abonné déjà sur la formule la plus haute
+              // (`hasHigherPlan` faux, donc pas de « Passer à une formule
+              // supérieure ») n'avait plus aucun chemin vers `/plans` pour
+              // redescendre — seuls « Annuler » et « Gérer mon moyen de
+              // paiement » restaient. Toujours affiché pour un abonné payant,
+              // même quand une formule supérieure existe déjà par ailleurs :
+              // « Passer à » ne mène qu'à la montée, celui-ci à l'écran entier.
+              <Link
+                href="/plans"
+                className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                Voir toutes les formules
               </Link>
             )}
             {estPayant && !cancelRequestedAt && !justAnnule && (

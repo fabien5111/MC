@@ -26,6 +26,7 @@ import {
   type Grid,
 } from '@/lib/entitlements';
 import type { PendingRequest } from '@/lib/entitlements-data';
+import type { ChangementProgramme } from '@/lib/billing-data';
 
 export function PlansPage({
   grid,
@@ -38,6 +39,7 @@ export function PlansPage({
   trialDays,
   pending,
   abonnementStripe,
+  changementProgramme,
 }: {
   grid: Grid;
   planIds: Record<string, number>;
@@ -47,6 +49,14 @@ export function PlansPage({
   // programmée (« vous gardez votre formule jusqu'au [date] »), sans quoi le
   // membre confirmait un changement sans savoir quand il prend effet.
   currentPlanEndsAt: string | null;
+  // Changement de formule déjà programmé (échéancier Stripe), lu par la page
+  // serveur — jamais recalculé ici. Le bouton d'action reste actif même
+  // quand il est renseigné : reprogrammer une descente ou monter en gamme
+  // remplacent proprement l'échéancier existant côté serveur (§3.3 du plan
+  // de test JEP-29) — bloquer le bouton retirerait une possibilité qui
+  // fonctionne déjà. Sert seulement à prévenir le membre AVANT qu'il
+  // remplace un changement en cours sans le savoir.
+  changementProgramme: ChangementProgramme | null;
   // Abonnement courant de type TRIAL (§12 de docs/abonnements.md — la
   // colonne visible n'est alors pas forcément « Pro » mais un plan
   // technique d'essai, ex. « Essai Plan Pro ») : conditionne le remplacement
@@ -282,7 +292,12 @@ export function PlansPage({
     const complement = abonnementStripe
       ? `\n\nVous gardez votre formule actuelle jusqu’${echeance ? `au ${echeance}` : 'à son échéance'} ; aucun remboursement au prorata.`
       : '';
-    const ok = await dialog.confirm(texte + complement);
+    // Remplace, plutôt que d'empiler, un changement déjà programmé (§3.3) —
+    // le membre doit le savoir avant de confirmer, pas le découvrir après.
+    const avertissementProgramme = changementProgramme
+      ? `\n\nCeci remplacera le passage à ${changementProgramme.planLabel} déjà programmé le ${formatDate(changementProgramme.effectiveAt)}.`
+      : '';
+    const ok = await dialog.confirm(texte + complement + avertissementProgramme);
     if (!ok) return;
     if (abonnementStripe) {
       // Redescendre vers la formule GRATUITE n'est pas un changement de
@@ -328,7 +343,13 @@ export function PlansPage({
           introduction={
             waiverPlan.mode === 'montee'
               ? `La différence avec votre formule actuelle sera facturée immédiatement, au prorata du temps ` +
-                `restant sur la période en cours, sur votre moyen de paiement enregistré.`
+                `restant sur la période en cours, sur votre moyen de paiement enregistré.` +
+                // Une montée annule l'échéancier existant (cf. app/api/abonnement/
+                // changer, remis en place seulement si le paiement échoue) — le
+                // membre doit le savoir avant de confirmer.
+                (changementProgramme
+                  ? ` Ceci annulera le passage à ${changementProgramme.planLabel} déjà programmé le ${formatDate(changementProgramme.effectiveAt)}.`
+                  : '')
               : 'Vous allez être redirigé vers notre prestataire de paiement (Stripe) pour finaliser votre abonnement.'
           }
           libelleAction={waiverPlan.mode === 'montee' ? 'Confirmer le changement' : 'Continuer vers le paiement'}
@@ -346,6 +367,15 @@ export function PlansPage({
         Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un seul
         essai par membre, toutes formules confondues.
       </p>
+
+      {changementProgramme && (
+        // Le bouton reste actif malgré ce bandeau (cf. le commentaire de la
+        // prop) : il informe avant de remplacer, il ne bloque pas.
+        <p className="mx-auto mb-8 max-w-xl rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-center text-sm text-on-surface-variant">
+          Passage à <strong>{changementProgramme.planLabel}</strong> déjà programmé le{' '}
+          {formatDate(changementProgramme.effectiveAt)}. Un nouveau changement ci-dessous le remplacera.
+        </p>
+      )}
 
       {bascule && (
         <div className="mb-10 flex items-center justify-center gap-3">

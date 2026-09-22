@@ -6,7 +6,7 @@ import { PlansPage } from '@/components/plans/PlansPage';
 import { getCurrentUser } from '@/lib/auth';
 import { getPlanRows, getTrialDays } from '@/lib/data/reference';
 import { getCurrentPlan, getGrid, hasConsumedTrial, getPendingRequest } from '@/lib/entitlements-data';
-import { getAbonnementStripeCourant } from '@/lib/billing-data';
+import { getAbonnementStripeCourant, getChangementProgramme } from '@/lib/billing-data';
 
 export const metadata: Metadata = { title: 'Nos formules | Je pâtisse !' };
 
@@ -27,7 +27,15 @@ export default async function PlansPublicPage() {
   // Un abonnement Stripe se modifie en ligne (montée immédiate au prorata,
   // descente à l'échéance) ; un essai ou un don administrateur gardent le
   // parcours de demande traité à la main.
-  const abonnementStripe = user ? !!(await getAbonnementStripeCourant(user.id)) : false;
+  const abonnementStripeCourant = user ? await getAbonnementStripeCourant(user.id) : null;
+  const abonnementStripe = !!abonnementStripeCourant;
+  // Appel Stripe en DIRECT (cf. `getChangementProgramme`) — page PUBLIQUE,
+  // donc réservé aux membres qui ont réellement un abonnement Stripe actif,
+  // jamais à tout visiteur : contrairement à `/reglages` (page rare), `/plans`
+  // est très fréquentée, l'appel externe doit rester l'exception, pas la règle.
+  const changementProgramme = abonnementStripeCourant
+    ? await getChangementProgramme(abonnementStripeCourant.subscriptionId)
+    : null;
   const planIds = Object.fromEntries(planRows.map((p) => [p.code, p.id]));
 
   return (
@@ -45,6 +53,7 @@ export default async function PlansPublicPage() {
           trialDays={trialDays}
           pending={pending}
           abonnementStripe={abonnementStripe}
+          changementProgramme={changementProgramme}
         />
       </main>
       <Footer />
