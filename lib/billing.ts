@@ -398,16 +398,25 @@ export function lirePhasesEcheancier(objet: unknown): PhaseEcheancier[] {
  * la reprendre comme phase courante ferait réémettre une date de début
  * révolue et perdre la phase réelle. Le cas se produit dès qu'un membre
  * programme une descente, la laisse s'appliquer, puis en programme une autre.
+ *
+ * Lue sur `current_phase` (Stripe), jamais recalculée à partir de
+ * `Date.now()` du serveur : les deux ne coïncident que pour un client SANS
+ * horloge de test. Avec une horloge de test (position figée loin dans le
+ * temps réel), toute comparaison à `Date.now()` fait paraître chaque phase
+ * « future » — Stripe, lui, sait exactement où en est CE client, horloge
+ * comprise. Découvert le 22/09 en testant une descente en gamme sur un
+ * compte de test (§14 « le point qui n'a jamais été éprouvé sur un vrai
+ * compte Stripe ») : la relecture échouait systématiquement avec « phase
+ * courante illisible ». Sans horloge de test, l'heure du serveur et celle de
+ * Stripe coïncident presque toujours — improbable que ça ait touché un vrai
+ * membre en production — mais le code restait fragile à tout décalage
+ * d'horloge, pas seulement celui, volontaire, d'un test clock.
  */
-export function phaseCourante(phases: PhaseEcheancier[], maintenantSec: number): PhaseEcheancier | null {
-  const encadrante = phases.find(
-    (p) => p.startDate !== null && p.startDate <= maintenantSec && (p.endDate === null || maintenantSec < p.endDate),
-  );
-  if (encadrante) return encadrante;
-  // Aucune phase n'encadre l'instant présent (frontière tout juste franchie,
-  // horloges décalées) : la plus récente déjà commencée est la moins fausse.
-  const commencees = phases.filter((p) => p.startDate !== null && p.startDate <= maintenantSec);
-  return commencees.length ? commencees[commencees.length - 1] : null;
+export function phaseCourante(objet: unknown, phases: PhaseEcheancier[]): PhaseEcheancier | null {
+  const courante = (objet as { current_phase?: { start_date?: unknown } | null } | null)?.current_phase;
+  const debut = typeof courante?.start_date === 'number' ? courante.start_date : null;
+  if (debut === null) return null;
+  return phases.find((p) => p.startDate === debut) ?? null;
 }
 
 /**

@@ -368,23 +368,28 @@ describe('phaseCourante', () => {
     { startDate: 2000, endDate: 3000, priceId: 'price_b' },
   ];
 
-  it('rend la phase qui encadre l’instant présent, pas la première', () => {
+  it('lit current_phase.start_date, jamais l’heure du serveur', () => {
     // Après qu'une première descente a pris effet, la phase 0 est PASSÉE :
-    // la reprendre ferait réémettre une date de début révolue.
-    expect(phaseCourante(phases, 1500)?.priceId).toBe('price_a');
-    expect(phaseCourante(phases, 2500)?.priceId).toBe('price_b');
+    // la reprendre ferait réémettre une date de début révolue. Un client
+    // rattaché à une horloge de test peut être n'importe où par rapport à
+    // Date.now() du serveur — Stripe, lui, sait toujours où en est CE
+    // client, d'où la lecture directe plutôt qu'un recalcul.
+    expect(phaseCourante({ current_phase: { start_date: 1000 } }, phases)?.priceId).toBe('price_a');
+    expect(phaseCourante({ current_phase: { start_date: 2000 } }, phases)?.priceId).toBe('price_b');
   });
 
   it('accepte une dernière phase sans fin', () => {
-    expect(phaseCourante([{ startDate: 1000, endDate: null, priceId: 'price_a' }], 9999)?.priceId).toBe('price_a');
+    const seule = [{ startDate: 1000, endDate: null, priceId: 'price_a' }];
+    expect(phaseCourante({ current_phase: { start_date: 1000 } }, seule)?.priceId).toBe('price_a');
   });
 
-  it('retombe sur la plus récente déjà commencée quand aucune n’encadre', () => {
-    expect(phaseCourante(phases, 3500)?.priceId).toBe('price_b');
-  });
-
-  it('rend null quand rien n’a commencé', () => {
-    expect(phaseCourante(phases, 500)).toBeNull();
-    expect(phaseCourante([], 1500)).toBeNull();
+  it('rend null si current_phase est absent, nul, ou sans correspondance dans les phases relues', () => {
+    expect(phaseCourante({}, phases)).toBeNull();
+    expect(phaseCourante({ current_phase: null }, phases)).toBeNull();
+    expect(phaseCourante({ current_phase: { start_date: 'now' } }, phases)).toBeNull();
+    // Décalage entre ce que Stripe désigne comme courant et ce que la
+    // relecture des phases a rendu (incohérence à ne jamais masquer) :
+    expect(phaseCourante({ current_phase: { start_date: 9999 } }, phases)).toBeNull();
+    expect(phaseCourante({ current_phase: { start_date: 1000 } }, [])).toBeNull();
   });
 });

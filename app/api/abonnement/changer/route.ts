@@ -276,7 +276,7 @@ async function programmerDescente(
     await libererEcheancier(echeancierId);
     return echec;
   }
-  const courante = phaseCourante(lirePhasesEcheancier(relu.data), Math.floor(Date.now() / 1000));
+  const courante = phaseCourante(relu.data, lirePhasesEcheancier(relu.data));
   if (!courante?.startDate) {
     console.error('abonnement/changer: phase courante illisible');
     await libererEcheancier(echeancierId);
