@@ -17,6 +17,7 @@ import {
   hasYearlyOption,
   isOverLimit,
   lostFeatureLabels,
+  reducedFeatureLabels,
   overLimitMessage,
   quotaFailure,
   rightScore,
@@ -309,17 +310,34 @@ describe('refus remontés par la base', () => {
 });
 
 describe('fonctionnalités perdues (notifications)', () => {
-  it('liste uniquement ce qui régresse, avec le libellé de la grille', () => {
+  it('liste uniquement ce qui tombe à NO, avec le libellé de la grille', () => {
     const avant = { fournees_actives_max: limite(15), mode_projet: oui, import_ia_mensuel: limite(20) };
     const apres = { fournees_actives_max: limite(2), mode_projet: non, import_ia_mensuel: limite(20) };
     const labels = lostFeatureLabels(avant, apres, grille.features);
-    expect(labels).toContain('Fournées actives');
+    // Une simple baisse de quota n'est pas une perte : le membre garde la
+    // fonctionnalité, à une limite moindre — `reducedFeatureLabels` la couvre.
+    expect(labels).not.toContain('Fournées actives');
     expect(labels).toContain('Mode projet');
     expect(labels).not.toContain('Import par IA');
   });
 
   it('rend une liste vide sans régression', () => {
     expect(lostFeatureLabels({ a: oui }, { a: oui }, grille.features)).toEqual([]);
+  });
+});
+
+describe('fonctionnalités réduites (notifications)', () => {
+  it('liste un quota qui baisse sans disparaître, jamais une vraie perte', () => {
+    const avant = { fournees_actives_max: limite(15), mode_projet: oui, import_ia_mensuel: limite(20) };
+    const apres = { fournees_actives_max: limite(2), mode_projet: non, import_ia_mensuel: limite(20) };
+    const labels = reducedFeatureLabels(avant, apres, grille.features);
+    expect(labels).toContain('Fournées actives');
+    expect(labels).not.toContain('Mode projet');
+    expect(labels).not.toContain('Import par IA');
+  });
+
+  it('rend une liste vide sans régression', () => {
+    expect(reducedFeatureLabels({ a: oui }, { a: oui }, grille.features)).toEqual([]);
   });
 });
 

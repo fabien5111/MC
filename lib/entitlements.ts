@@ -184,13 +184,21 @@ export function diffRights(
 // ── Ce qu'un changement de plan fait perdre (notifications, §10) ──
 
 /**
- * Libellés des fonctionnalités effectivement perdues entre deux jeux de
- * droits — pour le message d'avertissement avant échéance (« ce qui sera
- * perdu ») et celui d'expiration (« ce qui change concrètement »), calculés
- * PAR CE MEMBRE plutôt qu'un texte générique par plan (spec §10).
+ * Libellés des fonctionnalités RÉELLEMENT perdues entre deux jeux de droits
+ * — un accès qui tombe à `NO` — pour le message d'avertissement avant
+ * échéance et celui d'expiration, calculés PAR CE MEMBRE plutôt qu'un texte
+ * générique par plan (spec §10).
  *
- * Pure réutilisation de `diffRights` : ne réimplémente aucune comparaison,
- * ne fait que filtrer sur le sens défavorable et résoudre les libellés.
+ * Ne pas confondre avec un quota simplement réduit (illimité → 5, 20/mois →
+ * 10/mois) : le membre garde alors la fonctionnalité, seulement à une
+ * limite moindre — `reducedFeatureLabels` ci-dessous couvre ce cas. Les deux
+ * étaient mélangées jusqu'au 22/09 (`diffRights` filtre sur tout changement
+ * défavorable, y compris une simple baisse de quota — légitime pour l'écran
+ * back-office de comparaison de versions, § « diffRights » plus haut, mais
+ * pas pour annoncer à un membre ce qu'il va « perdre ») : constaté en
+ * testant une descente Pro → Plus, où « Ajustement par IA » et « Partager
+ * mon carnet » étaient annoncés comme perdus alors qu'ils restent
+ * accessibles, à quota réduit.
  */
 export function lostFeatureLabels(
   before: Record<string, GridRight>,
@@ -199,7 +207,24 @@ export function lostFeatureLabels(
 ): string[] {
   const parCle = new Map(features.map((f) => [f.key, f]));
   return diffRights(before, after)
-    .filter((c) => !c.favorable)
+    .filter((c) => !c.favorable && rightScore(c.after) === -1)
+    .map((c) => parCle.get(c.featureKey)?.label)
+    .filter((label): label is string => !!label);
+}
+
+/**
+ * Complément de `lostFeatureLabels` : les fonctionnalités dont le quota
+ * diminue sans disparaître (accès toujours différent de `NO`). Même
+ * source (`diffRights`), même résolution de libellés — seul le tri change.
+ */
+export function reducedFeatureLabels(
+  before: Record<string, GridRight>,
+  after: Record<string, GridRight>,
+  features: GridFeature[],
+): string[] {
+  const parCle = new Map(features.map((f) => [f.key, f]));
+  return diffRights(before, after)
+    .filter((c) => !c.favorable && rightScore(c.after) !== -1)
     .map((c) => parCle.get(c.featureKey)?.label)
     .filter((label): label is string => !!label);
 }

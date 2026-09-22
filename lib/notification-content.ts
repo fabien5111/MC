@@ -12,8 +12,10 @@ export type NotificationContext = {
   planLabel: string;
   /** Date de fin (avant expiration) ou date à laquelle le plan a pris fin. */
   dateIso: string;
-  /** Fonctionnalités effectivement perdues PAR CE MEMBRE (§10) — jamais un texte générique. */
+  /** Fonctionnalités réellement perdues (accès à NO) PAR CE MEMBRE (§10) — jamais un texte générique. */
   lostFeatures: string[];
+  /** Fonctionnalités dont le quota baisse sans disparaître — jamais mélangées aux pertes ci-dessus (cf. lib/entitlements.ts). */
+  reducedFeatures: string[];
 };
 
 export type ComposedNotification = {
@@ -24,9 +26,22 @@ export type ComposedNotification = {
   emailText: string;
 };
 
-function listePerte(lostFeatures: string[]): string {
-  if (lostFeatures.length === 0) return '';
-  return lostFeatures.map((f) => `— ${f}`).join('\n');
+function listeLignes(features: string[]): string {
+  return features.map((f) => `— ${f}`).join('\n');
+}
+
+/**
+ * Bloc « ce qui régresse », en DEUX temps distincts — jamais mélangés (cf.
+ * `lib/entitlements.ts`, `lostFeatureLabels` / `reducedFeatureLabels`) :
+ * une fonctionnalité qui disparaît (`introPerte`) n'est pas la même annonce
+ * qu'un quota qui baisse sans disparaître, toujours sous le même intitulé
+ * neutre. Chaîne vide si rien ne régresse.
+ */
+function blocRegression(lost: string[], reduced: string[], introPerte: string, introReduit: string): string {
+  const blocs: string[] = [];
+  if (lost.length) blocs.push(`${introPerte} :\n${listeLignes(lost)}`);
+  if (reduced.length) blocs.push(`${introReduit} :\n${listeLignes(reduced)}`);
+  return blocs.length ? `\n\n${blocs.join('\n\n')}` : '';
 }
 
 function enveloppe(prenom: string, corps: string, lienTexte: string): { emailHtml: string; emailText: string } {
@@ -46,13 +61,15 @@ function enveloppe(prenom: string, corps: string, lienTexte: string): { emailHtm
 export function composeNotification(type: NotificationType, ctx: NotificationContext): ComposedNotification {
   const prenom = ctx.fullName?.split(' ')[0] || 'bonjour';
   const date = formatDate(ctx.dateIso);
-  const perte = listePerte(ctx.lostFeatures);
 
   switch (type) {
     case 'TRIAL_J3': {
-      const corps = `Votre essai gratuit ${ctx.planLabel} se termine dans 3 jours, le ${date}.${
-        perte ? `\n\nSans abonnement, vous perdrez :\n${perte}` : ''
-      }`;
+      const corps = `Votre essai gratuit ${ctx.planLabel} se termine dans 3 jours, le ${date}.${blocRegression(
+        ctx.lostFeatures,
+        ctx.reducedFeatures,
+        'Sans abonnement, vous perdrez',
+        'Vos quotas seront réduits pour',
+      )}`;
       return {
         title: `Essai ${ctx.planLabel} : fin dans 3 jours`,
         body: corps,
@@ -70,9 +87,12 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
       // (constaté le 21/09 : « il se termine aujourd'hui, le 22 septembre »
       // alors qu'on était le 21). La date affichée suffit, sans readonly sur
       // le jour calendaire du cron.
-      const corps = `Dernier jour de votre essai gratuit ${ctx.planLabel} : il se termine le ${date}.${
-        perte ? `\n\nSans abonnement, vous perdrez :\n${perte}` : ''
-      }`;
+      const corps = `Dernier jour de votre essai gratuit ${ctx.planLabel} : il se termine le ${date}.${blocRegression(
+        ctx.lostFeatures,
+        ctx.reducedFeatures,
+        'Sans abonnement, vous perdrez',
+        'Vos quotas seront réduits pour',
+      )}`;
       return {
         title: `Essai ${ctx.planLabel} : dernier jour`,
         body: corps,
@@ -81,9 +101,12 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
       };
     }
     case 'SUB_J3': {
-      const corps = `Votre abonnement ${ctx.planLabel} arrive à échéance dans 3 jours, le ${date}.${
-        perte ? `\n\nSans renouvellement, vous perdrez :\n${perte}` : ''
-      }`;
+      const corps = `Votre abonnement ${ctx.planLabel} arrive à échéance dans 3 jours, le ${date}.${blocRegression(
+        ctx.lostFeatures,
+        ctx.reducedFeatures,
+        'Sans renouvellement, vous perdrez',
+        'Vos quotas seront réduits pour',
+      )}`;
       return {
         title: `${ctx.planLabel} : échéance dans 3 jours`,
         body: corps,
@@ -93,9 +116,12 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
     }
     case 'SUB_J1': {
       // Même correctif que TRIAL_J1 ci-dessus, même raison.
-      const corps = `Dernier jour de votre abonnement ${ctx.planLabel} : il se termine le ${date}.${
-        perte ? `\n\nSans renouvellement, vous perdrez :\n${perte}` : ''
-      }`;
+      const corps = `Dernier jour de votre abonnement ${ctx.planLabel} : il se termine le ${date}.${blocRegression(
+        ctx.lostFeatures,
+        ctx.reducedFeatures,
+        'Sans renouvellement, vous perdrez',
+        'Vos quotas seront réduits pour',
+      )}`;
       return {
         title: `${ctx.planLabel} : dernier jour`,
         body: corps,
@@ -104,9 +130,12 @@ export function composeNotification(type: NotificationType, ctx: NotificationCon
       };
     }
     case 'EXPIRED_J1': {
-      const corps = `Votre abonnement ${ctx.planLabel} a pris fin le ${date}.${
-        perte ? `\n\nCe qui change concrètement :\n${perte}` : ''
-      }`;
+      const corps = `Votre abonnement ${ctx.planLabel} a pris fin le ${date}.${blocRegression(
+        ctx.lostFeatures,
+        ctx.reducedFeatures,
+        'Vous avez perdu',
+        'Vos quotas sont désormais réduits pour',
+      )}`;
       return {
         title: `Votre abonnement ${ctx.planLabel} a pris fin`,
         body: corps,
