@@ -292,9 +292,17 @@ async function programmerDescente(
       // Aucun prorata : une descente ne rembourse pas la période en cours, le
       // membre garde ce qu'il a payé jusqu'au bout (§5 du ticket).
       proration_behavior: 'none',
+      // La dernière phase n'a ni `end_date` ni `iterations` — ce second
+      // paramètre, hérité d'une version antérieure de l'API sans jamais
+      // avoir pu être vérifié sur un vrai compte Stripe (§14 : « le point
+      // qui n'a jamais été éprouvé »), y est refusé (« Received unknown
+      // parameter: phases[iterations] », constaté le 22/09). Une phase sans
+      // borne de fin est calculée par Stripe lui-même : un cycle complet de
+      // facturation au prix cible, avant que l'échéancier ne se libère
+      // (`end_behavior: 'release'`) et laisse l'abonnement continuer seul.
       phases: [
         { items: [{ price: prixCourant, quantity: 1 }], start_date: courante.startDate, end_date: finPeriode },
-        { items: [{ price: prixCible, quantity: 1 }], iterations: 1 },
+        { items: [{ price: prixCible, quantity: 1 }] },
       ],
     },
   });
