@@ -202,7 +202,20 @@ export async function getChangementProgramme(subscriptionId: string): Promise<Ch
 
   const phases = lirePhasesEcheancier(echeancier.data);
   const courante = phaseCourante(echeancier.data, phases);
-  const suivante = phases.find((p) => p !== courante);
+  // Jamais « la phase qui n'est pas la courante » : une fois la bascule
+  // appliquée, la phase courante EST déjà la cible, et « l'autre » phase
+  // n'est plus celle à venir — c'est celle d'AVANT, déjà révolue. Stripe ne
+  // libère l'échéancier qu'à la fin de la dernière phase (un cycle complet
+  // de plus, cf. le correctif `phases[iterations]`), donc cette fenêtre où
+  // la cible est déjà en place mais l'échéancier encore attaché dure tout un
+  // mois — constaté le 22/09 : le message affichait « Pro programmé »,
+  // Pro étant la phase révolue, pas la suivante. Seule une date de début
+  // STRICTEMENT postérieure à la phase courante compte comme « à venir ».
+  const debutCourante = courante?.startDate;
+  const suivante =
+    debutCourante === null || debutCourante === undefined
+      ? undefined
+      : phases.find((p) => p.startDate !== null && p.startDate > debutCourante);
   if (!suivante?.priceId || suivante.startDate === null) return null;
 
   // Même motif que `resoudrePrixStripe` juste au-dessus : deux lectures
