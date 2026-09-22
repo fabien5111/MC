@@ -35,6 +35,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import {
   cleIdempotence,
   echeancierConforme,
+  identifiantEcheancier,
   lireAbonnementStripe,
   lirePhasesEcheancier,
   messageRefusChangement,
@@ -217,13 +218,6 @@ export async function POST(req: Request) {
   // Aucune écriture en base ici : `customer.subscription.updated` arrive dans
   // la foulée et c'est le webhook qui pose le nouveau palier (§14).
   return NextResponse.json({ sens: 'MONTEE', planCode, immediat: true });
-}
-
-/** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */
-function identifiantEcheancier(valeur: unknown): string | null {
-  if (typeof valeur === 'string') return valeur || null;
-  const id = (valeur as { id?: unknown } | null)?.id;
-  return typeof id === 'string' && id ? id : null;
 }
 
 /**

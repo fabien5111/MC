@@ -21,6 +21,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatDateHeure } from '@/lib/format';
 import { gaugeLevel, isOverLimit, overLimitMessage, type Grid } from '@/lib/entitlements';
 import type { CurrentPlan, UsageLine } from '@/lib/entitlements-data';
+import type { ChangementProgramme } from '@/lib/billing-data';
 
 const COULEUR_JAUGE: Record<string, string> = {
   normal: 'bg-primary',
@@ -36,6 +37,7 @@ export function UsageCard({
   currentPlan,
   trialConsumed,
   hasStripeCustomer,
+  changementProgramme,
 }: {
   usage: UsageLine[];
   grid: Grid;
@@ -48,6 +50,10 @@ export function UsageCard({
   // membre qui s'est déjà abonné une fois garde ce bouton même redevenu
   // gratuit, pour mettre à jour une carte avant de se réabonner.
   hasStripeCustomer: boolean;
+  // Descente en gamme programmée (échéancier Stripe), lue en direct par la
+  // page serveur (`getChangementProgramme`) — jamais recalculée ici. `null`
+  // s'il n'y a rien de programmé.
+  changementProgramme: ChangementProgramme | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -225,6 +231,17 @@ export function UsageCard({
               .
             </>
           )}
+        </p>
+      )}
+
+      {estPayant && changementProgramme && !cancelRequestedAt && !justAnnule && (
+        // Descente en gamme programmée : sans cette ligne, rien ne le
+        // signale une fois le message de confirmation disparu — un membre ne
+        // pouvait pas revérifier qu'un changement était pris en compte
+        // (constaté le 22/09 en testant §3.2 du plan de test JEP-29).
+        <p className="mb-6 text-sm text-on-surface-variant">
+          Passage à <strong>{changementProgramme.planLabel}</strong> programmé le{' '}
+          {formatDate(changementProgramme.effectiveAt)}.
         </p>
       )}
 

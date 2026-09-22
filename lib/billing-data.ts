@@ -19,8 +19,11 @@ import {
   STRIPE_API_BASE,
   codeErreurStripe,
   encoderFormulaireStripe,
+  identifiantEcheancier,
+  lirePhasesEcheancier,
   messageErreurStripe,
   modeStripe,
+  phaseCourante,
   type ModeStripe,
 } from '@/lib/billing';
 
@@ -167,6 +170,56 @@ export async function resoudrePrixStripe(planCode: string, periodicite: Periodic
     .eq('provider', 'stripe')
     .maybeSingle();
   return data?.external_price_id ?? null;
+}
+
+export type ChangementProgramme = { planLabel: string; effectiveAt: string };
+
+/**
+ * Changement de formule déjà programmé (descente en gamme, §
+ * `app/api/abonnement/changer/route.ts`) — lu en DIRECT chez Stripe, jamais
+ * mis en cache ni dupliqué en base.
+ *
+ * Même arbitrage que `getUserIdentities()` sur ce même écran
+ * (`lib/auth.ts`) : un appel externe assumé sur une page rare (`/reglages`),
+ * plutôt qu'une colonne de plus à tenir synchronisée à chaque webhook qui
+ * touche l'abonnement (une seconde descente qui remplace la première, une
+ * montée qui l'annule et la remet en place si elle échoue, son application
+ * à l'échéance...). Découvert le 22/09 en testant une descente Pro → Plus :
+ * la confirmation était un message ponctuel, sans aucune trace ensuite —
+ * un membre ne pouvait pas revérifier qu'un changement était bien programmé.
+ *
+ * Confort d'affichage seulement, jamais une source de vérité pour les
+ * droits : `null` s'il n'y a rien de programmé OU en cas de panne Stripe.
+ */
+export async function getChangementProgramme(subscriptionId: string): Promise<ChangementProgramme | null> {
+  const abo = await appelStripe<{ schedule?: unknown }>(`/subscriptions/${subscriptionId}`);
+  if (!abo.ok) return null;
+  const echeancierId = identifiantEcheancier(abo.data.schedule);
+  if (!echeancierId) return null;
+
+  const echeancier = await appelStripe<unknown>(`/subscription_schedules/${echeancierId}`);
+  if (!echeancier.ok) return null;
+
+  const phases = lirePhasesEcheancier(echeancier.data);
+  const courante = phaseCourante(echeancier.data, phases);
+  const suivante = phases.find((p) => p !== courante);
+  if (!suivante?.priceId || suivante.startDate === null) return null;
+
+  // Même motif que `resoudrePrixStripe` juste au-dessus : deux lectures
+  // plutôt qu'un filtre sur ressource embarquée, pour rester lisible — le
+  // coût ne compte pas sur cette page rare.
+  const admin = createAdminClient();
+  const { data: prix } = await admin
+    .from('billing_prices')
+    .select('plan_id')
+    .eq('external_price_id', suivante.priceId)
+    .eq('provider', 'stripe')
+    .maybeSingle();
+  if (!prix) return null;
+  const { data: plan } = await admin.from('plans').select('label').eq('id', prix.plan_id).maybeSingle();
+  if (!plan) return null;
+
+  return { planLabel: plan.label, effectiveAt: new Date(suivante.startDate * 1000).toISOString() };
 }
 
 // ── Client Stripe d'un membre ───────────────────────────────

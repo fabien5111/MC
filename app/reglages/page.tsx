@@ -17,7 +17,7 @@ import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { getNotifyEmailPreference } from '@/lib/notifications-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
-import { getIdClientStripe } from '@/lib/billing-data';
+import { getAbonnementStripeCourant, getChangementProgramme, getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
@@ -73,7 +73,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed, mesDemandes] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -85,7 +85,14 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getCurrentPlan(user.id),
       hasConsumedTrial(user.id),
       getMesDemandes(user.id),
+      getAbonnementStripeCourant(user.id),
     ]);
+  // Second temps, dépendant du premier : `getChangementProgramme` a besoin de
+  // l'identifiant Stripe résolu ci-dessus, pas de raison de le lancer pour un
+  // abonnement qui n'en est pas un (essai, don administrateur…).
+  const changementProgramme = abonnementStripeCourant
+    ? await getChangementProgramme(abonnementStripeCourant.subscriptionId)
+    : null;
 
   return (
     <>
@@ -132,6 +139,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           currentPlan={currentPlan}
           trialConsumed={trialConsumed}
           hasStripeCustomer={!!(await getIdClientStripe(user.id))}
+          changementProgramme={changementProgramme}
         />
         {user.email && <EmailChangeCard email={user.email} hasPassword={hasPassword} />}
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}

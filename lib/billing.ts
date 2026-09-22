@@ -362,6 +362,13 @@ export function messageRefusChangement(code: string | null): string {
   }
 }
 
+/** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */
+export function identifiantEcheancier(valeur: unknown): string | null {
+  if (typeof valeur === 'string') return valeur || null;
+  const id = (valeur as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && id ? id : null;
+}
+
 export type PhaseEcheancier = {
   startDate: number | null;
   endDate: number | null;
