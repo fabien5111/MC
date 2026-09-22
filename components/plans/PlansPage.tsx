@@ -22,6 +22,7 @@ import {
   diffRights,
   formatRight,
   hasYearlyOption,
+  rightScore,
   type Grid,
 } from '@/lib/entitlements';
 import type { PendingRequest } from '@/lib/entitlements-data';
@@ -236,14 +237,36 @@ export function PlansPage({
     const changements = diffRights(grid.rights[currentPlanCode] ?? {}, grid.rights[planCode] ?? {}).filter(
       (c) => !c.favorable,
     );
+    // `diffRights` vient du back-office (§8.1), où toute baisse de quota
+    // entre deux VERSIONS d'un même plan mérite d'être signalée à l'admin —
+    // même sans perte d'accès. Ici, entre deux PLANS distincts, un quota
+    // simplement réduit (illimité → 5, 20/mois → 10/mois) n'est pas une
+    // perte : le membre garde la fonctionnalité. Seul un score à -1
+    // (`rightScore`, droit `NO`) est une vraie disparition — distinguer les
+    // deux, sans quoi « vous perdrez » ment sur ce qui reste accessible
+    // (constaté le 22/09 en testant une descente Pro → Plus : « Ajustement
+    // par IA » et « Partager mon carnet » listés comme perdus alors qu'ils
+    // restent utilisables, seulement à un quota moindre).
+    const libelle = (c: (typeof changements)[number]) => {
+      const f = grid.features.find((x) => x.key === c.featureKey);
+      return f?.label ?? null;
+    };
     const perdu = changements
-      .map((c) => {
-        const f = grid.features.find((x) => x.key === c.featureKey);
-        return f ? `— ${f.label}` : null;
-      })
-      .filter((v): v is string => !!v);
-    const texte = perdu.length
-      ? `En repassant à ${planCode}, vous perdrez :\n${perdu.join('\n')}\n\nContinuer ?`
+      .filter((c) => rightScore(c.after) === -1)
+      .map(libelle)
+      .filter((v): v is string => !!v)
+      .map((label) => `— ${label}`);
+    const reduit = changements
+      .filter((c) => rightScore(c.after) !== -1)
+      .map(libelle)
+      .filter((v): v is string => !!v)
+      .map((label) => `— ${label}`);
+    const blocs = [
+      perdu.length ? `Vous perdrez :\n${perdu.join('\n')}` : null,
+      reduit.length ? `Vos quotas seront réduits pour :\n${reduit.join('\n')}` : null,
+    ].filter((b): b is string => !!b);
+    const texte = blocs.length
+      ? `En repassant à ${planCode} :\n\n${blocs.join('\n\n')}\n\nContinuer ?`
       : `Repasser à ${planCode} ?`;
     const plan = plans.find((p) => p.code === planCode);
     const complement = abonnementStripe
