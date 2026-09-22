@@ -32,6 +32,7 @@ export function PlansPage({
   planIds,
   connecte,
   currentPlanCode,
+  currentPlanEndsAt,
   essaiActif,
   trialConsumed,
   trialDays,
@@ -42,6 +43,10 @@ export function PlansPage({
   planIds: Record<string, number>;
   connecte: boolean;
   currentPlanCode: string | null;
+  // Échéance de la formule actuelle — pour dater le message de descente
+  // programmée (« vous gardez votre formule jusqu'au [date] »), sans quoi le
+  // membre confirmait un changement sans savoir quand il prend effet.
+  currentPlanEndsAt: string | null;
   // Abonnement courant de type TRIAL (§12 de docs/abonnements.md — la
   // colonne visible n'est alors pas forcément « Pro » mais un plan
   // technique d'essai, ex. « Essai Plan Pro ») : conditionne le remplacement
@@ -269,8 +274,13 @@ export function PlansPage({
       ? `En repassant à ${planCode} :\n\n${blocs.join('\n\n')}\n\nContinuer ?`
       : `Repasser à ${planCode} ?`;
     const plan = plans.find((p) => p.code === planCode);
+    // Datée quand on la connaît : « jusqu'à son échéance » sans date laissait
+    // le membre confirmer sans savoir quand le changement prend effet — la
+    // date exacte est celle que le serveur appliquera de toute façon
+    // (`app/api/abonnement/changer`), afficher autre chose mentirait.
+    const echeance = currentPlanEndsAt ? formatDate(currentPlanEndsAt) : null;
     const complement = abonnementStripe
-      ? '\n\nVous gardez votre formule actuelle jusqu’à son échéance ; aucun remboursement au prorata.'
+      ? `\n\nVous gardez votre formule actuelle jusqu’${echeance ? `au ${echeance}` : 'à son échéance'} ; aucun remboursement au prorata.`
       : '';
     const ok = await dialog.confirm(texte + complement);
     if (!ok) return;
