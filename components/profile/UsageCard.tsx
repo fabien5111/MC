@@ -136,7 +136,10 @@ export function UsageCard({
         dialog.alert(data?.erreur || "Impossible d'ouvrir le portail de facturation, réessayez.");
         return;
       }
-      window.location.href = data.url;
+      // Nouvel onglet : le portail Stripe est une escale, pas une sortie du
+      // site — `window.location.href` aurait fait perdre la page « Mon
+      // forfait » (et son état local, ex. `justAnnule`) au retour.
+      window.open(data.url, '_blank', 'noopener,noreferrer');
     } finally {
       setBusy(false);
     }
