@@ -46,7 +46,7 @@ export function UsageCard({
   // « Essayer », qui ne doit jamais être proposé une seconde fois.
   trialConsumed: boolean;
   // Un client Stripe existe pour ce membre (billing_customers) — conditionne
-  // « Gérer mon moyen de paiement ». Survit à la fin d'un abonnement : un
+  // « Factures et moyen de paiement ». Survit à la fin d'un abonnement : un
   // membre qui s'est déjà abonné une fois garde ce bouton même redevenu
   // gratuit, pour mettre à jour une carte avant de se réabonner.
   hasStripeCustomer: boolean;
@@ -212,7 +212,7 @@ export function UsageCard({
                 onClick={gererMoyenPaiement}
                 className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container"
               >
-                Gérer mon moyen de paiement
+                Factures et moyen de paiement
               </button>
             )}
           </div>

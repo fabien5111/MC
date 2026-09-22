@@ -348,14 +348,14 @@ export function messageRefusChangement(code: string | null): string {
     case 'authentication_required':
       return (
         'Votre banque demande une confirmation pour ce paiement. Mettez à jour ou reconfirmez votre moyen ' +
-        'de paiement depuis « Gérer mon moyen de paiement », puis réessayez.'
+        'de paiement depuis « Factures et moyen de paiement », puis réessayez.'
       );
     case 'card_declined':
     case 'insufficient_funds':
     case 'expired_card':
       return (
-        'Votre banque a refusé le paiement. Vérifiez votre moyen de paiement depuis « Gérer mon moyen de ' +
-        'paiement », puis réessayez.'
+        'Votre banque a refusé le paiement. Vérifiez votre moyen de paiement depuis « Factures et moyen ' +
+        'de paiement », puis réessayez.'
       );
     default:
       return "Le changement de formule n'a pas pu aboutir. Votre formule actuelle est inchangée.";
