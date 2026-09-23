@@ -20,7 +20,9 @@ import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
-import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { buildIngredientsRecap } from '@/lib/ingredients-recap';
+import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
@@ -136,66 +138,6 @@ const numOrNull = (v: string): number | null => {
   const n = parseFloat(String(v).replace(',', '.'));
   return isNaN(n) ? null : n;
 };
-
-// Fusion des ingrédients identiques (nom + commentaire) de toutes les étapes,
-// pour le récapitulatif global — même logique que `mergeRecapLines` de
-// CreerForm, à ceci près que le commentaire fait partie de la clé de fusion :
-// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
-// 66 % » / « chocolat noir 54 % » porté par la note plutôt que le nom)
-// désignent des lignes différentes de la recette, fusionner leurs quantités
-// produirait un total sans usage réel.
-//
-// Deux lignes du même ingrédient saisies dans des unités différentes sont
-// converties vers l'unité de la première rencontrée via la table de
-// référence (`convertQty`) plutôt que de rester sur deux lignes séparées.
-function mergeIngredientsRecap(
-  sps: SpState[],
-  conversions: ConversionRef[],
-  units: UnitRef[],
-  ingredientRefIds: IngredientRefOption[],
-): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
-  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
-  sps.forEach((sp, si) =>
-    sp.ings.forEach((i) => {
-      const name = i.nom.trim();
-      if (!name) return;
-      const note = i.note.trim();
-      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
-      const ex = merged.find((m) => m.key === mkey);
-      if (!ex) {
-        merged.push({ key: mkey, name, qty: String(i.qte ?? '').trim(), unit: i.unite, note, steps: new Set([si]) });
-        return;
-      }
-      ex.steps.add(si);
-      const a = parseFloat(String(ex.qty).replace(',', '.'));
-      const b = parseFloat(String(i.qte).replace(',', '.'));
-      if (isNaN(a) || isNaN(b)) {
-        ex.qty = [ex.qty, i.qte].filter(Boolean).join(' + ');
-        return;
-      }
-      if (ex.unit.trim().toLowerCase() === i.unite.trim().toLowerCase()) {
-        ex.qty = String(+(a + b).toFixed(2));
-        return;
-      }
-      const refId = resolveIngredientRefId(name, ingredientRefIds);
-      const converted = convertQty(conversions, units, refId, i.unite, b, ex.unit);
-      if (converted != null) {
-        ex.qty = String(+(a + converted).toFixed(2));
-      } else {
-        ex.qty = `${ex.qty} ${ex.unit} + ${i.qte} ${i.unite}`.trim();
-        ex.unit = '';
-      }
-    }),
-  );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
-  return merged.map(({ name, qty, unit, note, steps }) => ({
-    name,
-    qty,
-    unit,
-    note,
-    stepIndices: Array.from(steps).sort((a, b) => a - b),
-  }));
-}
 
 // Ligne `difficulties` dont le niveau est le plus proche du niveau donné.
 function closestDifficulty(difficulties: Difficulty[], level: number): Difficulty | null {
@@ -798,7 +740,13 @@ export function RelectureEditor({
   const sumCuisson = sps.reduce((n, sp) => n + (numOrNull(sp.cuisson) || 0), 0);
   const sumTotal = sumPrep + sumAttente + sumCuisson;
   const ingredientsRecap = useMemo(
-    () => mergeIngredientsRecap(sps, conversions, unitRefs, ingredientRefIds),
+    () =>
+      buildIngredientsRecap(
+        sps.flatMap((sp, si) => sp.ings.map((i) => ({ name: i.nom, qty: String(i.qte ?? ''), unit: i.unite, note: i.note, stepIndex: si }))),
+        conversions,
+        unitRefs,
+        ingredientRefIds,
+      ),
     [sps, conversions, unitRefs, ingredientRefIds],
   );
 
@@ -2194,36 +2142,15 @@ export function RelectureEditor({
         {ingredientsRecap.length === 0 ? (
           <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
         ) : (
-          // Nom en `minmax(0,1fr)` : une colonne `max-content` ne peut pas
-          // rétrécir, un nom long débordait donc de l'écran sur mobile.
-          <div className="max-w-2xl grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10">
-            {ingredientsRecap.map((m, k) => {
-              const conv = ingredientConversionText(conversions, unitRefs, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
-              return (
-                <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                  <span className="font-body-md text-body-md text-on-surface break-words">
-                    {m.name}
-                    {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
-                    {m.stepIndices.length === 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => goToStep(m.stepIndices[0])}
-                        className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                        1 étape — {sps[m.stepIndices[0]]?.nom || `Étape ${m.stepIndices[0] + 1}`}
-                      </button>
-                    ) : (
-                      <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
-                    )}
-                  </span>
-                  <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
-                    {[m.qty, m.unit].filter(Boolean).join(' ')}
-                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="max-w-2xl">
+            <IngredientsRecapList
+              groups={ingredientsRecap}
+              conversions={conversions}
+              units={unitRefs}
+              ingredientRefIds={ingredientRefIds}
+              stepTitle={(si) => sps[si]?.nom || `Étape ${si + 1}`}
+              goToStep={goToStep}
+            />
           </div>
         )}
       </section>
