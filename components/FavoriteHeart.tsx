@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
+import { favoriteIntentPath, useResumeFavoriteIntent } from '@/lib/use-favorite-intent';
 
 export function FavoriteHeart({
   recipeId,
@@ -22,9 +23,9 @@ export function FavoriteHeart({
   const { busy, mutate } = useMutation();
   const [fav, setFav] = useState(initialFav);
 
-  async function toggle(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  // Séparé du gestionnaire de clic : `useResumeFavoriteIntent` rejoue ce
+  // geste au montage, sans événement souris à annuler (il n'y en a pas).
+  async function apply() {
     if (busy) return;
     const next = !fav;
     setFav(next); // optimiste
@@ -36,9 +37,9 @@ export function FavoriteHeart({
         } = await supabase.auth.getUser();
         if (!user) {
           // Ce cœur vit sur des grilles (`/carnet`, `/recherche`, l'accueil) :
-          // `location.search` restitue la portée/le tri/la recherche en cours,
-          // pas seulement la page.
-          router.push(connexionHref(location.pathname + location.search));
+          // `favoriteIntentPath` restitue la portée/le tri/la recherche en
+          // cours ET rejoue l'ajout au retour — cf. use-favorite-intent.ts.
+          router.push(connexionHref(favoriteIntentPath(recipeId)));
           return null;
         }
         return next
@@ -49,6 +50,15 @@ export function FavoriteHeart({
     );
     if (!ok) setFav(!next); // rollback de la mise à jour optimiste
   }
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    void apply();
+  }
+
+  // Un par carte : seul le cœur dont `recipeId` correspond au marqueur réagit.
+  useResumeFavoriteIntent(recipeId, fav, apply);
 
   return (
     <button

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
+import { favoriteIntentPath, useResumeFavoriteIntent } from '@/lib/use-favorite-intent';
 
 export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; initialFav: boolean }) {
   const router = useRouter();
@@ -24,8 +25,9 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          // Retour au favori qu'on voulait poser, cf. `connexionHref`.
-          router.push(connexionHref(location.pathname + location.search));
+          // Retour au favori qu'on voulait poser, ET rejeu du geste au
+          // retour (`favoriteIntentPath`) — cf. use-favorite-intent.ts.
+          router.push(connexionHref(favoriteIntentPath(recipeId)));
           return null;
         }
         return next
@@ -36,6 +38,8 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
     );
     if (!ok) setFav(!next); // rollback de la mise à jour optimiste
   }
+
+  useResumeFavoriteIntent(recipeId, fav, toggle);
 
   return (
     <button
