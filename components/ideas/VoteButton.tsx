@@ -47,7 +47,14 @@ export function VoteButton({
           return null;
         }
         return next
-          ? supabase.from('idea_votes').insert({ idea_id: ideaId, user_id: user.id })
+          ? // `upsert` + `ignoreDuplicates` : même précaution que
+            // `FavoriteButton`/`FavoriteHeart` (cf. leur commentaire) — le
+            // rejeu au retour de connexion (`useResumeIntent`) doit rester
+            // sans effet si l'écriture a déjà abouti par un autre chemin,
+            // plutôt que de lever une violation de contrainte unique.
+            supabase
+              .from('idea_votes')
+              .upsert({ idea_id: ideaId, user_id: user.id }, { onConflict: 'idea_id,user_id', ignoreDuplicates: true })
           : supabase.from('idea_votes').delete().eq('idea_id', ideaId).eq('user_id', user.id);
       },
       { errorLabel: next ? 'Vote non enregistré' : 'Vote non retiré' },

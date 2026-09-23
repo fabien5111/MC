@@ -43,7 +43,12 @@ export function FavoriteHeart({
           return null;
         }
         return next
-          ? supabase.from('favorites').insert({ user_id: user.id, recipe_id: recipeId })
+          ? // `upsert` + `ignoreDuplicates` : cf. le commentaire équivalent
+            // dans FavoriteButton.tsx — même recette, deux cœurs sur la
+            // même page (accueil), rejeu simultané au retour de connexion.
+            supabase
+              .from('favorites')
+              .upsert({ user_id: user.id, recipe_id: recipeId }, { onConflict: 'user_id,recipe_id', ignoreDuplicates: true })
           : supabase.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
       },
       { errorLabel: next ? 'Favori non enregistré' : 'Favori non retiré' },

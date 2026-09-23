@@ -31,7 +31,19 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
           return null;
         }
         return next
-          ? supabase.from('favorites').insert({ user_id: user.id, recipe_id: recipeId })
+          ? // `upsert` + `ignoreDuplicates` plutôt qu'un `insert` nu : cette
+            // même recette peut être servie par DEUX `FavoriteHeart`/`FavoriteButton`
+            // distincts sur une même page (ex. « Recette de la semaine » qui
+            // retombe sur `recipes[0]`, déjà présente dans « Dernières
+            // créations ») — le rejeu du favori au retour de connexion
+            // (`useResumeIntent`) les déclenche alors tous les deux en même
+            // temps. Un second `insert()` sur la même clé (`user_id`,
+            // `recipe_id`) levait une violation de contrainte unique,
+            // affichée comme une erreur alors que le favori était bel et
+            // bien posé.
+            supabase
+              .from('favorites')
+              .upsert({ user_id: user.id, recipe_id: recipeId }, { onConflict: 'user_id,recipe_id', ignoreDuplicates: true })
           : supabase.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
       },
       { errorLabel: 'Favori non enregistré' },
