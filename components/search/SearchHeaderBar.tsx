@@ -3,10 +3,16 @@
 // Barre haute de l'écran de recherche : champ en pilule, bouton d'effacement,
 // puis le tri (≥ 1024 px) ou le bouton « Filtres » du tiroir (< 1024 px).
 //
-// Le champ est un vrai formulaire `role="search"` : la soumission est déjà
-// détectée par NavigationSpinner, qui affiche le fouet pendant la navigation.
-// La saisie est débouncée comme les facettes — inutile de valider pour voir
-// les résultats bouger, mais Entrée reste possible.
+// Le champ est un vrai formulaire `role="search"`, mais `data-nav-spinner-ignore`
+// le soustrait à NavigationSpinner : la saisie navigue déjà silencieusement à
+// chaque frappe (debounce), Entrée n'y produit donc AUCUNE navigation
+// supplémentaire — sans cette échappatoire, le fouet plein écran s'armait
+// quand même sur la simple soumission du formulaire (NavigationSpinner
+// écoute tout `submit` d'un formulaire `role="search"`, HomeSearch/HeaderSearch
+// compris, qui EUX naviguent réellement) et restait affiché de longues
+// secondes, jusqu'au filet de sécurité — puisqu'aucun changement d'URL ne
+// venait jamais l'éteindre. Entrée reste possible, simplement sans effet
+// visible, comme une frappe de plus.
 import { useSearch } from '@/components/search/SearchProvider';
 import { countActiveCriteria, SORT_KEYS, SORT_LABELS, type SortKey } from '@/lib/search-params';
 
@@ -27,6 +33,7 @@ export function SearchHeaderBar() {
     <div className="flex flex-col lg:flex-row gap-4 lg:items-center border-b border-outline-variant/50 px-margin-mobile md:px-margin-desktop py-5 bg-surface-container-low/60">
       <form
         role="search"
+        data-nav-spinner-ignore
         onSubmit={(e) => e.preventDefault()}
         className="flex-1 flex items-center gap-2.5 bg-surface-container-lowest border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
       >

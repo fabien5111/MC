@@ -227,9 +227,18 @@ export function NavigationSpinner() {
 
     // Soumission d'une barre de recherche (HomeSearch, HeaderSearch) :
     // `preventDefault()` dans leur propre handler n'empêche pas cet écouteur
-    // en capture de recevoir l'événement en premier.
+    // en capture de recevoir l'événement en premier. `data-nav-spinner-ignore`
+    // (même échappatoire que `isInternalNavigation` pour les clics) couvre le
+    // champ de `/recherche` elle-même (SearchHeaderBar) : sa saisie navigue
+    // déjà silencieusement à chaque frappe (debounce), Entrée n'y déclenche
+    // donc AUCUNE navigation supplémentaire — sans cette échappatoire, le
+    // fouet s'armait quand même sur la simple soumission du formulaire, sans
+    // jamais recevoir le changement d'URL qui l'aurait éteint, jusqu'au filet
+    // de sécurité de 8 s.
     const onSubmit = (e: SubmitEvent) => {
-      if ((e.target as HTMLElement | null)?.closest?.('form[role="search"]')) start();
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.('[data-nav-spinner-ignore]')) return;
+      if (target?.closest?.('form[role="search"]')) start();
     };
 
     // Capture pour intercepter avant que Next ne gère le clic du <Link>.
