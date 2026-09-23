@@ -730,6 +730,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
               <div className="no-print">
                 <ShoppingWidget
+                  recipeId={recipe.id}
                   recipeTitle={recipe.title}
                   ingredients={merged}
                   lists={shoppingLists}

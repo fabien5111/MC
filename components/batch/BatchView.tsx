@@ -1013,6 +1013,12 @@ function PreparerView({
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-courses" className="no-print scroll-mt-28">
           <ShoppingWidget
+            // `isLoggedIn` est figé à `true` juste en dessous : `/fournee/[id]`
+            // passe par `requireUser()` (app/fournee/[id]/page.tsx), la
+            // branche « Connectez-vous » de ShoppingWidget — seule à lire
+            // `recipeId` — n'est donc jamais atteinte ici. Valeur sans
+            // conséquence, gardée cohérente avec le nom du prop.
+            recipeId={batch.recipe_id ?? ''}
             recipeTitle={batch.recipe_title || 'Fournée'}
             ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id, url: null, allergen: null }))}
             lists={shoppingLists}

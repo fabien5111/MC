@@ -16,6 +16,7 @@ import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/li
 import { connexionHref } from '@/lib/nav';
 
 export function ShoppingWidget({
+  recipeId,
   recipeTitle,
   ingredients,
   lists,
@@ -23,6 +24,7 @@ export function ShoppingWidget({
   conversions,
   units,
 }: {
+  recipeId: string;
   recipeTitle: string;
   ingredients: MergedIngredient[];
   lists: { id: number; name: string }[];
@@ -150,7 +152,11 @@ export function ShoppingWidget({
       <div className="p-4 pt-0 flex flex-col gap-4">
         {!isLoggedIn ? (
           <p className="text-sm text-on-surface-variant">
-            <Link href="/connexion" className="text-primary underline">
+            {/* Lien statique, à part du `router.push(connexionHref(...))` de
+                `validate()` plus bas — même défaut que les boutons favori/vote
+                (commits précédents) : un `href="/connexion"` nu renvoyait sur
+                l'accueil après connexion plutôt que sur cette fiche. */}
+            <Link href={connexionHref(`/recette/${recipeId}`)} className="text-primary underline">
               Connectez-vous
             </Link>{' '}
             pour créer une liste de courses.

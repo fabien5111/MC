@@ -2,6 +2,16 @@ import Link from 'next/link';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { INVITATION_CONTENT, type InvitationDestination } from '@/lib/invitation-content';
+import { connexionHref } from '@/lib/nav';
+
+// Chemin réel de chaque destination : cet écran connaît déjà celle qu'il
+// vise (`/carnet` ou `/en-cuisine`, cf. leurs pages) — la perdre dans un
+// `href="/connexion"` nu renverrait un membre qui vient de se créer un
+// compte sur l'accueil plutôt que sur l'écran qu'il cherchait à ouvrir.
+const DESTINATION_PATH: Record<InvitationDestination, string> = {
+  carnet: '/carnet',
+  cuisine: '/en-cuisine',
+};
 
 // Écran vu par un visiteur qui clique sur « Mon carnet » ou « En cuisine »
 // (README « Écran 4 — Invitation »). Décision du handoff : on montre ce qu'il
@@ -19,6 +29,7 @@ import { INVITATION_CONTENT, type InvitationDestination } from '@/lib/invitation
 // pire qu'un aperçu absent.
 export function InvitationScreen({ destination }: { destination: InvitationDestination }) {
   const c = INVITATION_CONTENT[destination];
+  const next = connexionHref(DESTINATION_PATH[destination]);
 
   return (
     <main className="mx-auto max-w-[1200px] px-margin-mobile pb-32 md:px-margin-desktop">
@@ -33,12 +44,12 @@ export function InvitationScreen({ destination }: { destination: InvitationDesti
         <p className="mb-8 text-[16px] leading-relaxed text-on-surface-variant">{c.lead}</p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
-            href="/connexion?inscription=1"
+            href={`${next}&inscription=1`}
             className="rounded-pill bg-primary px-9 py-3.5 text-[12.5px] font-semibold uppercase tracking-[0.15em] text-on-primary transition-all hover:shadow-xl active:scale-95"
           >
             Créer un compte
           </Link>
-          <Link href="/connexion" className="font-label-md text-[13px] font-semibold text-primary hover:underline">
+          <Link href={next} className="font-label-md text-[13px] font-semibold text-primary hover:underline">
             J&apos;ai déjà un compte
           </Link>
         </div>
