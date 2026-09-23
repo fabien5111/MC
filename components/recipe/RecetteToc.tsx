@@ -82,7 +82,7 @@ export function RecetteToc({
       const supabase = createClient();
       const { data, error } = await supabase.rpc('duplicate_recipe' as never, { p_recipe_id: recipeId } as never);
       if (error) {
-        // Même oubli du lot 5a que dans ShoppingWidget (§14) : un plafond de
+        // Même oubli du lot 5a que dans ShoppingWidget (§15) : un plafond de
         // recettes atteint affichait « MC_QUOTA_EXCEEDED:recettes_max:… »
         // tel quel.
         const educatif = await translateQuotaError(error.message);

@@ -721,7 +721,478 @@ vrai paiement réussi le ferait.
   et le prompt de code sur `PlansPage.tsx` sont un pont temporaire, pas une
   fonctionnalité produit — ne pas construire dessus (remise, palier de prix…).
 
-## 14. JEP-130 — une seule grammaire de blocage, et la relecture ré-ouverte
+## 14. Stripe (JEP-29) — lot A : le socle de données
+
+`mc_simulate_subscribe` (§13) était annoncée comme « un pont temporaire, pas
+une fonctionnalité produit ». JEP-29 est le jour où on la retire. La
+spécification du ticket décrit un modèle qui ignore ce chantier — colonnes
+`stripe_*` et `plan` sur `profiles` — c'est-à-dire **exactement les deux
+colonnes décommissionnées au lot 4** (§5). Elle n'est pas suivie sur ce point :
+Stripe devient une source d'écriture de plus sur `subscriptions`, pas un
+second système.
+
+### Correspondance entre la spécification du ticket et l'existant
+
+| Spec JEP-29 §3 | Ce qui est réellement écrit |
+|---|---|
+| `profiles.stripe_customer_id` | `billing_customers` + `subscriptions.external_customer_id` |
+| `profiles.stripe_subscription_id` | `subscriptions.external_subscription_id` |
+| `profiles.plan` (enum) | `subscriptions.plan_version_id` |
+| `profiles.subscription_status` | `subscriptions.status` + `.type = 'PAID'` |
+| `profiles.current_period_end` | `subscriptions.ends_at` |
+| `profiles.cancel_at_period_end` | `subscriptions.cancel_at_period_end` |
+
+### Le prix décide du plan, et c'est une donnée
+
+`billing_prices` porte la correspondance `price_id` → plan. Jamais une
+constante dans le code : la règle ESLint anti-`plan === 'PRO'` (§5) vaut aussi
+pour un identifiant Stripe qui en tiendrait lieu, et un palier ajouté ne doit
+demander aucun déploiement.
+
+La colonne `mode` (`test` / `live`) est ce qui rend la table nécessaire plutôt
+qu'une paire de colonnes sur `plans` : Stripe attribue des identifiants de prix
+**différents** dans ses deux modes, et une seule base sert les deux. Le mode se
+déduit du préfixe de `STRIPE_SECRET_KEY` (`sk_test_`), sans variable
+supplémentaire à tenir à jour — donc sans possibilité qu'elle mente.
+
+`PRO_ESSAI` n'a volontairement aucune ligne : **l'absence de prix est ce qui le
+rend invendable**, sans qu'aucun code n'ait à connaître son nom.
+
+### Le client Stripe vit dans sa propre table
+
+`billing_customers` plutôt qu'une colonne sur `profiles`, pour deux raisons :
+le lien doit survivre à la fin d'un abonnement (c'est lui qui conditionne
+l'accès au portail de gestion), et `profiles` est relue à chaque rendu de page
+avec ses colonnes énumérées (`PROFILE_COLUMNS`) — on ne l'alourdit pas pour une
+donnée que deux routes consultent.
+
+### Idempotence : réserver plutôt que constater
+
+Stripe rejoue ses webhooks — c'est une garantie de livraison, pas un cas
+limite. `mc_claim_billing_event` réserve et marque en une seule opération sur
+la clé primaire de `billing_events`, même motif que `claimNotification` (§7) et
+que `mc_consume` (§1.3). Un événement `FAILED`, ou resté `PROCESSING` plus de
+cinq minutes (processus mort en cours de route), est reprenable ; un événement
+`PROCESSED` ne revient jamais.
+
+### `past_due` ne coupe rien — arbitrage JEP-29
+
+La spécification du ticket demandait, sur `invoice.payment_failed`, une
+« rétrogradation immédiate du plan en free ». Écarté, pour trois raisons qui
+vont dans le même sens : Stripe relance lui-même une carte refusée pendant
+plusieurs semaines, le §10 de ce document pose qu'« on ne retire jamais un
+service déjà en cours », et l'infrastructure de notification (in-app +
+e-mail, lot 8) existe déjà pour prévenir le membre.
+
+`past_due` est donc mappé sur `ACTIVE`. La perte des droits n'arrive qu'à
+`customer.subscription.deleted`. **Conséquence à configurer côté Stripe** :
+la relance doit se terminer par une *annulation* de l'abonnement, jamais par
+un statut `unpaid` laissé en l'état — sinon la coupure n'arrive jamais.
+**Vérifié et posé le 21/09** (Dashboard Stripe → Paiements → Gérer les échecs
+de paiement) : Smart Retries (8 tentatives sur 2 semaines), et « État de
+l'abonnement » → **annuler l'abonnement** en cas d'échec de toutes les
+tentatives — la garantie ci-dessus tient donc réellement, des deux côtés.
+
+### Correction (21/09) — `ends_at` avançait d'un mois pendant les relances
+
+Constaté en testant une horloge Stripe (`docs/test-stripe-jep29.md` § 2.5) :
+un abonnement `past_due`, dont la SEULE facture ouverte portait encore sur la
+période ratée (21/09 → 21/10, `attempt_count: 2`), affichait pourtant
+« se termine le 21 novembre » sur `/reglages` — un mois de grâce en trop,
+jamais accordé par Stripe.
+
+Cause : `mc_apply_stripe_subscription` recopiait `p_current_period_end` dans
+`ends_at` à chaque `customer.subscription.updated`, **sans condition de
+statut**. Or ce champ n'existe plus à la racine de l'objet `subscription` sur
+les versions d'API récentes de Stripe — il vit désormais sur
+`items.data[].current_period_end` (repli déjà anticipé par
+`lireAbonnementStripe`, `lib/billing.ts:210`). Et à ce niveau, il avance sur
+le **prochain** cycle calendaire prévu, indépendamment du sort de la facture
+en cours de relance — vérifié en confrontant l'objet `subscription` (item à
+21/11) à la liste `/v1/invoices?subscription=…` (une seule facture, ouverte,
+period_end au 21/10).
+
+**Correctif** : dans la branche de mise à jour de `mc_apply_stripe_subscription`
+(même version de plan, ligne déjà `ACTIVE`), `ends_at` ne prend
+`p_current_period_end` que si `p_stripe_status <> 'past_due'` ; sinon
+l'échéance déjà en base est conservée telle quelle :
+
+```sql
+ends_at = case when p_stripe_status = 'past_due' then v_courant.ends_at else p_current_period_end end,
+```
+
+Appliqué en base par `CREATE OR REPLACE FUNCTION` (signature strictement
+identique — cf. le piège des surcharges plus bas), sous le rôle
+`supabase_admin`, propriétaire réel de la fonction (`postgres`, utilisé sur ce
+serveur, n'est pas superuser et n'a pas pu la remplacer directement — même
+piège que `mc_admin_reset_trial`). La ligne déjà faussée par le bug
+(`subscriptions.id = 16`, compte de test) a été réparée à la main dans la
+même passe.
+
+**Non touché, faute d'avoir observé le cas** : si `p_stripe_status` devient
+directement `unpaid`/`canceled` (donc `CANCELLED` côté interne) tout en
+restant dans cette même branche (même version de plan), `ends_at` hérite
+encore du même souci. Plus rare, jamais rencontré en test — à surveiller si
+un cas réel se présente.
+
+**Comportement vérifié ensuite, pour ne pas le reprendre à tort pour un bug** :
+un paiement qui finit par réussir APRÈS une ou plusieurs relances ne fait PAS
+avancer `ends_at` à la date du paiement — Stripe acquitte la facture de la
+période déjà en cours, il n'en ouvre pas une nouvelle. L'échéance reste celle
+d'origine (21/10 dans ce test) jusqu'au prochain cycle réel (21/11) : un
+paiement en retard rattrape l'accès, il ne décale pas le rythme mensuel. Sans
+cette clarification, un futur test pourrait interpréter cette absence de
+changement comme une régression du correctif ci-dessus — c'en est au
+contraire la preuve que la deuxième moitié du mécanisme (retour à `active`)
+fonctionne bien.
+
+### Un changement de formule ouvre une ligne, il n'en réécrit pas une
+
+`mc_apply_stripe_subscription` clôt la ligne courante (`status = 'CANCELLED'`,
+même geste que `mc_admin_grant_subscription`) et en insère une nouvelle quand
+le `plan_version_id` change, alors même que l'abonnement Stripe, lui, reste le
+même. Réécrire `plan_version_id` en place aurait effacé le palier précédent de
+l'historique de la fiche membre, et brouillé le gel des conditions (§1.1), qui
+s'attache à la version **réellement souscrite**.
+
+D'où l'index unique partiel sur `external_subscription_id` **filtré sur
+`status = 'ACTIVE'`** : au plus une ligne vivante par abonnement Stripe, et
+autant de lignes d'historique qu'il le faut. Posé en même temps,
+`subscriptions_one_active_non_default` grave enfin en base l'invariant §3.5,
+jusqu'ici seulement tenu par la discipline des trois fonctions qui écrivent.
+
+### `renewal_anchor` se cale sur l'échéance Stripe, pas sur l'instant
+
+`extract(day from current_period_end)`, et non `extract(day from now())` :
+c'est cette ancre que `mc_period_bounds` utilise pour borner les quotas
+mensuels de flux. Prise sur `now()`, le crédit IA se renouvellerait un autre
+jour du mois que la facture — deux calendriers pour un seul abonnement.
+
+### Trois fonctions fermées au navigateur
+
+Contrairement à `mc_start_trial` ou `mc_cancel_own_subscription`, appelées en
+RPC depuis le client, `mc_apply_stripe_subscription`, `mc_claim_billing_event`
+et `mc_finish_billing_event` sont `revoke`d de `anon` et `authenticated` :
+elles accordent des droits payants sans contrepartie. Seul le webhook, en
+`service_role`, les atteint. Même doctrine que le module contact, où aucune
+policy d'écriture n'existe pour personne.
+
+### Mensuel seulement, annuel prévu
+
+`plan_versions.price_yearly` est nul sur les quatre plans, donc
+`hasYearlyOption()` est déjà faux et la bascule Mensuel/Annuel de `/plans` est
+déjà masquée : la phase 1 mensuelle ne demande aucun code. Ouvrir l'annuel
+plus tard sera un prix à renseigner et une ligne `billing_prices` de
+périodicité `YEARLY` à ajouter — pas un déploiement.
+
+### Résolu depuis — `mc_cancel_own_subscription` ne suffisait plus seule
+
+Note laissée tôt dans ce lot, avant l'écriture du lot E : `mc_cancel_own_subscription`
+(§10) restait purement SQL, sans jamais parler à Stripe — un abonné payant
+qui résiliait aurait perdu ses droits tout en continuant d'être prélevé.
+
+**Refermé par `/api/abonnement/resilier`** : pour `provider = 'stripe'`, la
+route prévient Stripe (`cancel_at_period_end`) et laisse le webhook aligner
+`subscriptions` ; la RPC SQL ne reste le seul chemin que pour ce qui n'a
+jamais d'objet Stripe (`TRIAL`, `GIFT`, don manuel). Vérifié de bout en bout
+via `docs/test-stripe-jep29.md` §4 (23/09) : `cancel_at_period_end` posé côté
+Stripe, bascule propre vers la formule Gratuite à l'échéance.
+
+### Lot B — pas de SDK, et un module qui ne décide rien
+
+Deux règles, posées en même temps que `lib/billing.ts` / `lib/billing-data.ts`.
+
+**Aucune dépendance `stripe`.** Ce dépôt appelle déjà ses API tierces en
+`fetch` brut (`lib/ai/claude.ts` pour Anthropic) et vérifie ses signatures de
+webhook à la main (`verifierSignatureWebhook`, `lib/jira.ts`, testée). Le SDK
+apporterait `constructEvent` — quinze lignes de HMAC déjà écrites juste à
+côté — au prix d'une dépendance qui se reconstruit sur le nœud à chaque
+déploiement. La version de l'API Stripe est donc épinglée **dans le Dashboard
+du compte**, pas dans le code : un second endroit à tenir à jour, invisible
+depuis le compte qui subit les changements, aurait vite divergé.
+
+**Le TypeScript transporte, le SQL décide.** `appliquerAbonnementStripe`
+passe à `mc_apply_stripe_subscription` le statut Stripe **brut**
+(`active`, `past_due`, `canceled`…) ; la traduction en `ACTIVE` / `CANCELLED`
+n'existe qu'en SQL. L'écrire aussi côté application en ferait deux
+implémentations d'une même règle — précisément ce que le §5 interdit pour le
+calcul des droits, pour la même raison : c'est la version SQL qui fait foi,
+puisque c'est elle qui écrit.
+
+Deux conséquences pratiques de ce lot :
+
+- **`idempotencyKey` est exigée, pas optionnelle**, sur toute écriture vers
+  Stripe : `appelStripe` réessaie une fois sur un échec transitoire, et un
+  retry de `POST` est indiscernable d'une seconde demande côté Stripe. Sans
+  cette clé, le filet anti-panne créerait un second abonnement — donc un
+  second prélèvement. La fonction lève plutôt que d'accepter un appel sans
+  elle.
+- **`resoudrePrixStripe` rend `null` plutôt que de lever** quand le plan n'a
+  pas de prix dans le mode courant. C'est ce `null` qui rend `PRO_ESSAI`
+  invendable et qui garde la formule annuelle fermée, sans qu'aucun code ne
+  connaisse le nom de l'un ni l'autre.
+
+### Lot C — le webhook, et les trois pièges de l'asynchrone
+
+`app/api/webhooks/stripe/route.ts` est le seul chemin qui écrit un abonnement
+Stripe. Les routes de souscription et de gestion (lots D et E) ne font que
+*demander* quelque chose à Stripe : c'est l'événement qui revient qui fait foi,
+jamais la réponse immédiate au clic. Un membre qui ferme son onglet pendant la
+redirection est abonné quand même.
+
+**1. L'ordre d'arrivée n'est pas garanti.**
+`customer.subscription.created` précède souvent `checkout.session.completed`.
+Si le membre n'était identifié que par la session de Checkout, l'abonnement
+arriverait avant qu'on sache à qui il appartient. Deux mesures, complémentaires
+et redondantes à dessein : le membre est porté par la métadonnée de
+l'ABONNEMENT lui-même (`subscription_data.metadata`, posée au lot D), et le
+rattachement du client Stripe est refait depuis les deux chemins. Chacun suffit,
+aucun n'est le prérequis de l'autre.
+
+**2. La date d'échéance se lit à deux endroits.** Stripe a déplacé
+`current_period_end` de l'abonnement vers ses articles dans les versions
+récentes de l'API. N'en lire qu'un marcherait aujourd'hui et cesserait de
+marcher au jour d'une montée de version faite depuis le Dashboard — **sans rien
+casser bruyamment** : les abonnements seraient simplement écrits sans échéance,
+donc sans expiration. `lireAbonnementStripe` lit les deux, et rend `null` si
+aucun ne répond.
+
+**3. Un objet inexploitable LÈVE, il n'est pas ignoré.** Écrire un abonnement
+sans échéance accorderait des droits sans fin, et un `200` silencieux effacerait
+la trace du problème. La route répond 500 : Stripe rejoue, l'événement repasse
+en `FAILED` donc redevient réservable, et le motif se lit dans
+`billing_events.error`.
+
+À l'inverse, trois cas repartent en `200` sans rien faire, délibérément : un
+événement déjà réservé (rejeu normal), un type non traité (un compte Stripe en
+émet des dizaines — les journaliser tous ferait de `billing_events` le journal
+de tout le compte), et une session de Checkout sans membre identifiable, qui
+peut venir d'un paiement créé à la main depuis le Dashboard.
+
+**`invoice.payment_failed` ne réserve pas de notification.** Contrairement au
+cron d'expiration, qui passe par `claimNotification`, chaque tentative de
+prélèvement produit son propre événement Stripe, et `billing_events` garantit
+déjà qu'il n'est traité qu'une fois. Réserver en plus ferait taire la deuxième
+alerte — justement celle qui devient urgente. Le message dit explicitement que
+l'accès continue : annoncer le seul échec laisserait croire à une coupure et
+ferait résilier un membre dont la carte a simplement expiré.
+
+### Lot D — Checkout, et le retrait de la simulation
+
+`app/api/abonnement/checkout/route.ts` ouvre une session Stripe Checkout ;
+`components/plans/CheckoutWaiverDialog.tsx` porte la case de renonciation au
+droit de rétractation (§4.1) devant `PlansPage`. Remplace
+`mc_simulate_subscribe` — annoncée comme pont temporaire depuis le §13.
+
+**La route ne pose jamais de droits.** Elle demande une chose à Stripe et rend
+une URL de redirection ; seul le webhook (lot C) écrit `subscriptions`, une
+fois le paiement réellement confirmé. Un membre qui ferme l'onglet Stripe
+n'est pas abonné — c'est voulu, et c'est pourquoi `/reglages?abonnement=confirme`
+affiche « en cours d'activation », jamais « activé » : au moment du retour de
+redirection, l'écriture du webhook peut ne pas avoir encore eu lieu.
+
+**La case de renonciation est revérifiée côté serveur**, jamais sur la seule
+foi du client — doctrine constante du dépôt (« les contrôles client ne prouvent
+rien »). Un litige se tranche sur ce qui est tracé serveur (`waiver_accepted_at`,
+posé en métadonnée de l'abonnement Stripe puis recopié par le webhook), pas sur
+ce qui a été affiché à l'écran.
+
+**Fenêtre dédiée plutôt qu'un `dialog.confirm()`** : une case à cocher n'entre
+pas dans le vocabulaire du Dialog générique, et cocher-puis-cliquer est le
+geste attendu pour une mention légale — un `confirm()` ferait porter
+l'acceptation par le libellé du bouton, pas par un geste explicite et séparé.
+
+**Résolution du prix, jamais son absence en 500.** Un plan sans ligne
+`billing_prices` dans le mode courant (config back-office manquante, ou
+formule volontairement invendable comme `PRO_ESSAI`, §12) rend un 422 —
+erreur de configuration, jamais une panne.
+
+**`mc_simulate_subscribe` n'est plus appelée nulle part dans le code**, mais
+reste en base : la retirer est une migration séparée (DROP FUNCTION), à faire
+une fois ce lot éprouvé en production plutôt que dans le même geste que son
+remplacement.
+
+### Lot E (résiliation + portail) — le trou du lot A est refermé
+
+`app/api/abonnement/resilier/route.ts` et `app/api/abonnement/portail/route.ts`.
+C'était le point signalé dès l'analyse du ticket : `mc_cancel_own_subscription`
+ne parlait à aucun moment à Stripe — un membre qui résiliait aurait perdu ses
+droits en continuant d'être prélevé.
+
+**Le chemin est choisi par le `provider` de l'abonnement, jamais par un
+paramètre venu du client.** Un `TRIAL` ou un `GIFT` n'ont pas d'objet Stripe :
+`mc_cancel_own_subscription` reste appelée telle quelle, geste inchangé depuis
+avant ce lot. Un `PAID` en `provider = 'stripe'` déclenche
+`subscriptions.update(id, { cancel_at_period_end: true })` — et **la route
+n'écrit alors RIEN dans `subscriptions` elle-même** : c'est le webhook qui
+aligne la base, comme pour toute écriture Stripe (§14). La date de fin
+annoncée au membre vient de la réponse Stripe elle-même, synchrone, jamais
+d'une relecture de la base qui pourrait encore porter l'ancienne valeur le
+temps que l'événement arrive.
+
+**Le portail ne gère que le moyen de paiement.** §14 (arbitrages du lot A)
+posait déjà que résiliation et changement d'offre restent des gestes du site.
+Conséquence à régler côté Stripe, pas dans ce code : la configuration du
+portail (Dashboard → Customer portal) doit désactiver ses propres options
+d'annulation et de changement de plan — sans quoi le portail ouvrirait un
+second chemin concurrent pour le même geste.
+
+**La clé d'idempotence gagne une fenêtre de temps** (`cleIdempotence`,
+`lib/billing.ts`) plutôt qu'une clé figée sur `(membre, action)` sans limite —
+défaut relevé en écrivant la résiliation. Une clé stable indéfiniment protège
+bien contre une vraie retransmission réseau, mais entomberait un abandon
+volontaire jusqu'à 24 h (durée du cache d'idempotence Stripe) : un membre qui
+reviendrait le lendemain retenter le même geste recevrait la réponse périmée
+de la veille. La fenêtre de dix minutes garde la protection utile sans figer
+l'intention au-delà d'une session de clic. La clé du Checkout (lot D) est
+corrigée par la même occasion.
+
+**Restant du lot E, non traité ici** : changement de formule (upgrade /
+downgrade) avec prorata et authentification forte (SCA) — la partie la plus
+exposée du chantier, qui touche à de l'argent réel avec des cas limites
+(carte européenne demandant une confirmation, `payment_behavior` à choisir).
+
+### Lot E (changement de formule) — deux gestes, un seul bouton
+
+`app/api/abonnement/changer/route.ts`. C'est la **grille** qui décide lequel —
+`plans.order_index`, jamais le code du plan (règle ESLint du §5 ; un palier
+ajouté en back-office doit se placer tout seul).
+
+**Montée : immédiate, au prorata, et ATOMIQUE.** `always_invoice` facture la
+différence tout de suite, `error_if_incomplete` fait échouer l'appel entier si
+ce paiement n'aboutit pas. Ce n'est pas un excès de prudence : notre propre
+arbitrage mappe `past_due` sur `ACTIVE` (§14), donc une montée installée en
+`past_due` **offrirait** le palier supérieur à qui n'a pas payé. D'où le refus
+de `default_incomplete`, qui aurait pourtant simplifié le cas SCA.
+
+Corollaire : une authentification bancaire demandée fait échouer la montée.
+C'est un cas minoritaire — le Checkout initial a déjà authentifié et créé un
+mandat, dont les prélèvements suivants sont le plus souvent exemptés — mais
+réel, et distingué du refus de carte : `messageRefusChangement` ne renvoie pas
+changer une carte qui fonctionne.
+
+**Descente : à l'échéance, sans remboursement.** Un simple changement de prix
+prendrait effet immédiatement sur l'objet Stripe, donc sur les droits (le
+webhook lit le prix courant), et retirerait des droits déjà payés. D'où
+l'échéancier (`subscription_schedules`).
+
+**On repart toujours d'un échéancier NEUF.** Réécrire les phases d'un
+échéancier en cours obligerait à réémettre ses phases passées à l'identique —
+le cas se présente dès qu'une première descente a pris effet.
+`from_subscription` rend au contraire, à tous les coups, un échéancier à une
+seule phase : la composition n'a jamais qu'un cas à traiter.
+
+**Relecture de contrôle, puis libération.** La documentation Stripe n'étant
+pas joignable depuis l'environnement de développement, la sémantique des
+phases n'a pas pu être vérifiée sur pièces. Plutôt que de faire confiance à
+« l'appel n'a pas levé », la route **relit** ce que Stripe a enregistré et
+libère l'échéancier si ce n'est pas exactement « formule actuelle jusqu'à
+l'échéance, puis la nouvelle ». Un échéancier accepté mais mal composé
+facturerait de travers, en silence et à retardement — le pire mode de
+défaillance sur de l'argent réel. `release` et jamais `cancel` : le second
+résilierait l'abonnement lui-même.
+
+**Trois interactions entre gestes, qui n'existent qu'ensemble** :
+- une montée doit d'abord **libérer** un échéancier (Stripe refuse de modifier
+  un abonnement qu'il pilote), et **remettre en place** la descente programmée
+  si le paiement échoue — sinon elle disparaîtrait en silence. Si la libération
+  échoue, la montée est abandonnée avant d'être tentée : la descente reste
+  intacte, ce qui vaut mieux qu'un échec plus loin annonçant à tort qu'elle a
+  été annulée ;
+- une **résiliation** libère elle aussi l'échéancier, sans quoi un membre ayant
+  programmé une descente ne pourrait plus arrêter ses prélèvements ;
+- une **descente sur un abonnement déjà résilié est refusée** : poser un
+  échéancier en `release` par-dessus ferait repartir la facturation au tarif
+  inférieur. Une montée, elle, vaut reprise (`cancel_at_period_end: false`) —
+  payer davantage dit assez clairement qu'on veut continuer.
+
+**Descendre vers la formule gratuite est une RÉSILIATION**, pas un changement
+de tarif : elle n'a pas de prix Stripe, il n'y a rien à programmer. La ligne
+`DEFAULT` assure déjà le retour à la formule par défaut.
+
+**La périodicité ne vient jamais du client.** Elle est lue sur l'abonnement :
+se fier à la bascule d'affichage de `/plans` débiterait une année au prorata à
+un abonné mensuel dont la bascule était du mauvais côté. La bascule est
+d'ailleurs masquée pour un abonné Stripe — changer de périodicité reste hors
+périmètre de la phase 1.
+
+**Clé d'idempotence posée par le CLIC**, pas par la requête : deux envois du
+même clic ne débitent qu'une fois, mais une reprise délibérée après « changez
+de carte » repart à neuf. Une clé stable sur dix minutes rejouerait le refus
+en cache et rendrait ce conseil inapplicable.
+
+### Ce qui reste à vérifier sur un vrai compte Stripe
+
+La documentation Stripe est inaccessible depuis l'environnement de
+développement (bloquée par la politique réseau) : la composition des phases
+d'un échéancier a été écrite sans pouvoir être confrontée aux pièces. La
+relecture de contrôle transforme une erreur de composition en échec immédiat
+plutôt qu'en facturation faussée, mais **elle ne remplace pas un essai réel** :
+un aller-retour montée puis descente sur un compte de test reste à faire avant
+toute mise en production.
+
+Non couvert non plus, faute de prix annuel configuré : tout le chemin
+`YEARLY`, y compris le changement de périodicité, hors périmètre de la phase 1.
+
+### `NEXT_PUBLIC_SITE_URL` manquante sur l'aperçu de PR
+
+Constaté en testant le lot D sur `jepatisse-preview` (18/09) : après un
+paiement de test réussi, Stripe renvoyait vers `http://localhost:3000/reglages`
+— page morte, `ERR_CONNECTION_REFUSED`.
+
+`siteUrl()` (`lib/site-url.ts`) retombe sur `http://localhost:3000` quand ni
+`NEXT_PUBLIC_SITE_URL` ni les variables Vercel (`VERCEL_PROJECT_PRODUCTION_URL`
+/ `VERCEL_URL`, héritées de l'ancienne plateforme et absentes sur Virtuozzo) ne
+sont posées. `NEXT_PUBLIC_SITE_URL` **est** posée sur `www`/`dev`
+(docs/migration-infomaniak.md § 7.16 bis), mais ne l'avait jamais eu besoin
+d'être sur `jepatisse-preview` avant ce chantier — c'est le premier lot du
+dépôt à appeler `siteUrl()` depuis une route qui doit produire une URL absolue
+(`success_url`/`cancel_url` de Stripe Checkout, `return_url` du portail).
+
+**Pas une faille à corriger dans le code** : lire l'en-tête `Host` en repli
+aurait réintroduit exactement le risque de redirection ouverte que
+`lib/redirection.ts` documente et refuse pour cette même raison (l'équilibreur
+ayant un `server_name _` attrape-tout). La correction est de poser la
+variable, une fois, sur ce nœud — sa valeur étant stable d'un aperçu de PR à
+l'autre (§ CLAUDE.md, un seul nœud d'aperçu). Comme toute `NEXT_PUBLIC_*`,
+elle compte au build ET à l'exécution : la poser sans reconstruire ne suffit
+pas.
+
+### Trois trous relevés en souscrivant pour de vrai (21-23/09), à traiter au lot F
+
+Constatés en déroulant `docs/test-stripe-jep29.md` §§ 2-3 sur
+`jepatisse-preview` avec une horloge de test Stripe — aucun des trois n'est un
+défaut du code existant, ce sont des manques de périmètre.
+
+**Aucun e-mail ni notification à la souscription.** `traiter()`
+(`app/api/webhooks/stripe/route.ts`) écrit l'abonnement sur
+`checkout.session.completed` et `customer.subscription.*` sans jamais appeler
+`createNotification` ni `sendEmailBestEffort` — seul `invoice.payment_failed`
+le fait (`notifierEchecPaiement`). Rien dans le ticket JEP-29 ni dans ce
+journal ne l'avait demandé ; ce n'est donc pas un oubli d'implémentation, mais
+une fonctionnalité jamais spécifiée. Stripe peut envoyer son propre reçu
+(réglage « Customer emails » du Dashboard), mais ce n'est pas un e-mail à la
+marque du site.
+
+**Le renouvellement automatique n'est jamais affirmé, seulement déduit par
+défaut.** `UsageCard.tsx` affiche « Plus — se termine le [date] (N jours). »
+pour un abonnement actif, et seule la branche annulée précise « sans
+reconduction ensuite ». L'absence de cette mention est censée signifier que
+ça se renouvelle, mais rien ne l'énonce positivement — un abonné qui découvre
+l'écran pour la première fois ne peut pas le savoir avec certitude.
+
+**L'intro de `/plans` promet un essai qui n'est plus accessible.** Le
+paragraphe « Un essai gratuit de {N} jours... » (`PlansPage.tsx`) s'affiche
+inconditionnellement, alors que le bouton « Essayer » lui-même disparaît de
+toutes les colonnes dès `trialConsumed` (déjà consommé) ou `essaiActif` (en
+cours) — vérifié en testant §3.2 sur un membre déjà abonné (23/09) : la
+phrase reste affichée au-dessus d'une grille qui ne propose plus que
+« S'abonner » / « Rétrograder ». Même logique à reprendre que `peutEssayer`
+dans `UsageCard.tsx` (`!trialConsumed && !essaiActif`, plus l'existence d'au
+moins un plan `trialAllowed` dans la grille) pour conditionner l'affichage du
+paragraphe.
+
+## 15. JEP-130 — une seule grammaire de blocage, et la relecture ré-ouverte
 
 Deux demandes distinctes dans le même ticket : rendre lisible le blocage
 d'une action non incluse dans la formule, et laisser terminer un import déjà
@@ -894,7 +1365,7 @@ une étape plutôt qu'une seule ligne d'ingrédient), gouverné par le même
 droit `remplacement_ingredient_par_recette`. `droits.remplacementIngredient`
 était déjà dans la portée du composant — utilisé juste au-dessus pour
 `BatchIngredientsEditor` — mais n'était vérifié nulle part sur ce second
-bouton, oublié du relevé initial (§14, grammaire 3 : « rien du tout »)
+bouton, oublié du relevé initial (§15, grammaire 3 : « rien du tout »)
 faute d'avoir cherché tous les points d'entrée vers `StepExpandDialog`, pas
 seulement vers `IngredientExpandDialog`. Corrigé avec le même
 `LockedAction` que son homologue ; le bouton « Annuler le remplacement »
@@ -923,3 +1394,24 @@ souris, tactile et clavier, et qui ne navigue plus jamais par erreur.
 contrôle `disabled` (bouton, `input`), qui ne déclenche aucun événement
 `click` à intercepter — connu, non traité, moins grave qu'une navigation
 involontaire puisqu'il ne mène nulle part de toute façon.
+
+### Piège rencontré le 20/09 : `create or replace function` ne remplace pas si la signature change
+
+En ajoutant `p_email_hash` (paramètre optionnel) à `mc_admin_reset_trial`,
+`create or replace function` n'a **pas** remplacé la fonction existante — il
+en a créé une **seconde**, PostgreSQL traitant deux listes de paramètres
+différentes comme deux surcharges distinctes, jamais comme une même fonction
+à mettre à jour. Résultat : PostgREST refusait tout appel RPC avec
+`PGRST203` (« Could not choose the best candidate function »), les deux
+signatures partageant les mêmes noms sur leur préfixe commun
+(`p_user_id`, `p_reason`).
+
+Symptôme trompeur pris pour un bug de logique métier ("La réinitialisation
+n'a pas pu aboutir.") alors que la fonction n'était même pas atteinte —
+d'où l'importance d'afficher l'erreur **brute** sur un écran admin plutôt
+que de la traduire (cf. commit sur `reinitialiser-essai`).
+
+**Retenu pour toute future modification de signature d'une fonction déjà en
+production** : `drop function` de l'ancienne signature avant (ou après) le
+`create or replace` de la nouvelle — jamais l'un sans l'autre. Vérifier après
+coup avec `pg_get_function_identity_arguments` : une seule ligne attendue.

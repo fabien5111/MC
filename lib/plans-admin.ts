@@ -8,6 +8,8 @@
 // direct est ici la bonne réponse, pas un contournement : l'écran est rare et
 // réservé à l'admin complet.
 import { createClient } from '@/lib/supabase/server';
+import { configStripe, MissingStripeConfigError } from '@/lib/billing-data';
+import type { ModeStripe } from '@/lib/billing';
 import type { Grid, GridFeature, GridPlan, GridRight, LimitType, RightValue } from '@/lib/entitlements';
 
 export type AdminGrid = Grid & {
@@ -18,6 +20,15 @@ export type AdminGrid = Grid & {
    * du récapitulatif avant enregistrement (§8.1).
    */
   subscribers: Record<string, number>;
+  /**
+   * `price_id` Stripe mensuel de chaque plan, dans le mode de la clé en
+   * vigueur sur CE serveur (lot F, §14 `docs/abonnements.md` — jusque-là
+   * modifiable seulement par SQL direct). `null` sans ligne configurée
+   * (formule invendable comme `PRO_ESSAI`, ou config manquante).
+   */
+  stripePriceIds: Record<string, string | null>;
+  /** `null` si `STRIPE_SECRET_KEY` est absente — le champ reste alors en lecture seule. */
+  stripeMode: ModeStripe | null;
 };
 
 const asLimitType = (v: string): LimitType => (v === 'STOCK' || v === 'FLOW' ? v : 'NONE');
@@ -93,7 +104,48 @@ export async function getAdminGrid(): Promise<AdminGrid> {
     };
   }
 
-  return { plans, features, rights, planIds, subscribers: await countSubscribers(supabase, plans) };
+  const [subscribers, { priceIds: stripePriceIds, mode: stripeMode }] = await Promise.all([
+    countSubscribers(supabase, plans),
+    getStripePriceIds(supabase, planIds),
+  ]);
+
+  return { plans, features, rights, planIds, subscribers, stripePriceIds, stripeMode };
+}
+
+/**
+ * Lu avec la session (policy administrateur sur `billing_prices`), comme le
+ * reste de cet écran — pas la clé service_role, réservée à l'écriture
+ * (`/api/admin/abonnements/prix-stripe`, doctrine des tables `billing_*`).
+ */
+async function getStripePriceIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planIds: Record<string, number>,
+): Promise<{ priceIds: Record<string, string | null>; mode: ModeStripe | null }> {
+  const priceIds: Record<string, string | null> = {};
+  for (const code of Object.keys(planIds)) priceIds[code] = null;
+
+  let mode: ModeStripe | null;
+  try {
+    mode = configStripe().mode;
+  } catch (e) {
+    if (e instanceof MissingStripeConfigError) return { priceIds, mode: null };
+    throw e;
+  }
+
+  const idToCode = new Map(Object.entries(planIds).map(([code, id]) => [id, code]));
+  const { data } = await supabase
+    .from('billing_prices')
+    .select('plan_id, external_price_id')
+    .eq('provider', 'stripe')
+    .eq('mode', mode)
+    .eq('periodicity', 'MONTHLY')
+    .in('plan_id', Object.values(planIds));
+
+  for (const row of data ?? []) {
+    const code = idToCode.get(row.plan_id);
+    if (code) priceIds[code] = row.external_price_id;
+  }
+  return { priceIds, mode };
 }
 
 /**

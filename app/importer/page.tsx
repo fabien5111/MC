@@ -29,7 +29,7 @@ export default async function ImporterPage() {
   // Message propre à cette page plutôt que `blockingMessage()` générique :
   // ce dernier reprend tel quel le libellé de la grille (« Écran de
   // relecture après import »), exact avant JEP-130 (toute la fonctionnalité
-  // était bloquée) mais trompeur depuis le renversement (§14,
+  // était bloquée) mais trompeur depuis le renversement (§15,
   // docs/abonnements.md) — la relecture, elle, reste accessible ; seule la
   // création d'un NOUVEL import est fermée. Un titre qui nomme « l'écran de
   // relecture » comme indisponible contredirait le bandeau de

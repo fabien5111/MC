@@ -9,6 +9,7 @@
 // serveur-side (jamais un contrôle uniquement côté écran).
 import { createClient } from '@/lib/supabase/server';
 import { getUsageReport, type UsageLine } from '@/lib/entitlements-data';
+import { hashTrialEmail } from '@/lib/trial';
 
 export type SubscriptionRow = {
   id: number;
@@ -63,15 +64,43 @@ function versLigne(r: {
 export async function getMemberSubscriptionOverview(userId: string): Promise<MemberSubscriptionOverview> {
   const supabase = await createClient();
 
-  const [{ data: rows }, { data: trial }, { data: plans }] = await Promise.all([
+  const [{ data: rows }, { data: profil }, { data: plans }] = await Promise.all([
     supabase
       .from('subscriptions')
       .select('id, type, periodicity, starts_at, ends_at, status, reason, created_by, plan_versions!inner(plans!inner(code, label))')
       .eq('user_id', userId)
       .order('starts_at', { ascending: false }),
-    supabase.from('trials').select('user_id').eq('user_id', userId).maybeSingle(),
+    supabase.from('profiles').select('email').eq('id', userId).maybeSingle(),
     supabase.from('plans').select('code, label').eq('active', true).order('order_index'),
   ]);
+
+  // `mc_start_trial` bloque sur `user_id = v_user OR email_hash = p_email_hash`
+  // (§1.4 de docs/abonnements.md) : une empreinte d'adresse survit à la
+  // suppression du compte qui l'a consommée (`trials.user_id` passe à `null`,
+  // la ligne reste). Ne tester que `user_id` ici affichait « aucun essai
+  // consommé » — bouton grisé — pour un membre dont l'ADRESSE est bloquée par
+  // un ancien compte supprimé : constaté le 20/09 en testant JEP-29. Les deux
+  // conditions sont donc vérifiées, comme côté SQL.
+  let trialConsumed = false;
+  {
+    const { data: parUser } = await supabase.from('trials').select('user_id').eq('user_id', userId).maybeSingle();
+    trialConsumed = !!parUser;
+    if (!trialConsumed && profil?.email) {
+      try {
+        const { data: parEmail } = await supabase
+          .from('trials')
+          .select('user_id')
+          .eq('email_hash', hashTrialEmail(profil.email))
+          .maybeSingle();
+        trialConsumed = !!parEmail;
+      } catch (e) {
+        // `TRIAL_EMAIL_SALT` absente : on ne peut pas calculer l'empreinte.
+        // Reste sur le seul test par user_id plutôt que de faire échouer
+        // toute la fiche abonnement pour un problème de configuration.
+        console.error('getMemberSubscriptionOverview: hashTrialEmail:', (e as Error).message);
+      }
+    }
+  }
 
   const history = (rows ?? []).map(versLigne);
   const maintenant = Date.now();
@@ -90,7 +119,7 @@ export async function getMemberSubscriptionOverview(userId: string): Promise<Mem
     daysLeft,
     history,
     usage: await getUsageReport(userId),
-    trialConsumed: !!trial,
+    trialConsumed,
     availablePlans: (plans ?? []).map((p) => ({ code: p.code, label: p.label })),
   };
 }

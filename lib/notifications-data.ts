@@ -65,12 +65,38 @@ export const getRecentNotifications = cache(async (userId: string): Promise<Noti
  * Préférence e-mail du membre courant, lue à part de `getProfile()` — elle
  * ne sert qu'à `/reglages`, un écran rare ; l'ajouter à la liste énumérée de
  * `lib/auth.ts` la ferait relire à chaque rendu de page pour rien.
+ *
+ * Réservée aux appelants qui ont une session (le membre lit sa PROPRE
+ * préférence) : le client de session s'appuie sur la RLS. Un appelant SANS
+ * session (cron, webhook) doit utiliser `getNotifyEmailPreferenceAdmin`
+ * ci-dessous — cf. son commentaire, l'erreur constatée le 21/09 (JEP-29).
  */
 export const getNotifyEmailPreference = cache(async (userId: string): Promise<boolean> => {
   const supabase = await createClient();
   const { data } = await supabase.from('profiles').select('notify_email' as never).eq('id', userId).maybeSingle();
   return (data as { notify_email?: boolean } | null)?.notify_email ?? true;
 });
+
+/**
+ * Même préférence, mais pour un appelant SANS session — le cron
+ * d'abonnements et le webhook Stripe, qui agissent pour un membre qu'ils
+ * n'authentifient jamais eux-mêmes. Avec le client de SESSION, cette lecture
+ * passait en rôle `anon` (aucun cookie à décoder), la RLS la bloquait, et la
+ * fonction retombait systématiquement sur son filet `?? true` — un membre
+ * qui décochait « Recevoir les notifications par e-mail » continuait de
+ * recevoir l'e-mail, sans qu'aucune erreur ne le signale. Découvert en
+ * testant l'essai gratuit à J-3 (`docs/test-stripe-jep29.md`) : la case
+ * était en réalité cochée sur ce compte, donc sans rapport avec l'e-mail
+ * manquant ce jour-là, mais le défaut était bien réel et touchait aussi la
+ * notification d'échec de paiement du webhook Stripe.
+ *
+ * Prend le client déjà construit par l'appelant plutôt que d'en recréer un —
+ * même motif que `claimNotification` ci-dessous.
+ */
+export async function getNotifyEmailPreferenceAdmin(admin: SupabaseClient<Database>, userId: string): Promise<boolean> {
+  const { data } = await admin.from('profiles').select('notify_email' as never).eq('id', userId).maybeSingle();
+  return (data as { notify_email?: boolean } | null)?.notify_email ?? true;
+}
 
 type NotificationsSentUpsert = {
   upsert: (

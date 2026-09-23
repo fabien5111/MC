@@ -16,12 +16,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatDateHeure } from '@/lib/format';
 import { gaugeLevel, isOverLimit, overLimitMessage, type Grid } from '@/lib/entitlements';
 import type { CurrentPlan, UsageLine } from '@/lib/entitlements-data';
+import type { ChangementProgramme } from '@/lib/billing-data';
 
 const COULEUR_JAUGE: Record<string, string> = {
   normal: 'bg-primary',
@@ -31,19 +31,13 @@ const COULEUR_JAUGE: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { TRIAL: 'Essai', PAID: 'Abonnement', GIFT: 'Abonnement offert' };
 
-// `mc_cancel_own_subscription` n'est pas encore dans lib/database.types.ts
-// tant que la migration n'a pas été appliquée puis régénérée — appel non
-// typé en attendant, même motif que `mc_publish_plan_version` dans
-// PlansManager.
-function rpc(): (fn: string) => PromiseLike<{ data: string | null; error: { message: string } | null }> {
-  return createClient().rpc as unknown as (fn: string) => PromiseLike<{ data: string | null; error: { message: string } | null }>;
-}
-
 export function UsageCard({
   usage,
   grid,
   currentPlan,
   trialConsumed,
+  hasStripeCustomer,
+  changementProgramme,
 }: {
   usage: UsageLine[];
   grid: Grid;
@@ -51,11 +45,24 @@ export function UsageCard({
   // Essai déjà consommé (tous plans confondus, §7.2) — conditionne le bouton
   // « Essayer », qui ne doit jamais être proposé une seconde fois.
   trialConsumed: boolean;
+  // Un client Stripe existe pour ce membre (billing_customers) — conditionne
+  // « Factures et moyen de paiement ». Survit à la fin d'un abonnement : un
+  // membre qui s'est déjà abonné une fois garde ce bouton même redevenu
+  // gratuit, pour mettre à jour une carte avant de se réabonner.
+  hasStripeCustomer: boolean;
+  // Descente en gamme programmée (échéancier Stripe), lue en direct par la
+  // page serveur (`getChangementProgramme`) — jamais recalculée ici. `null`
+  // s'il n'y a rien de programmé.
+  changementProgramme: ChangementProgramme | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
+  // Le voile est partagé par l'annulation et l'ouverture du portail : un
+  // libellé figé sur « Annulation… » mentirait sur la seconde.
+  const [busyLabel, setBusyLabel] = useState('Annulation…');
   const [justAnnule, setJustAnnule] = useState(false);
+  const [finPeriodeAnnulee, setFinPeriodeAnnulee] = useState<string | null>(null);
 
   const parCle = new Map(grid.features.map((f) => [f.key, f]));
   const lignes = usage
@@ -96,15 +103,43 @@ export function UsageCard({
       { okLabel: estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement', cancelLabel: 'Revenir' },
     );
     if (!ok) return;
+    setBusyLabel('Annulation…');
     setBusy(true);
     try {
-      const { error } = await rpc()('mc_cancel_own_subscription');
-      if (error) {
-        dialog.alert('Erreur : ' + error.message);
+      const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "La résiliation n'a pas pu aboutir.");
         return;
       }
       setJustAnnule(true);
+      // `router.refresh()` seul : pour un abonnement Stripe, la ligne
+      // `subscriptions` peut ne pas encore porter `cancel_requested_at` au
+      // moment de ce rendu — c'est le webhook qui l'écrit, quasi
+      // immédiatement mais pas synchrone. `justAnnule` porte l'affichage en
+      // attendant, avec la date rendue par Stripe lui-même (`data.finPeriode`),
+      // jamais une valeur qui pourrait encore être l'ancienne.
+      if (data.finPeriode) setFinPeriodeAnnulee(data.finPeriode);
       router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function gererMoyenPaiement() {
+    setBusyLabel('Ouverture du portail…');
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/portail', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data?.url) {
+        dialog.alert(data?.erreur || "Impossible d'ouvrir le portail de facturation, réessayez.");
+        return;
+      }
+      // Nouvel onglet : le portail Stripe est une escale, pas une sortie du
+      // site — `window.location.href` aurait fait perdre la page « Mon
+      // forfait » (et son état local, ex. `justAnnule`) au retour.
+      window.open(data.url, '_blank', 'noopener,noreferrer');
     } finally {
       setBusy(false);
     }
@@ -112,7 +147,7 @@ export function UsageCard({
 
   return (
     <section className="mt-6 border border-outline-variant bg-surface-container-lowest p-8 md:p-10">
-      <LoadingOverlay visible={busy} label="Annulation…" />
+      <LoadingOverlay visible={busy} label={busyLabel} />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[22px] text-primary">speed</span>
@@ -120,7 +155,11 @@ export function UsageCard({
             Mon forfait — {currentPlan?.label ?? 'Gratuit'}
           </h2>
         </div>
-        {(peutEssayer || hasHigherPlan || peutSouscrire || (estPayant && !cancelRequestedAt && !justAnnule)) && (
+        {(peutEssayer ||
+          hasHigherPlan ||
+          peutSouscrire ||
+          estPayant ||
+          hasStripeCustomer) && (
           <div className="flex flex-wrap items-center gap-2">
             {peutEssayer && (
               <Link
@@ -146,6 +185,21 @@ export function UsageCard({
                 S&apos;abonner
               </Link>
             )}
+            {estPayant && (
+              // Sans ce lien, un abonné déjà sur la formule la plus haute
+              // (`hasHigherPlan` faux, donc pas de « Passer à une formule
+              // supérieure ») n'avait plus aucun chemin vers `/plans` pour
+              // redescendre — seuls « Annuler » et « Gérer mon moyen de
+              // paiement » restaient. Toujours affiché pour un abonné payant,
+              // même quand une formule supérieure existe déjà par ailleurs :
+              // « Passer à » ne mène qu'à la montée, celui-ci à l'écran entier.
+              <Link
+                href="/plans"
+                className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                Voir toutes les formules
+              </Link>
+            )}
             {estPayant && !cancelRequestedAt && !justAnnule && (
               <button
                 type="button"
@@ -153,6 +207,15 @@ export function UsageCard({
                 className="rounded-pill border border-error px-4 py-2 font-label-md text-label-md text-error transition-colors hover:bg-error hover:text-white"
               >
                 {estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement'}
+              </button>
+            )}
+            {hasStripeCustomer && (
+              <button
+                type="button"
+                onClick={gererMoyenPaiement}
+                className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                Factures et moyen de paiement
               </button>
             )}
           </div>
@@ -164,7 +227,7 @@ export function UsageCard({
           {cancelRequestedAt || justAnnule ? (
             <>
               Annulé — {TYPE_LABEL[currentPlan!.type] ?? 'Abonnement'} conservé jusqu&apos;au{' '}
-              {currentPlan!.endsAt ? formatFin(currentPlan!.endsAt) : '—'}, sans reconduction ensuite.
+              {formatFin(finPeriodeAnnulee ?? currentPlan!.endsAt) || '—'}, sans reconduction ensuite.
             </>
           ) : (
             <>
@@ -183,9 +246,33 @@ export function UsageCard({
                       : ''
                   }`
                 : 'sans date de fin'}
-              .
+              {
+                // Affirmé, pas seulement déduit de l'absence de mention
+                // contraire : un abonné qui découvre l'écran pour la première
+                // fois n'a sinon aucun moyen de savoir que ça se renouvelle
+                // (constaté en testant §4 du plan de test JEP-29, 23/09). Ne
+                // s'applique qu'à un vrai abonnement Stripe avec une échéance
+                // connue — un don administrateur ou une simulation ne se
+                // renouvellent pas tout seuls, ils s'éteignent simplement à
+                // leur échéance ; « sans date de fin » n'a pas de date à
+                // laquelle se référer.
+                currentPlan!.endsAt && currentPlan!.provider === 'stripe'
+                  ? ' — se renouvelle automatiquement à cette date.'
+                  : '.'
+              }
             </>
           )}
+        </p>
+      )}
+
+      {estPayant && changementProgramme && !cancelRequestedAt && !justAnnule && (
+        // Descente en gamme programmée : sans cette ligne, rien ne le
+        // signale une fois le message de confirmation disparu — un membre ne
+        // pouvait pas revérifier qu'un changement était pris en compte
+        // (constaté le 22/09 en testant §3.2 du plan de test JEP-29).
+        <p className="mb-6 text-sm text-on-surface-variant">
+          Passage à <strong>{changementProgramme.planLabel}</strong> programmé le{' '}
+          {formatDate(changementProgramme.effectiveAt)}.
         </p>
       )}
 

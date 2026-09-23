@@ -127,7 +127,7 @@ export function ShoppingWidget({
       // requêtes), donc rien ne traduisait un refus de quota : la création
       // d'une liste au-delà du plafond affichait le message PostgreSQL brut
       // — « MC_QUOTA_EXCEEDED:listes_courses_max:3:3 ». Oubli du lot 5a,
-      // relevé au passage de JEP-130 (§14, cinquième grammaire).
+      // relevé au passage de JEP-130 (§15, cinquième grammaire).
       const brut = (e as Error).message;
       const educatif = await translateQuotaError(brut);
       dialog.alert(educatif ?? 'Erreur : ' + brut);

@@ -4,7 +4,7 @@
 // le crédit du mois est épuisé (JEP-130).
 //
 // **Pourquoi l'action reste VISIBLE.** Avant ce composant, cinq grammaires
-// cohabitaient (relevé complet dans docs/abonnements.md §14), dont deux par
+// cohabitaient (relevé complet dans docs/abonnements.md §15), dont deux par
 // accident : un bouton purement absent, sans un mot (fusion de listes,
 // poignée de réordonnancement, remplacement d'un ingrédient), et un refus
 // découvert seulement après le clic (bouton « Projet » du carnet). Une action
