@@ -68,3 +68,18 @@ export function navKeyForPath(pathname: string): NavKey | undefined {
     return 'cuisine';
   return undefined;
 }
+
+// URL de connexion qui restitue le chemin courant après authentification
+// (paramètre `?next=`, lu par `app/connexion/page.tsx` et borné là-bas aux
+// chemins internes). Neuf appels `router.push('/connexion')` du site
+// l'oubliaient : le visiteur qui clique ❤️ sur une recette, se connecte, puis
+// retombe sur l'accueil — recette perdue, geste à refaire. `FollowButton` et
+// `PlansPage` faisaient déjà ce geste correctement ; ce helper le centralise
+// plutôt que de le laisser recopié composant par composant.
+//
+// `next` doit inclure la recherche (`location.pathname + location.search`)
+// quand l'écran porte un état dans l'URL (ex. `/carnet?scope=fav`), sinon une
+// session expirée y renvoie nu.
+export function connexionHref(next: string): string {
+  return `/connexion?next=${encodeURIComponent(next)}`;
+}

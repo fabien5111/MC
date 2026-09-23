@@ -23,6 +23,7 @@ import { SimilarIdeaRow } from '@/components/ideas/SimilarIdeaRow';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX, type IdeaSummary, type SimilarIdea } from '@/lib/ideas';
+import { connexionHref } from '@/lib/nav';
 
 const SUGGEST_DEBOUNCE_MS = 300;
 const TITLE_MIN = 5;
@@ -94,7 +95,7 @@ export function IdeaForm() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          router.push(connexionHref('/idees/nouvelle'));
           return null;
         }
         const { data, error } = await supabase

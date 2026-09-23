@@ -3,7 +3,7 @@
 // Génération de liste de courses depuis une recette (porté de mcShoppingOpen /
 // mcShoppingValidate de recette.html) : sélection des ingrédients, ajout à une
 // liste existante ou création d'une nouvelle, puis redirection vers la liste.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -13,8 +13,10 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { connexionHref } from '@/lib/nav';
 
 export function ShoppingWidget({
+  recipeId,
   recipeTitle,
   ingredients,
   lists,
@@ -22,6 +24,7 @@ export function ShoppingWidget({
   conversions,
   units,
 }: {
+  recipeId: string;
   recipeTitle: string;
   ingredients: MergedIngredient[];
   lists: { id: number; name: string }[];
@@ -36,6 +39,27 @@ export function ShoppingWidget({
   const [choice, setChoice] = useState<string>('__new__');
   const [name, setName] = useState(`Courses — ${recipeTitle}`);
   const [busy, setBusy] = useState(false);
+
+  // Retour de `/connexion` (cf. le lien « Connectez-vous » plus bas) :
+  // l'ancre seule ne suffit pas, ce panneau est un `<details>` replié par
+  // défaut — y atterrir sans l'ouvrir montrerait juste son en-tête. On le
+  // déplie ET on y défile, plutôt que de laisser la page remonter en haut
+  // de la fiche comme avant ce correctif.
+  //
+  // `#courses-connexion`, et non `#sec-courses` : `BatchView.tsx` monte ce
+  // même composant sur `/fournee/[id]` avec `id="sec-courses"` déjà posé sur
+  // SA propre div englobante, pour son sommaire — deux éléments avec le même
+  // id sur une même page est invalide (et casserait ce sommaire). Sans
+  // conséquence ici : cette page est toujours authentifiée
+  // (`requireUser()`), la branche « Connectez-vous » n'y est jamais rendue.
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (location.hash !== '#courses-connexion' || !detailsRef.current) return;
+    detailsRef.current.open = true;
+    detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Une seule fois, au montage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggle(i: number) {
     setPicked((p) => p.map((v, k) => (k === i ? !v : v)));
@@ -55,7 +79,7 @@ export function ShoppingWidget({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/connexion');
+        router.push(connexionHref(location.pathname + location.search));
         return;
       }
       let listId: number;
@@ -138,7 +162,11 @@ export function ShoppingWidget({
   return (
     <>
     <LoadingOverlay visible={busy} label="Ajout à la liste de courses…" />
-    <details className="group border border-secondary/40 rounded-xl mt-4 bg-surface-container-low">
+    <details
+      id="courses-connexion"
+      ref={detailsRef}
+      className="scroll-mt-28 group border border-secondary/40 rounded-xl mt-4 bg-surface-container-low"
+    >
       <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
         <span className="font-label-md text-label-md text-primary flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span> Ajouter à une liste de
@@ -149,7 +177,13 @@ export function ShoppingWidget({
       <div className="p-4 pt-0 flex flex-col gap-4">
         {!isLoggedIn ? (
           <p className="text-sm text-on-surface-variant">
-            <Link href="/connexion" className="text-primary underline">
+            {/* Lien statique, à part du `router.push(connexionHref(...))` de
+                `validate()` plus bas — même défaut que les boutons favori/vote
+                (commits précédents) : un `href="/connexion"` nu renvoyait sur
+                l'accueil après connexion plutôt que sur cette fiche.
+                `#courses-connexion` fait de plus revenir sur CE panneau
+                (déplié, cf. l'effet ci-dessus) plutôt qu'en haut de la fiche. */}
+            <Link href={connexionHref(`/recette/${recipeId}#courses-connexion`)} className="text-primary underline">
               Connectez-vous
             </Link>{' '}
             pour créer une liste de courses.

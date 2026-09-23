@@ -10,6 +10,7 @@
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
@@ -392,6 +393,19 @@ export function BatchView({
     <>
       <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
+
+        {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
+            est connu (ex. « Résultats de recherche » si la fournée a été
+            lancée juste après y avoir ouvert la recette), sinon le repli
+            « En cuisine » d'origine — cette fiche n'avait auparavant aucun
+            retour, contrairement à `/courses/[id]` (`ShoppingItems`), qui
+            suit exactement ce motif. */}
+        <RetourContextuel
+          fallbackHref="/en-cuisine"
+          fallbackLabel="En cuisine"
+          currentLabel={batch.recipe_title || 'Fournée'}
+          className="no-print mb-4"
+        />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
@@ -999,6 +1013,12 @@ function PreparerView({
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-courses" className="no-print scroll-mt-28">
           <ShoppingWidget
+            // `isLoggedIn` est figé à `true` juste en dessous : `/fournee/[id]`
+            // passe par `requireUser()` (app/fournee/[id]/page.tsx), la
+            // branche « Connectez-vous » de ShoppingWidget — seule à lire
+            // `recipeId` — n'est donc jamais atteinte ici. Valeur sans
+            // conséquence, gardée cohérente avec le nom du prop.
+            recipeId={batch.recipe_id ?? ''}
             recipeTitle={batch.recipe_title || 'Fournée'}
             ingredients={merged.map((r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, comment: r.comment, ref_id: r.ref_id, url: null, allergen: null }))}
             lists={shoppingLists}

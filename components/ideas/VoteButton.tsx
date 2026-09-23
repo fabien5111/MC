@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { connexionHref } from '@/lib/nav';
+import { intentPath, useResumeIntent } from '@/lib/use-resumable-intent';
 
 export function VoteButton({
   ideaId,
@@ -25,9 +27,9 @@ export function VoteButton({
   const [votes, setVotes] = useState(initialVotes);
   const [hasVoted, setHasVoted] = useState(initialHasVoted);
 
-  async function toggle(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  // Séparé du gestionnaire de clic : `useResumeIntent` rejoue ce geste au
+  // montage, sans événement souris à annuler (il n'y en a pas).
+  async function apply() {
     if (busy) return;
     const next = !hasVoted;
     setHasVoted(next); // optimiste
@@ -39,11 +41,20 @@ export function VoteButton({
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          // `intentPath` restitue le tri/la page en cours ET rejoue le vote
+          // au retour — cf. use-resumable-intent.ts.
+          router.push(connexionHref(intentPath('vote', ideaId)));
           return null;
         }
         return next
-          ? supabase.from('idea_votes').insert({ idea_id: ideaId, user_id: user.id })
+          ? // `upsert` + `ignoreDuplicates` : même précaution que
+            // `FavoriteButton`/`FavoriteHeart` (cf. leur commentaire) — le
+            // rejeu au retour de connexion (`useResumeIntent`) doit rester
+            // sans effet si l'écriture a déjà abouti par un autre chemin,
+            // plutôt que de lever une violation de contrainte unique.
+            supabase
+              .from('idea_votes')
+              .upsert({ idea_id: ideaId, user_id: user.id }, { onConflict: 'idea_id,user_id', ignoreDuplicates: true })
           : supabase.from('idea_votes').delete().eq('idea_id', ideaId).eq('user_id', user.id);
       },
       { errorLabel: next ? 'Vote non enregistré' : 'Vote non retiré' },
@@ -53,6 +64,15 @@ export function VoteButton({
       setVotes((v) => v - (next ? 1 : -1));
     }
   }
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    void apply();
+  }
+
+  // Un par idée : seul le bouton dont `ideaId` correspond au marqueur réagit.
+  useResumeIntent('vote', ideaId, hasVoted, apply);
 
   return (
     <button

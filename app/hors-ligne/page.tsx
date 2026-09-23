@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ReloadButton } from '@/components/ReloadButton';
 
 export const metadata: Metadata = {
   title: 'Hors connexion — Je pâtisse !',
@@ -10,6 +11,10 @@ export const metadata: Metadata = {
 // c'est la seule page que le service worker met en cache, et elle ne doit
 // jamais avoir besoin d'une donnée qu'il ne peut pas lui-même fournir hors
 // ligne (cf. doctrine « pas de HTML dynamique en cache » dans CLAUDE.md).
+//
+// Le bouton « Réessayer » vit dans `ReloadButton` (Client Component à part) :
+// cette page-ci reste un Server Component sans aucune logique — rien à
+// réhydrater qui dépende du réseau qu'elle est justement censée pallier.
 export default function HorsLignePage() {
   return (
     <div className="bg-surface font-body-md text-on-surface overflow-x-hidden min-h-screen flex flex-col">
@@ -21,6 +26,7 @@ export default function HorsLignePage() {
             Cette page a besoin du réseau pour s&apos;afficher. Vérifiez votre connexion, puis
             réessayez.
           </p>
+          <ReloadButton />
         </div>
       </main>
     </div>

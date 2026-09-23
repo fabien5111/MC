@@ -40,6 +40,7 @@ import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { connexionHref } from '@/lib/nav';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -845,7 +846,10 @@ export function CreerForm({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/connexion');
+        // `location.search` porte `?id=` en édition — sans lui, se connecter
+        // renverrait vers un formulaire de création vierge plutôt que vers
+        // la recette en cours d'édition.
+        router.push(connexionHref(location.pathname + location.search));
         return;
       }
 

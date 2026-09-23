@@ -15,6 +15,7 @@ import { getRecipeDefaultPhoto } from '@/lib/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { RetourContextuel } from '@/components/RetourContextuel';
 import { RecipeCard } from '@/components/RecipeCard';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { ShareButton } from '@/components/recipe/ShareButton';
@@ -67,6 +68,13 @@ export default async function PublicProfilePage({ params, searchParams }: Params
   return (
     <>
       <Header />
+      <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop pt-6">
+        {/* Retour contextuel : vers l'écran de liste d'où l'on vient (résultats
+            de recherche, en particulier depuis une AuthorCard) quand il est
+            connu, sinon le repli « Accueil » — cette vitrine n'avait
+            auparavant aucun fil d'Ariane. */}
+        <RetourContextuel fallbackHref="/" fallbackLabel="Accueil" currentLabel={name} />
+      </div>
       <main className="mb-24 pb-8">
         {/* ── Bannière + identité ─────────────────────────────────────── */}
         <section className="relative">

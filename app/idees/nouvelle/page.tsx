@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { Header } from '@/components/Header';
+import { MobileNav } from '@/components/MobileNav';
 import { IdeaForm } from '@/components/ideas/IdeaForm';
 
 export const metadata: Metadata = { title: 'Proposer une idée | Je pâtisse !' };
@@ -17,7 +18,11 @@ export default async function NouvelleIdeePage() {
   return (
     <>
       <Header />
-      <main className="max-w-[640px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+      {/* `MobileNav` manquait : seule page publique du site à en être privée
+          — la barre basse disparaissait sous le doigt en plein formulaire.
+          `pb-28 lg:pb-12` dégage sa hauteur sur mobile, même motif que
+          `/importer`. */}
+      <main className="max-w-[640px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-28 lg:pb-12">
         <Link
           href="/idees"
           className="inline-flex items-center gap-1 text-[13px] text-on-surface-variant hover:text-primary transition-colors mb-6"
@@ -34,6 +39,7 @@ export default async function NouvelleIdeePage() {
 
         <IdeaForm />
       </main>
+      <MobileNav />
     </>
   );
 }

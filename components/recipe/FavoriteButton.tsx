@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { connexionHref } from '@/lib/nav';
+import { intentPath, useResumeIntent } from '@/lib/use-resumable-intent';
 
 export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; initialFav: boolean }) {
   const router = useRouter();
@@ -23,17 +25,33 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/connexion');
+          // Retour au favori qu'on voulait poser, ET rejeu du geste au
+          // retour (`intentPath`) — cf. use-resumable-intent.ts.
+          router.push(connexionHref(intentPath('favori', recipeId)));
           return null;
         }
         return next
-          ? supabase.from('favorites').insert({ user_id: user.id, recipe_id: recipeId })
+          ? // `upsert` + `ignoreDuplicates` plutôt qu'un `insert` nu : cette
+            // même recette peut être servie par DEUX `FavoriteHeart`/`FavoriteButton`
+            // distincts sur une même page (ex. « Recette de la semaine » qui
+            // retombe sur `recipes[0]`, déjà présente dans « Dernières
+            // créations ») — le rejeu du favori au retour de connexion
+            // (`useResumeIntent`) les déclenche alors tous les deux en même
+            // temps. Un second `insert()` sur la même clé (`user_id`,
+            // `recipe_id`) levait une violation de contrainte unique,
+            // affichée comme une erreur alors que le favori était bel et
+            // bien posé.
+            supabase
+              .from('favorites')
+              .upsert({ user_id: user.id, recipe_id: recipeId }, { onConflict: 'user_id,recipe_id', ignoreDuplicates: true })
           : supabase.from('favorites').delete().eq('user_id', user.id).eq('recipe_id', recipeId);
       },
       { errorLabel: 'Favori non enregistré' },
     );
     if (!ok) setFav(!next); // rollback de la mise à jour optimiste
   }
+
+  useResumeIntent('favori', recipeId, fav, toggle);
 
   return (
     <button
