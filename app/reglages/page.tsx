@@ -17,12 +17,13 @@ import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { getNotifyEmailPreference } from '@/lib/notifications-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
+import { getAbonnementStripeCourant, getChangementProgramme, getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
 
-type SearchParams = { searchParams: Promise<{ impersonation?: string }> };
+type SearchParams = { searchParams: Promise<{ impersonation?: string; abonnement?: string }> };
 
 // Ce qui reste de l'ancien `/profil` une fois son contenu parti dans ses vraies
 // maisons : les recettes et les favoris au carnet, le planning, les sessions et
@@ -36,7 +37,7 @@ type SearchParams = { searchParams: Promise<{ impersonation?: string }> };
 export default async function ReglagesPage({ searchParams }: SearchParams) {
   const user = await requireUser('/reglages');
   // Motif de redirection depuis une page d'écriture (cf. requireWritableSession).
-  const { impersonation } = await searchParams;
+  const { impersonation, abonnement } = await searchParams;
   const meta = (user.user_metadata ?? {}) as {
     full_name?: string;
     name?: string;
@@ -72,7 +73,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed, mesDemandes] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -84,12 +85,32 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getCurrentPlan(user.id),
       hasConsumedTrial(user.id),
       getMesDemandes(user.id),
+      getAbonnementStripeCourant(user.id),
     ]);
+  // Second temps, dépendant du premier : `getChangementProgramme` a besoin de
+  // l'identifiant Stripe résolu ci-dessus, pas de raison de le lancer pour un
+  // abonnement qui n'en est pas un (essai, don administrateur…).
+  const changementProgramme = abonnementStripeCourant
+    ? await getChangementProgramme(abonnementStripeCourant.subscriptionId)
+    : null;
 
   return (
     <>
       <Header />
       <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
+        {abonnement === 'confirme' && (
+          <p className="mt-6 flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+            <span className="material-symbols-outlined text-[20px]" aria-hidden>
+              hourglass_top
+            </span>
+            {/* Le paiement est confirmé côté Stripe, mais c'est le webhook —
+                asynchrone — qui écrit l'abonnement. Ne JAMAIS annoncer « activé »
+                ici : au moment du retour de redirection, l'écriture peut ne pas
+                avoir encore eu lieu. « Mon forfait » ci-dessous reflète l'état
+                réel dès que le webhook est passé, sans action du membre. */}
+            Paiement reçu — votre abonnement est en cours d&apos;activation, quelques instants suffisent.
+          </p>
+        )}
         {impersonation === 'lecture-seule' && (
           <p className="mt-6 flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
             <span className="material-symbols-outlined text-[20px]" aria-hidden>
@@ -112,7 +133,14 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           isAdmin={admin}
           followCounts={followCounts}
         />
-        <UsageCard usage={usage} grid={grid} currentPlan={currentPlan} trialConsumed={trialConsumed} />
+        <UsageCard
+          usage={usage}
+          grid={grid}
+          currentPlan={currentPlan}
+          trialConsumed={trialConsumed}
+          hasStripeCustomer={!!(await getIdClientStripe(user.id))}
+          changementProgramme={changementProgramme}
+        />
         {user.email && <EmailChangeCard email={user.email} hasPassword={hasPassword} />}
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />

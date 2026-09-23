@@ -28,6 +28,7 @@ import {
 } from '@/lib/recipe-plan';
 import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
+import { LockedAction } from '@/components/LockedAction';
 
 type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
 
@@ -354,16 +355,29 @@ export function BatchIngredientsEditor({
                                 {/* Un remplacement déjà en place (cf. le bouton `undo`
                                     ci-dessus) reste géré même sans le droit — seul en
                                     DÉMARRER un nouveau est bridé (§7.4). */}
-                                {!row.removed && !batchStepReplaced(step) && canReplaceIngredient && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExpanding(row)}
-                                    title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
-                                    className="text-primary hover:opacity-70"
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
-                                  </button>
-                                )}
+                                {!row.removed &&
+                                  !batchStepReplaced(step) &&
+                                  (canReplaceIngredient ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpanding(row)}
+                                      title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                                      className="text-primary hover:opacity-70"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                    </button>
+                                  ) : (
+                                    // JEP-130 : le picto n'apparaissait pas
+                                    // du tout — « je fabrique moi-même cet
+                                    // ingrédient » est pourtant l'une des
+                                    // fonctionnalités les plus
+                                    // distinctives du produit, et rien ne
+                                    // l'annonçait à qui n'y a pas droit.
+                                    <LockedAction
+                                      label="Remplacer cet ingrédient par une recette"
+                                      message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                                    />
+                                  ))}
                                 {row.added ? (
                                   <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
                                     <span className="material-symbols-outlined text-[18px]">delete</span>

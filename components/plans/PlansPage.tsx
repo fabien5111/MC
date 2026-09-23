@@ -14,30 +14,49 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
+import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { CheckoutWaiverDialog } from '@/components/plans/CheckoutWaiverDialog';
 import {
   annualSaving,
   diffRights,
   formatRight,
   hasYearlyOption,
+  rightScore,
   type Grid,
 } from '@/lib/entitlements';
 import type { PendingRequest } from '@/lib/entitlements-data';
+import type { ChangementProgramme } from '@/lib/billing-data';
 
 export function PlansPage({
   grid,
   planIds,
   connecte,
   currentPlanCode,
+  currentPlanEndsAt,
   essaiActif,
   trialConsumed,
   trialDays,
   pending,
+  abonnementStripe,
+  changementProgramme,
 }: {
   grid: Grid;
   planIds: Record<string, number>;
   connecte: boolean;
   currentPlanCode: string | null;
+  // Échéance de la formule actuelle — pour dater le message de descente
+  // programmée (« vous gardez votre formule jusqu'au [date] »), sans quoi le
+  // membre confirmait un changement sans savoir quand il prend effet.
+  currentPlanEndsAt: string | null;
+  // Changement de formule déjà programmé (échéancier Stripe), lu par la page
+  // serveur — jamais recalculé ici. Le bouton d'action reste actif même
+  // quand il est renseigné : reprogrammer une descente ou monter en gamme
+  // remplacent proprement l'échéancier existant côté serveur (§3.3 du plan
+  // de test JEP-29) — bloquer le bouton retirerait une possibilité qui
+  // fonctionne déjà. Sert seulement à prévenir le membre AVANT qu'il
+  // remplace un changement en cours sans le savoir.
+  changementProgramme: ChangementProgramme | null;
   // Abonnement courant de type TRIAL (§12 de docs/abonnements.md — la
   // colonne visible n'est alors pas forcément « Pro » mais un plan
   // technique d'essai, ex. « Essai Plan Pro ») : conditionne le remplacement
@@ -46,6 +65,11 @@ export function PlansPage({
   trialConsumed: boolean;
   trialDays: number;
   pending: PendingRequest | null;
+  // L'abonnement courant est un abonnement Stripe (`provider = 'stripe'`),
+  // donc modifiable en ligne. Faux pour un essai, un don administrateur ou
+  // un reliquat de l'ancienne simulation : ceux-là n'ont rien à changer chez
+  // Stripe, et gardent le parcours de demande traité à la main.
+  abonnementStripe: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -68,7 +92,12 @@ export function PlansPage({
     return [...map.entries()].sort(([, a], [, b]) => a[0].sectionOrder - b[0].sectionOrder);
   }, [grid.features]);
 
-  const bascule = hasYearlyOption(plans);
+  // Bascule masquée pour un abonné Stripe : un changement de FORMULE ne
+  // change pas de PÉRIODICITÉ (la route la lit sur l'abonnement), et laisser
+  // la bascule afficher un tarif annuel à un abonné mensuel — ou l'inverse —
+  // ferait annoncer un montant qui n'est pas celui qui sera prélevé.
+  // Changer de périodicité reste hors périmètre de la phase 1.
+  const bascule = hasYearlyOption(plans) && !abonnementStripe;
   const currentIndex = plans.findIndex((p) => p.code === currentPlanCode);
 
   async function essayer(planCode: string, planLabel: string) {
@@ -132,42 +161,87 @@ export function PlansPage({
     }
   }
 
-  // Simulation de paiement (§ CLAUDE.md « Fonctionnalités à venir ») : tant
-  // qu'aucun prestataire (Stripe/PayPal) n'est branché, un code tient lieu de
-  // preuve de paiement pour activer un abonnement mensuel immédiatement. La
-  // vérification du code vit uniquement dans `mc_simulate_subscribe`
-  // (SECURITY DEFINER) — jamais côté client, même doctrine que le reste du
-  // site (« les contrôles client ne prouvent rien »).
-  async function simulerAbonnement(planCode: string, planLabel: string) {
-    const code = await dialog.prompt(
-      `Code d'activation — ${planLabel}, abonnement mensuel (simulation en l'absence de moyen de paiement réel) :`,
-      { required: true, placeholder: 'Code' },
-    );
-    if (!code) return;
+  // Souscription réelle (JEP-29) : ouvre une session Stripe Checkout après
+  // acceptation de la renonciation au droit de rétractation. Remplace
+  // l'ancienne simulation par code (`mc_simulate_subscribe`, §13 de
+  // docs/abonnements.md) — retirée avec ce lot, comme annoncé.
+  //
+  // N'écrit RIEN elle-même : `subscriptions` n'est mis à jour que par le
+  // webhook, une fois le paiement réellement confirmé (cf.
+  // app/api/webhooks/stripe/route.ts). Un membre qui ferme l'onglet Stripe
+  // n'est pas abonné.
+  const [waiverPlan, setWaiverPlan] = useState<{ code: string; label: string; mode: 'souscription' | 'montee' } | null>(null);
+
+  // Plan passé en argument plutôt que relu dans l'état : la fenêtre est
+  // fermée juste avant l'appel, et dépendre de la valeur encore capturée par
+  // la fermeture serait une subtilité de plus à retenir pour rien.
+  async function demarrerAbonnement(code: string, renonciationAcceptee: boolean) {
     setBusy(true);
     try {
-      // `mc_simulate_subscribe` n'est pas encore dans lib/database.types.ts
-      // tant que la migration n'a pas été appliquée puis régénérée — appel
-      // non typé en attendant, même motif que `mc_cancel_own_subscription`
-      // dans UsageCard.
-      const { error } = await (
-        createClient().rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => PromiseLike<{ error: { message: string } | null }>
-      )('mc_simulate_subscribe', { p_plan_code: planCode, p_promo_code: code.trim() });
-      if (error) {
-        const messages: Record<string, string> = {
-          MC_SIMU_READONLY: 'Session de consultation (lecture seule) : action impossible.',
-          MC_SIMU_PLAN: "Cette formule n'est pas disponible pour le moment.",
-          MC_SIMU_BAD_CODE: 'Code incorrect.',
-        };
-        const head = error.message.split(':')[0];
-        dialog.alert(messages[head] ?? "L'activation n'a pas pu aboutir.");
+      const r = await fetch('/api/abonnement/checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          plan: code,
+          periodicite: annuel ? 'YEARLY' : 'MONTHLY',
+          renonciationRetractation: renonciationAcceptee,
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data?.url) {
+        dialog.alert(data?.erreur || "Impossible d'ouvrir la page de paiement, réessayez.");
         return;
       }
-      await dialog.alert(`Abonnement ${planLabel} activé pour un mois.`);
+      // Redirection pleine page vers Stripe Checkout : pas de router.push, on
+      // quitte l'application le temps du paiement. `busy` reste vrai jusqu'au
+      // départ effectif, pour ne pas laisser la page cliquable entre-temps.
+      window.location.href = data.url;
+    } catch {
+      dialog.alert('Connexion impossible, réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changerFormule(planCode: string, planLabel: string, renonciationAcceptee: boolean) {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/changer', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        // Pas de périodicité transmise : la route la lit sur l'abonnement
+        // lui-même. L'envoyer d'ici ferait dépendre une facturation de la
+        // position d'une bascule d'affichage.
+        body: JSON.stringify({
+          plan: planCode,
+          renonciationRetractation: renonciationAcceptee,
+          // Jeton par CLIC : deux envois du même clic ne débitent qu'une fois,
+          // une reprise après « changez de carte » repart à neuf.
+          jeton: crypto.randomUUID(),
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "Le changement de formule n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert(
+        data?.immediat
+          ? // Comme au retour de Checkout : le paiement est fait, mais c'est le
+            // webhook qui pose le palier. Annoncer « vous êtes passé à X »
+            // alors que la grille rafraîchie affiche encore l'ancienne formule
+            // ferait douter le membre de ce qu'il vient de payer.
+            `Paiement accepté — la différence a été facturée au prorata. Votre formule ${planLabel} ` +
+              `s'active dans quelques instants.`
+          : `Changement programmé : vous gardez votre formule actuelle jusqu'au ${formatDate(data?.effetLe)}, ` +
+              `puis vous passerez à ${planLabel}.`,
+      );
       router.refresh();
+    } catch {
+      // Même filet que `demarrerAbonnement` : sans lui, un échec réseau
+      // éteignait le voile sans un mot, et remontait en rejet non capturé
+      // par le `void` de l'appelant.
+      dialog.alert('Connexion impossible, réessayez.');
     } finally {
       setBusy(false);
     }
@@ -178,28 +252,141 @@ export function PlansPage({
     const changements = diffRights(grid.rights[currentPlanCode] ?? {}, grid.rights[planCode] ?? {}).filter(
       (c) => !c.favorable,
     );
+    // `diffRights` vient du back-office (§8.1), où toute baisse de quota
+    // entre deux VERSIONS d'un même plan mérite d'être signalée à l'admin —
+    // même sans perte d'accès. Ici, entre deux PLANS distincts, un quota
+    // simplement réduit (illimité → 5, 20/mois → 10/mois) n'est pas une
+    // perte : le membre garde la fonctionnalité. Seul un score à -1
+    // (`rightScore`, droit `NO`) est une vraie disparition — distinguer les
+    // deux, sans quoi « vous perdrez » ment sur ce qui reste accessible
+    // (constaté le 22/09 en testant une descente Pro → Plus : « Ajustement
+    // par IA » et « Partager mon carnet » listés comme perdus alors qu'ils
+    // restent utilisables, seulement à un quota moindre).
+    const libelle = (c: (typeof changements)[number]) => {
+      const f = grid.features.find((x) => x.key === c.featureKey);
+      return f?.label ?? null;
+    };
     const perdu = changements
-      .map((c) => {
-        const f = grid.features.find((x) => x.key === c.featureKey);
-        return f ? `— ${f.label}` : null;
-      })
-      .filter((v): v is string => !!v);
-    const texte = perdu.length
-      ? `En repassant à ${planCode}, vous perdrez :\n${perdu.join('\n')}\n\nContinuer ?`
+      .filter((c) => rightScore(c.after) === -1)
+      .map(libelle)
+      .filter((v): v is string => !!v)
+      .map((label) => `— ${label}`);
+    const reduit = changements
+      .filter((c) => rightScore(c.after) !== -1)
+      .map(libelle)
+      .filter((v): v is string => !!v)
+      .map((label) => `— ${label}`);
+    const blocs = [
+      perdu.length ? `Vous perdrez :\n${perdu.join('\n')}` : null,
+      reduit.length ? `Vos quotas seront réduits pour :\n${reduit.join('\n')}` : null,
+    ].filter((b): b is string => !!b);
+    const texte = blocs.length
+      ? `En repassant à ${planCode} :\n\n${blocs.join('\n\n')}\n\nContinuer ?`
       : `Repasser à ${planCode} ?`;
-    const ok = await dialog.confirm(texte);
+    const plan = plans.find((p) => p.code === planCode);
+    // Datée quand on la connaît : « jusqu'à son échéance » sans date laissait
+    // le membre confirmer sans savoir quand le changement prend effet — la
+    // date exacte est celle que le serveur appliquera de toute façon
+    // (`app/api/abonnement/changer`), afficher autre chose mentirait.
+    const echeance = currentPlanEndsAt ? formatDate(currentPlanEndsAt) : null;
+    const complement = abonnementStripe
+      ? `\n\nVous gardez votre formule actuelle jusqu’${echeance ? `au ${echeance}` : 'à son échéance'} ; aucun remboursement au prorata.`
+      : '';
+    // Remplace, plutôt que d'empiler, un changement déjà programmé (§3.3) —
+    // le membre doit le savoir avant de confirmer, pas le découvrir après.
+    const avertissementProgramme = changementProgramme
+      ? `\n\nCeci remplacera le passage à ${changementProgramme.planLabel} déjà programmé le ${formatDate(changementProgramme.effectiveAt)}.`
+      : '';
+    const ok = await dialog.confirm(texte + complement + avertissementProgramme);
     if (!ok) return;
+    if (abonnementStripe) {
+      // Redescendre vers la formule GRATUITE n'est pas un changement de
+      // tarif : elle n'a pas de prix chez Stripe, il n'y a rien à programmer.
+      // C'est une résiliation — l'abonnement s'arrête à l'échéance et le
+      // membre retombe sur la formule par défaut, ce que la ligne DEFAULT
+      // assure déjà toute seule.
+      if (plan?.isDefault) await resilier();
+      else await changerFormule(planCode, plan?.label ?? planCode, false);
+      return;
+    }
     await demander(planCode, annuel ? 'YEARLY' : 'MONTHLY');
+  }
+
+  async function resilier() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "La résiliation n'a pas pu aboutir.");
+        return;
+      }
+      await dialog.alert(
+        data?.finPeriode
+          ? `Résiliation enregistrée : vous gardez votre formule jusqu'au ${formatDate(data.finPeriode)}.`
+          : 'Résiliation enregistrée.',
+      );
+      router.refresh();
+    } catch {
+      dialog.alert('Connexion impossible, réessayez.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div>
       <LoadingOverlay visible={busy} />
+      {waiverPlan && (
+        <CheckoutWaiverDialog
+          planLabel={waiverPlan.label}
+          introduction={
+            waiverPlan.mode === 'montee'
+              ? `La différence avec votre formule actuelle sera facturée immédiatement, au prorata du temps ` +
+                `restant sur la période en cours, sur votre moyen de paiement enregistré.` +
+                // Une montée annule l'échéancier existant (cf. app/api/abonnement/
+                // changer, remis en place seulement si le paiement échoue) — le
+                // membre doit le savoir avant de confirmer.
+                (changementProgramme
+                  ? ` Ceci annulera le passage à ${changementProgramme.planLabel} déjà programmé le ${formatDate(changementProgramme.effectiveAt)}.`
+                  : '')
+              : 'Vous allez être redirigé vers notre prestataire de paiement (Stripe) pour finaliser votre abonnement.'
+          }
+          libelleAction={waiverPlan.mode === 'montee' ? 'Confirmer le changement' : 'Continuer vers le paiement'}
+          onClose={() => setWaiverPlan(null)}
+          onConfirm={() => {
+            const { code, label, mode } = waiverPlan;
+            setWaiverPlan(null);
+            if (mode === 'montee') void changerFormule(code, label, true);
+            else void demarrerAbonnement(code, true);
+          }}
+        />
+      )}
       <h1 className="mb-2 text-center font-display text-3xl text-primary md:text-4xl">Nos formules</h1>
-      <p className="mb-8 text-center text-sm text-on-surface-variant">
-        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un seul
-        essai par membre, toutes formules confondues.
-      </p>
+      {
+        // Un visiteur non connecté ignore encore s'il a déjà consommé son
+        // essai (trialConsumed vaut toujours faux dans ce cas) : la phrase
+        // reste affichée par défaut, ce qui est correct. Pour un membre
+        // connecté, elle mentait dès que plus aucune colonne ne propose
+        // « Essayer » — essai déjà consommé ou en cours (constaté en testant
+        // §3.2 du plan de test JEP-29 sur un membre déjà abonné, 23/09).
+        // Même logique que `peutEssayer` dans `UsageCard.tsx`.
+        !essaiActif && !trialConsumed && grid.plans.some((p) => p.trialAllowed) && (
+          <p className="mb-8 text-center text-sm text-on-surface-variant">
+            Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un
+            seul essai par membre, toutes formules confondues.
+          </p>
+        )
+      }
+
+      {changementProgramme && (
+        // Le bouton reste actif malgré ce bandeau (cf. le commentaire de la
+        // prop) : il informe avant de remplacer, il ne bloque pas.
+        <p className="mx-auto mb-8 max-w-xl rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-center text-sm text-on-surface-variant">
+          Passage à <strong>{changementProgramme.planLabel}</strong> déjà programmé le{' '}
+          {formatDate(changementProgramme.effectiveAt)}. Un nouveau changement ci-dessous le remplacera.
+        </p>
+      )}
 
       {bascule && (
         <div className="mb-10 flex items-center justify-center gap-3">
@@ -290,7 +477,13 @@ export function PlansPage({
                       // (un essai reste possible, lui, sans moyen de paiement).
                       aUnTarif={tarif !== null}
                       onEssayer={() => essayer(p.code, p.label)}
-                      onAbonner={() => simulerAbonnement(p.code, p.label)}
+                      onAbonner={() =>
+                        setWaiverPlan({
+                          code: p.code,
+                          label: p.label,
+                          mode: abonnementStripe ? 'montee' : 'souscription',
+                        })
+                      }
                       onRetrograder={() => retrograder(p.code)}
                     />
                   </th>
@@ -305,6 +498,7 @@ export function PlansPage({
           </tbody>
         </table>
       </div>
+      <p className="mt-4 text-center text-xs text-on-surface-variant">TVA non applicable, art. 293 B du CGI.</p>
     </div>
   );
 }
@@ -336,7 +530,14 @@ function FragmentSection({
             </td>
             {plans.map((p) => {
               const right = grid.rights[p.code]?.[f.key];
-              const texte = formatRight(right, f);
+              // JEP-55 : un plan inactif ne peut apparaître dans `plans` que
+              // s'il est le plan courant du membre affiché (filtre au-dessus,
+              // `p.active || p.code === currentPlanCode`) — c'est donc,
+              // structurellement, la colonne d'un plan technique d'essai
+              // (§12 docs/abonnements.md), jamais une formule qu'on peut
+              // souscrire. Pas de champ dédié à ajouter : l'invariant existe
+              // déjà.
+              const texte = formatRight(right, f, !p.active);
               return (
                 <td key={p.code} className="p-3 text-center">
                   {right?.value === 'NO' ? (

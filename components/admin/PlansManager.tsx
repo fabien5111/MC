@@ -69,6 +69,34 @@ export function PlansManager({ grid, trialDays }: { grid: AdminGrid; trialDays: 
       ]),
     ),
   );
+  // Lot F, §14 : édition du price_id Stripe mensuel — hors versionnement, pas
+  // de « Publier » ni de motif (ça ne change les conditions d'aucun abonné
+  // déjà en cours, seulement ce que le PROCHAIN Checkout facturera), même
+  // geste que la durée de l'essai gratuit juste au-dessus.
+  const [prixStripe, setPrixStripe] = useState<Record<string, string>>(() =>
+    Object.fromEntries(grid.plans.map((p) => [p.code, grid.stripePriceIds[p.code] ?? ''])),
+  );
+  const [prixStripeBusy, setPrixStripeBusy] = useState<string | null>(null);
+
+  async function enregistrerPrixStripe(code: string) {
+    setPrixStripeBusy(code);
+    try {
+      const r = await fetch('/api/admin/abonnements/prix-stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planCode: code, priceId: prixStripe[code] }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(data?.erreur || "L'enregistrement du prix Stripe a échoué.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setPrixStripeBusy(null);
+    }
+  }
+
   const [tarifs, setTarifs] = useState<Record<string, Tarifs>>(() =>
     Object.fromEntries(
       grid.plans.map((p) => [
@@ -267,7 +295,7 @@ export function PlansManager({ grid, trialDays }: { grid: AdminGrid; trialDays: 
     <div className="p-6 lg:p-10">
       {/* Un seul LoadingOverlay monté à la fois : deux voiles indépendants
           s'empileraient (cf. CLAUDE.md « Spinner »). */}
-      <LoadingOverlay visible={busy || essaiBusy} label={essaiBusy ? 'Enregistrement…' : 'Publication…'} />
+      <LoadingOverlay visible={busy || essaiBusy || !!prixStripeBusy} label={essaiBusy || prixStripeBusy ? 'Enregistrement…' : 'Publication…'} />
       <div className="mb-2 flex items-center justify-between">
         <h1 className="font-display text-3xl text-primary">Plans d’abonnement</h1>
         <Link
@@ -392,6 +420,38 @@ export function PlansManager({ grid, trialDays }: { grid: AdminGrid; trialDays: 
                   </div>
                   <span className="mt-1 block text-xs text-on-surface-variant">
                     Tarif annuel vide : l’option annuelle disparaît de la page publique.
+                  </span>
+                </th>
+              ))}
+            </tr>
+            <tr className="border-b border-outline-variant">
+              <th className="p-2 text-left align-top font-label-md">
+                Prix Stripe (mensuel)
+                <span className="mt-1 block text-xs font-normal text-on-surface-variant">
+                  {grid.stripeMode ? `mode ${grid.stripeMode}` : 'Stripe non configuré sur ce serveur'}
+                </span>
+              </th>
+              {grid.plans.map((p) => (
+                <th key={p.code} className="p-2 text-left font-normal align-top">
+                  <div className="flex gap-1">
+                    <input
+                      className="w-full rounded border border-outline-variant bg-surface p-1.5 font-mono text-xs disabled:opacity-40"
+                      placeholder="price_..."
+                      disabled={!grid.stripeMode}
+                      value={prixStripe[p.code]}
+                      onChange={(e) => setPrixStripe((s) => ({ ...s, [p.code]: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => enregistrerPrixStripe(p.code)}
+                      disabled={!grid.stripeMode || prixStripeBusy === p.code || prixStripe[p.code] === (grid.stripePriceIds[p.code] ?? '')}
+                      className="shrink-0 rounded border border-outline-variant px-2 text-xs text-primary hover:bg-surface-container-high disabled:opacity-40"
+                    >
+                      OK
+                    </button>
+                  </div>
+                  <span className="mt-1 block text-xs text-on-surface-variant">
+                    Vide : formule non vendable au paiement (comme un essai technique).
                   </span>
                 </th>
               ))}

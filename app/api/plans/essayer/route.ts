@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     // Code non prévu par cette table : on le journalise pour pouvoir
     // l'ajouter à la liste plutôt que de laisser un message muet sans trace.
     if (!messages[code]) console.error('plans/essayer mc_start_trial:', error.message);
-    return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer." }, { status: 422 });
+    return NextResponse.json({ erreur: messages[code] ?? "L'essai n'a pas pu démarrer, réessayez plus tard." }, { status: 422 });
   }
 
   // Certains plans redirigent l'essai vers une version aux quotas propres

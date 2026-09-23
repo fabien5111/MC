@@ -34,6 +34,7 @@ import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
+import { LockedAction, LockedHint } from '@/components/LockedAction';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -97,9 +98,15 @@ export function BatchWidget({
   // infobulle plutôt qu'un message qui n'apparaîtrait qu'après un clic dans
   // le vide.
   const iaEpuise = peutAjusterIA && quotaIA != null && !quotaIA.allowed;
-  const iaTooltip = iaEpuise
-    ? `Quota d'ajustements par IA atteint ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}).`
-    : undefined;
+  // JEP-130 : le mode IA est désormais listé même sans le droit — il ne
+  // l'était que quota épuisé, si bien qu'une formule sans ajustement par IA
+  // ne voyait jamais que cette fonctionnalité existe. Deux motifs distincts,
+  // et surtout deux issues distinctes : sans le droit, /plans est la porte de
+  // sortie ; crédit épuisé, il n'y en a pas à proposer (il se renouvelle),
+  // doctrine JEP-77 conservée.
+  const iaMessage = peutAjusterIA
+    ? `Quota d'ajustements par IA atteint ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    : "L'ajustement des quantités par IA n'est pas inclus dans votre formule.";
 
   const yInfo = yieldInfo(recipe);
   const moldSummary = [recipe.yield_desc, moldLbl(recipe)].filter(Boolean).join(' — ') || null;
@@ -465,14 +472,25 @@ export function BatchWidget({
                   <input type="radio" name="umode" checked={uMode === 'ing'} onChange={() => setUMode('ing')} /> Ajuster par quantité d&apos;un ingrédient
                 </label>
               )}
-              {peutAjusterIA && (
-                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
-                  <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} disabled={iaEpuise} />
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
-                    Ajuster les quantités par IA
-                  </span>
-                </label>
+              {!peutAjusterIA ? (
+                // Sans le droit, il n'y a pas de contrôle à conserver : un
+                // radio mort n'offre aucune issue. Le repère prend sa place
+                // et mène aux formules.
+                <LockedAction label="Ajuster les quantités par IA" message={iaMessage}>
+                  Ajuster les quantités par IA
+                </LockedAction>
+              ) : (
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`}>
+                    <input type="radio" name="umode" checked={uMode === 'ia'} onChange={() => setUMode('ia')} disabled={iaEpuise} />
+                    <span className="flex items-center gap-1">
+                      <span className={`material-symbols-outlined text-[18px]${iaEpuise ? '' : ' text-primary'}`}>
+                        {iaEpuise ? 'block' : 'auto_awesome'}
+                      </span>
+                      Ajuster les quantités par IA
+                    </span>
+                  </label>
+                </LockedHint>
               )}
             </div>
             {qtyInfoBlock}
@@ -519,20 +537,32 @@ export function BatchWidget({
 
         {recipe.measure_type === 'mold' && (
           <div className="flex flex-col gap-4">
-            {peutAjusterIA && (
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
-                </label>
-                <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`} title={iaTooltip}>
-                  <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} disabled={iaEpuise} />
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
-                    Ajuster les quantités par IA
-                  </span>
-                </label>
-              </div>
-            )}
+            {/* Le groupe entier était masqué sans le droit — donc aussi le
+                mode « par moule », pourtant ouvert à tous : le membre ne
+                voyait aucun choix, et surtout aucune trace du mode IA
+                (JEP-130). */}
+            <div className="flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
+              </label>
+              {!peutAjusterIA ? (
+                <LockedAction label="Ajuster les quantités par IA" message={iaMessage}>
+                  Ajuster les quantités par IA
+                </LockedAction>
+              ) : (
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <label className={`flex items-center gap-2${iaEpuise ? ' cursor-not-allowed opacity-50' : ' cursor-pointer'}`}>
+                    <input type="radio" name="mmode" checked={mMode === 'ia'} onChange={() => setMMode('ia')} disabled={iaEpuise} />
+                    <span className="flex items-center gap-1">
+                      <span className={`material-symbols-outlined text-[18px]${iaEpuise ? '' : ' text-primary'}`}>
+                        {iaEpuise ? 'block' : 'auto_awesome'}
+                      </span>
+                      Ajuster les quantités par IA
+                    </span>
+                  </label>
+                </LockedHint>
+              )}
+            </div>
             {qtyInfoBlock}
             {mMode === 'ia' ? (
               aiBlock

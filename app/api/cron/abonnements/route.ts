@@ -41,8 +41,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGrid, getRightsForVersion } from '@/lib/entitlements-data';
-import { claimNotification, createNotification, getNotifyEmailPreference } from '@/lib/notifications-data';
-import { lostFeatureLabels } from '@/lib/entitlements';
+import { claimNotification, createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
+import { lostFeatureLabels, reducedFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
 import { sendEmailBestEffort } from '@/lib/email';
 import { purgerImportsExpires } from '@/lib/imports-retention-data';
@@ -82,6 +82,7 @@ async function envoyer(
   ligne: LigneAbonnement,
   type: NotificationType,
   lost: string[],
+  reduced: string[],
 ): Promise<void> {
   const claimed = await claimNotification(admin, ligne.user_id, ligne.id, type);
   if (!claimed) return;
@@ -96,13 +97,14 @@ async function envoyer(
     planLabel: ligne.plan_versions.plans.label,
     dateIso: ligne.ends_at ?? new Date().toISOString(),
     lostFeatures: lost,
+    reducedFeatures: reduced,
   });
 
   await createNotification(admin, ligne.user_id, type, content.title, content.body);
 
   // Notifications in-app d'expiration toujours affichées (spec §10) : la
   // préférence ne conditionne QUE l'e-mail, jamais leur écrite ci-dessus.
-  if (profil?.email && (await getNotifyEmailPreference(ligne.user_id))) {
+  if (profil?.email && (await getNotifyEmailPreferenceAdmin(admin, ligne.user_id))) {
     await sendEmailBestEffort({ to: profil.email, subject: content.emailSubject, html: content.emailHtml, text: content.emailText });
   }
 }
@@ -152,7 +154,8 @@ export async function GET(req: Request) {
   for (const ligne of expireesRecentes ?? []) {
     const avant = await getRightsForVersion(ligne.plan_version_id);
     const perdu = lostFeatureLabels(avant, droitsDefaut, grid.features);
-    await envoyer(admin, ligne, 'EXPIRED_J1', perdu);
+    const reduit = reducedFeatureLabels(avant, droitsDefaut, grid.features);
+    await envoyer(admin, ligne, 'EXPIRED_J1', perdu, reduit);
     notifiesExpiration++;
   }
 
@@ -189,8 +192,9 @@ export async function GET(req: Request) {
     // garde porte sur ce qui se passerait « si rien ne change d'ici là ».
     const avant = grid.rights[ligne.plan_versions.plans.code] ?? {};
     const perdu = lostFeatureLabels(avant, droitsDefaut, grid.features);
+    const reduit = reducedFeatureLabels(avant, droitsDefaut, grid.features);
     const type: NotificationType = ligne.type === 'TRIAL' ? (estJ1 ? 'TRIAL_J1' : 'TRIAL_J3') : estJ1 ? 'SUB_J1' : 'SUB_J3';
-    await envoyer(admin, ligne, type, perdu);
+    await envoyer(admin, ligne, type, perdu, reduit);
     if (estJ1) notifiesJ1++;
     else notifiesJ3++;
   }

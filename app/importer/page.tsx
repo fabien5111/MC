@@ -7,46 +7,59 @@ import { MobileNav } from '@/components/MobileNav';
 import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
-import { canAccess, blockingMessage } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, getGrid, checkQuota } from '@/lib/entitlements-data';
+import { canAccess } from '@/lib/entitlements';
+import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
-
-const QUOTA_JOUR = 20;
 
 export default async function ImporterPage() {
   const user = await requireUser('/importer');
   // Impersonation en lecture seule : l'import crée un brouillon → interdit.
   await requireWritableSession();
-  const [imports, admin, droits, grid, currentPlan] = await Promise.all([
+  const [imports, admin, droits, currentPlan] = await Promise.all([
     getImports(user.id),
     isAdmin(user.id),
     getEntitlements(user.id),
-    getGrid(),
     getCurrentPlan(user.id),
   ]);
   // Droit d'abonnement : l'historique des imports reste visible quoi qu'il
   // arrive (§7.4, l'existant est préservé) — seul le formulaire de NOUVEL
   // import est bridé.
   const peutImporter = canAccess(droits, 'ecran_relecture_import');
-  const messageBloque = peutImporter
-    ? null
-    : blockingMessage(grid, 'ecran_relecture_import', currentPlan?.code ?? '', {
-        autorise: false,
-        raison: 'PLAN_INSUFFISANT',
-        limite: null,
-        usage: 0,
-      });
+  // Message propre à cette page plutôt que `blockingMessage()` générique :
+  // ce dernier reprend tel quel le libellé de la grille (« Écran de
+  // relecture après import »), exact avant JEP-130 (toute la fonctionnalité
+  // était bloquée) mais trompeur depuis le renversement (§15,
+  // docs/abonnements.md) — la relecture, elle, reste accessible ; seule la
+  // création d'un NOUVEL import est fermée. Un titre qui nomme « l'écran de
+  // relecture » comme indisponible contredirait le bandeau de
+  // `/relecture/[id]`, qui dit l'inverse. Pas de suggestion de plan
+  // supérieur ici (contrairement à `blockingMessage()`) : le lien « Voir
+  // les formules » juste en dessous suffit, sans dupliquer l'information.
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md,
   // JEP-77) : grise les boutons « Importer » une fois le quota mensuel
   // épuisé, plutôt que de laisser découvrir le refus après une tentative.
   // Seulement quand l'écran est déjà accessible.
   const quotaImport = peutImporter ? await checkQuota(user.id, 'import_ia_mensuel') : null;
 
-  // Quota du jour (UTC), comme la version vanilla.
-  const debutJour = new Date();
-  debutJour.setUTCHours(0, 0, 0, 0);
-  const aujourdhui = imports.filter((i) => new Date(i.created_at) >= debutJour).length;
+  // JEP-56 : le nombre d'imports RÉALISÉS DANS LA FORMULE remplace l'ancien
+  // compteur du jour (`IMPORT_DAILY_QUOTA`, technique et sans rapport avec le
+  // droit d'abonnement) — celui-ci reste un garde-fou anti-emballement côté
+  // route (§5, docs/abonnements.md), simplement plus affiché en permanence
+  // : un plafond journalier atteint continue de refuser explicitement au
+  // moment de l'import, sans compteur dédié (une limite qu'on ne peut de
+  // toute façon pas lever avant le lendemain n'a pas besoin d'une jauge
+  // affichée à demeure).
+  // `usage` absent = lecture en échec (best-effort, cf. `checkQuota`) : pas
+  // de chiffre à afficher plutôt qu'un nombre inventé.
+  const essai = currentPlan?.type === 'TRIAL';
+  const periode = essai ? "dans l'essai" : 'dans le mois';
+  const compteurImports =
+    quotaImport && quotaImport.usage != null
+      ? quotaImport.limit != null
+        ? `${quotaImport.usage} / ${quotaImport.limit} imports ${periode}`
+        : `${quotaImport.usage} import${quotaImport.usage > 1 ? 's' : ''} ${periode}`
+      : null;
 
   return (
     <>
@@ -56,9 +69,9 @@ export default async function ImporterPage() {
           <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
             Importer une recette
           </h1>
-          <span className="font-label-md text-label-md text-on-surface-variant">
-            {aujourdhui} / {QUOTA_JOUR} imports aujourd&apos;hui
-          </span>
+          {compteurImports && (
+            <span className="font-label-md text-label-md text-on-surface-variant">{compteurImports}</span>
+          )}
         </div>
         <p className="text-on-surface-variant mb-8">
           Collez le texte complet d&apos;une recette : elle est analysée, convertie au format du site
@@ -68,15 +81,30 @@ export default async function ImporterPage() {
         {peutImporter ? (
           <ImporterForm quotaImport={quotaImport} />
         ) : (
-          messageBloque && (
-            <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-              <p className="font-label-md text-[15px]">{messageBloque.titre}</p>
-              <p className="mt-2 text-sm text-on-surface-variant">{messageBloque.corps}</p>
-              <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
-                Voir les formules
-              </Link>
-            </div>
-          )
+          <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
+            <p className="font-label-md text-[15px]">Importer une nouvelle recette n&apos;est pas inclus dans votre formule</p>
+            {/* Les trois onglets du formulaire (ImporterForm) nommés
+                explicitement : la demande était de montrer CE qui est
+                fermé, pas seulement « l'import » au sens abstrait — les
+                trois méthodes sont également concernées, aucune n'est un
+                repli gratuit des deux autres. */}
+            <p className="mt-2 text-sm text-on-surface-variant">
+              Les trois méthodes — texte collé, PDF, photo — sont réservées aux formules payantes.
+            </p>
+            {/* JEP-130 : les brouillons déjà importés restent relisibles et
+                publiables (arbitrage E). Sans cette phrase, rien n'indique
+                que les liens de « Mes imports » juste en dessous mènent
+                encore quelque part. */}
+            {imports.length > 0 && (
+              <p className="mt-2 text-sm text-on-surface-variant">
+                Vos imports déjà réalisés, eux, restent accessibles plus bas : vous pouvez les relire, les
+                corriger et les enregistrer dans votre carnet.
+              </p>
+            )}
+            <Link href="/plans" className="mt-3 inline-block font-label-md text-[13px] text-primary underline">
+              Voir les formules
+            </Link>
+          </div>
         )}
 
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>

@@ -219,6 +219,13 @@ export type CurrentPlan = {
   daysLeft: number | null;
   /** Annulation demandée par le membre lui-même (`mc_cancel_own_subscription`). */
   cancelRequestedAt: string | null;
+  /**
+   * `'stripe'` pour un abonnement réellement facturé, `'manual'` ou
+   * `'SIMULATION'` pour un don administrateur — c'est ce qui distingue un
+   * abonnement qui se renouvelle réellement tout seul d'un accès offert qui
+   * s'éteint simplement à son échéance (§14 `docs/abonnements.md`).
+   */
+  provider: string | null;
 };
 
 /**
@@ -238,6 +245,7 @@ type LigneAbonnementCourant = {
   starts_at: string;
   ends_at: string | null;
   cancel_requested_at: string | null;
+  provider: string | null;
   plan_versions: { plans: { code: string; label: string } };
 };
 
@@ -245,7 +253,7 @@ export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('type, starts_at, ends_at, cancel_requested_at, plan_versions!inner(plans!inner(code, label))' as never)
+    .select('type, starts_at, ends_at, cancel_requested_at, provider, plan_versions!inner(plans!inner(code, label))' as never)
     .eq('user_id', userId)
     .eq('status', 'ACTIVE')
     .order('starts_at', { ascending: false })
@@ -266,6 +274,7 @@ export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan 
     startsAt: ligne.starts_at,
     endsAt: ligne.ends_at,
     cancelRequestedAt: ligne.cancel_requested_at,
+    provider: ligne.provider,
     daysLeft:
       ligne.ends_at === null
         ? null

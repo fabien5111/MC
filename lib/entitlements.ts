@@ -184,13 +184,21 @@ export function diffRights(
 // ── Ce qu'un changement de plan fait perdre (notifications, §10) ──
 
 /**
- * Libellés des fonctionnalités effectivement perdues entre deux jeux de
- * droits — pour le message d'avertissement avant échéance (« ce qui sera
- * perdu ») et celui d'expiration (« ce qui change concrètement »), calculés
- * PAR CE MEMBRE plutôt qu'un texte générique par plan (spec §10).
+ * Libellés des fonctionnalités RÉELLEMENT perdues entre deux jeux de droits
+ * — un accès qui tombe à `NO` — pour le message d'avertissement avant
+ * échéance et celui d'expiration, calculés PAR CE MEMBRE plutôt qu'un texte
+ * générique par plan (spec §10).
  *
- * Pure réutilisation de `diffRights` : ne réimplémente aucune comparaison,
- * ne fait que filtrer sur le sens défavorable et résoudre les libellés.
+ * Ne pas confondre avec un quota simplement réduit (illimité → 5, 20/mois →
+ * 10/mois) : le membre garde alors la fonctionnalité, seulement à une
+ * limite moindre — `reducedFeatureLabels` ci-dessous couvre ce cas. Les deux
+ * étaient mélangées jusqu'au 22/09 (`diffRights` filtre sur tout changement
+ * défavorable, y compris une simple baisse de quota — légitime pour l'écran
+ * back-office de comparaison de versions, § « diffRights » plus haut, mais
+ * pas pour annoncer à un membre ce qu'il va « perdre ») : constaté en
+ * testant une descente Pro → Plus, où « Ajustement par IA » et « Partager
+ * mon carnet » étaient annoncés comme perdus alors qu'ils restent
+ * accessibles, à quota réduit.
  */
 export function lostFeatureLabels(
   before: Record<string, GridRight>,
@@ -199,7 +207,24 @@ export function lostFeatureLabels(
 ): string[] {
   const parCle = new Map(features.map((f) => [f.key, f]));
   return diffRights(before, after)
-    .filter((c) => !c.favorable)
+    .filter((c) => !c.favorable && rightScore(c.after) === -1)
+    .map((c) => parCle.get(c.featureKey)?.label)
+    .filter((label): label is string => !!label);
+}
+
+/**
+ * Complément de `lostFeatureLabels` : les fonctionnalités dont le quota
+ * diminue sans disparaître (accès toujours différent de `NO`). Même
+ * source (`diffRights`), même résolution de libellés — seul le tri change.
+ */
+export function reducedFeatureLabels(
+  before: Record<string, GridRight>,
+  after: Record<string, GridRight>,
+  features: GridFeature[],
+): string[] {
+  const parCle = new Map(features.map((f) => [f.key, f]));
+  return diffRights(before, after)
+    .filter((c) => !c.favorable && rightScore(c.after) !== -1)
     .map((c) => parCle.get(c.featureKey)?.label)
     .filter((label): label is string => !!label);
 }
@@ -212,10 +237,19 @@ export function lostFeatureLabels(
  * listes" est faux. Plutôt que d'accorder (il faudrait connaître le genre de
  * chaque unité), le premier mot porte "(s)" une fois pour toutes : "1
  * liste(s)", "1 import(s) / mois".
+ *
+ * `essai` (JEP-55) : sur la colonne d'un plan d'essai, "/ mois" prête à
+ * confusion — un essai dure moins d'un mois (§7.2, 14 jours par défaut). Ne
+ * s'applique qu'aux unités qui portent effectivement ce suffixe : les
+ * limites de stock ("fournées", "listes"…) n'en ont pas et ne changent pas
+ * de forme.
  */
-function withPluralHint(unit: string): string {
+function withPluralHint(unit: string, essai = false): string {
   const [premier, ...reste] = unit.split(' ');
   const singulier = premier.endsWith('s') ? premier.slice(0, -1) : premier;
+  if (essai && reste.join(' ') === '/ mois') {
+    return `${singulier}(s) pour l'essai`;
+  }
   return [`${singulier}(s)`, ...reste].join(' ');
 }
 
@@ -300,12 +334,18 @@ export function coherenceIssues(grid: Grid): CoherenceIssue[] {
 
 // ── Rendu des valeurs ───────────────────────────────────────
 
-/** Libellé d'une case, pour la page publique comme pour un message de blocage. */
-export function formatRight(right: GridRight | undefined, feature: GridFeature): string {
+/**
+ * Libellé d'une case, pour la page publique comme pour un message de blocage.
+ *
+ * `essai` (JEP-55) : à passer `true` uniquement pour la colonne d'un plan
+ * technique d'essai (`plans.active = false`, §12 docs/abonnements.md) —
+ * substitue "/ mois" par "pour l'essai" sur les quotas de flux concernés.
+ */
+export function formatRight(right: GridRight | undefined, feature: GridFeature, essai = false): string {
   if (!right || right.value === 'NO') return 'Non inclus';
   if (right.value === 'YES') return 'Inclus';
   if (right.unlimited || right.limitValue === null) return 'Illimité';
-  return feature.unit ? `${right.limitValue} ${withPluralHint(feature.unit)}` : String(right.limitValue);
+  return feature.unit ? `${right.limitValue} ${withPluralHint(feature.unit, essai)}` : String(right.limitValue);
 }
 
 /**

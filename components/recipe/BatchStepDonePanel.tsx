@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { LockedAction } from '@/components/LockedAction';
 import { fmtNum, batchDayLabel, stepDayMoved, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
 
@@ -357,32 +358,36 @@ export function BatchStepDonePanel({
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
-        {!editingNote && canPersonalNotes && !readOnly && (
-          <button
-            type="button"
-            onClick={() => {
-              setNoteDraft(step.user_note || '');
-              setEditingNote(true);
-            }}
-            title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
-            className="no-print text-primary hover:opacity-70"
-          >
-            <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
-          </button>
-        )}
+        {!editingNote &&
+          !readOnly &&
+          (canPersonalNotes ? (
+            <button
+              type="button"
+              onClick={() => {
+                setNoteDraft(step.user_note || '');
+                setEditingNote(true);
+              }}
+              title={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
+              className="no-print text-primary hover:opacity-70"
+            >
+              <span className="material-symbols-outlined text-[18px]">{step.user_note ? 'edit' : 'add_circle'}</span>
+            </button>
+          ) : (
+            // JEP-130 : l'action reste à sa place, grisée — y compris quand
+            // une note existe déjà, cas où plus rien ne s'affichait.
+            <LockedAction
+              label={step.user_note ? 'Modifier ma note' : 'Ajouter une note à cette étape'}
+              message="Les notes personnelles ne sont pas incluses dans votre formule."
+            />
+          ))}
       </div>
       {/* Une note déjà saisie AVANT une rétrogradation reste visible telle
           quelle (§7.4, l'existant est préservé) : seule la saisie d'une
-          nouvelle note est bridée, jamais l'affichage de celle qui existe. */}
-      {!canPersonalNotes && !step.user_note ? (
-        <p className="no-print font-body-md text-sm italic text-on-surface-variant">
-          Non incluses dans votre formule —{' '}
-          <Link href="/plans" className="text-primary underline">
-            voir les formules
-          </Link>
-          .
-        </p>
-      ) : editingNote ? (
+          nouvelle note est bridée, jamais l'affichage de celle qui existe.
+          Le motif est désormais porté par le repère du bouton ci-dessus
+          (JEP-130), plus par une phrase qui ne s'affichait que sur une note
+          vide. */}
+      {editingNote ? (
         <div className="no-print flex flex-col gap-3">
           <textarea
             value={noteDraft}
@@ -602,19 +607,25 @@ export function BatchStepDonePanel({
         >
           <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter une sous-étape
         </button>
-      ) : substeps.length === 0 ? (
+      ) : (
         // Sous-étapes déjà présentes AVANT une rétrogradation restent
-        // affichées et cochables ci-dessus (§7.4) : seule l'AJOUT d'une
-        // nouvelle en est bridé, jamais visible sur une liste déjà garnie
-        // pour ne pas répéter le message à chaque étape d'une longue fournée.
-        <p className="no-print font-body-md text-[12px] italic text-on-surface-variant">
-          Sous-étapes non incluses dans votre formule —{' '}
-          <Link href="/plans" className="text-primary underline">
-            voir les formules
-          </Link>
-          .
-        </p>
-      ) : null}
+        // affichées et cochables ci-dessus (§7.4) : seul l'AJOUT d'une
+        // nouvelle est bridé.
+        //
+        // JEP-130 : le repère s'affiche désormais dans les deux cas (liste
+        // vide ou déjà garnie). Il se répète donc une fois par étape sur une
+        // fournée longue — c'est le prix assumé de « l'action reste
+        // visible », l'ancienne règle « pas de message sur une liste
+        // garnie » ayant pour effet qu'une rétrogradation ne s'expliquait
+        // nulle part sur les étapes déjà travaillées.
+        <LockedAction
+          label="Ajouter une sous-étape"
+          message="Le séquencement en sous-étapes n'est pas inclus dans votre formule."
+          className="self-start font-label-md text-[12px]"
+        >
+          Ajouter une sous-étape
+        </LockedAction>
+      )}
     </>
   );
 
