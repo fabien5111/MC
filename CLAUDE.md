@@ -1330,6 +1330,8 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase | Publique (inlinée au build) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé publique Supabase | Publique (inlinée au build) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit ; écritures et lectures du module contact/Jira, qui n'a aucune policy RLS d'écriture) | Serveur uniquement |
+| `STRIPE_SECRET_KEY` | Authentification aux API Stripe (Checkout, portail, échéanciers, webhook sortant vers `test_helpers/test_clocks` en test) — version de l'API épinglée dans le Dashboard Stripe, pas dans le code (§14 `docs/abonnements.md`) | Serveur uniquement |
+| `STRIPE_WEBHOOK_SECRET` | Vérifie la signature du webhook entrant (`/api/webhooks/stripe`, corps brut) — absente : la route répond 503 plutôt que de traiter un événement dont l'origine ne peut plus être garantie | Serveur uniquement |
 | `ANTHROPIC_API_KEY` | API Claude (import / ajustement) | Serveur uniquement |
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |

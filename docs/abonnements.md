@@ -885,14 +885,18 @@ déjà masquée : la phase 1 mensuelle ne demande aucun code. Ouvrir l'annuel
 plus tard sera un prix à renseigner et une ligne `billing_prices` de
 périodicité `YEARLY` à ajouter — pas un déploiement.
 
-### Ce que ce lot ne fait PAS encore, et qui compte
+### Résolu depuis — `mc_cancel_own_subscription` ne suffisait plus seule
 
-`mc_cancel_own_subscription` (§10) reste purement SQL : elle pose une date de
-fin sans rien dire à Stripe. Tant qu'aucun paiement réel n'existe, c'est sans
-conséquence — mais **le jour où Stripe encaisse, un membre qui résilie perdrait
-ses droits en continuant d'être prélevé.** Sa réécriture est le point le plus
-important du lot E, et les lots D (souscription) et E (gestion) ne doivent pas
-être mis en production séparément.
+Note laissée tôt dans ce lot, avant l'écriture du lot E : `mc_cancel_own_subscription`
+(§10) restait purement SQL, sans jamais parler à Stripe — un abonné payant
+qui résiliait aurait perdu ses droits tout en continuant d'être prélevé.
+
+**Refermé par `/api/abonnement/resilier`** : pour `provider = 'stripe'`, la
+route prévient Stripe (`cancel_at_period_end`) et laisse le webhook aligner
+`subscriptions` ; la RPC SQL ne reste le seul chemin que pour ce qui n'a
+jamais d'objet Stripe (`TRIAL`, `GIFT`, don manuel). Vérifié de bout en bout
+via `docs/test-stripe-jep29.md` §4 (23/09) : `cancel_at_period_end` posé côté
+Stripe, bascule propre vers la formule Gratuite à l'échéance.
 
 ### Lot B — pas de SDK, et un module qui ne décide rien
 

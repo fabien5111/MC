@@ -172,6 +172,24 @@ export async function resoudrePrixStripe(planCode: string, periodicite: Periodic
   return data?.external_price_id ?? null;
 }
 
+/**
+ * Libellé du plan correspondant à un `price_id` Stripe — sens inverse de
+ * `resoudrePrixStripe`. Deux lectures plutôt qu'un filtre sur ressource
+ * embarquée, même motif : lisible, et sans enjeu de coût sur ces chemins
+ * rares (webhook, page `/reglages`).
+ */
+export async function resoudreLibellePlanParPrix(admin: ReturnType<typeof createAdminClient>, priceId: string): Promise<string | null> {
+  const { data: prix } = await admin
+    .from('billing_prices')
+    .select('plan_id')
+    .eq('external_price_id', priceId)
+    .eq('provider', 'stripe')
+    .maybeSingle();
+  if (!prix) return null;
+  const { data: plan } = await admin.from('plans').select('label').eq('id', prix.plan_id).maybeSingle();
+  return plan?.label ?? null;
+}
+
 export type ChangementProgramme = { planLabel: string; effectiveAt: string };
 
 /**
@@ -218,21 +236,11 @@ export async function getChangementProgramme(subscriptionId: string): Promise<Ch
       : phases.find((p) => p.startDate !== null && p.startDate > debutCourante);
   if (!suivante?.priceId || suivante.startDate === null) return null;
 
-  // Même motif que `resoudrePrixStripe` juste au-dessus : deux lectures
-  // plutôt qu'un filtre sur ressource embarquée, pour rester lisible — le
-  // coût ne compte pas sur cette page rare.
   const admin = createAdminClient();
-  const { data: prix } = await admin
-    .from('billing_prices')
-    .select('plan_id')
-    .eq('external_price_id', suivante.priceId)
-    .eq('provider', 'stripe')
-    .maybeSingle();
-  if (!prix) return null;
-  const { data: plan } = await admin.from('plans').select('label').eq('id', prix.plan_id).maybeSingle();
-  if (!plan) return null;
+  const planLabel = await resoudreLibellePlanParPrix(admin, suivante.priceId);
+  if (!planLabel) return null;
 
-  return { planLabel: plan.label, effectiveAt: new Date(suivante.startDate * 1000).toISOString() };
+  return { planLabel, effectiveAt: new Date(suivante.startDate * 1000).toISOString() };
 }
 
 // ── Client Stripe d'un membre ───────────────────────────────

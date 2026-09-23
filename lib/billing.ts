@@ -272,6 +272,27 @@ export function messageEchecPaiement(prochaineTentativeIso: string | null): { ti
   };
 }
 
+/**
+ * Message de confirmation à la souscription (in-app et e-mail).
+ *
+ * Trou relevé le 21/09 en souscrivant pour de vrai (`docs/abonnements.md`
+ * §14) : rien n'accusait réception d'un abonnement payé, ni n'affirmait le
+ * renouvellement — un abonné n'avait aucune trace explicite de ce qu'il
+ * venait de payer. Un seul appel, sur `customer.subscription.created`
+ * uniquement (jamais sur `updated` : une montée, une descente appliquée ou un
+ * renouvellement ont leur propre affichage sur `/reglages`, pas besoin d'un
+ * second message).
+ */
+export function messageAbonnementConfirme(planLabel: string, finPeriodeIso: string | null): { titre: string; corps: string } {
+  const echeance = finPeriodeIso
+    ? ` Il se renouvelle automatiquement le ${formatDate(finPeriodeIso)}.`
+    : '';
+  return {
+    titre: `Abonnement ${planLabel} confirmé`,
+    corps: `Votre abonnement ${planLabel} est actif.${echeance}`,
+  };
+}
+
 /** Horodatage Stripe (secondes) → ISO, ou `null`. Exposé pour les routes. */
 export function isoDepuisUnixStripe(v: unknown): string | null {
   return unixVersIso(v);

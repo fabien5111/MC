@@ -29,6 +29,7 @@ import {
   lireAbonnementStripe,
   lireClientFacture,
   lireSessionCheckout,
+  messageAbonnementConfirme,
   messageEchecPaiement,
   verifierSignatureStripe,
 } from '@/lib/billing';
@@ -38,6 +39,7 @@ import {
   enregistrerClientStripe,
   getIdClientStripeAdmin,
   reserverEvenementStripe,
+  resoudreLibellePlanParPrix,
 } from '@/lib/billing-data';
 
 // Le traitement reste local à un seul membre : une écriture, plus un e-mail
@@ -152,6 +154,13 @@ async function traiter(type: string, objet: unknown): Promise<void> {
       userId: abo.userId,
       renonciationLe: abo.renonciationLe,
     });
+
+    // Confirmation, uniquement à la création — une montée, une descente
+    // appliquée ou un simple renouvellement ont déjà leur propre affichage
+    // sur `/reglages` (§14 `docs/abonnements.md`, trou relevé le 21/09).
+    if (type === 'customer.subscription.created' && abo.userId) {
+      await notifierAbonnementConfirme(abo.userId, abo.priceId, abo.finPeriodeIso);
+    }
     return;
   }
 
@@ -189,6 +198,37 @@ async function notifierEchecPaiement(objet: unknown): Promise<void> {
   // E-mail best-effort et conditionné à la préférence du membre, comme le
   // cron d'abonnements : la notification in-app, elle, part toujours — c'est
   // elle qui conditionne la continuité du service.
+  if (!(await getNotifyEmailPreferenceAdmin(admin, userId))) return;
+
+  const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();
+  if (!profil?.email) return;
+
+  await sendEmailBestEffort({
+    to: profil.email,
+    subject: titre,
+    text: corps,
+    html: `<p>${corps.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`,
+  });
+}
+
+/**
+ * Confirmation d'un abonnement tout juste créé (in-app et e-mail).
+ *
+ * Best-effort sur le libellé du plan : une ligne `billing_prices`
+ * introuvable (config back-office incohérente) dégrade le titre plutôt que
+ * de faire échouer tout le traitement de l'événement — les droits, écrits
+ * juste au-dessus par `appliquerAbonnementStripe`, ne dépendent pas de ce
+ * message.
+ */
+async function notifierAbonnementConfirme(userId: string, priceId: string, finPeriodeIso: string | null): Promise<void> {
+  const admin = createAdminClient();
+  const planLabel = (await resoudreLibellePlanParPrix(admin, priceId)) ?? 'votre formule';
+  const { titre, corps } = messageAbonnementConfirme(planLabel, finPeriodeIso);
+
+  await createNotification(admin, userId, 'SUBSCRIPTION_CONFIRMED', titre, corps);
+
+  // Même doctrine que l'échec de paiement : e-mail best-effort, conditionné
+  // à la préférence du membre ; la notification in-app, elle, part toujours.
   if (!(await getNotifyEmailPreferenceAdmin(admin, userId))) return;
 
   const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();

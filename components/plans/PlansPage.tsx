@@ -363,10 +363,21 @@ export function PlansPage({
         />
       )}
       <h1 className="mb-2 text-center font-display text-3xl text-primary md:text-4xl">Nos formules</h1>
-      <p className="mb-8 text-center text-sm text-on-surface-variant">
-        Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un seul
-        essai par membre, toutes formules confondues.
-      </p>
+      {
+        // Un visiteur non connecté ignore encore s'il a déjà consommé son
+        // essai (trialConsumed vaut toujours faux dans ce cas) : la phrase
+        // reste affichée par défaut, ce qui est correct. Pour un membre
+        // connecté, elle mentait dès que plus aucune colonne ne propose
+        // « Essayer » — essai déjà consommé ou en cours (constaté en testant
+        // §3.2 du plan de test JEP-29 sur un membre déjà abonné, 23/09).
+        // Même logique que `peutEssayer` dans `UsageCard.tsx`.
+        !essaiActif && !trialConsumed && grid.plans.some((p) => p.trialAllowed) && (
+          <p className="mb-8 text-center text-sm text-on-surface-variant">
+            Un essai gratuit de {trialDays} jours, sans moyen de paiement, sur les formules qui le proposent — un
+            seul essai par membre, toutes formules confondues.
+          </p>
+        )
+      }
 
       {changementProgramme && (
         // Le bouton reste actif malgré ce bandeau (cf. le commentaire de la
@@ -487,6 +498,7 @@ export function PlansPage({
           </tbody>
         </table>
       </div>
+      <p className="mt-4 text-center text-xs text-on-surface-variant">TVA non applicable, art. 293 B du CGI.</p>
     </div>
   );
 }

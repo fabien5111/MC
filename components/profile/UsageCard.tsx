@@ -246,7 +246,20 @@ export function UsageCard({
                       : ''
                   }`
                 : 'sans date de fin'}
-              .
+              {
+                // Affirmé, pas seulement déduit de l'absence de mention
+                // contraire : un abonné qui découvre l'écran pour la première
+                // fois n'a sinon aucun moyen de savoir que ça se renouvelle
+                // (constaté en testant §4 du plan de test JEP-29, 23/09). Ne
+                // s'applique qu'à un vrai abonnement Stripe avec une échéance
+                // connue — un don administrateur ou une simulation ne se
+                // renouvellent pas tout seuls, ils s'éteignent simplement à
+                // leur échéance ; « sans date de fin » n'a pas de date à
+                // laquelle se référer.
+                currentPlan!.endsAt && currentPlan!.provider === 'stripe'
+                  ? ' — se renouvelle automatiquement à cette date.'
+                  : '.'
+              }
             </>
           )}
         </p>
