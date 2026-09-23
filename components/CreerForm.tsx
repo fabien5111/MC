@@ -34,7 +34,9 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { ingredientConversionText, resolveIngredientRefId, convertQty, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { buildIngredientsRecap } from '@/lib/ingredients-recap';
+import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { formatDate } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
@@ -182,68 +184,6 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       collapsed: false,
     };
   });
-}
-
-// Fusion des lignes d'ingrédients identiques (nom + commentaire) de toutes
-// les étapes, quantités additionnées — même logique que `mergeIngredientsRecap`
-// de RelectureEditor : le commentaire fait partie de la clé de fusion, sinon
-// « crème liquide, chaude » et « crème liquide, froide » (ou « chocolat noir
-// 66 % » / « chocolat noir 54 % » porté par le commentaire plutôt que le nom)
-// fusionneraient leurs quantités en un total sans usage réel.
-//
-// Deux lignes de même ingrédient saisies dans des unités différentes (300 g
-// d'œufs sur une étape, 1 unité sur une autre) sont converties vers l'unité
-// de la première rencontrée grâce à la table de référence (`convertQty`),
-// pour n'afficher qu'une seule ligne au lieu de deux. Sans conversion connue
-// entre les deux unités, la quantité de la ligne minoritaire est ajoutée en
-// toutes lettres plutôt que perdue.
-function mergeRecapLines(
-  steps: StepState[],
-  conversions: ConversionRef[],
-  units: Unit[],
-  ingredientRefIds: IngredientRefOption[],
-): { name: string; qty: string; unit: string; note: string; stepIndices: number[] }[] {
-  const merged: { key: string; name: string; qty: string; unit: string; note: string; steps: Set<number> }[] = [];
-  steps.forEach((st, si) =>
-    st.ings.forEach((i) => {
-      const name = i.name.trim();
-      if (!name) return;
-      const note = i.comment.trim();
-      const mkey = name.toLowerCase() + '|' + note.toLowerCase();
-      const ex = merged.find((m) => m.key === mkey);
-      if (!ex) {
-        merged.push({ key: mkey, name, qty: i.qty.trim(), unit: i.unit, note, steps: new Set([si]) });
-        return;
-      }
-      ex.steps.add(si);
-      const a = parseFloat(String(ex.qty).replace(',', '.'));
-      const b = parseFloat(String(i.qty).replace(',', '.'));
-      if (isNaN(a) || isNaN(b)) {
-        ex.qty = [ex.qty, i.qty].filter(Boolean).join(' + ');
-        return;
-      }
-      if (ex.unit.trim().toLowerCase() === i.unit.trim().toLowerCase()) {
-        ex.qty = String(+(a + b).toFixed(2));
-        return;
-      }
-      const refId = resolveIngredientRefId(name, ingredientRefIds);
-      const converted = convertQty(conversions, units, refId, i.unit, b, ex.unit);
-      if (converted != null) {
-        ex.qty = String(+(a + converted).toFixed(2));
-      } else {
-        ex.qty = `${ex.qty} ${ex.unit} + ${i.qty} ${i.unit}`.trim();
-        ex.unit = '';
-      }
-    }),
-  );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || a.note.localeCompare(b.note, 'fr'));
-  return merged.map(({ name, qty, unit, note, steps }) => ({
-    name,
-    qty,
-    unit,
-    note,
-    stepIndices: Array.from(steps).sort((a, b) => a - b),
-  }));
 }
 
 export function CreerForm({
@@ -784,7 +724,13 @@ export function CreerForm({
     return days;
   }, [steps, allSameDay]);
   const ingredientsRecap = useMemo(
-    () => mergeRecapLines(steps, conversions, units, ingredientRefIds),
+    () =>
+      buildIngredientsRecap(
+        steps.flatMap((st, si) => st.ings.map((i) => ({ name: i.name, qty: i.qty, unit: i.unit, note: i.comment, stepIndex: si }))),
+        conversions,
+        units,
+        ingredientRefIds,
+      ),
     [steps, conversions, units, ingredientRefIds],
   );
 
@@ -2557,37 +2503,14 @@ export function CreerForm({
             {ingredientsRecap.length === 0 ? (
               <p className="text-on-surface-variant italic text-sm">Les ingrédients saisis dans les étapes apparaîtront ici automatiquement.</p>
             ) : (
-              // Nom en `minmax(0,1fr)` : une colonne `max-content` ne peut pas
-              // rétrécir, un nom long débordait donc de l'écran sur mobile.
-              <div className="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10">
-                {ingredientsRecap.map((m, k) => {
-                  const conv = ingredientConversionText(conversions, units, resolveIngredientRefId(m.name, ingredientRefIds), m.unit, m.qty);
-                  return (
-                    <div key={k} className="border-b border-outline-variant/30 py-1.5" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
-                      <span className="font-body-md text-body-md text-on-surface break-words">
-                        {m.name}
-                        {m.note && <span className="block text-on-surface-variant text-[12px] italic">{m.note}</span>}
-                        {m.stepIndices.length === 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => goToStep(m.stepIndices[0])}
-                            className="flex items-center gap-1 text-primary text-[12px] hover:underline mt-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                            1 étape — {steps[m.stepIndices[0]]?.title || `Étape ${m.stepIndices[0] + 1}`}
-                          </button>
-                        ) : (
-                          <span className="block text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
-                        )}
-                      </span>
-                      <span className="font-label-md text-label-md text-primary whitespace-nowrap text-center">
-                        {[m.qty, m.unit].filter(Boolean).join(' ')}
-                        {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              <IngredientsRecapList
+                groups={ingredientsRecap}
+                conversions={conversions}
+                units={units}
+                ingredientRefIds={ingredientRefIds}
+                stepTitle={(si) => steps[si]?.title || `Étape ${si + 1}`}
+                goToStep={goToStep}
+              />
             )}
           </div>
         </section>
