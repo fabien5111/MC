@@ -1154,11 +1154,11 @@ l'autre (§ CLAUDE.md, un seul nœud d'aperçu). Comme toute `NEXT_PUBLIC_*`,
 elle compte au build ET à l'exécution : la poser sans reconstruire ne suffit
 pas.
 
-### Deux trous relevés en souscrivant pour de vrai (21/09), à traiter au lot F
+### Trois trous relevés en souscrivant pour de vrai (21-23/09), à traiter au lot F
 
-Constatés en déroulant `docs/test-stripe-jep29.md` § 2 sur `jepatisse-preview`
-avec une horloge de test Stripe — aucun des deux n'est un défaut du code
-existant, ce sont des manques de périmètre.
+Constatés en déroulant `docs/test-stripe-jep29.md` §§ 2-3 sur
+`jepatisse-preview` avec une horloge de test Stripe — aucun des trois n'est un
+défaut du code existant, ce sont des manques de périmètre.
 
 **Aucun e-mail ni notification à la souscription.** `traiter()`
 (`app/api/webhooks/stripe/route.ts`) écrit l'abonnement sur
@@ -1176,6 +1176,17 @@ pour un abonnement actif, et seule la branche annulée précise « sans
 reconduction ensuite ». L'absence de cette mention est censée signifier que
 ça se renouvelle, mais rien ne l'énonce positivement — un abonné qui découvre
 l'écran pour la première fois ne peut pas le savoir avec certitude.
+
+**L'intro de `/plans` promet un essai qui n'est plus accessible.** Le
+paragraphe « Un essai gratuit de {N} jours... » (`PlansPage.tsx`) s'affiche
+inconditionnellement, alors que le bouton « Essayer » lui-même disparaît de
+toutes les colonnes dès `trialConsumed` (déjà consommé) ou `essaiActif` (en
+cours) — vérifié en testant §3.2 sur un membre déjà abonné (23/09) : la
+phrase reste affichée au-dessus d'une grille qui ne propose plus que
+« S'abonner » / « Rétrograder ». Même logique à reprendre que `peutEssayer`
+dans `UsageCard.tsx` (`!trialConsumed && !essaiActif`, plus l'existence d'au
+moins un plan `trialAllowed` dans la grille) pour conditionner l'affichage du
+paragraphe.
 
 ## 15. JEP-130 — une seule grammaire de blocage, et la relecture ré-ouverte
 
