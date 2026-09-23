@@ -5,12 +5,11 @@
 // recherche, carnet, profil, blog, en cuisine) quand il est connu — sinon le
 // repli statique propre à l'écran (`fallbackHref`/`fallbackLabel`).
 //
-// Cf. `components/PreviousPathProvider.tsx` pour la mécanique (chemin
-// précédent gardé en mémoire pour la session de navigation) et
-// `lib/return-nav.ts` pour la table des écrans de liste reconnus.
+// Cf. `components/PreviousPathProvider.tsx` pour la mécanique (historique de
+// la session, pas seulement l'écran précédent) et `lib/return-nav.ts` pour
+// la table des écrans de liste reconnus.
 import Link from 'next/link';
-import { usePreviousPath } from '@/components/PreviousPathProvider';
-import { returnOriginFor } from '@/lib/return-nav';
+import { useReturnOrigin } from '@/components/PreviousPathProvider';
 
 export function RetourContextuel({
   fallbackHref,
@@ -24,8 +23,7 @@ export function RetourContextuel({
   currentLabel: string;
   className?: string;
 }) {
-  const previous = usePreviousPath();
-  const origin = returnOriginFor(previous);
+  const origin = useReturnOrigin();
 
   return (
     <nav

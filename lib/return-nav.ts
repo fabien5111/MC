@@ -15,9 +15,10 @@
 
 export type ReturnOrigin = { href: string; label: string };
 
-// `pathname` seul (sans recherche) pour le filtrage ; `fullPath` (avec
-// recherche) pour la destination du lien — un retour vers `/recherche` doit
-// restituer les facettes actives, pas juste la route nue.
+// Prend `pathname` seul (sans recherche) : c'est `PreviousPathProvider`, seul
+// appelant, qui reconstruit le lien complet avec la recherche d'origine — un
+// retour vers `/recherche` doit restituer les facettes actives, pas juste la
+// route nue.
 export function labelForReturnPath(pathname: string): string | null {
   if (pathname === '/recherche') return 'Résultats de recherche';
   if (pathname === '/carnet') return 'Mon carnet';
@@ -28,12 +29,3 @@ export function labelForReturnPath(pathname: string): string | null {
   return null;
 }
 
-// Combine le filtrage et la construction du lien — c'est ce que consomme
-// `RetourContextuel`. `fullPath` est `pathname + search` tel que mémorisé par
-// `PreviousPathProvider`.
-export function returnOriginFor(fullPath: string | null): ReturnOrigin | null {
-  if (!fullPath) return null;
-  const pathname = fullPath.split('?')[0].split('#')[0];
-  const label = labelForReturnPath(pathname);
-  return label ? { href: fullPath, label } : null;
-}
