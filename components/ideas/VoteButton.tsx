@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
+import { intentPath, useResumeIntent } from '@/lib/use-resumable-intent';
 
 export function VoteButton({
   ideaId,
@@ -26,9 +27,9 @@ export function VoteButton({
   const [votes, setVotes] = useState(initialVotes);
   const [hasVoted, setHasVoted] = useState(initialHasVoted);
 
-  async function toggle(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  // Séparé du gestionnaire de clic : `useResumeIntent` rejoue ce geste au
+  // montage, sans événement souris à annuler (il n'y en a pas).
+  async function apply() {
     if (busy) return;
     const next = !hasVoted;
     setHasVoted(next); // optimiste
@@ -40,7 +41,9 @@ export function VoteButton({
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push(connexionHref(location.pathname + location.search));
+          // `intentPath` restitue le tri/la page en cours ET rejoue le vote
+          // au retour — cf. use-resumable-intent.ts.
+          router.push(connexionHref(intentPath('vote', ideaId)));
           return null;
         }
         return next
@@ -54,6 +57,15 @@ export function VoteButton({
       setVotes((v) => v - (next ? 1 : -1));
     }
   }
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    void apply();
+  }
+
+  // Un par idée : seul le bouton dont `ideaId` correspond au marqueur réagit.
+  useResumeIntent('vote', ideaId, hasVoted, apply);
 
   return (
     <button

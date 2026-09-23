@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
-import { favoriteIntentPath, useResumeFavoriteIntent } from '@/lib/use-favorite-intent';
+import { intentPath, useResumeIntent } from '@/lib/use-resumable-intent';
 
 export function FavoriteHeart({
   recipeId,
@@ -37,9 +37,9 @@ export function FavoriteHeart({
         } = await supabase.auth.getUser();
         if (!user) {
           // Ce cœur vit sur des grilles (`/carnet`, `/recherche`, l'accueil) :
-          // `favoriteIntentPath` restitue la portée/le tri/la recherche en
-          // cours ET rejoue l'ajout au retour — cf. use-favorite-intent.ts.
-          router.push(connexionHref(favoriteIntentPath(recipeId)));
+          // `intentPath` restitue la portée/le tri/la recherche en cours ET
+          // rejoue l'ajout au retour — cf. use-resumable-intent.ts.
+          router.push(connexionHref(intentPath('favori', recipeId)));
           return null;
         }
         return next
@@ -58,7 +58,7 @@ export function FavoriteHeart({
   }
 
   // Un par carte : seul le cœur dont `recipeId` correspond au marqueur réagit.
-  useResumeFavoriteIntent(recipeId, fav, apply);
+  useResumeIntent('favori', recipeId, fav, apply);
 
   return (
     <button
