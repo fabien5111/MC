@@ -17,6 +17,7 @@ import { formatUsd } from '@/lib/ai/cost';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
+import { matchesSearch } from '@/lib/text-search';
 
 // 'trial' : essai en cours (§8.3, filtre par essai) — distinct de `demo`
 // (compte de démonstration), qui n'a rien à voir avec l'abonnement.
@@ -72,8 +73,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
         return m.status === filter;
       })
       .filter((m) => {
-        const q = query.toLowerCase();
-        return !q || [m.email, m.fullName || '', m.notes || ''].some((v) => v.toLowerCase().includes(q));
+        return matchesSearch([m.email, m.fullName, m.notes], query);
       });
     if (!sortCout) return base;
     // `null` (jamais d'appel IA) trié après les montants connus, quel que

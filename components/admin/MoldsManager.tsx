@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import type { Mold, MoldType } from '@/lib/admin';
+import { matchesSearch } from '@/lib/text-search';
 
 export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: MoldType[] }) {
   const router = useRouter();
@@ -26,7 +27,7 @@ export function MoldsManager({ molds, moldTypes }: { molds: Mold[]; moldTypes: M
     () =>
       molds.filter((m) => {
         const matchType = activeType === null || m.type_id === activeType;
-        const matchSearch = !query || m.name.toLowerCase().includes(query.toLowerCase());
+        const matchSearch = matchesSearch([m.name], query);
         return matchType && matchSearch;
       }),
     [molds, activeType, query],

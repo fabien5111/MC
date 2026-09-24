@@ -104,13 +104,16 @@ app/                    Pages et routes (App Router)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
+├── projets/nouveau/    Mode projet — étape 1 d'un projet pas encore créé
+│                       (choix IA / manuel ; aucune écriture)
 ├── projets/[id]/       Mode projet — parcours guidé (intention → format →
 │                       structure → recettes des composants)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
-│   ├── projet/           POST — création d'un projet (recette + satellites)
+│   ├── projet/           POST — création d'un projet au passage à l'étape 2
+│   │                     (recette + satellites + proposition de l'IA)
 │   ├── projet/structure/ POST — format visé + composants proposés (IA)
 │   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
@@ -424,6 +427,21 @@ remontant** en dessous.
   **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
+
+## Recherche textuelle sans accents
+
+**Toute zone de recherche du site ignore la casse ET les accents** (JEP-254) :
+« creme » trouve « Crème brûlée ». Une seule règle, `normSearch` / `matchesSearch`
+(`lib/text-search.ts`, alias de `normLoose`), pour tous les filtres en mémoire
+(carnet, blog, back-office). Côté base, `ilike` étant sensible aux accents, les
+recherches par titre ou par nom passent par des **colonnes générées**
+`recipes.title_norm` et `profiles.full_name_norm` (fonction immuable
+`public.mc_norm_imm`), interrogées avec le terme déjà normalisé via
+`withNormColumn` — qui retombe sur la colonne brute si la colonne normalisée
+n'existe pas encore. Ne pas réintroduire de `toLowerCase().includes` ni
+d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
+La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
+(`suggest_ingredients`) l'étaient déjà.
 
 ## Fournées (batches)
 
@@ -749,6 +767,15 @@ fournées d'essai, puis figer le tout en une recette du carnet. **Seul le
 socle de données est en place** — le parcours guidé, les quantités, les
 essais et la validation arrivent par lots successifs.
 
+- **Le projet n'est créé qu'au passage à l'étape 2** (JEP-254). Le bouton
+  « Projet » du carnet est un simple lien vers `/projets/nouveau`, qui
+  n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
+  de format et de composants) et la construction manuelle. `POST /api/projet`
+  crée alors la recette-projet **avec** l'intention et la proposition
+  revalidée (titre, format, composants), `wizard_step = 2` — ouvrir le mode
+  projet puis renoncer ne laisse plus de projet vide dans le carnet. Aucune
+  donnée ne voyage d'une page à l'autre par le navigateur : l'étape 2 se
+  relit depuis la base.
 - **Un projet est une recette dès sa création**, pas une entité séparée
   convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
   de source, et la validation impliquerait une migration d'identifiants qui
@@ -781,7 +808,12 @@ essais et la validation arrivent par lots successifs.
   même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
   client tirerait `next/headers` et casserait le build.
 - **Le format vit sur `recipes`, jamais dans une table satellite** :
-  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. C'est
+  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. Tout
+  format en moule (rond, cadre, bûche = `demi-cylindre`, empreintes) se
+  réalise en N exemplaires, portés par `yield_qty` ; le format affiché est
+  **déduit** (`deduceProjectFormat`), et la forme du calcul retombe sur celle
+  du format quand aucun moule du référentiel n'est choisi
+  (`projectTargetForme`). C'est
   de là que `BatchWidget` tire les coefficients surface/volume que
   `scalingCoef` applique ; un format rangé ailleurs couperait le mode projet
   de toute la machinerie d'ajustement, qu'on veut réutiliser telle quelle.
@@ -841,6 +873,13 @@ essais et la validation arrivent par lots successifs.
   `/api/recipes/picker` plutôt que fusionnées : c'est la portée qui a répondu
   qui décide du `source_kind`, donc du crédit d'auteur. La pertinence est
   obtenue en pré-remplissant la recherche avec le nom du composant.
+- **Mode d'ajustement d'un composant choisi dès l'étape 3**
+  (`recipe_project_components.scaling_mode` : `simple` = volume, `foncage` =
+  surface, `aucun`). La colonne n'est que la **mémoire** du choix tant que le
+  composant n'a pas de recette : c'est le `scaling_mode` des groupes
+  d'ingrédients que lit tout le calcul. Il est donc reporté sur les groupes
+  existants (`setComponentScalingMode`) et prime sur celui de la source à
+  chaque copie ; vide, celui de la recette d'origine est gardé.
 - **Les quantités ne sont pas recalculées ici, elles réutilisent la
   machinerie des fournées** (étape 5) : rapport des volumes ou des surfaces
   entre le moule de la recette source et le format visé (`moldMetrics`), puis
@@ -1259,7 +1298,7 @@ principales :
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
-| Projets | `recipe_projects`, `recipe_project_components` (+ `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
+| Projets | `recipe_projects`, `recipe_project_components` (+ `scaling_mode`, `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |

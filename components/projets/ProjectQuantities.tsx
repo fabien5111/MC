@@ -43,6 +43,35 @@ const champ =
 
 const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
+// Masse totale des lignes exprimées en g ou kg — la « quantité produite »
+// lisible d'une préparation (JEP-254, point 13). Les autres unités (pièce,
+// ml, pincée) ne s'additionnent pas sans conversion : elles sont ignorées, et
+// l'écran le dit (« ingrédients pesés »). `base` : quantités de la recette
+// d'origine, avant ajustement.
+function masseGrammes(lines: ProjectComponent['lines'], base: boolean): number | null {
+  let total = 0;
+  let vu = false;
+  for (const l of lines) {
+    const u = (l.unit || '').trim().toLowerCase();
+    const mult = u === 'g' ? 1 : u === 'kg' ? 1000 : null;
+    if (mult == null) continue;
+    const q = base ? l.baseQuantity : parseFloat(String(l.quantity ?? '').replace(',', '.'));
+    if (q == null || !isFinite(q)) continue;
+    total += q * mult;
+    vu = true;
+  }
+  return vu ? total : null;
+}
+
+const masseTexte = (g: number) => (g >= 1000 ? `${fr(g / 1000)} kg` : `${Math.round(g)} g`);
+
+// Libellés courts des modes d'ajustement, pour l'IA et l'affichage.
+const MODE_LABEL: Record<string, string> = {
+  simple: 'suit le volume du moule',
+  foncage: 'recouvre une surface (fonçage, glaçage)',
+  aucun: 'ne doit pas être ajustée',
+};
+
 // Format visé par le projet, dans la forme attendue par le calcul.
 function targetFormat(project: ProjectFull, forme: string | null): ScalableFormat {
   const dims =
@@ -75,6 +104,10 @@ export function QuantitiesStep({
   const [travail, setTravail] = useState(false);
   const [propositions, setPropositions] = useState<Record<number, ScaleProposal>>({});
   const [saisie, setSaisie] = useState<Record<number, string>>({});
+  // Précisions libres pour l'ajustement par IA, par composant (JEP-254,
+  // point 15) — « la recette d'origine est pour 2 fonds », « je veux une
+  // couche plus épaisse »…
+  const [contexteIA, setContexteIA] = useState<Record<number, string>>({});
 
   const cible = targetFormat(project, targetForme);
   const ordered = [...project.components].sort((a, b) => a.position - b.position);
@@ -137,15 +170,18 @@ export function QuantitiesStep({
   // Ajustement par IA : la route /api/scale-recipe, déjà utilisée par les
   // fournées. Elle rend un coefficient ET son explication en une phrase —
   // exactement la transparence exigée au §6.4.
+  //
+  // L'IA reçoit trois sources (JEP-254, point 15) : la recette d'origine
+  // (rendement, moule, complément sur les quantités, ingrédients), le dessert
+  // visé (nom, format, parts, mode d'ajustement du composant) et les
+  // précisions saisies par le pâtissier.
   async function proposerIA(c: ProjectComponent) {
     setTravail(true);
     try {
-      // Le rendement d'origine (quantité + complément en texte libre, ex.
-      // « 1 fond de tarte de 26 cm ou 6 tartelettes de 6 cm ») n'est connu
-      // que de la recette source : sans lui, l'IA ne dispose d'aucune donnée
-      // de départ à comparer au format visé, et renvoie systématiquement
-      // « recette non dimensionnée ».
-      let rendement: string | null = c.source_title ? `recette « ${c.source_title} »` : null;
+      // Le rendement d'origine n'est connu que de la recette source : sans
+      // lui, l'IA ne dispose d'aucune donnée de départ à comparer au format
+      // visé, et renvoie systématiquement « recette non dimensionnée ».
+      let rendement: string | null = c.sourceYield;
       let yieldNotes: string | null = null;
       if (c.source_recipe_id) {
         const { data } = await createClient()
@@ -154,21 +190,41 @@ export function QuantitiesStep({
           .eq('id', c.source_recipe_id)
           .maybeSingle();
         const row = data as { yield_qty: string | null; yield_unit: string | null; yield_notes: string | null } | null;
-        if (row?.yield_qty) rendement = `${row.yield_qty} ${row.yield_unit ?? ''}`.trim();
+        if (!rendement && row?.yield_qty) rendement = `${row.yield_qty} ${row.yield_unit ?? ''}`.trim();
         yieldNotes = row?.yield_notes ?? null;
       }
+      if (!rendement) {
+        rendement = c.source_title
+          ? `recette « ${c.source_title} » (rendement non précisé)`
+          : 'quantités telles que saisies pour ce composant (rendement non précisé)';
+      }
+      const mode = c.scalingMode ?? c.lines.find((l) => l.scalingMode)?.scalingMode ?? null;
+      const precisions = (contexteIA[c.id] ?? '').replace(/\s+/g, ' ').trim().slice(0, 450);
+      const prompt = [
+        `Adapter la préparation « ${c.name} » au dessert « ${project.title} » :`,
+        `format ${formatLabel}, ${project.servings ?? '?'} parts.`,
+        mode && MODE_LABEL[mode] ? `Cette préparation ${MODE_LABEL[mode]}.` : null,
+        precisions ? `Précisions du pâtissier : ${precisions}` : null,
+      ]
+        .filter(Boolean)
+        .join(' ');
       const r = await fetch('/api/scale-recipe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Adapter cette préparation « ${c.name} » pour un dessert de ${
-            project.servings ?? '?'
-          } parts, format : ${formatLabel}.`,
+          prompt,
           recette: {
             titre: c.source_title || c.name,
             rendement,
             yield_notes: yieldNotes,
-            ingredients: c.lines.map((l) => ({ nom: l.name, quantite: l.quantity, unite: l.unit })),
+            // Quantités D'ORIGINE quand elles sont connues : le coefficient
+            // rendu s'applique à elles (`base_quantity`), pas aux quantités
+            // déjà ajustées une première fois.
+            ingredients: c.lines.map((l) => ({
+              nom: l.name,
+              quantite: l.baseQuantity != null ? fr(l.baseQuantity) : l.quantity,
+              unite: l.unit,
+            })),
           },
           moules_reference: [],
         }),
@@ -250,9 +306,23 @@ export function QuantitiesStep({
         vos essais.
       </p>
 
+      {/* Rappel du dessert visé (JEP-254, point 13) : c'est à lui que chaque
+          composant doit être ramené. */}
+      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
+        <p className="font-body-md text-[15px] text-on-surface">
+          {project.title}
+          {' — '}
+          {formatLabel}
+          {project.servings ? ` · ${project.servings} parts` : ''}
+        </p>
+      </div>
+
       {ordered.map((c) => {
         const facteur = c.scaleFactor ?? 1;
         const prop = propositions[c.id];
+        const masseOrigine = masseGrammes(c.lines, true);
+        const masseActuelle = masseGrammes(c.lines, false);
         return (
           <div key={c.id} className="rounded-xl border border-outline-variant p-4">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -260,7 +330,23 @@ export function QuantitiesStep({
                 <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>
                 <p className="text-[12px] text-on-surface-variant">
                   {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
-                  {c.source_title ? ` · ${c.source_title}` : ''}
+                  {c.source_title && c.source_recipe_id ? (
+                    <>
+                      {' · '}
+                      <a
+                        href={`/recette/${c.source_recipe_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                      >
+                        {c.source_title}
+                      </a>
+                    </>
+                  ) : c.source_title ? (
+                    ` · ${c.source_title}`
+                  ) : (
+                    ''
+                  )}
                   {c.manuallyAdjusted ? ' · ajusté à la main' : ''}
                 </p>
               </div>
@@ -280,6 +366,37 @@ export function QuantitiesStep({
                     {prop?.reason || c.scaleReason}
                   </p>
                 )}
+
+                {/* Ce que produit la recette choisie (JEP-254, point 13) :
+                    son rendement d'origine, et le poids de la préparation
+                    avant / après ajustement. */}
+                <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
+                  <dt className="text-outline">Recette d’origine</dt>
+                  <dd className="text-on-surface">{c.sourceYield ?? 'rendement non précisé'}</dd>
+                  {masseActuelle != null && (
+                    <>
+                      <dt className="text-outline">Ingrédients pesés</dt>
+                      <dd className="text-on-surface">
+                        {masseOrigine != null && Math.abs(masseOrigine - masseActuelle) > 0.5
+                          ? `${masseTexte(masseOrigine)} dans la recette d’origine → ${masseTexte(masseActuelle)} pour ce dessert`
+                          : masseTexte(masseActuelle)}
+                      </dd>
+                    </>
+                  )}
+                </dl>
+
+                <div className="mb-3">
+                  <label className="mb-1 block font-label-md text-[11.5px] text-outline">
+                    PRÉCISIONS POUR L’AJUSTEMENT PAR L’IA (FACULTATIF)
+                  </label>
+                  <textarea
+                    value={contexteIA[c.id] ?? ''}
+                    onChange={(e) => setContexteIA((p) => ({ ...p, [c.id]: e.target.value.slice(0, 450) }))}
+                    rows={2}
+                    placeholder="La recette d’origine donne deux fonds de tarte ; je veux une couche plus fine…"
+                    className={`${champ} w-full`}
+                  />
+                </div>
 
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => void proposer(c)} className={btnGhost}>

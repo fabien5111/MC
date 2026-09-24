@@ -162,6 +162,37 @@ export async function writeComponentContent(
   }
 }
 
+// Mode d'ajustement choisi pour un composant à l'étape 3 (JEP-254, point 4) :
+// posé sur la ligne du composant — qui le garde tant qu'il n'a pas de recette
+// — ET sur les groupes d'ingrédients de ses étapes s'il en a déjà. C'est le
+// `scaling_mode` des groupes que lit tout le calcul des quantités
+// (`scalingCoef`, fournées comprises) : le composant n'en est que la mémoire.
+// `null` rend la main à la recette d'origine pour les copies à venir, sans
+// toucher aux groupes déjà écrits.
+export async function setComponentScalingMode(
+  supabase: Supabase,
+  recipeId: string,
+  componentId: number,
+  mode: string | null,
+) {
+  const { error } = await supabase
+    .from('recipe_project_components')
+    .update({ scaling_mode: mode } as never)
+    .eq('id', componentId);
+  if (error) throw error;
+  if (!mode) return;
+
+  const { steps, groups } = await readLayout(supabase, recipeId);
+  const indexes = new Set(steps.filter((s) => s.component_id === componentId).map((s) => s.order_index ?? -1));
+  const groupIds = groups.filter((g) => indexes.has(g.order_index ?? -1)).map((g) => g.id);
+  if (!groupIds.length) return;
+  const { error: groupErr } = await supabase
+    .from('ingredient_groups')
+    .update({ scaling_mode: mode } as never)
+    .in('id', groupIds);
+  if (groupErr) throw groupErr;
+}
+
 // Redistribue les blocs d'`order_index` après un déplacement ou une
 // suppression de composant : les étapes d'un projet doivent se lire dans
 // l'ordre d'assemblage, du bas vers le haut. Les groupes suivent leurs

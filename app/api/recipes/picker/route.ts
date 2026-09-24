@@ -23,6 +23,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isProjectDraft } from '@/lib/projects';
+import { withNormColumn } from '@/lib/text-search';
 
 const MAX_LIMIT = 30;
 
@@ -77,13 +78,17 @@ export async function GET(req: Request) {
   }
   if (!branches.length) return NextResponse.json({ items: [] });
 
-  let q = supabase.from('recipes').select(SELECT).or(branches.join(',')).limit(limit);
-  // Le titre est un filtre supplémentaire (ET), pas une quatrième branche du
-  // OU : il restreint la portée choisie, il ne l'élargit pas.
-  if (term) q = q.ilike('title', `%${term}%`);
-  q = term ? q.order('title', { ascending: true }) : q.order('created_at', { ascending: false });
+  const requete = (colonne: string, motif: string) => {
+    let q = supabase.from('recipes').select(SELECT).or(branches.join(',')).limit(limit);
+    // Le titre est un filtre supplémentaire (ET), pas une quatrième branche du
+    // OU : il restreint la portée choisie, il ne l'élargit pas. Il porte sur
+    // la colonne normalisée `title_norm` (JEP-254) : « creme » trouve
+    // « Crème pâtissière ».
+    if (term) q = q.ilike(colonne, `%${motif}%`);
+    return term ? q.order('title', { ascending: true }) : q.order('created_at', { ascending: false });
+  };
 
-  const { data, error } = await q;
+  const { data, error } = await withNormColumn(requete, 'title_norm', 'title', term);
   if (error) {
     console.error('recipes/picker:', error.message);
     return NextResponse.json({ items: [], erreur: error.message }, { status: 500 });

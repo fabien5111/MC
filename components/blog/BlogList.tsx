@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArticleCard } from '@/components/blog/ArticleCard';
 import { formatArticleDate, type ArticleListItem, type CategoryWithCount } from '@/lib/blog';
+import { matchesSearch } from '@/lib/text-search';
 
 const PILL = 'px-4 py-1.5 rounded-full text-[12.5px] font-semibold transition-all';
 const PILL_ON = `${PILL} bg-primary text-on-primary`;
@@ -50,7 +51,7 @@ export function BlogList({
       articles.filter(
         (a) =>
           (cat === 'all' || a.category === cat) &&
-          (!query || `${a.title} ${a.excerpt ?? ''}`.toLowerCase().includes(query)),
+          matchesSearch([a.title, a.excerpt], query),
       ),
     [articles, cat, query],
   );

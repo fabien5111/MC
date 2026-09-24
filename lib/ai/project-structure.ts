@@ -19,6 +19,8 @@ export type ProposedStructure = {
   format: ProjectFormat | null;
   dims: Record<string, number>;
   servings: number | null;
+  // Nombre d'exemplaires (gâteaux, bûches, empreintes) — JEP-254.
+  count: number | null;
   components: ProposedComponent[];
 };
 
@@ -37,15 +39,19 @@ Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
   "format": "<${PROJECT_FORMAT_KEYS.join(' | ')}>",
   "dimensions": {"diametre": <nombre en cm>, "hauteur": <nombre en cm>, "longueur": <nombre en cm>, "largeur": <nombre en cm>},
   "parts": <nombre de parts>,
+  "nombre": <nombre d'exemplaires à réaliser (gâteaux, bûches ou empreintes)>,
   "composants": [{"nom": "<nom de la préparation>", "role": "<${COMPONENT_ROLES.join(' | ')}>"}]
 }
 
 Règles :
 - "format" : "round" pour un cercle ou moule rond, "rectangular" pour un cadre,
-  "individual" pour des empreintes individuelles, "free" si l'intention ne
-  permet pas de trancher.
+  "log" pour une bûche, "individual" pour des empreintes individuelles, "free"
+  si l'intention ne permet pas de trancher.
+- "nombre" : 1 par défaut ; le nombre d'empreintes pour "individual", le
+  nombre de gâteaux ou de bûches si l'intention en demande plusieurs.
 - "dimensions" : ne garde que les clés qui ont un sens pour ce format
-  (diamètre et hauteur pour un rond, longueur/largeur/hauteur pour un cadre),
+  (diamètre et hauteur pour un rond, longueur/largeur/hauteur pour un cadre,
+  longueur/largeur pour une bûche),
   en centimètres, cohérentes avec le nombre de parts. Objet vide si le format
   est "free".
 - "composants" : de 2 à 8 préparations, ordonnées du BAS vers le HAUT de
@@ -81,6 +87,7 @@ export function normaliseStructure(obj: unknown, maxComponents: number): Propose
   }
 
   const parts = nombre(o.parts);
+  const nb = nombre(o.nombre);
 
   const seen = new Set<string>();
   const components: ProposedComponent[] = [];
@@ -102,6 +109,7 @@ export function normaliseStructure(obj: unknown, maxComponents: number): Propose
     format,
     dims,
     servings: parts !== null ? Math.round(parts) : null,
+    count: nb !== null ? Math.min(Math.round(nb), 200) : null,
     components,
   };
 }

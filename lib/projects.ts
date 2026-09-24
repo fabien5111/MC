@@ -97,11 +97,22 @@ export function parseWizardStep(v: unknown): WizardStep {
 //
 // `forme` renvoie aux formes du référentiel `mold_types` (colonne `forme`),
 // ce qui permet de proposer les moules pertinents et rien d'autre.
-export type ProjectFormat = 'round' | 'rectangular' | 'individual' | 'free';
+export type ProjectFormat = 'round' | 'rectangular' | 'log' | 'individual' | 'free';
 
+// `countLabel` : tout format en moule se réalise en N exemplaires (JEP-254,
+// point 3) — deux entremets ronds, trois bûches — et plus seulement les
+// empreintes individuelles. Le nombre est porté par `recipes.yield_qty`,
+// exactement ce que `componentScaleProposal` multiplie déjà (rapport des
+// nombres de pièces).
 export const PROJECT_FORMATS: Record<
   ProjectFormat,
-  { label: string; hint: string; forme: string | null; dims: { key: string; label: string }[] }
+  {
+    label: string;
+    hint: string;
+    forme: string | null;
+    dims: { key: string; label: string }[];
+    countLabel: string | null;
+  }
 > = {
   round: {
     label: 'Cercle ou moule rond',
@@ -111,6 +122,7 @@ export const PROJECT_FORMATS: Record<
       { key: 'diametre', label: 'Diamètre' },
       { key: 'hauteur', label: 'Hauteur' },
     ],
+    countLabel: 'Nombre de gâteaux',
   },
   rectangular: {
     label: 'Cadre ou moule rectangulaire',
@@ -121,6 +133,20 @@ export const PROJECT_FORMATS: Record<
       { key: 'largeur', label: 'Largeur' },
       { key: 'hauteur', label: 'Hauteur' },
     ],
+    countLabel: 'Nombre de gâteaux',
+  },
+  // Gouttière à bûche : demi-cylindre couché, que `moldMetrics` sait déjà
+  // mesurer à partir de sa longueur et de sa largeur (diamètre de la
+  // gouttière) — même forme que le référentiel `mold_types`.
+  log: {
+    label: 'Bûche',
+    hint: 'Gouttière ou moule à bûche',
+    forme: 'demi-cylindre',
+    dims: [
+      { key: 'longueur', label: 'Longueur' },
+      { key: 'largeur', label: 'Largeur' },
+    ],
+    countLabel: 'Nombre de bûches',
   },
   individual: {
     label: 'Empreintes individuelles',
@@ -130,12 +156,14 @@ export const PROJECT_FORMATS: Record<
       { key: 'diametre', label: 'Diamètre unitaire' },
       { key: 'hauteur', label: 'Hauteur' },
     ],
+    countLabel: 'Nombre d’empreintes',
   },
   free: {
     label: 'Format libre',
     hint: 'Nombre de parts seulement',
     forme: null,
     dims: [],
+    countLabel: null,
   },
 };
 
@@ -143,6 +171,82 @@ export const PROJECT_FORMAT_KEYS = Object.keys(PROJECT_FORMATS) as ProjectFormat
 
 export function isProjectFormat(v: unknown): v is ProjectFormat {
   return typeof v === 'string' && v in PROJECT_FORMATS;
+}
+
+// Format affiché à l'étape 2, relu depuis ce que porte la recette. Le format
+// n'a pas de colonne propre (il vit sur `recipes`, cf. CLAUDE.md) : il se
+// déduit de la forme du moule choisi, sinon des dimensions saisies. Seule
+// ambiguïté restante, sans moule choisi : un rond en plusieurs exemplaires se
+// relit comme des empreintes individuelles — mêmes dimensions, même calcul
+// (cf. `projectTargetForme`), seul le libellé diffère.
+export function deduceProjectFormat(p: {
+  measure_type: string | null;
+  forme: string | null;
+  dims: Record<string, unknown>;
+  count: number;
+}): ProjectFormat {
+  if (p.measure_type !== 'mold') return 'free';
+  if (p.forme === 'cylindre') return 'round';
+  if (p.forme === 'rectangulaire' || p.forme === 'oblong') return 'rectangular';
+  if (p.forme === 'demi-cylindre') return 'log';
+  if (p.forme) return 'individual';
+  if (p.dims.longueur != null) return p.dims.hauteur != null ? 'rectangular' : 'log';
+  return p.count > 1 ? 'individual' : 'round';
+}
+
+// Forme géométrique de la cible pour le calcul des coefficients : celle du
+// moule choisi, sinon celle qu'implique le format. Sans ce repli, un projet
+// « cercle Ø 20 » dont le moule du référentiel n'était pas précisé ne
+// donnait aucune proposition d'après le format.
+export function projectTargetForme(p: {
+  measure_type: string | null;
+  forme: string | null;
+  dims: Record<string, unknown>;
+  count: number;
+}): string | null {
+  if (p.forme) return p.forme;
+  const f = deduceProjectFormat(p);
+  if (f === 'individual') return 'cylindre';
+  return PROJECT_FORMATS[f].forme;
+}
+
+// Colonnes de `recipes` écrites pour un format visé — partagé par l'étape 2
+// et par la création du projet (/api/projet), qui y pose la proposition de
+// l'IA.
+export function projectFormatPayload(input: {
+  format: ProjectFormat;
+  title: string;
+  servings: number;
+  dims: Record<string, number>;
+  count: number | null;
+  moldTypeId: number | null;
+}): Record<string, unknown> {
+  const title = input.title.trim() || 'Nouveau projet';
+  if (input.format === 'free') {
+    return {
+      title,
+      servings: input.servings,
+      measure_type: 'units',
+      yield_qty: String(input.servings),
+      yield_unit: 'pers',
+      yield_desc: null,
+      mold_type_id: null,
+      mold_dims: null,
+    };
+  }
+  const keys = PROJECT_FORMATS[input.format].dims.map((d) => d.key);
+  const dims = Object.fromEntries(Object.entries(input.dims).filter(([k, v]) => keys.includes(k) && v > 0));
+  const nb = input.count && input.count > 0 ? Math.round(input.count) : 1;
+  return {
+    title,
+    servings: input.servings,
+    measure_type: 'mold',
+    yield_qty: String(nb),
+    yield_unit: null,
+    yield_desc: formatYieldDesc(input.format, dims, nb),
+    mold_type_id: input.moldTypeId,
+    mold_dims: Object.keys(dims).length ? dims : null,
+  };
 }
 
 // Description lisible du format, écrite dans `recipes.yield_desc` — la même
@@ -178,6 +282,17 @@ export const COMPONENT_ROLES = [
   'Garniture',
   'Décor',
 ] as const;
+
+// Modes d'ajustement proposés à l'étape 3 (JEP-254, point 4) — les valeurs
+// de `ingredient_groups.scaling_mode`, avec les libellés de l'éditeur
+// classique (CreerForm) pour qu'un même choix se lise pareil partout.
+// La valeur vide laisse le mode de la recette d'origine.
+export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
+  { value: '', label: 'Ajustement : selon la recette' },
+  { value: 'simple', label: 'Volume (appareil, crème, mousse…)' },
+  { value: 'foncage', label: 'Recouvre une surface (pâte, glaçage…)' },
+  { value: 'aucun', label: 'Pas d’ajustement' },
+];
 
 // Plafond du nombre de composants. Ce n'est pas un arbitrage produit (la
 // spec laisse la question ouverte) mais un garde-fou : il borne ce qu'une

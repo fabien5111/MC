@@ -17,7 +17,7 @@ import { consumeQuota, refundQuota } from '@/lib/entitlements-data';
 
 export const maxDuration = 30;
 
-const VIDE = { title: null, format: null, dims: {}, servings: null, components: [] };
+const VIDE = { title: null, format: null, dims: {}, servings: null, count: null, components: [] };
 
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -12,19 +12,35 @@ export function buildComponentContenu(
   name: string,
   role: string | null,
   contexte: { titre: string | null; format: string | null; parts: number | null },
+  // Nouvelle proposition demandée (JEP-254, point 8) : la précédente, en
+  // texte, et ce que le pâtissier veut y corriger. Sans la précédente, l'IA
+  // repartirait de zéro et pourrait perdre ce qui convenait déjà.
+  revision: { precedente: string; consignes: string } | null = null,
 ): string {
   const clip = (s: string | null | undefined, max: number) => (s || '').replace(/\s+/g, ' ').trim().slice(0, max);
   const lignes = [
     `Préparation demandée : "${clip(name, 80)}"`,
     role ? `Rôle dans l'assemblage : ${clip(role, 40)}` : null,
     contexte.titre ? `Dessert dans lequel elle entre : ${clip(contexte.titre, 120)}` : null,
+    contexte.format ? `Format du dessert : ${clip(contexte.format, 120)}` : null,
     contexte.parts ? `Nombre de parts visé : ${contexte.parts}` : null,
   ].filter(Boolean);
+
+  const blocRevision = revision
+    ? `
+
+Une première proposition a déjà été faite :
+${revision.precedente.slice(0, 4000)}
+
+Le pâtissier demande de la corriger ainsi : "${clip(revision.consignes, 1000)}"
+Produis une NOUVELLE version complète qui applique ces corrections, en gardant
+ce qu'elles ne remettent pas en cause.`
+    : '';
 
   return `Tu écris UNE préparation de base du répertoire classique de la
 pâtisserie française, telle qu'elle entre dans la composition d'un dessert.
 
-${lignes.join('\n')}
+${lignes.join('\n')}${blocRevision}
 
 Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
 {
@@ -112,4 +128,22 @@ export function normaliseComponentRecipe(obj: unknown, maxSteps = 6): GeneratedC
   }
 
   return { title: texte(o.titre, 120), steps };
+}
+
+// Brouillon d'un composant rendu en texte, pour le soumettre de nouveau à
+// l'IA avec des corrections (JEP-254, point 8) : c'est ce que le pâtissier a
+// sous les yeux — relu, éventuellement déjà retouché — qui sert de base, pas
+// la réponse brute de l'appel précédent.
+export function draftToText(steps: ComponentStepDraft[]): string {
+  return steps
+    .map((st, i) => {
+      const ings = st.ingredients
+        .filter((it) => (it.name || '').trim())
+        .map((it) => `  - ${[it.quantity, it.unit, it.name].filter(Boolean).join(' ')}`)
+        .join('\n');
+      return [`${i + 1}. ${st.title || 'Étape'}${st.description ? ` : ${st.description}` : ''}`, ings]
+        .filter(Boolean)
+        .join('\n');
+    })
+    .join('\n');
 }

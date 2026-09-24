@@ -25,6 +25,7 @@ import {
 } from '@/lib/contact';
 import { formatDateHeure } from '@/lib/format';
 import type { ContactAnomalyCounts, ContactListRow } from '@/lib/contact-admin-data';
+import { matchesSearch } from '@/lib/text-search';
 
 function tronquer(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
@@ -126,16 +127,9 @@ export function ContactManager({
   const [anomaliesUniquement, setAnomaliesUniquement] = useState(false);
 
   const filtrees = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (anomaliesUniquement && !estEnAnomalie(r)) return false;
-      if (!q) return true;
-      return (
-        r.reference.toLowerCase().includes(q) ||
-        (r.email ?? '').toLowerCase().includes(q) ||
-        r.subject.toLowerCase().includes(q) ||
-        (r.user_id ?? '').toLowerCase().includes(q)
-      );
+      return matchesSearch([r.reference, r.email, r.subject, r.user_id], query);
     });
   }, [rows, query, anomaliesUniquement]);
 

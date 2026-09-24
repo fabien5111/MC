@@ -38,6 +38,13 @@ export type ProjectComponent = {
   scaleFactor: number | null;
   scaleReason: string | null;
   manuallyAdjusted: boolean;
+  // Mode d'ajustement choisi à l'étape 3 (`simple` = volume, `foncage` =
+  // surface, `aucun`), `null` = celui de la recette d'origine (JEP-254).
+  scalingMode: string | null;
+  // Rendement de la recette d'origine, en clair (« Cercle Ø 22 × 4 cm —
+  // 8 pers »), lu en direct sur la source : `null` si elle n'existe pas
+  // (IA, saisie à la main) ou n'est plus accessible (JEP-254, point 13).
+  sourceYield: string | null;
   stepCount: number;
   lines: ProjectLine[];
 };
@@ -75,10 +82,10 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     supabase.from('recipe_projects').select('intent, wizard_step').eq('recipe_id', recipeId).maybeSingle(),
     supabase
       .from('recipe_project_components')
-      .select(
-        'id, position, name, role, source_kind, source_recipe_id, source_author_id, source_title, source_author_name, ' +
-          'resolved, scale_factor, scale_reason, manually_adjusted',
-      )
+      // `*` et non une liste : `scaling_mode` (JEP-254) arrive par une
+      // migration séparée, une liste explicite ferait échouer toute la
+      // lecture du projet tant qu'elle n'est pas jouée.
+      .select('*')
       .eq('recipe_id', recipeId)
       .order('position'),
     // Étapes du projet : une seule requête pour tout le projet, recoupée en
@@ -156,17 +163,36 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     parComposant.set(st.component_id, lignes);
   }
 
-  type ComponentRow = Omit<ProjectComponent, 'stepCount' | 'lines' | 'scaleFactor' | 'scaleReason' | 'manuallyAdjusted'> & {
+  type ComponentRow = Omit<
+    ProjectComponent,
+    'stepCount' | 'lines' | 'scaleFactor' | 'scaleReason' | 'manuallyAdjusted' | 'scalingMode' | 'sourceYield'
+  > & {
     scale_factor: number | null;
     scale_reason: string | null;
     manually_adjusted: boolean;
+    scaling_mode?: string | null;
   };
-  const components = ((componentsRes.data ?? []) as unknown as ComponentRow[]).map((c) => ({
-    ...c,
+  const rows = (componentsRes.data ?? []) as unknown as ComponentRow[];
+  const rendements = await sourceYields(
+    supabase,
+    rows.map((c) => c.source_recipe_id).filter((id): id is string => !!id),
+  );
+  const components = rows.map((c) => ({
+    id: c.id,
     position: Number(c.position),
+    name: c.name,
+    role: c.role,
+    source_kind: c.source_kind,
+    source_recipe_id: c.source_recipe_id,
+    source_author_id: c.source_author_id,
+    source_title: c.source_title,
+    source_author_name: c.source_author_name,
+    resolved: c.resolved,
     scaleFactor: c.scale_factor,
     scaleReason: c.scale_reason,
     manuallyAdjusted: c.manually_adjusted,
+    scalingMode: c.scaling_mode ?? null,
+    sourceYield: c.source_recipe_id ? (rendements.get(c.source_recipe_id) ?? null) : null,
     stepCount: parStep.get(c.id) ?? 0,
     lines: parComposant.get(c.id) ?? [],
   }));
@@ -185,6 +211,48 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     yield_desc: recipe.yield_desc,
     components,
   };
+}
+
+// Rendement des recettes d'origine des composants, en clair. Une seule
+// requête pour tout le projet ; une source devenue illisible (supprimée,
+// dépubliée) est simplement absente de la table.
+async function sourceYields(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!ids.length) return out;
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, measure_type, servings, yield_qty, yield_unit, yield_desc, yield_notes, mold_types(name)')
+    .in('id', [...new Set(ids)]);
+  if (error) {
+    console.error('getProjectFull (rendements):', error.message);
+    return out;
+  }
+  type Row = {
+    id: string;
+    measure_type: string | null;
+    servings: number | null;
+    yield_qty: string | null;
+    yield_unit: string | null;
+    yield_desc: string | null;
+    yield_notes: string | null;
+    mold_types: { name: string | null } | null;
+  };
+  for (const r of (data ?? []) as unknown as Row[]) {
+    const morceaux: string[] = [];
+    if (r.measure_type === 'mold') {
+      const moule = [r.mold_types?.name, r.yield_desc].filter(Boolean).join(' ');
+      if (moule) morceaux.push(moule);
+      if (r.servings) morceaux.push(`${r.servings} pers.`);
+    } else if (r.yield_qty) {
+      morceaux.push(`${r.yield_qty} ${r.yield_unit ?? ''}`.trim());
+    }
+    if (r.yield_notes) morceaux.push(r.yield_notes);
+    if (morceaux.length) out.set(r.id, morceaux.join(' — '));
+  }
+  return out;
 }
 
 // ── Essais (spec §7) ──────────────────────────────────────────────────────

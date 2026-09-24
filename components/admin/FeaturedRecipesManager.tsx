@@ -12,6 +12,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { formatDate } from '@/lib/format';
 import type { FeaturedRecipeRow } from '@/lib/featured';
+import { withNormColumn } from '@/lib/text-search';
 
 type RecipeOption = { id: string; title: string; hero_image_url: string | null };
 
@@ -180,14 +181,20 @@ function FeaturedForm({
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(async () => {
-      const { data, error } = await createClient()
-        .from('recipes')
-        .select('id, title, hero_image_url')
-        .eq('status', 'published')
-        .eq('is_public', true)
-        .ilike('title', `%${term.trim()}%`)
-        .order('title', { ascending: true })
-        .limit(20);
+      const { data, error } = await withNormColumn(
+        (colonne, motif) =>
+          createClient()
+            .from('recipes')
+            .select('id, title, hero_image_url')
+            .eq('status', 'published')
+            .eq('is_public', true)
+            .ilike(colonne, `%${motif}%`)
+            .order('title', { ascending: true })
+            .limit(20),
+        'title_norm',
+        'title',
+        term,
+      );
       if (!cancelled) {
         setResults(error ? [] : ((data as RecipeOption[] | null) ?? []));
         setSearching(false);

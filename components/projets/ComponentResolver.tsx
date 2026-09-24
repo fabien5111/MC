@@ -20,7 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -29,6 +29,21 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
 import { writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
+import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+
+// Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
+// proposition de l'IA arrive avec des descriptions de plusieurs lignes, qu'un
+// champ de deux lignes tronquait. Même geste que `autoGrow` de CreerForm —
+// appelé depuis une ref, légal dans un `.map()`, là où un hook ne l'est pas.
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+// Délai avant de lancer la recherche pendant la frappe (JEP-254, point 11) —
+// même valeur que la recherche avancée.
+const DEBOUNCE_MS = 300;
 
 // Portées de recherche, dans l'ordre d'affichage voulu par la spec. La
 // dernière valeur est le `source_kind` enregistré sur le composant : c'est
@@ -64,10 +79,12 @@ export function ComponentResolver({
   projectId,
   projectTitle,
   servings,
+  formatLabel = null,
   component,
   componentIndex,
   componentIds,
   units,
+  ingredientRefs = [],
   peutGenererIA = true,
   quotaProjetIA = null,
   onClose,
@@ -76,10 +93,16 @@ export function ComponentResolver({
   projectId: string;
   projectTitle: string;
   servings: number | null;
+  // Format visé en clair, transmis à l'IA avec le nom du dessert.
+  formatLabel?: string | null;
   component: ProjectComponent;
   componentIndex: number;
   componentIds: number[];
   units: string[];
+  // Référentiel des ingrédients : aide à la saisie (datalist) et
+  // rattachement au référentiel à l'enregistrement, comme dans l'éditeur de
+  // recette (JEP-254, point 9).
+  ingredientRefs?: IngredientRefOption[];
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
   peutGenererIA?: boolean;
@@ -97,6 +120,10 @@ export function ComponentResolver({
   const [terme, setTerme] = useState(component.name);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
+  const [recherche, setRecherche] = useState(false);
+  const datalistId = `dl-ingredients-composant-${component.id}`;
+  // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
+  const [consignes, setConsignes] = useState('');
 
   const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
   // JEP-130 : même repère et même bulle que partout ailleurs, à la place du
@@ -113,10 +140,16 @@ export function ComponentResolver({
   const [draft, setDraft] = useState<ComponentStepDraft[]>([]);
   const [draftKind, setDraftKind] = useState<ComponentSourceKind>('manual');
 
-  const chercher = useCallback(async () => {
-    setChargement(true);
+  // Numéro de la dernière recherche lancée : une réponse plus ancienne,
+  // arrivée après une plus récente, est ignorée — sans quoi une frappe
+  // rapide pourrait afficher les résultats d'un terme déjà dépassé.
+  const derniere = useRef(0);
+
+  async function chercher(texte: string) {
+    const numero = ++derniere.current;
+    setRecherche(true);
     try {
-      const q = encodeURIComponent(terme.trim());
+      const q = encodeURIComponent(texte.trim());
       const reponses = await Promise.all(
         PORTEES.map((p) =>
           fetch(`/api/recipes/picker?scopes=${p.scope}&q=${q}&limit=10`)
@@ -128,6 +161,7 @@ export function ComponentResolver({
             .catch((e) => ({ erreur: e?.erreur, items: [] })),
         ),
       );
+      if (numero !== derniere.current) return;
       const erreur = reponses.find((rep) => rep?.erreur)?.erreur;
       if (erreur) dialog.alert(`La recherche a échoué : ${erreur}`);
       // Concaténation dans l'ordre des portées, dédoublonnée : une recette de
@@ -145,20 +179,23 @@ export function ComponentResolver({
       });
       setResultats(out);
     } finally {
-      setChargement(false);
+      if (numero === derniere.current) setRecherche(false);
     }
-  }, [terme, dialog]);
+  }
 
-  // Première ouverture : la recherche part du nom du composant. C'est la
-  // façon la plus directe de tenir l'exigence de pertinence de la spec (§5)
-  // avec le sélecteur existant — une « pâte sucrée » y trouve les pâtes
-  // sucrées, pas les génoises.
+  // Résultats au fil de la saisie (JEP-254, point 11), la première recherche
+  // partant du nom du composant — la façon la plus directe de tenir
+  // l'exigence de pertinence de la spec (§5) : une « pâte sucrée » y trouve
+  // les pâtes sucrées, pas les génoises. Pas de voile plein écran ici : il
+  // masquerait le champ qu'on est en train de remplir (même doctrine que la
+  // recherche avancée) ; un indicateur discret suffit.
   useEffect(() => {
-    void chercher();
-    // Volontairement à l'ouverture seulement : les recherches suivantes sont
-    // déclenchées par l'utilisateur.
+    const t = setTimeout(() => void chercher(terme), DEBOUNCE_MS);
+    return () => clearTimeout(t);
+    // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
+    // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [terme]);
 
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
@@ -170,11 +207,22 @@ export function ComponentResolver({
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
       return;
     }
+    // Mode d'ajustement choisi à l'étape 3 (JEP-254, point 4) : il prime sur
+    // celui de la recette copiée. Sans choix, celui de la source est gardé.
+    // Rattachement des ingrédients au référentiel, comme dans l'éditeur.
+    const prets = steps.map((st) => ({
+      ...st,
+      scaling_mode: component.scalingMode ?? st.scaling_mode,
+      ingredients: st.ingredients.map((it) => ({
+        ...it,
+        ref_id: it.ref_id ?? (ingredientRefs.length ? resolveIngredientRefId(it.name, ingredientRefs) : null),
+      })),
+    }));
     const ok = await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await writeComponentContent(supabase, projectId, component.id, componentIndex, steps);
+          await writeComponentContent(supabase, projectId, component.id, componentIndex, prets);
           await resequenceProjectSteps(supabase, projectId, componentIds);
         } catch (e) {
           return { error: { message: (e as Error).message } };
@@ -223,13 +271,26 @@ export function ComponentResolver({
     }
   }
 
-  async function demanderIA() {
+  // `revision` : nouvelle proposition, à partir du brouillon affiché et des
+  // consignes de correction (JEP-254, point 8).
+  async function demanderIA(revision = false) {
+    if (revision && !consignes.trim()) {
+      dialog.alert('Indiquez ce qu’il faut corriger dans la proposition.');
+      return;
+    }
     setChargement(true);
     try {
       const r = await fetch('/api/projet/composant', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: component.name, role: component.role, projectTitle, servings }),
+        body: JSON.stringify({
+          name: component.name,
+          role: component.role,
+          projectTitle,
+          servings,
+          format: formatLabel,
+          ...(revision ? { consignes: consignes.trim(), precedente: draft } : {}),
+        }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -238,6 +299,7 @@ export function ComponentResolver({
       }
       setDraft((data.steps ?? []) as ComponentStepDraft[]);
       setDraftKind('ai_generated');
+      setConsignes('');
       setMode('edit');
     } catch {
       dialog.alert('La proposition a échoué.');
@@ -303,19 +365,22 @@ export function ComponentResolver({
 
         {mode === 'sources' ? (
           <>
-            <div className="mb-4 flex gap-2">
+            <div className="relative mb-4">
               <input
                 value={terme}
                 onChange={(e) => setTerme(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void chercher();
-                }}
                 placeholder="Rechercher une recette…"
-                className={champ}
+                aria-label="Rechercher une recette"
+                className={`${champ} pr-10`}
               />
-              <button type="button" onClick={() => void chercher()} className={btnGhost}>
-                Chercher
-              </button>
+              <span
+                className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-outline ${
+                  recherche ? 'animate-pulse' : ''
+                }`}
+                aria-hidden
+              >
+                search
+              </span>
             </div>
 
             {resultats.length === 0 ? (
@@ -325,11 +390,11 @@ export function ComponentResolver({
             ) : (
               <ul className="max-h-[45vh] space-y-2 overflow-y-auto">
                 {resultats.map((it) => (
-                  <li key={it.id}>
+                  <li key={it.id} className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => void attacher(it)}
-                      className="flex w-full items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
@@ -340,6 +405,17 @@ export function ComponentResolver({
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
                     </button>
+                    {/* Consulter la recette avant de la choisir, sans quitter
+                        le parcours (JEP-254, point 14). */}
+                    <a
+                      href={`/recette/${it.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ouvrir la recette dans un nouvel onglet"
+                      className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -409,18 +485,26 @@ export function ComponentResolver({
                     </button>
                   </div>
                   <textarea
+                    ref={autoGrow}
                     value={st.description ?? ''}
-                    onChange={(e) => majEtape(i, { description: e.target.value })}
+                    onChange={(e) => {
+                      majEtape(i, { description: e.target.value });
+                      autoGrow(e.target);
+                    }}
                     rows={2}
                     placeholder="Le geste, en une ou deux phrases"
-                    className={`${champ} mb-3`}
+                    className={`${champ} mb-3 resize-none overflow-hidden`}
                   />
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
                       <li key={j} className="flex flex-wrap items-center gap-2">
                         <input
                           value={it.name}
-                          onChange={(e) => majIngredient(i, j, { name: e.target.value })}
+                          // Nom saisi ≠ ingrédient rattaché : le rattachement
+                          // est refait à l'enregistrement.
+                          onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
+                          list={ingredientRefs.length ? datalistId : undefined}
+                          autoComplete="off"
                           placeholder="Ingrédient"
                           className={`${champ} flex-1 min-w-[8rem]`}
                         />
@@ -493,7 +577,7 @@ export function ComponentResolver({
                     title: '',
                     description: '',
                     scaling_mode: null,
-        sous_etapes: null,
+                    sous_etapes: null,
                     prep_time: null,
                     cook_time: null,
                     wait_time: null,
@@ -508,6 +592,47 @@ export function ComponentResolver({
             >
               + Étape
             </button>
+
+            {ingredientRefs.length > 0 && (
+              <datalist id={datalistId}>
+                {ingredientRefs.map((r) => (
+                  <option key={r.id} value={r.name} />
+                ))}
+              </datalist>
+            )}
+
+            {/* Nouvelle proposition de l'IA, corrigée (JEP-254, point 8) : on
+                dit ce qui ne va pas plutôt que de tout reprendre à la main. La
+                base soumise est le brouillon tel qu'affiché, retouches
+                comprises. */}
+            {draftKind === 'ai_generated' && peutGenererIA && (
+              <div className="mt-5 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+                <label className="mb-2 block font-label-md text-[12px] text-outline">
+                  CE QU’IL FAUT CORRIGER DANS LA PROPOSITION
+                </label>
+                <textarea
+                  ref={autoGrow}
+                  value={consignes}
+                  onChange={(e) => {
+                    setConsignes(e.target.value.slice(0, 1000));
+                    autoGrow(e.target);
+                  }}
+                  rows={2}
+                  placeholder="Moins sucré, sans gélatine, une version au beurre noisette…"
+                  className={`${champ} resize-none overflow-hidden`}
+                />
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <button
+                    type="button"
+                    onClick={() => void demanderIA(true)}
+                    disabled={iaEpuise || !consignes.trim()}
+                    className={`${btnGhost} mt-3 disabled:cursor-not-allowed`}
+                  >
+                    Demander une nouvelle proposition
+                  </button>
+                </LockedHint>
+              </div>
+            )}
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>

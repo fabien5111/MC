@@ -15,6 +15,7 @@ import { getSharedWithMeRecipes } from '@/lib/shares-data';
 import { isProjectDraft } from '@/lib/projects';
 import type { RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type { CarnetParams } from '@/lib/carnet-params';
+import { matchesSearch } from '@/lib/text-search';
 
 // Provenance d'un partage reçu — direct (cette recette précisément) ou via le
 // partage du carnet de son auteur. Distingue quelle ligne révoquer depuis la
@@ -177,7 +178,7 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
 // et pour que `app/carnet/page.tsx` l'applique après avoir choisi les compteurs
 // à afficher (qui, eux, portent toujours sur le jeu complet, non filtré).
 export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): CarnetItem[] {
-  const q = params.q.trim().toLowerCase();
+  const q = params.q.trim();
   const filtered = items.filter((item) => {
     // Étanchéité des projets en cours (spec §10) : seule leur portée les
     // affiche, et elle n'affiche qu'eux. Testé avant tout le reste — un
@@ -200,7 +201,7 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
       if (item.kind === 'mine' && (item.recipe.status || 'draft') !== params.statut) return false;
       if (item.kind === 'other' && item.shared && (item.status || 'draft') !== params.statut) return false;
     }
-    if (q && !item.recipe.title.toLowerCase().includes(q)) return false;
+    if (q && !matchesSearch([item.recipe.title], q)) return false;
     return true;
   });
 

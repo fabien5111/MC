@@ -13,7 +13,15 @@ type ChoiceOption = { label: string; value: string; variant?: 'primary' | 'defau
 type DialogState =
   | { kind: 'alert'; message: string; resolve: () => void }
   | { kind: 'confirm'; message: string; okLabel: string; cancelLabel: string; resolve: (ok: boolean) => void }
-  | { kind: 'prompt'; message: string; value: string; required: boolean; resolve: (value: string | null) => void }
+  | {
+      kind: 'prompt';
+      message: string;
+      value: string;
+      required: boolean;
+      singleLine: boolean;
+      maxLength: number | undefined;
+      resolve: (value: string | null) => void;
+    }
   | { kind: 'choice'; message: string; options: ChoiceOption[]; resolve: (value: string | null) => void };
 
 type DialogApi = {
@@ -23,11 +31,21 @@ type DialogApi = {
   // `null` sur annulation, à la chaîne saisie sinon. `required` bloque la
   // validation tant que le champ est vide (un motif de refus vide n'a pas
   // de sens), sans empêcher l'annulation.
-  prompt: (message: string, opts?: { required?: boolean; placeholder?: string }) => Promise<string | null>;
+  // `singleLine` : champ d'une ligne (un nom, un titre) plutôt qu'un bloc de
+  // texte — Entrée valide. `defaultValue` pré-remplit (renommage).
+  prompt: (message: string, opts?: PromptOpts) => Promise<string | null>;
   // Choix parmi plus de deux options (ex. « Enregistrer et quitter » vs
   // « Quitter sans enregistrer » vs annuler) — résout à la `value` de
   // l'option cliquée, ou `null` sur annulation (bouton « Annuler » ou Échap).
   choice: (message: string, options: ChoiceOption[]) => Promise<string | null>;
+};
+
+type PromptOpts = {
+  required?: boolean;
+  placeholder?: string;
+  singleLine?: boolean;
+  defaultValue?: string;
+  maxLength?: number;
 };
 
 const DialogContext = createContext<DialogApi | null>(null);
@@ -54,10 +72,18 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     [],
   );
   const promptFn = useCallback(
-    (message: string, opts?: { required?: boolean; placeholder?: string }) =>
+    (message: string, opts?: PromptOpts) =>
       new Promise<string | null>((resolve) => {
         setPlaceholder(opts?.placeholder ?? '');
-        setState({ kind: 'prompt', message, value: '', required: opts?.required ?? false, resolve });
+        setState({
+          kind: 'prompt',
+          message,
+          value: opts?.defaultValue ?? '',
+          required: opts?.required ?? false,
+          singleLine: opts?.singleLine ?? false,
+          maxLength: opts?.maxLength,
+          resolve,
+        });
       }),
     [],
   );
@@ -129,7 +155,23 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             <p className={`font-body-md text-body-md text-on-surface whitespace-pre-line${state.kind === 'choice' ? ' pr-6' : ''}`}>
               {state.message}
             </p>
-            {state.kind === 'prompt' && (
+            {state.kind === 'prompt' && state.singleLine && (
+              <input
+                autoFocus
+                value={state.value}
+                maxLength={state.maxLength}
+                placeholder={placeholder}
+                onChange={(e) => setState((prev) => (prev?.kind === 'prompt' ? { ...prev, value: e.target.value } : prev))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !(state.required && !state.value.trim())) {
+                    e.preventDefault();
+                    respond(true);
+                  }
+                }}
+                className="mt-3 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"
+              />
+            )}
+            {state.kind === 'prompt' && !state.singleLine && (
               <textarea
                 autoFocus
                 rows={3}
