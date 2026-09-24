@@ -25,6 +25,14 @@ Règles :
   Choisis A ou B d'après le TITRE et les INGRÉDIENTS : une pâte à tarte / à foncer
   relève de B ; un appareil qui remplit le moule relève de A. En cas de doute pour
   une pâte de fonçage, prends B.
+  Ce choix, ET la formule appliquée une fois qu'il est fait, ne dépendent JAMAIS
+  du vocabulaire du rendement ou du complément d'informations (ex. « pour un fond
+  de tarte de 26 cm », « pour 6 tartelettes ») : ce texte décrit un CONTENANT ou un
+  USAGE, pas la nature de la préparation. Une crème ou un appareil dont le
+  rendement est exprimé avec ce vocabulaire reste un CAS A — rapport des VOLUMES,
+  SANS marge de fonçage — même si les mots « fond de tarte » ou « tartelette »
+  y apparaissent. La marge de fonçage (+2×hauteur) est réservée à une préparation
+  qui est elle-même une pâte abaissée (cas B).
   Si une hauteur manque, suppose la même qu'à l'origine.
   MAIS si une table « Moules de référence » est fournie et que le moule de départ
   ET le moule cible y figurent (ou correspondent clairement), utilise plutôt le

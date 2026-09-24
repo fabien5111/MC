@@ -140,6 +140,23 @@ export function QuantitiesStep({
   async function proposerIA(c: ProjectComponent) {
     setTravail(true);
     try {
+      // Le rendement d'origine (quantité + complément en texte libre, ex.
+      // « 1 fond de tarte de 26 cm ou 6 tartelettes de 6 cm ») n'est connu
+      // que de la recette source : sans lui, l'IA ne dispose d'aucune donnée
+      // de départ à comparer au format visé, et renvoie systématiquement
+      // « recette non dimensionnée ».
+      let rendement: string | null = c.source_title ? `recette « ${c.source_title} »` : null;
+      let yieldNotes: string | null = null;
+      if (c.source_recipe_id) {
+        const { data } = await createClient()
+          .from('recipes')
+          .select('yield_qty, yield_unit, yield_notes')
+          .eq('id', c.source_recipe_id)
+          .maybeSingle();
+        const row = data as { yield_qty: string | null; yield_unit: string | null; yield_notes: string | null } | null;
+        if (row?.yield_qty) rendement = `${row.yield_qty} ${row.yield_unit ?? ''}`.trim();
+        yieldNotes = row?.yield_notes ?? null;
+      }
       const r = await fetch('/api/scale-recipe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -149,8 +166,8 @@ export function QuantitiesStep({
           } parts, format : ${formatLabel}.`,
           recette: {
             titre: c.source_title || c.name,
-            rendement: c.source_title ? `recette « ${c.source_title} »` : null,
-            yield_notes: null,
+            rendement,
+            yield_notes: yieldNotes,
             ingredients: c.lines.map((l) => ({ nom: l.name, quantite: l.quantity, unite: l.unit })),
           },
           moules_reference: [],
