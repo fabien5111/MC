@@ -63,6 +63,11 @@ export type ProjectFull = {
   servings: number | null;
   yield_qty: string | null;
   yield_desc: string | null;
+  // Description du dessert visé (JEP-254) : saisie à l'étape 2 en format
+  // libre, seul format sans moule ni dimensions où s'accrocher. Réutilise
+  // `recipes.description`, déjà affichée sur la fiche une fois le projet
+  // validé — pas de colonne dédiée.
+  description: string | null;
   components: ProjectComponent[];
 };
 
@@ -76,7 +81,9 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
   const [recipeRes, projectRes, componentsRes, stepsRes, groupsRes] = await Promise.all([
     supabase
       .from('recipes')
-      .select('id, title, kind, project_stage, measure_type, mold_type_id, mold_dims, servings, yield_qty, yield_desc')
+      .select(
+        'id, title, kind, project_stage, measure_type, mold_type_id, mold_dims, servings, yield_qty, yield_desc, description',
+      )
       .eq('id', recipeId)
       .maybeSingle(),
     supabase.from('recipe_projects').select('intent, wizard_step').eq('recipe_id', recipeId).maybeSingle(),
@@ -209,6 +216,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     servings: recipe.servings,
     yield_qty: recipe.yield_qty,
     yield_desc: recipe.yield_desc,
+    description: recipe.description,
     components,
   };
 }

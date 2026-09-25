@@ -133,6 +133,9 @@ export function ProjectWizard({
   // Nombre d'exemplaires (gâteaux, bûches, empreintes) — JEP-254, point 3.
   const [count, setCount] = useState(project.measure_type === 'mold' ? String(nbBase) : '1');
   const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
+  // Description du dessert visé, saisie en format libre uniquement — les
+  // autres formats se décrivent déjà par leurs dimensions (JEP-254).
+  const [description, setDescription] = useState(project.description ?? '');
 
   // Proposition de l'IA conservée entre l'étape 2 et l'étape 3 : les
   // composants ne sont écrits qu'à l'arrivée sur l'étape 3, pour ne pas
@@ -247,14 +250,19 @@ export function ProjectWizard({
       if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
     }
 
-    const payload = projectFormatPayload({
-      format,
-      title,
-      servings: parts,
-      dims: parsedDims,
-      count: nb > 0 ? nb : 1,
-      moldTypeId: format !== 'free' && moldTypeId ? Number(moldTypeId) : null,
-    });
+    const payload = {
+      ...projectFormatPayload({
+        format,
+        title,
+        servings: parts,
+        dims: parsedDims,
+        count: nb > 0 ? nb : 1,
+        moldTypeId: format !== 'free' && moldTypeId ? Number(moldTypeId) : null,
+      }),
+      // Seul le format libre porte cette description : les autres formats
+      // se décrivent déjà par leurs dimensions.
+      description: format === 'free' ? description.trim() || null : null,
+    };
 
     const ok = await mutate(() => createClient().from('recipes').update(payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
@@ -700,6 +708,24 @@ export function ProjectWizard({
               className="w-32 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
             />
           </div>
+
+          {/* Format libre seulement : aucune dimension ni moule où
+              s'accrocher, la description est le seul repère sur ce que le
+              dessert doit être (JEP-254). */}
+          {format === 'free' && (
+            <div>
+              <label className="mb-1 block font-label-md text-label-md text-outline">
+                QUE VOULEZ-VOUS RÉALISER ?
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                rows={3}
+                placeholder="Un assortiment de mignardises pour un buffet, avec au moins une version sans gluten…"
+                className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-4 font-body-md text-[15px] outline-none focus:border-primary"
+              />
+            </div>
+          )}
 
           {navigation('bas')}
         </section>
