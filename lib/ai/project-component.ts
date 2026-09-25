@@ -16,6 +16,11 @@ export function buildComponentContenu(
   // texte, et ce que le pâtissier veut y corriger. Sans la précédente, l'IA
   // repartirait de zéro et pourrait perdre ce qui convenait déjà.
   revision: { precedente: string; consignes: string } | null = null,
+  // Précision libre saisie AVANT la première proposition (ex. « sans
+  // gélatine », « au chocolat noir plutôt qu'au lait »), distincte des
+  // consignes de correction ci-dessus qui portent sur une proposition déjà
+  // vue.
+  contexteLibre: string | null = null,
 ): string {
   const clip = (s: string | null | undefined, max: number) => (s || '').replace(/\s+/g, ' ').trim().slice(0, max);
   const lignes = [
@@ -24,6 +29,7 @@ export function buildComponentContenu(
     contexte.titre ? `Dessert dans lequel elle entre : ${clip(contexte.titre, 120)}` : null,
     contexte.format ? `Format du dessert : ${clip(contexte.format, 120)}` : null,
     contexte.parts ? `Nombre de parts visé : ${contexte.parts}` : null,
+    contexteLibre ? `Précision du pâtissier : ${clip(contexteLibre, 500)}` : null,
   ].filter(Boolean);
 
   const blocRevision = revision

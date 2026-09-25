@@ -69,6 +69,10 @@ export async function POST(req: Request) {
     : '';
   const revision = consignes && precedente ? { precedente, consignes } : null;
 
+  // Précision libre saisie avant la première proposition (JEP-254) — distincte
+  // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
+  const contexteLibre = typeof body?.contexteLibre === 'string' ? body.contexteLibre.trim().slice(0, 500) || null : null;
+
   const quota = await reserverQuota(user.id, 'mode_projet_ia_mensuel');
   if (estRefus(quota)) return quota.refus;
 
@@ -76,7 +80,7 @@ export async function POST(req: Request) {
   try {
     const raw = await callClaude(
       apiKey,
-      buildComponentContenu(name, role, contexte, revision),
+      buildComponentContenu(name, role, contexte, revision, contexteLibre),
       2000,
       50_000,
       undefined,

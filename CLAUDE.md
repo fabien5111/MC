@@ -911,6 +911,16 @@ essais et la validation arrivent par lots successifs.
   qu'après coup. `draftToText` (relecture pour une nouvelle proposition,
   point 8) les inclut aussi, sans quoi une correction demandée à l'IA
   repartirait d'un texte amputé de ses gestes.
+- **Contexte libre AVANT la première proposition** (JEP-254) : cliquer sur
+  « Demander une proposition à l'IA » ouvre désormais une étape de saisie
+  (« Précisions pour l'IA », facultative — sans gélatine, au chocolat noir
+  plutôt qu'au lait…) plutôt que de lancer l'appel directement avec le seul
+  nom du composant. Distinct de `consignes` (point 8, ci-dessus) : l'un
+  précède la première proposition, l'autre corrige une proposition déjà vue
+  — les deux coexistent sans se remplacer. `buildComponentContenu` gagne un
+  paramètre `contexteLibre`, ajouté au prompt comme les autres lignes de
+  contexte (rôle, dessert, format) ; `POST /api/projet/composant` le lit et
+  le transmet, sans y toucher.
 - **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
   évite de renuméroter tout le projet à chaque rattachement. Seuls un
   déplacement ou une suppression redistribuent les blocs

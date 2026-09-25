@@ -118,7 +118,7 @@ export function ComponentResolver({
   // « Saisie à la main », il n'y a pas de recette séparée à ouvrir — la
   // fenêtre s'ouvre directement sur le contenu déjà enregistré plutôt que
   // sur la recherche, qui le ferait perdre de vue à chaque réouverture.
-  initialMode?: 'sources' | 'edit';
+  initialMode?: 'sources' | 'edit' | 'contexte-ia';
   initialDraft?: ComponentStepDraft[];
   initialDraftKind?: ComponentSourceKind;
   onClose: () => void;
@@ -133,7 +133,7 @@ export function ComponentResolver({
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 
-  const [mode, setMode] = useState<'sources' | 'edit'>(initialMode ?? 'sources');
+  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
@@ -141,6 +141,9 @@ export function ComponentResolver({
   const datalistId = `dl-ingredients-composant-${component.id}`;
   // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
   const [consignes, setConsignes] = useState('');
+  // Précision libre saisie avant la PREMIÈRE proposition (JEP-254) — distincte
+  // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
+  const [contexteIA, setContexteIA] = useState('');
 
   const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
   // JEP-130 : même repère et même bulle que partout ailleurs, à la place du
@@ -207,9 +210,10 @@ export function ComponentResolver({
   // masquerait le champ qu'on est en train de remplir (même doctrine que la
   // recherche avancée) ; un indicateur discret suffit.
   useEffect(() => {
-    // Ouverture directe en édition (« Consulter ») : la recherche ne sert à
-    // rien tant qu'on n'est pas revenu à l'onglet des recettes.
-    if (mode === 'edit') return;
+    // Ouverture directe en édition (« Consulter ») ou en saisie de contexte
+    // pour l'IA : la recherche ne sert à rien tant qu'on n'est pas revenu à
+    // l'onglet des recettes.
+    if (mode !== 'sources') return;
     const t = setTimeout(() => void chercher(terme), DEBOUNCE_MS);
     return () => clearTimeout(t);
     // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
@@ -348,7 +352,9 @@ export function ComponentResolver({
           projectTitle,
           servings,
           format: formatLabel,
-          ...(revision ? { consignes: consignes.trim(), precedente: draft } : {}),
+          ...(revision
+            ? { consignes: consignes.trim(), precedente: draft }
+            : { contexteLibre: contexteIA.trim() || undefined }),
         }),
       });
       const data = await r.json();
@@ -359,6 +365,7 @@ export function ComponentResolver({
       setDraft((data.steps ?? []) as ComponentStepDraft[]);
       setDraftKind('ai_generated');
       setConsignes('');
+      setContexteIA('');
       setMode('edit');
     } catch {
       dialog.alert('La proposition a échoué.');
@@ -495,7 +502,7 @@ export function ComponentResolver({
                 <LockedHint message={iaMessage} active={iaEpuise}>
                   <button
                     type="button"
-                    onClick={() => void demanderIA()}
+                    onClick={() => setMode('contexte-ia')}
                     disabled={iaEpuise}
                     className={`${btnGhost} flex items-center gap-1.5 disabled:cursor-not-allowed`}
                   >
@@ -515,6 +522,32 @@ export function ComponentResolver({
             <p className="mt-2 text-[12px] text-on-surface-variant">
               La recette choisie est copiée dans le projet : la modifier ensuite chez son auteur ne changera rien ici.
             </p>
+          </>
+        ) : mode === 'contexte-ia' ? (
+          <>
+            <p className="mb-3 text-[12.5px] text-on-surface-variant">
+              Une précision à donner à l’IA avant sa proposition pour « {component.name} » ? Sans gélatine, au chocolat
+              noir plutôt qu’au lait, version allégée en sucre… Facultatif.
+            </p>
+            <textarea
+              ref={autoGrow}
+              value={contexteIA}
+              onChange={(e) => {
+                setContexteIA(e.target.value);
+                autoGrow(e.target);
+              }}
+              rows={3}
+              placeholder="Précisions pour l’IA (optionnel)"
+              className={`${champ} resize-none overflow-hidden`}
+            />
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+              <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
+                Retour aux recettes
+              </button>
+              <button type="button" onClick={() => void demanderIA()} className={btnPrimary}>
+                Générer
+              </button>
+            </div>
           </>
         ) : (
           <>
