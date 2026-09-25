@@ -552,12 +552,9 @@ export function ProjectWizard({
           href={`/recette/${c.source_recipe_id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+          className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
         >
           {c.source_title}
-          <span className="material-symbols-outlined text-[14px]" aria-hidden>
-            open_in_new
-          </span>
         </a>
       </>
     );
