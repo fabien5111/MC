@@ -648,7 +648,7 @@ export function ComponentResolver({
                             }
                             className="shrink-0 p-1"
                           >
-                            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">delete</span>
+                            <span className="material-symbols-outlined text-[18px] text-error">delete</span>
                           </button>
                         </div>
                         <input
