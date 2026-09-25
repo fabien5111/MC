@@ -892,6 +892,25 @@ essais et la validation arrivent par lots successifs.
   pas la modale, pour enchaîner aussitôt sur une recherche, une proposition
   de l'IA ou une saisie à la main — fermer (croix) reste la sortie normale
   vers la liste des composants, qui affiche alors « À résoudre ».
+- **Proposition de l'IA : une étape par sous-préparation, pas par geste**
+  (JEP-254). `buildComponentContenu` demandait jusqu'ici 1 à 6 étapes sans
+  autre consigne, et l'IA en produisait une par geste technique (hydrater la
+  gélatine, fondre le praliné, chauffer la crème…) pour une seule ganache
+  montée — un découpage qui n'a de sens nulle part ailleurs sur le site,
+  où une préparation homogène est UNE étape avec ses gestes en sous-étapes.
+  Le schéma JSON gagne donc un champ `sous_etapes` par étape (repris par
+  `normaliseComponentRecipe`, qui l'assigne au champ `ComponentStepDraft.
+  sous_etapes` déjà porté par le pivot et déjà écrit par
+  `writeComponentContent` — rien à changer côté écriture) ; la consigne passe
+  à « une étape par sous-préparation distincte, ses gestes dans
+  `sous_etapes` ; 1 à 4 étapes ». `ComponentResolver` gagne un champ
+  d'édition dédié (une ligne par sous-étape) entre la description et les
+  ingrédients de chaque étape, sinon une proposition de l'IA relue et
+  corrigée avant enregistrement perdrait silencieusement ses sous-étapes
+  — le seul endroit qui les affichait avant (la fiche recette) ne s'ouvre
+  qu'après coup. `draftToText` (relecture pour une nouvelle proposition,
+  point 8) les inclut aussi, sans quoi une correction demandée à l'IA
+  repartirait d'un texte amputé de ses gestes.
 - **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
   évite de renuméroter tout le projet à chaque rattachement. Seuls un
   déplacement ou une suppression redistribuent les blocs

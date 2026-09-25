@@ -554,6 +554,20 @@ export function ComponentResolver({
                     placeholder="Le geste, en une ou deux phrases"
                     className={`${champ} mb-3 resize-none overflow-hidden`}
                   />
+                  <label className="mb-1 block text-[11px] font-semibold uppercase text-on-surface-variant">
+                    Sous-étapes (une par ligne)
+                  </label>
+                  <textarea
+                    ref={autoGrow}
+                    value={(st.sous_etapes ?? []).join('\n')}
+                    onChange={(e) => {
+                      majEtape(i, { sous_etapes: e.target.value.split('\n') });
+                      autoGrow(e.target);
+                    }}
+                    rows={3}
+                    placeholder="Hydrater la gélatine&#10;Fondre le praliné&#10;Chauffer la crème…"
+                    className={`${champ} mb-3 resize-none overflow-hidden`}
+                  />
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
                       <li key={j} className="flex flex-wrap items-center gap-2">
@@ -711,7 +725,12 @@ export function ComponentResolver({
                 disabled={busy}
                 onClick={() =>
                   void enregistrer(
-                    draft.filter((s) => (s.title || '').trim() || (s.description || '').trim()),
+                    draft
+                      .filter((s) => (s.title || '').trim() || (s.description || '').trim() || (s.sous_etapes || []).some((t) => t.trim()))
+                      .map((s) => {
+                        const sous = (s.sous_etapes || []).map((t) => t.trim()).filter(Boolean);
+                        return { ...s, sous_etapes: sous.length ? sous : null };
+                      }),
                     draftKind,
                     { recipeId: null, authorId: null, title: null, authorName: null },
                   )

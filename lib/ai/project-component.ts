@@ -47,8 +47,9 @@ Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
   "titre": "<nom de la préparation>",
   "etapes": [
     {
-      "titre": "<titre court de l'étape>",
-      "description": "<le geste, en une ou deux phrases>",
+      "titre": "<titre court de la sous-préparation, ex. \\"Ganache montée au praliné\\">",
+      "description": "<un court résumé, une phrase, ou vide si les sous-étapes suffisent>",
+      "sous_etapes": ["<premier geste>", "<deuxième geste>", "..."],
       "prep_min": <minutes de travail, ou null>,
       "cuisson_min": <minutes de cuisson, ou null>,
       "repos_min": <minutes de repos ou de prise au froid, ou null>,
@@ -59,10 +60,16 @@ Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
 }
 
 Règles :
-- De 1 à 6 étapes, dans l'ordre de réalisation.
-- Chaque ingrédient est rattaché à l'ÉTAPE OÙ IL EST UTILISÉ, jamais à une
-  liste globale. Un ingrédient utilisé dans deux étapes est réparti entre
-  elles, avec la quantité propre à chacune.
+- Une étape par SOUS-PRÉPARATION homogène, jamais une étape par geste. Une
+  ganache montée (hydrater la gélatine, fondre le praliné, chauffer la crème,
+  émulsionner, refroidir, monter) est UNE seule étape ; ses gestes vont dans
+  "sous_etapes", pas dans des étapes séparées. Une étape ne se justifie que si
+  elle correspond à une sous-préparation distincte de l'ensemble (ex. un
+  croustillant à part d'une ganache, un sirop à part d'un biscuit).
+- De 1 à 4 étapes, dans l'ordre de réalisation.
+- Chaque ingrédient est rattaché à l'ÉTAPE (la sous-préparation) OÙ IL EST
+  UTILISÉ, jamais à une liste globale. Un ingrédient utilisé dans deux étapes
+  est réparti entre elles, avec la quantité propre à chacune.
 - Quantités chiffrées et réalistes pour la quantité visée, unités du système
   métrique. Pas de fourchette (« 10 à 15 g »), une seule valeur.
 - Aucun commentaire, aucune note, aucun texte hors du JSON.`;
@@ -90,7 +97,10 @@ export function normaliseComponentRecipe(obj: unknown, maxSteps = 6): GeneratedC
     const s = (raw ?? {}) as Record<string, unknown>;
     const title = texte(s.titre, 120);
     const description = texte(s.description, 2000);
-    if (!title && !description) continue;
+    const sousEtapes = (Array.isArray(s.sous_etapes) ? s.sous_etapes : [])
+      .map((t) => texte(t, 300))
+      .filter((t): t is string => !!t);
+    if (!title && !description && !sousEtapes.length) continue;
 
     const ingredients = (Array.isArray(s.ingredients) ? s.ingredients : [])
       .map((raw2) => {
@@ -115,7 +125,7 @@ export function normaliseComponentRecipe(obj: unknown, maxSteps = 6): GeneratedC
       // (proportionnel) s'applique.
       scaling_mode: null,
       description,
-      sous_etapes: null,
+      sous_etapes: sousEtapes.length ? sousEtapes : null,
       prep_time: minutes(s.prep_min),
       cook_time: minutes(s.cuisson_min),
       wait_time: minutes(s.repos_min),
@@ -137,11 +147,12 @@ export function normaliseComponentRecipe(obj: unknown, maxSteps = 6): GeneratedC
 export function draftToText(steps: ComponentStepDraft[]): string {
   return steps
     .map((st, i) => {
+      const sous = (st.sous_etapes || []).map((t) => `  - ${t}`).join('\n');
       const ings = st.ingredients
         .filter((it) => (it.name || '').trim())
         .map((it) => `  - ${[it.quantity, it.unit, it.name].filter(Boolean).join(' ')}`)
         .join('\n');
-      return [`${i + 1}. ${st.title || 'Étape'}${st.description ? ` : ${st.description}` : ''}`, ings]
+      return [`${i + 1}. ${st.title || 'Étape'}${st.description ? ` : ${st.description}` : ''}`, sous, ings]
         .filter(Boolean)
         .join('\n');
     })
