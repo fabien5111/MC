@@ -142,7 +142,6 @@ app/                    Pages et routes (App Router)
 │   │                     (recette + satellites + proposition de l'IA)
 │   ├── projet/structure/ POST — format visé + composants proposés (IA)
 │   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
-│   ├── projet/montage/   POST — quantité visée par composant, tous d'un coup (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
@@ -969,38 +968,18 @@ essais et la validation arrivent par lots successifs.
   comparer des moules, ce qui ne veut rien dire pour un insert ou une
   garniture, dont la quantité dépend de sa place dans le montage, pas d'un
   rapport géométrique avec sa recette source.
-- **« Proposer le plan de montage »** (`/api/projet/montage`, JEP-254) répond
-  au cas où personne ne connaît la quantité à l'avance (« combien de crémeux
-  pour un insert de tarte ? ») : un seul appel à l'IA propose, pour **tous**
-  les composants d'un coup, une quantité visée en grammes d'après le format
-  du dessert et le rôle de chacun (fond, insert, glaçage…) — une estimation
-  de métier, pas un calcul géométrique. Écrite dans
-  `recipe_project_components.target_quantity` / `target_unit`, colonnes du
-  socle jusqu'ici inutilisées (aucune migration). Un seul appel plutôt qu'un
-  par composant : la cohérence d'ensemble (les couches se répartissent les
-  unes par rapport aux autres) se perdrait à les demander séparément — même
-  raisonnement que `/api/projet/structure` pour le format et les composants.
-  La quantité visée est écrite **même pour un composant non résolu** : elle
-  aide justement à choisir la recette (« il en faut ~300 g, laquelle
-  prendre ? »). Le coefficient, lui, n'est calculé côté client que pour un
-  composant déjà résolu et pesable en grammes (visée ÷ poids pesé) — même
-  geste qu'un ajustement individuel, sans second clic. **Description libre du
-  montage** : un textarea facultatif (« un fond en pâte sucrée de 28 cm, une
-  crème d'amande sur 8 mm… ») accompagne le bouton — quand il est rempli,
-  `buildAssemblyContenu` (`lib/ai/project-assembly.ts`) l'ajoute au prompt
-  comme description PRIORITAIRE du montage, et l'IA ne retombe sur
-  l'estimation générique par rôle que pour ce qu'elle ne précise pas. Sans
-  lui, le comportement d'origine (déduction depuis le seul rôle) est
-  inchangé. **Une dimension déduite prime sur une règle générique** : une
-  couche décrite « dans le fond », « sur » ou « dans » une autre couche du
-  dessert (pas comme un insert à part) doit épouser le diamètre du dessert,
-  pas le retrait de 2-4 cm que le prompt applique par défaut aux inserts ; une
-  couverture décrite « sur tout le dessus »/« toute la surface » se chiffre à
-  partir de la surface réelle à couvrir, jamais d'un compte de pièces
-  arbitraire (« une par part ») que le pâtissier n'a pas demandé. Découvert
-  sur un cas réel (crémeux « dans le fond de tarte » de 28 cm ramené à 26 cm ;
-  ganache « sur tout le dessus » chiffrée à 8 boules et largement sous-pesée)
-  — ces deux cas sont désormais explicités dans le prompt.
+- **« Proposer le plan de montage » a été retiré** (JEP-254, essayé puis
+  abandonné) : un seul appel IA proposait une quantité visée par composant
+  d'après le format du dessert et le rôle de chacun, écrite dans
+  `recipe_project_components.target_quantity` / `target_unit`. Trop
+  approximatif à l'usage (une dimension déduite du contexte — même diamètre
+  qu'une autre couche, couverture totale d'une surface — se faisait
+  régulièrement écraser par des règles génériques par rôle, produisant des
+  quantités trop faibles) : l'ajustement individuel par IA (`proposerIA`,
+  ci-dessus) couvre mieux ce besoin, composant par composant. Les colonnes
+  `target_quantity` / `target_unit` restent en base, inutilisées, comme
+  avant leur introduction — une suppression réelle est une migration
+  séparée, hors périmètre.
 - **Perte en cuisine, par composant** (JEP-254) : ce qui reste sur le fouet,
   dans les bols, sur les cuillères réduit ce qui arrive réellement dans le
   dessert. Corrigée en **produisant un peu plus**, jamais en changeant la
@@ -1008,9 +987,16 @@ essais et la validation arrivent par lots successifs.
   session, aucune colonne dédiée) vient gonfler le coefficient — et les
   coefficients surface/volume associés (`ScaleProposal.moldCoefs`), sinon une
   préparation qui fonce un moule n'en tiendrait pas compte. S'applique aux
-  trois sources de proposition (format, IA, plan de montage),
+  deux sources de proposition (format, IA),
   **jamais** à un coefficient saisi à la main : c'est déjà la décision finale
   de l'utilisateur.
+- **Quantité d'origine affichée en italique** (JEP-254) : à côté du champ
+  éditable de chaque ligne d'ingrédient, la quantité d'avant ajustement
+  (`ingredients.base_quantity`) reste visible en italique tant qu'un
+  coefficient l'a réellement changée — repère de contrôle après un
+  ajustement (format, IA, ou coefficient saisi à la main), sans repasser par
+  la recette source. Masquée quand elle vaut la quantité actuelle (facteur
+  ×1, ou avant tout ajustement) pour ne pas doubler l'affichage pour rien.
 - **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
   jamais la quantité affichée — que multiplie tout ajustement : sans ça,
   changer deux fois le coefficient multiplierait deux fois. Exactement le rôle
@@ -1470,11 +1456,6 @@ principales :
   (§5.4). L'échec est ici **remonté**, contrairement à la route précédente :
   l'utilisateur a explicitement demandé une proposition, il doit savoir qu'elle
   n'est pas venue. `maxDuration = 60 s`.
-- `POST /api/projet/montage` (JEP-254) — propose la quantité visée (en
-  grammes) de chaque composant du projet, d'un coup, d'après le format du
-  dessert et le rôle de chacun. Ne touche à aucune table : c'est l'appelant
-  (`ProjectQuantities`) qui écrit `target_quantity` avec sa propre session.
-  Échec **remonté**, même doctrine que la route précédente. `maxDuration = 30 s`.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la
