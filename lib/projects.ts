@@ -288,7 +288,7 @@ export const COMPONENT_ROLES = [
 // classique (CreerForm) pour qu'un même choix se lise pareil partout.
 // La valeur vide laisse le mode de la recette d'origine.
 export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
-  { value: '', label: 'Ajustement : selon la recette' },
+  { value: '', label: 'Selon la recette' },
   { value: 'simple', label: 'Volume (appareil, crème, mousse…)' },
   { value: 'foncage', label: 'Recouvre une surface (pâte, glaçage…)' },
   { value: 'aucun', label: 'Pas d’ajustement' },

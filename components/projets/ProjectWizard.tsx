@@ -745,7 +745,19 @@ export function ProjectWizard({
               Aucun composant pour l’instant. Ajoutez la première préparation.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <>
+              {/* En-tête de colonnes : les libellés « Rôle » et
+                  « Ajustement » ne sont donnés qu'une fois ici, plutôt que
+                  répétés dans chaque menu déroulant. */}
+              <div className="hidden items-center gap-3 px-4 text-[11px] font-label-md uppercase tracking-wide text-outline sm:flex">
+                <span className="w-5 shrink-0" aria-hidden />
+                <span className="w-4 shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1">Préparation</span>
+                <span className="w-[132px] shrink-0">Rôle</span>
+                <span className="w-[220px] shrink-0">Ajustement</span>
+                <span className="w-[52px] shrink-0" aria-hidden />
+              </div>
+              <ul className="space-y-2">
               {ordered.map((c, i) => (
                 <li
                   key={c.id}
@@ -781,7 +793,7 @@ export function ProjectWizard({
                   <select
                     value={c.role ?? ''}
                     onChange={(e) => setRole(c, e.target.value)}
-                    className="rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary"
+                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[132px]"
                   >
                     <option value="">Rôle…</option>
                     {COMPONENT_ROLES.map((r) => (
@@ -797,7 +809,7 @@ export function ProjectWizard({
                     value={c.scalingMode ?? ''}
                     onChange={(e) => setScalingMode(c, e.target.value)}
                     title="Ajustement des quantités"
-                    className="rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary"
+                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[220px]"
                   >
                     {COMPONENT_SCALING_MODES.map((m) => (
                       <option key={m.value} value={m.value}>
@@ -815,7 +827,8 @@ export function ProjectWizard({
                   </span>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
 
           <div className="flex flex-wrap gap-3">
