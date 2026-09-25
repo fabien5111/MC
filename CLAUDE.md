@@ -928,6 +928,16 @@ essais et la validation arrivent par lots successifs.
   prendre ? »). Le coefficient, lui, n'est calculé côté client que pour un
   composant déjà résolu et pesable en grammes (visée ÷ poids pesé) — même
   geste qu'un ajustement individuel, sans second clic.
+- **Perte en cuisine, par composant** (JEP-254) : ce qui reste sur le fouet,
+  dans les bols, sur les cuillères réduit ce qui arrive réellement dans le
+  dessert. Corrigée en **produisant un peu plus**, jamais en changeant la
+  quantité visée : un pourcentage par composant (défaut 10 %, réglage de
+  session, aucune colonne dédiée) vient gonfler le coefficient — et les
+  coefficients surface/volume associés (`ScaleProposal.moldCoefs`), sinon une
+  préparation qui fonce un moule n'en tiendrait pas compte. S'applique aux
+  trois sources de proposition (format, IA, plan de montage),
+  **jamais** à un coefficient saisi à la main : c'est déjà la décision finale
+  de l'utilisateur.
 - **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
   jamais la quantité affichée — que multiplie tout ajustement : sans ça,
   changer deux fois le coefficient multiplierait deux fois. Exactement le rôle

@@ -68,6 +68,24 @@ const masseTexte = (g: number) => (g >= 1000 ? `${fr(g / 1000)} kg` : `${Math.ro
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
+// Perte en cuisine (JEP-254) : ce qui reste sur le fouet, les bols, les
+// cuillères réduit ce qui arrive réellement dans le dessert. La correction
+// consiste à PRODUIRE un peu plus, pas à changer la quantité visée — donc à
+// gonfler le coefficient d'autant, moldCoefs compris (sinon une préparation
+// qui fonce un moule, calculée à partir de sa surface, n'en tiendrait pas
+// compte).
+function appliquerPerte(prop: ScaleProposal, pourcentPerte: number): ScaleProposal {
+  if (!pourcentPerte) return prop;
+  const mult = 1 + pourcentPerte / 100;
+  return {
+    factor: round2(prop.factor * mult),
+    moldCoefs: prop.moldCoefs
+      ? { surface: round2(prop.moldCoefs.surface * mult), volume: round2(prop.moldCoefs.volume * mult) }
+      : null,
+    reason: `${prop.reason} + ${fr(pourcentPerte)} % de perte en cuisine.`,
+  };
+}
+
 // Libellés courts des modes d'ajustement, pour l'IA et l'affichage.
 const MODE_LABEL: Record<string, string> = {
   simple: 'suit le volume du moule',
@@ -111,6 +129,17 @@ export function QuantitiesStep({
   // point 15) — « la recette d'origine est pour 2 fonds », « je veux une
   // couche plus épaisse »…
   const [contexteIA, setContexteIA] = useState<Record<number, string>>({});
+  // Perte en cuisine par composant (ce qui reste sur le fouet, les bols, les
+  // cuillères) : un pourcentage qui vient gonfler le coefficient proposé,
+  // quelle que soit sa source — géométrique, IA, ou plan de montage. Défaut
+  // à 10 %, réglage de session (pas de colonne dédiée). Un coefficient saisi
+  // à la main n'en tient PAS compte : il est déjà la décision finale de
+  // l'utilisateur.
+  const [pertes, setPertes] = useState<Record<number, string>>({});
+  const perteDe = (id: number) => {
+    const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
+    return isFinite(v) && v >= 0 ? v : 0;
+  };
 
   const cible = targetFormat(project, targetForme);
   const ordered = [...project.components].sort((a, b) => a.position - b.position);
@@ -163,8 +192,9 @@ export function QuantitiesStep({
         );
         return;
       }
-      setPropositions((p) => ({ ...p, [c.id]: prop }));
-      setSaisie((p) => ({ ...p, [c.id]: fr(prop.factor) }));
+      const propAvecPerte = appliquerPerte(prop, perteDe(c.id));
+      setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
+      setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
     } finally {
       setTravail(false);
     }
@@ -248,11 +278,12 @@ export function QuantitiesStep({
         dialog.alert(data?.erreur || data?.explication || 'L’ajustement n’a pas abouti.');
         return;
       }
-      setPropositions((p) => ({
-        ...p,
-        [c.id]: { factor: data.coefficient, moldCoefs: null, reason: data.explication || `Coefficient ×${fr(data.coefficient)}.` },
-      }));
-      setSaisie((p) => ({ ...p, [c.id]: fr(data.coefficient) }));
+      const propAvecPerte = appliquerPerte(
+        { factor: data.coefficient, moldCoefs: null, reason: data.explication || `Coefficient ×${fr(data.coefficient)}.` },
+        perteDe(c.id),
+      );
+      setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
+      setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
     } catch {
       dialog.alert('L’ajustement n’a pas abouti.');
     } finally {
@@ -313,28 +344,27 @@ export function QuantitiesStep({
       // grammes — même geste qu'un ajustement individuel, sans second clic.
       // Ceux qui ne le sont pas gardent au moins leur quantité visée,
       // affichée dès que le projet se resynchronise.
+      const propositionsCalculees = new Map<number, ScaleProposal>();
+      for (const c of ordered) {
+        const p = parId.get(c.id);
+        const base = c.resolved ? masseGrammes(c.lines, true) : null;
+        if (!p || p.targetGrams == null || !base) continue;
+        propositionsCalculees.set(
+          c.id,
+          appliquerPerte(
+            { factor: p.targetGrams / base, moldCoefs: null, reason: p.dims ? `${p.explication} (${p.dims})` : p.explication },
+            perteDe(c.id),
+          ),
+        );
+      }
       setPropositions((prev) => {
         const next = { ...prev };
-        for (const c of ordered) {
-          const p = parId.get(c.id);
-          const base = c.resolved ? masseGrammes(c.lines, true) : null;
-          if (!p || p.targetGrams == null || !base) continue;
-          next[c.id] = {
-            factor: round2(p.targetGrams / base),
-            moldCoefs: null,
-            reason: p.dims ? `${p.explication} (${p.dims})` : p.explication,
-          };
-        }
+        for (const [id, prop] of propositionsCalculees) next[id] = prop;
         return next;
       });
       setSaisie((prev) => {
         const next = { ...prev };
-        for (const c of ordered) {
-          const p = parId.get(c.id);
-          const base = c.resolved ? masseGrammes(c.lines, true) : null;
-          if (!p || p.targetGrams == null || !base) continue;
-          next[c.id] = fr(round2(p.targetGrams / base));
-        }
+        for (const [id, prop] of propositionsCalculees) next[id] = fr(prop.factor);
         return next;
       });
     } catch {
@@ -520,6 +550,18 @@ export function QuantitiesStep({
                   <button type="button" onClick={() => void proposerIA(c)} className={btnGhost}>
                     Ajuster avec l’IA
                   </button>
+                  <span
+                    className="flex items-center gap-2"
+                    title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : appliquée aux propositions ci-dessus, jamais à un coefficient saisi à la main."
+                  >
+                    <label className="font-label-md text-[12px] text-outline">PERTE (%)</label>
+                    <input
+                      value={pertes[c.id] ?? '10'}
+                      onChange={(e) => setPertes((p) => ({ ...p, [c.id]: e.target.value }))}
+                      inputMode="decimal"
+                      className={`${champ} w-16`}
+                    />
+                  </span>
                   <span className="flex items-center gap-2">
                     <label className="font-label-md text-[12px] text-outline">COEFFICIENT</label>
                     <input
