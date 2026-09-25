@@ -27,6 +27,19 @@ import { withNormColumn } from '@/lib/text-search';
 
 const MAX_LIMIT = 30;
 
+// Variantes singulier/pluriel du terme cherché (JEP-254) : « amandes » ne
+// contient pas « amande », donc une recette « Crème d'amande » restait
+// invisible à qui tapait le pluriel — et inversement. Heuristique du
+// français courant (un « s » ou un « x » final), pas une vraie analyse
+// linguistique : elle élargit la recherche, elle ne la restreint jamais, un
+// faux positif occasionnel (ex. un terme qui se termine légitimement par
+// « s ») coûte moins qu'un « aucune recette trouvée » sur une faute d'accord.
+function pluralVariants(motif: string): string[] {
+  const dernier = motif.slice(-1);
+  const variante = dernier === 's' || dernier === 'x' ? motif.slice(0, -1) : `${motif}s`;
+  return variante && variante !== motif ? [motif, variante] : [motif];
+}
+
 const SELECT =
   'id, title, status, is_public, author_id, kind, project_stage, measure_type, yield_qty, yield_unit, yield_desc, ' +
   'prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
@@ -83,8 +96,9 @@ export async function GET(req: Request) {
     // Le titre est un filtre supplémentaire (ET), pas une quatrième branche du
     // OU : il restreint la portée choisie, il ne l'élargit pas. Il porte sur
     // la colonne normalisée `title_norm` (JEP-254) : « creme » trouve
-    // « Crème pâtissière ».
-    if (term) q = q.ilike(colonne, `%${motif}%`);
+    // « Crème pâtissière », et les deux variantes ci-dessous tolèrent le
+    // singulier/pluriel.
+    if (term) q = q.or(pluralVariants(motif).map((v) => `${colonne}.ilike.%${v}%`).join(','));
     return term ? q.order('title', { ascending: true }) : q.order('created_at', { ascending: false });
   };
 
