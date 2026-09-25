@@ -72,6 +72,21 @@ le service managé.
   outil **extérieur** (le runner GitHub Actions de `npm run gen:types`), il
   faut toujours un Endpoint temporaire sur le nœud PostgreSQL (216075),
   § 7.9 du dossier de migration.
+- **pgweb ne peut PAS modifier la structure d'une table** (`ALTER TABLE`,
+  qu'il s'agisse d'ajouter une colonne ou une contrainte). Découvert le
+  25/09/2026 (JEP-254) : `pgweb_admin` a `LOGIN BYPASSRLS` et rien de plus
+  — aucun `GRANT` de privilèges (`SELECT`/`INSERT`/…) ne remplace la
+  propriété de la table, qu'a exclusivement `postgres`, et `pgweb_admin` n'a
+  pas non plus le droit de se rendre membre de `postgres`
+  (`grant postgres to pgweb_admin` échoue avec « permission denied to grant
+  role »). **Pour toute migration qui touche une table existante**, écrire le
+  SQL comme d'habitude pour la partie lisible (fonctions, requêtes), mais
+  préciser dans le message qu'il faudra le jouer via `psql` en tant que
+  `postgres`, en Web SSH sur le nœud **216075** (PostgreSQL), pas via
+  pgweb — `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "…"`. Une
+  fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
+  données, elles, passent bien par pgweb : la limite ne porte que sur le
+  DDL des tables.
 
 ---
 

@@ -466,6 +466,23 @@ echo "pgweb:$(openssl passwd -apr1 'NOUVEAU')" > /etc/nginx/conf.d/pgweb.htpassw
   corrigeraient la cause, essai non concluant au 19/09 et abandonné : chaque
   redéploiement de ce nœud s'est révélé plus coûteux que le geste qu'il
   évite.
+- **`pgweb_admin` ne peut pas modifier la structure d'une table.** Rôle
+  volontairement réduit (`LOGIN BYPASSRLS`, § ci-dessus) : `ALTER TABLE …
+  ADD COLUMN`, `ADD CONSTRAINT`, etc. exigent d'être propriétaire de la
+  table, et ce sont toutes `postgres`. Découvert le 25/09/2026 (JEP-254) —
+  message `must be owner of table <nom>`. Une tentative de contournement
+  (`grant postgres to pgweb_admin`) échoue aussi (`permission denied to
+  grant role "postgres"`) : `pgweb_admin` n'a même pas le droit de se
+  rendre membre de `postgres`. Pour ce cas précis, se connecter directement
+  au nœud PostgreSQL (**216075**, Web SSH) et exécuter le DDL en local avec
+  `psql -U postgres` :
+  ```bash
+  psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "alter table public.ma_table add column …;"
+  ```
+  `-v ON_ERROR_STOP=1` fait échouer tout le bloc si une instruction rate,
+  plutôt que de continuer sur une base à moitié migrée. Tout le reste
+  (fonctions, lectures, écritures de données) continue de passer par pgweb
+  normalement — la limite ne touche que le DDL des tables.
 
 ## Certificats
 
