@@ -22,6 +22,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics, mergeIngredients, UNITS_LBL } from '@/lib/recipe-view';
 import { scalingCoef } from '@/lib/recipe-plan';
 import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
+import type { AssemblyProposal } from '@/lib/ai/project-assembly';
 import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
@@ -64,6 +65,8 @@ function masseGrammes(lines: ProjectComponent['lines'], base: boolean): number |
 }
 
 const masseTexte = (g: number) => (g >= 1000 ? `${fr(g / 1000)} kg` : `${Math.round(g)} g`);
+
+const round2 = (x: number) => Math.round(x * 100) / 100;
 
 // Libellés courts des modes d'ajustement, pour l'IA et l'affichage.
 const MODE_LABEL: Record<string, string> = {
@@ -200,9 +203,20 @@ export function QuantitiesStep({
       }
       const mode = c.scalingMode ?? c.lines.find((l) => l.scalingMode)?.scalingMode ?? null;
       const precisions = (contexteIA[c.id] ?? '').replace(/\s+/g, ' ').trim().slice(0, 450);
+      // Rôle et voisins dans l'assemblage (JEP-254) : sans eux, l'IA ne peut
+      // que comparer des surfaces/volumes de moules — inutile pour un insert,
+      // dont la quantité ne dépend pas du moule mais de sa place dans le
+      // montage. Le poids pesé lui donne un ordre de grandeur de départ.
+      const masseBase = masseGrammes(c.lines, true);
+      const autres = ordered.filter((o) => o.id !== c.id).map((o) => `${o.name}${o.role ? ` (${o.role})` : ''}`);
       const prompt = [
-        `Adapter la préparation « ${c.name} » au dessert « ${project.title} » :`,
+        `Adapter la préparation « ${c.name} »${c.role ? `, rôle : ${c.role},` : ''} au dessert « ${project.title} » :`,
         `format ${formatLabel}, ${project.servings ?? '?'} parts.`,
+        autres.length ? `Les autres préparations de l’assemblage sont : ${autres.join(', ')}.` : null,
+        masseBase ? `La recette telle que saisie produit environ ${masseTexte(masseBase)}.` : null,
+        c.role
+          ? `Si cette préparation est un insert, une garniture ou une couche intermédiaire, raisonne en COUCHE (dimensions et épaisseur compatibles avec le format ci-dessus, plus petite que le dessert), pas en remplissage du moule entier.`
+          : null,
         mode && MODE_LABEL[mode] ? `Cette préparation ${MODE_LABEL[mode]}.` : null,
         precisions ? `Précisions du pâtissier : ${precisions}` : null,
       ]
@@ -241,6 +255,90 @@ export function QuantitiesStep({
       setSaisie((p) => ({ ...p, [c.id]: fr(data.coefficient) }));
     } catch {
       dialog.alert('L’ajustement n’a pas abouti.');
+    } finally {
+      setTravail(false);
+    }
+  }
+
+  // Plan de montage global (JEP-254) : quand personne ne sait à l'avance
+  // combien de crémeux fait un insert de tarte, c'est le format du dessert et
+  // le rôle de chaque composant qui le disent — pas la recette source, qui
+  // n'a souvent aucun rapport géométrique avec ce montage-ci. Un seul appel
+  // pour tous les composants, comme /api/projet/structure : la cohérence
+  // d'ensemble (les couches se répartissent les unes par rapport aux autres)
+  // se perdrait à les demander une par une.
+  async function proposerMontage() {
+    if (!ordered.length) return;
+    setTravail(true);
+    try {
+      const r = await fetch('/api/projet/montage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: project.title,
+          formatLabel,
+          servings: project.servings,
+          composants: ordered.map((c) => ({ id: c.id, name: c.name, role: c.role })),
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !Array.isArray(data?.composants)) {
+        dialog.alert(data?.erreur || 'La proposition a échoué.');
+        return;
+      }
+      const parId = new Map<number, AssemblyProposal>((data.composants as AssemblyProposal[]).map((p) => [p.id, p]));
+
+      // Enregistré tout de suite, même pour un composant pas encore résolu :
+      // la quantité visée guide justement le choix de la recette (« il m'en
+      // faut environ 300 g, laquelle prendre ? »).
+      const ok = await mutate(
+        async () => {
+          const supabase = createClient();
+          for (const c of ordered) {
+            const p = parId.get(c.id);
+            if (!p) continue;
+            const { error } = await supabase
+              .from('recipe_project_components')
+              .update({ target_quantity: p.targetGrams, target_unit: p.targetGrams != null ? 'g' : null } as never)
+              .eq('id', c.id);
+            if (error) return { error };
+          }
+          return { error: null };
+        },
+        { errorLabel: 'Enregistrement du plan de montage' },
+      );
+      if (!ok) return;
+
+      // Coefficient immédiat pour les composants déjà résolus et pesables en
+      // grammes — même geste qu'un ajustement individuel, sans second clic.
+      // Ceux qui ne le sont pas gardent au moins leur quantité visée,
+      // affichée dès que le projet se resynchronise.
+      setPropositions((prev) => {
+        const next = { ...prev };
+        for (const c of ordered) {
+          const p = parId.get(c.id);
+          const base = c.resolved ? masseGrammes(c.lines, true) : null;
+          if (!p || p.targetGrams == null || !base) continue;
+          next[c.id] = {
+            factor: round2(p.targetGrams / base),
+            moldCoefs: null,
+            reason: p.dims ? `${p.explication} (${p.dims})` : p.explication,
+          };
+        }
+        return next;
+      });
+      setSaisie((prev) => {
+        const next = { ...prev };
+        for (const c of ordered) {
+          const p = parId.get(c.id);
+          const base = c.resolved ? masseGrammes(c.lines, true) : null;
+          if (!p || p.targetGrams == null || !base) continue;
+          next[c.id] = fr(round2(p.targetGrams / base));
+        }
+        return next;
+      });
+    } catch {
+      dialog.alert('La proposition a échoué.');
     } finally {
       setTravail(false);
     }
@@ -308,14 +406,23 @@ export function QuantitiesStep({
 
       {/* Rappel du dessert visé (JEP-254, point 13) : c'est à lui que chaque
           composant doit être ramené. */}
-      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
-        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
-        <p className="font-body-md text-[15px] text-on-surface">
-          {project.title}
-          {' — '}
-          {formatLabel}
-          {project.servings ? ` · ${project.servings} parts` : ''}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <div>
+          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
+          <p className="font-body-md text-[15px] text-on-surface">
+            {project.title}
+            {' — '}
+            {formatLabel}
+            {project.servings ? ` · ${project.servings} parts` : ''}
+          </p>
+        </div>
+        {/* Quand la quantité d'un composant (un insert, une garniture…) ne se
+            déduit d'aucun moule ni d'aucune recette source : l'IA la propose
+            d'après son rôle dans l'assemblage plutôt que de laisser chercher
+            au hasard (JEP-254). */}
+        <button type="button" onClick={() => void proposerMontage()} className={btnGhost}>
+          Proposer le plan de montage
+        </button>
       </div>
 
       {ordered.map((c) => {
@@ -352,6 +459,14 @@ export function QuantitiesStep({
               </div>
               <span className="font-label-md text-[12.5px] text-primary">×{fr(facteur)}</span>
             </div>
+
+            {/* Persiste même sans recette choisie : c'est justement ce
+                repère qui aide à en choisir une (JEP-254). */}
+            {c.targetQuantity != null && (
+              <p className="mb-3 text-[12.5px] text-secondary">
+                Quantité visée : {fr(c.targetQuantity)} {c.targetUnit || 'g'}
+              </p>
+            )}
 
             {!c.resolved ? (
               <p className="text-[13px] italic text-on-surface-variant">

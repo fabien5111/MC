@@ -131,6 +131,7 @@ app/                    Pages et routes (App Router)
 │   │                     (recette + satellites + proposition de l'IA)
 │   ├── projet/structure/ POST — format visé + composants proposés (IA)
 │   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
+│   ├── projet/montage/   POST — quantité visée par composant, tous d'un coup (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
 │   ├── transcribe-photo/ POST — lecture IA d'UNE photo de page → texte
 │   ├── scale-recipe/     POST — coefficient IA d'ajustement des quantités
@@ -905,7 +906,28 @@ essais et la validation arrivent par lots successifs.
   proportionnel au volume. Quand la géométrie ne tranche pas (pas de moule sur
   la source, composant proposé par l'IA ou saisi à la main), l'écran bascule
   sur `/api/scale-recipe`, la route d'ajustement en texte libre déjà en place,
-  qui rend le coefficient **et** son explication en une phrase (§6.4).
+  qui rend le coefficient **et** son explication en une phrase (§6.4). Cet
+  ajustement individuel reçoit aussi le rôle du composant et la liste des
+  autres préparations de l'assemblage (JEP-254) : sans eux, l'IA ne peut que
+  comparer des moules, ce qui ne veut rien dire pour un insert ou une
+  garniture, dont la quantité dépend de sa place dans le montage, pas d'un
+  rapport géométrique avec sa recette source.
+- **« Proposer le plan de montage »** (`/api/projet/montage`, JEP-254) répond
+  au cas où personne ne connaît la quantité à l'avance (« combien de crémeux
+  pour un insert de tarte ? ») : un seul appel à l'IA propose, pour **tous**
+  les composants d'un coup, une quantité visée en grammes d'après le format
+  du dessert et le rôle de chacun (fond, insert, glaçage…) — une estimation
+  de métier, pas un calcul géométrique. Écrite dans
+  `recipe_project_components.target_quantity` / `target_unit`, colonnes du
+  socle jusqu'ici inutilisées (aucune migration). Un seul appel plutôt qu'un
+  par composant : la cohérence d'ensemble (les couches se répartissent les
+  unes par rapport aux autres) se perdrait à les demander séparément — même
+  raisonnement que `/api/projet/structure` pour le format et les composants.
+  La quantité visée est écrite **même pour un composant non résolu** : elle
+  aide justement à choisir la recette (« il en faut ~300 g, laquelle
+  prendre ? »). Le coefficient, lui, n'est calculé côté client que pour un
+  composant déjà résolu et pesable en grammes (visée ÷ poids pesé) — même
+  geste qu'un ajustement individuel, sans second clic.
 - **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
   jamais la quantité affichée — que multiplie tout ajustement : sans ça,
   changer deux fois le coefficient multiplierait deux fois. Exactement le rôle
@@ -1365,6 +1387,11 @@ principales :
   (§5.4). L'échec est ici **remonté**, contrairement à la route précédente :
   l'utilisateur a explicitement demandé une proposition, il doit savoir qu'elle
   n'est pas venue. `maxDuration = 60 s`.
+- `POST /api/projet/montage` (JEP-254) — propose la quantité visée (en
+  grammes) de chaque composant du projet, d'un coup, d'après le format du
+  dessert et le rôle de chacun. Ne touche à aucune table : c'est l'appelant
+  (`ProjectQuantities`) qui écrit `target_quantity` avec sa propre session.
+  Échec **remonté**, même doctrine que la route précédente. `maxDuration = 30 s`.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

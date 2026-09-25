@@ -45,6 +45,13 @@ export type ProjectComponent = {
   // 8 pers »), lu en direct sur la source : `null` si elle n'existe pas
   // (IA, saisie à la main) ou n'est plus accessible (JEP-254, point 13).
   sourceYield: string | null;
+  // Quantité visée pour ce composant dans l'assemblage (JEP-254) — en
+  // grammes, proposée par « Proposer le plan de montage » ou saisie à la
+  // main. `null` tant que rien n'a été proposé : les colonnes existent
+  // depuis le socle (`target_quantity` / `target_unit`), inutilisées
+  // jusqu'ici.
+  targetQuantity: number | null;
+  targetUnit: string | null;
   stepCount: number;
   lines: ProjectLine[];
 };
@@ -172,12 +179,22 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
 
   type ComponentRow = Omit<
     ProjectComponent,
-    'stepCount' | 'lines' | 'scaleFactor' | 'scaleReason' | 'manuallyAdjusted' | 'scalingMode' | 'sourceYield'
+    | 'stepCount'
+    | 'lines'
+    | 'scaleFactor'
+    | 'scaleReason'
+    | 'manuallyAdjusted'
+    | 'scalingMode'
+    | 'sourceYield'
+    | 'targetQuantity'
+    | 'targetUnit'
   > & {
     scale_factor: number | null;
     scale_reason: string | null;
     manually_adjusted: boolean;
     scaling_mode?: string | null;
+    target_quantity: number | null;
+    target_unit: string | null;
   };
   const rows = (componentsRes.data ?? []) as unknown as ComponentRow[];
   const rendements = await sourceYields(
@@ -200,6 +217,8 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     manuallyAdjusted: c.manually_adjusted,
     scalingMode: c.scaling_mode ?? null,
     sourceYield: c.source_recipe_id ? (rendements.get(c.source_recipe_id) ?? null) : null,
+    targetQuantity: c.target_quantity,
+    targetUnit: c.target_unit,
     stepCount: parStep.get(c.id) ?? 0,
     lines: parComposant.get(c.id) ?? [],
   }));
