@@ -614,26 +614,34 @@ export function ComponentResolver({
                           placeholder="Ingrédient"
                           className={`${champ} flex-1 min-w-[8rem]`}
                         />
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={it.quantity ?? ''}
+                            onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
+                            placeholder="Qté"
+                            inputMode="decimal"
+                            className={`${champ} w-20`}
+                          />
+                          <select
+                            value={it.unit ?? ''}
+                            onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
+                            className={`${champ} w-28`}
+                          >
+                            <option value="">—</option>
+                            {units.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                            {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
+                          </select>
+                        </div>
                         <input
-                          value={it.quantity ?? ''}
-                          onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
-                          placeholder="Qté"
-                          inputMode="decimal"
-                          className={`${champ} w-20`}
+                          value={it.comment ?? ''}
+                          onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
+                          placeholder="Commentaire (optionnel)"
+                          className={`${champ} min-w-[10rem] flex-1`}
                         />
-                        <select
-                          value={it.unit ?? ''}
-                          onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                          className={`${champ} w-28`}
-                        >
-                          <option value="">—</option>
-                          {units.map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
-                          ))}
-                          {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
-                        </select>
                         <button
                           type="button"
                           title="Retirer l’ingrédient"
