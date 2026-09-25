@@ -72,8 +72,11 @@ const btnPrimary =
 const btnGhost =
   'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
 
-const champ =
-  'w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+// Sans largeur : `w-full` est généré APRÈS `w-14`/`w-16` par Tailwind et
+// l'emporterait sur toute largeur fixe posée à côté.
+const champBase =
+  'rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+const champ = `w-full ${champBase}`;
 
 export function ComponentResolver({
   projectId,
@@ -613,19 +616,19 @@ export function ComponentResolver({
                             list={ingredientRefs.length ? datalistId : undefined}
                             autoComplete="off"
                             placeholder="Ingrédient"
-                            className={`${champ} min-w-0 flex-1`}
+                            className={`${champBase} min-w-0 flex-1`}
                           />
                           <input
                             value={it.quantity ?? ''}
                             onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
                             placeholder="Qté"
                             inputMode="decimal"
-                            className={`${champ} w-14 shrink-0`}
+                            className={`${champBase} w-16 shrink-0`}
                           />
                           <select
                             value={it.unit ?? ''}
                             onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                            className={`${champ} w-fit min-w-[4.5rem] shrink-0`}
+                            className={`${champBase} w-fit shrink-0`}
                           >
                             <option value="">—</option>
                             {units.map((u) => (
