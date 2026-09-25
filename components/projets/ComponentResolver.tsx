@@ -603,29 +603,29 @@ export function ComponentResolver({
                   />
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
-                      <li key={j} className="flex flex-wrap items-center gap-2">
-                        <input
-                          value={it.name}
-                          // Nom saisi ≠ ingrédient rattaché : le rattachement
-                          // est refait à l'enregistrement.
-                          onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
-                          list={ingredientRefs.length ? datalistId : undefined}
-                          autoComplete="off"
-                          placeholder="Ingrédient"
-                          className={`${champ} flex-1 min-w-[8rem]`}
-                        />
-                        <div className="flex items-center gap-2">
+                      <li key={j} className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            value={it.name}
+                            // Nom saisi ≠ ingrédient rattaché : le rattachement
+                            // est refait à l'enregistrement.
+                            onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
+                            list={ingredientRefs.length ? datalistId : undefined}
+                            autoComplete="off"
+                            placeholder="Ingrédient"
+                            className={`${champ} flex-1 min-w-[10rem]`}
+                          />
                           <input
                             value={it.quantity ?? ''}
                             onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
                             placeholder="Qté"
                             inputMode="decimal"
-                            className={`${champ} w-20`}
+                            className={`${champ} w-16`}
                           />
                           <select
                             value={it.unit ?? ''}
                             onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                            className={`${champ} w-28`}
+                            className={`${champ} w-fit min-w-[4.5rem]`}
                           >
                             <option value="">—</option>
                             {units.map((u) => (
@@ -635,25 +635,25 @@ export function ComponentResolver({
                             ))}
                             {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
                           </select>
+                          <button
+                            type="button"
+                            title="Retirer l’ingrédient"
+                            onClick={() =>
+                              setDraft((prev) =>
+                                prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
+                              )
+                            }
+                            className="p-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">delete</span>
+                          </button>
                         </div>
                         <input
                           value={it.comment ?? ''}
                           onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
                           placeholder="Commentaire (optionnel)"
-                          className={`${champ} min-w-[10rem] flex-1`}
+                          className={`${champ} w-full`}
                         />
-                        <button
-                          type="button"
-                          title="Retirer l’ingrédient"
-                          onClick={() =>
-                            setDraft((prev) =>
-                              prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
-                            )
-                          }
-                          className="p-1"
-                        >
-                          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">close</span>
-                        </button>
                       </li>
                     ))}
                   </ul>
