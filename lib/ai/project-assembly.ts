@@ -15,10 +15,27 @@ export type AssemblyProposal = { id: number; targetGrams: number | null; dims: s
 export function buildAssemblyContenu(
   dessert: { title: string; formatLabel: string; servings: number | null },
   composants: AssemblyComponentInput[],
+  // Description libre du montage voulu (JEP-254) : « un fond en pâte sucrée
+  // de 28 cm, une crème d'amande sur 8 mm… ». Quand elle est donnée, elle
+  // prime sur l'estimation générique par rôle — c'est la description la plus
+  // fiable de ce que le pâtissier a en tête.
+  descriptionMontage: string | null = null,
 ): string {
   const liste = composants
     .map((c, i) => `${i + 1}. id=${c.id} — "${c.name}"${c.role ? ` (rôle : ${c.role})` : ''}`)
     .join('\n');
+
+  const blocDescription = descriptionMontage
+    ? `
+
+Le pâtissier décrit précisément le montage voulu — base-toi PRIORITAIREMENT
+sur cette description (dimensions, épaisseurs, techniques citées) pour
+chaque composant qu'elle mentionne ; ne retombe sur une estimation générique
+par rôle que pour ce qu'elle ne précise pas :
+"""
+${descriptionMontage}
+"""`
+    : '';
 
   return `Tu es pâtissier professionnel. On te donne un dessert et la liste de
 ses préparations (composants), du bas vers le haut de l'assemblage. Pour
@@ -30,7 +47,7 @@ Dessert : "${dessert.title || 'Sans titre'}"
 Format : ${dessert.formatLabel}${dessert.servings ? `, ${dessert.servings} parts` : ''}
 
 Composants, du bas vers le haut :
-${liste}
+${liste}${blocDescription}
 
 Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
 {

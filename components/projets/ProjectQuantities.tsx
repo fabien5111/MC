@@ -136,6 +136,10 @@ export function QuantitiesStep({
   // à la main n'en tient PAS compte : il est déjà la décision finale de
   // l'utilisateur.
   const [pertes, setPertes] = useState<Record<number, string>>({});
+  // Description libre du montage voulu (JEP-254), transmise au plan de
+  // montage — prime sur l'estimation générique par rôle quand elle est
+  // donnée.
+  const [descriptionMontage, setDescriptionMontage] = useState('');
   const perteDe = (id: number) => {
     const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
     return isFinite(v) && v >= 0 ? v : 0;
@@ -310,6 +314,7 @@ export function QuantitiesStep({
           formatLabel,
           servings: project.servings,
           composants: ordered.map((c) => ({ id: c.id, name: c.name, role: c.role })),
+          descriptionMontage: descriptionMontage.trim() || undefined,
         }),
       });
       const data = await r.json().catch(() => ({}));
@@ -436,23 +441,35 @@ export function QuantitiesStep({
 
       {/* Rappel du dessert visé (JEP-254, point 13) : c'est à lui que chaque
           composant doit être ramené. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
-        <div>
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
-          <p className="font-body-md text-[15px] text-on-surface">
-            {project.title}
-            {' — '}
-            {formatLabel}
-            {project.servings ? ` · ${project.servings} parts` : ''}
-          </p>
+      <div className="space-y-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
+            <p className="font-body-md text-[15px] text-on-surface">
+              {project.title}
+              {' — '}
+              {formatLabel}
+              {project.servings ? ` · ${project.servings} parts` : ''}
+            </p>
+          </div>
+          {/* Quand la quantité d'un composant (un insert, une garniture…) ne
+              se déduit d'aucun moule ni d'aucune recette source : l'IA la
+              propose d'après son rôle dans l'assemblage — ou, mieux, d'après
+              la description du montage ci-dessous — plutôt que de laisser
+              chercher au hasard (JEP-254). */}
+          <button type="button" onClick={() => void proposerMontage()} className={btnGhost}>
+            Proposer le plan de montage
+          </button>
         </div>
-        {/* Quand la quantité d'un composant (un insert, une garniture…) ne se
-            déduit d'aucun moule ni d'aucune recette source : l'IA la propose
-            d'après son rôle dans l'assemblage plutôt que de laisser chercher
-            au hasard (JEP-254). */}
-        <button type="button" onClick={() => void proposerMontage()} className={btnGhost}>
-          Proposer le plan de montage
-        </button>
+        <textarea
+          value={descriptionMontage}
+          onChange={(e) => setDescriptionMontage(e.target.value)}
+          rows={3}
+          placeholder={
+            'Précisions sur le montage (facultatif) — ex. « un fond de tarte en pâte sucrée de 28 cm, une crème d’amande sur 8 mm, un crémeux au praliné sur 12 mm, un pochage de boules de 25 mm de ganache montée sur le dessus »'
+          }
+          className={`${champ} w-full resize-y bg-surface-container-lowest`}
+        />
       </div>
 
       {ordered.map((c) => {

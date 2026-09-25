@@ -973,7 +973,14 @@ essais et la validation arrivent par lots successifs.
   aide justement à choisir la recette (« il en faut ~300 g, laquelle
   prendre ? »). Le coefficient, lui, n'est calculé côté client que pour un
   composant déjà résolu et pesable en grammes (visée ÷ poids pesé) — même
-  geste qu'un ajustement individuel, sans second clic.
+  geste qu'un ajustement individuel, sans second clic. **Description libre du
+  montage** : un textarea facultatif (« un fond en pâte sucrée de 28 cm, une
+  crème d'amande sur 8 mm… ») accompagne le bouton — quand il est rempli,
+  `buildAssemblyContenu` (`lib/ai/project-assembly.ts`) l'ajoute au prompt
+  comme description PRIORITAIRE du montage, et l'IA ne retombe sur
+  l'estimation générique par rôle que pour ce qu'elle ne précise pas. Sans
+  lui, le comportement d'origine (déduction depuis le seul rôle) est
+  inchangé.
 - **Perte en cuisine, par composant** (JEP-254) : ce qui reste sur le fouet,
   dans les bols, sur les cuillères réduit ce qui arrive réellement dans le
   dessert. Corrigée en **produisant un peu plus**, jamais en changeant la

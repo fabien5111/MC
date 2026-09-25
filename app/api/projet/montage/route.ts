@@ -45,6 +45,11 @@ export async function POST(req: Request) {
   const servings =
     Number.isFinite(Number(body?.servings)) && Number(body.servings) > 0 ? Math.round(Number(body.servings)) : null;
 
+  // Description libre du montage voulu (JEP-254) — facultative, prime sur
+  // l'estimation générique par rôle quand elle est donnée.
+  const descriptionMontage =
+    typeof body?.descriptionMontage === 'string' ? body.descriptionMontage.trim().slice(0, 1500) || null : null;
+
   const composants: AssemblyComponentInput[] = (Array.isArray(body?.composants) ? body.composants : [])
     .slice(0, MAX_COMPOSANTS)
     .map((c: unknown) => {
@@ -65,7 +70,7 @@ export async function POST(req: Request) {
   try {
     const raw = await callClaude(
       apiKey,
-      buildAssemblyContenu({ title, formatLabel, servings }, composants),
+      buildAssemblyContenu({ title, formatLabel, servings }, composants, descriptionMontage),
       1500,
       25_000,
       undefined,
