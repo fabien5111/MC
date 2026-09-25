@@ -874,7 +874,15 @@ essais et la validation arrivent par lots successifs.
   même forme intermédiaire (`ComponentStepDraft`, `lib/projects.ts`) que
   `writeComponentContent` (`lib/projects-write.ts`) est seul à écrire. Sans ce
   pivot, chaque source réinventerait son insertion, avec trois occasions de
-  rompre l'appariement étape ↔ groupe d'ingrédients.
+  rompre l'appariement étape ↔ groupe d'ingrédients. **`readComponentDraft`**
+  (`lib/projects-write.ts`) est le lecteur symétrique : il relit le contenu
+  déjà enregistré d'un composant dans cette même forme (`ComponentStepDraft[]`)
+  — c'est ce qui permet à « Consulter » (JEP-254, étape 4) de rouvrir la
+  fenêtre de résolution directement en édition, préremplie, pour une source
+  « Proposée par l'IA » ou « Saisie à la main » : ces deux-là n'ont pas de
+  `source_recipe_id`, donc pas de recette séparée à ouvrir dans un nouvel
+  onglet (contrairement à « Mon carnet » / « Favoris » / « Suivis », où
+  « Changer » rouvre la recherche comme avant).
 - **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
   évite de renuméroter tout le projet à chaque rattachement. Seuls un
   déplacement ou une suppression redistribuent les blocs

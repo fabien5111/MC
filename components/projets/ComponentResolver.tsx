@@ -87,6 +87,9 @@ export function ComponentResolver({
   ingredientRefs = [],
   peutGenererIA = true,
   quotaProjetIA = null,
+  initialMode,
+  initialDraft,
+  initialDraftKind,
   onClose,
   onDone,
 }: {
@@ -110,13 +113,20 @@ export function ComponentResolver({
   // une proposition à l'IA » une fois épuisé, plutôt que de laisser
   // découvrir le refus après un clic (JEP-77, même motif que BatchWidget).
   quotaProjetIA?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // « Consulter » (JEP-254) : pour une source « Proposée par l'IA » ou
+  // « Saisie à la main », il n'y a pas de recette séparée à ouvrir — la
+  // fenêtre s'ouvre directement sur le contenu déjà enregistré plutôt que
+  // sur la recherche, qui le ferait perdre de vue à chaque réouverture.
+  initialMode?: 'sources' | 'edit';
+  initialDraft?: ComponentStepDraft[];
+  initialDraftKind?: ComponentSourceKind;
   onClose: () => void;
   onDone: () => void;
 }) {
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 
-  const [mode, setMode] = useState<'sources' | 'edit'>('sources');
+  const [mode, setMode] = useState<'sources' | 'edit'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
@@ -137,8 +147,8 @@ export function ComponentResolver({
   // par la saisie à la main. Les deux passent par le même éditeur, et le
   // même écrivain : une proposition d'IA n'est qu'un point de départ qu'on
   // relit avant d'enregistrer.
-  const [draft, setDraft] = useState<ComponentStepDraft[]>([]);
-  const [draftKind, setDraftKind] = useState<ComponentSourceKind>('manual');
+  const [draft, setDraft] = useState<ComponentStepDraft[]>(initialDraft ?? []);
+  const [draftKind, setDraftKind] = useState<ComponentSourceKind>(initialDraftKind ?? 'manual');
 
   // Numéro de la dernière recherche lancée : une réponse plus ancienne,
   // arrivée après une plus récente, est ignorée — sans quoi une frappe
@@ -190,6 +200,9 @@ export function ComponentResolver({
   // masquerait le champ qu'on est en train de remplir (même doctrine que la
   // recherche avancée) ; un indicateur discret suffit.
   useEffect(() => {
+    // Ouverture directe en édition (« Consulter ») : la recherche ne sert à
+    // rien tant qu'on n'est pas revenu à l'onglet des recettes.
+    if (mode === 'edit') return;
     const t = setTimeout(() => void chercher(terme), DEBOUNCE_MS);
     return () => clearTimeout(t);
     // `chercher` est recréée à chaque rendu mais ne lit que des refs et des

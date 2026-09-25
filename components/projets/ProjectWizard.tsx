@@ -27,6 +27,7 @@ import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { ProjectIntentStep, type ProjectStartMode } from '@/components/projets/ProjectIntentStep';
 import {
   clearComponentContent,
+  readComponentDraft,
   resequenceProjectSteps,
   setComponentScalingMode,
   writeAssemblyStep,
@@ -51,6 +52,7 @@ import {
 } from '@/lib/projects';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
+import type { ComponentStepDraft } from '@/lib/projects';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
@@ -143,6 +145,15 @@ export function ProjectWizard({
   const [proposal, setProposal] = useState<ProposedStructure | null>(null);
 
   const [resolving, setResolving] = useState<ProjectComponent | null>(null);
+  // Contenu chargé pour « Consulter » (JEP-254) : pour une source « Proposée
+  // par l'IA » / « Saisie à la main », la fenêtre s'ouvre directement sur ce
+  // qui est déjà enregistré plutôt que sur la recherche.
+  const [resolvingInit, setResolvingInit] = useState<{
+    mode: 'sources' | 'edit';
+    draft?: ComponentStepDraft[];
+    kind?: ComponentSourceKind;
+  } | null>(null);
+  const [consultBusy, setConsultBusy] = useState(false);
   // Réordonnancement de la structure (étape 3) par glisser-déposer.
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -397,6 +408,29 @@ export function ProjectWizard({
     );
   }
 
+  // Ouvre la fenêtre de résolution. Pour « Proposée par l'IA » / « Saisie à
+  // la main », il n'y a pas de recette séparée à consulter ailleurs (pas de
+  // `source_recipe_id`) : on charge donc son contenu déjà enregistré et on
+  // ouvre directement en édition, plutôt que sur une recherche qui l'aurait
+  // fait perdre de vue.
+  async function ouvrirComposant(c: ProjectComponent) {
+    if (c.resolved && (c.source_kind === 'ai_generated' || c.source_kind === 'manual')) {
+      setConsultBusy(true);
+      try {
+        const draft = await readComponentDraft(createClient(), project.id, c.id);
+        setResolvingInit({ mode: 'edit', draft, kind: c.source_kind as ComponentSourceKind });
+        setResolving(c);
+      } catch (e) {
+        dialog.alert(`La lecture du contenu a échoué : ${(e as Error).message}`);
+      } finally {
+        setConsultBusy(false);
+      }
+      return;
+    }
+    setResolvingInit(null);
+    setResolving(c);
+  }
+
   async function removeComponent(c: ProjectComponent) {
     const restants = ordered.filter((x) => x.id !== c.id).map((x) => x.id);
     await mutate(
@@ -562,7 +596,7 @@ export function ProjectWizard({
 
   return (
     <>
-      <LoadingOverlay visible={busy || thinking} label={thinking ? 'Composition du projet…' : undefined} />
+      <LoadingOverlay visible={busy || thinking || consultBusy} label={thinking ? 'Composition du projet…' : undefined} />
 
       {/* Fil des étapes — cliquable : la spec veut un parcours séquentiel
           mais librement réversible (§4). */}
@@ -881,8 +915,12 @@ export function ProjectWizard({
                     <span className="material-symbols-outlined text-[20px] text-error">delete</span>
                   </button>
                 </span>
-                <button type="button" onClick={() => setResolving(c)} className={btnGhost}>
-                  {c.resolved ? 'Changer' : 'Choisir une recette'}
+                <button type="button" onClick={() => void ouvrirComposant(c)} className={btnGhost}>
+                  {!c.resolved
+                    ? 'Choisir une recette'
+                    : c.source_kind === 'ai_generated' || c.source_kind === 'manual'
+                      ? 'Consulter'
+                      : 'Changer'}
                 </button>
               </li>
             ))}
@@ -944,13 +982,20 @@ export function ProjectWizard({
           ingredientRefs={ingredientRefs}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
-          onClose={() => setResolving(null)}
+          initialMode={resolvingInit?.mode}
+          initialDraft={resolvingInit?.draft}
+          initialDraftKind={resolvingInit?.kind}
+          onClose={() => {
+            setResolving(null);
+            setResolvingInit(null);
+          }}
           // La modale n'emporte pas sa propre resynchronisation : elle écrit,
           // ce parent-ci rafraîchit (il reste monté), puis la fenêtre se
           // ferme — le voile est déjà en place au rendu qui la démonte.
           onDone={() => {
             refresh();
             setResolving(null);
+            setResolvingInit(null);
           }}
         />
       )}
