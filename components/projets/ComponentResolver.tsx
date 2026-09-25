@@ -604,7 +604,7 @@ export function ComponentResolver({
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
                       <li key={j} className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-nowrap items-center gap-2">
                           <input
                             value={it.name}
                             // Nom saisi ≠ ingrédient rattaché : le rattachement
@@ -613,19 +613,19 @@ export function ComponentResolver({
                             list={ingredientRefs.length ? datalistId : undefined}
                             autoComplete="off"
                             placeholder="Ingrédient"
-                            className={`${champ} flex-1 min-w-[10rem]`}
+                            className={`${champ} min-w-0 flex-1`}
                           />
                           <input
                             value={it.quantity ?? ''}
                             onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
                             placeholder="Qté"
                             inputMode="decimal"
-                            className={`${champ} w-16`}
+                            className={`${champ} w-14 shrink-0`}
                           />
                           <select
                             value={it.unit ?? ''}
                             onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                            className={`${champ} w-fit min-w-[4.5rem]`}
+                            className={`${champ} w-fit min-w-[4.5rem] shrink-0`}
                           >
                             <option value="">—</option>
                             {units.map((u) => (
@@ -643,7 +643,7 @@ export function ComponentResolver({
                                 prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
                               )
                             }
-                            className="p-1"
+                            className="shrink-0 p-1"
                           >
                             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">delete</span>
                           </button>
