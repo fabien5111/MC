@@ -34,7 +34,19 @@ chaque composant qu'elle mentionne ; ne retombe sur une estimation générique
 par rôle que pour ce qu'elle ne précise pas :
 """
 ${descriptionMontage}
-"""`
+"""
+
+Une dimension peut être DÉDUITE de cette description sans être chiffrée —
+cette déduction prime alors sur toute règle générique ci-dessous (retrait
+d'un insert, une pièce par part…) :
+- une couche décrite comme coulée/étalée « dans le fond », « sur » ou « dans »
+  une autre couche du dessert (pas comme un insert à part) épouse le diamètre
+  DU DESSERT, pas un diamètre réduit ;
+- « sur tout le dessus », « recouvrant l'ensemble », « toute la surface »
+  signifie une couverture COMPLÈTE de cette surface : calcule le poids à
+  partir de la surface totale à couvrir (et de l'épaisseur ou du volume d'une
+  pièce du motif décrit), jamais un compte de pièces arbitraire du type « une
+  par part » sauf si le pâtissier le demande explicitement.`
     : '';
 
   return `Tu es pâtissier professionnel. On te donne un dessert et la liste de

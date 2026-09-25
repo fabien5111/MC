@@ -57,6 +57,17 @@ le service managé.
   `lib/images.ts` / composant `ImageSlot`. (Les data-URL en base sont
   l'ancien modèle, entièrement repris par le lot B ; il n'en reste que dans
   `articles.content`, hors périmètre.)
+- **Ne jamais recharger une image déjà sur Swift dans un `<canvas>`** (via
+  `resizeDataUrlToThumb`/`chargerImageDepuisSrc`, `lib/images.ts`) **si elle
+  n'a pas changé** : `crossOrigin="anonymous"` exige un en-tête CORS sur la
+  lecture, que le conteneur peut ne pas renvoyer — l'échec remonte en
+  « Image illisible » sur une image qui s'affiche pourtant très bien. Bug
+  réel rencontré dans `CreerForm` : les vignettes (`hero_thumb_url`/
+  `hero_card_url`) étaient recalculées à **chaque** enregistrement même sans
+  changement de photo, cassant la sauvegarde de toute recette déjà illustrée.
+  Corrigé en ne recalculant que si `hero`/`heroOriginal` est un dépôt frais
+  (`estDataUrlImage`, `lib/storage.ts`) — sinon les colonnes sont omises de
+  l'update, gardant les vignettes déjà en base.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
@@ -980,7 +991,16 @@ essais et la validation arrivent par lots successifs.
   comme description PRIORITAIRE du montage, et l'IA ne retombe sur
   l'estimation générique par rôle que pour ce qu'elle ne précise pas. Sans
   lui, le comportement d'origine (déduction depuis le seul rôle) est
-  inchangé.
+  inchangé. **Une dimension déduite prime sur une règle générique** : une
+  couche décrite « dans le fond », « sur » ou « dans » une autre couche du
+  dessert (pas comme un insert à part) doit épouser le diamètre du dessert,
+  pas le retrait de 2-4 cm que le prompt applique par défaut aux inserts ; une
+  couverture décrite « sur tout le dessus »/« toute la surface » se chiffre à
+  partir de la surface réelle à couvrir, jamais d'un compte de pièces
+  arbitraire (« une par part ») que le pâtissier n'a pas demandé. Découvert
+  sur un cas réel (crémeux « dans le fond de tarte » de 28 cm ramené à 26 cm ;
+  ganache « sur tout le dessus » chiffrée à 8 boules et largement sous-pesée)
+  — ces deux cas sont désormais explicités dans le prompt.
 - **Perte en cuisine, par composant** (JEP-254) : ce qui reste sur le fouet,
   dans les bols, sur les cuillères réduit ce qui arrive réellement dans le
   dessert. Corrigée en **produisant un peu plus**, jamais en changeant la
