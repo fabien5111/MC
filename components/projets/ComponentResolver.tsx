@@ -27,7 +27,7 @@ import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
-import { writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
@@ -92,6 +92,7 @@ export function ComponentResolver({
   initialDraftKind,
   onClose,
   onDone,
+  onReset,
 }: {
   projectId: string;
   projectTitle: string;
@@ -122,6 +123,12 @@ export function ComponentResolver({
   initialDraftKind?: ComponentSourceKind;
   onClose: () => void;
   onDone: () => void;
+  // « Réinitialiser » (JEP-254) : le contenu déjà enregistré est effacé et le
+  // composant repasse « À résoudre », mais la fenêtre reste ouverte — la
+  // resynchronisation du parent ne doit donc pas la fermer, contrairement à
+  // `onDone`. Optionnel avec un repli sur `onDone` : au pire on referme,
+  // jamais d'écriture non resynchronisée côté serveur.
+  onReset?: () => void;
 }) {
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
@@ -258,6 +265,45 @@ export function ComponentResolver({
       { errorLabel: 'Rattachement du composant', refresh: false },
     );
     if (ok) onDone();
+  }
+
+  // Efface le contenu déjà enregistré (étapes + ingrédients) et repasse le
+  // composant « À résoudre » (JEP-254) — le seul moyen de repartir de zéro :
+  // `enregistrer` refuse d'écrire un composant sans étape, donc vider le
+  // brouillon puis « Enregistrer » ne menait nulle part. Reste dans la
+  // fenêtre, sur l'onglet des recettes, pour relancer aussitôt une recherche,
+  // une proposition de l'IA ou une saisie à la main.
+  async function reinitialiser() {
+    const ok = await dialog.confirm(
+      `Effacer le contenu de « ${component.name} » ? Il faudra choisir une nouvelle recette, demander une nouvelle proposition ou ressaisir les étapes.`,
+    );
+    if (!ok) return;
+    setChargement(true);
+    try {
+      const supabase = createClient();
+      await clearComponentContent(supabase, projectId, component.id);
+      const { error } = await supabase
+        .from('recipe_project_components')
+        .update({
+          resolved: false,
+          source_kind: 'manual',
+          source_recipe_id: null,
+          source_author_id: null,
+          source_title: null,
+          source_author_name: null,
+        } as never)
+        .eq('id', component.id);
+      if (error) throw error;
+    } catch (e) {
+      dialog.alert(`L’effacement a échoué : ${(e as Error).message}`);
+      return;
+    } finally {
+      setChargement(false);
+    }
+    setDraft([]);
+    setTerme(component.name);
+    setMode('sources');
+    (onReset ?? onDone)();
   }
 
   async function attacher(item: Trouvee) {
@@ -650,6 +696,15 @@ export function ComponentResolver({
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
+              </button>
+              {/* Effacer ce qui est déjà enregistré — seul moyen de repartir
+                  de zéro, `enregistrer` refusant un composant sans étape. */}
+              <button
+                type="button"
+                onClick={() => void reinitialiser()}
+                className={`${btnGhost} text-error hover:bg-error/10`}
+              >
+                Réinitialiser
               </button>
               <button
                 type="button"

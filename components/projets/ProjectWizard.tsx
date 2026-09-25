@@ -997,6 +997,13 @@ export function ProjectWizard({
             setResolving(null);
             setResolvingInit(null);
           }}
+          // « Réinitialiser » (JEP-254) : le composant repasse « À résoudre »
+          // mais la fenêtre reste ouverte — on resynchronise sans la fermer,
+          // contrairement à `onDone`.
+          onReset={() => {
+            refresh();
+            setResolvingInit(null);
+          }}
         />
       )}
     </>

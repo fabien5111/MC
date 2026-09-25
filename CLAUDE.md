@@ -882,7 +882,16 @@ essais et la validation arrivent par lots successifs.
   « Proposée par l'IA » ou « Saisie à la main » : ces deux-là n'ont pas de
   `source_recipe_id`, donc pas de recette séparée à ouvrir dans un nouvel
   onglet (contrairement à « Mon carnet » / « Favoris » / « Suivis », où
-  « Changer » rouvre la recherche comme avant).
+  « Changer » rouvre la recherche comme avant). **« Réinitialiser »** (même
+  écran) est le pendant destructeur : `enregistrer` refusant d'écrire un
+  composant sans étape, vider le brouillon puis « Enregistrer » ne menait
+  nulle part — il n'existait donc aucun moyen de repartir de zéro sur un
+  composant déjà enregistré. Efface son contenu (`clearComponentContent`) et
+  le repasse `resolved: false`, **sans fermer la fenêtre** : contrairement à
+  `onDone`, la resynchronisation demandée au parent (`onReset`) ne démonte
+  pas la modale, pour enchaîner aussitôt sur une recherche, une proposition
+  de l'IA ou une saisie à la main — fermer (croix) reste la sortie normale
+  vers la liste des composants, qui affiche alors « À résoudre ».
 - **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
   évite de renuméroter tout le projet à chaque rattachement. Seuls un
   déplacement ou une suppression redistribuent les blocs
