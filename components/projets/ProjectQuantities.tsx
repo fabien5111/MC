@@ -457,7 +457,10 @@ export function QuantitiesStep({
               propose d'après son rôle dans l'assemblage — ou, mieux, d'après
               la description du montage ci-dessous — plutôt que de laisser
               chercher au hasard (JEP-254). */}
-          <button type="button" onClick={() => void proposerMontage()} className={btnGhost}>
+          <button type="button" onClick={() => void proposerMontage()} className={`${btnGhost} flex items-center gap-1.5`}>
+            <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+              auto_awesome
+            </span>
             Proposer le plan de montage
           </button>
         </div>
