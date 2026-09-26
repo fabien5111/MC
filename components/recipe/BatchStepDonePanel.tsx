@@ -436,10 +436,10 @@ export function BatchStepDonePanel({
               // dans le parcours quel que soit l'état de l'étape.
               const replaced = it.expanded_into_recipe_id != null;
               const excluded = !replaced && step.done && it.excluded_when_done;
-              // Barré en rouge comme une suppression : l'ingrédient ne
-              // s'achète plus. La mention verte en dessous dit où il est
-              // fabriqué à la place.
-              const tone = replaced ? 'text-error line-through' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
+              // Vert non barré : l'ingrédient reste bien utilisé dans
+              // l'étape, seule sa provenance change (fabriqué plutôt
+              // qu'acheté) — la mention verte en dessous dit où.
+              const tone = replaced ? 'text-green-700' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
               return (
                 <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
                   {step.done && (

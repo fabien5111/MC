@@ -1683,14 +1683,16 @@ function PatisserBody({
                     // vient relire pour ajuster la recette après coup.
                     // L'exclusion est rendue barrée par `StepCookCard`, pas
                     // escamotée (cf. CLAUDE.md « une étape n'est jamais
-                    // retirée du déroulé »). Seules disparaissent les lignes
-                    // qui ne font plus partie de la fournée : retirées à la
-                    // main, ou fabriquées ailleurs (ingrédient éclaté en
-                    // sous-recette, étape entièrement remplacée).
+                    // retirée du déroulé »). Seule disparaît la ligne
+                    // retirée à la main, ou toute la liste si l'étape entière
+                    // est remplacée. Un ingrédient éclaté en sous-recette
+                    // reste ici, sans mention particulière : à l'exécution de
+                    // CETTE étape, qu'il soit acheté ou fabriqué ailleurs ne
+                    // change rien, il doit être incorporé comme les autres.
                     ingredients={
                       batchStepReplaced(s)
                         ? []
-                        : batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !it.removed && it.expanded_into_recipe_id == null)
+                        : batch.batch_ingredients.filter((it) => it.batch_step_id === s.id && !it.removed)
                     }
                     readOnly={readOnly}
                     isPending={isPending}
@@ -1771,7 +1773,12 @@ function StepCookCard({
   // qu'escamotées. Les listes `active*` — ce qui reste réellement à faire —
   // servent aux automatismes (auto-coche de l'étape), jamais à l'affichage.
   const substeps = [...s.batch_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  const activeIngredients = ingredients.filter((it) => !batchIngredientExcluded(s, it));
+  // Un ingrédient éclaté en sous-recette n'est PAS exclu ici : en exécution,
+  // il reste à incorporer comme n'importe quel autre (cf. commentaire du
+  // parent) — seule `batchIngredientExcluded` « déjà réalisé » / étape
+  // remplacée le sort encore du parcours.
+  const cookExcluded = (it: BatchIngredientRow) => it.expanded_into_recipe_id == null && batchIngredientExcluded(s, it);
+  const activeIngredients = ingredients.filter((it) => !cookExcluded(it));
   const activeSubsteps = substeps.filter((su) => !batchSubstepExcluded(s, su));
   // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
   // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
@@ -1873,7 +1880,9 @@ function StepCookCard({
             // Sorti du parcours parce que son étape est marquée « déjà
             // réalisée » : la ligne reste lisible (c'est ce qu'on relit pour
             // ajuster), mais il n'y a plus rien à y cocher ni à y saisir.
-            const excluded = batchIngredientExcluded(s, ing);
+            // Un ingrédient éclaté en sous-recette n'entre PAS dans ce cas :
+            // sans mention particulière ici, il se coche normalement.
+            const excluded = cookExcluded(ing);
             const locked = readOnly || excluded;
             const struck = ing.done || excluded ? ' line-through opacity-50' : '';
             const checkbox = (
