@@ -28,6 +28,7 @@ import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
+import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 import { LockedAction } from '@/components/LockedAction';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
@@ -600,6 +601,13 @@ function PreparerView({
   // motif que `expanding` dans BatchIngredientsEditor.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
   const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
+  // Ligne d'ingrédient en cours de remplacement par une recette, ouverte
+  // depuis la « Liste totale des ingrédients » (même fenêtre que celle de
+  // BatchIngredientsEditor, cf. `expanding` là-bas) — instance de mutation
+  // séparée, les deux fenêtres pouvant en théorie être ouvertes l'une après
+  // l'autre sans se marcher dessus.
+  const [expandingIngredient, setExpandingIngredient] = useState<BatchIngredientRow | null>(null);
+  const { refresh: refreshExpand } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
   const adjustedYield = ((): string | null => {
@@ -620,6 +628,17 @@ function PreparerView({
   // aussi le « déjà pris en compte » pour rester une liste de courses fidèle
   // à ce qu'il reste à acheter.
   const allIngredients = mergeAllBatchIngredients(batch);
+  // Pour proposer le remplacement par une recette DEPUIS la liste fusionnée :
+  // une ligne affichée peut regrouper plusieurs `batch_ingredients` (même nom
+  // + unité utilisés dans deux étapes) — le picto n'apparaît que si une seule
+  // ligne réelle correspond, sinon impossible de deviner laquelle remplacer
+  // (l'utilisateur passe alors par « Ingrédients ajustés », groupée par étape).
+  const eligibleForExpansion = batch.batch_ingredients.filter((it) => it.name && !it.removed && it.expanded_into_recipe_id == null);
+  function uniqueExpandableRow(name: string, unit: string): BatchIngredientRow | null {
+    const key = (s: string) => s.toLowerCase() + '|' + (unit || '').toLowerCase();
+    const candidats = eligibleForExpansion.filter((it) => key(it.name) === key(name));
+    return candidats.length === 1 ? candidats[0] : null;
+  }
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -764,6 +783,14 @@ function PreparerView({
           ingredientDensities={ingredientDensities}
           onClose={() => setReplacingStep(null)}
           onDone={refreshReplace}
+        />
+      )}
+      {expandingIngredient && (
+        <IngredientExpandDialog
+          batch={batch}
+          row={expandingIngredient}
+          onClose={() => setExpandingIngredient(null)}
+          onDone={refreshExpand}
         />
       )}
       {/* `mobileInset="nav"` : /fournee/[id] monte la barre de navigation basse
@@ -978,11 +1005,15 @@ function PreparerView({
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
-          <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+          <ul className="grid grid-cols-[max-content_minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
             {allIngredients.map((r) => {
               const qtyTxt = mergedRowQtyText(r);
               const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
               const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
+              // Picto « remplacer par une recette » (JEP-254) : seulement si
+              // la ligne fusionnée correspond à UNE SEULE ligne réelle — sinon
+              // impossible de savoir laquelle des étapes remplacer.
+              const expandable = !readOnly ? uniqueExpandableRow(r.name, r.unit) : null;
               return (
                 <li
                   key={r.name + '|' + r.unit}
@@ -998,6 +1029,24 @@ function PreparerView({
                   <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
                     {r.name}
                     {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                  </span>
+                  <span className="no-print flex items-center justify-self-end">
+                    {expandable &&
+                      (droits.remplacementIngredient ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpandingIngredient(expandable)}
+                          title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                          className="text-primary hover:opacity-70"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                        </button>
+                      ) : (
+                        <LockedAction
+                          label="Remplacer cet ingrédient par une recette"
+                          message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                        />
+                      ))}
                   </span>
                 </li>
               );

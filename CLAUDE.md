@@ -689,6 +689,18 @@ directes :
   renuméroter la fournée (ce qui invaliderait les positions retenues
   ailleurs). Un ingrédient déjà remplacé ne propose plus le picto : il faut
   d'abord annuler.
+- **Le picto de remplacement est aussi sur la « Liste totale des
+  ingrédients »** (JEP-254), pas seulement dans « Ingrédients ajustés »
+  (repliée par défaut, groupée par étape) : sans lui, remplacer un
+  ingrédient depuis la vue d'ensemble obligeait à déplier cette section pour
+  retrouver la même ligne. **Seulement quand la ligne fusionnée correspond à
+  UNE SEULE ligne `batch_ingredients` réelle** — la liste totale fusionne les
+  lignes identiques (nom + unité) entre étapes, et un même ingrédient utilisé
+  à deux endroits rendrait le remplacement ambigu (laquelle des deux
+  étapes ?) ; ce cas garde son unique porte d'entrée dans « Ingrédients
+  ajustés ». Même fenêtre (`IngredientExpandDialog`), même droit
+  (`droits.remplacementIngredient`, avec `LockedAction` en repli), masqué sur
+  une fournée fermée (`readOnly`) comme le reste des actions de cette vue.
 - **« Refaire cette fournée »** (`CuisineContent.refaireBatch`) duplique
   toutes les lignes `batch_*` d'une fournée vers une nouvelle, avec une
   nouvelle `planned_date` (`batches.source_plan_id` trace la filiation) —
