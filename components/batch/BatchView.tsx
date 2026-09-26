@@ -28,6 +28,7 @@ import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
+import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 import { LockedAction } from '@/components/LockedAction';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
@@ -47,6 +48,7 @@ import {
   batchStepIsStepReplacement,
   batchStepReplaced,
   batchSubstepExcluded,
+  expandableGroup,
   expansionSource,
   groupBatchStepsByDay,
   mergeAllBatchIngredients,
@@ -600,6 +602,13 @@ function PreparerView({
   // motif que `expanding` dans BatchIngredientsEditor.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
   const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
+  // Ligne d'ingrédient en cours de remplacement par une recette, ouverte
+  // depuis la « Liste totale des ingrédients » (même fenêtre que celle de
+  // BatchIngredientsEditor, cf. `expanding` là-bas) — instance de mutation
+  // séparée, les deux fenêtres pouvant en théorie être ouvertes l'une après
+  // l'autre sans se marcher dessus.
+  const [expandingIngredient, setExpandingIngredient] = useState<BatchIngredientRow[] | null>(null);
+  const { refresh: refreshExpand } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
   const adjustedYield = ((): string | null => {
@@ -764,6 +773,14 @@ function PreparerView({
           ingredientDensities={ingredientDensities}
           onClose={() => setReplacingStep(null)}
           onDone={refreshReplace}
+        />
+      )}
+      {expandingIngredient && (
+        <IngredientExpandDialog
+          batch={batch}
+          rows={expandingIngredient}
+          onClose={() => setExpandingIngredient(null)}
+          onDone={refreshExpand}
         />
       )}
       {/* `mobileInset="nav"` : /fournee/[id] monte la barre de navigation basse
@@ -978,11 +995,16 @@ function PreparerView({
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
-          <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
+          <ul className="grid grid-cols-[max-content_minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
             {allIngredients.map((r) => {
               const qtyTxt = mergedRowQtyText(r);
               const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
               const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
+              // Picto « remplacer par une recette » (JEP-254) : couvre TOUTES
+              // les occurrences réelles derrière cette ligne fusionnée (même
+              // ingrédient utilisé dans plusieurs étapes) — un seul geste
+              // suffit, plus besoin de deviner laquelle remplacer.
+              const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
               return (
                 <li
                   key={r.name + '|' + r.unit}
@@ -998,6 +1020,24 @@ function PreparerView({
                   <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
                     {r.name}
                     {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
+                  </span>
+                  <span className="no-print flex items-center justify-self-end">
+                    {expandable.length > 0 &&
+                      (droits.remplacementIngredient ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpandingIngredient(expandable)}
+                          title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
+                          className="text-primary hover:opacity-70"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                        </button>
+                      ) : (
+                        <LockedAction
+                          label="Remplacer cet ingrédient par une recette"
+                          message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                        />
+                      ))}
                   </span>
                 </li>
               );

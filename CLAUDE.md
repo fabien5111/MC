@@ -57,6 +57,17 @@ le service managé.
   `lib/images.ts` / composant `ImageSlot`. (Les data-URL en base sont
   l'ancien modèle, entièrement repris par le lot B ; il n'en reste que dans
   `articles.content`, hors périmètre.)
+- **Ne jamais recharger une image déjà sur Swift dans un `<canvas>`** (via
+  `resizeDataUrlToThumb`/`chargerImageDepuisSrc`, `lib/images.ts`) **si elle
+  n'a pas changé** : `crossOrigin="anonymous"` exige un en-tête CORS sur la
+  lecture, que le conteneur peut ne pas renvoyer — l'échec remonte en
+  « Image illisible » sur une image qui s'affiche pourtant très bien. Bug
+  réel rencontré dans `CreerForm` : les vignettes (`hero_thumb_url`/
+  `hero_card_url`) étaient recalculées à **chaque** enregistrement même sans
+  changement de photo, cassant la sauvegarde de toute recette déjà illustrée.
+  Corrigé en ne recalculant que si `hero`/`heroOriginal` est un dépôt frais
+  (`estDataUrlImage`, `lib/storage.ts`) — sinon les colonnes sont omises de
+  l'update, gardant les vignettes déjà en base.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
@@ -72,6 +83,21 @@ le service managé.
   outil **extérieur** (le runner GitHub Actions de `npm run gen:types`), il
   faut toujours un Endpoint temporaire sur le nœud PostgreSQL (216075),
   § 7.9 du dossier de migration.
+- **pgweb ne peut PAS modifier la structure d'une table** (`ALTER TABLE`,
+  qu'il s'agisse d'ajouter une colonne ou une contrainte). Découvert le
+  25/09/2026 (JEP-254) : `pgweb_admin` a `LOGIN BYPASSRLS` et rien de plus
+  — aucun `GRANT` de privilèges (`SELECT`/`INSERT`/…) ne remplace la
+  propriété de la table, qu'a exclusivement `postgres`, et `pgweb_admin` n'a
+  pas non plus le droit de se rendre membre de `postgres`
+  (`grant postgres to pgweb_admin` échoue avec « permission denied to grant
+  role »). **Pour toute migration qui touche une table existante**, écrire le
+  SQL comme d'habitude pour la partie lisible (fonctions, requêtes), mais
+  préciser dans le message qu'il faudra le jouer via `psql` en tant que
+  `postgres`, en Web SSH sur le nœud **216075** (PostgreSQL), pas via
+  pgweb — `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "…"`. Une
+  fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
+  données, elles, passent bien par pgweb : la limite ne porte que sur le
+  DDL des tables.
 
 ---
 
@@ -104,13 +130,16 @@ app/                    Pages et routes (App Router)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
+├── projets/nouveau/    Mode projet — étape 1 d'un projet pas encore créé
+│                       (choix IA / manuel ; aucune écriture)
 ├── projets/[id]/       Mode projet — parcours guidé (intention → format →
 │                       structure → recettes des composants)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
 ├── api/
-│   ├── projet/           POST — création d'un projet (recette + satellites)
+│   ├── projet/           POST — création d'un projet au passage à l'étape 2
+│   │                     (recette + satellites + proposition de l'IA)
 │   ├── projet/structure/ POST — format visé + composants proposés (IA)
 │   ├── projet/composant/ POST — recette de base proposée pour un composant (IA)
 │   ├── import-url/       POST — analyse IA d'une recette (texte) → brouillon
@@ -425,6 +454,21 @@ remontant** en dessous.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
 
+## Recherche textuelle sans accents
+
+**Toute zone de recherche du site ignore la casse ET les accents** (JEP-254) :
+« creme » trouve « Crème brûlée ». Une seule règle, `normSearch` / `matchesSearch`
+(`lib/text-search.ts`, alias de `normLoose`), pour tous les filtres en mémoire
+(carnet, blog, back-office). Côté base, `ilike` étant sensible aux accents, les
+recherches par titre ou par nom passent par des **colonnes générées**
+`recipes.title_norm` et `profiles.full_name_norm` (fonction immuable
+`public.mc_norm_imm`), interrogées avec le terme déjà normalisé via
+`withNormColumn` — qui retombe sur la colonne brute si la colonne normalisée
+n'existe pas encore. Ne pas réintroduire de `toLowerCase().includes` ni
+d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
+La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
+(`suggest_ingredients`) l'étaient déjà.
+
 ## Fournées (batches)
 
 Une **fournée** (table `batches`, + `batch_steps`, `batch_substeps`,
@@ -645,6 +689,39 @@ directes :
   renuméroter la fournée (ce qui invaliderait les positions retenues
   ailleurs). Un ingrédient déjà remplacé ne propose plus le picto : il faut
   d'abord annuler.
+- **Le picto de remplacement est aussi sur la « Liste totale des
+  ingrédients »** (JEP-254), pas seulement dans « Ingrédients ajustés »
+  (repliée par défaut, groupée par étape) : sans lui, remplacer un
+  ingrédient depuis la vue d'ensemble obligeait à déplier cette section pour
+  retrouver la même ligne. Même fenêtre (`IngredientExpandDialog`), même
+  droit (`droits.remplacementIngredient`, avec `LockedAction` en repli),
+  masqué sur une fournée fermée (`readOnly`) comme le reste des actions de
+  cette vue.
+- **Le remplacement couvre TOUTES les occurrences du même ingrédient**
+  (JEP-254) : le praliné d'une ganache ET d'un croustillant, remplacé en un
+  seul geste — la liste totale fusionne déjà les lignes identiques (nom +
+  unité) entre étapes, et un remplacement qui n'en couvrirait qu'une
+  laisserait les autres en doublon dans les courses. Les étapes de la
+  sous-recette ne s'insèrent qu'**une fois**, mais `expanded_into_recipe_id`
+  marque **chaque** occurrence, qui sort donc des courses et de la mise en
+  place tout en restant visible dans SA propre étape (avec sa quantité),
+  barrée et créditée « Fabriqué à partir de X » comme n'importe quelle ligne
+  remplacée. `expandableGroup(batch, name, unit)` (`lib/recipe-plan.ts`)
+  retrouve toutes les occurrences éligibles par nom + unité, depuis la
+  « Liste totale » comme depuis « Ingrédients ajustés » — un clic sur
+  N'IMPORTE LAQUELLE ouvre la fenêtre pour le groupe entier. La quantité par
+  défaut proposée à `IngredientExpandDialog` est la **somme** des
+  occurrences ; les étapes insérées portent le `source_ingredient_id` de
+  l'occurrence dont l'étape est la plus tôt dans la fournée (jour, puis
+  position), qui sert aussi de repère par défaut pour la position
+  d'insertion. **Annuler** (`cancelExpansion`) reconstitue le même groupe via
+  `expandedGroup(batch, row)` (même recette de remplacement + même nom +
+  unité) et rétablit tout d'un coup, jamais une occurrence isolée — sinon les
+  autres resteraient marquées « fabriquées » alors que les étapes qui les
+  produisent auraient disparu. **Limite connue, acceptée** : le groupe se
+  reconstitue par nom + unité + recette, sans colonne dédiée — un AUTRE
+  ingrédient de même nom + unité remplacé par la même recette (coïncidence
+  très rare) serait à tort inclus dans l'annulation groupée.
 - **« Refaire cette fournée »** (`CuisineContent.refaireBatch`) duplique
   toutes les lignes `batch_*` d'une fournée vers une nouvelle, avec une
   nouvelle `planned_date` (`batches.source_plan_id` trace la filiation) —
@@ -749,6 +826,15 @@ fournées d'essai, puis figer le tout en une recette du carnet. **Seul le
 socle de données est en place** — le parcours guidé, les quantités, les
 essais et la validation arrivent par lots successifs.
 
+- **Le projet n'est créé qu'au passage à l'étape 2** (JEP-254). Le bouton
+  « Projet » du carnet est un simple lien vers `/projets/nouveau`, qui
+  n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
+  de format et de composants) et la construction manuelle. `POST /api/projet`
+  crée alors la recette-projet **avec** l'intention et la proposition
+  revalidée (titre, format, composants), `wizard_step = 2` — ouvrir le mode
+  projet puis renoncer ne laisse plus de projet vide dans le carnet. Aucune
+  donnée ne voyage d'une page à l'autre par le navigateur : l'étape 2 se
+  relit depuis la base.
 - **Un projet est une recette dès sa création**, pas une entité séparée
   convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
   de source, et la validation impliquerait une migration d'identifiants qui
@@ -781,7 +867,12 @@ essais et la validation arrivent par lots successifs.
   même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
   client tirerait `next/headers` et casserait le build.
 - **Le format vit sur `recipes`, jamais dans une table satellite** :
-  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. C'est
+  `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. Tout
+  format en moule (rond, cadre, bûche = `demi-cylindre`, empreintes) se
+  réalise en N exemplaires, portés par `yield_qty` ; le format affiché est
+  **déduit** (`deduceProjectFormat`), et la forme du calcul retombe sur celle
+  du format quand aucun moule du référentiel n'est choisi
+  (`projectTargetForme`). C'est
   de là que `BatchWidget` tire les coefficients surface/volume que
   `scalingCoef` applique ; un format rangé ailleurs couperait le mode projet
   de toute la machinerie d'ajustement, qu'on veut réutiliser telle quelle.
@@ -826,7 +917,53 @@ essais et la validation arrivent par lots successifs.
   même forme intermédiaire (`ComponentStepDraft`, `lib/projects.ts`) que
   `writeComponentContent` (`lib/projects-write.ts`) est seul à écrire. Sans ce
   pivot, chaque source réinventerait son insertion, avec trois occasions de
-  rompre l'appariement étape ↔ groupe d'ingrédients.
+  rompre l'appariement étape ↔ groupe d'ingrédients. **`readComponentDraft`**
+  (`lib/projects-write.ts`) est le lecteur symétrique : il relit le contenu
+  déjà enregistré d'un composant dans cette même forme (`ComponentStepDraft[]`)
+  — c'est ce qui permet à « Consulter » (JEP-254, étape 4) de rouvrir la
+  fenêtre de résolution directement en édition, préremplie, pour une source
+  « Proposée par l'IA » ou « Saisie à la main » : ces deux-là n'ont pas de
+  `source_recipe_id`, donc pas de recette séparée à ouvrir dans un nouvel
+  onglet (contrairement à « Mon carnet » / « Favoris » / « Suivis », où
+  « Changer » rouvre la recherche comme avant). **« Réinitialiser »** (même
+  écran) est le pendant destructeur : `enregistrer` refusant d'écrire un
+  composant sans étape, vider le brouillon puis « Enregistrer » ne menait
+  nulle part — il n'existait donc aucun moyen de repartir de zéro sur un
+  composant déjà enregistré. Efface son contenu (`clearComponentContent`) et
+  le repasse `resolved: false`, **sans fermer la fenêtre** : contrairement à
+  `onDone`, la resynchronisation demandée au parent (`onReset`) ne démonte
+  pas la modale, pour enchaîner aussitôt sur une recherche, une proposition
+  de l'IA ou une saisie à la main — fermer (croix) reste la sortie normale
+  vers la liste des composants, qui affiche alors « À résoudre ».
+- **Proposition de l'IA : une étape par sous-préparation, pas par geste**
+  (JEP-254). `buildComponentContenu` demandait jusqu'ici 1 à 6 étapes sans
+  autre consigne, et l'IA en produisait une par geste technique (hydrater la
+  gélatine, fondre le praliné, chauffer la crème…) pour une seule ganache
+  montée — un découpage qui n'a de sens nulle part ailleurs sur le site,
+  où une préparation homogène est UNE étape avec ses gestes en sous-étapes.
+  Le schéma JSON gagne donc un champ `sous_etapes` par étape (repris par
+  `normaliseComponentRecipe`, qui l'assigne au champ `ComponentStepDraft.
+  sous_etapes` déjà porté par le pivot et déjà écrit par
+  `writeComponentContent` — rien à changer côté écriture) ; la consigne passe
+  à « une étape par sous-préparation distincte, ses gestes dans
+  `sous_etapes` ; 1 à 4 étapes ». `ComponentResolver` gagne un champ
+  d'édition dédié (une ligne par sous-étape) entre la description et les
+  ingrédients de chaque étape, sinon une proposition de l'IA relue et
+  corrigée avant enregistrement perdrait silencieusement ses sous-étapes
+  — le seul endroit qui les affichait avant (la fiche recette) ne s'ouvre
+  qu'après coup. `draftToText` (relecture pour une nouvelle proposition,
+  point 8) les inclut aussi, sans quoi une correction demandée à l'IA
+  repartirait d'un texte amputé de ses gestes.
+- **Contexte libre AVANT la première proposition** (JEP-254) : cliquer sur
+  « Demander une proposition à l'IA » ouvre désormais une étape de saisie
+  (« Précisions pour l'IA », facultative — sans gélatine, au chocolat noir
+  plutôt qu'au lait…) plutôt que de lancer l'appel directement avec le seul
+  nom du composant. Distinct de `consignes` (point 8, ci-dessus) : l'un
+  précède la première proposition, l'autre corrige une proposition déjà vue
+  — les deux coexistent sans se remplacer. `buildComponentContenu` gagne un
+  paramètre `contexteLibre`, ajouté au prompt comme les autres lignes de
+  contexte (rôle, dessert, format) ; `POST /api/projet/composant` le lit et
+  le transmet, sans y toucher.
 - **Un composant occupe un bloc contigu d'`order_index`** (`k × 100`), ce qui
   évite de renuméroter tout le projet à chaque rattachement. Seuls un
   déplacement ou une suppression redistribuent les blocs
@@ -841,6 +978,13 @@ essais et la validation arrivent par lots successifs.
   `/api/recipes/picker` plutôt que fusionnées : c'est la portée qui a répondu
   qui décide du `source_kind`, donc du crédit d'auteur. La pertinence est
   obtenue en pré-remplissant la recherche avec le nom du composant.
+- **Mode d'ajustement d'un composant choisi dès l'étape 3**
+  (`recipe_project_components.scaling_mode` : `simple` = volume, `foncage` =
+  surface, `aucun`). La colonne n'est que la **mémoire** du choix tant que le
+  composant n'a pas de recette : c'est le `scaling_mode` des groupes
+  d'ingrédients que lit tout le calcul. Il est donc reporté sur les groupes
+  existants (`setComponentScalingMode`) et prime sur celui de la source à
+  chaque copie ; vide, celui de la recette d'origine est gardé.
 - **Les quantités ne sont pas recalculées ici, elles réutilisent la
   machinerie des fournées** (étape 5) : rapport des volumes ou des surfaces
   entre le moule de la recette source et le format visé (`moldMetrics`), puis
@@ -851,7 +995,41 @@ essais et la validation arrivent par lots successifs.
   proportionnel au volume. Quand la géométrie ne tranche pas (pas de moule sur
   la source, composant proposé par l'IA ou saisi à la main), l'écran bascule
   sur `/api/scale-recipe`, la route d'ajustement en texte libre déjà en place,
-  qui rend le coefficient **et** son explication en une phrase (§6.4).
+  qui rend le coefficient **et** son explication en une phrase (§6.4). Cet
+  ajustement individuel reçoit aussi le rôle du composant et la liste des
+  autres préparations de l'assemblage (JEP-254) : sans eux, l'IA ne peut que
+  comparer des moules, ce qui ne veut rien dire pour un insert ou une
+  garniture, dont la quantité dépend de sa place dans le montage, pas d'un
+  rapport géométrique avec sa recette source.
+- **« Proposer le plan de montage » a été retiré** (JEP-254, essayé puis
+  abandonné) : un seul appel IA proposait une quantité visée par composant
+  d'après le format du dessert et le rôle de chacun, écrite dans
+  `recipe_project_components.target_quantity` / `target_unit`. Trop
+  approximatif à l'usage (une dimension déduite du contexte — même diamètre
+  qu'une autre couche, couverture totale d'une surface — se faisait
+  régulièrement écraser par des règles génériques par rôle, produisant des
+  quantités trop faibles) : l'ajustement individuel par IA (`proposerIA`,
+  ci-dessus) couvre mieux ce besoin, composant par composant. Les colonnes
+  `target_quantity` / `target_unit` restent en base, inutilisées, comme
+  avant leur introduction — une suppression réelle est une migration
+  séparée, hors périmètre.
+- **Perte en cuisine, par composant** (JEP-254) : ce qui reste sur le fouet,
+  dans les bols, sur les cuillères réduit ce qui arrive réellement dans le
+  dessert. Corrigée en **produisant un peu plus**, jamais en changeant la
+  quantité visée : un pourcentage par composant (défaut 10 %, réglage de
+  session, aucune colonne dédiée) vient gonfler le coefficient — et les
+  coefficients surface/volume associés (`ScaleProposal.moldCoefs`), sinon une
+  préparation qui fonce un moule n'en tiendrait pas compte. S'applique aux
+  deux sources de proposition (format, IA),
+  **jamais** à un coefficient saisi à la main : c'est déjà la décision finale
+  de l'utilisateur.
+- **Quantité d'origine affichée en italique** (JEP-254) : à côté du champ
+  éditable de chaque ligne d'ingrédient, la quantité d'avant ajustement
+  (`ingredients.base_quantity`) reste visible en italique tant qu'un
+  coefficient l'a réellement changée — repère de contrôle après un
+  ajustement (format, IA, ou coefficient saisi à la main), sans repasser par
+  la recette source. Masquée quand elle vaut la quantité actuelle (facteur
+  ×1, ou avant tout ajustement) pour ne pas doubler l'affichage pour rien.
 - **`ingredients.base_quantity` porte la valeur d'origine**, et c'est elle —
   jamais la quantité affichée — que multiplie tout ajustement : sans ça,
   changer deux fois le coefficient multiplierait deux fois. Exactement le rôle
@@ -1259,7 +1437,7 @@ principales :
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
-| Projets | `recipe_projects`, `recipe_project_components` (+ `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
+| Projets | `recipe_projects`, `recipe_project_components` (+ `scaling_mode`, `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
 | Courses | `shopping_lists`, `shopping_list_items` |
 | Import IA | `imports` |

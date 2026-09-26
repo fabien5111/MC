@@ -76,6 +76,104 @@ export async function clearComponentContent(supabase: Supabase, recipeId: string
   }
 }
 
+// Relit le contenu déjà enregistré d'un composant, dans la forme éditable
+// (`ComponentStepDraft[]`) — celle que produisent aussi la proposition de
+// l'IA et la saisie à la main. Sert à « Consulter » (JEP-254) : pour une
+// source « Proposée par l'IA » ou « Saisie à la main », il n'y a pas de
+// recette séparée à ouvrir dans un nouvel onglet (contrairement à « Mon
+// carnet » / « Favoris » / « Suivis », cf. `source_recipe_id`) — c'est ici,
+// dans le projet, qu'est le seul exemplaire du contenu.
+export async function readComponentDraft(
+  supabase: Supabase,
+  recipeId: string,
+  componentId: number,
+): Promise<ComponentStepDraft[]> {
+  const { steps, groups } = await readLayout(supabase, recipeId);
+  const mine = steps
+    .filter((s) => s.component_id === componentId)
+    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+  if (!mine.length) return [];
+
+  const { data: stepDetails, error: stepErr } = await supabase
+    .from('recipe_steps')
+    .select('id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset')
+    .in('id', mine.map((s) => s.id));
+  if (stepErr) throw stepErr;
+
+  const groupByOrder = new Map(groups.map((g) => [g.order_index ?? -1, g]));
+  const groupIds = mine.map((s) => groupByOrder.get(s.order_index ?? -1)?.id).filter((id): id is number => id != null);
+  const { data: ingRows, error: ingErr } =
+    groupIds.length > 0
+      ? await supabase
+          .from('ingredients')
+          .select('group_id, name, quantity, unit, comment, allergen, ref_id, order_index')
+          .in('group_id', groupIds)
+      : { data: [], error: null };
+  if (ingErr) throw ingErr;
+
+  type StepDetail = {
+    id: number;
+    order_index: number | null;
+    title: string | null;
+    description: string | null;
+    sous_etapes: string[] | null;
+    prep_time: number | null;
+    cook_time: number | null;
+    wait_time: number | null;
+    cook_temp: number | null;
+    tips: string | null;
+    day_offset: number | null;
+  };
+  type IngRow = {
+    group_id: number | null;
+    name: string;
+    quantity: string | null;
+    unit: string | null;
+    comment: string | null;
+    allergen: string | null;
+    ref_id: number | null;
+    order_index: number | null;
+  };
+  const details = new Map(((stepDetails ?? []) as unknown as StepDetail[]).map((d) => [d.id, d]));
+  const ingByGroup = new Map<number, IngRow[]>();
+  for (const it of (ingRows ?? []) as unknown as IngRow[]) {
+    if (it.group_id == null) continue;
+    const l = ingByGroup.get(it.group_id) ?? [];
+    l.push(it);
+    ingByGroup.set(it.group_id, l);
+  }
+
+  return mine.map((s) => {
+    const d = details.get(s.id);
+    const groupe = groupByOrder.get(s.order_index ?? -1);
+    const ingredients = groupe
+      ? [...(ingByGroup.get(groupe.id) ?? [])]
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map((it) => ({
+            name: it.name,
+            quantity: it.quantity,
+            unit: it.unit,
+            comment: it.comment,
+            allergen: it.allergen,
+            ref_id: it.ref_id,
+          }))
+      : [];
+    return {
+      title: d?.title ?? null,
+      scaling_mode: null,
+      description: d?.description ?? null,
+      sous_etapes: d?.sous_etapes ?? null,
+      prep_time: d?.prep_time ?? null,
+      cook_time: d?.cook_time ?? null,
+      wait_time: d?.wait_time ?? null,
+      cook_temp: d?.cook_temp ?? null,
+      tips: d?.tips ?? null,
+      day_offset: d?.day_offset ?? null,
+      ingredients: ingredients.length ? ingredients : [{ name: '', quantity: '', unit: null, comment: null, allergen: null, ref_id: null }],
+    };
+  });
+}
+
 // Écrit le contenu d'un composant — quelle que soit sa provenance : copie
 // d'une recette existante, proposition de l'IA ou saisie à la main. Un seul
 // écrivain pour les trois sources, sinon chacune aurait sa façon d'apparier
@@ -160,6 +258,37 @@ export async function writeComponentContent(
     );
     if (ingErr) throw ingErr;
   }
+}
+
+// Mode d'ajustement choisi pour un composant à l'étape 3 (JEP-254, point 4) :
+// posé sur la ligne du composant — qui le garde tant qu'il n'a pas de recette
+// — ET sur les groupes d'ingrédients de ses étapes s'il en a déjà. C'est le
+// `scaling_mode` des groupes que lit tout le calcul des quantités
+// (`scalingCoef`, fournées comprises) : le composant n'en est que la mémoire.
+// `null` rend la main à la recette d'origine pour les copies à venir, sans
+// toucher aux groupes déjà écrits.
+export async function setComponentScalingMode(
+  supabase: Supabase,
+  recipeId: string,
+  componentId: number,
+  mode: string | null,
+) {
+  const { error } = await supabase
+    .from('recipe_project_components')
+    .update({ scaling_mode: mode } as never)
+    .eq('id', componentId);
+  if (error) throw error;
+  if (!mode) return;
+
+  const { steps, groups } = await readLayout(supabase, recipeId);
+  const indexes = new Set(steps.filter((s) => s.component_id === componentId).map((s) => s.order_index ?? -1));
+  const groupIds = groups.filter((g) => indexes.has(g.order_index ?? -1)).map((g) => g.id);
+  if (!groupIds.length) return;
+  const { error: groupErr } = await supabase
+    .from('ingredient_groups')
+    .update({ scaling_mode: mode } as never)
+    .in('id', groupIds);
+  if (groupErr) throw groupErr;
 }
 
 // Redistribue les blocs d'`order_index` après un déplacement ou une

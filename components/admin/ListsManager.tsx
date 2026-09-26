@@ -17,6 +17,7 @@ import { SECTIONS, SLUG_TABLES, STATUS_PUBLISHED_TABLES, type Section } from '@/
 import type { MoldType } from '@/lib/admin';
 import { ImageSlot } from '@/components/ImageSlot';
 import { revalidateReference } from '@/lib/revalidate-reference';
+import { matchesSearch } from '@/lib/text-search';
 
 type Entry = Record<string, unknown>;
 
@@ -81,8 +82,7 @@ export function ListsManager({ data, moldTypes }: { data: Record<string, Entry[]
     // tous ceux dont l'allergène est « lait » (beurre, chocolat au lait…). Le
     // libellé étant résolu via refTable, une règle de conversion se cherche par
     // le nom de son ingrédient et non par son id.
-    const q = search.toLowerCase();
-    if (q) entries = entries.filter((e) => entryLabel(e, section, data).toLowerCase().includes(q));
+    if (search.trim()) entries = entries.filter((e) => matchesSearch([entryLabel(e, section, data)], search));
     return entries;
   }, [activeKey, section, isMolds, moldTypeFilter, search, data]);
 

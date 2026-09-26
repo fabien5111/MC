@@ -14,6 +14,7 @@ import { useDialog } from '@/components/Dialog';
 import { articleStatusLabel, withBlogSchema, type ArticleStatus, type ArticleCategoryRow } from '@/lib/blog-types';
 import type { ManagedArticle } from '@/lib/admin-blog';
 import type { AppRole } from '@/lib/auth';
+import { matchesSearch } from '@/lib/text-search';
 
 const STATUS_BADGE: Record<ArticleStatus, string> = {
   publie: 'bg-green-700 text-white',
@@ -61,11 +62,8 @@ export function BlogManager({
     return c;
   }, [items]);
 
-  const query = q.trim().toLowerCase();
   const filtered = items.filter(
-    (a) =>
-      (status === 'all' || a.status === status) &&
-      (!query || `${a.title} ${a.slug}`.toLowerCase().includes(query)),
+    (a) => (status === 'all' || a.status === status) && matchesSearch([a.title, a.slug], q),
   );
 
   async function createArticle() {

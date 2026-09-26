@@ -8,6 +8,7 @@ import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
+import { getIngredientRefsList } from '@/lib/data/reference';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -20,10 +21,11 @@ export const metadata: Metadata = { title: 'Projet | Je pâtisse !' };
 // des props, jamais d'un miroir local).
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { params: Promise<{ id: string }>; searchParams: Promise<{ ia?: string }> };
 
-export default async function ProjetPage({ params }: Params) {
+export default async function ProjetPage({ params, searchParams }: Params) {
   const { id } = await params;
+  const { ia } = await searchParams;
   const user = await requireUser(`/projets/${id}`);
   // Même garde que /creer, /importer et /relecture : un projet s'écrit à
   // chaque geste, une session « en tant que » en lecture seule n'y entre pas.
@@ -63,7 +65,7 @@ export default async function ProjetPage({ params }: Params) {
     );
   }
 
-  const [moldTypes, units, conversions, recipe, trials] = await Promise.all([
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs] = await Promise.all([
     getMoldTypes(),
     getUnits(),
     // Table de conversions : sert au récapitulatif (étape 6), qui consolide
@@ -74,6 +76,9 @@ export default async function ProjetPage({ params }: Params) {
     // ordinaire (cf. lib/batch-write.ts).
     getRecipeFull(id, 'lecture'),
     getProjectTrials(id),
+    // Aide à la saisie des ingrédients d'un composant saisi à la main
+    // (JEP-254, point 9) — le même référentiel que l'éditeur de recette.
+    getIngredientRefsList(),
   ]);
   // Droit + quota des générations IA du mode projet (`mode_projet_ia_mensuel`,
   // §/api/projet/structure, /api/projet/composant) — lecture d'affichage
@@ -98,6 +103,8 @@ export default async function ProjetPage({ params }: Params) {
           units={units.map((u) => u.name)}
           conversions={conversions}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
+          ingredientRefs={ingredientRefs}
+          fromAI={ia === '1'}
           recipe={recipe}
           trials={trials}
           peutGenererIA={peutGenererIA}

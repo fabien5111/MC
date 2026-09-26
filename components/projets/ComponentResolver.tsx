@@ -20,15 +20,30 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
-import { writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
+import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+
+// Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
+// proposition de l'IA arrive avec des descriptions de plusieurs lignes, qu'un
+// champ de deux lignes tronquait. Même geste que `autoGrow` de CreerForm —
+// appelé depuis une ref, légal dans un `.map()`, là où un hook ne l'est pas.
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+// Délai avant de lancer la recherche pendant la frappe (JEP-254, point 11) —
+// même valeur que la recherche avancée.
+const DEBOUNCE_MS = 300;
 
 // Portées de recherche, dans l'ordre d'affichage voulu par la spec. La
 // dernière valeur est le `source_kind` enregistré sur le composant : c'est
@@ -57,29 +72,44 @@ const btnPrimary =
 const btnGhost =
   'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
 
-const champ =
-  'w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+// Sans largeur : `w-full` est généré APRÈS `w-14`/`w-16` par Tailwind et
+// l'emporterait sur toute largeur fixe posée à côté.
+const champBase =
+  'rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+const champ = `w-full ${champBase}`;
 
 export function ComponentResolver({
   projectId,
   projectTitle,
   servings,
+  formatLabel = null,
   component,
   componentIndex,
   componentIds,
   units,
+  ingredientRefs = [],
   peutGenererIA = true,
   quotaProjetIA = null,
+  initialMode,
+  initialDraft,
+  initialDraftKind,
   onClose,
   onDone,
+  onReset,
 }: {
   projectId: string;
   projectTitle: string;
   servings: number | null;
+  // Format visé en clair, transmis à l'IA avec le nom du dessert.
+  formatLabel?: string | null;
   component: ProjectComponent;
   componentIndex: number;
   componentIds: number[];
   units: string[];
+  // Référentiel des ingrédients : aide à la saisie (datalist) et
+  // rattachement au référentiel à l'enregistrement, comme dans l'éditeur de
+  // recette (JEP-254, point 9).
+  ingredientRefs?: IngredientRefOption[];
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
   peutGenererIA?: boolean;
@@ -87,16 +117,36 @@ export function ComponentResolver({
   // une proposition à l'IA » une fois épuisé, plutôt que de laisser
   // découvrir le refus après un clic (JEP-77, même motif que BatchWidget).
   quotaProjetIA?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // « Consulter » (JEP-254) : pour une source « Proposée par l'IA » ou
+  // « Saisie à la main », il n'y a pas de recette séparée à ouvrir — la
+  // fenêtre s'ouvre directement sur le contenu déjà enregistré plutôt que
+  // sur la recherche, qui le ferait perdre de vue à chaque réouverture.
+  initialMode?: 'sources' | 'edit' | 'contexte-ia';
+  initialDraft?: ComponentStepDraft[];
+  initialDraftKind?: ComponentSourceKind;
   onClose: () => void;
   onDone: () => void;
+  // « Réinitialiser » (JEP-254) : le contenu déjà enregistré est effacé et le
+  // composant repasse « À résoudre », mais la fenêtre reste ouverte — la
+  // resynchronisation du parent ne doit donc pas la fermer, contrairement à
+  // `onDone`. Optionnel avec un repli sur `onDone` : au pire on referme,
+  // jamais d'écriture non resynchronisée côté serveur.
+  onReset?: () => void;
 }) {
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 
-  const [mode, setMode] = useState<'sources' | 'edit'>('sources');
+  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
+  const [recherche, setRecherche] = useState(false);
+  const datalistId = `dl-ingredients-composant-${component.id}`;
+  // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
+  const [consignes, setConsignes] = useState('');
+  // Précision libre saisie avant la PREMIÈRE proposition (JEP-254) — distincte
+  // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
+  const [contexteIA, setContexteIA] = useState('');
 
   const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
   // JEP-130 : même repère et même bulle que partout ailleurs, à la place du
@@ -110,13 +160,19 @@ export function ComponentResolver({
   // par la saisie à la main. Les deux passent par le même éditeur, et le
   // même écrivain : une proposition d'IA n'est qu'un point de départ qu'on
   // relit avant d'enregistrer.
-  const [draft, setDraft] = useState<ComponentStepDraft[]>([]);
-  const [draftKind, setDraftKind] = useState<ComponentSourceKind>('manual');
+  const [draft, setDraft] = useState<ComponentStepDraft[]>(initialDraft ?? []);
+  const [draftKind, setDraftKind] = useState<ComponentSourceKind>(initialDraftKind ?? 'manual');
 
-  const chercher = useCallback(async () => {
-    setChargement(true);
+  // Numéro de la dernière recherche lancée : une réponse plus ancienne,
+  // arrivée après une plus récente, est ignorée — sans quoi une frappe
+  // rapide pourrait afficher les résultats d'un terme déjà dépassé.
+  const derniere = useRef(0);
+
+  async function chercher(texte: string) {
+    const numero = ++derniere.current;
+    setRecherche(true);
     try {
-      const q = encodeURIComponent(terme.trim());
+      const q = encodeURIComponent(texte.trim());
       const reponses = await Promise.all(
         PORTEES.map((p) =>
           fetch(`/api/recipes/picker?scopes=${p.scope}&q=${q}&limit=10`)
@@ -128,6 +184,7 @@ export function ComponentResolver({
             .catch((e) => ({ erreur: e?.erreur, items: [] })),
         ),
       );
+      if (numero !== derniere.current) return;
       const erreur = reponses.find((rep) => rep?.erreur)?.erreur;
       if (erreur) dialog.alert(`La recherche a échoué : ${erreur}`);
       // Concaténation dans l'ordre des portées, dédoublonnée : une recette de
@@ -145,20 +202,27 @@ export function ComponentResolver({
       });
       setResultats(out);
     } finally {
-      setChargement(false);
+      if (numero === derniere.current) setRecherche(false);
     }
-  }, [terme, dialog]);
+  }
 
-  // Première ouverture : la recherche part du nom du composant. C'est la
-  // façon la plus directe de tenir l'exigence de pertinence de la spec (§5)
-  // avec le sélecteur existant — une « pâte sucrée » y trouve les pâtes
-  // sucrées, pas les génoises.
+  // Résultats au fil de la saisie (JEP-254, point 11), la première recherche
+  // partant du nom du composant — la façon la plus directe de tenir
+  // l'exigence de pertinence de la spec (§5) : une « pâte sucrée » y trouve
+  // les pâtes sucrées, pas les génoises. Pas de voile plein écran ici : il
+  // masquerait le champ qu'on est en train de remplir (même doctrine que la
+  // recherche avancée) ; un indicateur discret suffit.
   useEffect(() => {
-    void chercher();
-    // Volontairement à l'ouverture seulement : les recherches suivantes sont
-    // déclenchées par l'utilisateur.
+    // Ouverture directe en édition (« Consulter ») ou en saisie de contexte
+    // pour l'IA : la recherche ne sert à rien tant qu'on n'est pas revenu à
+    // l'onglet des recettes.
+    if (mode !== 'sources') return;
+    const t = setTimeout(() => void chercher(terme), DEBOUNCE_MS);
+    return () => clearTimeout(t);
+    // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
+    // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [terme]);
 
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
@@ -170,11 +234,22 @@ export function ComponentResolver({
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
       return;
     }
+    // Mode d'ajustement choisi à l'étape 3 (JEP-254, point 4) : il prime sur
+    // celui de la recette copiée. Sans choix, celui de la source est gardé.
+    // Rattachement des ingrédients au référentiel, comme dans l'éditeur.
+    const prets = steps.map((st) => ({
+      ...st,
+      scaling_mode: component.scalingMode ?? st.scaling_mode,
+      ingredients: st.ingredients.map((it) => ({
+        ...it,
+        ref_id: it.ref_id ?? (ingredientRefs.length ? resolveIngredientRefId(it.name, ingredientRefs) : null),
+      })),
+    }));
     const ok = await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await writeComponentContent(supabase, projectId, component.id, componentIndex, steps);
+          await writeComponentContent(supabase, projectId, component.id, componentIndex, prets);
           await resequenceProjectSteps(supabase, projectId, componentIds);
         } catch (e) {
           return { error: { message: (e as Error).message } };
@@ -197,6 +272,45 @@ export function ComponentResolver({
       { errorLabel: 'Rattachement du composant', refresh: false },
     );
     if (ok) onDone();
+  }
+
+  // Efface le contenu déjà enregistré (étapes + ingrédients) et repasse le
+  // composant « À résoudre » (JEP-254) — le seul moyen de repartir de zéro :
+  // `enregistrer` refuse d'écrire un composant sans étape, donc vider le
+  // brouillon puis « Enregistrer » ne menait nulle part. Reste dans la
+  // fenêtre, sur l'onglet des recettes, pour relancer aussitôt une recherche,
+  // une proposition de l'IA ou une saisie à la main.
+  async function reinitialiser() {
+    const ok = await dialog.confirm(
+      `Effacer le contenu de « ${component.name} » ? Il faudra choisir une nouvelle recette, demander une nouvelle proposition ou ressaisir les étapes.`,
+    );
+    if (!ok) return;
+    setChargement(true);
+    try {
+      const supabase = createClient();
+      await clearComponentContent(supabase, projectId, component.id);
+      const { error } = await supabase
+        .from('recipe_project_components')
+        .update({
+          resolved: false,
+          source_kind: 'manual',
+          source_recipe_id: null,
+          source_author_id: null,
+          source_title: null,
+          source_author_name: null,
+        } as never)
+        .eq('id', component.id);
+      if (error) throw error;
+    } catch (e) {
+      dialog.alert(`L’effacement a échoué : ${(e as Error).message}`);
+      return;
+    } finally {
+      setChargement(false);
+    }
+    setDraft([]);
+    setTerme(component.name);
+    setMode('sources');
+    (onReset ?? onDone)();
   }
 
   async function attacher(item: Trouvee) {
@@ -223,13 +337,28 @@ export function ComponentResolver({
     }
   }
 
-  async function demanderIA() {
+  // `revision` : nouvelle proposition, à partir du brouillon affiché et des
+  // consignes de correction (JEP-254, point 8).
+  async function demanderIA(revision = false) {
+    if (revision && !consignes.trim()) {
+      dialog.alert('Indiquez ce qu’il faut corriger dans la proposition.');
+      return;
+    }
     setChargement(true);
     try {
       const r = await fetch('/api/projet/composant', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: component.name, role: component.role, projectTitle, servings }),
+        body: JSON.stringify({
+          name: component.name,
+          role: component.role,
+          projectTitle,
+          servings,
+          format: formatLabel,
+          ...(revision
+            ? { consignes: consignes.trim(), precedente: draft }
+            : { contexteLibre: contexteIA.trim() || undefined }),
+        }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -238,6 +367,8 @@ export function ComponentResolver({
       }
       setDraft((data.steps ?? []) as ComponentStepDraft[]);
       setDraftKind('ai_generated');
+      setConsignes('');
+      setContexteIA('');
       setMode('edit');
     } catch {
       dialog.alert('La proposition a échoué.');
@@ -303,19 +434,22 @@ export function ComponentResolver({
 
         {mode === 'sources' ? (
           <>
-            <div className="mb-4 flex gap-2">
+            <div className="relative mb-4">
               <input
                 value={terme}
                 onChange={(e) => setTerme(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void chercher();
-                }}
                 placeholder="Rechercher une recette…"
-                className={champ}
+                aria-label="Rechercher une recette"
+                className={`${champ} pr-10`}
               />
-              <button type="button" onClick={() => void chercher()} className={btnGhost}>
-                Chercher
-              </button>
+              <span
+                className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-outline ${
+                  recherche ? 'animate-pulse' : ''
+                }`}
+                aria-hidden
+              >
+                search
+              </span>
             </div>
 
             {resultats.length === 0 ? (
@@ -325,11 +459,11 @@ export function ComponentResolver({
             ) : (
               <ul className="max-h-[45vh] space-y-2 overflow-y-auto">
                 {resultats.map((it) => (
-                  <li key={it.id}>
+                  <li key={it.id} className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => void attacher(it)}
-                      className="flex w-full items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
@@ -340,6 +474,17 @@ export function ComponentResolver({
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
                     </button>
+                    {/* Consulter la recette avant de la choisir, sans quitter
+                        le parcours (JEP-254, point 14). */}
+                    <a
+                      href={`/recette/${it.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ouvrir la recette dans un nouvel onglet"
+                      className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -360,7 +505,7 @@ export function ComponentResolver({
                 <LockedHint message={iaMessage} active={iaEpuise}>
                   <button
                     type="button"
-                    onClick={() => void demanderIA()}
+                    onClick={() => setMode('contexte-ia')}
                     disabled={iaEpuise}
                     className={`${btnGhost} flex items-center gap-1.5 disabled:cursor-not-allowed`}
                   >
@@ -380,6 +525,32 @@ export function ComponentResolver({
             <p className="mt-2 text-[12px] text-on-surface-variant">
               La recette choisie est copiée dans le projet : la modifier ensuite chez son auteur ne changera rien ici.
             </p>
+          </>
+        ) : mode === 'contexte-ia' ? (
+          <>
+            <p className="mb-3 text-[12.5px] text-on-surface-variant">
+              Une précision à donner à l’IA avant sa proposition pour « {component.name} » ? Sans gélatine, au chocolat
+              noir plutôt qu’au lait, version allégée en sucre… Facultatif.
+            </p>
+            <textarea
+              ref={autoGrow}
+              value={contexteIA}
+              onChange={(e) => {
+                setContexteIA(e.target.value);
+                autoGrow(e.target);
+              }}
+              rows={3}
+              placeholder="Précisions pour l’IA (optionnel)"
+              className={`${champ} resize-none overflow-hidden`}
+            />
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+              <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
+                Retour aux recettes
+              </button>
+              <button type="button" onClick={() => void demanderIA()} className={btnPrimary}>
+                Générer
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -409,53 +580,83 @@ export function ComponentResolver({
                     </button>
                   </div>
                   <textarea
+                    ref={autoGrow}
                     value={st.description ?? ''}
-                    onChange={(e) => majEtape(i, { description: e.target.value })}
+                    onChange={(e) => {
+                      majEtape(i, { description: e.target.value });
+                      autoGrow(e.target);
+                    }}
                     rows={2}
                     placeholder="Le geste, en une ou deux phrases"
-                    className={`${champ} mb-3`}
+                    className={`${champ} mb-3 resize-none overflow-hidden`}
+                  />
+                  <label className="mb-1 block text-[11px] font-semibold uppercase text-on-surface-variant">
+                    Sous-étapes (une par ligne)
+                  </label>
+                  <textarea
+                    ref={autoGrow}
+                    value={(st.sous_etapes ?? []).join('\n')}
+                    onChange={(e) => {
+                      majEtape(i, { sous_etapes: e.target.value.split('\n') });
+                      autoGrow(e.target);
+                    }}
+                    rows={3}
+                    placeholder="Hydrater la gélatine&#10;Fondre le praliné&#10;Chauffer la crème…"
+                    className={`${champ} mb-3 resize-none overflow-hidden`}
                   />
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
-                      <li key={j} className="flex flex-wrap items-center gap-2">
+                      <li key={j} className="space-y-2">
+                        <div className="flex flex-nowrap items-center gap-2">
+                          <input
+                            value={it.name}
+                            // Nom saisi ≠ ingrédient rattaché : le rattachement
+                            // est refait à l'enregistrement.
+                            onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
+                            list={ingredientRefs.length ? datalistId : undefined}
+                            autoComplete="off"
+                            placeholder="Ingrédient"
+                            className={`${champBase} min-w-0 flex-1`}
+                          />
+                          <input
+                            value={it.quantity ?? ''}
+                            onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
+                            placeholder="Qté"
+                            inputMode="decimal"
+                            className={`${champBase} w-16 shrink-0`}
+                          />
+                          <select
+                            value={it.unit ?? ''}
+                            onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
+                            className={`${champBase} w-fit shrink-0`}
+                          >
+                            <option value="">—</option>
+                            {units.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                            {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
+                          </select>
+                          <button
+                            type="button"
+                            title="Retirer l’ingrédient"
+                            onClick={() =>
+                              setDraft((prev) =>
+                                prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
+                              )
+                            }
+                            className="shrink-0 p-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px] text-error">delete</span>
+                          </button>
+                        </div>
                         <input
-                          value={it.name}
-                          onChange={(e) => majIngredient(i, j, { name: e.target.value })}
-                          placeholder="Ingrédient"
-                          className={`${champ} flex-1 min-w-[8rem]`}
+                          value={it.comment ?? ''}
+                          onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
+                          placeholder="Commentaire (optionnel)"
+                          className={`${champ} w-full`}
                         />
-                        <input
-                          value={it.quantity ?? ''}
-                          onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
-                          placeholder="Qté"
-                          inputMode="decimal"
-                          className={`${champ} w-20`}
-                        />
-                        <select
-                          value={it.unit ?? ''}
-                          onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                          className={`${champ} w-28`}
-                        >
-                          <option value="">—</option>
-                          {units.map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
-                          ))}
-                          {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
-                        </select>
-                        <button
-                          type="button"
-                          title="Retirer l’ingrédient"
-                          onClick={() =>
-                            setDraft((prev) =>
-                              prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
-                            )
-                          }
-                          className="p-1"
-                        >
-                          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">close</span>
-                        </button>
                       </li>
                     ))}
                   </ul>
@@ -493,7 +694,7 @@ export function ComponentResolver({
                     title: '',
                     description: '',
                     scaling_mode: null,
-        sous_etapes: null,
+                    sous_etapes: null,
                     prep_time: null,
                     cook_time: null,
                     wait_time: null,
@@ -509,16 +710,71 @@ export function ComponentResolver({
               + Étape
             </button>
 
+            {ingredientRefs.length > 0 && (
+              <datalist id={datalistId}>
+                {ingredientRefs.map((r) => (
+                  <option key={r.id} value={r.name} />
+                ))}
+              </datalist>
+            )}
+
+            {/* Nouvelle proposition de l'IA, corrigée (JEP-254, point 8) : on
+                dit ce qui ne va pas plutôt que de tout reprendre à la main. La
+                base soumise est le brouillon tel qu'affiché, retouches
+                comprises. */}
+            {draftKind === 'ai_generated' && peutGenererIA && (
+              <div className="mt-5 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+                <label className="mb-2 block font-label-md text-[12px] text-outline">
+                  CE QU’IL FAUT CORRIGER DANS LA PROPOSITION
+                </label>
+                <textarea
+                  ref={autoGrow}
+                  value={consignes}
+                  onChange={(e) => {
+                    setConsignes(e.target.value.slice(0, 1000));
+                    autoGrow(e.target);
+                  }}
+                  rows={2}
+                  placeholder="Moins sucré, sans gélatine, une version au beurre noisette…"
+                  className={`${champ} resize-none overflow-hidden`}
+                />
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <button
+                    type="button"
+                    onClick={() => void demanderIA(true)}
+                    disabled={iaEpuise || !consignes.trim()}
+                    className={`${btnGhost} mt-3 disabled:cursor-not-allowed`}
+                  >
+                    Demander une nouvelle proposition
+                  </button>
+                </LockedHint>
+              </div>
+            )}
+
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
+              </button>
+              {/* Effacer ce qui est déjà enregistré — seul moyen de repartir
+                  de zéro, `enregistrer` refusant un composant sans étape. */}
+              <button
+                type="button"
+                onClick={() => void reinitialiser()}
+                className={`${btnGhost} text-error hover:bg-error/10`}
+              >
+                Réinitialiser
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() =>
                   void enregistrer(
-                    draft.filter((s) => (s.title || '').trim() || (s.description || '').trim()),
+                    draft
+                      .filter((s) => (s.title || '').trim() || (s.description || '').trim() || (s.sous_etapes || []).some((t) => t.trim()))
+                      .map((s) => {
+                        const sous = (s.sous_etapes || []).map((t) => t.trim()).filter(Boolean);
+                        return { ...s, sous_etapes: sous.length ? sous : null };
+                      }),
                     draftKind,
                     { recipeId: null, authorId: null, title: null, authorName: null },
                   )

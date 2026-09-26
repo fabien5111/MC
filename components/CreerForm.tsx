@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
+import { estDataUrlImage } from '@/lib/storage';
 import { ImageSlot } from '@/components/ImageSlot';
 import { swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
@@ -850,8 +851,19 @@ export function CreerForm({
       //  - `heroThumb` (~96 px) sert les listes de fournées d'« En cuisine » ;
       //  - `heroCard` (~480 px) sert les cartes recette — accueil, recherche,
       //    carnet, profils, suggestions.
-      const heroThumbBrut = hero ? await resizeDataUrlToThumb(hero) : null;
-      const heroCardBrut = hero ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
+      //
+      // Recalculés seulement si `hero` est un DÉPÔT FRAIS (data-URL) : quand la
+      // photo n'a pas changé, `hero` est déjà l'URL du stockage Swift, et
+      // `resizeDataUrlToThumb` la rechargerait dans un canvas avec
+      // `crossOrigin="anonymous"` — ce qui échoue en « Image illisible » si le
+      // conteneur ne renvoie pas d'en-tête CORS sur la lecture, alors que
+      // l'image s'affiche très bien à l'écran. `heroUnchanged` fait l'économie
+      // de ce rechargement inutile ET du bug : les colonnes ne sont alors pas
+      // touchées par l'update, gardant les vignettes déjà en base.
+      const heroIsFreshUpload = hero != null && estDataUrlImage(hero);
+      const heroUnchanged = hero != null && !heroIsFreshUpload;
+      const heroThumbBrut = heroIsFreshUpload ? await resizeDataUrlToThumb(hero) : null;
+      const heroCardBrut = heroIsFreshUpload ? await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7) : null;
 
       // Chacun des quatre est une data-URL fraîche si la photo a changé, ou
       // déjà l'URL de stockage si elle vient de la lecture initiale ;
@@ -862,8 +874,8 @@ export function CreerForm({
       const [heroUrl, heroOriginalUrl, heroThumb, heroCard] = await Promise.all([
         televerserImage('recette', hero),
         televerserImage('recette', heroOriginal),
-        televerserImage('recette', heroThumbBrut),
-        televerserImage('recette', heroCardBrut),
+        heroUnchanged ? Promise.resolve(undefined) : televerserImage('recette', heroThumbBrut),
+        heroUnchanged ? Promise.resolve(undefined) : televerserImage('recette', heroCardBrut),
       ]);
 
       const payload = {
@@ -889,8 +901,10 @@ export function CreerForm({
         cook_time: gmin(cook),
         total_time: gmin(total),
         hero_image_url: heroUrl,
-        hero_thumb_url: heroThumb,
-        hero_card_url: heroCard,
+        // Omises (jamais `undefined` envoyé à Supabase) quand la photo n'a pas
+        // changé : les vignettes déjà en base restent telles quelles.
+        ...(heroThumb !== undefined ? { hero_thumb_url: heroThumb } : {}),
+        ...(heroCard !== undefined ? { hero_card_url: heroCard } : {}),
         hero_image_original_url: heroOriginalUrl,
         hero_image_ai_retouched: heroAiRetouched,
         // Dissolution effective (cf. `projetIntact`). `kind` reste `project` :

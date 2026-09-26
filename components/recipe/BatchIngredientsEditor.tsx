@@ -23,6 +23,8 @@ import {
   batchStepIsExpansion,
   batchStepIsStepReplacement,
   batchStepReplaced,
+  expandableGroup,
+  expandedGroup,
   type BatchFull,
   type BatchIngredientRow,
 } from '@/lib/recipe-plan';
@@ -57,8 +59,10 @@ export function BatchIngredientsEditor({
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
-  // Ligne en cours de remplacement par une sous-recette (fenêtre ouverte).
-  const [expanding, setExpanding] = useState<BatchIngredientRow | null>(null);
+  // Groupe en cours de remplacement par une sous-recette (fenêtre ouverte) —
+  // toutes les occurrences du même ingrédient (nom + unité), pas seulement
+  // celle cliquée (JEP-254).
+  const [expanding, setExpanding] = useState<BatchIngredientRow[] | null>(null);
 
   // Remplacement inséré depuis la fenêtre modale : c'est ici qu'est déclenchée
   // la resynchronisation, et non dans la fenêtre — celle-ci se ferme aussitôt,
@@ -105,8 +109,15 @@ export function BatchIngredientsEditor({
   // elle-même : on supprimerait ses propres ustensiles.
   async function cancelExpansion(row: BatchIngredientRow) {
     const subRecipeId = row.expanded_into_recipe_id;
-    const stepIds = batch.batch_steps.filter((s) => s.source_ingredient_id === row.id).map((s) => s.id);
-    const stillUsed = batch.batch_ingredients.some((it) => it.id !== row.id && it.expanded_into_recipe_id === subRecipeId);
+    // Toutes les occurrences du même remplacement (JEP-254) : annuler depuis
+    // N'IMPORTE LAQUELLE retire les étapes insérées ET rétablit TOUTES les
+    // occurrences d'un coup — sinon les autres resteraient marquées
+    // « fabriquées » alors que les étapes qui les fabriquent auraient
+    // disparu.
+    const group = expandedGroup(batch, row);
+    const groupIds = group.map((it) => it.id);
+    const stepIds = batch.batch_steps.filter((s) => s.source_ingredient_id != null && groupIds.includes(s.source_ingredient_id)).map((s) => s.id);
+    const stillUsed = batch.batch_ingredients.some((it) => !groupIds.includes(it.id) && it.expanded_into_recipe_id === subRecipeId);
     const dropUtensils = !!subRecipeId && !stillUsed && subRecipeId !== batch.recipe_id;
     const supabase = createClient();
     await mutate(
@@ -131,11 +142,12 @@ export function BatchIngredientsEditor({
           const steps = await supabase.from('batch_steps').delete().in('id', stepIds);
           if (steps.error) return steps;
         }
-        return supabase.from('batch_ingredients').update({ expanded_into_recipe_id: null }).eq('id', row.id);
+        return supabase.from('batch_ingredients').update({ expanded_into_recipe_id: null }).in('id', groupIds);
       },
       {
         confirm:
           `Annuler le remplacement de « ${row.name} » ?\n\n` +
+          (group.length > 1 ? `${group.length} étapes utilisent cet ingrédient, toutes seront rétablies. ` : '') +
           (stepIds.length ? `${stepIds.length} étape${stepIds.length > 1 ? 's' : ''} seront retirées du déroulé. ` : '') +
           "L'ingrédient revient dans la liste de courses et la mise en place.",
         errorLabel: 'Annulation impossible',
@@ -243,7 +255,7 @@ export function BatchIngredientsEditor({
       {expanding && (
         <IngredientExpandDialog
           batch={batch}
-          row={expanding}
+          rows={expanding}
           onClose={() => setExpanding(null)}
           onDone={onExpansionDone}
         />
@@ -360,8 +372,8 @@ export function BatchIngredientsEditor({
                                   (canReplaceIngredient ? (
                                     <button
                                       type="button"
-                                      onClick={() => setExpanding(row)}
-                                      title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                                      onClick={() => setExpanding(expandableGroup(batch, row.name, row.unit))}
+                                      title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
                                       className="text-primary hover:opacity-70"
                                     >
                                       <span className="material-symbols-outlined text-[18px]">swap_horiz</span>

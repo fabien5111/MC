@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
-import { buildComponentContenu, normaliseComponentRecipe } from '@/lib/ai/project-component';
+import { buildComponentContenu, draftToText, normaliseComponentRecipe } from '@/lib/ai/project-component';
+import type { ComponentStepDraft } from '@/lib/projects';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
 
@@ -39,9 +40,38 @@ export async function POST(req: Request) {
   const role = typeof body?.role === 'string' ? body.role.trim().slice(0, 40) : null;
   const contexte = {
     titre: typeof body?.projectTitle === 'string' ? body.projectTitle.trim().slice(0, 120) : null,
-    format: typeof body?.format === 'string' ? body.format.trim().slice(0, 40) : null,
+    format: typeof body?.format === 'string' ? body.format.trim().slice(0, 120) : null,
     parts: Number.isFinite(Number(body?.servings)) && Number(body?.servings) > 0 ? Math.round(Number(body.servings)) : null,
   };
+
+  // Nouvelle proposition (JEP-254, point 8) : la précédente, telle que le
+  // pâtissier l'a sous les yeux, et ses consignes de correction. Sans
+  // consigne, c'est une première demande.
+  const consignes = typeof body?.consignes === 'string' ? body.consignes.trim().slice(0, 1000) : '';
+  const precedente = Array.isArray(body?.precedente)
+    ? draftToText(
+        (body.precedente as ComponentStepDraft[])
+          .slice(0, 12)
+          .map((st) => ({
+            ...st,
+            title: typeof st?.title === 'string' ? st.title : null,
+            description: typeof st?.description === 'string' ? st.description : null,
+            ingredients: Array.isArray(st?.ingredients)
+              ? st.ingredients.slice(0, 40).map((it) => ({
+                  ...it,
+                  name: typeof it?.name === 'string' ? it.name : '',
+                  quantity: typeof it?.quantity === 'string' ? it.quantity : null,
+                  unit: typeof it?.unit === 'string' ? it.unit : null,
+                }))
+              : [],
+          })),
+      )
+    : '';
+  const revision = consignes && precedente ? { precedente, consignes } : null;
+
+  // Précision libre saisie avant la première proposition (JEP-254) — distincte
+  // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
+  const contexteLibre = typeof body?.contexteLibre === 'string' ? body.contexteLibre.trim().slice(0, 500) || null : null;
 
   const quota = await reserverQuota(user.id, 'mode_projet_ia_mensuel');
   if (estRefus(quota)) return quota.refus;
@@ -50,7 +80,7 @@ export async function POST(req: Request) {
   try {
     const raw = await callClaude(
       apiKey,
-      buildComponentContenu(name, role, contexte),
+      buildComponentContenu(name, role, contexte, revision, contexteLibre),
       2000,
       50_000,
       undefined,

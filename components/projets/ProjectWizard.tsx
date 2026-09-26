@@ -24,17 +24,27 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { QuantitiesStep, RecapStep } from '@/components/projets/ProjectQuantities';
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
-import { clearComponentContent, resequenceProjectSteps, writeAssemblyStep } from '@/lib/projects-write';
+import { ProjectIntentStep, type ProjectStartMode } from '@/components/projets/ProjectIntentStep';
+import {
+  clearComponentContent,
+  readComponentDraft,
+  resequenceProjectSteps,
+  setComponentScalingMode,
+  writeAssemblyStep,
+} from '@/lib/projects-write';
 import {
   COMPONENT_ROLES,
+  COMPONENT_SCALING_MODES,
   COMPONENT_SOURCE_LABELS,
   MAX_COMPONENTS,
   PROJECT_FORMATS,
   PROJECT_FORMAT_KEYS,
   WIZARD_LABELS,
   WIZARD_STEPS,
-  formatYieldDesc,
+  deduceProjectFormat,
   nextComponentPosition,
+  projectFormatPayload,
+  projectTargetForme,
   projectValidationBlockers,
   type ComponentSourceKind,
   type ProjectFormat,
@@ -42,20 +52,12 @@ import {
 } from '@/lib/projects';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
-import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
+import type { ComponentStepDraft } from '@/lib/projects';
+import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
 
 type MoldType = { id: number; name: string; forme: string | null };
-
-// Exemples d'amorce (spec §4, étape 1). Trois suffisent : ils montrent la
-// forme attendue d'une intention — un dessert, un format, un nombre de
-// parts — sans transformer l'écran en catalogue.
-const EXEMPLES = [
-  'Une tarte aux fruits rouges pour 8 personnes',
-  'Un entremets chocolat-passion en cercle de 20 cm',
-  'Douze tartelettes citron meringuées',
-];
 
 const btnPrimary =
   'rounded-pill bg-primary px-6 py-3 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
@@ -68,10 +70,12 @@ export function ProjectWizard({
   units,
   conversions,
   unitRefs,
+  ingredientRefs = [],
   recipe,
   trials,
   peutGenererIA = true,
   quotaProjetIA = null,
+  fromAI = false,
 }: {
   project: ProjectFull;
   moldTypes: MoldType[];
@@ -81,6 +85,12 @@ export function ProjectWizard({
   // (`mergeIngredients`) plutôt qu'avec une seconde implémentation.
   conversions: ConversionRef[];
   unitRefs: UnitRef[];
+  // Référentiel des ingrédients : aide à la saisie des ingrédients d'un
+  // composant saisi à la main, comme dans l'éditeur de recette (JEP-254).
+  ingredientRefs?: IngredientRefOption[];
+  // Projet tout juste créé à partir d'une proposition de l'IA
+  // (`/projets/nouveau`) : l'étape 2 le dit.
+  fromAI?: boolean;
   // Recette du projet, pour la fournée d'essai (étape 6). `null` si elle n'a
   // pas pu être lue — le bloc des essais est alors simplement absent.
   recipe: RecipeFull | null;
@@ -113,22 +123,21 @@ export function ProjectWizard({
     ? (project.mold_dims as Record<string, number>)
     : {}) as Record<string, number>;
   const formeBase = moldTypes.find((m) => m.id === project.mold_type_id)?.forme ?? null;
+  const nbBase = parseInt(project.yield_qty || '1', 10) > 0 ? parseInt(project.yield_qty || '1', 10) : 1;
   const [format, setFormat] = useState<ProjectFormat>(
-    project.measure_type === 'mold'
-      ? formeBase === 'rectangulaire'
-        ? 'rectangular'
-        : Number(project.yield_qty) > 1
-          ? 'individual'
-          : 'round'
-      : 'free',
+    deduceProjectFormat({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase }),
   );
   const [dims, setDims] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(dimsBase).map(([k, v]) => [k, String(v)])),
   );
   const [moldTypeId, setMoldTypeId] = useState<string>(project.mold_type_id ? String(project.mold_type_id) : '');
   const [servings, setServings] = useState(project.servings ? String(project.servings) : '');
-  const [count, setCount] = useState(project.yield_qty ?? '');
+  // Nombre d'exemplaires (gâteaux, bûches, empreintes) — JEP-254, point 3.
+  const [count, setCount] = useState(project.measure_type === 'mold' ? String(nbBase) : '1');
   const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
+  // Description du dessert visé, saisie en format libre uniquement — les
+  // autres formats se décrivent déjà par leurs dimensions (JEP-254).
+  const [description, setDescription] = useState(project.description ?? '');
 
   // Proposition de l'IA conservée entre l'étape 2 et l'étape 3 : les
   // composants ne sont écrits qu'à l'arrivée sur l'étape 3, pour ne pas
@@ -136,13 +145,27 @@ export function ProjectWizard({
   const [proposal, setProposal] = useState<ProposedStructure | null>(null);
 
   const [resolving, setResolving] = useState<ProjectComponent | null>(null);
+  // Contenu chargé pour « Consulter » (JEP-254) : pour une source « Proposée
+  // par l'IA » / « Saisie à la main », la fenêtre s'ouvre directement sur ce
+  // qui est déjà enregistré plutôt que sur la recherche.
+  const [resolvingInit, setResolvingInit] = useState<{
+    mode: 'sources' | 'edit';
+    draft?: ComponentStepDraft[];
+    kind?: ComponentSourceKind;
+  } | null>(null);
+  const [consultBusy, setConsultBusy] = useState(false);
   // Réordonnancement de la structure (étape 3) par glisser-déposer.
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Format visé, tel qu'il est effectivement enregistré sur la recette — et
   // non tel que l'écran 2 l'affiche : c'est lui qui sert au calcul des
   // coefficients et à la description passée à l'IA.
-  const formeCible = moldTypes.find((m) => m.id === project.mold_type_id)?.forme ?? null;
+  const formeCible = projectTargetForme({
+    measure_type: project.measure_type,
+    forme: formeBase,
+    dims: dimsBase,
+    count: nbBase,
+  });
   const formatLabel =
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
@@ -165,10 +188,20 @@ export function ProjectWizard({
   );
 
   // ── Étape 1 → 2 : intention, puis proposition de l'IA ───────────────────
-  async function submitIntent() {
-    const texte = intent.trim().slice(0, INTENT_MAX);
-    if (texte.length < 5) {
-      dialog.alert('Décrivez en une phrase le dessert que vous voulez réaliser.');
+  // Retour à l'étape 1 d'un projet existant : l'intention se met à jour, et
+  // l'IA n'est sollicitée que si on le lui demande (JEP-254, point 2).
+  async function submitIntent(mode: ProjectStartMode, texteSaisi: string) {
+    const texte = texteSaisi.trim().slice(0, INTENT_MAX);
+    setIntent(texte);
+    if (mode === 'manual') {
+      if (texte !== (project.intent ?? '')) {
+        const ok = await mutate(
+          () => createClient().from('recipe_projects').update({ intent: texte || null } as never).eq('recipe_id', project.id),
+          { errorLabel: "Enregistrement de l'intention", refresh: false },
+        );
+        if (!ok) return;
+      }
+      await goStep(2);
       return;
     }
     const ok = await mutate(
@@ -199,6 +232,7 @@ export function ProjectWizard({
           setDims(Object.fromEntries(Object.entries(data.dims).map(([k, v]) => [k, String(v)])));
         }
         if (data.servings) setServings(String(data.servings));
+        if (data.count) setCount(String(data.count));
       }
     } catch {
       // Silencieux : l'étape suivante s'ouvre vierge, ce qui est le
@@ -217,34 +251,29 @@ export function ProjectWizard({
       return;
     }
     const nb = parseInt(count, 10);
+    if (PROJECT_FORMATS[format].countLabel && !(nb > 0)) {
+      dialog.alert(`Indiquez le nombre à réaliser (${PROJECT_FORMATS[format].countLabel?.toLowerCase()}).`);
+      return;
+    }
     const parsedDims: Record<string, number> = {};
     for (const d of PROJECT_FORMATS[format].dims) {
       const v = parseFloat((dims[d.key] ?? '').replace(',', '.'));
       if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
     }
 
-    const libre = format === 'free';
-    const payload = libre
-      ? {
-          title: title.trim() || 'Nouveau projet',
-          servings: parts,
-          measure_type: 'units',
-          yield_qty: String(parts),
-          yield_unit: 'pers',
-          yield_desc: null,
-          mold_type_id: null,
-          mold_dims: null,
-        }
-      : {
-          title: title.trim() || 'Nouveau projet',
-          servings: parts,
-          measure_type: 'mold',
-          yield_qty: format === 'individual' && nb > 0 ? String(nb) : '1',
-          yield_unit: null,
-          yield_desc: formatYieldDesc(format, parsedDims, format === 'individual' ? nb : null),
-          mold_type_id: moldTypeId ? Number(moldTypeId) : null,
-          mold_dims: Object.keys(parsedDims).length ? parsedDims : null,
-        };
+    const payload = {
+      ...projectFormatPayload({
+        format,
+        title,
+        servings: parts,
+        dims: parsedDims,
+        count: nb > 0 ? nb : 1,
+        moldTypeId: format !== 'free' && moldTypeId ? Number(moldTypeId) : null,
+      }),
+      // Seul le format libre porte cette description : les autres formats
+      // se décrivent déjà par leurs dimensions.
+      description: format === 'free' ? description.trim() || null : null,
+    };
 
     const ok = await mutate(() => createClient().from('recipes').update(payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
@@ -310,7 +339,12 @@ export function ProjectWizard({
       dialog.alert(`Un projet est limité à ${MAX_COMPONENTS} composants.`);
       return;
     }
-    const nom = await dialog.prompt('Nom de la préparation à ajouter :', { required: true });
+    const nom = await dialog.prompt('Nom de la préparation à ajouter :', {
+      required: true,
+      singleLine: true,
+      maxLength: 80,
+      placeholder: 'Pâte sucrée',
+    });
     if (!nom) return;
     await mutate(
       () =>
@@ -328,8 +362,13 @@ export function ProjectWizard({
   }
 
   async function renameComponent(c: ProjectComponent) {
-    const nom = await dialog.prompt(`Renommer « ${c.name} » :`, { required: true });
-    if (!nom) return;
+    const nom = await dialog.prompt(`Renommer « ${c.name} » :`, {
+      required: true,
+      singleLine: true,
+      maxLength: 80,
+      defaultValue: c.name,
+    });
+    if (!nom || nom.trim() === c.name) return;
     await mutate(
       () =>
         createClient()
@@ -349,6 +388,47 @@ export function ProjectWizard({
           .eq('id', c.id),
       { errorLabel: 'Rôle du composant' },
     );
+  }
+
+  // Mode d'ajustement du composant (JEP-254, point 4) : volume ou surface,
+  // comme pour un groupe d'ingrédients dans l'éditeur de recette. C'est ce
+  // qui permet à l'étape 5 d'appliquer le coefficient de surface à une pâte
+  // à foncer et celui de volume à un appareil.
+  async function setScalingMode(c: ProjectComponent, mode: string) {
+    await mutate(
+      async () => {
+        try {
+          await setComponentScalingMode(createClient(), project.id, c.id, mode || null);
+        } catch (e) {
+          return { error: { message: (e as Error).message } };
+        }
+        return { error: null };
+      },
+      { errorLabel: 'Mode d’ajustement' },
+    );
+  }
+
+  // Ouvre la fenêtre de résolution. Pour « Proposée par l'IA » / « Saisie à
+  // la main », il n'y a pas de recette séparée à consulter ailleurs (pas de
+  // `source_recipe_id`) : on charge donc son contenu déjà enregistré et on
+  // ouvre directement en édition, plutôt que sur une recherche qui l'aurait
+  // fait perdre de vue.
+  async function ouvrirComposant(c: ProjectComponent) {
+    if (c.resolved && (c.source_kind === 'ai_generated' || c.source_kind === 'manual')) {
+      setConsultBusy(true);
+      try {
+        const draft = await readComponentDraft(createClient(), project.id, c.id);
+        setResolvingInit({ mode: 'edit', draft, kind: c.source_kind as ComponentSourceKind });
+        setResolving(c);
+      } catch (e) {
+        dialog.alert(`La lecture du contenu a échoué : ${(e as Error).message}`);
+      } finally {
+        setConsultBusy(false);
+      }
+      return;
+    }
+    setResolvingInit(null);
+    setResolving(c);
   }
 
   async function removeComponent(c: ProjectComponent) {
@@ -418,13 +498,109 @@ export function ProjectWizard({
   const ordered = [...project.components].sort((a, b) => a.position - b.position);
   const nonResolus = ordered.filter((c) => !c.resolved);
 
+  // Boutons de navigation de l'étape courante. Rendus deux fois — sous le fil
+  // des étapes ET en bas de page (JEP-254, point 16) : sur une étape longue
+  // (dix composants, leurs quantités), le bas de page est loin, et le fil
+  // des étapes ne sait que revenir en arrière.
+  function navigation(position: 'haut' | 'bas') {
+    const cadre =
+      position === 'haut'
+        ? 'mb-8 flex flex-wrap gap-3'
+        : 'mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5';
+    const terminerPlusTard = (
+      <button type="button" onClick={() => router.push('/carnet?scope=proj')} className={btnGhost}>
+        Terminer plus tard
+      </button>
+    );
+    switch (step) {
+      case 2:
+        return (
+          <div className={cadre}>
+            <button type="button" onClick={() => goStep(1)} className={btnGhost}>
+              Retour
+            </button>
+            <button type="button" onClick={submitFormat} disabled={busy} className={btnPrimary}>
+              Continuer
+            </button>
+          </div>
+        );
+      case 3:
+        return (
+          <div className={cadre}>
+            <button type="button" onClick={() => goStep(2)} className={btnGhost}>
+              Retour
+            </button>
+            <button type="button" onClick={() => goStep(4)} disabled={!ordered.length} className={btnPrimary}>
+              Valider la structure
+            </button>
+          </div>
+        );
+      case 4:
+        return (
+          <div className={cadre}>
+            <button type="button" onClick={() => goStep(3)} className={btnGhost}>
+              Retour
+            </button>
+            {terminerPlusTard}
+            <button type="button" onClick={() => goStep(5)} className={btnPrimary}>
+              Continuer
+            </button>
+          </div>
+        );
+      case 5:
+        return (
+          <div className={cadre}>
+            <button type="button" onClick={() => goStep(4)} className={btnGhost}>
+              Retour
+            </button>
+            <button type="button" onClick={() => goStep(6)} className={btnPrimary}>
+              Voir le récapitulatif
+            </button>
+          </div>
+        );
+      case 6:
+        return (
+          <div className={cadre}>
+            <button type="button" onClick={() => goStep(5)} className={btnGhost}>
+              Retour
+            </button>
+            {terminerPlusTard}
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
+
+  // Lien vers la recette d'origine d'un composant, dans un nouvel onglet
+  // (JEP-254, point 14) : on la consulte sans quitter le parcours. Une source
+  // supprimée ou dépubliée garde son nom affiché, sans lien (`source_recipe_id`
+  // repassé à `null` par la clé étrangère).
+  function sourceLink(c: ProjectComponent) {
+    if (!c.source_title) return null;
+    if (!c.source_recipe_id) return <> · {c.source_title}</>;
+    return (
+      <>
+        {' · '}
+        <a
+          href={`/recette/${c.source_recipe_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+        >
+          {c.source_title}
+        </a>
+      </>
+    );
+  }
+
   return (
     <>
-      <LoadingOverlay visible={busy || thinking} label={thinking ? 'Composition du projet…' : undefined} />
+      <LoadingOverlay visible={busy || thinking || consultBusy} label={thinking ? 'Composition du projet…' : undefined} />
 
       {/* Fil des étapes — cliquable : la spec veut un parcours séquentiel
           mais librement réversible (§4). */}
-      <ol className="mb-10 flex flex-wrap items-center gap-2">
+      <ol className="mb-6 flex flex-wrap items-center gap-2">
         {WIZARD_STEPS.map((s) => {
           const actif = s === step;
           const atteint = s <= step;
@@ -449,42 +625,23 @@ export function ProjectWizard({
         })}
       </ol>
 
+      {navigation('haut') ?? <div className="mb-4" />}
+
       {step === 1 && (
-        <section className="space-y-5">
-          <h2 className="font-headline-md text-2xl text-primary">Que voulez-vous réaliser ?</h2>
-          <p className="text-sm text-on-surface-variant">
-            Une phrase suffit. Le dessert, son format, le nombre de parts — ce qui vous vient.
-          </p>
-          <textarea
-            value={intent}
-            onChange={(e) => setIntent(e.target.value.slice(0, INTENT_MAX))}
-            rows={3}
-            placeholder="Une tarte aux fruits rouges pour 8 personnes"
-            className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-4 font-body-md text-[15px] outline-none focus:border-primary"
-          />
-          <div className="flex flex-wrap gap-2">
-            {EXEMPLES.map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                onClick={() => setIntent(ex)}
-                className="rounded-pill border border-outline-variant px-3 py-1.5 text-[12.5px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={submitIntent} disabled={busy || thinking} className={btnPrimary}>
-            Continuer
-          </button>
-        </section>
+        <ProjectIntentStep
+          initialIntent={intent}
+          peutGenererIA={peutGenererIA}
+          quotaProjetIA={quotaProjetIA}
+          disabled={busy || thinking}
+          onSubmit={(mode, texte) => void submitIntent(mode, texte)}
+        />
       )}
 
       {step === 2 && (
         <section className="space-y-6">
           <h2 className="font-headline-md text-2xl text-primary">Quel format visez-vous ?</h2>
           <p className="text-sm text-on-surface-variant">
-            {proposal?.format
+            {proposal?.format || fromAI
               ? 'Proposition établie à partir de votre intention — corrigez ce qui ne convient pas.'
               : 'Choisissez le format du dessert fini.'}
           </p>
@@ -504,7 +661,12 @@ export function ProjectWizard({
               <button
                 key={f}
                 type="button"
-                onClick={() => setFormat(f)}
+                onClick={() => {
+                  setFormat(f);
+                  // Le moule choisi dans le référentiel ne vaut que pour sa
+                  // forme : changer de format le remet « à préciser ».
+                  if (f !== format) setMoldTypeId('');
+                }}
                 className={`rounded-xl border p-4 text-left transition-colors ${
                   format === f ? 'border-primary bg-primary/5' : 'border-outline-variant hover:border-primary'
                 }`}
@@ -517,7 +679,7 @@ export function ProjectWizard({
             ))}
           </div>
 
-          {PROJECT_FORMATS[format].dims.length > 0 && (
+          {(PROJECT_FORMATS[format].dims.length > 0 || PROJECT_FORMATS[format].countLabel) && (
             <div className="flex flex-wrap gap-4">
               {PROJECT_FORMATS[format].dims.map((d) => (
                 <div key={d.key}>
@@ -530,9 +692,11 @@ export function ProjectWizard({
                   />
                 </div>
               ))}
-              {format === 'individual' && (
+              {PROJECT_FORMATS[format].countLabel && (
                 <div>
-                  <label className="mb-1 block font-label-md text-label-md text-outline">NOMBRE D’EMPREINTES</label>
+                  <label className="mb-1 block font-label-md text-label-md text-outline">
+                    {PROJECT_FORMATS[format].countLabel?.toUpperCase()}
+                  </label>
                   <input
                     value={count}
                     onChange={(e) => setCount(e.target.value)}
@@ -576,14 +740,25 @@ export function ProjectWizard({
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => goStep(1)} className={btnGhost}>
-              Retour
-            </button>
-            <button type="button" onClick={submitFormat} disabled={busy} className={btnPrimary}>
-              Continuer
-            </button>
-          </div>
+          {/* Format libre seulement : aucune dimension ni moule où
+              s'accrocher, la description est le seul repère sur ce que le
+              dessert doit être (JEP-254). */}
+          {format === 'free' && (
+            <div>
+              <label className="mb-1 block font-label-md text-label-md text-outline">
+                QUE VOULEZ-VOUS RÉALISER ?
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                rows={3}
+                placeholder="Un assortiment de mignardises pour un buffet, avec au moins une version sans gluten…"
+                className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-4 font-body-md text-[15px] outline-none focus:border-primary"
+              />
+            </div>
+          )}
+
+          {navigation('bas')}
         </section>
       )}
 
@@ -592,6 +767,8 @@ export function ProjectWizard({
           <h2 className="font-headline-md text-2xl text-primary">De quoi se compose votre dessert ?</h2>
           <p className="text-sm text-on-surface-variant">
             Du bas vers le haut de l’assemblage. Ajoutez, retirez, renommez, réordonnez — c’est votre structure.
+            Précisez pour chaque préparation si elle suit le volume du moule ou recouvre une surface : c’est ce qui
+            ajustera ses quantités à l’étape 5.
           </p>
 
           {ordered.length === 0 ? (
@@ -599,7 +776,19 @@ export function ProjectWizard({
               Aucun composant pour l’instant. Ajoutez la première préparation.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <>
+              {/* En-tête de colonnes : les libellés « Rôle » et
+                  « Ajustement » ne sont donnés qu'une fois ici, plutôt que
+                  répétés dans chaque menu déroulant. */}
+              <div className="hidden items-center gap-3 px-4 text-[11px] font-label-md uppercase tracking-wide text-outline sm:flex">
+                <span className="w-5 shrink-0" aria-hidden />
+                <span className="w-4 shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1">Préparation</span>
+                <span className="w-[132px] shrink-0">Rôle</span>
+                <span className="w-[220px] shrink-0">Ajustement</span>
+                <span className="w-[52px] shrink-0" aria-hidden />
+              </div>
+              <ul className="space-y-2">
               {ordered.map((c, i) => (
                 <li
                   key={c.id}
@@ -635,7 +824,7 @@ export function ProjectWizard({
                   <select
                     value={c.role ?? ''}
                     onChange={(e) => setRole(c, e.target.value)}
-                    className="rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary"
+                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[132px]"
                   >
                     <option value="">Rôle…</option>
                     {COMPONENT_ROLES.map((r) => (
@@ -647,6 +836,18 @@ export function ProjectWizard({
                       <option value={c.role}>{c.role}</option>
                     )}
                   </select>
+                  <select
+                    value={c.scalingMode ?? ''}
+                    onChange={(e) => setScalingMode(c, e.target.value)}
+                    title="Ajustement des quantités"
+                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[220px]"
+                  >
+                    {COMPONENT_SCALING_MODES.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                   <span className="flex items-center gap-1">
                     <button type="button" onClick={() => renameComponent(c)} title="Renommer" className="p-1">
                       <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
@@ -657,7 +858,8 @@ export function ProjectWizard({
                   </span>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
 
           <div className="flex flex-wrap gap-3">
@@ -666,14 +868,7 @@ export function ProjectWizard({
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-            <button type="button" onClick={() => goStep(2)} className={btnGhost}>
-              Retour
-            </button>
-            <button type="button" onClick={() => goStep(4)} disabled={!ordered.length} className={btnPrimary}>
-              Valider la structure
-            </button>
-          </div>
+          {navigation('bas')}
         </section>
       )}
 
@@ -700,7 +895,7 @@ export function ProjectWizard({
                     {c.resolved ? (
                       <>
                         {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
-                        {c.source_title ? ` · ${c.source_title}` : ''}
+                        {sourceLink(c)}
                         {c.source_author_name ? ` · ${c.source_author_name}` : ''}
                         {c.stepCount ? ` · ${c.stepCount} étape${c.stepCount > 1 ? 's' : ''}` : ''}
                       </>
@@ -709,8 +904,23 @@ export function ProjectWizard({
                     )}
                   </span>
                 </span>
-                <button type="button" onClick={() => setResolving(c)} className={btnGhost}>
-                  {c.resolved ? 'Changer' : 'Choisir une recette'}
+                {/* Renommer et retirer, comme à l'étape 3 (JEP-254, points 10
+                    et 12) : on découvre souvent qu'une préparation est de trop
+                    ou mal nommée en cherchant sa recette. */}
+                <span className="flex items-center gap-1">
+                  <button type="button" onClick={() => renameComponent(c)} title="Renommer" className="p-1">
+                    <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+                  </button>
+                  <button type="button" onClick={() => removeComponent(c)} title="Retirer" className="p-1">
+                    <span className="material-symbols-outlined text-[20px] text-error">delete</span>
+                  </button>
+                </span>
+                <button type="button" onClick={() => void ouvrirComposant(c)} className={btnGhost}>
+                  {!c.resolved
+                    ? 'Choisir une recette'
+                    : c.source_kind === 'ai_generated' || c.source_kind === 'manual'
+                      ? 'Consulter'
+                      : 'Changer'}
                 </button>
               </li>
             ))}
@@ -722,31 +932,14 @@ export function ProjectWizard({
               : `${nonResolus.length} composant${nonResolus.length > 1 ? 's' : ''} en attente.`}
           </p>
 
-          <div className="flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-            <button type="button" onClick={() => goStep(3)} className={btnGhost}>
-              Retour
-            </button>
-            <button type="button" onClick={() => router.push('/carnet?scope=proj')} className={btnGhost}>
-              Terminer plus tard
-            </button>
-            <button type="button" onClick={() => goStep(5)} className={btnPrimary}>
-              Continuer
-            </button>
-          </div>
+          {navigation('bas')}
         </section>
       )}
 
       {step === 5 && (
         <>
           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} />
-          <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-            <button type="button" onClick={() => goStep(4)} className={btnGhost}>
-              Retour
-            </button>
-            <button type="button" onClick={() => goStep(6)} className={btnPrimary}>
-              Voir le récapitulatif
-            </button>
-          </div>
+          {navigation('bas')}
         </>
       )}
 
@@ -762,14 +955,7 @@ export function ProjectWizard({
               />
             </div>
           )}
-          <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
-            <button type="button" onClick={() => goStep(5)} className={btnGhost}>
-              Retour
-            </button>
-            <button type="button" onClick={() => router.push('/carnet?scope=proj')} className={btnGhost}>
-              Terminer plus tard
-            </button>
-          </div>
+          {navigation('bas')}
 
           <div className="mt-6 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
             <button type="button" onClick={() => void valider()} disabled={busy} className={btnPrimary}>
@@ -788,19 +974,35 @@ export function ProjectWizard({
           projectId={project.id}
           projectTitle={title || project.title}
           servings={project.servings}
+          formatLabel={formatLabel}
           component={resolving}
           componentIndex={ordered.findIndex((c) => c.id === resolving.id)}
           componentIds={ordered.map((c) => c.id)}
           units={units}
+          ingredientRefs={ingredientRefs}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
-          onClose={() => setResolving(null)}
+          initialMode={resolvingInit?.mode}
+          initialDraft={resolvingInit?.draft}
+          initialDraftKind={resolvingInit?.kind}
+          onClose={() => {
+            setResolving(null);
+            setResolvingInit(null);
+          }}
           // La modale n'emporte pas sa propre resynchronisation : elle écrit,
           // ce parent-ci rafraîchit (il reste monté), puis la fenêtre se
           // ferme — le voile est déjà en place au rendu qui la démonte.
           onDone={() => {
             refresh();
             setResolving(null);
+            setResolvingInit(null);
+          }}
+          // « Réinitialiser » (JEP-254) : le composant repasse « À résoudre »
+          // mais la fenêtre reste ouverte — on resynchronise sans la fermer,
+          // contrairement à `onDone`.
+          onReset={() => {
+            refresh();
+            setResolvingInit(null);
           }}
         />
       )}
