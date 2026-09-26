@@ -48,6 +48,7 @@ import {
   batchStepIsStepReplacement,
   batchStepReplaced,
   batchSubstepExcluded,
+  expandableGroup,
   expansionSource,
   groupBatchStepsByDay,
   mergeAllBatchIngredients,
@@ -606,7 +607,7 @@ function PreparerView({
   // BatchIngredientsEditor, cf. `expanding` là-bas) — instance de mutation
   // séparée, les deux fenêtres pouvant en théorie être ouvertes l'une après
   // l'autre sans se marcher dessus.
-  const [expandingIngredient, setExpandingIngredient] = useState<BatchIngredientRow | null>(null);
+  const [expandingIngredient, setExpandingIngredient] = useState<BatchIngredientRow[] | null>(null);
   const { refresh: refreshExpand } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
@@ -628,17 +629,6 @@ function PreparerView({
   // aussi le « déjà pris en compte » pour rester une liste de courses fidèle
   // à ce qu'il reste à acheter.
   const allIngredients = mergeAllBatchIngredients(batch);
-  // Pour proposer le remplacement par une recette DEPUIS la liste fusionnée :
-  // une ligne affichée peut regrouper plusieurs `batch_ingredients` (même nom
-  // + unité utilisés dans deux étapes) — le picto n'apparaît que si une seule
-  // ligne réelle correspond, sinon impossible de deviner laquelle remplacer
-  // (l'utilisateur passe alors par « Ingrédients ajustés », groupée par étape).
-  const eligibleForExpansion = batch.batch_ingredients.filter((it) => it.name && !it.removed && it.expanded_into_recipe_id == null);
-  function uniqueExpandableRow(name: string, unit: string): BatchIngredientRow | null {
-    const key = (s: string) => s.toLowerCase() + '|' + (unit || '').toLowerCase();
-    const candidats = eligibleForExpansion.filter((it) => key(it.name) === key(name));
-    return candidats.length === 1 ? candidats[0] : null;
-  }
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -788,7 +778,7 @@ function PreparerView({
       {expandingIngredient && (
         <IngredientExpandDialog
           batch={batch}
-          row={expandingIngredient}
+          rows={expandingIngredient}
           onClose={() => setExpandingIngredient(null)}
           onDone={refreshExpand}
         />
@@ -1010,10 +1000,11 @@ function PreparerView({
               const qtyTxt = mergedRowQtyText(r);
               const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
               const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
-              // Picto « remplacer par une recette » (JEP-254) : seulement si
-              // la ligne fusionnée correspond à UNE SEULE ligne réelle — sinon
-              // impossible de savoir laquelle des étapes remplacer.
-              const expandable = !readOnly ? uniqueExpandableRow(r.name, r.unit) : null;
+              // Picto « remplacer par une recette » (JEP-254) : couvre TOUTES
+              // les occurrences réelles derrière cette ligne fusionnée (même
+              // ingrédient utilisé dans plusieurs étapes) — un seul geste
+              // suffit, plus besoin de deviner laquelle remplacer.
+              const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
               return (
                 <li
                   key={r.name + '|' + r.unit}
@@ -1031,12 +1022,12 @@ function PreparerView({
                     {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
                   </span>
                   <span className="no-print flex items-center justify-self-end">
-                    {expandable &&
+                    {expandable.length > 0 &&
                       (droits.remplacementIngredient ? (
                         <button
                           type="button"
                           onClick={() => setExpandingIngredient(expandable)}
-                          title="Remplacer cet ingrédient par une recette (le fabriquer soi-même)"
+                          title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
                           className="text-primary hover:opacity-70"
                         >
                           <span className="material-symbols-outlined text-[18px]">swap_horiz</span>

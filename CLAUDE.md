@@ -693,14 +693,35 @@ directes :
   ingrédients »** (JEP-254), pas seulement dans « Ingrédients ajustés »
   (repliée par défaut, groupée par étape) : sans lui, remplacer un
   ingrédient depuis la vue d'ensemble obligeait à déplier cette section pour
-  retrouver la même ligne. **Seulement quand la ligne fusionnée correspond à
-  UNE SEULE ligne `batch_ingredients` réelle** — la liste totale fusionne les
-  lignes identiques (nom + unité) entre étapes, et un même ingrédient utilisé
-  à deux endroits rendrait le remplacement ambigu (laquelle des deux
-  étapes ?) ; ce cas garde son unique porte d'entrée dans « Ingrédients
-  ajustés ». Même fenêtre (`IngredientExpandDialog`), même droit
-  (`droits.remplacementIngredient`, avec `LockedAction` en repli), masqué sur
-  une fournée fermée (`readOnly`) comme le reste des actions de cette vue.
+  retrouver la même ligne. Même fenêtre (`IngredientExpandDialog`), même
+  droit (`droits.remplacementIngredient`, avec `LockedAction` en repli),
+  masqué sur une fournée fermée (`readOnly`) comme le reste des actions de
+  cette vue.
+- **Le remplacement couvre TOUTES les occurrences du même ingrédient**
+  (JEP-254) : le praliné d'une ganache ET d'un croustillant, remplacé en un
+  seul geste — la liste totale fusionne déjà les lignes identiques (nom +
+  unité) entre étapes, et un remplacement qui n'en couvrirait qu'une
+  laisserait les autres en doublon dans les courses. Les étapes de la
+  sous-recette ne s'insèrent qu'**une fois**, mais `expanded_into_recipe_id`
+  marque **chaque** occurrence, qui sort donc des courses et de la mise en
+  place tout en restant visible dans SA propre étape (avec sa quantité),
+  barrée et créditée « Fabriqué à partir de X » comme n'importe quelle ligne
+  remplacée. `expandableGroup(batch, name, unit)` (`lib/recipe-plan.ts`)
+  retrouve toutes les occurrences éligibles par nom + unité, depuis la
+  « Liste totale » comme depuis « Ingrédients ajustés » — un clic sur
+  N'IMPORTE LAQUELLE ouvre la fenêtre pour le groupe entier. La quantité par
+  défaut proposée à `IngredientExpandDialog` est la **somme** des
+  occurrences ; les étapes insérées portent le `source_ingredient_id` de
+  l'occurrence dont l'étape est la plus tôt dans la fournée (jour, puis
+  position), qui sert aussi de repère par défaut pour la position
+  d'insertion. **Annuler** (`cancelExpansion`) reconstitue le même groupe via
+  `expandedGroup(batch, row)` (même recette de remplacement + même nom +
+  unité) et rétablit tout d'un coup, jamais une occurrence isolée — sinon les
+  autres resteraient marquées « fabriquées » alors que les étapes qui les
+  produisent auraient disparu. **Limite connue, acceptée** : le groupe se
+  reconstitue par nom + unité + recette, sans colonne dédiée — un AUTRE
+  ingrédient de même nom + unité remplacé par la même recette (coïncidence
+  très rare) serait à tort inclus dans l'annulation groupée.
 - **« Refaire cette fournée »** (`CuisineContent.refaireBatch`) duplique
   toutes les lignes `batch_*` d'une fournée vers une nouvelle, avec une
   nouvelle `planned_date` (`batches.source_plan_id` trace la filiation) —

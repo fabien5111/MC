@@ -81,18 +81,38 @@ const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface
 
 export function IngredientExpandDialog({
   batch,
-  row,
+  rows,
   onClose,
   onDone,
 }: {
   batch: BatchFull;
-  // Ligne d'ingrédient à remplacer (jamais déjà remplacée : le déclencheur
-  // disparaît dans ce cas, cf. BatchIngredientsEditor).
-  row: BatchIngredientRow;
+  // Toutes les occurrences de l'ingrédient à remplacer — le même ingrédient
+  // (nom + unité) peut être utilisé dans plusieurs étapes (JEP-254, ex. le
+  // praliné d'une ganache ET d'un croustillant) : les étapes de la
+  // sous-recette ne s'insèrent qu'UNE fois, mais TOUTES les occurrences
+  // sortent des courses et de la mise en place. Jamais vide, jamais une ligne
+  // déjà remplacée (le déclencheur disparaît dans ce cas, cf.
+  // BatchIngredientsEditor).
+  rows: BatchIngredientRow[];
   onClose: () => void;
   // Écriture aboutie — le parent resynchronise l'éditeur.
   onDone: () => void | Promise<void>;
 }) {
+  // Occurrence-repère : celle dont l'étape est la plus tôt dans la fournée
+  // (jour, puis position) — c'est elle qui porte `source_ingredient_id` sur
+  // les étapes insérées (pour l'annulation) et sert de base au jour/position
+  // par défaut, les autres occurrences n'ayant pas à être prêtes aussi tôt.
+  const row = useMemo(() => {
+    const stepOf = (r: BatchIngredientRow) => batch.batch_steps.find((s) => s.id === r.batch_step_id) ?? null;
+    return [...rows].sort((a, b) => {
+      const sa = stepOf(a);
+      const sb = stepOf(b);
+      const da = sa?.day_offset ?? 0;
+      const db = sb?.day_offset ?? 0;
+      if (da !== db) return da - db;
+      return (sa?.order_index ?? 0) - (sb?.order_index ?? 0);
+    })[0];
+  }, [rows, batch.batch_steps]);
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
 
@@ -199,6 +219,22 @@ export function IngredientExpandDialog({
 
   const dayText = (offset: number) => (batch.planned_date ? batchDayLabel(offset, batch.planned_date) : dayLabel(offset));
 
+  // Quantité totale à couvrir : la SOMME de toutes les occurrences (déjà ce
+  // qu'affiche la « Liste totale des ingrédients » d'où vient le clic) — la
+  // sous-recette doit produire assez pour l'ensemble des étapes concernées,
+  // pas seulement la première.
+  const totalQty = useMemo(() => {
+    let sum = 0;
+    let any = false;
+    for (const r of rows) {
+      if (r.quantity != null) {
+        sum += r.quantity;
+        any = true;
+      }
+    }
+    return any ? sum : null;
+  }, [rows]);
+
   // Charge le contenu de la recette choisie (RLS via la session) et prépare
   // les valeurs par défaut : quantité visée = celle de l'ingrédient remplacé,
   // étapes posées juste avant celle qui le consomme, dans leur ordre.
@@ -218,7 +254,7 @@ export function IngredientExpandDialog({
     const steps = [...rec.recipe_steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     const defaultAnchor = consumingIndex > 0 ? sortedBatchSteps[consumingIndex - 1].order_index : null;
     setSource(rec);
-    setWantQty(row.quantity != null ? fmtNum(row.quantity) : rec.yield_qty || '');
+    setWantQty(totalQty != null ? fmtNum(totalQty) : rec.yield_qty || '');
     setCoefStr('1');
     setPlacements(
       steps.map((s) => {
@@ -384,10 +420,17 @@ export function IngredientExpandDialog({
             (data ?? []).forEach((u) => createdUtensils.push(u.id));
           }
 
-          // En dernier : tant que la ligne n'est pas marquée, l'éclatement
-          // n'a pas eu lieu du point de vue de la fiche — un échec en amont
-          // se rattrape donc par la seule suppression de ce qui a été inséré.
-          const { error } = await supabase.from('batch_ingredients').update({ expanded_into_recipe_id: source.id }).eq('id', row.id);
+          // En dernier : tant qu'AUCUNE ligne n'est marquée, l'éclatement n'a
+          // pas eu lieu du point de vue de la fiche — un échec en amont se
+          // rattrape donc par la seule suppression de ce qui a été inséré.
+          // TOUTES les occurrences du groupe sont marquées, pas seulement
+          // celle qui porte les étapes insérées (`row`) : sans ça, les autres
+          // resteraient dans les courses et la mise en place alors qu'elles
+          // sont, elles aussi, désormais fabriquées.
+          const { error } = await supabase
+            .from('batch_ingredients')
+            .update({ expanded_into_recipe_id: source.id })
+            .in('id', rows.map((r) => r.id));
           if (error) throw error;
           return { error: null };
         } catch (e) {
@@ -411,7 +454,13 @@ export function IngredientExpandDialog({
     }
   }
 
-  const replacedQty = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
+  const replacedQty = totalQty != null ? fmtNum(totalQty) : row.quantity_text || '';
+  // Étapes de la fournée où l'ingrédient apparaît (JEP-254) — affiché quand il
+  // y en a plusieurs, pour que le pâtissier sache ce qu'englobe le
+  // remplacement avant de le lancer.
+  const usedInSteps = rows
+    .map((r) => sortedBatchSteps.find((s) => s.id === r.batch_step_id))
+    .filter((s): s is NonNullable<typeof s> => !!s);
 
   return (
     <div
@@ -448,6 +497,12 @@ export function IngredientExpandDialog({
               <span className="font-semibold text-on-surface">{row.name}</span>
               {' — à fabriquer à partir d’une recette de l’application.'}
             </p>
+            {usedInSteps.length > 1 && (
+              <p className="font-body-md text-[12px] text-on-surface-variant">
+                Utilisé dans {usedInSteps.length} étapes : {usedInSteps.map((s, i) => s.title || `Étape ${i + 1}`).join(', ')} — toutes
+                sortiront des courses et de la mise en place.
+              </p>
+            )}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
@@ -572,7 +627,7 @@ export function IngredientExpandDialog({
             <div className="flex flex-col gap-3">
               <span className={LBL}>Où insérer les étapes</span>
               <p className="font-body-md text-[12px] text-on-surface-variant">
-                Par défaut, elles se posent juste avant l’étape qui utilise l’ingrédient, au jour qu’impose la recette (une nuit de repos
+                Par défaut, elles se posent juste avant {usedInSteps.length > 1 ? 'la première étape qui utilise l’ingrédient' : 'l’étape qui utilise l’ingrédient'}, au jour qu’impose la recette (une nuit de repos
                 recule d’un jour).
               </p>
               <ul className="flex flex-col gap-3">
@@ -635,8 +690,8 @@ export function IngredientExpandDialog({
                     {utensilsToAdd.length > 1 ? 's' : ''}
                   </>
                 )}{' '}
-                s’ajouteront à la fournée{addedTime > 0 ? `, soit ${formatTime(addedTime)} de plus` : ''}. « {row.name} » sortira de la liste
-                de courses et de la mise en place.
+                s’ajouteront à la fournée{addedTime > 0 ? `, soit ${formatTime(addedTime)} de plus` : ''}. « {row.name} »
+                {usedInSteps.length > 1 ? ` (${usedInSteps.length} étapes)` : ''} sortira de la liste de courses et de la mise en place.
               </p>
             )}
 

@@ -467,6 +467,37 @@ export function batchIngredientExpanded(ing: Pick<BatchIngredientRow, 'expanded_
   return ing.expanded_into_recipe_id != null;
 }
 
+// Toutes les occurrences d'un même ingrédient (nom + unité) encore éligibles
+// au remplacement par une recette (JEP-254) : le même ingrédient peut être
+// utilisé dans plusieurs étapes (le praliné d'une ganache ET d'un
+// croustillant), et un seul remplacement doit couvrir toutes ses occurrences
+// — sinon les autres resteraient dans les courses en doublon de ce qu'on
+// vient de fabriquer. Exclut les lignes déjà retirées ou déjà remplacées
+// (rien à re-remplacer tant que ce n'est pas annulé).
+export function expandableGroup(batch: Pick<BatchFull, 'batch_ingredients'>, name: string, unit: string | null): BatchIngredientRow[] {
+  const key = (s: string) => s.toLowerCase();
+  const u = key(unit || '');
+  return batch.batch_ingredients.filter(
+    (it) => it.name && !it.removed && it.expanded_into_recipe_id == null && key(it.name) === key(name) && key(it.unit || '') === u,
+  );
+}
+
+// Regroupe, à l'annulation, TOUTES les occurrences d'un même remplacement :
+// même recette de remplacement ET même ingrédient (nom + unité) — c'est ainsi
+// qu'elles ont été groupées à la création. Limite connue et acceptée : si un
+// AUTRE ingrédient de même nom + unité était par ailleurs remplacé par la
+// même recette (cas très rare), il serait à tort inclus. Pas de colonne
+// dédiée pour lever cette ambiguïté, volontairement — cf. CLAUDE.md.
+export function expandedGroup(batch: Pick<BatchFull, 'batch_ingredients'>, row: BatchIngredientRow): BatchIngredientRow[] {
+  const subRecipeId = row.expanded_into_recipe_id;
+  if (subRecipeId == null) return [row];
+  const key = (s: string) => s.toLowerCase();
+  const u = key(row.unit || '');
+  return batch.batch_ingredients.filter(
+    (it) => it.expanded_into_recipe_id === subRecipeId && key(it.name) === key(row.name) && key(it.unit || '') === u,
+  );
+}
+
 // Étape issue de l'éclatement d'un ingrédient (et non de la recette de base).
 export function batchStepIsExpansion(s: Pick<BatchStepRow, 'source_ingredient_id'>): boolean {
   return s.source_ingredient_id != null;
