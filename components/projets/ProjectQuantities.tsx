@@ -291,7 +291,13 @@ export function QuantitiesStep({
   }
 
   async function appliquer(c: ProjectComponent) {
-    const brut = (saisie[c.id] ?? '').replace(',', '.');
+    // Même repli que l'affichage du champ (`saisie[c.id] ?? fr(facteur)`) :
+    // sans lui, cliquer « Appliquer » sans avoir touché un champ qui montre
+    // pourtant « 1 » (le coefficient déjà en vigueur) déclenchait le message
+    // « Indiquez un coefficient supérieur à zéro », incohérent avec ce qui
+    // était affiché.
+    const facteur = c.scaleFactor ?? 1;
+    const brut = (saisie[c.id] ?? fr(facteur)).replace(',', '.');
     const factor = parseFloat(brut);
     if (!(factor > 0)) {
       dialog.alert('Indiquez un coefficient supérieur à zéro.');
