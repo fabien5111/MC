@@ -100,10 +100,10 @@ export function UsageCard({
     const ok = await dialog.confirm(
       `Vous perdrez les avantages de la formule ${currentPlan.label} le ${echeance} — vous repasserez ensuite à la ` +
         `formule Gratuite. Vous conservez l'accès jusqu'à cette date. Continuer ?`,
-      { okLabel: estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement', cancelLabel: 'Revenir' },
+      { okLabel: estEssai ? 'Annuler mon essai' : 'Résilier mon abonnement', cancelLabel: 'Revenir' },
     );
     if (!ok) return;
-    setBusyLabel('Annulation…');
+    setBusyLabel(estEssai ? 'Annulation…' : 'Résiliation…');
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/resilier', { method: 'POST' });
@@ -206,7 +206,11 @@ export function UsageCard({
                 onClick={annuler}
                 className="rounded-pill border border-error px-4 py-2 font-label-md text-label-md text-error transition-colors hover:bg-error hover:text-white"
               >
-                {estEssai ? 'Annuler mon essai' : 'Annuler mon abonnement'}
+                {/* « Résilier mon abonnement » : libellé imposé par la
+                    résiliation « en trois clics » (L.215-1-1 du Code de la
+                    consommation, CGV art. 10). Un essai n'est pas un contrat
+                    payant, il garde « Annuler ». */}
+                {estEssai ? 'Annuler mon essai' : 'Résilier mon abonnement'}
               </button>
             )}
             {hasStripeCustomer && (
