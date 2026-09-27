@@ -1579,9 +1579,19 @@ Historique de la migration depuis Vercel + Supabase :
   connexion Google spécifiquement. Le symptôme ne nomme ni l'un ni l'autre :
   un « Failed to fetch » de `supabase-js`. Vaut pour l'aperçu, et pour tout
   domaine qu'on ajouterait ensuite. Mode opératoire complet dans `DEPLOY.md`.
-- **Le déploiement construit sur le nœud**, il n'est pas automatique sur push.
-  La commande canonique et les trois pièges qu'elle contourne sont dans
-  `DEPLOY.md` — ne pas l'improviser.
+- **Le déploiement construit sur le nœud** — mais **`.github/workflows/deploiement-app.yml`
+  peut le faire lui-même à chaque push sur `main`**, s'il est armé (variable de
+  dépôt `DEPLOIEMENT_ACTIF`, cf. `DEPLOY.md` § « Déployer `main`
+  automatiquement »). **Ne jamais affirmer qu'une fusion sur `main` exige un
+  geste manuel (Web SSH, commande canonique) sans avoir vérifié l'armement** —
+  la dernière exécution du workflow sur `main` le montre directement : un job
+  « Construire et redémarrer le nœud » dont l'étape « Ce qui serait fait
+  (simulation) » est *skipped* (pas *success*) veut dire qu'il a réellement
+  construit sur le nœud, pas simulé. Erreur commise le 27/09 sur JEP-250 :
+  annoncé comme geste manuel restant à faire, alors que le workflow avait déjà
+  déployé et vérifié le HTTP 200 avant même la fin de la réponse. La procédure
+  manuelle décrite plus bas reste la porte de sortie si le workflow est
+  désarmé ou échoue, jamais la première hypothèse.
 - **`pm2` ne lit jamais `scripts.start`** : c'est `ecosystem.config.js` qui
   pilote le démarrage, avec `instances: 1`. Ce n'est pas un réglage de charge
   mais une **contrainte de justesse** — `unstable_cache` et `revalidateTag`
