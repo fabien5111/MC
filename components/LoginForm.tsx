@@ -27,6 +27,7 @@ import {
 } from '@/lib/pseudo';
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 
 // Traduction des messages d'erreur Supabase Auth les plus courants ; les
 // autres remontent tels quels (anglais) plutôt que d'être masqués.
@@ -48,6 +49,7 @@ const PSEUDO_CHECK_DEBOUNCE_MS = 300;
 
 export function LoginForm({ next, initialMode = 'signin' }: { next: string; initialMode?: 'signin' | 'signup' }) {
   const router = useRouter();
+  const dialog = useDialog();
   // Le panneau s'ouvre sur la connexion, sauf arrivée par « Créer un compte »
   // (`/connexion?inscription=1`) : l'en-tête visiteur propose les deux gestes
   // séparément, chacun doit tomber sur le bon formulaire.
@@ -59,7 +61,6 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const isSignup = mode === 'signup';
@@ -128,13 +129,11 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
     setMode(isSignup ? 'signin' : 'signup');
     setConfirm('');
     setError(null);
-    setNotice(null);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setNotice(null);
     if (blocked) {
       setError(
         !pseudoValidation.ok
@@ -150,6 +149,12 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
       return;
     }
     setBusy(true);
+    // Pose à `true` juste avant la navigation vers l'accueil, une fois la
+    // fenêtre d'e-mail envoyé refermée (JEP-250) — remis à `false` entre
+    // deux, le temps que la fenêtre reste ouverte, sinon le fouet plein écran
+    // tournerait derrière elle sans raison. `finally` ne l'éteint donc que si
+    // cette navigation n'a pas été armée.
+    let redirecting = false;
     const supabase = createClient();
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -208,11 +213,20 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
         setError('Un compte existe déjà avec cette adresse e-mail.');
         return;
       }
-      setNotice('Vérifiez vos e-mails pour confirmer votre compte.');
+      // Fenêtre maison plutôt que le message affiché dans la page (JEP-250) :
+      // le compte vient d'être créé, il ne reste plus qu'à confirmer
+      // l'adresse — un geste assez rare pour justifier une modale dédiée.
+      setBusy(false);
+      await dialog.alert(
+        `Un e-mail de validation vient de vous être envoyé à ${email}. Cliquez sur le lien qu'il contient pour activer votre compte.`,
+      );
+      redirecting = true;
+      setBusy(true);
+      router.push('/');
     } catch (err) {
       setError(translateAuthError((err as Error).message) || 'Une erreur est survenue.');
     } finally {
-      setBusy(false);
+      if (!redirecting) setBusy(false);
     }
   }
 
@@ -427,8 +441,6 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
               )}
             </p>
           )}
-          {notice && <p className="text-sm text-primary text-center">{notice}</p>}
-
           <button
             type="submit"
             disabled={busy || blocked}
