@@ -360,8 +360,7 @@ export default function ConfidentialitePage() {
           </p>
           <SousTitre>Contenus publiés, à la suppression du compte</SousTitre>
           <p>
-            Vos recettes publiées sont conservées sans aucun lien avec votre compte. Vous pouvez demander leur
-            suppression à tout moment, y compris avant ou au moment de la suppression du compte. Par ailleurs :
+            Vos recettes, y compris celles que vous avez publiées, sont supprimées avec votre compte. Toutefois :
           </p>
           <Liste>
             <li>
