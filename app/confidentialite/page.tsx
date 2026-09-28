@@ -11,8 +11,10 @@
 //
 // Ce n'est PAS un avis juridique : une relecture par un professionnel reste
 // recommandée avant l'ouverture publique. Les passages entre crochets sont
-// des faits encore à vérifier auprès des prestataires (Anthropic, Atlassian,
-// Infomaniak) ou l'immatriculation à compléter.
+// des faits encore à vérifier auprès des prestataires (Anthropic, Atlassian)
+// ou l'immatriculation à compléter. Les durées de conservation annoncées au
+// § 8 sont appliquées par pg_cron et pgBackRest : cf. DEPLOY.md, « Tâches
+// planifiées » — ne pas en changer une ici sans changer la tâche qui la tient.
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -341,7 +343,7 @@ export default function ConfidentialitePage() {
               ['Compte et contenus', 'Tant que le compte existe'],
               [
                 'Après suppression du compte',
-                'Effacement sous 30 jours ; sauvegardes écrasées au plus tard sous [X jours, à vérifier auprès d’Infomaniak]',
+                'Effacement sous 30 jours, sauvegardes comprises',
               ],
               [
                 'Demande de contact',

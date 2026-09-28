@@ -395,6 +395,8 @@ sur le bundle.
 | Tâche | Où | Cadence |
 |---|---|---|
 | Sauvegarde complète pgBackRest | `pg_cron`, dans la base (nœud 216075) | 3 h 30 GMT |
+| Purge du module contact (`contact_purge()`) | `pg_cron`, dans la base (nœud 216075) | 4 h 15 GMT |
+| Purge du journal « en tant que » (1 an) | `pg_cron`, dans la base (nœud 216075) | 4 h 20 GMT |
 | `/api/cron/abonnements` | `.github/workflows/cron-abonnements.yml` | 2 h 00 |
 | `/api/cron/contact-jira` | `.github/workflows/cron-contact-jira.yml` | 2 h 30 |
 
@@ -409,6 +411,59 @@ un paquet `apk`) et la sauvegarde nocturne échoue en silence. À rejouer :
 ```bash
 apk add --no-cache pgbackrest && pgbackrest --stanza=jepatisse check
 ```
+
+**La sauvegarde apparaît `failed` dans `cron.job_run_details` alors qu'elle
+réussit** (code de sortie 104, constaté fin septembre 2026) : c'est l'appel
+par `copy … to program` qui rend une erreur, pas pgBackRest, dont le journal
+est vierge et qui liste bien une sauvegarde complète par nuit. L'état réel se
+lit donc avec `pgbackrest info`, jamais dans `cron.job_run_details` — tant que
+ce faux échec n'est pas corrigé, une vraie panne s'y confondrait. En Web SSH
+sur le nœud 216075 :
+
+```bash
+su postgres -c "pgbackrest --stanza=jepatisse info"
+```
+
+Conservation : les **7 dernières sauvegardes complètes**
+(`repo1-retention-full=7`, décompte **par nombre**, bucket `jp-pgbackup`).
+C'est ce qui tient la promesse de la politique de confidentialité (§ 8 :
+« effacement sous 30 jours, sauvegardes comprises ») — à condition que les
+sauvegardes réussissent : si elles échouent, les 7 dernières réussies restent
+et vieillissent au-delà de 30 jours.
+
+### Purges RGPD (`pg_cron`)
+
+Deux tâches appliquent les durées de conservation annoncées par la politique
+de confidentialité (`/confidentialite`, § 8). Posées le 28/09/2026 : jusque-là,
+`contact_purge()` existait sans que rien ne l'appelle, et le journal
+d'impersonation n'avait aucune purge.
+
+| Tâche `pg_cron` | Ce qu'elle efface |
+|---|---|
+| `purge-contact` | `contact_purge()` : empreinte IP à 30 jours, demande close à 12 mois (24 pour un bug) — cf. `docs/contact-jira.md` § 6 |
+| `purge-journal-impersonation` | `impersonation_events` de plus d'un an, puis les `impersonation_sessions` de plus d'un an qui n'ont plus d'événement |
+
+Elles vivent dans le catalogue de la base (`cron.job`) : une restauration
+pgBackRest les ramène, une base recréée à neuf les perd. `pgweb_admin` n'a pas
+accès au schéma `cron` — tout passe par `psql` en `postgres`, en Web SSH sur le
+nœud 216075. Pour les recréer (`cron.schedule` remplace une tâche du même nom,
+donc rejouable sans doublon), une commande par ligne :
+
+```bash
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-contact', '15 4 * * *', 'select public.contact_purge()');"
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-journal-impersonation', '20 4 * * *', 'delete from public.impersonation_events where created_at < now() - interval ''1 year''; delete from public.impersonation_sessions s where s.created_at < now() - interval ''1 year'' and not exists (select 1 from public.impersonation_events e where e.session_id = s.id)');"
+```
+
+Vérifier les exécutions des dernières 24 h :
+
+```bash
+psql -U postgres -d postgres -x -c "select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j using (jobid) where d.start_time > now() - interval '1 day' order by d.start_time;"
+```
+
+**Limite connue** : `contact_purge()` supprime les lignes, pas les photos
+jointes, qui restent sur Swift (conteneur `jp-contact`). Seule la
+réconciliation manuelle (`.github/workflows/object-storage-reconciliation.yml`)
+les retire aujourd'hui.
 
 ## Éditeur SQL en ligne (pgweb)
 
