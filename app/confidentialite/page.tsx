@@ -5,13 +5,14 @@
 // base — cf. CLAUDE.md et docs/contact-jira.md pour le détail du module
 // contact). Ce n'est PAS un avis juridique : une relecture par un
 // professionnel reste recommandée avant mise en production, comme le
-// rappelle docs/contact-jira.md §4. Le nom légal de l'éditeur, encore un
-// placeholder ci-dessous, doit être complété avant publication.
+// rappelle docs/contact-jira.md §4. L'identité de l'éditeur vient de
+// `lib/legal.ts`, partagée avec les mentions légales (JEP-17).
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { EDITEUR } from '@/lib/legal';
 
 export const metadata: Metadata = { title: 'Confidentialité | Je pâtisse !' };
 
@@ -38,7 +39,11 @@ export default function ConfidentialitePage() {
 
         <Section title="Responsable du traitement">
           <p>
-            [Nom légal de l&apos;éditeur à compléter], éditeur du site Je pâtisse !. Pour toute question relative à
+            {EDITEUR.nom}, éditeur du site Je pâtisse ! (
+            <Link href="/mentions-legales" className="text-primary underline underline-offset-2">
+              mentions légales
+            </Link>
+            ). Pour toute question relative à
             vos données, utilisez le formulaire de{' '}
             <Link href="/contact" className="text-primary underline underline-offset-2">
               contact
