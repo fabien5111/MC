@@ -61,7 +61,7 @@ export default function CgvPage() {
             / RCS], dont le siège est situé [adresse postale complète].
           </p>
           <p>
-            N° de TVA intracommunautaire : [n°] <em>ou</em> « TVA non applicable, art. 293 B du CGI ».
+            TVA non applicable, art. 293 B du CGI.
             <br />
             Contact : [contact@jepatisse.com]
           </p>
@@ -150,8 +150,8 @@ export default function CgvPage() {
 
         <Section id="prix" title="6. Prix">
           <p>
-            Les prix sont indiqués en euros, [toutes taxes comprises / TVA non applicable, art. 293 B du CGI], sur la
-            page <Lien href="/plans">Nos formules</Lien>, avant toute souscription. Ils s&apos;entendent par Période.
+            Les prix sont indiqués en euros, TVA non applicable (art. 293 B du CGI), sur la page{' '}
+            <Lien href="/plans">Nos formules</Lien>, avant toute souscription. Ils s&apos;entendent par Période.
           </p>
           <p>
             Le prix applicable à un abonnement est celui en vigueur au jour de sa souscription. Il est maintenu tant
