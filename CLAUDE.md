@@ -98,6 +98,19 @@ le service managé.
   fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
   données, elles, passent bien par pgweb : la limite ne porte que sur le
   DDL des tables.
+- **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
+  `next/font/google` (`app/fonts.ts`), auto-hébergées depuis
+  `/_next/static` — jamais un `<link>` vers `fonts.googleapis.com`, qui
+  bloquait le premier affichage (audit PageSpeed du 28/09/2026). Material
+  Symbols reste chargée depuis Google (police à ligatures, non gérable par
+  `next/font`), mais réduite au poids (`wght@300`, seule valeur utilisée) et
+  aux icônes réellement affichées par le code — sous-ensemble recalculé à
+  **chaque build** par `scripts/material-symbols.mjs` (jamais une liste
+  entretenue à la main : une icône ajoutée au code apparaît d'elle-même au
+  prochain déploiement). La restriction d'axe seule ne réduisait quasiment
+  rien (976 Kio contre 974 pour le catalogue complet) — tout le poids vient
+  du nombre de glyphes, d'où l'obligation du sous-ensemble par nom
+  (`icon_names=`, 34 Kio pour ~180 icônes).
 
 ---
 
