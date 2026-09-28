@@ -14,12 +14,23 @@
 //  - tout le reste (`TRIAL`, `GIFT`, `manual`, l'ancien `SIMULATION`) → aucun
 //    objet Stripe n'existe : `mc_cancel_own_subscription` reste inchangée,
 //    exactement le geste d'avant ce lot.
+//
+// **Confirmation écrite de la résiliation** (L.215-1-1 du Code de la
+// consommation, CGV art. 10) : pour un abonnement Stripe, un e-mail part
+// d'ici, avec la date d'effet rendue par Stripe — quelle que soit la
+// préférence de notification du membre, et best-effort (la résiliation est
+// déjà enregistrée chez Stripe, un échec d'envoi ne doit pas la faire
+// apparaître en échec). Un essai ou un don n'est pas un contrat payant : pas
+// d'e-mail sur ce chemin-là.
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { createClient } from '@/lib/supabase/server';
-import { cleIdempotence } from '@/lib/billing';
-import { appelStripe, getAbonnementResiliable, MissingStripeConfigError } from '@/lib/billing-data';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmailBestEffort } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
+import { cleIdempotence, emailConfirmationResiliation, texteVersHtml } from '@/lib/billing';
+import { appelStripe, getAbonnementResiliable, MissingStripeConfigError, resoudreLibellePlanParPrix } from '@/lib/billing-data';
 
 export const maxDuration = 15;
 
@@ -27,8 +38,39 @@ type SubscriptionStripe = {
   cancel_at_period_end?: boolean;
   current_period_end?: number;
   schedule?: unknown;
-  items?: { data?: { current_period_end?: number }[] };
+  items?: { data?: { current_period_end?: number; price?: { id?: string } | string }[] };
 };
+
+/** Identifiant du prix de l'article, qu'il soit rendu en entier ou non. */
+function identifiantPrix(sub: SubscriptionStripe): string | null {
+  const prix = sub.items?.data?.[0]?.price;
+  if (typeof prix === 'string') return prix || null;
+  return typeof prix?.id === 'string' && prix.id ? prix.id : null;
+}
+
+async function envoyerConfirmationResiliation(email: string, sub: SubscriptionStripe, finPeriode: string | null): Promise<void> {
+  try {
+    const priceId = identifiantPrix(sub);
+    const planLabel = (priceId ? await resoudreLibellePlanParPrix(createAdminClient(), priceId) : null) ?? 'votre formule';
+    const { sujet, texte } = emailConfirmationResiliation({
+      planLabel,
+      finPeriodeIso: finPeriode,
+      resilieLeIso: new Date().toISOString(),
+      urlSite: siteUrl(),
+    });
+    await sendEmailBestEffort({
+      to: email,
+      subject: sujet,
+      text: texte,
+      html: texteVersHtml(texte),
+      replyTo: process.env.EMAIL_REPLY_TO || undefined,
+    });
+  } catch (e) {
+    // Libellé du plan introuvable ou autre imprévu : la résiliation est déjà
+    // faite côté Stripe, on trace sans faire échouer la réponse.
+    console.error('abonnement/resilier (e-mail de confirmation):', (e as Error).message);
+  }
+}
 
 /** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */
 function identifiantEcheancier(valeur: unknown): string | null {
@@ -106,6 +148,8 @@ export async function POST() {
   // plutôt que sur la base, où le webhook n'a peut-être pas encore écrit.
   const finUnix = resultat.data.current_period_end ?? resultat.data.items?.data?.[0]?.current_period_end ?? null;
   const finPeriode = finUnix ? new Date(finUnix * 1000).toISOString() : abonnement.endsAt;
+
+  if (user.email) await envoyerConfirmationResiliation(user.email, resultat.data, finPeriode);
 
   return NextResponse.json({ finPeriode });
 }
