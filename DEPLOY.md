@@ -412,24 +412,32 @@ un paquet `apk`) et la sauvegarde nocturne échoue en silence. À rejouer :
 apk add --no-cache pgbackrest && pgbackrest --stanza=jepatisse check
 ```
 
-**La sauvegarde apparaît `failed` dans `cron.job_run_details` alors qu'elle
-réussit** (code de sortie 104, constaté fin septembre 2026) : c'est l'appel
-par `copy … to program` qui rend une erreur, pas pgBackRest, dont le journal
-est vierge et qui liste bien une sauvegarde complète par nuit. L'état réel se
-lit donc avec `pgbackrest info`, jamais dans `cron.job_run_details` — tant que
-ce faux échec n'est pas corrigé, une vraie panne s'y confondrait. En Web SSH
-sur le nœud 216075 :
+**`failed` dans `cron.job_run_details` (code 104) ne veut pas dire « pas de
+sauvegarde ».** La commande enchaîne deux étapes : la sauvegarde, puis le
+nettoyage (`expire`), qui retire la sauvegarde la plus ancienne **et** les
+journaux de transactions (WAL) qui ne servent plus. Le code 104 signifie
+« une étape a rencontré une erreur » — à lire dans les DEUX journaux,
+`jepatisse-backup.log` et `jepatisse-expire.log`. Constaté du 24 au 28/09/2026 :
+sauvegardes réussies, mais nettoyage des WAL en échec toutes les nuits sur un
+délai d'attente du stockage objet (`[042] timeout after 60000ms waiting for
+read from 's3.pub1.infomaniak.cloud:443'`). Conséquence silencieuse : les WAL
+s'accumulent depuis le 12/09, et une donnée effacée reste restaurable depuis
+eux — ce qui ferait mentir la politique de confidentialité au-delà de 30 jours.
+L'état des sauvegardes se lit avec `pgbackrest info` ; les erreurs, dans les
+journaux. En Web SSH sur le nœud 216075, une commande par ligne :
 
 ```bash
 su postgres -c "pgbackrest --stanza=jepatisse info"
+grep -iE "expire full|remove archive|ERROR" /etc/pgbackrest/log/jepatisse-expire.log | tail -10
 ```
 
 Conservation : les **7 dernières sauvegardes complètes**
 (`repo1-retention-full=7`, décompte **par nombre**, bucket `jp-pgbackup`).
 C'est ce qui tient la promesse de la politique de confidentialité (§ 8 :
-« effacement sous 30 jours, sauvegardes comprises ») — à condition que les
-sauvegardes réussissent : si elles échouent, les 7 dernières réussies restent
-et vieillissent au-delà de 30 jours.
+« effacement sous 30 jours, sauvegardes comprises ») — à deux conditions :
+que les sauvegardes réussissent (si elles échouent, les 7 dernières réussies
+restent et vieillissent au-delà de 30 jours), et que le nettoyage des WAL
+aboutisse (cf. ci-dessus).
 
 ### Purges RGPD (`pg_cron`)
 
