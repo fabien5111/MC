@@ -11,8 +11,8 @@
 //
 // Ce n'est PAS un avis juridique : une relecture par un professionnel reste
 // recommandée avant l'ouverture publique. Les passages entre crochets sont
-// des faits encore à vérifier auprès des prestataires (Atlassian, moteur de
-// recherche web d'Anthropic) ou l'immatriculation à compléter. Anthropic est
+// des faits encore à vérifier auprès des prestataires (Atlassian : entité et
+// région d'hébergement de Jira). Anthropic est
 // nommé par son entité PBC (États-Unis) : c'est elle qui facture l'achat de
 // crédits d'API de la console (facture du 20/08/2026). Ses conditions
 // commerciales prévoient pourtant Anthropic Ireland, Limited pour un client de
@@ -113,7 +113,7 @@ export default function ConfidentialitePage() {
 
         <Section title="1. Responsable du traitement">
           <p>
-            Fabien CHENU, entrepreneur individuel [forme juridique et SIREN à compléter dès l&apos;immatriculation]
+            Fabien CHENU, entrepreneur individuel, SIREN 788 550 077
             <br />
             20b, rue Marie-Clémence Fouriaux — 51100 Reims
           </p>
@@ -169,8 +169,9 @@ export default function ConfidentialitePage() {
             <li>Cookies et stockage local strictement nécessaires (voir § 10).</li>
             <li>Journaux de connexion et adresse IP.</li>
             <li>
-              Affichages et clics sur les encarts de nos partenaires, rattachés à votre compte si vous êtes connecté
-              [à confirmer : seules des statistiques agrégées sont communiquées aux partenaires].
+              Affichages et clics sur les encarts de nos partenaires, rattachés à votre compte si vous êtes connecté.
+              Ils servent à établir des statistiques et ne sont jamais transmis aux partenaires sous une forme
+              permettant de vous identifier.
             </li>
           </Liste>
         </Section>
@@ -304,8 +305,18 @@ export default function ConfidentialitePage() {
               et des photos, à Genève.
             </li>
             <li>
-              <Fort>Anthropic PBC</Fort> (États-Unis) — traitements par IA (voir § 4). Pour la recherche web du contrôle des recettes, Anthropic s&apos;appuie sur un moteur
-              de recherche tiers [à identifier dans la liste des sous-traitants d&apos;Anthropic].
+              <Fort>Anthropic PBC</Fort> (États-Unis) — traitements par IA (voir § 4). Pour la recherche web du contrôle des recettes, Anthropic s&apos;appuie sur des
+              sous-traitants situés aux États-Unis (Brave Search et TurboPuffer). La liste complète de ses
+              sous-traitants est{' '}
+              <a
+                href="https://trust.anthropic.com/subprocessors"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                publique
+              </a>
+              .
             </li>
             <li>
               <Fort>Brevo (Sendinblue SAS)</Fort> (France) — envoi des e-mails.
