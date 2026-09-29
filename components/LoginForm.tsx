@@ -413,10 +413,17 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
               />
               <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
                 J&apos;accepte les{' '}
-                <a className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors" href="#">
-                  conditions d&apos;utilisation
-                </a>{' '}
-                et la politique de confidentialité.
+                conditions d&apos;utilisation et la{' '}
+                {/* Nouvel onglet : quitter la page ferait perdre la saisie du formulaire d'inscription. */}
+                <a
+                  className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                  href="/confidentialite"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  politique de confidentialité
+                </a>
+                .
               </label>
             </div>
           )}
