@@ -9,8 +9,9 @@ name: Import de recettes depuis Jira
 # dans le dépôt : une adresse e-mail enregistrée dans un fichier resterait
 # dans l'historique git. Un lancement = un destinataire.
 #
-# Chaque ticket produit une ligne `imports` au statut `brouillon`, que le membre relit dans `/relecture/[id]` exactement comme un
-# import par texte collé — rien n'est créé ni publié sans cette relecture.
+# Chaque ticket produit une ligne `imports` au statut `brouillon`, que le
+# membre relit dans `/relecture/[id]` exactement comme un import par texte
+# collé — rien n'est créé ni publié sans cette relecture.
 #
 # **Toujours une simulation d'abord.** Le mode `simulation` joue tout
 # (lecture du fichier, membre, doublon, validation contre le vrai référentiel
