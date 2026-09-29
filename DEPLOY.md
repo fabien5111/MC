@@ -417,12 +417,24 @@ sauvegarde ».** La commande enchaîne deux étapes : la sauvegarde, puis le
 nettoyage (`expire`), qui retire la sauvegarde la plus ancienne **et** les
 journaux de transactions (WAL) qui ne servent plus. Le code 104 signifie
 « une étape a rencontré une erreur » — à lire dans les DEUX journaux,
-`jepatisse-backup.log` et `jepatisse-expire.log`. Constaté du 24 au 28/09/2026 :
+`jepatisse-backup.log` et `jepatisse-expire.log`. Constaté du 24 au 29/09/2026 :
 sauvegardes réussies, mais nettoyage des WAL en échec toutes les nuits sur un
 délai d'attente du stockage objet (`[042] timeout after 60000ms waiting for
 read from 's3.pub1.infomaniak.cloud:443'`). Conséquence silencieuse : les WAL
 s'accumulent depuis le 12/09, et une donnée effacée reste restaurable depuis
 eux — ce qui ferait mentir la politique de confidentialité au-delà de 30 jours.
+
+**Corrigé le 29/09/2026** : `io-timeout=300` inscrit sous `[global]` dans
+`/etc/pgbackrest/pgbackrest.conf` (propriétaire `postgres`, droits `600`,
+inchangés). Un nettoyage réel a alors duré 83 s — au-delà des 60 s par défaut,
+ce qui explique les échecs — et a retiré 12 sauvegardes expirées et les WAL
+antérieurs à la plus ancienne sauvegarde conservée. Ce réglage n'existe que
+dans ce fichier : **à réinscrire après tout redéploiement du nœud**, comme
+l'installation du paquet `pgbackrest` ci-dessus. Contrôle : `pgbackrest info`
+doit montrer une ligne `wal archive min` proche du début de la plus ancienne
+sauvegarde listée (et non des jours plus tôt), et `cron.job_run_details`
+`succeeded` pour `sauvegarde-quotidienne`.
+
 L'état des sauvegardes se lit avec `pgbackrest info` ; les erreurs, dans les
 journaux. En Web SSH sur le nœud 216075, une commande par ligne :
 
