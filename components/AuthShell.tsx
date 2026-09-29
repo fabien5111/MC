@@ -34,15 +34,15 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <p className="font-body-md text-body-md text-secondary">© 2024 Je Pâtisse. Tous droits réservés.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-            <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="#">
-              Conditions
-            </a>
-            <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="#">
+            <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/cgv">
+              Conditions de vente
+            </Link>
+            <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/confidentialite">
               Confidentialité
-            </a>
-            <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="#">
+            </Link>
+            <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/contact">
               Contact
-            </a>
+            </Link>
           </div>
         </div>
       </footer>
