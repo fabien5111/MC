@@ -1,0 +1,204 @@
+{
+  "ticket": "JEP-242",
+  "recette": {
+    "titre": "Le Mont-Blanc de Claire Heitzler revisité",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un dessert individuel structuré autour d'une coque en meringue garnie de marmelade de clémentines entières, d'une chantilly vanille et de brisures de marrons, surmontée d'un dôme de mousse aux marrons glacé et d'un palet de vermicelles aux marrons.",
+    "rendement": "4 unités (4 personnes)",
+    "ustensiles": [
+      "Moule stone Silikomart",
+      "Moule dôme de 6 cm de diamètre",
+      "Douille unie 20 mm",
+      "Douille unie 7 mm",
+      "Douille à vermicelles",
+      "Emporte-pièce de 4 cm de diamètre",
+      "Robot pâtissier avec fouet et feuille",
+      "Poches à douille",
+      "Casseroles",
+      "Mixeur plongeant",
+      "Thermomètre de cuisine",
+      "Tamis",
+      "Râpe Microplane",
+      "Tapis en silicone et papier sulfurisé"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Chantilly vanille",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          { "nom": "Crème liquide 30% (froide)", "quantite": 200, "unite": "g" },
+          { "nom": "Crème liquide 30% (à chauffer)", "quantite": 25, "unite": "g" },
+          { "nom": "Gélatine", "quantite": 1, "unite": "feuille" },
+          { "nom": "Poudre de vanille", "quantite": 1, "unite": "g" },
+          { "nom": "Sucre", "quantite": 20, "unite": "g" }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand volume d'eau froide pendant 15 minutes.",
+          "Porter à ébullition dans une casserole les 25g de crème, le sucre et la vanille.",
+          "Retirer du feu et incorporer la gélatine essorée.",
+          "Verser ce mélange chaud sur la crème froide et bien mélanger.",
+          "Filmer au contact et réserver une nuit au réfrigérateur."
+        ],
+        "conseils_etape": "Ne pas fouetter la crème à ce stade, l'émulsion se fera le lendemain juste avant le montage."
+      },
+      {
+        "nom_etape": "Vermicelles aux marrons",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          { "nom": "Pâte de marrons", "quantite": 132, "unite": "g" },
+          { "nom": "Crème de marrons", "quantite": 45, "unite": "g" },
+          { "nom": "Rhum", "quantite": 7.5, "unite": "g" }
+        ],
+        "instructions": [
+          "Mélanger dans le bol du robot avec la feuille la pâte de marrons, la crème de marrons et le rhum jusqu'à obtention d'une texture homogène.",
+          "Passer l'appareil à travers un tamis pour le lisser parfaitement.",
+          "Etaler finement la pâte (environ 1 mm d'épaisseur) entre deux feuilles de papier sulfurisé ou silicone.",
+          "Mettre le reste de la pâte en poche avec la douille à vermicelles et pocher de longues bandes.",
+          "Placer l'ensemble au congélateur pour une nuit."
+        ],
+        "conseils_etape": "Le passage au tamis est impératif pour éviter qu'un morceau ne vienne boucher la fine douille à vermicelles."
+      },
+      {
+        "nom_etape": "Meringue française",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 150,
+        "temperature_cuisson_celsius": 90,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Blancs d'oeufs", "quantite": 100, "unite": "g" },
+          { "nom": "Sucre", "quantite": 75, "unite": "g" },
+          { "nom": "Sucre glace", "quantite": 75, "unite": "g" }
+        ],
+        "instructions": [
+          "Monter les blancs d'oeufs au robot en incorporant le sucre semoule petit à petit jusqu'à obtenir une meringue lisse et brillante.",
+          "Tamiser le sucre glace et l'incorporer délicatement à la maryse sans faire retomber la préparation.",
+          "Pocher des dômes avec la douille 20 mm dans les moules dômes en silicone.",
+          "Pocher des tubes sur un tapis silicone avec la douille 7 mm.",
+          "Cuire au four à 90°C pendant 2h30.",
+          "Laisser totalement refroidir avant de démouler délicatement.",
+          "Limer la base des dômes de meringue avec une râpe Microplane pour qu'ils soient plats."
+        ],
+        "conseils_etape": "Manipulez la meringue refroidie avec grande précaution car elle est très fragile."
+      },
+      {
+        "nom_etape": "Mousse aux marrons",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Gélatine", "quantite": 1, "unite": "feuille" },
+          { "nom": "Pâte de marrons", "quantite": 25, "unite": "g" },
+          { "nom": "Crème de marrons", "quantite": 125, "unite": "g" },
+          { "nom": "Poudre de vanille", "quantite": 1, "unite": "g" },
+          { "nom": "Rhum", "quantite": 7.5, "unite": "g" },
+          { "nom": "Crème liquide 30%", "quantite": 112.5, "unite": "g" }
+        ],
+        "instructions": [
+          "Hydrater la gélatine 20 minutes dans de l'eau bien froide.",
+          "Fondre la gélatine essorée au micro-ondes.",
+          "Mélanger au robot (avec la feuille) la pâte de marrons, la crème de marrons, le rhum, la vanille et la gélatine fondue.",
+          "Monter la crème liquide bien froide en chantilly texture mousseuse (peu ferme).",
+          "Incorporer un tiers de la crème mousseuse au mélange aux marrons, puis ajouter le reste délicatement à la maryse.",
+          "Pocher la mousse dans les moules Stone (remplis aux trois quarts), tasser légèrement pour lisser.",
+          "Placer au congélateur pour 4 heures minimum."
+        ],
+        "conseils_etape": "Ne montez pas la crème trop ferme, une texture mousseuse facilitera l'incorporation et donnera une mousse plus légère."
+      },
+      {
+        "nom_etape": "Marmelade de clémentines",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Clémentines bio entières", "quantite": 125, "unite": "g" },
+          { "nom": "Sucre", "quantite": 32.5, "unite": "g" },
+          { "nom": "Poudre de vanille", "quantite": 1, "unite": "g" }
+        ],
+        "instructions": [
+          "Laver soigneusement les clémentines et les couper en petits dés en conservant la peau.",
+          "Mettre les dés dans une casserole avec le sucre et la vanille.",
+          "Cuire à feu très doux en remuant régulièrement jusqu'à évaporation complète de l'eau.",
+          "Réserver au réfrigérateur."
+        ],
+        "conseils_etape": "L'utilisation de clémentines bio est indispensable puisque la peau est consommée."
+      },
+      {
+        "nom_etape": "Glaçage blanc",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Gélatine en poudre", "quantite": 6, "unite": "g" },
+          { "nom": "Eau froide (pour l'hydratation)", "quantite": 36, "unite": "g" },
+          { "nom": "Crème liquide 30%", "quantite": 85, "unite": "g" },
+          { "nom": "Glucose", "quantite": 55, "unite": "g" },
+          { "nom": "Sel fin", "quantite": 0.5, "unite": "g" },
+          { "nom": "Eau (pour le sirop)", "quantite": 37.5, "unite": "g" },
+          { "nom": "Sucre semoule", "quantite": 117.5, "unite": "g" },
+          { "nom": "Colorant blanc hydrosoluble", "quantite": null, "unite": null }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans les 36g d'eau froide pendant 15 minutes.",
+          "Porter à ébullition dans une casserole le glucose, la crème et le sel. Réserver.",
+          "Dans une autre casserole, réaliser un sirop en portant à ébullition l'eau (37,5g) et le sucre semoule.",
+          "Verser le sirop sur le mélange à base de crème et mélanger.",
+          "Ajouter la gélatine hydratée et le colorant blanc.",
+          "Mixer longuement au mixeur plongeant dans un contenant haut et étroit en évitant d'incorporer des bulles d'air.",
+          "Laisser refroidir à température ambiante jusqu'à atteindre 20 à 25°C."
+        ],
+        "conseils_etape": "Gardez la tête du mixeur plongeant bien immergée pour éviter la formation de bulles qui gâcheraient le visuel du glaçage."
+      },
+      {
+        "nom_etape": "Montage et décor",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Marrons confits", "quantite": 4, "unite": "pièce" },
+          { "nom": "Brisures de marrons au sirop", "quantite": 30, "unite": "g" }
+        ],
+        "instructions": [
+          "Démouler les dômes de mousse aux marrons congelés et les glacer avec le glaçage blanc à 20-25°C.",
+          "Piquer les dômes avec un cure-dent et faire des mouvements circulaires pour éliminer l'excédent de glaçage.",
+          "Fouetter la chantilly vanille (préparée à l'étape 1) pour obtenir une belle texture ferme mais souple.",
+          "Emporte-piécer des palets de 4 cm dans la plaque de vermicelles congelée.",
+          "Tapisser l'intérieur des coques en meringue avec la marmelade de clémentines.",
+          "Pocher une boule de chantilly au centre, ajouter des brisures de marrons au sirop, et recouvrir de chantilly en lissant à ras avec une palette.",
+          "Déposer le dôme de mousse glacé sur la base de meringue garnie.",
+          "Casser les tubes de meringue en petits éclats et les coller sur les bords de la base.",
+          "Déposer un palet de vermicelles au sommet et terminer par un marron confit."
+        ],
+        "conseils_etape": "Glacez les dômes dès leur sortie du congélateur pour que le glaçage fige immédiatement au contact du froid."
+      }
+    ],
+    "astuces_recette": [
+      "L'organisation est primordiale : préparez impérativement la chantilly, l'appareil à vermicelles et idéalement la meringue la veille pour fluidifier le montage le jour J."
+    ],
+    "conseils_conservation": "Ce dessert se déguste bien frais. Il doit être conservé au réfrigérateur et consommé dans les 24 heures suivant le montage pour éviter que l'humidité des crèmes ne ramollisse la coque en meringue."
+  }
+}

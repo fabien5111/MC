@@ -1,0 +1,112 @@
+name: Import de recettes depuis Jira
+
+# Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
+#
+# Importe en BROUILLON, chez le membre indiqué, les recettes préparées dans
+# des tickets Jira (texte + photo finale du dessert). La recette structurée
+# vit dans `imports-jira/<CLÉ>.json` ; la photo est relue sur le ticket. Le
+# membre destinataire est donné ICI, au lancement (e-mail ou pseudo), jamais
+# dans le dépôt : une adresse e-mail enregistrée dans un fichier resterait
+# dans l'historique git. Un lancement = un destinataire.
+#
+# Chaque ticket produit une ligne `imports` au statut `brouillon`, que le
+# membre relit dans `/relecture/[id]` exactement comme un import par texte
+# collé — rien n'est créé ni publié sans cette relecture.
+#
+# **Toujours une simulation d'abord.** Le mode `simulation` joue tout
+# (lecture du fichier, membre, doublon, validation contre le vrai référentiel
+# `units`, téléchargement et conversion de la photo) sans rien écrire. Le mode
+# `importer` ne fait qu'ajouter les écritures.
+#
+# Un import réussi commente le ticket et le passe à « Revue en cours ».
+#
+# Relancer est sans risque : un ticket déjà importé (marque `Jira <CLÉ>` dans
+# `imports.fichier_original`) est sauté.
+#
+# « Use workflow from » : choisir la branche qui porte les fichiers
+# `imports-jira/*.json` à importer — ils n'ont pas besoin d'être sur `main`.
+#
+# Secrets attendus (déjà en place pour d'autres workflows) :
+#   OS_* (x7)                   stockage objet — cf. object-storage-cors.yml
+#   SUPABASE_SERVICE_ROLE_KEY   cf. object-storage-reconciliation.yml
+#   JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN   cf. jira-deploiement.yml
+on:
+  workflow_dispatch:
+    inputs:
+      tickets:
+        description: Clés des tickets, séparées par des virgules ou des espaces (ex. « JEP-242, JEP-243 »)
+        required: true
+      destinataire:
+        description: E-mail du membre (profiles.email) ou son pseudo (slug de /u/…)
+        required: true
+      mode:
+        description: « simulation » n'écrit rien ; « importer » dépose les photos et crée les brouillons
+        type: choice
+        options: [simulation, importer]
+        required: true
+        default: simulation
+
+# Deux exécutions simultanées pourraient toutes deux constater l'absence d'un
+# ticket puis l'importer chacune : une seule à la fois.
+concurrency:
+  group: import-jira-recettes
+  cancel-in-progress: false
+
+jobs:
+  importer:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+      OS_IDENTITY_API_VERSION: '3'
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Publique — c'est l'URL que le navigateur appelle déjà, pas un secret.
+      SUPABASE_URL: https://auth.jepatisse.com
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      # Statuts : mêmes variables de dépôt que jira-deploiement.yml. « Déployé »
+      # sert de garde-fou (jamais atteint par ce workflow) ; « Revue en cours »
+      # est le repli par défaut de lireConfigStatuts si la variable est absente.
+      JIRA_STATUS_IN_TEST: ${{ vars.JIRA_STATUS_IN_TEST }}
+      JIRA_STATUS_IN_TEST_ID: ${{ vars.JIRA_STATUS_IN_TEST_ID }}
+      JIRA_STATUS_DEPLOYED: ${{ vars.JIRA_STATUS_DEPLOYED }}
+      JIRA_STATUS_DEPLOYED_ID: ${{ vars.JIRA_STATUS_DEPLOYED_ID }}
+      DESTINATAIRE: ${{ inputs.destinataire }}
+      TICKETS: ${{ inputs.tickets }}
+      MODE: ${{ inputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          pip install --quiet python-swiftclient python-keystoneclient
+          command -v convert >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick; }
+
+      - name: Vérifier les secrets
+        run: |
+          set -euo pipefail
+          for v in SUPABASE_SERVICE_ROLE_KEY JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN OS_AUTH_URL OS_PASSWORD; do
+            [ -n "${!v}" ] || { echo "ÉCHEC — secret $v absent."; exit 1; }
+          done
+
+      - name: Importer
+        run: |
+          set -euo pipefail
+          # `swift auth` écrit OS_STORAGE_URL et OS_AUTH_TOKEN : évalué sans
+          # jamais l'afficher, le jeton n'a rien à faire dans les journaux.
+          eval "$(swift auth)"
+          export OS_STORAGE_URL OS_AUTH_TOKEN
+          npx --yes tsx@4 scripts/import-jira-recettes.ts
