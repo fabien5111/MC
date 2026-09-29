@@ -1,4 +1,5 @@
-// Plan du site : l'accueil, la liste du blog, et chaque article publié.
+// Plan du site : l'accueil, la liste du blog, chaque article publié et les
+// pages légales.
 //
 // Volontairement borné au blog (et à l'accueil) : un plan de site couvrant
 // aussi les recettes est un chantier à part (visibilité publique/privée,
@@ -17,6 +18,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: base, changeFrequency: 'daily', priority: 1 },
     { url: `${base}/blog`, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${base}/mentions-legales`, changeFrequency: 'yearly', priority: 0.1 },
+    { url: `${base}/confidentialite`, changeFrequency: 'yearly', priority: 0.1 },
     ...articles.map((a) => ({
       url: `${base}/blog/${a.slug}`,
       lastModified: a.updated_at,

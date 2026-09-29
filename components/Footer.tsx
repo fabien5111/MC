@@ -33,6 +33,7 @@ export function Footer() {
                 Légal
               </h4>
               <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
+                <li><Link className="hover:text-primary transition-colors" href="/mentions-legales">Mentions légales</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite">Confidentialité</Link></li>
               </ul>
@@ -50,13 +51,8 @@ export function Footer() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="font-label-md text-[12px] text-on-tertiary-container italic opacity-70">
-            © 2024 Je Pâtisse. The Modern Pâtissier.
+            © {new Date().getFullYear()} Je pâtisse !
           </p>
-          <div className="flex gap-8">
-            <span className="font-label-md text-[12px] text-on-tertiary-container uppercase tracking-widest">
-              Fait avec passion à Paris
-            </span>
-          </div>
         </div>
       </div>
     </footer>

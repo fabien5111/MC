@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Bientôt disponible — Je pâtisse !',
@@ -24,6 +25,15 @@ export default function BientotDisponiblePage() {
           </p>
         </div>
       </main>
+      {/* Pages légales, servies malgré `COMING_SOON` (cf. `PAGES_LEGALES`). */}
+      <footer className="flex justify-center gap-8 px-margin-mobile py-6 text-[13px] text-on-surface-variant">
+        <Link className="hover:text-primary underline underline-offset-2" href="/mentions-legales">
+          Mentions légales
+        </Link>
+        <Link className="hover:text-primary underline underline-offset-2" href="/confidentialite">
+          Confidentialité
+        </Link>
+      </footer>
     </div>
   );
 }

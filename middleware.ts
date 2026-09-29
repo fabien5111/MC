@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 import { matchBlogArticleSlug, isGoneSlug, goneArticleResponse } from './lib/blog-gone';
+import { PAGES_LEGALES } from './lib/legal';
 
 // Domaine des testeurs, exempté de la page d'attente ci-dessous : depuis que
 // jepatisse.com et dev.jepatisse.com sont deux domaines du même projet
@@ -48,7 +49,10 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get('host')?.split(':')[0].toLowerCase();
   if (process.env.COMING_SOON === 'true' && host !== TESTER_HOST) {
     const { pathname } = request.nextUrl;
-    if (pathname !== '/bientot-disponible' && !pathname.startsWith('/api')) {
+    // Les pages légales restent servies (JEP-17) : l'identification de
+    // l'éditeur est due dès que le domaine sert une page au public.
+    const pageLegale = (PAGES_LEGALES as readonly string[]).includes(pathname);
+    if (pathname !== '/bientot-disponible' && !pathname.startsWith('/api') && !pageLegale) {
       return NextResponse.rewrite(new URL('/bientot-disponible', request.url));
     }
   }

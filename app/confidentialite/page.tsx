@@ -23,11 +23,16 @@
 // do you store my organization's data? » du centre de confidentialité Anthropic. Les durées de conservation annoncées au
 // § 8 sont appliquées par pg_cron et pgBackRest : cf. DEPLOY.md, « Tâches
 // planifiées » — ne pas en changer une ici sans changer la tâche qui la tient.
+//
+// Identité de l'éditeur (nom, statut, SIREN, adresse) lue dans `lib/legal.ts`,
+// partagée avec les mentions légales (JEP-17) : une seule copie, sinon les
+// deux pages finissent par se contredire au premier changement.
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { EDITEUR } from '@/lib/legal';
 
 export const metadata: Metadata = { title: 'Confidentialité | Je pâtisse !' };
 
@@ -115,9 +120,13 @@ export default function ConfidentialitePage() {
 
         <Section title="1. Responsable du traitement">
           <p>
-            Fabien CHENU, entrepreneur individuel, SIREN 788 550 077
+            {EDITEUR.nom}, {EDITEUR.statut}, SIREN {EDITEUR.siren} (
+            <Link href="/mentions-legales" className="text-primary underline underline-offset-2">
+              mentions légales
+            </Link>
+            )
             <br />
-            20b, rue Marie-Clémence Fouriaux — 51100 Reims
+            {EDITEUR.adresse}
           </p>
           <p>
             Contact : <LienEmail />, ou le <LienContact /> en choisissant le type « Mes données personnelles ».
