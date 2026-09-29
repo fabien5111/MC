@@ -1511,12 +1511,14 @@ tickets Jira (texte + photo finale du dessert) sont importées en **brouillon**
 chez un membre donné, sans appel à l'API Anthropic. La structuration est faite
 par Claude Code dans la session, au format exact de sortie de l'IA
 (`RecetteIA`, cf. `PROMPT` de `lib/ai/import-pivot.ts` — mêmes règles de
-fidélité), dans `imports-jira/<CLÉ>.json` avec le pseudo (`profiles.username`)
-du destinataire. Tout ce qui suit l'appel IA dans `/api/import-url` est rejoué
+fidélité), dans `imports-jira/<CLÉ>.json`. Le membre destinataire (e-mail ou pseudo)
+est donné **au lancement du workflow**, jamais dans le dépôt : une adresse
+e-mail enregistrée resterait dans l'historique git. Tout ce qui suit l'appel IA dans `/api/import-url` est rejoué
 à l'identique par `lib/import-jira.ts` ; le workflow manuel
 `.github/workflows/import-jira-recettes.yml` (simulation d'abord, puis
 `importer`) retrouve le membre, dépose la photo sur `jp-photos/recettes/`,
-insère la ligne `imports` et commente le ticket. Idempotent par la marque
+insère la ligne `imports`, commente le ticket et le passe à « Revue en
+cours » (garde-fou `resoudreTransition` contre « Déployé »). Idempotent par la marque
 `Jira <CLÉ>` dans `imports.fichier_original`. `lib/import-jira.test.ts` valide
 chaque fichier du dossier à la CI.
 

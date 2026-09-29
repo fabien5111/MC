@@ -2,8 +2,9 @@
 //
 // Lancé par `.github/workflows/import-jira-recettes.yml` (via `tsx`, pour
 // l'alias `@/`). Pour chaque ticket demandé :
-//   1. relit `imports-jira/<CLÉ>.json` (recette déjà structurée + pseudo) ;
-//   2. retrouve le membre par `profiles.username` ;
+//   1. relit `imports-jira/<CLÉ>.json` (recette déjà structurée) ;
+//   2. vise le membre donné au lancement (`DESTINATAIRE`, e-mail ou pseudo —
+//      jamais écrit dans le dépôt), retrouvé une fois pour tout le lot ;
 //   3. saute le ticket s'il a déjà été importé (marque `Jira <CLÉ>` dans
 //      `imports.fichier_original`) — relancer le workflow est donc sans risque ;
 //   4. construit le brouillon avec les MÊMES fonctions que `/api/import-url`
@@ -13,7 +14,8 @@
 //      dépose sur `jp-photos/recettes/` ;
 //   6. insère le brouillon dans `imports` (`statut = 'brouillon'`) : le membre
 //      le retrouve dans ses imports et le relit dans `/relecture/[id]` ;
-//   7. commente le ticket Jira (best-effort).
+//   7. commente le ticket Jira et le passe à « Revue en cours » (best-effort :
+//      le brouillon existe déjà, un échec Jira est signalé sans l'annuler).
 //
 // En mode `simulation`, les étapes 1 à 5 sont jouées jusqu'au téléchargement
 // et à la conversion de la photo compris, sans RIEN écrire (ni stockage, ni
@@ -32,14 +34,15 @@ import path from 'node:path';
 
 import {
   choisirPhotoJira,
+  critereDestinataire,
   lireFichierImportJira,
   marqueImportJira,
   preparerBrouillonJira,
   type PieceJointeJira,
 } from '@/lib/import-jira';
 import { TAILLE_MAX_OCTETS } from '@/lib/storage';
-import { appelJira, lireConfig } from './jira-api.mjs';
-import { texteVersAdf } from './jira.mjs';
+import { appelJira, lireConfig, lireConfigStatuts } from './jira-api.mjs';
+import { resoudreTransition, texteVersAdf } from './jira.mjs';
 
 const MODELE = 'claude-code (import Jira)';
 
@@ -134,7 +137,56 @@ async function deposerPhoto(fichier: string): Promise<string> {
 
 type Issue = { statut: 'importe' | 'simule' | 'deja' | 'echec'; detail: string };
 
-async function importerTicket(cle: string, units: { name: string; abbreviation: string | null }[]): Promise<Issue> {
+type Membre = { id: string; username: string | null; full_name: string | null };
+
+/**
+ * Membre destinataire, résolu UNE fois pour tout le lot. Introuvable ou
+ * ambigu = arrêt avant le premier ticket : mieux vaut ne rien importer que
+ * deviner chez qui écrire.
+ */
+async function resoudreDestinataire(saisie: string): Promise<Membre> {
+  const critere = critereDestinataire(saisie);
+  if ('erreur' in critere) throw new Error(critere.erreur);
+  const membres = await rest(
+    `profiles?${critere.colonne}=eq.${encodeURIComponent(critere.valeur)}&select=id,username,full_name`,
+  );
+  if (!Array.isArray(membres) || membres.length !== 1) {
+    throw new Error(
+      `${Array.isArray(membres) && membres.length > 1 ? 'Plusieurs membres' : 'Aucun membre'} pour ce destinataire ` +
+        `(profiles.${critere.colonne}).`,
+    );
+  }
+  return membres[0] as Membre;
+}
+
+/** Nom affiché dans les journaux et sur Jira : le pseudo, jamais l'e-mail. */
+function nomMembre(m: Membre): string {
+  return m.username ?? m.full_name ?? m.id;
+}
+
+/**
+ * « Revue en cours » : même garde-fou que `jira.mjs envoyer-en-test`
+ * (`resoudreTransition` refuse toute transition qui mènerait au statut
+ * « Déployé », celui qui déclenche l'e-mail irréversible au demandeur).
+ */
+async function passerEnRevue(cle: string): Promise<string> {
+  const config = lireConfig();
+  const statuts = lireConfigStatuts();
+  const { transitions } = await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/transitions`);
+  const decision = resoudreTransition(transitions, statuts.enTestId, statuts.enTestNom, statuts.deployeId, statuts.deployeNom);
+  if (decision.action === 'introuvable') throw new Error(`aucune transition vers « ${statuts.enTestNom} »`);
+  if (decision.action === 'refuse_deploiement') throw new Error('transition refusée : elle mènerait au statut « Déployé »');
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/transitions`, 'POST', {
+    transition: { id: decision.transition.id },
+  });
+  return decision.transition.to?.name ?? statuts.enTestNom;
+}
+
+async function importerTicket(
+  cle: string,
+  membre: Membre,
+  units: { name: string; abbreviation: string | null }[],
+): Promise<Issue> {
   // 1. Fichier préparé.
   let brut: unknown;
   try {
@@ -145,14 +197,6 @@ async function importerTicket(cle: string, units: { name: string; abbreviation: 
   const lu = lireFichierImportJira(brut, cle);
   if ('erreur' in lu) return { statut: 'echec', detail: lu.erreur };
   const { fichier } = lu;
-
-  // 2. Membre destinataire.
-  const pseudo = fichier.pseudo.toLowerCase();
-  const membres = await rest(`profiles?username=eq.${encodeURIComponent(pseudo)}&select=id,full_name`);
-  if (!Array.isArray(membres) || membres.length !== 1) {
-    return { statut: 'echec', detail: `Aucun membre avec le pseudo « ${fichier.pseudo} » (profiles.username).` };
-  }
-  const membre = membres[0] as { id: string; full_name: string | null };
 
   // 3. Idempotence — recherchée sur TOUS les membres : un ticket importé par
   // erreur sur le mauvais compte ne doit pas être réimporté en double.
@@ -177,7 +221,7 @@ async function importerTicket(cle: string, units: { name: string; abbreviation: 
   }
 
   const resume =
-    `« ${fichier.recette.titre} » → ${fichier.pseudo} (${membre.full_name ?? membre.id}), ` +
+    `« ${fichier.recette.titre} » → ${nomMembre(membre)}, ` +
     `${essai.pivot.sous_preparations.length} étape(s), ` +
     (photoLocale ? `photo ${Math.round(statSync(photoLocale).size / 1024)} Ko` : 'sans photo') +
     (essai.alertes.length ? `, ${essai.alertes.length} alerte(s) : ${essai.alertes.join(' | ')}` : '');
@@ -208,20 +252,28 @@ async function importerTicket(cle: string, units: { name: string; abbreviation: 
   });
   const id = lignes?.[0]?.id;
 
-  // 7. Trace sur le ticket — best-effort : le brouillon existe, un
-  // commentaire manqué ne doit pas faire passer l'import pour un échec.
+  // 7. Trace sur le ticket, puis « Revue en cours » — best-effort : le
+  // brouillon existe, un échec Jira ne doit pas faire passer l'import pour
+  // un échec (ni le faire rejouer : il serait sauté comme déjà importé).
+  const avertissements: string[] = [];
   try {
     await appelJira(lireConfig(), `/rest/api/3/issue/${encodeURIComponent(cle)}/comment`, 'POST', {
       body: texteVersAdf(
-        `Recette importée en brouillon n° ${id} pour le membre « ${fichier.pseudo} » — ` +
+        `Recette importée en brouillon n° ${id} pour le membre « ${nomMembre(membre)} » — ` +
           `à relire sur /relecture/${id}.${photoUrl ? '' : ' Aucune photo jointe : à ajouter en relecture.'}`,
       ),
     });
   } catch (e) {
-    console.warn(`  (commentaire Jira non publié : ${(e as Error).message})`);
+    avertissements.push(`commentaire Jira non publié (${(e as Error).message})`);
+  }
+  try {
+    const statut = await passerEnRevue(cle);
+    avertissements.push(`ticket passé à « ${statut} »`);
+  } catch (e) {
+    avertissements.push(`⚠️ ticket NON passé en revue (${(e as Error).message}) — à faire à la main`);
   }
 
-  return { statut: 'importe', detail: `brouillon n° ${id} — ${resume}` };
+  return { statut: 'importe', detail: `brouillon n° ${id} — ${resume} — ${avertissements.join(' ; ')}` };
 }
 
 // ── Lot ──────────────────────────────────────────────────────
@@ -232,6 +284,9 @@ async function main() {
 
   console.log(`Mode : ${SIMULATION ? 'SIMULATION (aucune écriture)' : 'IMPORT'} — ${tickets.length} ticket(s).`);
 
+  const membre = await resoudreDestinataire(process.env.DESTINATAIRE || '');
+  console.log(`Destinataire : ${nomMembre(membre)}.`);
+
   const units = await rest('units?select=name,abbreviation');
   // Référentiel vide = symptôme (clé erronée, RLS), jamais un résultat : sans
   // lui, toutes les unités sortiraient « non reconnues ».
@@ -241,7 +296,7 @@ async function main() {
   for (const cle of tickets) {
     let r: Issue;
     try {
-      r = await importerTicket(cle, units);
+      r = await importerTicket(cle, membre, units);
     } catch (e) {
       r = { statut: 'echec', detail: (e as Error).message };
     }

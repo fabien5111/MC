@@ -4,15 +4,20 @@ name: Import de recettes depuis Jira
 #
 # Importe en BROUILLON, chez le membre indiqué, les recettes préparées dans
 # des tickets Jira (texte + photo finale du dessert). La recette structurée
-# vit dans `imports-jira/<CLÉ>.json` (avec le pseudo du membre) ; la photo est
-# relue sur le ticket. Chaque ticket produit une ligne `imports` au statut
-# `brouillon`, que le membre relit dans `/relecture/[id]` exactement comme un
+# vit dans `imports-jira/<CLÉ>.json` ; la photo est relue sur le ticket. Le
+# membre destinataire est donné ICI, au lancement (e-mail ou pseudo), jamais
+# dans le dépôt : une adresse e-mail enregistrée dans un fichier resterait
+# dans l'historique git. Un lancement = un destinataire.
+#
+# Chaque ticket produit une ligne `imports` au statut `brouillon`, que le membre relit dans `/relecture/[id]` exactement comme un
 # import par texte collé — rien n'est créé ni publié sans cette relecture.
 #
 # **Toujours une simulation d'abord.** Le mode `simulation` joue tout
 # (lecture du fichier, membre, doublon, validation contre le vrai référentiel
 # `units`, téléchargement et conversion de la photo) sans rien écrire. Le mode
 # `importer` ne fait qu'ajouter les écritures.
+#
+# Un import réussi commente le ticket et le passe à « Revue en cours ».
 #
 # Relancer est sans risque : un ticket déjà importé (marque `Jira <CLÉ>` dans
 # `imports.fichier_original`) est sauté.
@@ -29,6 +34,9 @@ on:
     inputs:
       tickets:
         description: Clés des tickets, séparées par des virgules ou des espaces (ex. « JEP-242, JEP-243 »)
+        required: true
+      destinataire:
+        description: E-mail du membre (profiles.email) ou son pseudo (slug de /u/…)
         required: true
       mode:
         description: « simulation » n'écrit rien ; « importer » dépose les photos et crée les brouillons
@@ -61,6 +69,14 @@ jobs:
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
       JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      # Statuts : mêmes variables de dépôt que jira-deploiement.yml. « Déployé »
+      # sert de garde-fou (jamais atteint par ce workflow) ; « Revue en cours »
+      # est le repli par défaut de lireConfigStatuts si la variable est absente.
+      JIRA_STATUS_IN_TEST: ${{ vars.JIRA_STATUS_IN_TEST }}
+      JIRA_STATUS_IN_TEST_ID: ${{ vars.JIRA_STATUS_IN_TEST_ID }}
+      JIRA_STATUS_DEPLOYED: ${{ vars.JIRA_STATUS_DEPLOYED }}
+      JIRA_STATUS_DEPLOYED_ID: ${{ vars.JIRA_STATUS_DEPLOYED_ID }}
+      DESTINATAIRE: ${{ inputs.destinataire }}
       TICKETS: ${{ inputs.tickets }}
       MODE: ${{ inputs.mode }}
     steps:

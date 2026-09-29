@@ -4,7 +4,9 @@
 // accompagné de la photo finale du dessert. La structuration — le travail que
 // fait l'IA dans `/api/import-url` — est faite en amont, hors de l'application,
 // et déposée dans `imports-jira/<CLÉ>.json` sous la forme exacte que rend
-// l'IA (`RecetteIA`). Tout ce qui SUIT l'appel IA dans la route est en revanche
+// l'IA (`RecetteIA`). Le membre destinataire n'y figure PAS : il est donné au
+// lancement du workflow (`destinataire`, e-mail ou pseudo) — une adresse
+// e-mail enregistrée dans le dépôt resterait dans l'historique git. Tout ce qui SUIT l'appel IA dans la route est en revanche
 // rejoué ici à l'identique, avec les mêmes fonctions : nettoyage, validation,
 // normalisation des unités contre le vrai référentiel `units`, conversion vers
 // le pivot interne. Un brouillon importé de Jira est donc indiscernable, pour
@@ -24,8 +26,6 @@ import {
 export type FichierImportJira = {
   /** Clé du ticket Jira (ex. `JEP-242`). */
   ticket: string;
-  /** Pseudo du membre destinataire, tel qu'il figure dans `profiles.username`. */
-  pseudo: string;
   /** Recette structurée, au format de sortie de l'IA d'import. */
   recette: RecetteIA;
 };
@@ -55,16 +55,32 @@ export function lireFichierImportJira(
   if (!brut || typeof brut !== 'object') return { erreur: 'Fichier vide ou illisible.' };
   const f = brut as Record<string, unknown>;
   const ticket = typeof f.ticket === 'string' ? f.ticket.trim().toUpperCase() : '';
-  const pseudo = typeof f.pseudo === 'string' ? f.pseudo.trim() : '';
   if (!CLE_TICKET.test(ticket)) return { erreur: `Clé de ticket invalide : « ${String(f.ticket ?? '')} ».` };
   if (ticket !== cleAttendue.trim().toUpperCase()) {
     return { erreur: `Le fichier déclare ${ticket}, mais il est rangé sous ${cleAttendue}.` };
   }
-  if (!pseudo) return { erreur: 'Pseudo du membre destinataire absent.' };
   if (!f.recette || typeof f.recette !== 'object' || Array.isArray(f.recette)) {
     return { erreur: 'Recette structurée absente.' };
   }
-  return { fichier: { ticket, pseudo, recette: f.recette as RecetteIA } };
+  return { fichier: { ticket, recette: f.recette as RecetteIA } };
+}
+
+/**
+ * Critère de recherche du membre destinataire, tel que saisi au lancement :
+ * une adresse e-mail (`profiles.email`, recopiée en minuscules depuis le
+ * compte) ou un pseudo (`profiles.username`, le slug de l'adresse `/u/…`).
+ */
+export function critereDestinataire(
+  saisie: string,
+): { colonne: 'email' | 'username'; valeur: string } | { erreur: string } {
+  const v = saisie.trim().toLowerCase();
+  if (!v) return { erreur: 'Destinataire absent : e-mail ou pseudo du membre à renseigner au lancement.' };
+  if (v.includes('@')) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? { colonne: 'email', valeur: v } : { erreur: 'Adresse e-mail invalide.' };
+  }
+  return /^[a-z0-9-]+$/.test(v)
+    ? { colonne: 'username', valeur: v }
+    : { erreur: 'Pseudo invalide : attendu le slug de l’adresse du profil (/u/…).' };
 }
 
 export type PieceJointeJira = { id: string; filename?: string; mimeType?: string; size?: number; content?: string };
