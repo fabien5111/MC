@@ -53,11 +53,6 @@ export function Footer() {
           <p className="font-label-md text-[12px] text-on-tertiary-container italic opacity-70">
             © {new Date().getFullYear()} Je pâtisse !
           </p>
-          <div className="flex gap-8">
-            <span className="font-label-md text-[12px] text-on-tertiary-container uppercase tracking-widest">
-              Fait avec passion à Reims
-            </span>
-          </div>
         </div>
       </div>
     </footer>
