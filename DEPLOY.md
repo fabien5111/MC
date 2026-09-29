@@ -395,6 +395,10 @@ sur le bundle.
 | Tâche | Où | Cadence |
 |---|---|---|
 | Sauvegarde complète pgBackRest | `pg_cron`, dans la base (nœud 216075) | 3 h 30 GMT |
+| Purge du module contact (`contact_purge()`) | `pg_cron`, dans la base (nœud 216075) | 4 h 15 GMT |
+| Purge du journal « en tant que » (1 an) | `pg_cron`, dans la base (nœud 216075) | 4 h 20 GMT |
+| Purge des statistiques d'encarts (13 mois) | `pg_cron`, dans la base (nœud 216075) | 4 h 25 GMT |
+| Purge de l'historique de connexion (13 mois) | `pg_cron`, dans la base (nœud 216075) | 4 h 30 GMT |
 | `/api/cron/abonnements` | `.github/workflows/cron-abonnements.yml` | 2 h 00 |
 | `/api/cron/contact-jira` | `.github/workflows/cron-contact-jira.yml` | 2 h 30 |
 
@@ -409,6 +413,83 @@ un paquet `apk`) et la sauvegarde nocturne échoue en silence. À rejouer :
 ```bash
 apk add --no-cache pgbackrest && pgbackrest --stanza=jepatisse check
 ```
+
+**`failed` dans `cron.job_run_details` (code 104) ne veut pas dire « pas de
+sauvegarde ».** La commande enchaîne deux étapes : la sauvegarde, puis le
+nettoyage (`expire`), qui retire la sauvegarde la plus ancienne **et** les
+journaux de transactions (WAL) qui ne servent plus. Le code 104 signifie
+« une étape a rencontré une erreur » — à lire dans les DEUX journaux,
+`jepatisse-backup.log` et `jepatisse-expire.log`. Constaté du 24 au 29/09/2026 :
+sauvegardes réussies, mais nettoyage des WAL en échec toutes les nuits sur un
+délai d'attente du stockage objet (`[042] timeout after 60000ms waiting for
+read from 's3.pub1.infomaniak.cloud:443'`). Conséquence silencieuse : les WAL
+s'accumulent depuis le 12/09, et une donnée effacée reste restaurable depuis
+eux — ce qui ferait mentir la politique de confidentialité au-delà de 30 jours.
+
+**Corrigé le 29/09/2026** : `io-timeout=300` inscrit sous `[global]` dans
+`/etc/pgbackrest/pgbackrest.conf` (propriétaire `postgres`, droits `600`,
+inchangés). Un nettoyage réel a alors duré 83 s — au-delà des 60 s par défaut,
+ce qui explique les échecs — et a retiré 12 sauvegardes expirées et les WAL
+antérieurs à la plus ancienne sauvegarde conservée. Ce réglage n'existe que
+dans ce fichier : **à réinscrire après tout redéploiement du nœud**, comme
+l'installation du paquet `pgbackrest` ci-dessus. Contrôle : `pgbackrest info`
+doit montrer une ligne `wal archive min` proche du début de la plus ancienne
+sauvegarde listée (et non des jours plus tôt), et `cron.job_run_details`
+`succeeded` pour `sauvegarde-quotidienne`.
+
+L'état des sauvegardes se lit avec `pgbackrest info` ; les erreurs, dans les
+journaux. En Web SSH sur le nœud 216075, une commande par ligne :
+
+```bash
+su postgres -c "pgbackrest --stanza=jepatisse info"
+grep -iE "expire full|remove archive|ERROR" /etc/pgbackrest/log/jepatisse-expire.log | tail -10
+```
+
+Conservation : les **7 dernières sauvegardes complètes**
+(`repo1-retention-full=7`, décompte **par nombre**, bucket `jp-pgbackup`).
+C'est ce qui tient la promesse de la politique de confidentialité (§ 8 :
+« effacement sous 30 jours, sauvegardes comprises ») — à deux conditions :
+que les sauvegardes réussissent (si elles échouent, les 7 dernières réussies
+restent et vieillissent au-delà de 30 jours), et que le nettoyage des WAL
+aboutisse (cf. ci-dessus).
+
+### Purges RGPD (`pg_cron`)
+
+Deux tâches appliquent les durées de conservation annoncées par la politique
+de confidentialité (`/confidentialite`, § 8). Posées le 28/09/2026 : jusque-là,
+`contact_purge()` existait sans que rien ne l'appelle, et le journal
+d'impersonation n'avait aucune purge.
+
+| Tâche `pg_cron` | Ce qu'elle efface |
+|---|---|
+| `purge-contact` | `contact_purge()` : empreinte IP à 30 jours, demande close à 12 mois (24 pour un bug) — cf. `docs/contact-jira.md` § 6 |
+| `purge-journal-impersonation` | `impersonation_events` de plus d'un an, puis les `impersonation_sessions` de plus d'un an qui n'ont plus d'événement |
+| `purge-encarts` | `ad_events` de plus de 13 mois (affichages et clics des encarts partenaires ; le trigger `ad_events_stamp_user` y range l'identifiant du membre connecté, donc donnée personnelle). Posée le 29/09/2026 ; la clé étrangère `user_id` est en `ON DELETE SET NULL` : la suppression d'un membre efface déjà son identifiant. |
+| `purge-visites` | `visit_sessions` dont la dernière activité (`last_seen_at`) date de plus de 13 mois (une ligne par visite d'un membre connecté, alimentée par `components/VisitTracker.tsx`, lue par l'admin dans « Connexions du membre »). Posée le 29/09/2026 ; la clé étrangère `user_id` est en `ON DELETE CASCADE` : les lignes partent avec le membre. |
+
+Elles vivent dans le catalogue de la base (`cron.job`) : une restauration
+pgBackRest les ramène, une base recréée à neuf les perd. `pgweb_admin` n'a pas
+accès au schéma `cron` — tout passe par `psql` en `postgres`, en Web SSH sur le
+nœud 216075. Pour les recréer (`cron.schedule` remplace une tâche du même nom,
+donc rejouable sans doublon), une commande par ligne :
+
+```bash
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-contact', '15 4 * * *', 'select public.contact_purge()');"
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-journal-impersonation', '20 4 * * *', 'delete from public.impersonation_events where created_at < now() - interval ''1 year''; delete from public.impersonation_sessions s where s.created_at < now() - interval ''1 year'' and not exists (select 1 from public.impersonation_events e where e.session_id = s.id)');"
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-encarts', '25 4 * * *', 'delete from public.ad_events where created_at < now() - interval ''13 months''');"
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-visites', '30 4 * * *', 'delete from public.visit_sessions where last_seen_at < now() - interval ''13 months''');"
+```
+
+Vérifier les exécutions des dernières 24 h :
+
+```bash
+psql -U postgres -d postgres -x -c "select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j using (jobid) where d.start_time > now() - interval '1 day' order by d.start_time;"
+```
+
+**Limite connue** : `contact_purge()` supprime les lignes, pas les photos
+jointes, qui restent sur Swift (conteneur `jp-contact`). Seule la
+réconciliation manuelle (`.github/workflows/object-storage-reconciliation.yml`)
+les retire aujourd'hui.
 
 ## Éditeur SQL en ligne (pgweb)
 

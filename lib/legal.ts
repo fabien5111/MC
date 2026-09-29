@@ -1,9 +1,13 @@
 // Informations légales du site — source unique (JEP-17).
 //
-// Lues par les mentions légales et la politique de confidentialité, et
-// destinées aux CGU (JEP-129) et CGV (JEP-16) : une seule copie de l'identité
-// de l'éditeur, sinon les pages finissent par se contredire au premier
-// changement (immatriculation obtenue, déménagement…).
+// Lues par les mentions légales et la politique de confidentialité (la CGV
+// déjà en place, elle, ne redit pas ces informations), et destinées aux CGU
+// (JEP-129) : une seule copie de l'identité de l'éditeur, sinon les pages
+// finissent par se contredire au premier changement (déménagement…).
+//
+// SIREN 788 550 077 : repris de la politique de confidentialité (§1, PR
+// #298 fusionnée sur main pendant le développement de ce ticket), à vérifier
+// au registre public.
 //
 // Pas de téléphone de l'éditeur pour l'instant (décision du 28/09/2026) : la
 // LCEN (art. 6-III) le demande à un éditeur professionnel — à ajouter ici dès
@@ -11,7 +15,8 @@
 
 export const EDITEUR = {
   nom: 'Fabien CHENU',
-  statut: 'Entreprise individuelle en cours d’immatriculation',
+  statut: 'Entrepreneur individuel',
+  siren: '788 550 077',
   adresse: '20b, rue Marie-Clémence Fouriaux — 51100 Reims',
   email: 'contact@jepatisse.com',
   telephone: null as string | null,

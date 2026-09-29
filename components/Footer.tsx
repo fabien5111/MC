@@ -34,8 +34,7 @@ export function Footer() {
               </h4>
               <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
                 <li><Link className="hover:text-primary transition-colors" href="/mentions-legales">Mentions légales</Link></li>
-                {/* Lien à brancher sur `/cgu` avec JEP-129. */}
-                <li><a className="hover:text-primary transition-colors" href="#">Conditions</a></li>
+                <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite">Confidentialité</Link></li>
               </ul>
             </div>

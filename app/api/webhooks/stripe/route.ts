@@ -24,13 +24,18 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
 import { sendEmailBestEffort } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
+import { CGV_CHEMIN, CGV_VERSION, DELAI_RETRACTATION_JOURS } from '@/lib/cgv';
 import {
+  emailConfirmationSouscription,
   isoDepuisUnixStripe,
   lireAbonnementStripe,
+  lireDetailsSouscription,
   lireClientFacture,
   lireSessionCheckout,
   messageAbonnementConfirme,
   messageEchecPaiement,
+  texteVersHtml,
   verifierSignatureStripe,
 } from '@/lib/billing';
 import {
@@ -159,7 +164,7 @@ async function traiter(type: string, objet: unknown): Promise<void> {
     // appliquée ou un simple renouvellement ont déjà leur propre affichage
     // sur `/reglages` (§14 `docs/abonnements.md`, trou relevé le 21/09).
     if (type === 'customer.subscription.created' && abo.userId) {
-      await notifierAbonnementConfirme(abo.userId, abo.priceId, abo.finPeriodeIso);
+      await notifierAbonnementConfirme(abo.userId, abo.priceId, abo.finPeriodeIso, objet);
     }
     return;
   }
@@ -220,24 +225,46 @@ async function notifierEchecPaiement(objet: unknown): Promise<void> {
  * juste au-dessus par `appliquerAbonnementStripe`, ne dépendent pas de ce
  * message.
  */
-async function notifierAbonnementConfirme(userId: string, priceId: string, finPeriodeIso: string | null): Promise<void> {
+async function notifierAbonnementConfirme(
+  userId: string,
+  priceId: string,
+  finPeriodeIso: string | null,
+  objet: unknown,
+): Promise<void> {
   const admin = createAdminClient();
   const planLabel = (await resoudreLibellePlanParPrix(admin, priceId)) ?? 'votre formule';
   const { titre, corps } = messageAbonnementConfirme(planLabel, finPeriodeIso);
 
   await createNotification(admin, userId, 'SUBSCRIPTION_CONFIRMED', titre, corps);
 
-  // Même doctrine que l'échec de paiement : e-mail best-effort, conditionné
-  // à la préférence du membre ; la notification in-app, elle, part toujours.
-  if (!(await getNotifyEmailPreferenceAdmin(admin, userId))) return;
-
+  // **L'e-mail, lui, ne dépend PAS de la préférence de notification** (CGV
+  // art. 7) : c'est la confirmation du contrat sur support durable
+  // (L.221-13 du Code de la consommation) — CGV acceptées, prix, demande
+  // d'accès immédiat et rappel du droit de rétractation. Un membre qui a
+  // coupé les notifications par e-mail n'a pas renoncé à recevoir la
+  // confirmation de ce qu'il vient de payer. Best-effort malgré tout : les
+  // droits, déjà écrits, ne dépendent pas de son départ.
   const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();
   if (!profil?.email) return;
 
+  const { sujet, texte } = emailConfirmationSouscription({
+    planLabel,
+    details: lireDetailsSouscription(objet),
+    finPeriodeIso,
+    souscritLeIso: new Date().toISOString(),
+    urlSite: siteUrl(),
+    cgvChemin: CGV_CHEMIN,
+    cgvVersionEnVigueur: CGV_VERSION,
+    delaiRetractationJours: DELAI_RETRACTATION_JOURS,
+  });
+
   await sendEmailBestEffort({
     to: profil.email,
-    subject: titre,
-    text: corps,
-    html: `<p>${corps.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`,
+    subject: sujet,
+    text: texte,
+    html: texteVersHtml(texte),
+    // Le droit de rétractation s'exerce « en répondant à cet e-mail » : la
+    // réponse doit donc arriver à une boîte lue, pas à `noreply@`.
+    replyTo: process.env.EMAIL_REPLY_TO || undefined,
   });
 }

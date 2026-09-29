@@ -53,7 +53,7 @@ export default function MentionsLegalesPage() {
           <p>
             <strong className="text-on-surface">{EDITEUR.nom}</strong>
             <br />
-            {EDITEUR.statut}
+            {EDITEUR.statut}, SIREN {EDITEUR.siren}
             <br />
             {EDITEUR.adresse}
             <br />

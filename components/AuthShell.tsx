@@ -37,10 +37,9 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/mentions-legales">
               Mentions légales
             </Link>
-            {/* Lien à brancher sur `/cgu` avec JEP-129. */}
-            <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="#">
-              Conditions
-            </a>
+            <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/cgv">
+              Conditions de vente
+            </Link>
             <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary underline transition-all" href="/confidentialite">
               Confidentialité
             </Link>

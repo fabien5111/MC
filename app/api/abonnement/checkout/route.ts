@@ -5,15 +5,25 @@
 // `subscriptions` une fois le paiement réellement confirmé. Un membre qui
 // ferme l'onglet ici n'est pas abonné — c'est voulu.
 //
-// **La case de renonciation au droit de rétractation est revérifiée ici**,
-// jamais sur la seule foi du client : une case cochée dans le navigateur ne
-// prouve rien (doctrine du dépôt), et un litige se tranche sur ce qui est
-// tracé côté serveur, pas sur ce qui a été affiché à l'écran.
+// **Les deux cases de la fenêtre de souscription sont revérifiées ici** —
+// acceptation des CGV (dans leur version EN VIGUEUR) et demande d'accès
+// immédiat au service —, jamais sur la seule foi du client : une case cochée
+// dans le navigateur ne prouve rien (doctrine du dépôt), et un litige se
+// tranche sur ce qui est tracé côté serveur, pas sur ce qui a été affiché à
+// l'écran. Les deux sont horodatées en métadonnée de l'abonnement Stripe.
+//
+// La demande d'accès immédiat n'est PLUS une renonciation au droit de
+// rétractation (CGV art. 11) : le membre garde ses 14 jours, remboursé au
+// prorata de la durée restante. La métadonnée garde son nom historique,
+// `waiver_accepted_at`, recopiée telle quelle en base par le webhook
+// (`mc_apply_stripe_subscription`) — la renommer imposerait une migration
+// pour un changement de sens qui, lui, est porté par la version des CGV.
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { siteUrl } from '@/lib/site-url';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { cleIdempotence } from '@/lib/billing';
+import { CGV_VERSION, cgvVersionValide } from '@/lib/cgv';
 import { appelStripe, getIdClientStripe, resoudrePrixStripe, MissingStripeConfigError, type Periodicite } from '@/lib/billing-data';
 
 export const maxDuration = 30;
@@ -33,12 +43,18 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const planCode = typeof body?.plan === 'string' ? body.plan.trim().toUpperCase() : '';
   const periodicite: Periodicite = body?.periodicite === 'YEARLY' ? 'YEARLY' : 'MONTHLY';
-  const renonciation = body?.renonciationRetractation === true;
+  const accesImmediat = body?.accesImmediat === true;
 
   if (!planCode) return NextResponse.json({ erreur: 'Plan manquant.' }, { status: 400 });
-  if (!renonciation) {
+  if (!cgvVersionValide(body?.cgvVersion)) {
     return NextResponse.json(
-      { erreur: 'La renonciation au délai de rétractation doit être acceptée pour continuer.' },
+      { erreur: 'Les conditions générales de vente ont été mises à jour : rechargez la page pour les accepter.' },
+      { status: 422 },
+    );
+  }
+  if (!accesImmediat) {
+    return NextResponse.json(
+      { erreur: 'Les conditions générales de vente et la demande d’accès immédiat doivent être acceptées pour continuer.' },
       { status: 422 },
     );
   }
@@ -66,7 +82,7 @@ export async function POST(req: Request) {
   }
 
   const customerId = await getIdClientStripe(user.id);
-  const renonciationLe = new Date().toISOString();
+  const accepteLe = new Date().toISOString();
 
   // `siteUrl()` et non `new URL(req.url).origin` : derrière l'équilibreur
   // Virtuozzo, cette dernière rend `http://localhost:3000` — l'adresse
@@ -90,7 +106,12 @@ export async function POST(req: Request) {
       ...(customerId ? { customer: customerId } : { customer_email: user.email }),
       client_reference_id: user.id,
       subscription_data: {
-        metadata: { user_id: user.id, waiver_accepted_at: renonciationLe },
+        metadata: {
+          user_id: user.id,
+          waiver_accepted_at: accepteLe,
+          cgv_version: CGV_VERSION,
+          cgv_accepted_at: accepteLe,
+        },
       },
       metadata: { user_id: user.id },
       success_url: `${origine}/reglages?abonnement=confirme`,

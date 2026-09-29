@@ -17,6 +17,7 @@ import { useDialog } from '@/components/Dialog';
 import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { CheckoutWaiverDialog } from '@/components/plans/CheckoutWaiverDialog';
+import { CGV_VERSION } from '@/lib/cgv';
 import {
   annualSaving,
   diffRights,
@@ -162,7 +163,8 @@ export function PlansPage({
   }
 
   // Souscription réelle (JEP-29) : ouvre une session Stripe Checkout après
-  // acceptation de la renonciation au droit de rétractation. Remplace
+  // acceptation des CGV et demande d'accès immédiat (`CheckoutWaiverDialog`,
+  // deux cases, revérifiées par la route avec la version des CGV). Remplace
   // l'ancienne simulation par code (`mc_simulate_subscribe`, §13 de
   // docs/abonnements.md) — retirée avec ce lot, comme annoncé.
   //
@@ -175,7 +177,7 @@ export function PlansPage({
   // Plan passé en argument plutôt que relu dans l'état : la fenêtre est
   // fermée juste avant l'appel, et dépendre de la valeur encore capturée par
   // la fermeture serait une subtilité de plus à retenir pour rien.
-  async function demarrerAbonnement(code: string, renonciationAcceptee: boolean) {
+  async function demarrerAbonnement(code: string) {
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/checkout', {
@@ -184,7 +186,8 @@ export function PlansPage({
         body: JSON.stringify({
           plan: code,
           periodicite: annuel ? 'YEARLY' : 'MONTHLY',
-          renonciationRetractation: renonciationAcceptee,
+          cgvVersion: CGV_VERSION,
+          accesImmediat: true,
         }),
       });
       const data = await r.json().catch(() => ({}));
@@ -203,7 +206,11 @@ export function PlansPage({
     }
   }
 
-  async function changerFormule(planCode: string, planLabel: string, renonciationAcceptee: boolean) {
+  // `consentements` : vrai seulement quand l'appel vient de la fenêtre de
+  // souscription (montée), où les deux cases ont été cochées. Une descente
+  // n'engage rien et ne passe pas par elle — on n'envoie alors aucun
+  // consentement que le membre n'aurait pas donné.
+  async function changerFormule(planCode: string, planLabel: string, consentements: boolean) {
     setBusy(true);
     try {
       const r = await fetch('/api/abonnement/changer', {
@@ -214,7 +221,7 @@ export function PlansPage({
         // position d'une bascule d'affichage.
         body: JSON.stringify({
           plan: planCode,
-          renonciationRetractation: renonciationAcceptee,
+          ...(consentements ? { cgvVersion: CGV_VERSION, accesImmediat: true } : {}),
           // Jeton par CLIC : deux envois du même clic ne débitent qu'une fois,
           // une reprise après « changez de carte » repart à neuf.
           jeton: crypto.randomUUID(),
@@ -358,7 +365,7 @@ export function PlansPage({
             const { code, label, mode } = waiverPlan;
             setWaiverPlan(null);
             if (mode === 'montee') void changerFormule(code, label, true);
-            else void demarrerAbonnement(code, true);
+            else void demarrerAbonnement(code);
           }}
         />
       )}

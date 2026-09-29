@@ -1415,3 +1415,69 @@ que de la traduire (cf. commit sur `reinitialiser-essai`).
 production** : `drop function` de l'ancienne signature avant (ou après) le
 `create or replace` de la nouvelle — jamais l'un sans l'autre. Vérifier après
 coup avec `pg_get_function_identity_arguments` : une seule ligne attendue.
+
+## 16. CGV — acceptation tracée, rétractation conservée, confirmations écrites
+
+Mise en conformité du parcours de souscription avec les conditions générales
+de vente (`app/cgv/page.tsx`, version dans `lib/cgv.ts`). Le texte n'est pas
+un avis juridique : relecture par un professionnel avant commercialisation,
+et les mentions entre crochets (identité de l'éditeur, durée de l'essai,
+médiateur…) restent à fournir.
+
+### La renonciation au droit de rétractation est abandonnée
+
+L'ancienne case (« je renonce expressément à mon droit de rétractation »)
+s'appuyait sur l'exception « contenu numérique » (L.221-28 13°). Un
+abonnement à des fonctionnalités en ligne est plutôt un **service**, dont la
+renonciation ne vaut que s'il est pleinement exécuté avant la fin des
+14 jours (L.221-28 1°) — jamais le cas d'un abonnement mensuel. Retenu :
+**le membre garde ses 14 jours**, remboursé au prorata de la durée restante
+(L.221-25, CGV art. 11). La seconde case devient une **demande d'accès
+immédiat**, qui ne retire rien.
+
+- **La métadonnée garde son nom historique** (`waiver_accepted_at`) :
+  recopiée en base par `mc_apply_stripe_subscription`, la renommer imposait
+  une migration. Son sens est désormais porté par la version des CGV posée à
+  côté — à partir de `2026-09-27`, elle trace une demande d'accès immédiat,
+  pas une renonciation.
+- **Le remboursement reste un geste manuel** : sur demande de rétractation
+  (e-mail, formulaire de contact), remboursement partiel depuis le Dashboard
+  Stripe (montant × jours restants ÷ jours de la période, décompte arrêté à
+  la réception), puis annulation **immédiate** de l'abonnement (pas
+  `cancel_at_period_end`) — le webhook ramène le compte à la formule
+  gratuite. Délai légal : 14 jours après réception de la demande.
+
+### Deux cases, deux consentements, revérifiés côté serveur
+
+`CheckoutWaiverDialog` porte l'acceptation des CGV (lien vers `/cgv`) et la
+demande d'accès immédiat, séparées et non pré-cochées. `checkout` et
+`changer` (montée seulement — une descente n'engage rien) exigent
+`accesImmediat: true` **et** `cgvVersion === CGV_VERSION` : un onglet resté
+ouvert sur une version périmée de la fenêtre est refusé (422, « rechargez la
+page »), plutôt que de tracer l'acceptation d'un texte que le membre n'a pas
+eu sous les yeux. Trace : `cgv_version` + `cgv_accepted_at` en métadonnée de
+l'abonnement Stripe (réécrites à chaque montée). Pas de colonne en base —
+Stripe conserve la preuve ; en ajouter une serait un `ALTER TABLE` joué en
+`psql` sur le nœud 216075.
+
+**Toute modification de fond de `app/cgv/page.tsx` impose une nouvelle
+`CGV_VERSION`**, sans quoi deux textes différents porteraient la même
+version.
+
+### Confirmations écrites, indépendantes de la préférence de notification
+
+- **Souscription** (webhook, `customer.subscription.created`) : formule,
+  prix lu sur l'article Stripe, renouvellement, version des CGV acceptée,
+  rappel du droit de rétractation — le support durable de L.221-13.
+  L'e-mail ne dépend plus de `getNotifyEmailPreferenceAdmin` (la
+  notification in-app, elle, est inchangée) : couper les notifications n'est
+  pas renoncer à la confirmation de ce qu'on a payé.
+- **Résiliation** (`/api/abonnement/resilier`, chemin Stripe uniquement) :
+  date d'effet rendue par Stripe (L.215-1-1). Un essai ou un don n'est pas un
+  contrat payant, pas d'e-mail.
+- Les deux sont best-effort (un échec d'envoi ne fait échouer ni l'événement
+  ni la résiliation) et portent `replyTo: EMAIL_REPLY_TO` — la rétractation
+  s'exerce « en répondant à cet e-mail ».
+
+Le bouton de `UsageCard` s'appelle désormais « Résilier mon abonnement »
+(libellé de la résiliation en trois clics) ; « Annuler mon essai » reste.
