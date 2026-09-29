@@ -379,6 +379,7 @@ export default function ConfidentialitePage() {
               ['Empreinte de l’adresse IP liée à une demande de contact', '30 jours'],
               ['Ticket Jira (sans donnée nominative)', 'Sans limite de durée'],
               ['Journal des accès « en tant que » (§ 5)', '1 an'],
+              ['Affichages et clics sur les encarts partenaires (§ 2)', '13 mois'],
               ['Données de connexion', '1 an (LCEN, décret n° 2021-1362)'],
               ['Pièces comptables et factures', '10 ans (art. L123-22 du code de commerce)'],
             ]}
