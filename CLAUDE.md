@@ -1305,6 +1305,22 @@ projet Supabase/Jira réel : **`docs/contact-jira.md`**.
   échoué), portée par `.github/workflows/cron-contact-jira.yml` à 2 h 30
   UTC, après le cron d'abonnements.
 
+## CGV et souscription
+
+`/cgv` (texte, `app/cgv/page.tsx`) et `lib/cgv.ts` (`CGV_VERSION`). Détail :
+`docs/abonnements.md` §16.
+
+- **Pas de renonciation au droit de rétractation** : la fenêtre de
+  souscription (`CheckoutWaiverDialog`) demande l'acceptation des CGV et
+  l'**accès immédiat** au service, deux cases distinctes. Le membre garde ses
+  14 jours, remboursé au prorata (geste manuel, Dashboard Stripe).
+- **Revérifié côté serveur** (`checkout`, `changer` en montée) avec la version
+  en vigueur, tracé en métadonnée Stripe (`cgv_version`, `cgv_accepted_at`).
+  **Modifier le fond du texte impose une nouvelle `CGV_VERSION`.**
+- **Confirmations écrites de souscription et de résiliation envoyées quelle
+  que soit la préférence de notification** : ce sont des obligations légales
+  (support durable, résiliation en trois clics), pas des notifications.
+
 ## Réglages du compte
 
 `/reglages` (l'atelier — ce qu'on règle pour soi, distinct de la vitrine

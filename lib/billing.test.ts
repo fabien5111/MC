@@ -22,7 +22,13 @@ import {
   messageErreurStripe,
   modeStripe,
   verifierSignatureStripe,
+  emailConfirmationResiliation,
+  emailConfirmationSouscription,
+  libellePrixPeriode,
+  lireDetailsSouscription,
+  texteVersHtml,
 } from '@/lib/billing';
+import { CGV_VERSION, cgvVersionValide } from '@/lib/cgv';
 
 const SECRET = 'whsec_exemple_de_secret_de_test';
 const CORPS = '{"id":"evt_1","type":"customer.subscription.updated"}';
@@ -391,5 +397,117 @@ describe('phaseCourante', () => {
     // relecture des phases a rendu (incohérence à ne jamais masquer) :
     expect(phaseCourante({ current_phase: { start_date: 9999 } }, phases)).toBeNull();
     expect(phaseCourante({ current_phase: { start_date: 1000 } }, [])).toBeNull();
+  });
+});
+
+describe('lireDetailsSouscription', () => {
+  it('lit le prix complet de l’article et la version des CGV', () => {
+    expect(
+      lireDetailsSouscription({
+        items: { data: [{ id: 'si_1', price: { id: 'price_1', unit_amount: 499, currency: 'eur', recurring: { interval: 'month' } } }] },
+        metadata: { cgv_version: '2026-09-27' },
+      }),
+    ).toEqual({ montantCentimes: 499, devise: 'eur', intervalle: 'month', cgvVersion: '2026-09-27' });
+  });
+
+  it('dégrade champ par champ, sans lever, sur un objet incomplet', () => {
+    expect(lireDetailsSouscription({ items: { data: [{ price: 'price_1' }] } })).toEqual({
+      montantCentimes: null,
+      devise: null,
+      intervalle: null,
+      cgvVersion: null,
+    });
+    expect(lireDetailsSouscription(null).montantCentimes).toBeNull();
+  });
+});
+
+describe('libellePrixPeriode', () => {
+  it('formate en euros, à la française, avec la périodicité', () => {
+    // Espace insécable avant le symbole : on normalise pour comparer.
+    const libelle = libellePrixPeriode({ montantCentimes: 499, devise: 'eur', intervalle: 'month' })?.replace(/\s/g, ' ');
+    expect(libelle).toBe('4,99 € par mois');
+    expect(libellePrixPeriode({ montantCentimes: 4990, devise: 'eur', intervalle: 'year' })).toContain('par an');
+  });
+
+  it('rend null plutôt qu’un prix inventé', () => {
+    expect(libellePrixPeriode({ montantCentimes: null, devise: 'eur', intervalle: 'month' })).toBeNull();
+    expect(libellePrixPeriode({ montantCentimes: 499, devise: null, intervalle: 'month' })).toBeNull();
+  });
+});
+
+describe('emailConfirmationSouscription', () => {
+  const base = {
+    planLabel: 'Pro',
+    details: { montantCentimes: 499, devise: 'eur', intervalle: 'month', cgvVersion: '2026-09-27' },
+    finPeriodeIso: '2026-10-27T10:00:00.000Z',
+    souscritLeIso: '2026-09-27T10:00:00.000Z',
+    urlSite: 'https://www.jepatisse.com',
+    cgvChemin: '/cgv',
+    cgvVersionEnVigueur: CGV_VERSION,
+    delaiRetractationJours: 14,
+  };
+
+  it('reprend ce que le support durable doit porter (L.221-13)', () => {
+    const { sujet, texte } = emailConfirmationSouscription(base);
+    expect(sujet).toBe('Confirmation de votre abonnement Pro');
+    expect(texte).toContain('Formule : Pro');
+    expect(texte).toContain('par mois');
+    expect(texte).toContain('27 octobre 2026');
+    expect(texte).toContain('version du 27 septembre 2026');
+    expect(texte).toContain('https://www.jepatisse.com/cgv');
+    // Accès immédiat SANS renonciation : les 14 jours restent ouverts.
+    expect(texte).toContain('Vous conservez néanmoins votre droit de rétractation pendant 14 jours');
+    expect(texte).not.toMatch(/renonc/i);
+    expect(texte).toContain('Résilier mon abonnement');
+  });
+
+  it('retombe sur la version en vigueur si la métadonnée manque, et omet un prix illisible', () => {
+    const { texte } = emailConfirmationSouscription({
+      ...base,
+      details: { montantCentimes: null, devise: null, intervalle: null, cgvVersion: null },
+      cgvVersionEnVigueur: '2026-09-27',
+    });
+    expect(texte).toContain('version du 27 septembre 2026');
+    expect(texte).not.toContain('Prix :');
+  });
+});
+
+describe('emailConfirmationResiliation', () => {
+  it('annonce la date d’effet (L.215-1-1)', () => {
+    const { sujet, texte } = emailConfirmationResiliation({
+      planLabel: 'Plus',
+      finPeriodeIso: '2026-10-27T10:00:00.000Z',
+      resilieLeIso: '2026-09-27T10:00:00.000Z',
+      urlSite: 'https://www.jepatisse.com',
+    });
+    expect(sujet).toBe('Résiliation de votre abonnement Plus');
+    expect(texte).toContain('demandée le 27 septembre 2026');
+    expect(texte).toContain('Elle prendra effet le 27 octobre 2026');
+    expect(texte).toContain('Aucun nouveau prélèvement');
+  });
+
+  it('reste explicite sans date connue', () => {
+    const { texte } = emailConfirmationResiliation({
+      planLabel: 'Plus',
+      finPeriodeIso: null,
+      resilieLeIso: '2026-09-27T10:00:00.000Z',
+      urlSite: 'https://www.jepatisse.com',
+    });
+    expect(texte).toContain('à la fin de la période en cours');
+  });
+});
+
+describe('texteVersHtml', () => {
+  it('échappe le HTML et découpe en paragraphes', () => {
+    expect(texteVersHtml('a < b & c\nligne\n\nsuite')).toBe('<p>a &lt; b &amp; c<br>ligne</p><p>suite</p>');
+  });
+});
+
+describe('cgvVersionValide', () => {
+  it('n’accepte que la version en vigueur', () => {
+    expect(cgvVersionValide(CGV_VERSION)).toBe(true);
+    expect(cgvVersionValide('2020-01-01')).toBe(false);
+    expect(cgvVersionValide(undefined)).toBe(false);
+    expect(cgvVersionValide(true)).toBe(false);
   });
 });

@@ -42,6 +42,7 @@ import {
   phaseCourante,
   sensChangement,
 } from '@/lib/billing';
+import { CGV_VERSION, cgvVersionValide } from '@/lib/cgv';
 import {
   appelStripe,
   getAbonnementStripeCourant,
@@ -62,7 +63,8 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const planCode = typeof body?.plan === 'string' ? body.plan.trim().toUpperCase() : '';
-  const renonciation = body?.renonciationRetractation === true;
+  const accesImmediat = body?.accesImmediat === true;
+  const cgvAcceptees = cgvVersionValide(body?.cgvVersion);
   // Jeton d'unicité posé par le CLIC, pas par la requête : deux envois du
   // même clic partagent le jeton (aucun double débit), alors qu'une reprise
   // délibérée après « changez de carte » en produit un neuf — sans quoi la
@@ -138,16 +140,24 @@ export async function POST(req: Request) {
       : NextResponse.json({ erreur: r.message }, { status: 502 });
   }
 
-  // Une montée ouvre un accès immédiat à du contenu numérique contre un
-  // prélèvement immédiat : même situation que la souscription initiale, donc
-  // même renonciation, revérifiée ici et jamais sur la seule foi du client.
-  // Une descente ne débite rien et n'ouvre rien : elle n'en demande pas.
-  if (!renonciation) {
+  // Une montée ouvre un accès immédiat au service contre un prélèvement
+  // immédiat : même situation que la souscription initiale (CGV art. 11.1 —
+  // la rétractation vaut aussi pour chaque montée), donc mêmes cases,
+  // revérifiées ici et jamais sur la seule foi du client. Une descente ne
+  // débite rien et n'ouvre rien : elle n'en demande pas.
+  if (!cgvAcceptees) {
     return NextResponse.json(
-      { erreur: 'La renonciation au délai de rétractation doit être acceptée pour continuer.' },
+      { erreur: 'Les conditions générales de vente ont été mises à jour : rechargez la page pour les accepter.' },
       { status: 422 },
     );
   }
+  if (!accesImmediat) {
+    return NextResponse.json(
+      { erreur: 'Les conditions générales de vente et la demande d’accès immédiat doivent être acceptées pour continuer.' },
+      { status: 422 },
+    );
+  }
+  const accepteLe = new Date().toISOString();
 
   // Stripe refuse de modifier un abonnement piloté par un échéancier. Avant
   // de le libérer, on note ce qu'il programmait : si la montée échoue au
@@ -189,9 +199,11 @@ export async function POST(req: Request) {
       // qu'on veut continuer. Sans ça, un membre ayant résilié paierait un
       // prorata sur un abonnement que Stripe clôt à l'échéance.
       cancel_at_period_end: false,
-      // Seule cette clé est transmise : Stripe fusionne les métadonnées sur
+      // Seules ces clés sont transmises : Stripe fusionne les métadonnées sur
       // une mise à jour, `user_id` posé à la souscription est donc préservé.
-      metadata: { waiver_accepted_at: new Date().toISOString() },
+      // La version des CGV est réécrite : c'est la dernière acceptée qui
+      // régit l'abonnement monté.
+      metadata: { waiver_accepted_at: accepteLe, cgv_version: CGV_VERSION, cgv_accepted_at: accepteLe },
     },
   });
 

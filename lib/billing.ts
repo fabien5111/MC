@@ -293,6 +293,137 @@ export function messageAbonnementConfirme(planLabel: string, finPeriodeIso: stri
   };
 }
 
+/**
+ * Ce que la confirmation de souscription doit rappeler et que
+ * `lireAbonnementStripe` ne porte pas : le prix réellement souscrit et la
+ * version des CGV acceptée. Lu sur le même objet `subscription` du webhook —
+ * le prix y figure en entier sur l'article (`items.data[0].price`).
+ *
+ * Tolérant par construction : chaque champ illisible vaut `null`, l'e-mail
+ * dégrade la ligne concernée plutôt que de ne pas partir.
+ */
+export type DetailsSouscription = {
+  montantCentimes: number | null;
+  devise: string | null;
+  /** `month` / `year` — la périodicité Stripe telle quelle. */
+  intervalle: string | null;
+  cgvVersion: string | null;
+};
+
+export function lireDetailsSouscription(objet: unknown): DetailsSouscription {
+  const sub = (objet && typeof objet === 'object' ? objet : {}) as Record<string, unknown>;
+  const articles = (sub.items as { data?: unknown[] } | undefined)?.data;
+  const premier = Array.isArray(articles) ? (articles[0] as Record<string, unknown> | undefined) : undefined;
+  const prix = (premier?.price && typeof premier.price === 'object' ? premier.price : {}) as Record<string, unknown>;
+  const recurrence = (prix.recurring && typeof prix.recurring === 'object' ? prix.recurring : {}) as Record<string, unknown>;
+  const metadata = (sub.metadata ?? {}) as Record<string, unknown>;
+  const montant = prix.unit_amount;
+  return {
+    montantCentimes: typeof montant === 'number' && Number.isFinite(montant) ? montant : null,
+    devise: texte(prix.currency),
+    intervalle: texte(recurrence.interval),
+    cgvVersion: texte(metadata.cgv_version),
+  };
+}
+
+/** « 4,99 € par mois » — ou `null` si le prix n'est pas lisible. */
+export function libellePrixPeriode(d: Pick<DetailsSouscription, 'montantCentimes' | 'devise' | 'intervalle'>): string | null {
+  if (d.montantCentimes === null || !d.devise) return null;
+  const montant = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: d.devise.toUpperCase() }).format(
+    d.montantCentimes / 100,
+  );
+  const periode = d.intervalle === 'year' ? ' par an' : d.intervalle === 'month' ? ' par mois' : '';
+  return `${montant}${periode}`;
+}
+
+/**
+ * E-mail de confirmation de souscription — le « support durable » exigé par
+ * l'article L.221-13 du Code de la consommation.
+ *
+ * **Envoyé quelle que soit la préférence de notification du membre** : ce
+ * n'est pas une notification de confort mais la confirmation du contrat, qui
+ * doit reprendre les CGV acceptées et la demande d'accès immédiat au service
+ * (art. 7 et 11 des CGV). Le texte le dit en toutes lettres plutôt que de
+ * renvoyer au seul lien, qui pourrait changer de contenu après coup : la
+ * version acceptée est citée.
+ */
+export function emailConfirmationSouscription(p: {
+  planLabel: string;
+  details: DetailsSouscription;
+  finPeriodeIso: string | null;
+  souscritLeIso: string;
+  urlSite: string;
+  cgvChemin: string;
+  cgvVersionEnVigueur: string;
+  delaiRetractationJours: number;
+}): { sujet: string; texte: string } {
+  const prix = libellePrixPeriode(p.details);
+  const version = p.details.cgvVersion ?? p.cgvVersionEnVigueur;
+  const lignes = [
+    'Bonjour,',
+    '',
+    `Nous vous confirmons la souscription de votre abonnement ${p.planLabel} sur « Je pâtisse ! », le ${formatDate(p.souscritLeIso)}.`,
+    '',
+    `- Formule : ${p.planLabel}`,
+    ...(prix ? [`- Prix : ${prix}`] : []),
+    ...(p.finPeriodeIso
+      ? [`- Renouvellement automatique : le ${formatDate(p.finPeriodeIso)}, puis à chaque échéance, sauf résiliation`]
+      : []),
+    `- Conditions générales de vente acceptées : version du ${formatDate(version)}, consultables sur ${p.urlSite}${p.cgvChemin}`,
+    '',
+    'Accès immédiat et droit de rétractation',
+    `Vous avez demandé à accéder à votre formule dès la validation du paiement. Vous conservez néanmoins votre droit de rétractation pendant ${p.delaiRetractationJours} jours à compter de la souscription : il suffit de nous l’indiquer en répondant à cet e-mail, ou depuis ${p.urlSite}/contact. La part correspondant à la durée déjà écoulée restera due, le reste vous sera remboursé sous 14 jours.`,
+    '',
+    'Résiliation',
+    'Vous pouvez résilier à tout moment depuis Réglages → Mon forfait → « Résilier mon abonnement ». La résiliation prend effet à la fin de la période en cours.',
+    '',
+    'Merci de votre confiance, et bonne pâtisserie !',
+    'L’équipe « Je pâtisse ! »',
+  ];
+  return { sujet: `Confirmation de votre abonnement ${p.planLabel}`, texte: lignes.join('\n') };
+}
+
+/**
+ * E-mail de confirmation de résiliation — exigé par l'article L.215-1-1 du
+ * Code de la consommation (« résiliation en trois clics ») : il doit dire que
+ * la résiliation est prise en compte et à quelle date elle prend effet.
+ * Comme la confirmation de souscription, il part quelle que soit la
+ * préférence de notification du membre.
+ */
+export function emailConfirmationResiliation(p: {
+  planLabel: string;
+  finPeriodeIso: string | null;
+  resilieLeIso: string;
+  urlSite: string;
+}): { sujet: string; texte: string } {
+  const effet = p.finPeriodeIso
+    ? `Elle prendra effet le ${formatDate(p.finPeriodeIso)} : vous conservez jusqu’à cette date les fonctionnalités de votre formule, puis votre compte passera à la formule Gratuite. Aucun nouveau prélèvement n’aura lieu.`
+    : 'Elle prendra effet à la fin de la période en cours, sans nouveau prélèvement ; votre compte passera ensuite à la formule Gratuite.';
+  const lignes = [
+    'Bonjour,',
+    '',
+    `Nous vous confirmons la résiliation de votre abonnement ${p.planLabel}, demandée le ${formatDate(p.resilieLeIso)}.`,
+    '',
+    effet,
+    '',
+    'Vos recettes, votre carnet et vos fournées sont conservés : seules les fonctionnalités réservées aux formules payantes ne seront plus accessibles.',
+    '',
+    `Vous changez d’avis ? Vous pouvez vous réabonner à tout moment depuis ${p.urlSite}/plans.`,
+    '',
+    'L’équipe « Je pâtisse ! »',
+  ];
+  return { sujet: `Résiliation de votre abonnement ${p.planLabel}`, texte: lignes.join('\n') };
+}
+
+/** Texte brut → HTML minimal (paragraphes, retours à la ligne), échappé. */
+export function texteVersHtml(texte: string): string {
+  const echappe = texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return echappe
+    .split(/\n{2,}/)
+    .map((bloc) => `<p>${bloc.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 /** Horodatage Stripe (secondes) → ISO, ou `null`. Exposé pour les routes. */
 export function isoDepuisUnixStripe(v: unknown): string | null {
   return unixVersIso(v);
