@@ -11,8 +11,12 @@
 //
 // Ce n'est PAS un avis juridique : une relecture par un professionnel reste
 // recommandée avant l'ouverture publique. Les passages entre crochets sont
-// des faits encore à vérifier auprès des prestataires (Anthropic, Atlassian)
-// ou l'immatriculation à compléter. Les durées de conservation annoncées au
+// des faits encore à vérifier auprès des prestataires (Atlassian, moteur de
+// recherche web d'Anthropic) ou l'immatriculation à compléter. Anthropic est
+// nommé par ses deux entités (Ireland, Limited pour un client de l'EEE selon
+// ses conditions commerciales ; PBC, qui facture) : l'entité contractante du
+// compte API n'a pas été vérifiée. Conservation (30 jours) : article « How long
+// do you store my organization's data? » du centre de confidentialité Anthropic. Les durées de conservation annoncées au
 // § 8 sont appliquées par pg_cron et pgBackRest : cf. DEPLOY.md, « Tâches
 // planifiées » — ne pas en changer une ici sans changer la tâche qui la tient.
 import type { Metadata } from 'next';
@@ -103,7 +107,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 27 septembre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 29 septembre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -214,7 +218,10 @@ export default function ConfidentialitePage() {
         </Section>
 
         <Section title="4. Recours à l'intelligence artificielle">
-          <p>Certaines fonctionnalités s&apos;appuient sur l&apos;API Claude d&apos;Anthropic PBC (États-Unis) :</p>
+          <p>
+            Certaines fonctionnalités s&apos;appuient sur l&apos;API Claude d&apos;Anthropic (Anthropic Ireland,
+            Limited, en Irlande, et Anthropic PBC, aux États-Unis) :
+          </p>
           <Liste>
             <li>
               lecture des photos de pages et structuration des recettes importées (texte collé, photo, PDF) ;
@@ -227,14 +234,20 @@ export default function ConfidentialitePage() {
             <li>contrôle des pseudos à l&apos;inscription ;</li>
             <li>score indicatif sur les avis soumis à modération ;</li>
             <li>
-              détection d&apos;idées en double dans la boîte à idées, qui compare le texte des idées déjà publiées.
+              détection d&apos;idées en double dans la boîte à idées, qui compare le texte des idées déjà publiées ;
+            </li>
+            <li>
+              contrôle des recettes soumises à la publication publique : modération du contenu et détection de
+              reprises de textes existants, y compris par une recherche web de quelques phrases de la recette.
             </li>
           </Liste>
           <p>
             Seuls les contenus nécessaires à chaque traitement sont transmis (recette importée, pseudo choisi, avis
-            rédigé, texte des idées). Selon les conditions commerciales d&apos;Anthropic, ces données{' '}
-            <Fort>ne servent pas à entraîner ses modèles</Fort> ; elles sont conservées par Anthropic pendant une
-            durée limitée [durée prévue par l&apos;accord de traitement des données d&apos;Anthropic, à vérifier].
+            rédigé, texte des idées, recette soumise à la publication). Selon les conditions commerciales
+            d&apos;Anthropic, ces données <Fort>ne servent pas à entraîner ses modèles</Fort>. Anthropic les supprime
+            automatiquement de ses serveurs <Fort>au plus tard 30 jours</Fort> après leur réception, sauf si une
+            conservation plus longue est nécessaire pour faire respecter sa politique d&apos;utilisation ou pour se
+            conformer à la loi.
           </p>
           <SousTitre>Décisions automatisées</SousTitre>
           <Liste>
@@ -246,6 +259,10 @@ export default function ConfidentialitePage() {
             <li>
               <Fort>Avis</Fort> : le score calculé par l&apos;IA ne sert qu&apos;à prioriser la file de modération.
               Tout avis commenté est validé ou refusé par une personne.
+            </li>
+            <li>
+              <Fort>Recettes</Fort> : le contrôle automatique produit un verdict indicatif pour le modérateur. Une
+              recette publique d&apos;un membre n&apos;est publiée qu&apos;après validation par une personne.
             </li>
             <li>
               <Fort>Idées</Fort> : la détection de doublons ne fait que suggérer. Aucune idée n&apos;est fusionnée
@@ -288,7 +305,9 @@ export default function ConfidentialitePage() {
               et des photos, à Genève.
             </li>
             <li>
-              <Fort>Anthropic PBC</Fort> (États-Unis) — traitements par IA (voir § 4).
+              <Fort>Anthropic</Fort> (Anthropic Ireland, Limited, Irlande, et Anthropic PBC, États-Unis) — traitements
+              par IA (voir § 4). Pour la recherche web du contrôle des recettes, Anthropic s&apos;appuie sur un moteur
+              de recherche tiers [à identifier dans la liste des sous-traitants d&apos;Anthropic].
             </li>
             <li>
               <Fort>Brevo (Sendinblue SAS)</Fort> (France) — envoi des e-mails.
@@ -322,8 +341,7 @@ export default function ConfidentialitePage() {
             </li>
             <li>
               <Fort>États-Unis (Anthropic)</Fort> : transferts encadrés par les clauses contractuelles types de la
-              Commission européenne [à vérifier dans l&apos;accord de traitement des données d&apos;Anthropic,
-              ainsi qu&apos;une éventuelle certification Data Privacy Framework].
+              Commission européenne, incorporées à l&apos;accord de traitement des données d&apos;Anthropic.
             </li>
             <li>
               <Fort>États-Unis (Stripe, Inc.)</Fort> : transferts de Stripe Payments Europe vers sa maison mère,
