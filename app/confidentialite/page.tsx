@@ -10,9 +10,11 @@
 // implémentation, jamais avant.
 //
 // Ce n'est PAS un avis juridique : une relecture par un professionnel reste
-// recommandée avant l'ouverture publique. Les passages entre crochets sont
-// des faits encore à vérifier auprès des prestataires (Atlassian : entité et
-// région d'hébergement de Jira). Anthropic est
+// recommandée avant l'ouverture publique. Plus aucun passage n'est entre
+// crochets ; reste à préciser un jour. Atlassian : offre gratuite, donc pas de choix
+// de région (localisation « Global », AWS) et pas de facture qui nomme
+// l'entité contractante — formulation volontairement générale ; à préciser
+// après lecture de son accord de traitement des données. Anthropic est
 // nommé par son entité PBC (États-Unis) : c'est elle qui facture l'achat de
 // crédits d'API de la console (facture du 20/08/2026). Ses conditions
 // commerciales prévoient pourtant Anthropic Ireland, Limited pour un client de
@@ -322,8 +324,7 @@ export default function ConfidentialitePage() {
               <Fort>Brevo (Sendinblue SAS)</Fort> (France) — envoi des e-mails.
             </li>
             <li>
-              <Fort>Atlassian (Jira)</Fort> [pays et entité contractante à vérifier] — suivi des signalements
-              techniques. Le ticket ne contient ni votre e-mail, ni votre nom, ni votre adresse IP : seulement un
+              <Fort>Atlassian (Jira)</Fort> — suivi des signalements techniques. Le ticket ne contient ni votre e-mail, ni votre nom, ni votre adresse IP : seulement un
               identifiant technique interne. Une demande de type « Mes données personnelles » ne crée jamais de
               ticket.
             </li>
@@ -358,7 +359,9 @@ export default function ConfidentialitePage() {
               (Data Privacy Framework).
             </li>
             <li>
-              <Fort>Atlassian</Fort> : [selon la région d&apos;hébergement du site Jira, à vérifier].
+              <Fort>Atlassian</Fort> : les données de suivi des signalements sont hébergées sur l&apos;infrastructure
+              d&apos;AWS, sans choix de région, et peuvent être traitées hors de l&apos;Union européenne, notamment
+              aux États-Unis. Atlassian encadre ces transferts par ses accords de traitement des données.
             </li>
           </Liste>
         </Section>
