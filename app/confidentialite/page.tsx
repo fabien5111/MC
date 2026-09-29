@@ -13,9 +13,11 @@
 // recommandée avant l'ouverture publique. Les passages entre crochets sont
 // des faits encore à vérifier auprès des prestataires (Atlassian, moteur de
 // recherche web d'Anthropic) ou l'immatriculation à compléter. Anthropic est
-// nommé par ses deux entités (Ireland, Limited pour un client de l'EEE selon
-// ses conditions commerciales ; PBC, qui facture) : l'entité contractante du
-// compte API n'a pas été vérifiée. Conservation (30 jours) : article « How long
+// nommé par son entité PBC (États-Unis) : c'est elle qui facture l'achat de
+// crédits d'API de la console (facture du 20/08/2026). Ses conditions
+// commerciales prévoient pourtant Anthropic Ireland, Limited pour un client de
+// l'EEE : écart non expliqué, à revérifier si Anthropic confirme l'entité
+// irlandaise (auquel cas la nommer aux § 4 et § 6). Conservation (30 jours) : article « How long
 // do you store my organization's data? » du centre de confidentialité Anthropic. Les durées de conservation annoncées au
 // § 8 sont appliquées par pg_cron et pgBackRest : cf. DEPLOY.md, « Tâches
 // planifiées » — ne pas en changer une ici sans changer la tâche qui la tient.
@@ -218,10 +220,7 @@ export default function ConfidentialitePage() {
         </Section>
 
         <Section title="4. Recours à l'intelligence artificielle">
-          <p>
-            Certaines fonctionnalités s&apos;appuient sur l&apos;API Claude d&apos;Anthropic (Anthropic Ireland,
-            Limited, en Irlande, et Anthropic PBC, aux États-Unis) :
-          </p>
+          <p>Certaines fonctionnalités s&apos;appuient sur l&apos;API Claude d&apos;Anthropic PBC (États-Unis) :</p>
           <Liste>
             <li>
               lecture des photos de pages et structuration des recettes importées (texte collé, photo, PDF) ;
@@ -305,8 +304,7 @@ export default function ConfidentialitePage() {
               et des photos, à Genève.
             </li>
             <li>
-              <Fort>Anthropic</Fort> (Anthropic Ireland, Limited, Irlande, et Anthropic PBC, États-Unis) — traitements
-              par IA (voir § 4). Pour la recherche web du contrôle des recettes, Anthropic s&apos;appuie sur un moteur
+              <Fort>Anthropic PBC</Fort> (États-Unis) — traitements par IA (voir § 4). Pour la recherche web du contrôle des recettes, Anthropic s&apos;appuie sur un moteur
               de recherche tiers [à identifier dans la liste des sous-traitants d&apos;Anthropic].
             </li>
             <li>
