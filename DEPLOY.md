@@ -398,6 +398,7 @@ sur le bundle.
 | Purge du module contact (`contact_purge()`) | `pg_cron`, dans la base (nœud 216075) | 4 h 15 GMT |
 | Purge du journal « en tant que » (1 an) | `pg_cron`, dans la base (nœud 216075) | 4 h 20 GMT |
 | Purge des statistiques d'encarts (13 mois) | `pg_cron`, dans la base (nœud 216075) | 4 h 25 GMT |
+| Purge de l'historique de connexion (13 mois) | `pg_cron`, dans la base (nœud 216075) | 4 h 30 GMT |
 | `/api/cron/abonnements` | `.github/workflows/cron-abonnements.yml` | 2 h 00 |
 | `/api/cron/contact-jira` | `.github/workflows/cron-contact-jira.yml` | 2 h 30 |
 
@@ -464,6 +465,7 @@ d'impersonation n'avait aucune purge.
 | `purge-contact` | `contact_purge()` : empreinte IP à 30 jours, demande close à 12 mois (24 pour un bug) — cf. `docs/contact-jira.md` § 6 |
 | `purge-journal-impersonation` | `impersonation_events` de plus d'un an, puis les `impersonation_sessions` de plus d'un an qui n'ont plus d'événement |
 | `purge-encarts` | `ad_events` de plus de 13 mois (affichages et clics des encarts partenaires ; le trigger `ad_events_stamp_user` y range l'identifiant du membre connecté, donc donnée personnelle). Posée le 29/09/2026 ; la clé étrangère `user_id` est en `ON DELETE SET NULL` : la suppression d'un membre efface déjà son identifiant. |
+| `purge-visites` | `visit_sessions` dont la dernière activité (`last_seen_at`) date de plus de 13 mois (une ligne par visite d'un membre connecté, alimentée par `components/VisitTracker.tsx`, lue par l'admin dans « Connexions du membre »). Posée le 29/09/2026 ; la clé étrangère `user_id` est en `ON DELETE CASCADE` : les lignes partent avec le membre. |
 
 Elles vivent dans le catalogue de la base (`cron.job`) : une restauration
 pgBackRest les ramène, une base recréée à neuf les perd. `pgweb_admin` n'a pas
@@ -475,6 +477,7 @@ donc rejouable sans doublon), une commande par ligne :
 psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-contact', '15 4 * * *', 'select public.contact_purge()');"
 psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-journal-impersonation', '20 4 * * *', 'delete from public.impersonation_events where created_at < now() - interval ''1 year''; delete from public.impersonation_sessions s where s.created_at < now() - interval ''1 year'' and not exists (select 1 from public.impersonation_events e where e.session_id = s.id)');"
 psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-encarts', '25 4 * * *', 'delete from public.ad_events where created_at < now() - interval ''13 months''');"
+psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select cron.schedule('purge-visites', '30 4 * * *', 'delete from public.visit_sessions where last_seen_at < now() - interval ''13 months''');"
 ```
 
 Vérifier les exécutions des dernières 24 h :

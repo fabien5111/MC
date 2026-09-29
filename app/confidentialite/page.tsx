@@ -171,6 +171,11 @@ export default function ConfidentialitePage() {
             <li>Cookies et stockage local strictement nécessaires (voir § 10).</li>
             <li>Journaux de connexion et adresse IP.</li>
             <li>
+              Historique de connexion à votre compte : pour chaque visite, la date de début, la dernière activité et
+              le nombre de pages vues (jamais le détail des pages). Il n&apos;est enregistré que si vous êtes
+              connecté, et il est consultable par l&apos;administrateur.
+            </li>
+            <li>
               Affichages et clics sur les encarts de nos partenaires, rattachés à votre compte si vous êtes connecté.
               Ils servent à établir des statistiques et ne sont jamais transmis aux partenaires sous une forme
               permettant de vous identifier.
@@ -210,6 +215,10 @@ export default function ConfidentialitePage() {
               ['Sécurité du site, prévention des abus, lutte contre le spam', 'Intérêt légitime'],
               [
                 "Accès d'un administrateur à un compte à des fins d'assistance ou de modération (voir § 5)",
+                'Intérêt légitime',
+              ],
+              [
+                'Historique de connexion des membres (assistance, sécurité, statistiques d’usage)',
                 'Intérêt légitime',
               ],
               [
@@ -383,6 +392,7 @@ export default function ConfidentialitePage() {
               ['Ticket Jira (sans donnée nominative)', 'Sans limite de durée'],
               ['Journal des accès « en tant que » (§ 5)', '1 an'],
               ['Affichages et clics sur les encarts partenaires (§ 2)', '13 mois'],
+              ['Historique de connexion à votre compte (§ 2)', '13 mois, et supprimé avec le compte'],
               ['Données de connexion', '1 an (LCEN, décret n° 2021-1362)'],
               ['Pièces comptables et factures', '10 ans (art. L123-22 du code de commerce)'],
             ]}
@@ -437,6 +447,16 @@ export default function ConfidentialitePage() {
                 'Stockage local du navigateur',
                 'Mémoriser la fermeture de la bannière d’installation de l’application',
                 '30 jours',
+              ],
+              [
+                'Préférence du sommaire des recettes (stockage local)',
+                'Mémoriser que vous avez épinglé le sommaire',
+                'Jusqu’à ce que vous effaciez les données du navigateur',
+              ],
+              [
+                'Compteur de visite (stockage de session)',
+                'Compter les pages vues de votre visite en cours pour l’historique de connexion (§ 2)',
+                'Jusqu’à la fermeture de l’onglet',
               ],
               [
                 'Cache de l’application installée',
