@@ -1506,6 +1506,20 @@ principales :
   l'utilisateur a explicitement demandé une proposition, il doit savoir qu'elle
   n'est pas venue. `maxDuration = 60 s`.
 
+**Import en lot depuis Jira** (JEP-242) : des recettes préparées dans des
+tickets Jira (texte + photo finale du dessert) sont importées en **brouillon**
+chez un membre donné, sans appel à l'API Anthropic. La structuration est faite
+par Claude Code dans la session, au format exact de sortie de l'IA
+(`RecetteIA`, cf. `PROMPT` de `lib/ai/import-pivot.ts` — mêmes règles de
+fidélité), dans `imports-jira/<CLÉ>.json` avec le pseudo (`profiles.username`)
+du destinataire. Tout ce qui suit l'appel IA dans `/api/import-url` est rejoué
+à l'identique par `lib/import-jira.ts` ; le workflow manuel
+`.github/workflows/import-jira-recettes.yml` (simulation d'abord, puis
+`importer`) retrouve le membre, dépose la photo sur `jp-photos/recettes/`,
+insère la ligne `imports` et commente le ticket. Idempotent par la marque
+`Jira <CLÉ>` dans `imports.fichier_original`. `lib/import-jira.test.ts` valide
+chaque fichier du dossier à la CI.
+
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la
 structurer en même temps — deux tâches difficiles à la fois, qui faisaient lire
