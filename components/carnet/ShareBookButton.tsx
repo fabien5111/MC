@@ -105,17 +105,6 @@ export function ShareBookButton({
             </div>
 
             <div className="p-6 flex flex-col gap-6">
-              {lienPartage && (
-                <div className="flex flex-col gap-3 border-b border-outline-variant/40 pb-6">
-                  <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager par lien</span>
-                  <p className="font-body-md text-[12px] text-on-surface-variant">
-                    Toute personne qui ouvre ce lien et se connecte (ou crée son compte) accède à vos recettes, brouillons exclus.
-                    Le lien est permanent. Un membre ainsi ajouté apparaît ci-dessous et se retire comme les autres.
-                  </p>
-                  <SocialSharePanel chemin={lienPartage} titre="Mon carnet sur Je pâtisse !" texte={MESSAGE_PARTAGE_CARNET} />
-                </div>
-              )}
-
               <div className="flex flex-col gap-3">
                 <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager avec un membre</span>
                 <label className="flex items-center gap-2 font-body-md text-sm text-on-surface-variant">
@@ -172,6 +161,17 @@ export function ShareBookButton({
                   </ul>
                 )}
               </div>
+
+              {lienPartage && (
+                <div className="flex flex-col gap-3 border-t border-outline-variant/40 pt-6">
+                  <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager par lien</span>
+                  <p className="font-body-md text-[12px] text-on-surface-variant">
+                    Toute personne qui ouvre ce lien et se connecte (ou crée son compte) accède à vos recettes, brouillons exclus.
+                    Le lien est permanent. Un membre ainsi ajouté apparaît dans « Déjà partagé avec » et se retire comme les autres.
+                  </p>
+                  <SocialSharePanel chemin={lienPartage} titre="Mon carnet sur Je pâtisse !" texte={MESSAGE_PARTAGE_CARNET} />
+                </div>
+              )}
             </div>
           </div>
         </div>
