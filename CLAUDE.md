@@ -1410,6 +1410,28 @@ navigateur précis.
   pas une action de compte, la bannière est montée dans le layout racine, hors
   de toute condition de session.
 
+## Cookies et consentement
+
+Politique de cookies = **§ 10 de `/confidentialite`** (ancre `#cookies`),
+jamais une page à part : `/cookies` n'est qu'une redirection 307 posée dans
+`next.config.mjs` (évaluée avant `middleware.ts`, donc valable sous
+`COMING_SOON`). Deux textes finiraient par se contredire — c'est ce qui était
+arrivé au § 10, qui affirmait « aucun outil de mesure d'audience » (JEP-128).
+
+- **Google Analytics 4 n'est chargé qu'après « Accepter »**
+  (`components/CookieConsent.tsx`, `lib/consent.ts`) : aucun Consent Mode
+  « denied » qui chargerait `gtag.js` avant le choix. Sans
+  `NEXT_PUBLIC_GA_ID`, ni script, ni bandeau, ni bouton.
+- **Refuser pèse autant qu'accepter** (deux boutons identiques, même niveau) ;
+  le choix vit dans le stockage local, 6 mois, puis la question est reposée.
+- **Retirer son accord** (« Gérer mes cookies », pied de page et § 10) coupe GA
+  dans la page (`ga-disable-<ID>`) et efface les `_ga*` sur chaque niveau de
+  domaine — GA les pose sur `.jepatisse.com`.
+- **Configuration GA décrite par le § 10, à garder alignée** : cookies 13 mois
+  (`cookie_expires`, GA pose 2 ans par défaut), signaux Google et
+  personnalisation publicitaire désactivés. La conservation 14 mois se règle
+  dans la console Google Analytics, pas dans le code.
+
 ## Données de référence (cache)
 
 Les neuf référentiels (`tags`, `recipe_types`, `difficulties`, `units`,
@@ -1542,6 +1564,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé service_role (impersonation : lien temporaire + audit ; écritures et lectures du module contact/Jira, qui n'a aucune policy RLS d'écriture) | Serveur uniquement |
 | `STRIPE_SECRET_KEY` | Authentification aux API Stripe (Checkout, portail, échéanciers, webhook sortant vers `test_helpers/test_clocks` en test) — version de l'API épinglée dans le Dashboard Stripe, pas dans le code (§14 `docs/abonnements.md`) | Serveur uniquement |
 | `STRIPE_WEBHOOK_SECRET` | Vérifie la signature du webhook entrant (`/api/webhooks/stripe`, corps brut) — absente : la route répond 503 plutôt que de traiter un événement dont l'origine ne peut plus être garantie | Serveur uniquement |
+| `NEXT_PUBLIC_GA_ID` | Identifiant de mesure Google Analytics 4 (JEP-128). Absent : aucun traceur, aucun bandeau de consentement, pas de bouton « Gérer mes cookies » — cf. « Cookies et consentement » | Publique (inlinée au build) |
 | `ANTHROPIC_API_KEY` | API Claude (import / ajustement) | Serveur uniquement |
 | `IMPORT_MODEL` | Modèle de structuration (optionnel, défaut `claude-haiku-4-5`) | Serveur uniquement |
 | `TRANSCRIBE_MODEL` | Modèle de lecture des photos (optionnel, défaut `claude-sonnet-5`) | Serveur uniquement |

@@ -43,6 +43,16 @@ const nextConfig = {
   // (§ 7.16, « Les NEXT_PUBLIC_* comptent aux DEUX moments »).
   env: { APP_BUILD_ID: identifiantDeBuild() },
 
+  // `/cookies` n'est pas une page : la politique de cookies est le § 10 de
+  // /confidentialite (JEP-128) — un seul texte, sinon les deux finissent par se
+  // contredire. Redirection de configuration, évaluée avant `middleware.ts` :
+  // elle passe donc aussi sous COMING_SOON, vers une page légale exemptée.
+  // Temporaire (307) : un 308 resterait figé dans les navigateurs si l'adresse
+  // devenait un jour une vraie page.
+  async redirects() {
+    return [{ source: '/cookies', destination: '/confidentialite#cookies', permanent: false }];
+  },
+
   // Rien ici pour `/sw.js` : il est désormais servi par `app/sw.js/route.ts`,
   // qui pose lui-même `Cache-Control: no-store` et son `Content-Type` — un
   // service worker ne doit jamais être servi depuis un cache intermédiaire,

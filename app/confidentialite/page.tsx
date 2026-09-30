@@ -24,6 +24,12 @@
 // § 8 sont appliquées par pg_cron et pgBackRest : cf. DEPLOY.md, « Tâches
 // planifiées » — ne pas en changer une ici sans changer la tâche qui la tient.
 //
+// Cookies (JEP-128) : le § 10 EST la politique de cookies — `/cookies` n'est
+// qu'une redirection vers son ancre (next.config.mjs). Ne pas en créer une
+// seconde copie ailleurs. Il décrit Google Analytics tel que configuré dans
+// `components/CookieConsent.tsx` (cookies 13 mois, signaux Google désactivés) :
+// changer l'un impose de changer l'autre.
+//
 // Identité de l'éditeur (nom, statut, SIREN, adresse) lue dans `lib/legal.ts`,
 // partagée avec les mentions légales (JEP-17) : une seule copie, sinon les
 // deux pages finissent par se contredire au premier changement.
@@ -33,14 +39,15 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { EDITEUR } from '@/lib/legal';
+import { GererCookiesButton } from '@/components/CookieConsent';
 
 export const metadata: Metadata = { title: 'Confidentialité | Je pâtisse !' };
 
 const CONTACT_EMAIL = 'contact@jepatisse.com';
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-10">
+    <section id={id} className="mb-10 scroll-mt-24">
       <h2 className="font-headline-md text-[20px] text-primary mb-3">{title}</h2>
       <div className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant leading-relaxed">
         {children}
@@ -116,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 29 septembre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 30 septembre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -177,7 +184,10 @@ export default function ConfidentialitePage() {
 
           <SousTitre>Données techniques</SousTitre>
           <Liste>
-            <li>Cookies et stockage local strictement nécessaires (voir § 10).</li>
+            <li>
+              Cookies et stockage local strictement nécessaires ; avec votre accord uniquement, cookies de mesure
+              d&apos;audience (voir § 10).
+            </li>
             <li>Journaux de connexion et adresse IP.</li>
             <li>
               Historique de connexion à votre compte : pour chaque visite, la date de début, la dernière activité et
@@ -233,6 +243,10 @@ export default function ConfidentialitePage() {
               [
                 'Statistiques des encarts partenaires',
                 'Intérêt légitime (rendre compte de la diffusion aux partenaires)',
+              ],
+              [
+                'Mesure d’audience (Google Analytics) : statistiques de fréquentation pour améliorer le site',
+                'Consentement (art. 82 de la loi Informatique et Libertés), retirable à tout moment',
               ],
               ['Conservation des données de connexion', 'Obligation légale (LCEN, décret n° 2021-1362)'],
             ]}
@@ -347,6 +361,12 @@ export default function ConfidentialitePage() {
               ticket.
             </li>
           </Liste>
+          <Liste>
+            <li>
+              <Fort>Google Analytics</Fort> (Google Ireland Limited, Irlande) — mesure d&apos;audience,{' '}
+              <Fort>uniquement si vous l&apos;avez acceptée</Fort> (voir § 10).
+            </li>
+          </Liste>
           <SousTitre>Responsables de traitement indépendants</SousTitre>
           <Liste>
             <li>
@@ -375,6 +395,12 @@ export default function ConfidentialitePage() {
               <Fort>États-Unis (Stripe, Inc.)</Fort> : transferts de Stripe Payments Europe vers sa maison mère,
               encadrés par les clauses contractuelles types et le cadre de protection des données UE–États-Unis
               (Data Privacy Framework).
+            </li>
+            <li>
+              <Fort>États-Unis (Google LLC)</Fort> : si vous acceptez la mesure d&apos;audience, les données de
+              navigation collectées par Google Analytics peuvent être transférées à Google LLC. Ces transferts sont
+              encadrés par le cadre de protection des données UE–États-Unis (Data Privacy Framework), auquel Google
+              LLC est certifiée, et par les clauses contractuelles types de la Commission européenne.
             </li>
             <li>
               <Fort>Atlassian</Fort> : les données de suivi des signalements sont hébergées sur l&apos;infrastructure
@@ -438,19 +464,42 @@ export default function ConfidentialitePage() {
           </p>
         </Section>
 
-        <Section title="10. Cookies et stockage local">
+        <Section id="cookies" title="10. Cookies et stockage local">
           <p>
-            Le site n&apos;utilise <Fort>aucun cookie publicitaire ni outil de mesure d&apos;audience tiers</Fort>.
-            Seuls sont déposés des éléments strictement nécessaires à son fonctionnement, exemptés de consentement :
+            Un cookie est un petit fichier déposé sur votre appareil lors de la visite du site, qui permet de le
+            reconnaître lors de vos visites suivantes. Le stockage local du navigateur joue un rôle voisin et suit
+            les mêmes règles.
           </p>
+
+          <SousTitre>Strictement nécessaires — sans consentement</SousTitre>
+          <p>Ces éléments sont indispensables au fonctionnement du site et exemptés de consentement.</p>
           <Tableau
             entetes={['Élément', 'Rôle', 'Durée']}
             lignes={[
-              ['Cookies de session', 'Vous garder connecté', 'Durée de la session d’authentification'],
               [
-                'Cookie témoin d’assistance',
-                'Signaler une session « en tant que » d’un administrateur (§ 5)',
+                'Cookies de session d’authentification',
+                'Maintenir votre connexion à votre compte de manière sécurisée',
+                'Jusqu’à la déconnexion ou l’expiration du jeton de sécurité',
+              ],
+              [
+                'Cookies techniques d’hébergement (Infomaniak)',
+                'Stabilité, répartition de charge et sécurité de l’infrastructure',
+                'Durée de la session de navigation',
+              ],
+              [
+                'Cookie témoin d’assistance (mc_imp)',
+                'Signaler une session « en tant que » ouverte par l’administration sur un compte, à des fins de traçabilité (§ 5)',
                 '1 heure au plus',
+              ],
+              [
+                'Cookies de paiement (Stripe)',
+                'Déposés par Stripe sur sa page de paiement : authentifier la transaction, sécuriser le paiement, prévenir la fraude',
+                'Limitée à la transaction et aux obligations légales de prévention de la fraude',
+              ],
+              [
+                'Choix de consentement (stockage local)',
+                'Mémoriser votre acceptation ou votre refus de la mesure d’audience',
+                '6 mois, puis la question vous est reposée',
               ],
               [
                 'Stockage local du navigateur',
@@ -474,6 +523,40 @@ export default function ConfidentialitePage() {
               ],
             ]}
           />
+
+          <SousTitre>Mesure d&apos;audience — avec votre consentement</SousTitre>
+          <Tableau
+            entetes={['Élément', 'Rôle', 'Durée']}
+            lignes={[
+              [
+                'Google Analytics 4 (cookies _ga et _ga_DLLDP40QE5)',
+                'Statistiques de fréquentation et d’utilisation, pour améliorer le site',
+                'Cookies : 13 mois au plus. Données dans Google Analytics : 14 mois au plus',
+              ],
+            ]}
+          />
+          <p>
+            Ces cookies ne sont déposés, et aucun script de Google n&apos;est chargé,{' '}
+            <Fort>qu&apos;après avoir cliqué sur « Accepter »</Fort> dans le bandeau affiché lors de votre première
+            visite. Les signaux publicitaires de Google sont désactivés.
+          </p>
+
+          <SousTitre>Cookies publicitaires</SousTitre>
+          <p>Je pâtisse ! n&apos;utilise aucun cookie publicitaire.</p>
+
+          <SousTitre>Modifier votre choix</SousTitre>
+          <p>
+            Vous pouvez accepter ou refuser la mesure d&apos;audience à tout moment, avec le bouton « Gérer mes
+            cookies » en bas de chaque page. Retirer votre accord supprime les cookies de Google Analytics.
+          </p>
+          <p>
+            <GererCookiesButton className="rounded-full border border-primary px-4 py-2 font-label-md text-sm font-semibold text-primary" />
+          </p>
+          <p>
+            Vous pouvez aussi configurer votre navigateur pour refuser les cookies. Certaines fonctionnalités
+            (connexion, paiement) ont toutefois besoin des cookies strictement nécessaires pour fonctionner. Pour
+            exercer vos droits sur vos données, voir le § 12.
+          </p>
         </Section>
 
         <Section title="11. Sécurité">

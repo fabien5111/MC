@@ -1,5 +1,6 @@
 // Pied de page partagé (porté de index.html).
 import Link from 'next/link';
+import { GererCookiesButton } from '@/components/CookieConsent';
 
 export function Footer() {
   return (
@@ -37,6 +38,8 @@ export function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/cgu">Conditions d&apos;utilisation</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite">Confidentialité</Link></li>
+                <li><Link className="hover:text-primary transition-colors" href="/cookies">Cookies</Link></li>
+                <li><GererCookiesButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
             </div>
             <div className="flex flex-col gap-4">
