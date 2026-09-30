@@ -105,15 +105,20 @@ const config: Config = {
         'container-max': '1200px',
         'margin-mobile': '16px',
       },
+      // Référencent les variables CSS posées par `next/font/google`
+      // (`app/fonts.ts`, appliquées sur `<html>` dans `app/layout.tsx`),
+      // jamais le nom de famille littéral : c'est ce qui permet à Next de
+      // servir la police depuis `/_next/static` plutôt que d'aller la
+      // chercher sur `fonts.googleapis.com` à chaque page.
       fontFamily: {
-        'headline-lg': ['Playfair Display', 'serif'],
-        'body-md': ['Work Sans', 'sans-serif'],
-        'body-lg': ['Work Sans', 'sans-serif'],
-        'headline-md': ['Playfair Display', 'serif'],
-        'display-lg': ['Playfair Display', 'serif'],
-        'label-md': ['Work Sans', 'sans-serif'],
-        'headline-lg-mobile': ['Playfair Display', 'serif'],
-        logo: ['Parisienne', 'cursive'],
+        'headline-lg': ['var(--font-playfair-display)', 'serif'],
+        'body-md': ['var(--font-work-sans)', 'sans-serif'],
+        'body-lg': ['var(--font-work-sans)', 'sans-serif'],
+        'headline-md': ['var(--font-playfair-display)', 'serif'],
+        'display-lg': ['var(--font-playfair-display)', 'serif'],
+        'label-md': ['var(--font-work-sans)', 'sans-serif'],
+        'headline-lg-mobile': ['var(--font-playfair-display)', 'serif'],
+        logo: ['var(--font-parisienne)', 'cursive'],
       },
       fontSize: {
         'headline-lg': ['40px', { lineHeight: '48px', fontWeight: '600' }],
