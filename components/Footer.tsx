@@ -38,7 +38,10 @@ export function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/cgu">Conditions d&apos;utilisation</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite">Confidentialité</Link></li>
-                <li><Link className="hover:text-primary transition-colors" href="/cookies">Cookies</Link></li>
+                {/* Vers l'ancre directement, pas vers `/cookies` : une navigation client
+                    qui suit la redirection de next.config.mjs perd le fragment et
+                    remonte en haut de page (JEP-128). */}
+                <li><Link className="hover:text-primary transition-colors" href="/confidentialite#cookies">Cookies</Link></li>
                 <li><GererCookiesButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
             </div>
