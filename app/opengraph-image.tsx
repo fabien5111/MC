@@ -13,6 +13,12 @@ import { chargerImageOg, OG_COULEURS as C, OG_TAILLE } from '@/lib/og-image';
 export const alt = 'Je pâtisse ! — la haute pâtisserie à la maison';
 export const size = OG_TAILLE;
 export const contentType = 'image/png';
+// Jamais pré-générée pendant la construction : avec les vraies variables, le
+// build l'exécutait (lecture du référentiel, téléchargement de la couverture,
+// moteur de rendu d'image) sur un nœud déjà au plafond de sa mémoire — la
+// construction de l'aperçu de la PR #303 y a saturé la RAM. Rendue à la
+// demande comme la carte du carnet ; les réseaux sociaux la mettent en cache.
+export const dynamic = 'force-dynamic';
 
 const FONCTIONNALITES = ['Carnet de recettes', 'Fournées guidées pas à pas', 'Ajustement au moule', 'Liste de courses'];
 
