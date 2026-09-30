@@ -561,9 +561,37 @@ echo "pgweb:$(openssl passwd -apr1 'NOUVEAU')" > /etc/nginx/conf.d/pgweb.htpassw
   psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "alter table public.ma_table add column …;"
   ```
   `-v ON_ERROR_STOP=1` fait échouer tout le bloc si une instruction rate,
-  plutôt que de continuer sur une base à moitié migrée. Tout le reste
-  (fonctions, lectures, écritures de données) continue de passer par pgweb
-  normalement — la limite ne touche que le DDL des tables.
+  plutôt que de continuer sur une base à moitié migrée. Les fonctions et les
+  lectures/écritures de données passent par pgweb, **sauf les deux cas
+  ci-dessous** — la limite ne se réduit pas au DDL.
+- **`pgweb_admin` ne lit pas le schéma `auth` et ne modifie pas `public.profiles`.**
+  Deux échecs constatés le 30/09/2026 (JEP-129), même cause : le rôle n'a aucun
+  droit d'usage sur certains schémas, et `BYPASSRLS` ne remplace pas un
+  `GRANT USAGE`.
+  - `select … from auth.users` → `permission denied for schema auth`. Les
+    comptes de connexion (adresse, métadonnées comme `cgu_version`, jetons)
+    ne se lisent donc pas dans pgweb. À conserver tel quel : `auth.users`
+    porte les mots de passe hachés, et pgweb est une console web permanente.
+  - `update public.profiles …` → `permission denied for schema extensions`.
+    La lecture de `profiles` n'a pas été mise en cause ; c'est l'écriture qui
+    échoue, et l'erreur nomme le schéma `extensions`. Cause probable, non
+    vérifiée : la colonne générée `profiles.full_name_norm` (`mc_norm_imm`,
+    cf. « Recherche textuelle sans accents » du `CLAUDE.md`) est recalculée à
+    chaque écriture et appelle une extension rangée dans ce schéma. Ne pas
+    « corriger » en donnant `USAGE` à `pgweb_admin` sans avoir établi cette
+    cause : l'échec a le mérite de ne pas laisser un accès web permanent
+    écrire dans les profils.
+  Pour ces deux cas, même voie que le DDL : Web SSH du nœud **216075**, en
+  `psql` sous `postgres`, **sur une seule ligne** :
+  ```bash
+  psql -U postgres -d postgres -c "select email, raw_user_meta_data from auth.users where email = 'adresse@exemple.fr';"
+  psql -U postgres -d postgres -c "update public.profiles set username = null where email = 'adresse@exemple.fr';"
+  ```
+  Exemple vécu : rejouer l'écran `/choix-pseudo` sur un compte existant
+  exige de vider `profiles.username` (la marque « a un pseudo », cf.
+  `CLAUDE.md`) — impossible depuis pgweb. Toute autre table de `public` se
+  modifie normalement dans pgweb ; en cas de doute, un `permission denied`
+  sur un schéma (et non sur une table) signale ce même cas.
 
 ## Certificats
 
