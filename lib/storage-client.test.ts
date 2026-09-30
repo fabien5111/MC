@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { televerserImage } from '@/lib/storage-client';
+import { CACHE_CONTROL_PUBLIC } from '@/lib/storage';
 
 // Une petite image webp 1×1 quelconque suffit : ce test porte sur le
 // protocole (deux requêtes, dans quel ordre, avec quels en-têtes), jamais sur
@@ -102,5 +103,64 @@ describe('televerserImage — dépôt d’une data-URL', () => {
 
     const corpsEnvoye = JSON.parse(String(appels[0].init?.body));
     expect(corpsEnvoye).toEqual({ usage: 'contact', mime: 'image/webp', formToken: '123.abcdef' });
+  });
+});
+
+describe('televerserImage — durée de cache posée au dépôt', () => {
+  const presignature = (conteneur: 'photos' | 'contact') =>
+    reponseJson({ cle: 'x/y.webp', conteneur, url: 'https://x/depot', urlFinale: 'https://x/final' });
+
+  it('pose Cache-Control sur le conteneur public', async () => {
+    const appels: RequestInit[] = [];
+    vi.spyOn(global, 'fetch').mockImplementation(async (_url, init) => {
+      appels.push(init ?? {});
+      return appels.length === 1 ? presignature('photos') : reponseJson({});
+    });
+
+    await televerserImage('banniere', DATA_URL);
+
+    expect(appels).toHaveLength(2);
+    const entetes = appels[1].headers as Record<string, string>;
+    expect(entetes['Cache-Control']).toBe(CACHE_CONTROL_PUBLIC);
+    expect(entetes['Content-Type']).toBe('image/webp');
+  });
+
+  it('ne pose jamais Cache-Control sur le conteneur privé (données personnelles)', async () => {
+    const appels: RequestInit[] = [];
+    vi.spyOn(global, 'fetch').mockImplementation(async (_url, init) => {
+      appels.push(init ?? {});
+      return appels.length === 1 ? presignature('contact') : reponseJson({});
+    });
+
+    await televerserImage('contact', DATA_URL, { formToken: '1.a' });
+
+    expect(appels[1].headers as Record<string, string>).not.toHaveProperty('Cache-Control');
+  });
+
+  it('redépose sans Cache-Control si le préflight CORS le refuse — jamais bloquant', async () => {
+    const appels: RequestInit[] = [];
+    vi.spyOn(global, 'fetch').mockImplementation(async (_url, init) => {
+      appels.push(init ?? {});
+      if (appels.length === 1) return presignature('photos');
+      // Refus de préflight : le navigateur lève une TypeError, sans statut.
+      if (appels.length === 2) throw new TypeError('Failed to fetch');
+      return reponseJson({});
+    });
+
+    expect(await televerserImage('banniere', DATA_URL)).toBe('https://x/final');
+    expect(appels).toHaveLength(3);
+    expect(appels[2].headers as Record<string, string>).not.toHaveProperty('Cache-Control');
+    expect(appels[2].method).toBe('PUT');
+  });
+
+  it('propage l’erreur si le second dépôt échoue aussi', async () => {
+    let n = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      n += 1;
+      if (n === 1) return presignature('photos');
+      throw new TypeError('Failed to fetch');
+    });
+
+    await expect(televerserImage('banniere', DATA_URL)).rejects.toThrow('Failed to fetch');
   });
 });

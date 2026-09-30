@@ -17,6 +17,7 @@
 // traitée à part — jamais dans cet écran).
 import { useState } from 'react';
 import { CIBLES_ORDRE } from '@/lib/backfill';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type EchecLot = { cle: string; colonne: string; motif: string };
 type EtatCible = { running: boolean; finished: boolean; done: number; failed: number; details: EchecLot[] };
@@ -61,6 +62,12 @@ export function StorageBackfillManager() {
       setEtats((prev) => ({ ...prev, [cle]: { running: true, finished: false, done, failed, details } }));
       if (!resultat.restant) break;
     }
+    // Plusieurs cibles sont des tables servies depuis le cache de
+    // `lib/data/reference.ts` (`site_settings`, pictos d'allergènes, …) :
+    // sans invalidation, le site continuerait de servir l'ancienne data-URL
+    // jusqu'à 24 h après une reprise pourtant réussie. Sans nom de table, la
+    // route invalide tous les référentiels — le plus sûr, et négligeable.
+    if (done > 0) await revalidateReference();
     setEtats((prev) => ({ ...prev, [cle]: { running: false, finished: true, done, failed, details } }));
   }
 
