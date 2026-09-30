@@ -21,6 +21,16 @@ export const metadata: Metadata = {
   description:
     'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
   manifest: '/manifest.json',
+  // Carte d'aperçu des partages (JEP-21) — l'image vient de
+  // `app/opengraph-image.tsx`, que Next associe d'office.
+  openGraph: {
+    type: 'website',
+    siteName: 'Je pâtisse !',
+    locale: 'fr_FR',
+    title: 'Je pâtisse !',
+    description: 'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
+  },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {
