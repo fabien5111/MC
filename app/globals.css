@@ -1157,3 +1157,22 @@ body[data-impersonation] {
   pointer-events: none;
   user-select: none;
 }
+
+/* Bandeau de consentement (JEP-128) — même emplacement que la bannière
+   d'installation, au-dessus d'elle : il porte un choix à faire, elle une
+   simple proposition. */
+.cookie-consent-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--mobile-nav-h) + 12px);
+  z-index: 45;
+}
+@media (min-width: 1024px) {
+  .cookie-consent-banner {
+    left: 24px;
+    right: auto;
+    bottom: 24px;
+    width: 380px;
+  }
+}

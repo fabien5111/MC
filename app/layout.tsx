@@ -8,6 +8,7 @@ import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { ImpersonationProvider } from '@/components/ImpersonationProvider';
 import { VisitTracker } from '@/components/VisitTracker';
+import { CookieConsent } from '@/components/CookieConsent';
 import { DialogProvider } from '@/components/Dialog';
 import { getImpersonationContext } from '@/lib/impersonation';
 import { APPLE_SPLASH_SCREENS } from '@/lib/apple-splash-screens';
@@ -83,6 +84,9 @@ export default async function RootLayout({
         <ServiceWorkerRegistrar />
         {/* Bannière d'installation PWA — visiteur compris, cf. son en-tête. */}
         <InstallPwaBanner />
+        {/* Bandeau de consentement + Google Analytics, chargé seulement après
+            « Accepter » (JEP-128, cf. components/CookieConsent.tsx). */}
+        <CookieConsent />
         {/* Mémorise le chemin précédent pour le retour contextuel des écrans
             de détail (`RetourContextuel`) — englobe tout le reste : c'est ce
             qui lui permet de survivre à chaque navigation, cf. son en-tête. */}
