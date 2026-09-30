@@ -2,9 +2,7 @@
 //
 // Identité de l'éditeur et de l'hébergeur lue dans `lib/legal.ts`, partagée
 // avec la politique de confidentialité. Accessible pendant `COMING_SOON`
-// (cf. `PAGES_LEGALES`). Le renvoi aux CGU reste en texte simple tant que la
-// page `/cgu` n'existe pas (JEP-129) : un lien vers une 404 sur une page
-// légale serait pire qu'aucun lien.
+// (cf. `PAGES_LEGALES`).
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -91,7 +89,11 @@ export default function MentionsLegalesPage() {
           </p>
           <p>
             Les recettes et photographies publiées par les membres restent la propriété de leurs auteurs, sous réserve
-            de la licence d&apos;utilisation décrite dans les Conditions Générales d&apos;Utilisation.
+            de la licence d&apos;utilisation décrite dans les{' '}
+            <Link href="/cgu" className="text-primary underline underline-offset-2">
+              conditions générales d&apos;utilisation
+            </Link>
+            .
           </p>
         </Section>
 

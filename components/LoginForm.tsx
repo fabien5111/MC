@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
+import { CGU_CHEMIN, metadonneesAcceptationCgu } from '@/lib/cgu';
 import {
   nettoyerSaisiePseudo,
   normaliserCassePseudo,
@@ -201,7 +202,15 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
           // slug voyage à côté, `/auth/callback` l'écrira dans
           // `profiles.username` une fois l'adresse confirmée (avant ça, il n'y
           // a pas de session pour écrire quoi que ce soit).
-          data: { full_name: pseudoValidation.pseudo, pseudo: pseudoValidation.pseudo, pseudo_slug: avis.slug },
+          // `cgu_version` / `cgu_accepted_at` : trace de l'acceptation des CGU
+          // (JEP-129) — quel texte, et quand. La case bloque l'envoi, cette
+          // ligne n'est donc atteinte qu'une fois les CGU cochées.
+          data: {
+            full_name: pseudoValidation.pseudo,
+            pseudo: pseudoValidation.pseudo,
+            pseudo_slug: avis.slug,
+            ...metadonneesAcceptationCgu(new Date().toISOString()),
+          },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
@@ -413,8 +422,16 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
               />
               <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
                 J&apos;accepte les{' '}
-                conditions d&apos;utilisation et la{' '}
                 {/* Nouvel onglet : quitter la page ferait perdre la saisie du formulaire d'inscription. */}
+                <a
+                  className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                  href={CGU_CHEMIN}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  conditions d&apos;utilisation
+                </a>{' '}
+                et la{' '}
                 <a
                   className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
                   href="/confidentialite"
