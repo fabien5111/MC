@@ -12,13 +12,17 @@
 import { useEffect, useState } from 'react';
 import { RESEAUX, lienReseau, type Reseau } from '@/lib/social-share';
 
-const ICONES: Record<Reseau, string> = {
-  facebook: 'thumb_up',
-  pinterest: 'push_pin',
-  whatsapp: 'chat',
-  x: 'tag',
-  email: 'mail',
-};
+// Champ `icon:` et non table indexée : c'est la forme que recense
+// `scripts/material-symbols.mjs` pour le sous-ensemble de la police d'icônes
+// — une icône écrite autrement n'y figure pas et s'affiche en texte brut.
+const ICONES: { id: Reseau; icon: string }[] = [
+  { id: 'facebook', icon: 'thumb_up' },
+  { id: 'pinterest', icon: 'push_pin' },
+  { id: 'whatsapp', icon: 'chat' },
+  { id: 'x', icon: 'tag' },
+  { id: 'email', icon: 'mail' },
+];
+const iconeDe = (id: Reseau) => ICONES.find((i) => i.id === id)?.icon ?? 'share';
 
 export function SocialSharePanel({ chemin, titre, texte }: { chemin: string; titre: string; texte: string }) {
   const [origin, setOrigin] = useState('');
@@ -84,7 +88,7 @@ export function SocialSharePanel({ chemin, titre, texte }: { chemin: string; tit
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {RESEAUX.map((r) => (
           <a key={r.id} href={lienReseau(r.id, contenu)} target="_blank" rel="noopener noreferrer" className={bouton}>
-            <span className="material-symbols-outlined text-[20px]">{ICONES[r.id]}</span>
+            <span className="material-symbols-outlined text-[20px]">{iconeDe(r.id)}</span>
             {r.label}
           </a>
         ))}

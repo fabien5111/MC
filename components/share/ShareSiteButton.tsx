@@ -7,13 +7,24 @@ import { useState } from 'react';
 import { SocialSharePanel } from '@/components/share/SocialSharePanel';
 import { MESSAGE_PARTAGE_SITE } from '@/lib/social-share';
 
-export function ShareSiteButton({ className }: { className?: string }) {
+// `children` remplace le libellé par défaut (ex. l'icône de la colonne
+// « Suivre » du pied de page) ; `ariaLabel` le nomme alors pour un lecteur
+// d'écran.
+export function ShareSiteButton({
+  className,
+  children,
+  ariaLabel,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+  ariaLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={className}>
-        Partager Je pâtisse !
+      <button type="button" onClick={() => setOpen(true)} className={className} aria-label={ariaLabel} title={ariaLabel}>
+        {children ?? 'Partager Je pâtisse !'}
       </button>
 
       {open && (

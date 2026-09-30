@@ -1,6 +1,7 @@
 // Pied de page partagé (porté de index.html).
 import Link from 'next/link';
 import { ShareSiteButton } from '@/components/share/ShareSiteButton';
+import { GererCookiesButton } from '@/components/CookieConsent';
 
 export function Footer() {
   return (
@@ -36,8 +37,14 @@ export function Footer() {
               </h4>
               <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
                 <li><Link className="hover:text-primary transition-colors" href="/mentions-legales">Mentions légales</Link></li>
+                <li><Link className="hover:text-primary transition-colors" href="/cgu">Conditions d&apos;utilisation</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite">Confidentialité</Link></li>
+                {/* Vers l'ancre directement, pas vers `/cookies` : une navigation client
+                    qui suit la redirection de next.config.mjs perd le fragment et
+                    remonte en haut de page (JEP-128). */}
+                <li><Link className="hover:text-primary transition-colors" href="/confidentialite#cookies">Cookies</Link></li>
+                <li><GererCookiesButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
             </div>
             <div className="flex flex-col gap-4">
@@ -45,7 +52,9 @@ export function Footer() {
                 Suivre
               </h4>
               <div className="flex gap-6">
-                <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">share</span>
+                <ShareSiteButton ariaLabel="Partager Je pâtisse !" className="flex hover:text-primary transition-colors">
+                  <span className="material-symbols-outlined">share</span>
+                </ShareSiteButton>
                 <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">mail</span>
               </div>
             </div>

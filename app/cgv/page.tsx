@@ -7,9 +7,11 @@
 // souscrite préservées). Ce n'est PAS un avis juridique : une relecture par
 // un professionnel reste nécessaire avant la commercialisation.
 //
-// Les mentions entre crochets (identité de l'éditeur, durée de l'essai,
-// médiateur…) sont des informations encore à fournir — laissées visibles à
-// dessein plutôt qu'inventées.
+// Les mentions entre crochets (médiateur, délai de mise en demeure…) sont des
+// informations encore à fournir — laissées visibles à dessein plutôt
+// qu'inventées. L'identité de l'éditeur, elle, est lue dans `lib/legal.ts`
+// (JEP-129), comme les mentions légales et la politique de confidentialité :
+// une seule copie, sinon les pages finissent par se contredire.
 //
 // **Toute modification de fond de ce texte impose une nouvelle
 // `CGV_VERSION`** (`lib/cgv.ts`) : c'est cette version qui est tracée sur
@@ -20,6 +22,9 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { CGV_DATE_AFFICHEE, CGV_VERSION } from '@/lib/cgv';
+import { CGU_CHEMIN } from '@/lib/cgu';
+import { EDITEUR, SITE_URL_CANONIQUE } from '@/lib/legal';
+import { getTrialDays } from '@/lib/data/reference';
 
 export const metadata: Metadata = { title: 'Conditions générales de vente | Je pâtisse !' };
 
@@ -34,6 +39,14 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
+function Email() {
+  return (
+    <a href={`mailto:${EDITEUR.email}`} className="text-primary underline underline-offset-2">
+      {EDITEUR.email}
+    </a>
+  );
+}
+
 function Lien({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link href={href} className="text-primary underline underline-offset-2">
@@ -42,7 +55,13 @@ function Lien({ href, children }: { href: string; children: React.ReactNode }) {
   );
 }
 
-export default function CgvPage() {
+export default async function CgvPage() {
+  // Durée de l'essai lue dans le réglage que l'admin modifie (Admin → Formules,
+  // `site_settings.subscription_trial_days`), jamais recopiée à la main : un
+  // chiffre en dur divergerait du comportement réel au premier réglage. L'essai
+  // n'engageant aucun paiement, sa durée ne justifie pas une nouvelle
+  // `CGV_VERSION` à chaque changement.
+  const joursEssai = await getTrialDays();
   return (
     <>
       <Header />
@@ -56,14 +75,14 @@ export default function CgvPage() {
 
         <Section id="vendeur" title="1. Identité du vendeur">
           <p>
-            Le site « Je pâtisse ! », accessible à l&apos;adresse www.jepatisse.com (ci-après « le Site »), est édité
-            par : [Nom ou raison sociale], [forme juridique, capital le cas échéant], immatriculé(e) sous le n° [SIREN
-            / RCS], dont le siège est situé [adresse postale complète].
+            Le site « Je pâtisse ! », accessible à l&apos;adresse {SITE_URL_CANONIQUE.replace('https://', '')}{' '}
+            (ci-après « le Site »), est édité par : {EDITEUR.nom}, {EDITEUR.statut.toLowerCase()}, SIREN{' '}
+            {EDITEUR.siren}, dont le siège est situé {EDITEUR.adresse}.
           </p>
           <p>
             TVA non applicable, art. 293 B du CGI.
             <br />
-            Contact : [contact@jepatisse.com]
+            Contact : <Email />
           </p>
         </Section>
 
@@ -71,7 +90,8 @@ export default function CgvPage() {
           <ul className="list-disc pl-5 flex flex-col gap-1.5">
             <li>
               <strong className="text-on-surface">Membre</strong> : personne physique titulaire d&apos;un compte sur le
-              Site, créé conformément aux [Conditions générales d&apos;utilisation — lien].
+              Site, créé conformément aux{' '}
+              <Lien href={CGU_CHEMIN}>Conditions générales d&apos;utilisation</Lien>.
             </li>
             <li>
               <strong className="text-on-surface">Formule</strong> : ensemble de fonctionnalités et de limites
@@ -133,7 +153,7 @@ export default function CgvPage() {
         </Section>
 
         <Section id="essai" title="5. Essai gratuit">
-          <p>Certaines formules peuvent être essayées gratuitement pendant [X] jours. L&apos;essai :</p>
+          <p>Certaines formules peuvent être essayées gratuitement pendant {joursEssai} jours. L&apos;essai :</p>
           <ul className="list-disc pl-5 flex flex-col gap-1.5">
             <li>ne nécessite aucun moyen de paiement et n&apos;entraîne aucun prélèvement ;</li>
             <li>
@@ -254,8 +274,10 @@ export default function CgvPage() {
             d&apos;ambiguïté :
           </p>
           <ul className="list-disc pl-5 flex flex-col gap-1.5">
-            <li>par e-mail à [contact@jepatisse.com] ;</li>
-            <li>ou par courrier à [adresse postale].</li>
+            <li>
+              par e-mail à <Email /> ;
+            </li>
+            <li>ou par courrier à {EDITEUR.adresse}.</li>
           </ul>
           <p>
             Il peut utiliser le <a href="#formulaire-retractation" className="text-primary underline underline-offset-2">
@@ -341,7 +363,7 @@ export default function CgvPage() {
             contenus et services numériques prévue aux articles L.224-25-12 et suivants du Code de la consommation. En
             cas de défaut de conformité, il a droit à la mise en conformité du service ou, à défaut, à une réduction
             du prix ou à la résolution du contrat, dans les conditions prévues par ces articles. Il suffit de le
-            signaler à [contact@jepatisse.com].
+            signaler à <Email />.
           </p>
         </Section>
 
@@ -373,7 +395,7 @@ export default function CgvPage() {
 
         <Section id="reclamations" title="20. Réclamations et médiation">
           <p>
-            Toute réclamation peut être adressée à [contact@jepatisse.com], ou depuis le{' '}
+            Toute réclamation peut être adressée à <Email />, ou depuis le{' '}
             <Lien href="/contact">formulaire de contact</Lien> du Site.
           </p>
           <p>
@@ -407,7 +429,7 @@ export default function CgvPage() {
           </p>
           <div className="rounded-lg border border-outline-variant bg-surface-container-low px-4 py-4 flex flex-col gap-3 text-on-surface">
             <p>
-              À l&apos;attention de [Nom ou raison sociale], [adresse postale], [contact@jepatisse.com] :
+              À l&apos;attention de {EDITEUR.nom}, {EDITEUR.adresse}, {EDITEUR.email} :
             </p>
             <p>
               Je vous notifie par la présente ma rétractation du contrat portant sur l&apos;abonnement suivant :

@@ -49,7 +49,12 @@ function BannerCard({
     setBusy(true);
     setStatus('Enregistrement…');
     try {
-      const dataUrl = await resizeImageToDataUrl(file, config.max);
+      // WebP plutôt que le JPEG par défaut : la bannière est l'élément LCP de
+      // l'accueil (audit PageSpeed du 30/09/2026, LCP mobile 6,5 s, « Améliorer
+      // l'affichage des images » 406 Kio), et à qualité visuelle égale le WebP
+      // pèse nettement moins. `resizeImageToDataUrl` retombe sur le JPEG si le
+      // navigateur de l'admin ne sait pas l'encoder.
+      const dataUrl = await resizeImageToDataUrl(file, config.max, 'image/webp', 0.8);
       // L'aperçu s'affiche tout de suite sur la data-URL (compression locale,
       // aucun aller-retour réseau) ; c'est la valeur PERSISTÉE qui devient
       // l'URL de stockage — televerserImage() dépose puis rend l'URL finale

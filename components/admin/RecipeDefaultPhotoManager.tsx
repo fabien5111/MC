@@ -2,13 +2,23 @@
 
 // Photo par défaut des cartes recette, utilisée quand l'auteur n'a fourni
 // aucune photo (RecipeCardLayout, SuggestionCard, CarnetContent, accueil).
-// Même geste que BannerManager : upload → compression data-URL → site_settings.
+// Même geste que BannerManager : upload → compression data-URL (aperçu) →
+// dépôt sur le stockage objet → l'URL finale, jamais la data-URL, dans
+// site_settings.
+//
+// Oubliée par le lot B jusqu'au 30/09/2026 : la data-URL (~100 Ko) partait
+// en base, et chaque carte sans photo l'embarquait EN ENTIER dans le HTML et
+// dans les données React de la page — 16 copies, 1,6 Mo sur une page
+// d'accueil de 1,8 Mo, plusieurs secondes de premier affichage en 4G lente
+// (audit PageSpeed mobile de l'aperçu de la PR #306). Une URL de stockage,
+// elle, pèse une centaine d'octets et l'image n'est téléchargée qu'une fois.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ImageSlot } from '@/components/ImageSlot';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
+import { televerserImage } from '@/lib/storage-client';
 
 const KEY = 'recipe_default_photo';
 
@@ -21,10 +31,13 @@ export function RecipeDefaultPhotoManager({ initialUrl }: { initialUrl: string |
   async function save(dataUrl: string) {
     setStatus('Enregistrement…');
     try {
+      // Même usage que les bannières (`site_settings`, conteneur public) : c'est
+      // aussi celui qu'emploie la reprise des photos pour cette table.
+      const urlFinale = await televerserImage('banniere', dataUrl);
       const supabase = createClient();
-      const { error } = await supabase.from('site_settings').upsert({ key: KEY, value: dataUrl });
+      const { error } = await supabase.from('site_settings').upsert({ key: KEY, value: urlFinale });
       if (error) throw error;
-      setUrl(dataUrl);
+      setUrl(urlFinale);
       // Lue côté serveur par les cartes recette, et désormais servie depuis le
       // cache de `lib/data/reference.ts` : `router.refresh()` seul relirait la
       // valeur en cache. Invalider l'étiquette d'abord, re-rendre ensuite.
@@ -68,7 +81,10 @@ export function RecipeDefaultPhotoManager({ initialUrl }: { initialUrl: string |
         onChange={save}
         onClear={url ? clear : undefined}
         aspectRatio={4 / 3}
-        maxWidth={1200}
+        // Une carte recette ne dépasse pas ~400 px de large : 800 couvre les
+        // écrans à double densité. WebP, comme les bannières.
+        maxWidth={800}
+        mime="image/webp"
         shape="rounded"
         placeholder="Déposez une photo"
         alt="Photo par défaut des cartes recette"

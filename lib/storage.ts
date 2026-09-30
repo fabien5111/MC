@@ -26,6 +26,16 @@ export const CONTENEUR_PUBLIC: Record<Conteneur, boolean> = {
   contact: false,
 };
 
+// En-tête de cache posé au dépôt d'un objet du conteneur public (audit
+// PageSpeed du 30/09/2026 : « Utiliser des durées de mise en cache
+// efficaces », 825 Kio — les objets Swift sont servis sans aucune durée).
+// Un an « immutable » est sûr parce qu'une clé n'est jamais réécrite :
+// `nouvelleCleObjet` tire un UUID neuf à chaque dépôt, remplacer une photo
+// produit donc une AUTRE URL — rien de périmé ne peut rester en cache.
+// Jamais sur `contact` : lu par URL signée (jamais deux fois la même URL), et
+// ce sont des données personnelles qu'aucun cache partagé n'a à garder.
+export const CACHE_CONTROL_PUBLIC = 'public, max-age=31536000, immutable';
+
 // Ce que `lib/images.ts` sait produire aujourd'hui (`resizeImageToDataUrl`
 // rend du jpeg ou du webp) plus le png, que `ImageSlot` accepte en entrée.
 // Liste fermée : le type déclaré par l'appelant décide de l'extension de

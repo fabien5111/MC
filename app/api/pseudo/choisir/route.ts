@@ -11,6 +11,8 @@ import { getCurrentUser, accountProvider } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { enregistrerPseudo, verifierPseudoComplet } from '@/lib/pseudo-data';
 import { PSEUDO_MAX_LENGTH } from '@/lib/pseudo';
+import { cguVersionValide } from '@/lib/cgu';
+import { enregistrerAcceptationCgu } from '@/lib/cgu-data';
 
 export const maxDuration = 20;
 
@@ -26,8 +28,24 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const saisie = typeof body?.pseudo === 'string' ? body.pseudo.slice(0, PSEUDO_MAX_LENGTH * 2) : '';
 
+  // CGU (JEP-129) : cet écran est le seul où un compte Google les accepte —
+  // il n'est jamais passé par la case de `LoginForm`. Revérifié ici, jamais
+  // seulement côté client : sans la version en vigueur, pas de pseudo.
+  if (!cguVersionValide(body?.cguVersion)) {
+    return NextResponse.json({
+      ok: false,
+      message: "Merci d'accepter les conditions d'utilisation en vigueur (rechargez la page si elles viennent de changer).",
+    });
+  }
+
   const validation = await verifierPseudoComplet(saisie, user.id);
   if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message });
+
+  // Avant le pseudo : `profiles.username` est la marque « passage obligé
+  // franchi » (cf. `aChoisiSonPseudo`). L'écrire d'abord laisserait un compte
+  // sortir de cet écran sans trace d'acceptation si la seconde écriture échouait.
+  const acceptation = await enregistrerAcceptationCgu(user.id);
+  if (!acceptation.ok) return NextResponse.json({ ok: false, message: acceptation.message });
 
   const ecriture = await enregistrerPseudo(
     user.id,

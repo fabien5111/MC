@@ -11,7 +11,7 @@
 // avant chaque écriture, que l'image ait changé ou non.
 //
 // Cf. docs/migration-infomaniak.md § 7.5 (lot B, sous-lot B2).
-import { estDataUrlImage, type Usage } from '@/lib/storage';
+import { CACHE_CONTROL_PUBLIC, CONTENEUR_PUBLIC, estDataUrlImage, type Usage } from '@/lib/storage';
 
 function dataUrlVersBlob(dataUrl: string): Blob {
   const virgule = dataUrl.indexOf(',');
@@ -23,7 +23,33 @@ function dataUrlVersBlob(dataUrl: string): Blob {
   return new Blob([tampon], { type: mime });
 }
 
-type ReponsePresignature = { url: string; conteneur: 'photos' | 'contact'; cle: string; urlFinale: string | null };
+/**
+ * `PUT` direct vers l'URL signée. Sur le conteneur public, pose en plus
+ * `Cache-Control` (cf. `CACHE_CONTROL_PUBLIC`), que Swift conserve avec
+ * l'objet et renvoie à chaque lecture.
+ *
+ * Best-effort, jamais bloquant : `Cache-Control` n'est pas un en-tête
+ * « simple », le navigateur le soumet au préflight CORS du conteneur. Si ce
+ * préflight le refusait, le `PUT` n'aurait même pas lieu (le navigateur lève
+ * une `TypeError`, sans statut) — on redépose alors sans lui, sur la même URL
+ * signée, valable quinze minutes et pour plusieurs écritures. Une photo sans
+ * durée de cache vaut mieux qu'une photo qui ne s'enregistre plus.
+ */
+async function deposer(url: string, blob: Blob, avecCache: boolean): Promise<Response> {
+  const entetes: Record<string, string> = { 'Content-Type': blob.type };
+  if (!avecCache) return fetch(url, { method: 'PUT', headers: entetes, body: blob });
+  try {
+    return await fetch(url, {
+      method: 'PUT',
+      headers: { ...entetes, 'Cache-Control': CACHE_CONTROL_PUBLIC },
+      body: blob,
+    });
+  } catch {
+    return fetch(url, { method: 'PUT', headers: entetes, body: blob });
+  }
+}
+
+type ReponsePresignature ={ url: string; conteneur: 'photos' | 'contact'; cle: string; urlFinale: string | null };
 
 type OptionsTeleversement = {
   // Requis pour l'unique usage ouvert à un appelant SANS session (`contact`,
@@ -66,10 +92,10 @@ export async function televerserImage(
     const corps = (await reponse.json().catch(() => null)) as { error?: string } | null;
     throw new Error(corps?.error ?? `Préparation du dépôt refusée (${reponse.status}).`);
   }
-  const { url, urlFinale } = (await reponse.json()) as ReponsePresignature;
+  const { url, urlFinale, conteneur } = (await reponse.json()) as ReponsePresignature;
   if (!urlFinale) throw new Error('Le stockage n’a pas rendu d’URL finale pour cet usage.');
 
-  const depot = await fetch(url, { method: 'PUT', headers: { 'Content-Type': blob.type }, body: blob });
+  const depot = await deposer(url, blob, CONTENEUR_PUBLIC[conteneur]);
   if (!depot.ok) throw new Error(`Dépôt refusé par le stockage (${depot.status}).`);
 
   return urlFinale;

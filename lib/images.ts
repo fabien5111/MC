@@ -66,7 +66,14 @@ function dessiner(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas indisponible');
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL(mime, quality);
+  const dataUrl = canvas.toDataURL(mime, quality);
+  // Un navigateur qui ne sait pas encoder le WebP (Safari, selon les versions)
+  // ne lève rien : il rend silencieusement du PNG, sans perte — donc bien plus
+  // lourd que le JPEG qu'on cherchait justement à battre. Repli explicite.
+  if (mime === 'image/webp' && !dataUrl.startsWith('data:image/webp')) {
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+  return dataUrl;
 }
 
 // Redimensionne un fichier image et renvoie une data-URL compressée.

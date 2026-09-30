@@ -35,7 +35,9 @@ img {
   box-shadow: 0px 4px 20px rgba(48, 10, 18, 0.06);
 }
 .maryse-logo-font {
-  font-family: 'Parisienne', cursive;
+  /* Variable posée par `next/font/google` (`app/fonts.ts`), pas le nom de
+     famille littéral — cf. `tailwind.config.ts` → `fontFamily.logo`. */
+  font-family: var(--font-parisienne), cursive;
 }
 /* Encart partenaire (cf. components/PartnerSlot.tsx). Nom de classe neutre :
    un sélecteur contenant « ad » ou « pub » est filtré par les bloqueurs de
@@ -1154,4 +1156,23 @@ body[data-impersonation] {
 .invitation-peek > * {
   pointer-events: none;
   user-select: none;
+}
+
+/* Bandeau de consentement (JEP-128) — même emplacement que la bannière
+   d'installation, au-dessus d'elle : il porte un choix à faire, elle une
+   simple proposition. */
+.cookie-consent-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--mobile-nav-h) + 12px);
+  z-index: 45;
+}
+@media (min-width: 1024px) {
+  .cookie-consent-banner {
+    left: 24px;
+    right: auto;
+    bottom: 24px;
+    width: 380px;
+  }
 }

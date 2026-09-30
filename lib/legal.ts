@@ -34,6 +34,7 @@ export const SITE_URL_CANONIQUE = 'https://www.jepatisse.com';
 
 // Pages légales publiques. Elles restent accessibles pendant `COMING_SOON`
 // (cf. `middleware.ts`) : l'obligation d'identifier l'éditeur vaut dès que
-// le domaine sert une page au public, page d'attente comprise. Ajouter ici
-// `/cgu` et `/cgv` quand JEP-129 / JEP-16 les créeront.
-export const PAGES_LEGALES = ['/mentions-legales', '/confidentialite'] as const;
+// le domaine sert une page au public, page d'attente comprise. CGU et CGV y
+// figurent depuis JEP-129 : les mentions légales et la confidentialité y
+// renvoient, un lien vers la page d'attente serait un renvoi mort.
+export const PAGES_LEGALES = ['/mentions-legales', '/confidentialite', '/cgu', '/cgv'] as const;
