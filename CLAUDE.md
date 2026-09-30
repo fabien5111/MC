@@ -96,8 +96,14 @@ le service managé.
   `postgres`, en Web SSH sur le nœud **216075** (PostgreSQL), pas via
   pgweb — `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "…"`. Une
   fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
-  données, elles, passent bien par pgweb : la limite ne porte que sur le
-  DDL des tables.
+  données passent bien par pgweb, **sauf deux cas** (constatés le
+  30/09/2026, JEP-129) : **pas de lecture du schéma `auth`** (`select … from
+  auth.users` → `permission denied for schema auth`), **pas d'écriture dans
+  `public.profiles`** (→ `permission denied for schema extensions`). Un
+  `permission denied for schema …` dans pgweb veut dire « voie `psql` »,
+  jamais « donner `USAGE` à `pgweb_admin` » : `auth.users` porte les mots de
+  passe hachés. Même règle d'écriture — une commande Web SSH, sur une ligne.
+  Détail : `DEPLOY.md` § « Éditeur SQL en ligne ».
 
 ---
 
