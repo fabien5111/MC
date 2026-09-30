@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { CGU_CHEMIN, CGU_VERSION } from '@/lib/cgu';
 import {
   nettoyerSaisiePseudo,
   normaliserCassePseudo,
@@ -35,6 +36,9 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
   const [pseudo, setPseudo] = useState(suggestion);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Acceptation des CGU (JEP-129) : un compte Google arrive ici sans être
+  // passé par la case de `LoginForm`. Revérifiée par `/api/pseudo/choisir`.
+  const [cgu, setCgu] = useState(false);
 
   const validation = validerPseudo(pseudo);
   const slug = validation.ok ? validation.slug : pseudoSlug(pseudo);
@@ -86,13 +90,19 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `validation.pseudo` dérive de `pseudo`, inutile en double dépendance.
   }, [validation.ok, validation.ok ? validation.pseudo : null]);
 
-  const blocked = !validation.ok || pseudoCheck === 'ko';
+  const blocked = !validation.ok || pseudoCheck === 'ko' || !cgu;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (blocked) {
-      setError(!validation.ok ? validation.message : pseudoCheckMessage || 'Ce pseudo est déjà pris.');
+      setError(
+        !validation.ok
+          ? validation.message
+          : pseudoCheck === 'ko'
+            ? pseudoCheckMessage || 'Ce pseudo est déjà pris.'
+            : "Vous devez accepter les conditions d'utilisation.",
+      );
       return;
     }
     setBusy(true);
@@ -100,7 +110,7 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
       const res = await fetch('/api/pseudo/choisir', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pseudo: validation.pseudo }),
+        body: JSON.stringify({ pseudo: validation.pseudo, cguVersion: CGU_VERSION }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
       if (!data?.ok) {
@@ -178,6 +188,39 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
             {validation.ok && pseudoCheck === 'ko' && (
               <p className="text-[12px] text-error mt-1 ml-1">{pseudoCheckMessage}</p>
             )}
+          </div>
+
+          <div className="flex items-start gap-3 py-2">
+            <input
+              id="cgu"
+              type="checkbox"
+              required
+              checked={cgu}
+              onChange={(e) => setCgu(e.target.checked)}
+              className="mt-1 w-4 h-4 rounded-none accent-primary-container focus:ring-primary-container border-outline transition-all cursor-pointer"
+            />
+            <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="cgu">
+              J&apos;accepte les{' '}
+              {/* Nouvel onglet : quitter la page ferait perdre le pseudo saisi. */}
+              <a
+                className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                href={CGU_CHEMIN}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                conditions d&apos;utilisation
+              </a>{' '}
+              et la{' '}
+              <a
+                className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                href="/confidentialite"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                politique de confidentialité
+              </a>
+              .
+            </label>
           </div>
 
           {error && <p className="text-sm text-error text-center">{error}</p>}

@@ -30,6 +30,12 @@ export default function BientotDisponiblePage() {
         <Link className="hover:text-primary underline underline-offset-2" href="/mentions-legales">
           Mentions légales
         </Link>
+        <Link className="hover:text-primary underline underline-offset-2" href="/cgu">
+          CGU
+        </Link>
+        <Link className="hover:text-primary underline underline-offset-2" href="/cgv">
+          CGV
+        </Link>
         <Link className="hover:text-primary underline underline-offset-2" href="/confidentialite">
           Confidentialité
         </Link>

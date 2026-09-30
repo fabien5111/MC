@@ -12,10 +12,10 @@
 // souscription, un Client Component.
 
 /** Version en vigueur — la date de mise à jour du texte, au format ISO. */
-export const CGV_VERSION = '2026-09-27';
+export const CGV_VERSION = '2026-09-30';
 
 /** Date de mise à jour, telle qu'affichée en tête de la page. */
-export const CGV_DATE_AFFICHEE = '27 septembre 2026';
+export const CGV_DATE_AFFICHEE = '30 septembre 2026';
 
 /** Chemin public de la page. */
 export const CGV_CHEMIN = '/cgv';
