@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { getCurrentUser, getProfile, isManager, resolveAvatarUrl } from '@/lib/auth';
 import { hasActiveBatches } from '@/lib/profile';
 import { HeaderSearch } from '@/components/HeaderSearch';
+import { ShareSiteButton } from '@/components/share/ShareSiteButton';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { getRecentNotifications } from '@/lib/notifications-data';
@@ -91,6 +92,22 @@ export async function Header({ current, className }: { current?: NavKey; classNa
 
         <div className="flex items-center gap-3 shrink-0">
           <HeaderSearch suggestions={suggestions} />
+          {/* Partage du site (JEP-21) : même fenêtre que « Partager Je pâtisse ! »
+              du pied de page, à côté de la loupe et avec son style. Masquée sous
+              640 px pour un visiteur : le bouton « Créer un compte » y occupe
+              déjà la place, et l'icône recouvrait le logo (le lien du pied de
+              page reste là). Un membre n'a pas ce bouton en mobile, il la garde.
+              Masquage porté par le conteneur, pas par le bouton : la feuille de
+              la police d'icônes impose `display: inline-block` à
+              `.material-symbols-outlined`, qui l'emporterait sur `hidden`. */}
+          <span className={user ? 'flex' : 'hidden sm:flex'}>
+            <ShareSiteButton
+              ariaLabel="Partager Je pâtisse !"
+              className="material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
+            >
+              share
+            </ShareSiteButton>
+          </span>
           {user && <NotificationBell notifications={notifications} />}
           {user ? (
             <AccountMenuButton

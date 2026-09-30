@@ -17,7 +17,7 @@ export function Footer() {
               communauté de gourmets et apprenez les techniques des chefs.
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-16 gap-y-10">
+          <div className="grid grid-cols-2 gap-x-16 gap-y-10">
             <div className="flex flex-col gap-4">
               <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
                 Le Club
@@ -46,17 +46,6 @@ export function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite#cookies">Cookies</Link></li>
                 <li><GererCookiesButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
-            </div>
-            <div className="flex flex-col gap-4">
-              <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
-                Suivre
-              </h4>
-              <div className="flex gap-6">
-                <ShareSiteButton ariaLabel="Partager Je pâtisse !" className="flex hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined">share</span>
-                </ShareSiteButton>
-                <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">mail</span>
-              </div>
             </div>
           </div>
         </div>
