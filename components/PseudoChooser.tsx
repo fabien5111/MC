@@ -18,6 +18,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { CGU_CHEMIN, CGU_VERSION } from '@/lib/cgu';
+import { AGE_ATTESTATION_VERSION } from '@/lib/attestation-age';
+import { AgeAttestationCheckbox } from '@/components/AgeAttestationCheckbox';
 import {
   nettoyerSaisiePseudo,
   normaliserCassePseudo,
@@ -39,6 +41,10 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
   // Acceptation des CGU (JEP-129) : un compte Google arrive ici sans être
   // passé par la case de `LoginForm`. Revérifiée par `/api/pseudo/choisir`.
   const [cgu, setCgu] = useState(false);
+  // Attestation d'âge (JEP-34) : même raison que les CGU. Hors de `blocked`,
+  // comme dans `LoginForm` — la tentative doit pouvoir la signaler.
+  const [age, setAge] = useState(false);
+  const [ageErreur, setAgeErreur] = useState(false);
 
   const validation = validerPseudo(pseudo);
   const slug = validation.ok ? validation.slug : pseudoSlug(pseudo);
@@ -105,12 +111,20 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
       );
       return;
     }
+    if (!age) {
+      setAgeErreur(true);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/pseudo/choisir', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pseudo: validation.pseudo, cguVersion: CGU_VERSION }),
+        body: JSON.stringify({
+          pseudo: validation.pseudo,
+          cguVersion: CGU_VERSION,
+          ageAttestationVersion: AGE_ATTESTATION_VERSION,
+        }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
       if (!data?.ok) {
@@ -222,6 +236,8 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
               .
             </label>
           </div>
+
+          <AgeAttestationCheckbox checked={age} onChange={setAge} erreur={ageErreur} />
 
           {error && <p className="text-sm text-error text-center">{error}</p>}
 

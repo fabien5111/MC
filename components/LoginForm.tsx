@@ -19,6 +19,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { CGU_CHEMIN, metadonneesAcceptationCgu } from '@/lib/cgu';
+import { metadonneesAttestationAge } from '@/lib/attestation-age';
+import { AgeAttestationCheckbox } from '@/components/AgeAttestationCheckbox';
 import {
   nettoyerSaisiePseudo,
   normaliserCassePseudo,
@@ -61,6 +63,11 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
+  // Attestation d'âge (JEP-34). Volontairement hors de `blocked` : le bouton
+  // reste cliquable pour qu'une tentative sans la case la signale (cf.
+  // `AgeAttestationCheckbox`) ; c'est `submit` qui bloque.
+  const [age, setAge] = useState(false);
+  const [ageErreur, setAgeErreur] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -149,6 +156,10 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
       );
       return;
     }
+    if (isSignup && !age) {
+      setAgeErreur(true);
+      return;
+    }
     setBusy(true);
     // Pose à `true` juste avant la navigation vers l'accueil, une fois la
     // fenêtre d'e-mail envoyé refermée (JEP-250) — remis à `false` entre
@@ -194,6 +205,7 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
         return;
       }
 
+      const maintenant = new Date().toISOString();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -205,11 +217,14 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
           // `cgu_version` / `cgu_accepted_at` : trace de l'acceptation des CGU
           // (JEP-129) — quel texte, et quand. La case bloque l'envoi, cette
           // ligne n'est donc atteinte qu'une fois les CGU cochées.
+          // `age_attestation_version` / `age_attestation_at` : même trace pour
+          // l'attestation d'âge (JEP-34), au même instant.
           data: {
             full_name: pseudoValidation.pseudo,
             pseudo: pseudoValidation.pseudo,
             pseudo_slug: avis.slug,
-            ...metadonneesAcceptationCgu(new Date().toISOString()),
+            ...metadonneesAcceptationCgu(maintenant),
+            ...metadonneesAttestationAge(maintenant),
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
@@ -444,6 +459,8 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
               </label>
             </div>
           )}
+
+          {isSignup && <AgeAttestationCheckbox checked={age} onChange={setAge} erreur={ageErreur} />}
 
           {error && (
             <p className="text-sm text-error text-center">
