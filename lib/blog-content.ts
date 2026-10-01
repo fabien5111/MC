@@ -146,12 +146,12 @@ export function hasContent(doc: ProseDoc): boolean {
 // JEP-21). Celle saisie par l'auteur (`seo_description`, à défaut le chapeau)
 // est gardée telle quelle si elle est assez fournie ; trop courte, elle est
 // complétée par le début du texte de l'article (titres exclus), coupée au mot
-// sous 155 caractères — la longueur que l'éditeur conseille déjà
-// (`publishWarnings`, BlogEditor). Les inspecteurs de partage signalent une
+// sous 125 caractères. Ni plus court (les inspecteurs de partage signalent une
 // description sous 80 caractères, et une carte qui ne dit presque rien se
-// clique moins.
+// clique moins), ni plus long : les cartes sociales tronquent vers 125, avant
+// les 155 que l'éditeur tolère pour Google (`publishWarnings`, BlogEditor).
 export const DESCRIPTION_PARTAGE_MIN = 80;
-export const DESCRIPTION_PARTAGE_MAX = 155;
+export const DESCRIPTION_PARTAGE_MAX = 125;
 
 export function descriptionPartage(base: string, doc: ProseDoc): string {
   const debut = base.replace(/\s+/g, ' ').trim();
