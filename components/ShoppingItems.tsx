@@ -12,6 +12,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
+import { fixOeufLigature } from '@/lib/text';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
@@ -135,6 +136,7 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const ref_id = resolveIngredientRefId(name, ingredientRefs);
     const ok = await mutate(
       () =>
@@ -186,6 +188,7 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const supabase = createClient();
     const { data, error } = await supabase
       .from('shopping_list_items')

@@ -3,6 +3,7 @@
 // Client Components (ex. RecipeCard rendu dans une grille avec pagination).
 import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
 import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -62,7 +63,9 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
   return null;
 }
 
-// Fusion des ingrédients identiques (nom) pour la liste complète. `ref_id`
+// Fusion des ingrédients identiques (nom, au sens de `ingredientKey` :
+// « Jaune d'œuf » et « jaunes d'oeufs » fusionnent — JEP-249) pour la liste
+// complète. `ref_id`
 // (rapprochement conversions d'ingrédients) est celui du premier ingrédient
 // fusionné : deux lignes de même nom référencent en pratique toujours le même
 // ingrédient du référentiel.
@@ -95,7 +98,7 @@ export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[
     (g.ingredients || []).forEach((it) => {
       if (!it.name) return;
       const unit = it.unit || '';
-      const key = it.name.toLowerCase();
+      const key = ingredientKey(it.name);
       const url = it.ingredient_refs?.url || it.url || null;
       const allergen = it.ingredient_refs?.allergens?.name || it.allergen || null;
       const groupOrder = g.order_index || 0;

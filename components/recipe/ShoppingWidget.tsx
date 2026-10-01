@@ -14,6 +14,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { connexionHref } from '@/lib/nav';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 export function ShoppingWidget({
   recipeId,
@@ -111,7 +112,7 @@ export function ShoppingWidget({
           .select('id, name, quantity, unit, comment')
           .eq('list_id', listId);
         if (existingErr) throw existingErr;
-        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
+        const key = (n: string, u: string | null) => ingredientKey(n) + '|' + (u || '').trim().toLowerCase();
         const byKey = new Map((existing || []).map((e) => [key(e.name, e.unit), e]));
         toInsert = [];
         for (const m of items) {

@@ -18,6 +18,7 @@
 // (`convertQty`). Sans conversion connue, la quantité minoritaire est ajoutée
 // en toutes lettres plutôt que perdue — jamais cumulée dans un total inventé.
 import { convertQty, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 // Une saisie d'ingrédient d'une étape, quel que soit l'écran d'origine.
 export type RecapInput = { name: string; qty: string; unit: string; note: string; stepIndex: number };
@@ -47,7 +48,7 @@ function mergeLines(
     if (!name) continue;
     const note = i.note.trim();
     const qty = i.qty.trim();
-    const mkey = name.toLowerCase() + '|' + note.toLowerCase();
+    const mkey = ingredientKey(name) + '|' + note.toLowerCase();
     const ex = merged.find((m) => m.key === mkey);
     if (!ex) {
       merged.push({ key: mkey, name, qty, unit: i.unit, note, steps: new Set([i.stepIndex]) });
@@ -142,7 +143,7 @@ export function buildIngredientsRecap(
   // que « Beurre » et « beurre » se suivent.
   const groups = new Map<string, RecapLine[]>();
   for (const l of lines) {
-    const key = l.name.toLowerCase();
+    const key = ingredientKey(l.name);
     const g = groups.get(key);
     if (g) g.push(l);
     else groups.set(key, [l]);

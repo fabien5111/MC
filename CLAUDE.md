@@ -482,6 +482,40 @@ d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
 La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
 (`suggest_ingredients`) l'étaient déjà.
 
+## Noms d'ingrédients : singulier, pluriel, « oeuf » (JEP-249)
+
+**Le texte saisi reste affiché tel quel ; c'est la comparaison qui confond
+les variantes.** `ingredientKey` (`lib/ingredient-name.ts`, pur) ramène
+« Jaunes d'oeufs », « jaune d’œuf », « JAUNE D'OEUF » à la même clé (casse,
+accents, ligatures œ/æ, apostrophes, mots vides, pluriel en -s et en -ux mot
+par mot). C'est la **seule** règle pour rapprocher deux noms d'ingrédients :
+`resolveIngredientRefId` (rattachement au référentiel — libellé exact
+préféré, clé en repli), `mergeIngredients` (liste totale), le récapitulatif
+de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
+`expandedGroup`) et l'ajout à une liste de courses existante. Ne pas
+réintroduire de `name.toLowerCase()` comme clé de fusion.
+
+- **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
+  « noix » — sans conséquence, les deux côtés passent par la même fonction.
+  Seuls les mots de plus de 3 lettres perdent leur pluriel (« jus », « riz »).
+- **Jamais stockée** : la règle peut s'affiner sans migration. Son jumeau SQL
+  `public.mc_ingredient_key` (rattrapage des `ref_id`) doit rester aligné.
+- **« oeuf » → « œuf » à l'écriture** (`fixOeufLigature`) sur tous les chemins
+  qui écrivent un nom d'ingrédient : `CreerForm`, relecture d'import, courses,
+  composants de projet.
+- **Un ingrédient, une seule entrée au référentiel** — préalable aux coûts et
+  aux stocks, qui se rattacheront à `ingredient_refs.id`, jamais au texte.
+  Admin → Éléments inconnus liste les **doublons du référentiel** (même clé)
+  et les fusionne par la RPC `admin_merge_ingredient_refs` (SECURITY
+  DEFINER, propriétaire `postgres`) : toutes les clés étrangères vers
+  `ingredient_refs` sont réécrites (découvertes dans `pg_constraint`, pas
+  énumérées — une table ajoutée plus tard est couverte d'office), les
+  conversions en double écartées, les attributs vides de l'entrée gardée
+  complétés, puis les autres supprimées. Jamais automatique : la clé est une
+  approximation, un admin tranche. Le même écran masque des « inconnus » les
+  noms dont la clé correspond déjà à une référence (la RPC
+  `admin_unknown_ingredients` compare encore les libellés exacts).
+
 ## Fournées (batches)
 
 Une **fournée** (table `batches`, + `batch_steps`, `batch_substeps`,

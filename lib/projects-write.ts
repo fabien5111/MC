@@ -20,6 +20,7 @@
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
 import type { ComponentStepDraft } from '@/lib/projects';
+import { fixOeufLigature } from '@/lib/text';
 
 type Supabase = ReturnType<typeof createClient>;
 
@@ -242,7 +243,7 @@ export async function writeComponentContent(
     const { error: ingErr } = await supabase.from('ingredients').insert(
       lignes.map((it, ii) => ({
         group_id: groupRow.id,
-        name: it.name.trim(),
+        name: fixOeufLigature(it.name.trim()),
         quantity: it.quantity,
         // Valeur de base, figée à la copie : c'est elle que multiplie tout
         // ajustement ultérieur. Sans elle, changer deux fois le coefficient

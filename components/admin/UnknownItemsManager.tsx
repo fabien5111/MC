@@ -17,7 +17,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { UnknownItem, IgnoredRef } from '@/lib/admin';
+import type { IngredientRefOption } from '@/lib/ingredient-conversions';
 import { formatDate } from '@/lib/format';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type Kind = 'ingredient' | 'utensil';
 
@@ -376,6 +378,48 @@ function VolumeDensitySection({ items }: { items: UnknownItem[] }) {
   );
 }
 
+// Doublons du référentiel (JEP-249) : entrées d'`ingredient_refs` de même
+// clé (`ingredientKey` — pluriel, ligature, accents). « Garder » fusionne les
+// autres dans celle-ci par la RPC `admin_merge_ingredient_refs` : toutes les
+// lignes qui les référencent (recettes, fournées, courses, conversions) sont
+// rattachées à l'entrée gardée, puis les autres supprimées. Irréversible, d'où
+// la confirmation — et jamais automatique : la clé est une approximation, un
+// admin tranche.
+function RefDuplicatesSection({ groups, onKeep }: { groups: IngredientRefOption[][]; onKeep: (keep: IngredientRefOption, drop: IngredientRefOption[]) => void }) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+      <div className="p-6 border-b border-outline-variant">
+        <h3 className="font-headline-md text-lg font-semibold">
+          Doublons du référentiel <span className="text-on-surface-variant font-normal text-sm">({groups.length})</span>
+        </h3>
+        <p className="text-xs text-on-surface-variant mt-0.5">
+          Ingrédients de référence qui ne diffèrent que par le singulier/pluriel, les accents ou « oe »/« œ ». Choisissez le
+          libellé à garder — de préférence au singulier : les autres y seront fusionnés (recettes, fournées, courses,
+          conversions).
+        </p>
+      </div>
+      <ul className="divide-y divide-outline-variant">
+        {groups.map((g) => (
+          <li key={g.map((r) => r.id).join('-')} className="px-6 py-4 flex flex-wrap items-center gap-2">
+            {g.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => onKeep(r, g.filter((x) => x.id !== r.id))}
+                title={`Garder « ${r.name} »`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant text-on-surface text-sm rounded hover:border-primary hover:text-primary transition-all"
+              >
+                <span className="material-symbols-outlined text-sm">merge</span>
+                Garder « {r.name} »
+              </button>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Éléments exclus (repliable, replié par défaut) : rester visible plutôt que
 // disparaître silencieusement — une exclusion se fait en un clic depuis les
 // tableaux ci-dessus, elle doit pouvoir se défaire aussi facilement.
@@ -436,12 +480,14 @@ function IgnoredSection({ items, onRestore }: { items: IgnoredRef[]; onRestore: 
 
 export function UnknownItemsManager({
   ingredients,
+  refDuplicates,
   utensils,
   volumeMissingDensity,
   ignored,
   allergens,
 }: {
   ingredients: UnknownItem[];
+  refDuplicates: IngredientRefOption[][];
   utensils: UnknownItem[];
   volumeMissingDensity: UnknownItem[];
   ignored: IgnoredRef[];
@@ -458,6 +504,22 @@ export function UnknownItemsManager({
     });
   }
 
+  function mergeRefs(keep: IngredientRefOption, drop: IngredientRefOption[]) {
+    mutate(
+      async () => {
+        const res = await createClient().rpc('admin_merge_ingredient_refs' as never, { p_keep: keep.id, p_drop: drop.map((r) => r.id) } as never);
+        // Le référentiel est en cache serveur : sans invalidation, l'entrée
+        // supprimée resterait proposée jusqu'à expiration.
+        if (!res.error) await revalidateReference('ingredient_refs');
+        return res;
+      },
+      {
+        confirm: `Garder « ${keep.name} » et y fusionner ${drop.map((r) => `« ${r.name} »`).join(', ')} ? Toutes les recettes, fournées, listes de courses et conversions seront rattachées à « ${keep.name} ». Irréversible.`,
+        errorLabel: 'Fusion impossible',
+      },
+    );
+  }
+
   function restore(ref: IgnoredRef) {
     mutate(() => createClient().rpc('admin_unignore_ref' as never, { p_id: ref.id } as never), { errorLabel: 'Réintégration impossible' });
   }
@@ -471,6 +533,7 @@ export function UnknownItemsManager({
         onAdd={setAddingIngredient}
         onExclude={(item) => exclude('ingredient', item)}
       />
+      <RefDuplicatesSection groups={refDuplicates} onKeep={mergeRefs} />
       <Section
         title="Ustensiles"
         desc="Noms saisis dans une recette sans correspondance dans la table de référence des ustensiles."

@@ -17,6 +17,7 @@
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
 import type { BatchEntry, BatchListRow } from '@/lib/profile';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 // Taille de page des fournées terminées (« En cuisine ») : `getBatches` de
 // `lib/profile.ts` (server-only, importe next/headers) et le bouton
@@ -477,8 +478,9 @@ export function batchIngredientExpanded(ing: Pick<BatchIngredientRow, 'expanded_
 export function expandableGroup(batch: Pick<BatchFull, 'batch_ingredients'>, name: string, unit: string | null): BatchIngredientRow[] {
   const key = (s: string) => s.toLowerCase();
   const u = key(unit || '');
+  const n = ingredientKey(name);
   return batch.batch_ingredients.filter(
-    (it) => it.name && !it.removed && it.expanded_into_recipe_id == null && key(it.name) === key(name) && key(it.unit || '') === u,
+    (it) => it.name && !it.removed && it.expanded_into_recipe_id == null && ingredientKey(it.name) === n && key(it.unit || '') === u,
   );
 }
 
@@ -493,8 +495,9 @@ export function expandedGroup(batch: Pick<BatchFull, 'batch_ingredients'>, row: 
   if (subRecipeId == null) return [row];
   const key = (s: string) => s.toLowerCase();
   const u = key(row.unit || '');
+  const n = ingredientKey(row.name);
   return batch.batch_ingredients.filter(
-    (it) => it.expanded_into_recipe_id === subRecipeId && key(it.name) === key(row.name) && key(it.unit || '') === u,
+    (it) => it.expanded_into_recipe_id === subRecipeId && ingredientKey(it.name) === n && key(it.unit || '') === u,
   );
 }
 
@@ -723,7 +726,7 @@ function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
   const rows: (MergedBatchRow & { key: string })[] = [];
   items.forEach((it) => {
     const unit = it.unit || '';
-    const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+    const key = ingredientKey(it.name) + '|' + unit.toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
       r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null, ref_id: it.ref_id ?? null };

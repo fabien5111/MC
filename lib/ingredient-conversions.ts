@@ -6,6 +6,7 @@
 // l'écran, aussi bien côté serveur que dans les Client Components qui
 // affichent des listes d'ingrédients (exécution, courses, éditeurs…).
 import { fmtNum } from '@/lib/recipe-plan';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 export type ConversionRef = {
   ingredient_ref_id: number;
@@ -18,12 +19,18 @@ export type UnitRef = { id: number; name: string };
 export type IngredientRefOption = { id: number; name: string };
 
 // Rapproche un nom d'ingrédient saisi à la main (liste de courses, éditeur de
-// recette) de la table de référence par correspondance exacte de libellé
-// (insensible à la casse) — pour retrouver un `ref_id` là où l'ingrédient n'en
-// porte pas déjà un.
+// recette) de la table de référence — pour retrouver un `ref_id` là où
+// l'ingrédient n'en porte pas déjà un. Comparaison par `ingredientKey`
+// (JEP-249) : « jaunes d'oeufs » se rattache à « Jaune d'œuf ». Le libellé
+// exact (casse près) est préféré quand le référentiel porte encore deux
+// entrées de même clé, le temps qu'un admin les fusionne.
 export function resolveIngredientRefId(name: string, refs: IngredientRefOption[]): number | null {
-  const key = name.trim().toLowerCase();
-  return refs.find((r) => r.name.trim().toLowerCase() === key)?.id ?? null;
+  const exact = name.trim().toLowerCase();
+  const hit = refs.find((r) => r.name.trim().toLowerCase() === exact);
+  if (hit) return hit.id;
+  const key = ingredientKey(name);
+  if (!key) return null;
+  return refs.find((r) => ingredientKey(r.name) === key)?.id ?? null;
 }
 
 const normUnit = (s: string): string =>

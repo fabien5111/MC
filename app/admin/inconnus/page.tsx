@@ -3,18 +3,29 @@ import Link from 'next/link';
 import { requireFullAdmin } from '@/lib/auth';
 import { getUnknownIngredients, getUnknownUtensils, getVolumeIngredientsMissingDensity, getIgnoredRefs, getListEntries } from '@/lib/admin';
 import { UnknownItemsManager } from '@/components/admin/UnknownItemsManager';
+import { getIngredientRefsList } from '@/lib/data/reference';
+import { ingredientKey, ingredientRefDuplicates } from '@/lib/ingredient-name';
 
 export const metadata: Metadata = { title: 'Éléments inconnus | Admin — Je pâtisse !' };
 
 export default async function AdminInconnusPage() {
   await requireFullAdmin(); // rattachement aux référentiels : admin complet
-  const [ingredients, utensils, volumeMissingDensity, ignored, allergensRaw] = await Promise.all([
+  const [unknownIngredients, utensils, volumeMissingDensity, ignored, allergensRaw, refs] = await Promise.all([
     getUnknownIngredients(),
     getUnknownUtensils(),
     getVolumeIngredientsMissingDensity(),
     getIgnoredRefs(),
     getListEntries('allergens', 'name'),
+    getIngredientRefsList(),
   ]);
+  // Un nom qui ne diffère d'une référence que par le pluriel, la ligature ou
+  // les accents (« jaunes d'oeufs » / « Jaune d'œuf ») est déjà rattaché par
+  // l'application (`resolveIngredientRefId`, JEP-249) : le proposer à
+  // « Ajouter à la référence » créerait un doublon. La RPC compare encore les
+  // libellés exacts, d'où ce filtre.
+  const refKeys = new Set(refs.map((r) => ingredientKey(r.name)));
+  const ingredients = unknownIngredients.filter((it) => !refKeys.has(ingredientKey(it.name)));
+  const refDuplicates = ingredientRefDuplicates(refs);
   const allergens = allergensRaw as unknown as { id: number; name: string }[];
 
   return (
@@ -27,6 +38,7 @@ export default async function AdminInconnusPage() {
       </header>
       <UnknownItemsManager
         ingredients={ingredients}
+        refDuplicates={refDuplicates}
         utensils={utensils}
         volumeMissingDensity={volumeMissingDensity}
         ignored={ignored}
