@@ -1397,6 +1397,12 @@ chaque page porte sa carte d'aperçu (`app/opengraph-image.tsx`,
   destinataire, à juste titre), puis renvoie vers `/carnet?scope=shared`.
 - **Instagram n'a pas d'URL de partage** : feuille native du téléphone si
   disponible, sinon copie du lien avec mode d'emploi (story, bio).
+- **Un article du blog se partage aussi** (`ShareSiteButton` paramétré par
+  `chemin` / `titre` / `texte`, ligne d'auteur). Sa carte reste celle de
+  `generateMetadata` : couverture de l'article, et une description complétée
+  par le début du texte quand l'auteur n'a saisi qu'une phrase courte
+  (`descriptionPartage`, `lib/blog-content.ts`). Un `openGraph` de page
+  **remplace** celui du layout : `siteName` et `locale` y sont donc redonnés.
 
 ## Installation (PWA)
 

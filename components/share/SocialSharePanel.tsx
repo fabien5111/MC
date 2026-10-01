@@ -24,7 +24,20 @@ const ICONES: { id: Reseau; icon: string }[] = [
 ];
 const iconeDe = (id: Reseau) => ICONES.find((i) => i.id === id)?.icon ?? 'share';
 
-export function SocialSharePanel({ chemin, titre, texte }: { chemin: string; titre: string; texte: string }) {
+// `image` : image proposée à Pinterest (URL absolue). Par défaut, la carte
+// générée de la page (`<chemin>/opengraph-image`), qui n'existe que pour le site
+// et un carnet partagé — une autre page (un article) passe la sienne, ou `null`.
+export function SocialSharePanel({
+  chemin,
+  titre,
+  texte,
+  image,
+}: {
+  chemin: string;
+  titre: string;
+  texte: string;
+  image?: string | null;
+}) {
   const [origin, setOrigin] = useState('');
   const [natif, setNatif] = useState(false);
   const [copie, setCopie] = useState(false);
@@ -38,7 +51,8 @@ export function SocialSharePanel({ chemin, titre, texte }: { chemin: string; tit
   }, []);
 
   const url = origin ? `${origin}${chemin}` : chemin;
-  const contenu = { url, texte, titre, image: origin ? `${origin}${chemin.replace(/\/$/, '')}/opengraph-image` : undefined };
+  const imageDefaut = origin ? `${origin}${chemin.replace(/\/$/, '')}/opengraph-image` : undefined;
+  const contenu = { url, texte, titre, image: image === undefined ? imageDefaut : image ?? undefined };
 
   async function partageNatif(): Promise<boolean> {
     try {
