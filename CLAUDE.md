@@ -1364,6 +1364,46 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Partage du carnet par lien (JEP-21)
+
+Deux partages externes, à côté du partage nominatif (`ShareBookButton`,
+`book_shares`) : le **site** (« Partager Je pâtisse ! », pied de page,
+`ShareSiteButton`) et le **carnet** par un lien public
+`/carnet/partage/<jeton>`. Même panneau pour les deux (`SocialSharePanel` :
+feuille native, Facebook, Pinterest, WhatsApp, X, e-mail, Instagram, copie) ;
+chaque page porte sa carte d'aperçu (`app/opengraph-image.tsx`,
+`app/carnet/partage/[jeton]/opengraph-image.tsx`).
+
+- **Jeton signé, pas de table** (`lib/book-link.ts`) : le lien est permanent
+  et non révocable (arbitrage JEP-21), il n'y a donc rien à mémoriser — un
+  HMAC de l'id du propriétaire suffit, sans migration. Secret
+  `CARNET_PARTAGE_SECRET`, à défaut dérivé de `SUPABASE_SERVICE_ROLE_KEY`.
+  **Changer l'un ou l'autre invalide tous les liens distribués** — c'est
+  aussi la seule révocation possible. Un besoin de révocation par carnet
+  imposera une table ; ce module est le seul endroit à changer.
+- **Un lien n'ouvre jamais les brouillons** (`PORTEE_LIEN = 'published'`) :
+  il circule sans qu'on sache jusqu'où. Déverrouiller n'écrase jamais un
+  partage nominatif existant (`ignoreDuplicates`), qui peut être plus large.
+- **L'aperçu ne montre rien de privé** (`getApercuCarnet`, clé service_role) :
+  nom, nombre de recettes, et une mosaïque des photos de recettes **publiques**
+  uniquement. Le flou est un décor : une image floutée en CSS reste
+  téléchargeable nette, il ne doit donc jamais porter une photo privée.
+- **Le jeton traverse l'inscription par `next`**, que le parcours transporte
+  déjà de bout en bout (e-mail confirmé des jours plus tard, Google,
+  `/choix-pseudo`) : `next = /carnet/partage/<jeton>/deverrouiller`. Cette
+  destination est une **page**, pas un Route Handler : `LoginForm` rejoint
+  `next` par `router.replace`, qui attend un rendu React. Elle écrit la
+  ligne `book_shares` au nom du propriétaire (ce que la RLS refuse au
+  destinataire, à juste titre), puis renvoie vers `/carnet?scope=shared`.
+- **Instagram n'a pas d'URL de partage** : feuille native du téléphone si
+  disponible, sinon copie du lien avec mode d'emploi (story, bio).
+- **Un article du blog se partage aussi** (`ShareSiteButton` paramétré par
+  `chemin` / `titre` / `texte`, ligne d'auteur). Sa carte reste celle de
+  `generateMetadata` : couverture de l'article, et une description complétée
+  par le début du texte quand l'auteur n'a saisi qu'une phrase courte
+  (`descriptionPartage`, `lib/blog-content.ts`). Un `openGraph` de page
+  **remplace** celui du layout : `siteName` et `locale` y sont donc redonnés.
+
 ## Installation (PWA)
 
 Le site est installable (icône sur l'écran d'accueil, mode `standalone`) via
@@ -1600,6 +1640,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SWIFT_STORAGE_URL` | Racine du stockage objet, telle que la rend `swift auth` (`https://<hôte>/v1/AUTH_<projet>`) — lot B | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
+| `CARNET_PARTAGE_SECRET` | Signe les liens de partage de carnet (`lib/book-link.ts`, JEP-21) — optionnelle : absente, dérivée de `SUPABASE_SERVICE_ROLE_KEY`. La changer invalide tous les liens déjà distribués | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.

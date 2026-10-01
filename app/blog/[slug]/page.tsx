@@ -25,6 +25,8 @@ import {
 } from '@/lib/blog';
 import { getArticlePreview } from '@/lib/admin-blog';
 import { siteUrl } from '@/lib/site-url';
+import { descriptionPartage } from '@/lib/blog-content';
+import { ShareSiteButton } from '@/components/share/ShareSiteButton';
 
 // Pré-génération des slugs publiés au build ; Next bascule au rendu dynamique
 // par requête si besoin (le reste de la page dépend de la session, via
@@ -57,7 +59,9 @@ export async function generateMetadata({
   if (!article) return { title: 'Article introuvable — Je pâtisse !' };
 
   const title = seoTitle(article);
-  const description = seoDescription(article);
+  // Complétée par le début du texte quand l'auteur n'a saisi qu'une phrase
+  // courte (JEP-21) : c'est elle que montrent les cartes de partage.
+  const description = descriptionPartage(seoDescription(article), article.doc);
 
   return {
     title: `${title} — Je pâtisse !`,
@@ -67,6 +71,10 @@ export async function generateMetadata({
     ...(preview ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: 'article',
+      // Redonnés ici : un `openGraph` de page remplace celui du layout au lieu
+      // de s'y ajouter, et sans `siteName` la carte paraît anonyme.
+      siteName: 'Je pâtisse !',
+      locale: 'fr_FR',
       title,
       description,
       publishedTime: article.published_at ?? undefined,
@@ -179,6 +187,20 @@ export default async function ArticlePage({
                 {formatArticleDate(article.published_at)} · {article.readingMinutes} min de lecture
               </p>
             </div>
+            {/* Partage de l'article (JEP-21) : même fenêtre que le partage du
+                site, sur l'adresse de l'article — sa carte d'aperçu est celle
+                de `generateMetadata` ci-dessus (couverture, titre, description). */}
+            <ShareSiteButton
+              chemin={`/blog/${article.slug}`}
+              titre={article.title}
+              texte={`${article.title} — à lire sur Je pâtisse !`}
+              titreFenetre="Partager cet article"
+              image={/^https?:\/\//.test(article.cover_image_url ?? '') ? article.cover_image_url : null}
+              ariaLabel="Partager cet article"
+              className="ml-auto material-symbols-outlined text-primary hover:opacity-70 transition-opacity p-1"
+            >
+              share
+            </ShareSiteButton>
           </div>
         </div>
 

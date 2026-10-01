@@ -19,9 +19,23 @@ import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { MemberPicker, MemberAvatar } from '@/components/share/MemberPicker';
 import { formatDate } from '@/lib/format';
+import { SocialSharePanel } from '@/components/share/SocialSharePanel';
 import { SHARE_SCOPE_LABELS, type BookShareGiven, type Member, type ShareScope } from '@/lib/shares';
+import { MESSAGE_PARTAGE_CARNET } from '@/lib/social-share';
 
-export function ShareBookButton({ ownerId, given }: { ownerId: string; given: BookShareGiven[] }) {
+// `lienPartage` : chemin du lien public du carnet (JEP-21, `lib/book-link.ts`),
+// calculé côté serveur — la signature exige un secret que le navigateur n'a
+// pas. `null` si ce secret n'est pas configuré : la section disparaît plutôt
+// que de proposer un lien qui ne s'ouvrirait pas.
+export function ShareBookButton({
+  ownerId,
+  given,
+  lienPartage,
+}: {
+  ownerId: string;
+  given: BookShareGiven[];
+  lienPartage: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const { mutate, busy } = useMutation();
   const [items, setItems] = useState(given);
@@ -92,6 +106,7 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
 
             <div className="p-6 flex flex-col gap-6">
               <div className="flex flex-col gap-3">
+                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager avec un membre</span>
                 <label className="flex items-center gap-2 font-body-md text-sm text-on-surface-variant">
                   <input type="checkbox" checked disabled className="accent-primary" />
                   Toutes mes recettes privées
@@ -111,7 +126,7 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
               </div>
 
               <div className="flex flex-col gap-3">
-                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager avec</span>
+                <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Rechercher un membre</span>
                 <MemberPicker excludeIds={[ownerId, ...items.map((i) => i.member.id)]} onSelect={addShare} />
               </div>
 
@@ -146,6 +161,17 @@ export function ShareBookButton({ ownerId, given }: { ownerId: string; given: Bo
                   </ul>
                 )}
               </div>
+
+              {lienPartage && (
+                <div className="flex flex-col gap-3 border-t border-outline-variant/40 pt-6">
+                  <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Partager par lien</span>
+                  <p className="font-body-md text-[12px] text-on-surface-variant">
+                    Toute personne qui ouvre ce lien et se connecte (ou crée son compte) accède à vos recettes, brouillons exclus.
+                    Le lien est permanent. Un membre ainsi ajouté apparaît dans « Déjà partagé avec » et se retire comme les autres.
+                  </p>
+                  <SocialSharePanel chemin={lienPartage} titre="Mon carnet sur Je pâtisse !" texte={MESSAGE_PARTAGE_CARNET} />
+                </div>
+              )}
             </div>
           </div>
         </div>

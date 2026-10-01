@@ -141,3 +141,33 @@ export function extractHeadings(doc: ProseDoc): Heading[] {
 export function hasContent(doc: ProseDoc): boolean {
   return (doc.content ?? []).some((n) => nodeText(n).trim().length > 0 || n.type === 'image');
 }
+
+// Description de partage d'un article (balises `description` / `og:description`,
+// JEP-21). Celle saisie par l'auteur (`seo_description`, à défaut le chapeau)
+// est gardée telle quelle si elle est assez fournie ; trop courte, elle est
+// complétée par le début du texte de l'article (titres exclus), coupée au mot
+// sous 125 caractères. Ni plus court (les inspecteurs de partage signalent une
+// description sous 80 caractères, et une carte qui ne dit presque rien se
+// clique moins), ni plus long : les cartes sociales tronquent vers 125, avant
+// les 155 que l'éditeur tolère pour Google (`publishWarnings`, BlogEditor).
+export const DESCRIPTION_PARTAGE_MIN = 80;
+export const DESCRIPTION_PARTAGE_MAX = 125;
+
+export function descriptionPartage(base: string, doc: ProseDoc): string {
+  const debut = base.replace(/\s+/g, ' ').trim();
+  if (debut.length >= DESCRIPTION_PARTAGE_MIN) return debut;
+  const texte = (doc.content ?? [])
+    .filter((n) => n.type !== 'heading')
+    .map(nodeText)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!texte) return debut;
+  // Un chapeau souvent repris en première phrase : ne pas le dire deux fois.
+  const reprise = debut && texte.toLowerCase().startsWith(debut.toLowerCase());
+  const tout = !debut || reprise ? texte : `${debut}${/[.!?…:]$/.test(debut) ? ' ' : '. '}${texte}`;
+  if (tout.length <= DESCRIPTION_PARTAGE_MAX) return tout;
+  const coupe = tout.slice(0, DESCRIPTION_PARTAGE_MAX - 1);
+  const espace = coupe.lastIndexOf(' ');
+  return `${(espace > 0 ? coupe.slice(0, espace) : coupe).replace(/[\s,;:.–—-]+$/, '')}…`;
+}

@@ -7,6 +7,7 @@ import { getAllergensWithPicto } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
+import { cheminPartageCarnet } from '@/lib/book-link';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
@@ -75,6 +76,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       getEntitlements(user.id),
     ]);
   const filtered = applyCarnetFilters(items, params);
+  const lienPartage = cheminPartageCarnet(user.id);
 
   return (
     <>
@@ -95,7 +97,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
                   la zone recherche dans CarnetToolbar (même instance de
                   composant dupliquée, cf. CarnetToolbar.tsx). */}
               <div className="hidden md:flex">
-                <ShareBookButton ownerId={user.id} given={bookSharesGiven} />
+                <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} />
               </div>
               <NewProjectButton peutProjet={canAccess(droits, 'mode_projet')} />
               <Link
@@ -120,7 +122,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             params={params}
             counts={counts}
             statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
-            shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} /> : null}
+            shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} /> : null}
           />
           <CarnetContent
             key={carnetParamsToQueryString(params)}

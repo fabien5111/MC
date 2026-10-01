@@ -1,5 +1,6 @@
 // Pied de page partagé (porté de index.html).
 import Link from 'next/link';
+import { ShareSiteButton } from '@/components/share/ShareSiteButton';
 import { GererCookiesButton } from '@/components/CookieConsent';
 
 export function Footer() {
@@ -16,7 +17,7 @@ export function Footer() {
               communauté de gourmets et apprenez les techniques des chefs.
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-16 gap-y-10">
+          <div className="grid grid-cols-2 gap-x-16 gap-y-10">
             <div className="flex flex-col gap-4">
               <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
                 Le Club
@@ -27,6 +28,7 @@ export function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/idees">Boîte à idées</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/connexion">Connexion</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/contact">Contact</Link></li>
+                <li><ShareSiteButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
             </div>
             <div className="flex flex-col gap-4">
@@ -44,15 +46,6 @@ export function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/confidentialite#cookies">Cookies</Link></li>
                 <li><GererCookiesButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>
-            </div>
-            <div className="flex flex-col gap-4">
-              <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
-                Suivre
-              </h4>
-              <div className="flex gap-6">
-                <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">share</span>
-                <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">mail</span>
-              </div>
             </div>
           </div>
         </div>
