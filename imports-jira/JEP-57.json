@@ -1,0 +1,255 @@
+{
+  "ticket": "JEP-57",
+  "recette": {
+    "titre": "Bûche au thé et orange",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël originale et légère associant une ganache montée infusée au thé Tsarevna de Kusmi Tea, une compotée orange et anis étoilé, un biscuit viennois orange, et un croustillant sablé cannelle-gingembre.",
+    "rendement": "1 bûche (6 à 8 personnes)",
+    "ustensiles": [
+      "Casseroles",
+      "Film plastique",
+      "Bols et récipients",
+      "Batteur ou robot pâtissier muni du fouet",
+      "Maryse",
+      "Plaque à génoise (ou plaque générale)",
+      "Papier cuisson",
+      "Moule à bûche",
+      "Spray velours blanc"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée au thé Tsarevna",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 244,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide (chaude)",
+            "quantite": 337.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (froide)",
+            "quantite": 337.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Thé Tsarevna de Kusmi Tea (quantité selon l'intensité souhaitée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater les feuilles de gélatine pendant 10 minutes dans de l'eau froide.",
+          "Ajouter le thé Tsarevna dans la crème chaude et faire chauffer jusqu'à ébullition.",
+          "Laisser infuser sous un film plastique pendant 3 à 4 minutes.",
+          "Retirer le film, réchauffer légèrement si nécessaire, puis verser en trois fois sur le chocolat blanc préalablement fondu en émulsionnant bien.",
+          "Appuyer sur le thé pour extraire les arômes, puis incorporer la gélatine essorée.",
+          "Ajouter la crème liquide froide en une seule fois.",
+          "Verser dans un grand récipient, filmer au contact et placer au réfrigérateur pendant 4 heures minimum."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Compotée orange - anis étoilé",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Étoile d'anis",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Jus d'orange",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 8,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer le jus d'orange dans une casserole avec l'anis étoilé.",
+          "Mélanger le sucre et la pectine NH dans un verre.",
+          "À ébullition, couper le feu et laisser infuser 10 à 15 minutes.",
+          "Retirer l'anis étoilé, ajouter le mélange sucre-pectine, puis porter à ébullition pendant 2 minutes en mélangeant pour éviter les grumeaux.",
+          "Réserver, filmer au contact et placer au frais."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Biscuit viennois à l'orange",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 4,
+        "temperature_cuisson_celsius": 230,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Zestes d'une orange",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf entier",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (42 g + 15 g)",
+            "quantite": 57.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'oeuf",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer les œufs entiers, les jaunes et 42 g de sucre dans le bol du robot muni du fouet, puis monter pendant 10 minutes pour obtenir un ruban souple.",
+          "Monter les blancs d'œufs en neige en incorporant progressivement les 15 g de sucre restants.",
+          "Incorporer délicatement les blancs en neige à la première préparation en trois fois avec une maryse.",
+          "Ajouter la farine tamisée en une fois et les zestes d'orange râpés.",
+          "Étaler uniformément sur une plaque recouverte de papier cuisson sur 1 cm d'épaisseur.",
+          "Enfourner à 230 °C pendant 4 minutes."
+        ],
+        "conseils_etape": "À réaliser le jour du montage."
+      },
+      {
+        "nom_etape": "Biscuit croustillant",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pâte sucrée cuite (enrichie d'une cuillère à soupe de cannelle et d'une de gingembre)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Émietter la pâte sucrée cuite du bout des doigts.",
+          "Faire fondre le chocolat au lait et le beurre de cacao, puis les verser sur les miettes.",
+          "Mélanger et étaler entre deux feuilles de papier cuisson sur environ 20 cm.",
+          "Placer au congélateur pour durcir."
+        ],
+        "conseils_etape": "À réaliser le jour du montage."
+      },
+      {
+        "nom_etape": "Montage de la bûche",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Démouler le biscuit viennois et découper un rectangle à la taille du moule à bûche.",
+          "Étaler la compotée d'orange sur le biscuit, rouler serré et placer brièvement au congélateur.",
+          "Monter la ganache reposée au robot à vitesse moyenne jusqu'à l'obtention d'un ruban souple.",
+          "Découper le biscuit croustillant à la dimension souhaitée.",
+          "Dans le moule à bûche, déposer une première couche de ganache montée.",
+          "Insérer au centre le biscuit roulé à la compotée, combler les côtés avec un peu de ganache.",
+          "Recouvrir d'une dernière couche de ganache et poser le biscuit croustillant sur le fond.",
+          "Congeler pour toute une nuit."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Finitions et décoration",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Spray velours blanc",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Feuille d'or",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Quartier de clémentine",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Glucose (une petite pointe)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Sortir la bûche congelée du moule.",
+          "Pulvériser uniformément le spray velours blanc sur la bûche.",
+          "Poser une pointe de glucose pour fixer le quartier de clémentine et appliquer délicatement la feuille d'or.",
+          "Laisser décongeler au réfrigérateur avant de servir."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Préparer la pâte sucrée à l'avance en intégrant la cannelle et le gingembre pour gagner du temps.",
+      "Respecter les temps de repos au frais pour la ganache afin de garantir un montage stable et aérien."
+    ],
+    "conseils_conservation": "Conserver la bûche au congélateur jusqu'au service. Laisser décongeler plusieurs heures au réfrigérateur avant la dégustation pour obtenir une texture fondante."
+  }
+}
