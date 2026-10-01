@@ -3,6 +3,7 @@
 // abusif additionne deux ingrédients différents — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
 import { ingredientKey, ingredientRefDuplicates, sameIngredient } from '@/lib/ingredient-name';
+import { estimateWeightGrams } from '@/lib/ingredient-conversions';
 
 describe('ingredientKey', () => {
   it('confond singulier, pluriel, ligature et apostrophe', () => {
@@ -59,5 +60,18 @@ describe('ingredientRefDuplicates', () => {
       { id: 4, name: 'Sucre glace' },
     ];
     expect(ingredientRefDuplicates(refs).map((g) => g.map((r) => r.id))).toEqual([[1, 3]]);
+  });
+});
+
+describe('estimateWeightGrams — masse volumique rapprochée par la clé', () => {
+  it('trouve la masse volumique d’un ingrédient écrit au pluriel', () => {
+    const est = estimateWeightGrams(
+      [{ name: 'Crèmes liquides', quantity: 100, unit: 'ml', ref_id: null }],
+      [],
+      [],
+      [{ name: 'Crème liquide', density_g_per_ml: 1.01 }],
+    );
+    expect(est.grams).toBe(101);
+    expect(est.unconverted).toEqual([]);
   });
 });

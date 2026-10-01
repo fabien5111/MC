@@ -176,9 +176,11 @@ export function estimateWeightGrams(
   units: UnitRef[],
   // Masse volumique par nom d'ingrédient (lib/recipes.ts
   // `getIngredientDensities`), pour les lignes sans `ref_id` propre.
+  // Rapprochée par `ingredientKey` (JEP-249) : « crèmes liquides » trouve la
+  // masse volumique de « Crème liquide ».
   densities?: { name: string; density_g_per_ml: number }[],
 ): WeightEstimate {
-  const densityByName = new Map((densities ?? []).map((d) => [normUnit(d.name), d.density_g_per_ml]));
+  const densityByName = new Map((densities ?? []).map((d) => [ingredientKey(d.name), d.density_g_per_ml]));
   let grams = 0;
   const unconverted: WeightEstimate['unconverted'] = [];
   for (const it of ingredients) {
@@ -201,7 +203,7 @@ export function estimateWeightGrams(
       continue;
     }
     const mlPerUnit = VOLUME_TO_ML[key];
-    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(normUnit(it.name));
+    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(ingredientKey(it.name));
     if (mlPerUnit != null && density != null && density > 0) {
       grams += it.quantity * mlPerUnit * density;
       continue;
