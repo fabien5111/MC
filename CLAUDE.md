@@ -514,7 +514,10 @@ réintroduire de `name.toLowerCase()` comme clé de fusion.
   complétés, puis les autres supprimées. Jamais automatique : la clé est une
   approximation, un admin tranche. Le même écran masque des « inconnus » les
   noms dont la clé correspond déjà à une référence (la RPC
-  `admin_unknown_ingredients` compare encore les libellés exacts).
+  `admin_unknown_ingredients` compare encore les libellés exacts) ; la RPC
+  `admin_volume_ingredients_missing_density`, elle, rapproche par `ref_id`
+  puis par `mc_ingredient_key`, et la masse volumique de repli de
+  `estimateWeightGrams` par `ingredientKey`.
 
 ## Fournées (batches)
 
