@@ -98,6 +98,28 @@ le service managé.
   fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
   données, elles, passent bien par pgweb : la limite ne porte que sur le
   DDL des tables.
+- **Une fonction `SECURITY DEFINER` doit appartenir à `postgres`, jamais à
+  `pgweb_admin`** — elle s'exécute avec les droits de son propriétaire.
+  Découvert le 01/10/2026 (JEP-249), deux pièges en chaîne : `postgres`
+  n'est **pas superutilisateur** sur cette base, donc
+  `alter function … owner to postgres` sur une fonction créée dans pgweb
+  échoue (« must be owner of function »), et un `CREATE` de plusieurs
+  milliers de caractères collé dans le Web SSH est **tronqué** par le
+  terminal (la commande reste ouverte sur une invite `>`). Mode opératoire :
+  1. **pgweb** — créer la fonction sous un nom de modèle
+     (`<nom>_modele`), lisible sur plusieurs lignes, puis
+     `revoke all … from public, anon, authenticated` sur ce modèle ;
+  2. **Web SSH 216075**, une ligne courte — `postgres` la recopie sous le
+     vrai nom, et en devient propriétaire :
+     `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "do \$\$ begin execute replace(pg_get_functiondef('public.<nom>_modele(<types>)'::regprocedure), '<nom>_modele', '<nom>'); end \$\$; grant execute on function public.<nom>(<types>) to authenticated;"`
+     (le corps ne doit pas contenir son propre nom, sinon `replace` le
+     réécrit aussi ; `\$` obligatoire, sans quoi le shell efface `$$`) ;
+  3. **pgweb** — `drop function public.<nom>_modele(<types>)`, puis
+     contrôler `pg_get_userbyid(proowner)` dans `pg_proc`.
+  Remplacer une fonction existante appartenant déjà à `postgres` suit le même
+  chemin (pgweb ne peut pas la remplacer : « must be owner »). Une fonction
+  sans privilège (`SECURITY INVOKER`, calcul pur comme `mc_ingredient_key`)
+  peut rester à `pgweb_admin`.
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
   `next/font/google` (`app/fonts.ts`), auto-hébergées depuis
   `/_next/static` — jamais un `<link>` vers `fonts.googleapis.com`, qui
