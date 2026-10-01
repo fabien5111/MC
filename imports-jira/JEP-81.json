@@ -1,0 +1,195 @@
+{
+  "ticket": "JEP-81",
+  "recette": {
+    "titre": "Cake Dulcey Cacahuète",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake ultra gourmand et spectaculaire inspiré de Christophe Michalak, composé d'un biscuit moelleux aux cacahuètes et beurre noisette, surmonté d'un praliné fondant aux cacahuètes, le tout enrobé d'un glaçage au chocolat Dulcey brillant et poudré d'or.",
+    "rendement": "1 cake (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Casserole",
+      "Tamis",
+      "Cul-de-poule",
+      "Robot coupe ou mixeur",
+      "Fouet",
+      "Moule à cake",
+      "Petite casserole ou bol pour la masse gélatine",
+      "Mixeur plongeant",
+      "Poêle",
+      "Papier silicone ou papier sulfurisé",
+      "Piques en bois",
+      "Pinceau de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 43,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 42,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 14,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes grillées mixées",
+            "quantite": 28,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (tempérés)",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre noisette (à partir d'un peu plus de beurre fondu)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, faire fondre doucement le beurre pour obtenir une coloration et une odeur de noisette, puis le passer au tamis et en prélever 60g dans un cul-de-poule.",
+          "Tamiser ensemble la farine, la levure chimique, le sel fin, la poudre d'amande et le sucre glace.",
+          "Verser le beurre noisette sur le miel, mélanger délicatement, puis verser ce mélange sur les poudres tamisées.",
+          "Ajouter les blancs d'œufs tempérés et mélanger le tout.",
+          "À l'aide d'un robot coupe, mixer les cacahuètes pour obtenir une fine poudre, puis l'intégrer au mélange précédent en fouettant bien.",
+          "Verser la totalité de l'appareil (environ 330g) dans un moule préalablement graissé.",
+          "Enfourner à 160°C pendant environ 43 minutes.",
+          "Laisser le cake refroidir complètement avant de le démouler."
+        ],
+        "conseils_etape": "Utiliser des blancs d'œufs bien à température ambiante pour éviter tout choc thermique avec le beurre tiède."
+      },
+      {
+        "nom_etape": "Le praliné cacahuète et les cacahuètes caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 70,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 16,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes (pour le praliné)",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes grossièrement mixées",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné amande noisette",
+            "quantite": 92,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide froide",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes déjà grillées (pour la finition)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser la masse gélatine en mélangeant l'eau et la gélatine en poudre, puis laisser reposer 10 minutes.",
+          "Mixer grossièrement les 46g de cacahuètes en gardant de beaux morceaux.",
+          "Faire fondre la masse gélatine quelques secondes au micro-ondes, puis la verser sur le praliné amande noisette.",
+          "Ajouter progressivement la crème froide à l'aide d'une maryse en effectuant des petits cercles au centre, puis incorporer le reste et finir au mixeur plongeant.",
+          "Ajouter les cacahuètes grossièrement mixées, mélanger et réserver au réfrigérateur jusqu'à ce que la texture fige.",
+          "Dans une poêle, verser les 30g de cacahuètes grillées avec les 15g de sucre glace et laisser caraméliser en remuant régulièrement.",
+          "Débarrasser les cacahuètes caramélisées sur une feuille de papier silicone ou de papier sulfurisé pour les laisser refroidir.",
+          "Étaler généreusement le confit praliné figé sur le dessus du cake, nettoyer les bords et recouvrir avec les cacahuètes caramélisées.",
+          "Planter deux piques en bois dans le cake et le placer 1 heure au congélateur."
+        ],
+        "conseils_etape": "Veillez à garder des morceaux de cacahuètes perceptibles lors du mixage pour apporter du croquant au praliné."
+      },
+      {
+        "nom_etape": "Le glaçage et les finitions",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 830,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'or",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat Dulcey au micro-ondes ou au bain-marie, puis ajouter l'huile de pépins de raisin à 45°C.",
+          "Mixer le tout au mixeur plongeant pour obtenir un glaçage ultra lisse et brillant, puis le verser dans un bac.",
+          "Sortir le cake du congélateur, le plonger brièvement dans le glaçage pour figer instantanément le chocolat, puis l'égoutter en raclant le dessous contre les rebords.",
+          "Retirer les piques en bois, boucher les petits trous avec un peu de chocolat non figé et placer le cake au réfrigérateur pendant au moins 30 minutes.",
+          "Une fois le glaçage bien pris, peindre entièrement le gâteau avec la poudre d'or à l'aide d'un pinceau."
+        ],
+        "conseils_etape": "Le choc thermique entre le cake très froid et le glaçage à la bonne température est indispensable pour que le chocolat fige instantanément en fine couche."
+      }
+    ],
+    "astuces_recette": [
+      "Respectez bien les temps de repos au congélateur et au réfrigérateur pour garantir la tenue des différentes couches lors de la découpe.",
+      "Travaillez dans une pièce tempérée pour manipuler le chocolat Dulcey et éviter qu'il ne fonde trop vite."
+    ],
+    "conseils_conservation": "Sortir le cake du réfrigérateur 15 à 20 minutes avant la dégustation pour profiter pleinement de la texture fondante du praliné et du moelleux du biscuit. Se conserve au réfrigérateur sous une cloche ou dans une boîte hermétique pendant 3 à 4 jours."
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "ticket": "JEP-87",
+  "recette": {
+    "titre": "Cake Marbré de François Perret",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake marbré ultra gourmand aux saveurs vanille et cacao, doté du fameux dôme fendu caractéristique et sublimé par un glaçage rocher croustillant.",
+    "rendement": "1 cake marbré (environ 6 à 8 personnes)",
+    "ustensiles": [
+      "Robot coupe (ou robot pâtissier / batteur)",
+      "Maryse",
+      "Tamis",
+      "2 poches à douille (pour les pâtes)",
+      "Poche à douille munie d'une douille lisse de 10 mm (pour le beurre du dessus)",
+      "Moule à cake (28 cm de long x 10 cm de large)",
+      "Couteau",
+      "Casserole",
+      "Pinceau de cuisine",
+      "Bain-marie",
+      "Mixeur plongeant"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil à cake vanille",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre pommade",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser dans le robot coupe le sucre semoule, le beurre pommade en morceaux, la fleur de sel et la poudre de vanille, puis mixer brièvement sans trop chauffer.",
+          "Ajouter l'œuf et continuer de mixer un petit instant.",
+          "Incorporer la levure chimique et la farine préalablement tamisées, puis mélanger jusqu'à l'obtention d'une consistance à peine homogène en raclant les bords si nécessaire.",
+          "Verser enfin la crème liquide et mélanger à nouveau pour obtenir une pâte bien homogène.",
+          "Garnir une poche à douille avec cet appareil à cake vanille."
+        ],
+        "conseils_etape": "Ne travaillez pas trop la pâte une fois la farine ajoutée pour éviter de développer le gluten."
+      },
+      {
+        "nom_etape": "Appareil à cake cacao",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre pommade",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer dans le robot le beurre pommade, le sucre semoule et la fleur de sel, puis mélanger légèrement.",
+          "Ajouter l'œuf, la levure chimique, la farine et le cacao en poudre tamisés, puis mixer quelques secondes.",
+          "Verser la crème liquide et mixer jusqu'à l'obtention d'une pâte bien homogène.",
+          "Mettre cette pâte chocolatée dans une seconde poche à douille."
+        ],
+        "conseils_etape": "Veillez à ce que les deux pâtes (vanille et cacao) aient une texture parfaitement similaire avant le pochage."
+      },
+      {
+        "nom_etape": "Montage, pochage et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 85,
+        "temperature_cuisson_celsius": 145,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre pommade (un peu, pour le dessus du cake)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Bien graisser le moule à cake de 28 x 10 cm.",
+          "Alterner les cordons de pâte à la vanille et de pâte au cacao en les pochant dans le moule jusqu'à épuisement des deux préparations.",
+          "Tirer un trait à l'aide d'un couteau en formant des petits \"S\" à l'intérieur pour créer le marbrage.",
+          "Déposer une belle quenelle (ou un boudin) de beurre bien crémeux à l'aide d'une poche à douille lisse de 10 mm en plein milieu sur toute la longueur du cake pour garantir l'effet bombé.",
+          "Enfourner pour 15 minutes à 200°C, puis baisser la température et poursuivre la cuisson pendant 1 heure et 10 minutes à 145°C."
+        ],
+        "conseils_etape": "Le dépôt du boudin de beurre cru au centre est le secret absolu de François Perret pour faire exploser le cake de manière bien nette et bombée sur le dessus."
+      },
+      {
+        "nom_etape": "Sirop d'imbibage",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Rhum",
+            "quantite": 7.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser l'eau, le sucre semoule et le rhum dans une casserole.",
+          "Porter l'ensemble à ébullition pour dissoudre complètement le sucre.",
+          "Sortir le cake cuit du four, le démouler délicatement, puis badigeonner généreusement le cake encore chaud avec le sirop bouillant à l'aide d'un pinceau."
+        ],
+        "conseils_etape": "L'imbibage à la sortie du four permet d'emprisonner l'humidité et d'obtenir un moelleux exceptionnel."
+      },
+      {
+        "nom_etape": "Glaçage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pâte à glacer brune",
+            "quantite": 500,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 166,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 83,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre doucement au bain-marie la pâte à glacer brune, le chocolat noir et l'huile de pépins de raisin.",
+          "Lorsque le mélange est fondu à environ 80%, retirer du feu et passer un coup de mixeur plongeant pour homogénéiser en incorporant le moins d'air possible.",
+          "Laisser tiédir le glaçage, puis en napper généreusement le cake entièrement refroidi (ou tiède).",
+          "Placer le cake au réfrigérateur pendant environ 45 minutes pour figer le glaçage."
+        ],
+        "conseils_etape": "Ne pas utiliser un glaçage trop chaud pour éviter qu'il ne fasse fondre le cake, et veillez à bien le napper uniformément."
+      }
+    ],
+    "astuces_recette": [
+      "L'utilisation du robot coupe simplifie grandement les préparations de cakes en évitant d'incorporer trop d'air tout en garantissant une émulsion rapide et efficace.",
+      "Respectez scrupuleusement les deux paliers de température de cuisson (choc thermique initial puis cuisson douce) pour réussir la structure caractéristique du cake de chef."
+    ],
+    "conseils_conservation": "Sortez le cake du réfrigérateur 15 à 20 minutes avant la dégustation pour apprécier pleinement le fondant de la mie et la texture du glaçage. Conservez-le de préférence sous cloche à température ambiante si consommé rapidement, ou au frais s'il est enrobé de son glaçage (pensez alors à le tempérer avant de servir)."
+  }
+}

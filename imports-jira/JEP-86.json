@@ -1,0 +1,270 @@
+{
+  "ticket": "JEP-86",
+  "recette": {
+    "titre": "Cake marbré façon Le Meilleur Pâtissier chocolat-cacahuètes",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Cake marbré ultra moelleux au chocolat et aux cacahuètes, garni d'un praliné cacahuètes et d'un caramel onctueux, puis enrobé d'un glaçage marbré.",
+    "rendement": "1 cake de 20 cm (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Casseroles",
+      "Mixeur",
+      "Fouet",
+      "Maryse",
+      "Moule à cake de 20 cm",
+      "Vide-pomme ou cuillère à café",
+      "Mixeur plongeant"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le beurre noisette",
+        "page": null,
+        "temps_preparation_minutes": 2,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire chauffer le beurre doux dans une casserole sur feu doux pendant une dizaine de minutes jusqu'à ce qu'il brunisse et dégage une odeur de noisette.",
+          "Chinoiser le beurre noisette obtenu et réserver."
+        ],
+        "conseils_etape": "Surveiller attentivement pour ne pas brûler le beurre."
+      },
+      {
+        "nom_etape": "L'appareil à cake",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 60,
+        "temperature_cuisson_celsius": 140,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Œufs",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Vanille en poudre",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacahuètes",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de cacahuètes (cacahuètes salées mixées finement)",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 240,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépin de raisin",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre (pour la version chocolat)",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un bol, mélanger les œufs, le sucre semoule, le sel et la vanille en poudre au fouet jusqu'à ce que le mélange blanchisse.",
+          "Ajouter le beurre de cacahuètes, puis incorporer délicatement la farine.",
+          "Ajouter la levure chimique, la poudre de cacahuètes, puis verser la crème liquide petit à petit.",
+          "Incorporer le beurre noisette refroidi et finir par l'huile de pépin de raisin pour obtenir un mélange homogène.",
+          "Séparer l'appareil en deux parts égales dans deux récipients.",
+          "Dans l'un des récipients, ajouter les 15g de cacao en poudre et un tout petit peu de crème liquide pour homogénéiser l'appareil chocolat.",
+          "Dans un moule de 20 cm préalablement graissé, verser alternativement 3 cuillères d'appareil au cacao et 3 cuillères d'appareil nature pour former un motif marbré.",
+          "Enfourner à 140°C pour environ 1 heure."
+        ],
+        "conseils_etape": "Bien surveiller la cuisson selon la taille du moule."
+      },
+      {
+        "nom_etape": "Les glaçages",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 337,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépin de raisin (pour le chocolat au lait)",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépin de raisin (pour le chocolat blanc)",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 112,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre séparément le chocolat au lait et le chocolat blanc.",
+          "Verser 95g d'huile de pépin de raisin dans le chocolat au lait fondu et mélanger jusqu'à obtention d'une texture homogène.",
+          "Verser 20g d'huile de pépin de raisin dans le chocolat blanc fondu et mélanger.",
+          "Réserver les deux glaçages."
+        ],
+        "conseils_etape": "À réaliser pendant la cuisson du cake. Utiliser du chocolat fondu à bonne température pour ne pas figer l'huile."
+      },
+      {
+        "nom_etape": "Le praliné cacahuètes",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes salées",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer les cacahuètes salées et le sucre glace dans une poêle sur feu vif.",
+          "Mélanger bien pour enrober les cacahuètes et laisser caraméliser jusqu'à disparition totale du sucre blanc.",
+          "Retirer du feu et laisser durcir pendant 15 à 20 minutes.",
+          "Transférer les cacahuètes caramélisées dans un mixeur et mixer jusqu'à l'obtention d'un praliné bien lisse et onctueux."
+        ],
+        "conseils_etape": "Ne pas cesser de mélanger à la poêle pour éviter que le sucre ne brûle de façon inégale."
+      },
+      {
+        "nom_etape": "Le caramel onctueux",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 2,
+            "unite": "feuilles"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 10,
+            "unite": "cl"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre la gélatine à hydrater dans un bol d'eau froide pendant 10 minutes.",
+          "Faire chauffer une partie de la crème liquide d'un côté.",
+          "Dans une casserole, faire chauffer à feu vif le sucre semoule et le sirop de glucose pour réaliser un caramel.",
+          "Une fois le caramel bien brun, décuire en versant la crème liquide chaude, puis passer la casserole sur feu doux en mélangeant.",
+          "Ajouter le chocolat au lait, mélanger pour le faire fondre, puis incorporer le beurre.",
+          "Ajouter la gélatine essorée, mélanger, puis donner un coup de mixeur plongeant pour lisser l'ensemble.",
+          "Réserver dans un petit bol au réfrigérateur pour une heure."
+        ],
+        "conseils_etape": "Attention aux projections lors de l'ajout de la crème chaude dans le caramel."
+      },
+      {
+        "nom_etape": "Le pochage, le glaçage et les finitions",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Démouler et retourner le cake refroidi.",
+          "Percer le dessous du gâteau à l'aide d'un vide-pomme ou d'une cuillère à café pour créer des cavités de garnissage en conservant les petits capuchons de gâteau.",
+          "Garnir généreusement les cavités avec le praliné cacahuètes et le caramel onctueux, puis refermer les trous avec les capuchons.",
+          "Placer le cake sur une grille et napper entièrement et généreusement avec le glaçage au chocolat au lait.",
+          "Ajouter des touches de glaçage au chocolat blanc et au chocolat au lait en alternance sur le dessus, puis mouvementer le support pour créer un motif marbré.",
+          "Laisser reposer 1 heure au réfrigérateur avant de déguster."
+        ],
+        "conseils_etape": "Veiller à bien boucher les cavités pour que la garniture ne coule pas sous le gâteau."
+      }
+    ],
+    "astuces_recette": [
+      "Travailler avec des ingrédients à température ambiante pour faciliter l'émulsion de l'appareil à cake.",
+      "Utiliser des cacahuètes salées apporte un contraste de saveurs qui équilibre la puissance du sucre et du caramel."
+    ],
+    "conseils_conservation": "Déguster à température ambiante pour profiter pleinement du moelleux du cake et de la texture coulante des inserts. Conserver au réfrigérateur et sortir 30 minutes avant la dégustation."
+  }
+}

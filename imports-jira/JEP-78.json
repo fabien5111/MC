@@ -1,0 +1,227 @@
+{
+  "ticket": "JEP-78",
+  "recette": {
+    "titre": "Cake au cœur coulant de caramel de Yann Couvreur",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake à l'amande moelleux et riche, renfermant un cœur de caramel onctueux au chocolat, le tout enrobé d'un glaçage croquant au chocolat et parsemé de fruits secs torréfiés.",
+    "rendement": "1 cake pour un moule de 24 cm x 10 cm x 6 cm (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Casseroles",
+      "Cul-de-poule",
+      "Maryse",
+      "Fouet",
+      "Tamis",
+      "Moule à cake (24 cm x 10 cm x 6 cm)",
+      "Mixeur plongeant",
+      "Papier film",
+      "Vide-pomme ou emporte-pièce tubulaire",
+      "Poche à douille",
+      "Bain-marie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux caramel",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 5,
+            "unite": "cl"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine (optionnelle, pour tenir un peu plus le caramel)",
+            "quantite": 1,
+            "unite": "feuille"
+          }
+        ],
+        "instructions": [
+          "Mettre la feuille de gélatine à hydrater dans un bol d'eau froide pendant 10 minutes.",
+          "Dans une casserole, chauffer la crème liquide avec une pincée de fleur de sel jusqu'à un léger frémissement, puis réserver.",
+          "Dans une autre casserole, faire chauffer le sucre et le glucose pour obtenir un caramel bien brun mais pas trop amer.",
+          "Décuire le caramel en versant la crème chaude en deux fois tout en faisant attention aux projections, puis mélanger.",
+          "Ajouter hors du feu le chocolat au lait, le beurre doux et la gélatine bien essorée.",
+          "Mixer le tout au mixeur plongeant pour parfaitement émulsionner le crémeux.",
+          "Verser dans un grand récipient, filmer au contact et réserver à température ambiante jusqu'à utilisation."
+        ],
+        "conseils_etape": "Attention aux vapeurs brûlantes lors de la décuisson du caramel avec la crème. Ajustez la présence de gélatine selon la fluidité souhaitée."
+      },
+      {
+        "nom_etape": "Appareil à cake et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 35,
+        "temps_cuisson_minutes": 80,
+        "temperature_cuisson_celsius": 145,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Œufs",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes (ou pâte d'amandes)",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (divisée en deux portions)",
+            "quantite": 24,
+            "unite": "cl"
+          },
+          {
+            "nom": "Beurre doux (pour beurre noisette)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Amandes concassées",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, faire fondre et chauffer le beurre doux jusqu'à obtenir un beurre noisette (couleur, odeur et goût de noisette).",
+          "Dans un cul-de-poule, blanchir les œufs avec le sucre semoule.",
+          "Ajouter le sel, la poudre de vanille et la pâte de noisettes (ou d'amandes), puis mélanger.",
+          "Incorporer la levure et la farine tamisée (la texture devient un peu sèche).",
+          "Ajouter une première partie de la crème liquide pour détendre l'appareil.",
+          "Ajouter les amandes concassées, la poudre d'amandes, puis le reste de la crème liquide et mélanger.",
+          "Terminer en versant le beurre noisette en le passant à travers un tamis pour retenir les résidus.",
+          "Verser la pâte dans un moule à cake bien graissé, en le remplissant aux trois quarts.",
+          "Enfourner à 145 °C pendant 1 heure 20 minutes.",
+          "À la sortie du four, démouler immédiatement le cake sur une grille et le laisser reposer 5 minutes à l'air libre.",
+          "Enrouler hermétiquement le cake dans du film alimentaire et le placer 30 minutes au congélateur pour le raffermir."
+        ],
+        "conseils_etape": "Ne vous inquiétez pas si vous distinguez des morceaux dans la pâte après tamisage du beurre noisette, ce sont les amandes concassées."
+      },
+      {
+        "nom_etape": "Garnissage du cœur de caramel",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Sortir le cake du congélateur et retirer le film plastique.",
+          "À l'aide d'un vide-pomme ou d'un ustensile tubulaire, creuser un trou sur toute la longueur du cake en traversant de part en part (garder le petit bouchon de cake retiré).",
+          "Détendre fortement le caramel refroidi au fouet pour qu'il redevienne bien onctueux.",
+          "Remplir une poche à douille avec le caramel et fourrer généreusement l'intérieur du cake jusqu'en haut.",
+          "Refermer l'orifice avec le petit morceau de cake mis de côté."
+        ],
+        "conseils_etape": "Travaillez avec un caramel bien détendu pour faciliter le pochage dans toute la longueur du gâteau."
+      },
+      {
+        "nom_etape": "Glaçage et décors",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 2,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 30,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pâte à glacer (au cacao, ou blonde)",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 1.5,
+            "unite": "cl"
+          },
+          {
+            "nom": "Amandes effilées (pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Amandes concassées grossièrement (pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Amandes concassées finement (pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre doucement au bain-marie la pâte à glacer, le chocolat au lait et l'huile de pépins de raisin.",
+          "Retirer du feu et laisser le glaçage redescendre à environ 30 °C (texture semblable à de la pâte à tartiner).",
+          "Poser le cake sur une grille et napper uniformément toute sa surface et ses arêtes avec le glaçage en lissant rapidement.",
+          "Parsemer immédiatement les côtés et le dessus avec les amandes concassées grossièrement, les amandes effilées et les amandes concassées finement (préalablement torréfiées)."
+        ],
+        "conseils_etape": "Tous les fruits secs utilisés pour le décor doivent être torréfiés au préalable pour garantir un maximum de croustillant et de saveur."
+      }
+    ],
+    "astuces_recette": [
+      "Veillez à bien respecter les températures de cuisson basses (145 °C) pour cuire le cake à cœur sans dessécher l'extérieur.",
+      "Tous les éléments texturés (amandes, noisettes) apportent un contraste indispensable face au moelleux de la mie et à l'onctuosité du caramel."
+    ],
+    "conseils_conservation": "Conserver le cake à température ambiante, bien emballé pour préserver son moelleux et son humidité. Sortez-le idéalement 10 à 15 minutes avant la dégustation pour que le cœur caramel retrouve une onctuosité parfaite."
+  }
+}
