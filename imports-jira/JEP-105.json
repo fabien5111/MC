@@ -1,0 +1,159 @@
+{
+  "ticket": "JEP-105",
+  "recette": {
+    "titre": "Cookies pécan, chocolat et praliné sésame de Yann Couvreur",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=k5lq7AIsW6o",
+    "description": "Une version haut de gamme du cookie américain, cuit en cercle individuel pour préserver une texture dense et moelleuse à cœur, relevée par le croquant des noix de pécan torréfiées et le nappage graphique d'un praliné sésame maison.",
+    "rendement": "Une dizaine de cookies individuels",
+    "ustensiles": [
+      "Casserole",
+      "Plaque de cuisson + tapis silicone (ou papier cuisson)",
+      "Robot mixeur / robot-coupe",
+      "Cul-de-poule",
+      "Fouet",
+      "Spatule (maryse)",
+      "Rouleau à pâtisserie",
+      "Cercles à tarte carrés de 7 cm (ou ronds)",
+      "Palette coudée ou spatule plate",
+      "Poche à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le praliné sésame",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Graines de sésame",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Si les graines de sésame ne sont pas déjà torréfiées, les enfourner à 150 °C pendant environ 15 minutes, puis laisser refroidir.",
+          "Verser le sucre semoule dans une casserole et faire fondre à sec jusqu'à l'obtention d'un caramel bien doré.",
+          "Couler le caramel sur une plaque munie d'une feuille de cuisson et laisser refroidir complètement jusqu'à durcissement.",
+          "Casser le caramel froid en morceaux et le placer dans la cuve du robot-coupe avec les graines de sésame.",
+          "Mixer jusqu'à formation d'une pâte fluide et lisse.",
+          "Débarrasser dans une poche sans douille et réserver à température ambiante."
+        ],
+        "conseils_etape": "Peut être réalisé jusqu'à plusieurs jours avant. La torréfaction chasse l'humidité du sésame, ce qui facilite le broyage et libère les huiles essentielles indispensables à une émulsion bien lisse."
+      },
+      {
+        "nom_etape": "La pâte à cookies",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noix de pécan",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (bien pommade)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre muscovado",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier (1 petit œuf, tempéré)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de sodium",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir (concassé)",
+            "quantite": 130,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Enfourner les noix de pécan à 150 °C pendant 25 minutes, puis les hacher grossièrement au couteau dès refroidissement.",
+          "Crémer vigoureusement au fouet le beurre pommade avec les trois sucres (semoule, cassonade, muscovado) dans un cul-de-poule.",
+          "Ajouter l'œuf à température ambiante et fouetter pour homogénéiser la masse.",
+          "Ajouter le sel fin, le bicarbonate de sodium, puis tamiser la farine par-dessus.",
+          "Mélanger délicatement à la spatule sans trop travailler le réseau de gluten.",
+          "Incorporer le chocolat noir concassé, puis les noix de pécan torréfiées.",
+          "Disposer l'appareil entre deux toiles de cuisson ou feuilles de papier guitare, puis étaler uniformément au rouleau sur 1 cm d'épaisseur.",
+          "Bloquer la plaque au congélateur pendant au moins deux heures."
+        ],
+        "conseils_etape": "L'œuf doit impérativement être tempéré pour éviter de figer le beurre pommade et trancher l'émulsion."
+      },
+      {
+        "nom_etape": "Découpe, cuisson et finition",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 200,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Décoller la feuille supérieure de la pâte bien congelée.",
+          "Détailler des portions nettes à l'aide de l'emporte-pièce carré de 7 cm.",
+          "Déposer chaque carré de pâte sur une plaque tapissée d'un tapis silicone en vous aidant d'une palette coudée.",
+          "Enclaver chaque portion dans son cercle de cuisson individuel afin de brider l'étalement au four.",
+          "Enfourner à 200 °C pendant 8 minutes.",
+          "Décercler délicatement à la sortie du four, puis laisser refroidir sur grille.",
+          "Parsemer de fleur de sel.",
+          "Couper l'extrémité de la poche de praliné et réaliser des allers-retours serrés en surface pour créer le motif ligné."
+        ],
+        "conseils_etape": "La pâte doit être ferme et bien glacée lors de l'enfournement pour créer un choc thermique immédiat qui fige la croûte tout en gardant le cœur semi-cuit."
+      }
+    ],
+    "astuces_recette": [
+      "L'association du muscovado et de la cassonade apporte une note de mélasse et une humidité résiduelle indispensables au moelleux du biscuit.",
+      "À défaut de cadres carrés, des cercles à tarte ronds standards font parfaitement l'affaire, l'essentiel étant de contraindre la pâte durant la cuisson.",
+      "Le sésame peut être substitué dans les mêmes proportions par de la noisette, de la pistache ou de la cacahuète torréfiée."
+    ],
+    "conseils_conservation": "À déguster tiède ou à température ambiante, le jour de la cuisson pour un contraste maximal entre le croustillant des bords et le fondant du cœur. Conservation : 48 heures dans une boîte hermétique en métal. Les pâtons crus et détaillés peuvent être conservés jusqu'à un mois au congélateur et cuits directement sans décongélation préalable (+ 1 à 2 minutes de cuisson si nécessaire)."
+  }
+}
