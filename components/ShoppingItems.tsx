@@ -491,6 +491,9 @@ function AddItemRow({
   const [qty, setQty] = useState('');
   const [unit, setUnit] = useState('');
   const [comment, setComment] = useState('');
+  // Posé au clic sur « Ajouter » sans unité : le champ fautif est cerclé de
+  // rouge, jusqu'à ce qu'une unité soit choisie.
+  const [unitMissing, setUnitMissing] = useState(false);
   return (
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
@@ -503,7 +506,17 @@ function AddItemRow({
       </label>
       <label className="flex flex-col gap-1">
         <span className={LBL}>Unité *</span>
-        <select value={unit} onChange={(e) => setUnit(e.target.value)} required className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
+        <select
+          value={unit}
+          onChange={(e) => {
+            setUnit(e.target.value);
+            if (e.target.value) setUnitMissing(false);
+          }}
+          required
+          aria-invalid={unitMissing}
+          className={`${FIELD} bg-white ${unitMissing ? '!border-red-600 ring-1 ring-red-600' : ''}`}
+          style={{ width: '8rem' }}
+        >
           <option value="" disabled>— Unité —</option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
@@ -516,7 +529,10 @@ function AddItemRow({
         <span className={LBL}>Commentaire</span>
         <input value={comment} onChange={(e) => setComment(e.target.value)} className={FIELD} style={{ width: '13rem' }} />
       </label>
-      <button type="button" onClick={() => onAdd(name, qty, unit, comment)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
+      <button type="button" onClick={() => {
+          setUnitMissing(!unit);
+          onAdd(name, qty, unit, comment);
+        }} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
         <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter
       </button>
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">

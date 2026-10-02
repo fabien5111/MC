@@ -548,7 +548,9 @@ délicate à toucher. Ne pas réintroduire de `name.toLowerCase()` comme clé de
 **Saisie à la main** (`ShoppingItems.addItem`) : l'unité est **obligatoire** à
 l'ajout — sans elle, ni conversion ni fusion (ni, demain, coût). Seul l'ajout
 l'exige : la modification d'une ligne (`EditItemRow`) reste libre, pour ne pas
-bloquer la correction d'une ligne ancienne sans unité. La liste « Fusionner
+bloquer la correction d'une ligne ancienne sans unité. Au clic sur « Ajouter »
+sans unité, la liste déroulante des unités est cerclée de rouge (en plus de
+l'alerte, qui reste le garde-fou) jusqu'au choix d'une unité. La liste « Fusionner
 avec » affiche le commentaire de chaque ligne (tronqué à 40 caractères), seul
 élément qui distingue deux lignes du même ingrédient.
 
