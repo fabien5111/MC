@@ -14,6 +14,7 @@ import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { getDifficulties, getTags } from '@/lib/taxonomy';
 import { getMoldTypes } from '@/lib/admin';
 import { getVisibleHelpBlocks } from '@/lib/help';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { RelectureEditor } from '@/components/RelectureEditor';
@@ -143,6 +144,7 @@ export default async function RelecturePage({ params }: Params) {
         )}
       </main>
       </div>
+      <Footer />
       <MobileNav current="carnet" />
     </>
   );

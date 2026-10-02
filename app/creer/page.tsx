@@ -9,6 +9,7 @@ import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
 import { getVisibleHelpBlocks } from '@/lib/help';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { CreerForm } from '@/components/CreerForm';
@@ -109,6 +110,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
         />
       </main>
       </div>
+      <Footer />
       <MobileNav />
     </>
   );

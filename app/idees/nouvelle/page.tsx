@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { IdeaForm } from '@/components/ideas/IdeaForm';
@@ -39,6 +40,7 @@ export default async function NouvelleIdeePage() {
 
         <IdeaForm />
       </main>
+      <Footer />
       <MobileNav />
     </>
   );

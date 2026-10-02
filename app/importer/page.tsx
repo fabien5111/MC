@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getImports } from '@/lib/imports';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { ImporterForm } from '@/components/ImporterForm';
@@ -110,6 +111,7 @@ export default async function ImporterPage() {
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>
         <ImporterList imports={imports} isAdmin={admin} />
       </main>
+      <Footer />
       <MobileNav current="carnet" />
     </>
   );
