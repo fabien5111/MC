@@ -108,18 +108,30 @@ export function mergePreview(
 // convertir), puis à une ligne dont l'unité est reliée par une conversion. Sans
 // l'une ni l'autre — autre ingrédient, pas de conversion connue, ligne non
 // rattachée au référentiel, quantité non numérique — `undefined` : nouvelle ligne.
-export function findMergeTarget<T extends LigneFusion & { id: number }>(
+//
+// **Le commentaire fait partie de l'identité d'une ligne** : « Jaune d'œuf —
+// température ambiante » est une ligne voulue à part, la réunir à une autre en
+// absorbant son commentaire en effacerait la distinction. Deux lignes ne se
+// regroupent donc automatiquement que si leurs commentaires sont identiques
+// (casse et espaces ignorés ; un commentaire absent vaut « vide ») — comme le
+// récapitulatif d'une fiche recette, qui regroupe par ingrédient ET commentaire.
+// Seul le picto de fusion manuelle, geste explicite, réunit des commentaires
+// différents (`joinComments`).
+const commentKey = (c: string | null | undefined) => (c ?? '').trim().toLowerCase();
+
+export function findMergeTarget<T extends LigneFusion & { id: number; comment?: string | null }>(
   items: T[],
-  incoming: LigneFusion,
+  incoming: LigneFusion & { comment?: string | null },
   conversions: ConversionRef[],
   units: UnitRef[],
 ): { item: T; quantity: string | null } | undefined {
+  const candidates = items.filter((i) => commentKey(i.comment) === commentKey(incoming.comment));
   const sameKey = shoppingKey(incoming.name, incoming.unit);
   if (!sameKey.startsWith('|')) {
-    const same = items.find((i) => shoppingKey(i.name, i.unit) === sameKey);
+    const same = candidates.find((i) => shoppingKey(i.name, i.unit) === sameKey);
     if (same) return { item: same, quantity: sumQuantities(same.quantity, incoming.quantity) };
   }
-  for (const item of items) {
+  for (const item of candidates) {
     if (convertedQuantity(item, incoming, conversions, units) != null) {
       return { item, quantity: mergeResult(item, incoming, conversions, units).quantity };
     }

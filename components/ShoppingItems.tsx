@@ -195,20 +195,17 @@ export function ShoppingItems({
     // conversion si l'unité diffère mais qu'une conversion les relie — comme le
     // récapitulatif d'une fiche recette (JEP-249).
     const refId = resolveIngredientRefId(name, ingredientRefs);
-    const hit = findMergeTarget(items, { name, unit: unit || null, quantity: quantity.trim() || null, ref_id: refId }, conversions, units);
+    // Le commentaire doit être identique : une ligne commentée reste à part.
+    const hit = findMergeTarget(items, { name, unit: unit || null, quantity: quantity.trim() || null, ref_id: refId, comment: comment.trim() || null }, conversions, units);
     if (hit) {
       const existing = hit.item;
       const newQty = hit.quantity;
-      const newComment = joinComments(existing.comment, comment.trim() || null);
-      const { error: updErr } = await supabase
-        .from('shopping_list_items')
-        .update({ quantity: newQty, comment: newComment })
-        .eq('id', existing.id);
+      const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', existing.id);
       if (updErr) {
         dialog.alert('Erreur : ' + updErr.message);
         return;
       }
-      setItems((prev) => prev.map((i) => (i.id === existing.id ? { ...i, quantity: newQty, comment: newComment } : i)));
+      setItems((prev) => prev.map((i) => (i.id === existing.id ? { ...i, quantity: newQty } : i)));
       setAdding(false);
       scheduleRefresh();
       return;

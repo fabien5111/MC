@@ -14,7 +14,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { connexionHref } from '@/lib/nav';
-import { findMergeTarget, joinComments } from '@/lib/shopping-merge';
+import { findMergeTarget } from '@/lib/shopping-merge';
 
 export function ShoppingWidget({
   recipeId,
@@ -106,7 +106,8 @@ export function ShoppingWidget({
       // (singulier/pluriel/ligature compris) déjà dans la liste : même unité,
       // ou autre unité reliée par une conversion — la quantité est alors
       // convertie dans l'unité de la ligne existante (JEP-249, comme le
-      // récapitulatif d'une fiche recette). Sans correspondance, nouvelle ligne.
+      // récapitulatif d'une fiche recette). Le commentaire doit être identique :
+      // une ligne commentée reste à part. Sans correspondance, nouvelle ligne.
       // `pool` porte les lignes déjà en base ET celles qu'on s'apprête à créer :
       // deux articles convertibles entre eux (100 g et 5 unité(s) du même jaune,
       // côté fournée) se regroupent donc aussi, et une ligne modifiée n'est
@@ -122,18 +123,17 @@ export function ShoppingWidget({
         for (const e of existing || []) pool.push({ ...e, isNew: false, dirty: false });
       }
       for (const m of items) {
-        const incoming = { name: m.name, unit: m.unit || null, quantity: m.qty || null, ref_id: m.ref_id };
+        const incoming = { name: m.name, unit: m.unit || null, quantity: m.qty || null, ref_id: m.ref_id, comment: m.comment || null };
         const hit = findMergeTarget(pool, incoming, conversions, units);
         if (hit) {
           hit.item.quantity = hit.quantity;
-          hit.item.comment = joinComments(hit.item.comment, m.comment || null);
           hit.item.dirty = true;
         } else {
           pool.push({ id: -(pool.length + 1), name: m.name, quantity: incoming.quantity, unit: incoming.unit, ref_id: m.ref_id, comment: m.comment || null, isNew: true, dirty: true });
         }
       }
       for (const l of pool.filter((x) => !x.isNew && x.dirty)) {
-        const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: l.quantity, comment: l.comment }).eq('id', l.id);
+        const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: l.quantity }).eq('id', l.id);
         if (updErr) throw updErr;
       }
       const rows = pool.filter((x) => x.isNew).map((l) => ({ list_id: listId, name: l.name, quantity: l.quantity, unit: l.unit, comment: l.comment, ref_id: l.ref_id }));

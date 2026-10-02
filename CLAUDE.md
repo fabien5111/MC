@@ -525,8 +525,14 @@ listes (`CuisineContent.mergeShoppingLists`) — passe par `findMergeTarget`
 la table de conversions (`convertQty`) ; la quantité entrante est alors convertie
 dans l'unité de la ligne existante, qui la garde (« Jaune d'œuf 200 g » + « 5
 unité(s) » = 300 g). Sans correspondance — autre ingrédient, ligne non rattachée
-au référentiel (`ref_id`), conversion inconnue, quantité non numérique — c'est
-une nouvelle ligne : on n'additionne jamais sans conversion connue. Le même
+au référentiel (`ref_id`), conversion inconnue, quantité non numérique, **commentaire
+différent** — c'est une nouvelle ligne : on n'additionne jamais sans conversion
+connue, et le commentaire fait partie de l'identité d'une ligne (« Jaune d'œuf —
+température ambiante » est voulue à part ; la réunir en absorbant son commentaire
+en effacerait la distinction). Comparaison insensible à la casse et aux espaces,
+un commentaire absent valant « vide » — comme le récapitulatif d'une fiche recette,
+qui regroupe par ingrédient ET commentaire. Seul le picto de fusion manuelle, geste
+explicite, réunit des commentaires différents (`joinComments`). Le même
 calcul sert au **picto de fusion manuelle** (`mergeCandidates` / `mergeResult` /
 `mergePreview`), qui montre « 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »
 avant validation, et pour les lignes déjà en doublon avant ce correctif.

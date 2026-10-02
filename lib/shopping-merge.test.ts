@@ -144,6 +144,31 @@ describe('fusion automatique à l’ajout (findMergeTarget)', () => {
     expect(findMergeTarget(liste, entrant('oeuf', '2', 'g', null), conversions, units)).toBeUndefined();
   });
 
+  describe('commentaire', () => {
+    const avec = (id: number, comment: string | null, quantity = '200', unit = 'g') => ({ ...ligne(id, 'Jaune d’œuf', quantity, unit), comment });
+    const entrantAvec = (comment: string | null, quantity = '5', unit = 'unité(s)') => ({ ...entrant('Jaunes d’œufs', quantity, unit), comment });
+
+    it('commentaire différent : jamais regroupé, même unité ou unité convertie', () => {
+      expect(findMergeTarget([avec(1, 'température ambiante')], entrantAvec('froid', '100', 'g'), conversions, units)).toBeUndefined();
+      expect(findMergeTarget([avec(1, 'température ambiante')], entrantAvec('froid'), conversions, units)).toBeUndefined();
+    });
+
+    it('un commentaire d’un seul côté est un commentaire différent', () => {
+      expect(findMergeTarget([avec(1, 'température ambiante')], entrantAvec(null), conversions, units)).toBeUndefined();
+      expect(findMergeTarget([avec(1, null)], entrantAvec('température ambiante'), conversions, units)).toBeUndefined();
+    });
+
+    it('même commentaire (casse et espaces ignorés) : regroupé', () => {
+      expect(findMergeTarget([avec(1, 'Température ambiante')], entrantAvec(' température ambiante '), conversions, units)?.quantity).toBe('300');
+      expect(findMergeTarget([avec(1, null)], entrantAvec(''), conversions, units)?.quantity).toBe('300');
+    });
+
+    it('choisit parmi plusieurs lignes celle qui a le même commentaire', () => {
+      const liste = [avec(1, 'froid', '100', 'unité(s)'), avec(2, 'température ambiante', '100', 'unité(s)')];
+      expect(findMergeTarget(liste, entrantAvec('température ambiante', '1', 'unité(s)'), conversions, units)?.item.id).toBe(2);
+    });
+  });
+
   it('nom vide : jamais regroupé', () => {
     expect(findMergeTarget([ligne(1, '', null, null)], entrant('  ', null, null, null), conversions, units)).toBeUndefined();
   });

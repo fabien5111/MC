@@ -37,7 +37,7 @@ import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/pr
 import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { LockedAction } from '@/components/LockedAction';
-import { findMergeTarget, joinComments } from '@/lib/shopping-merge';
+import { findMergeTarget } from '@/lib/shopping-merge';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -161,7 +161,8 @@ export function CuisineContent({
   // cas sa quantité est convertie dans l'unité de la ligne cible (JEP-249,
   // comme le récapitulatif d'une fiche recette). Les autres articles sont
   // simplement rattachés à la liste cible — puis la liste source, vidée, est
-  // supprimée. `pool` suit les lignes cibles au fil de la fusion : un article
+  // supprimée. Le commentaire doit être identique : une ligne commentée reste à
+  // part (rattachée à la liste cible, avec son commentaire). `pool` suit les lignes cibles au fil de la fusion : un article
   // rattaché y entre aussi, pour que le suivant puisse le rejoindre.
   async function mergeShoppingLists(targetId: number, sourceId: number, targetName: string, sourceName: string) {
     const ok = await mutate(
@@ -177,11 +178,7 @@ export function CuisineContent({
           const hit = findMergeTarget(pool, s, conversions, units);
           if (hit) {
             hit.item.quantity = hit.quantity;
-            hit.item.comment = joinComments(hit.item.comment, s.comment);
-            const { error } = await supabase
-              .from('shopping_list_items')
-              .update({ quantity: hit.item.quantity, comment: hit.item.comment })
-              .eq('id', hit.item.id);
+            const { error } = await supabase.from('shopping_list_items').update({ quantity: hit.item.quantity }).eq('id', hit.item.id);
             if (error) return { error };
             const { error: delErr } = await supabase.from('shopping_list_items').delete().eq('id', s.id);
             if (delErr) return { error: delErr };
