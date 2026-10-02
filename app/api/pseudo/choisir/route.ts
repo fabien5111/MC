@@ -12,7 +12,8 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { enregistrerPseudo, verifierPseudoComplet } from '@/lib/pseudo-data';
 import { PSEUDO_MAX_LENGTH } from '@/lib/pseudo';
 import { cguVersionValide } from '@/lib/cgu';
-import { enregistrerAcceptationCgu } from '@/lib/cgu-data';
+import { attestationAgeVersionValide } from '@/lib/attestation-age';
+import { enregistrerAcceptationsInscription } from '@/lib/cgu-data';
 
 export const maxDuration = 20;
 
@@ -38,13 +39,22 @@ export async function POST(req: Request) {
     });
   }
 
+  // Attestation d'âge (JEP-34) : même raison, même garde — un compte Google
+  // n'a jamais vu la case de `LoginForm`, c'est ici qu'il la coche.
+  if (!attestationAgeVersionValide(body?.ageAttestationVersion)) {
+    return NextResponse.json({
+      ok: false,
+      message: "Merci de confirmer la condition d'âge (rechargez la page si elle vient de changer).",
+    });
+  }
+
   const validation = await verifierPseudoComplet(saisie, user.id);
   if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message });
 
   // Avant le pseudo : `profiles.username` est la marque « passage obligé
   // franchi » (cf. `aChoisiSonPseudo`). L'écrire d'abord laisserait un compte
   // sortir de cet écran sans trace d'acceptation si la seconde écriture échouait.
-  const acceptation = await enregistrerAcceptationCgu(user.id);
+  const acceptation = await enregistrerAcceptationsInscription(user.id);
   if (!acceptation.ok) return NextResponse.json({ ok: false, message: acceptation.message });
 
   const ecriture = await enregistrerPseudo(

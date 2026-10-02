@@ -326,6 +326,16 @@ saisie « Fabien Chenu »
   qu'après la création du compte évite de brûler une adresse e-mail (Supabase
   la refuserait ensuite) pour un pseudo qu'il suffisait de changer.
 
+- **Attestation d'âge** (JEP-34, `lib/attestation-age.ts`) : case
+  « 15 ans ou plus, ou accord du représentant légal » juste au-dessus du
+  bouton, sur l'inscription par e-mail **et** sur `/choix-pseudo` (un compte
+  Google n'a jamais vu la première). Tracée comme les CGU, dans les
+  métadonnées du compte (`age_attestation_version`, `age_attestation_at`),
+  revérifiée par `/api/pseudo/choisir`. Le texte est versionné : le modifier
+  impose une nouvelle `AGE_ATTESTATION_VERSION`. Traitée exactement comme la
+  case des CGU : bouton désactivé tant qu'elle n'est pas cochée (arbitrage
+  produit — la spec prévoyait un message à la tentative de validation).
+
 ### `/choix-pseudo` — passage obligé
 
 Écran de choix du pseudo, imposé à tout compte qui n'en a pas — en pratique
