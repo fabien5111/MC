@@ -13,7 +13,7 @@ import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
 import { fixOeufLigature } from '@/lib/text';
-import { findSameItem, joinComments, mergeCandidates, mergePreview, mergeResult, sumQuantities } from '@/lib/shopping-merge';
+import { findMergeTarget, joinComments, mergeCandidates, mergePreview, mergeResult } from '@/lib/shopping-merge';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
@@ -190,12 +190,15 @@ export function ShoppingItems({
     name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const supabase = createClient();
 
-    // Même ingrédient (singulier/pluriel/ligature compris) dans la même unité
-    // déjà dans la liste : la quantité s'y ajoute plutôt que d'ouvrir une
-    // seconde ligne — comme à l'ajout depuis une recette (JEP-249).
-    const existing = findSameItem(items, name, unit || null);
-    if (existing) {
-      const newQty = sumQuantities(existing.quantity, quantity.trim() || null);
+    // Même ingrédient (singulier/pluriel/ligature compris) déjà dans la liste :
+    // la quantité s'y ajoute plutôt que d'ouvrir une seconde ligne, après
+    // conversion si l'unité diffère mais qu'une conversion les relie — comme le
+    // récapitulatif d'une fiche recette (JEP-249).
+    const refId = resolveIngredientRefId(name, ingredientRefs);
+    const hit = findMergeTarget(items, { name, unit: unit || null, quantity: quantity.trim() || null, ref_id: refId }, conversions, units);
+    if (hit) {
+      const existing = hit.item;
+      const newQty = hit.quantity;
       const newComment = joinComments(existing.comment, comment.trim() || null);
       const { error: updErr } = await supabase
         .from('shopping_list_items')
@@ -220,7 +223,7 @@ export function ShoppingItems({
         unit: unit || null,
         comment: comment.trim() || null,
         checked: false,
-        ref_id: resolveIngredientRefId(name, ingredientRefs),
+        ref_id: refId,
       })
       .select()
       .single();

@@ -16,13 +16,6 @@ export function shoppingKey(name: string | null | undefined, unit: string | null
   return ingredientKey(name) + '|' + unitKey(unit);
 }
 
-// Première ligne de la liste qui est le même ingrédient dans la même unité.
-export function findSameItem<T extends Ligne>(items: T[], name: string, unit: string | null): T | undefined {
-  const key = shoppingKey(name, unit);
-  if (key.startsWith('|')) return undefined; // nom sans contenu : rien à regrouper
-  return items.find((i) => shoppingKey(i.name, i.unit) === key);
-}
-
 // Somme de deux quantités saisies en texte : numériques → additionnées (virgule
 // ou point décimal), sinon réunies par « + » plutôt que de perdre l'une d'elles.
 export function sumQuantities(a: string | null, b: string | null): string | null {
@@ -106,4 +99,30 @@ export function mergePreview(
   const { quantity, converted } = mergeResult(target, source, conversions, units);
   if (converted == null) return null;
   return `${target.quantity} ${target.unit} + ${source.quantity} ${source.unit} (≈ ${fmt(converted)} ${target.unit}) = ${quantity} ${target.unit}`;
+}
+
+// ── Fusion AUTOMATIQUE à l'ajout d'un article (JEP-249) ──────────────────────
+// Même règle que le récapitulatif d'une fiche recette (`mergeIngredients`) :
+// la ligne déjà dans la liste garde son unité, la quantité entrante y est
+// convertie puis additionnée. Priorité à une ligne de MÊME unité (rien à
+// convertir), puis à une ligne dont l'unité est reliée par une conversion. Sans
+// l'une ni l'autre — autre ingrédient, pas de conversion connue, ligne non
+// rattachée au référentiel, quantité non numérique — `undefined` : nouvelle ligne.
+export function findMergeTarget<T extends LigneFusion & { id: number }>(
+  items: T[],
+  incoming: LigneFusion,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): { item: T; quantity: string | null } | undefined {
+  const sameKey = shoppingKey(incoming.name, incoming.unit);
+  if (!sameKey.startsWith('|')) {
+    const same = items.find((i) => shoppingKey(i.name, i.unit) === sameKey);
+    if (same) return { item: same, quantity: sumQuantities(same.quantity, incoming.quantity) };
+  }
+  for (const item of items) {
+    if (convertedQuantity(item, incoming, conversions, units) != null) {
+      return { item, quantity: mergeResult(item, incoming, conversions, units).quantity };
+    }
+  }
+  return undefined;
 }

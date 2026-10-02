@@ -514,18 +514,28 @@ par mot). C'est la **seule** règle pour rapprocher deux noms d'ingrédients :
 `resolveIngredientRefId` (rattachement au référentiel — libellé exact
 préféré, clé en repli), `mergeIngredients` (liste totale), le récapitulatif
 de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
-`expandedGroup`) et l'ajout à une liste de courses existante — depuis une
-recette, par saisie à la main (`ShoppingItems.addItem`) et par fusion de deux
-listes (`CuisineContent`), ces deux derniers via `lib/shopping-merge.ts`
-(`findSameItem` : même ingrédient ET même unité, jamais des grammes avec des
-unités). Le **picto de fusion manuelle** d'une ligne propose en plus le MÊME
-ingrédient dans une autre unité quand la table de conversions les relie
-(`mergeCandidates` / `mergeResult`, `convertQty`) : la ligne cliquée garde
-son unité, l'autre y est convertie, et le calcul est montré avant validation
-(« 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »). Jamais automatique : une
-conversion est une équivalence moyenne, donc un geste explicite ; sans
-rattachement au référentiel (`ref_id`) ni conversion connue, la ligne n'est
-pas proposée. Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
+`expandedGroup`) et l'ajout à une liste de courses existante.
+
+**Courses : fusion automatique avec conversion, comme la fiche recette.** Tout
+article qui entre dans une liste — ajout depuis une recette ou une fournée
+(`ShoppingWidget`), saisie à la main (`ShoppingItems.addItem`), fusion de deux
+listes (`CuisineContent.mergeShoppingLists`) — passe par `findMergeTarget`
+(`lib/shopping-merge.ts`) : il rejoint la ligne du MÊME ingrédient (clé
+`ingredientKey`) de même unité, à défaut une ligne dont l'unité est reliée par
+la table de conversions (`convertQty`) ; la quantité entrante est alors convertie
+dans l'unité de la ligne existante, qui la garde (« Jaune d'œuf 200 g » + « 5
+unité(s) » = 300 g). Sans correspondance — autre ingrédient, ligne non rattachée
+au référentiel (`ref_id`), conversion inconnue, quantité non numérique — c'est
+une nouvelle ligne : on n'additionne jamais sans conversion connue. Le même
+calcul sert au **picto de fusion manuelle** (`mergeCandidates` / `mergeResult` /
+`mergePreview`), qui montre « 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »
+avant validation, et pour les lignes déjà en doublon avant ce correctif.
+`ShoppingWidget` et la fusion de listes tiennent un `pool` (lignes en base +
+lignes à créer) : un article rattaché y entre pour que le suivant puisse le
+rejoindre, et une ligne modifiée n'est jamais relue périmée. **Reste hors
+périmètre** : la liste totale d'une fournée (`mergeIngredientRows`) ne convertit
+pas les unités — sa structure (quantités ajustées / d'origine / textes) est plus
+délicate à toucher. Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.

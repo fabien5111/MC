@@ -2,40 +2,7 @@
 // regroupement manqué laisse deux lignes, un regroupement abusif additionne
 // deux choses différentes — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
-import { findSameItem, joinComments, mergeCandidates, mergePreview, mergeResult, shoppingKey, sumQuantities } from '@/lib/shopping-merge';
-
-const liste = [
-  { id: 1, name: 'Blancs d’œufs', unit: 'unité(s)' },
-  { id: 2, name: 'Jaune d’œuf', unit: 'g' },
-  { id: 3, name: 'Lait entier', unit: 'ml' },
-];
-
-describe('findSameItem', () => {
-  it('retrouve le même ingrédient malgré pluriel, ligature et casse', () => {
-    expect(findSameItem(liste, 'blanc d\'oeuf', 'unité(s)')?.id).toBe(1);
-    expect(findSameItem(liste, 'BLANCS D’ŒUFS', ' Unité(s) ')?.id).toBe(1);
-  });
-
-  it('ne regroupe pas des unités différentes', () => {
-    expect(findSameItem(liste, 'Jaune d’œuf', 'unité(s)')).toBeUndefined();
-    expect(findSameItem(liste, 'Jaunes d’œufs', 'g')?.id).toBe(2);
-  });
-
-  it('ne regroupe pas deux ingrédients différents', () => {
-    expect(findSameItem(liste, 'Lait', 'ml')).toBeUndefined();
-    expect(findSameItem(liste, 'Blanc d’œuf entier', 'unité(s)')).toBeUndefined();
-  });
-
-  it('traite « sans unité » comme une unité', () => {
-    const l = [{ id: 9, name: 'Œufs', unit: null }];
-    expect(findSameItem(l, 'oeuf', '')?.id).toBe(9);
-    expect(findSameItem(l, 'oeuf', 'g')).toBeUndefined();
-  });
-
-  it('ignore un nom sans contenu', () => {
-    expect(findSameItem([{ id: 1, name: '', unit: null }], '  ', null)).toBeUndefined();
-  });
-});
+import { findMergeTarget, joinComments, mergeCandidates, mergePreview, mergeResult, shoppingKey, sumQuantities } from '@/lib/shopping-merge';
 
 describe('sumQuantities', () => {
   it('additionne les nombres, virgule comprise', () => {
@@ -125,5 +92,59 @@ describe('fusion avec conversion d’unité', () => {
     const pincee = ligne(6, 'Jaune d’œuf', 'une pincée', 'g');
     expect(mergeCandidates([enUnites, pincee], enUnites, conversions, units)).toEqual([]);
     expect(mergeCandidates([enUnites, ligne(7, 'Jaune d’œuf', null, 'g')], enUnites, conversions, units)).toEqual([]);
+  });
+});
+
+describe('fusion automatique à l’ajout (findMergeTarget)', () => {
+  const dansListe = [
+    ligne(1, 'Jaune d’œuf', '200', 'g'),
+    ligne(2, 'Lait entier', '500', 'ml', 9),
+    ligne(3, 'Jaune d’œuf', '2', 'unité(s)'),
+  ];
+  const entrant = (name: string, quantity: string | null, unit: string | null, ref_id: number | null = 7) => ({ name, quantity, unit, ref_id });
+
+  it('même unité : additionne, sans convertir', () => {
+    const hit = findMergeTarget(dansListe, entrant('Jaunes d’œufs', '3', 'unité(s)'), conversions, units);
+    expect(hit?.item.id).toBe(3);
+    expect(hit?.quantity).toBe('5');
+  });
+
+  it('même unité prioritaire sur une unité convertible', () => {
+    expect(findMergeTarget(dansListe, entrant('jaune d’œuf', '100', 'g'), conversions, units)?.item.id).toBe(1);
+  });
+
+  it('autre unité reliée par une conversion : convertit dans l’unité de la ligne existante', () => {
+    const liste = [ligne(1, 'Jaune d’œuf', '200', 'g')];
+    const hit = findMergeTarget(liste, entrant('Jaunes d’œufs', '5', 'unité(s)'), conversions, units);
+    expect(hit?.item.id).toBe(1);
+    expect(hit?.quantity).toBe('300');
+  });
+
+  it('autre ingrédient, ou aucune conversion : nouvelle ligne', () => {
+    const liste = [ligne(1, 'Jaune d’œuf', '200', 'g')];
+    expect(findMergeTarget(liste, entrant('Lait entier', '5', 'unité(s)', 9), conversions, units)).toBeUndefined();
+    expect(findMergeTarget(liste, entrant('Jaunes d’œufs', '5', 'unité(s)'), [], units)).toBeUndefined();
+  });
+
+  it('ligne entrante sans rattachement ou sans quantité numérique : nouvelle ligne', () => {
+    const liste = [ligne(1, 'Jaune d’œuf', '200', 'g', null)];
+    expect(findMergeTarget(liste, entrant('Jaunes d’œufs', '5', 'unité(s)', null), conversions, units)).toBeUndefined();
+    const liste2 = [ligne(1, 'Jaune d’œuf', '200', 'g')];
+    expect(findMergeTarget(liste2, entrant('Jaunes d’œufs', 'une pincée', 'unité(s)'), conversions, units)).toBeUndefined();
+  });
+
+  it('pluriel, ligature, casse et espaces de l’unité : même ingrédient, même unité', () => {
+    const liste = [ligne(1, 'Blancs d’œufs', '2', 'unité(s)')];
+    expect(findMergeTarget(liste, entrant('blanc d\'oeuf', '1', ' Unité(s) '), conversions, units)?.item.id).toBe(1);
+  });
+
+  it('« sans unité » est une unité', () => {
+    const liste = [ligne(9, 'Œufs', '1', null, null)];
+    expect(findMergeTarget(liste, entrant('oeuf', '2', '', null), conversions, units)?.quantity).toBe('3');
+    expect(findMergeTarget(liste, entrant('oeuf', '2', 'g', null), conversions, units)).toBeUndefined();
+  });
+
+  it('nom vide : jamais regroupé', () => {
+    expect(findMergeTarget([ligne(1, '', null, null)], entrant('  ', null, null, null), conversions, units)).toBeUndefined();
   });
 });
