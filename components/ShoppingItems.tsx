@@ -13,7 +13,7 @@ import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
 import { fixOeufLigature } from '@/lib/text';
-import { findMergeTarget, joinComments, mergeCandidates, mergePreview, mergeResult } from '@/lib/shopping-merge';
+import { commentChoices, findMergeTarget, mergedComment, mergeCandidates, mergePreview, mergeResult, type CommentChoice } from '@/lib/shopping-merge';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
@@ -159,12 +159,14 @@ export function ShoppingItems({
   // de conversions relie (JEP-249) : la quantité de l'article choisi est alors
   // convertie dans l'unité de l'article courant — jamais d'addition sans
   // conversion connue (cf. `mergeCandidates`).
-  async function mergeItems(targetId: number, sourceId: number) {
+  // Le commentaire de la ligne fusionnée est celui que l'utilisateur a choisi
+  // (`commentChoices`) ; réunis par défaut, rien ne se perd sans l'avoir demandé.
+  async function mergeItems(targetId: number, sourceId: number, commentKey?: CommentChoice['key']) {
     const target = items.find((i) => i.id === targetId);
     const source = items.find((i) => i.id === sourceId);
     if (!target || !source) return;
     const newQty = mergeResult(target, source, conversions, units).quantity;
-    const newComment = joinComments(target.comment, source.comment);
+    const newComment = mergedComment(target.comment, source.comment, commentKey);
     const ok = await mutate(
       async () => {
         const supabase = createClient();
@@ -316,7 +318,7 @@ export function ShoppingItems({
                     candidates={mergeCandidates(items, i, conversions, units)}
                     conversions={conversions}
                     units={units}
-                    onMerge={(sourceId) => mergeItems(i.id, sourceId)}
+                    onMerge={(sourceId, commentKey) => mergeItems(i.id, sourceId, commentKey)}
                     onCancel={() => setMergingId(null)}
                   />
                 )}
@@ -400,11 +402,17 @@ function MergeItemRow({
   candidates: ShoppingItem[];
   conversions: ConversionRef[];
   units: Unit[];
-  onMerge: (sourceId: number) => void;
+  onMerge: (sourceId: number, commentKey?: CommentChoice['key']) => void;
   onCancel: () => void;
 }) {
   const [sourceId, setSourceId] = useState(candidates[0]?.id ?? -1);
+  const [commentKey, setCommentKey] = useState<CommentChoice['key'] | undefined>(undefined);
   const picked = candidates.find((c) => c.id === sourceId);
+  // Commentaires différents : à l'utilisateur de choisir celui qu'on garde. Le
+  // premier choix est le défaut ; une sélection qui ne s'applique plus à l'autre
+  // article choisi retombe dessus.
+  const choices = picked ? commentChoices(target.comment, picked.comment) : [];
+  const chosenKey = choices.find((c) => c.key === commentKey)?.key ?? choices[0]?.key;
   // Unités différentes : le calcul de conversion est montré avant validation.
   const preview = picked ? mergePreview(target, picked, conversions, units) : null;
   if (candidates.length === 0) {
@@ -421,7 +429,15 @@ function MergeItemRow({
     <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1">
         <span className={LBL}>Fusionner avec</span>
-        <select value={sourceId} onChange={(e) => setSourceId(Number(e.target.value))} className={`${FIELD} bg-white`} style={{ width: '16rem' }}>
+        <select
+          value={sourceId}
+          onChange={(e) => {
+            setSourceId(Number(e.target.value));
+            setCommentKey(undefined);
+          }}
+          className={`${FIELD} bg-white`}
+          style={{ width: '16rem' }}
+        >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -430,10 +446,24 @@ function MergeItemRow({
           ))}
         </select>
       </label>
-      <button type="button" onClick={() => onMerge(sourceId)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+      <button type="button" onClick={() => onMerge(sourceId, chosenKey)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
         Fusionner
       </button>
       {preview && <p className="basis-full text-xs text-on-surface-variant italic">{preview}</p>}
+      {choices.length > 0 && (
+        <fieldset className="basis-full flex flex-col gap-1.5">
+          <legend className={LBL}>Commentaire de la ligne fusionnée</legend>
+          {choices.map((c) => (
+            <label key={c.key} className="flex items-start gap-2 text-sm text-on-surface cursor-pointer">
+              <input type="radio" name={`commentaire-fusion-${target.id}`} checked={chosenKey === c.key} onChange={() => setCommentKey(c.key)} className="mt-1" />
+              <span>
+                {c.label}
+                {c.value && <span className="text-on-surface-variant italic"> — « {c.value} »</span>}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
         Annuler
       </button>

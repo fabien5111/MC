@@ -532,7 +532,10 @@ température ambiante » est voulue à part ; la réunir en absorbant son commen
 en effacerait la distinction). Comparaison insensible à la casse et aux espaces,
 un commentaire absent valant « vide » — comme le récapitulatif d'une fiche recette,
 qui regroupe par ingrédient ET commentaire. Seul le picto de fusion manuelle, geste
-explicite, réunit des commentaires différents (`joinComments`). Le même
+explicite, tranche entre des commentaires différents : sans rien à arbitrer (aucun,
+ou le même) pas de choix ; un seul commentaire, le garder ou l'effacer ; deux, le
+sien, celui de l'autre ligne, les deux réunis par « ; » (choix par défaut, rien ne
+se perd sans l'avoir demandé) ou aucun (`commentChoices` / `mergedComment`). Le même
 calcul sert au **picto de fusion manuelle** (`mergeCandidates` / `mergeResult` /
 `mergePreview`), qui montre « 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »
 avant validation, et pour les lignes déjà en doublon avant ce correctif.

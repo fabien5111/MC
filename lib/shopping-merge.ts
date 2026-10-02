@@ -25,10 +25,46 @@ export function sumQuantities(a: string | null, b: string | null): string | null
   return [a, b].filter(Boolean).join(' + ') || null;
 }
 
-// Commentaires réunis par « ; », sans répéter le même.
-export function joinComments(a: string | null, b: string | null): string | null {
-  if (!b || b === a) return a;
-  return a ? a + ' ; ' + b : b;
+// ── Commentaire d'une fusion MANUELLE ───────────────────────────────────────
+// Les fusions automatiques ne regroupent jamais deux commentaires différents
+// (`findMergeTarget`). Au picto de fusion, c'est l'utilisateur qui tranche :
+// aucun choix s'il n'y a rien à arbitrer (pas de commentaire, ou le même) ; le
+// garder ou l'effacer s'il n'y en a qu'un ; le sien, celui de l'autre ligne,
+// les deux réunis par « ; » ou aucun s'il y en a deux. Le premier choix est le
+// choix par défaut : rien ne se perd sans qu'on l'ait demandé.
+export type CommentChoice = {
+  key: 'keep' | 'both' | 'target' | 'source' | 'none';
+  label: string;
+  value: string | null;
+};
+
+const cleanComment = (c: string | null | undefined): string | null => (c ?? '').trim() || null;
+
+export function commentChoices(targetComment: string | null, sourceComment: string | null): CommentChoice[] {
+  const t = cleanComment(targetComment);
+  const s = cleanComment(sourceComment);
+  if (!t && !s) return [];
+  if (t && s && commentKey(t) === commentKey(s)) return [];
+  if (!t || !s) {
+    return [
+      { key: 'keep', label: 'Garder le commentaire', value: (t || s) as string },
+      { key: 'none', label: 'Aucun commentaire', value: null },
+    ];
+  }
+  return [
+    { key: 'both', label: 'Réunir les deux', value: `${t} ; ${s}` },
+    { key: 'target', label: 'Celui de cette ligne', value: t },
+    { key: 'source', label: 'Celui de l’autre ligne', value: s },
+    { key: 'none', label: 'Aucun commentaire', value: null },
+  ];
+}
+
+// Commentaire de la ligne fusionnée. `key` hors des choix de cette paire (ou
+// absent) : choix par défaut. Rien à choisir : le commentaire existant.
+export function mergedComment(targetComment: string | null, sourceComment: string | null, key?: CommentChoice['key']): string | null {
+  const choices = commentChoices(targetComment, sourceComment);
+  if (choices.length === 0) return cleanComment(targetComment) ?? cleanComment(sourceComment);
+  return (choices.find((c) => c.key === key) ?? choices[0]).value;
 }
 
 // ── Fusion manuelle de deux lignes (picto « fusionner ») ─────────────────────
@@ -116,7 +152,7 @@ export function mergePreview(
 // (casse et espaces ignorés ; un commentaire absent vaut « vide ») — comme le
 // récapitulatif d'une fiche recette, qui regroupe par ingrédient ET commentaire.
 // Seul le picto de fusion manuelle, geste explicite, réunit des commentaires
-// différents (`joinComments`).
+// différents, en choisissant le commentaire à garder (`commentChoices`).
 const commentKey = (c: string | null | undefined) => (c ?? '').trim().toLowerCase();
 
 export function findMergeTarget<T extends LigneFusion & { id: number; comment?: string | null }>(

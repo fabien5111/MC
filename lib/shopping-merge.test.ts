@@ -2,7 +2,7 @@
 // regroupement manqué laisse deux lignes, un regroupement abusif additionne
 // deux choses différentes — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
-import { findMergeTarget, joinComments, mergeCandidates, mergePreview, mergeResult, shoppingKey, sumQuantities } from '@/lib/shopping-merge';
+import { commentChoices, findMergeTarget, mergedComment, mergeCandidates, mergePreview, mergeResult, shoppingKey, sumQuantities } from '@/lib/shopping-merge';
 
 describe('sumQuantities', () => {
   it('additionne les nombres, virgule comprise', () => {
@@ -12,15 +12,6 @@ describe('sumQuantities', () => {
   it('réunit ce qui n’est pas numérique, sans rien perdre', () => {
     expect(sumQuantities('2', 'une pincée')).toBe('2 + une pincée');
     expect(sumQuantities(null, null)).toBeNull();
-  });
-});
-
-describe('joinComments', () => {
-  it('réunit sans répéter', () => {
-    expect(joinComments('chaud', 'froid')).toBe('chaud ; froid');
-    expect(joinComments('chaud', 'chaud')).toBe('chaud');
-    expect(joinComments(null, 'froid')).toBe('froid');
-    expect(joinComments('chaud', null)).toBe('chaud');
   });
 });
 
@@ -171,5 +162,40 @@ describe('fusion automatique à l’ajout (findMergeTarget)', () => {
 
   it('nom vide : jamais regroupé', () => {
     expect(findMergeTarget([ligne(1, '', null, null)], entrant('  ', null, null, null), conversions, units)).toBeUndefined();
+  });
+});
+
+describe('choix du commentaire à la fusion manuelle', () => {
+  it('rien à choisir : aucun commentaire, ou le même (casse et espaces ignorés)', () => {
+    expect(commentChoices(null, null)).toEqual([]);
+    expect(commentChoices('', '  ')).toEqual([]);
+    expect(commentChoices('Froid', ' froid ')).toEqual([]);
+    expect(mergedComment(null, null)).toBeNull();
+    expect(mergedComment('Froid', ' froid ')).toBe('Froid');
+  });
+
+  it('un seul commentaire : le garder (par défaut) ou n’en mettre aucun', () => {
+    for (const [t, s] of [['à chauffer', null], [null, 'à chauffer']] as const) {
+      const choix = commentChoices(t, s);
+      expect(choix.map((c) => c.key)).toEqual(['keep', 'none']);
+      expect(choix[0].value).toBe('à chauffer');
+      expect(choix[1].value).toBeNull();
+      expect(mergedComment(t, s)).toBe('à chauffer');
+      expect(mergedComment(t, s, 'none')).toBeNull();
+    }
+  });
+
+  it('deux commentaires différents : réunis par défaut, ou l’un, ou l’autre, ou aucun', () => {
+    const choix = commentChoices('froid', 'à chauffer');
+    expect(choix.map((c) => c.key)).toEqual(['both', 'target', 'source', 'none']);
+    expect(mergedComment('froid', 'à chauffer')).toBe('froid ; à chauffer');
+    expect(mergedComment('froid', 'à chauffer', 'target')).toBe('froid');
+    expect(mergedComment('froid', 'à chauffer', 'source')).toBe('à chauffer');
+    expect(mergedComment('froid', 'à chauffer', 'none')).toBeNull();
+  });
+
+  it('un choix qui ne s’applique pas à cette paire retombe sur le choix par défaut', () => {
+    expect(mergedComment('froid', null, 'both')).toBe('froid');
+    expect(mergedComment(null, null, 'target')).toBeNull();
   });
 });
