@@ -518,7 +518,14 @@ de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
 recette, par saisie à la main (`ShoppingItems.addItem`) et par fusion de deux
 listes (`CuisineContent`), ces deux derniers via `lib/shopping-merge.ts`
 (`findSameItem` : même ingrédient ET même unité, jamais des grammes avec des
-unités). Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
+unités). Le **picto de fusion manuelle** d'une ligne propose en plus le MÊME
+ingrédient dans une autre unité quand la table de conversions les relie
+(`mergeCandidates` / `mergeResult`, `convertQty`) : la ligne cliquée garde
+son unité, l'autre y est convertie, et le calcul est montré avant validation
+(« 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »). Jamais automatique : une
+conversion est une équivalence moyenne, donc un geste explicite ; sans
+rattachement au référentiel (`ref_id`) ni conversion connue, la ligne n'est
+pas proposée. Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.

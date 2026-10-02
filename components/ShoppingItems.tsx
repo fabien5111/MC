@@ -13,7 +13,7 @@ import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
 import { fixOeufLigature } from '@/lib/text';
-import { findSameItem, joinComments, sumQuantities } from '@/lib/shopping-merge';
+import { findSameItem, joinComments, mergeCandidates, mergePreview, mergeResult, sumQuantities } from '@/lib/shopping-merge';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
@@ -23,8 +23,6 @@ const REFRESH_DELAY = 2000;
 // retombe jamais à `isPending = false` (cas limite non prévu), on ne laisse
 // pas l'utilisateur bloqué sur la page — on navigue quand même.
 const LEAVE_SAFETY_DELAY = 3000;
-
-const sameUnit = (a: string | null, b: string | null) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
 
 export function ShoppingItems({
   listId,
@@ -157,16 +155,16 @@ export function ShoppingItems({
 
   // Fusion manuelle de deux lignes (picto à côté du crayon) : la quantité de
   // l'article choisi s'ajoute à celle de l'article courant, qui est ensuite
-  // supprimé. Restreint aux articles de même unité — additionner des
-  // quantités d'unités différentes n'aurait pas de sens.
+  // supprimé. Même unité, ou même ingrédient dans une autre unité que la table
+  // de conversions relie (JEP-249) : la quantité de l'article choisi est alors
+  // convertie dans l'unité de l'article courant — jamais d'addition sans
+  // conversion connue (cf. `mergeCandidates`).
   async function mergeItems(targetId: number, sourceId: number) {
     const target = items.find((i) => i.id === targetId);
     const source = items.find((i) => i.id === sourceId);
     if (!target || !source) return;
-    const a = parseFloat(String(target.quantity || '').replace(',', '.'));
-    const b = parseFloat(String(source.quantity || '').replace(',', '.'));
-    const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [target.quantity, source.quantity].filter(Boolean).join(' + ');
-    const newComment = source.comment && source.comment !== target.comment ? [target.comment, source.comment].filter(Boolean).join(' ; ') : target.comment;
+    const newQty = mergeResult(target, source, conversions, units).quantity;
+    const newComment = joinComments(target.comment, source.comment);
     const ok = await mutate(
       async () => {
         const supabase = createClient();
@@ -314,7 +312,10 @@ export function ShoppingItems({
                 {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u, c) => applyEdit(i.id, n, q, u, c)} onCancel={() => setEditingId(null)} />}
                 {mergingId === i.id && (
                   <MergeItemRow
-                    candidates={items.filter((o) => o.id !== i.id && sameUnit(o.unit, i.unit))}
+                    target={i}
+                    candidates={mergeCandidates(items, i, conversions, units)}
+                    conversions={conversions}
+                    units={units}
                     onMerge={(sourceId) => mergeItems(i.id, sourceId)}
                     onCancel={() => setMergingId(null)}
                   />
@@ -388,19 +389,28 @@ function EditItemRow({
 }
 
 function MergeItemRow({
+  target,
   candidates,
+  conversions,
+  units,
   onMerge,
   onCancel,
 }: {
+  target: ShoppingItem;
   candidates: ShoppingItem[];
+  conversions: ConversionRef[];
+  units: Unit[];
   onMerge: (sourceId: number) => void;
   onCancel: () => void;
 }) {
   const [sourceId, setSourceId] = useState(candidates[0]?.id ?? -1);
+  const picked = candidates.find((c) => c.id === sourceId);
+  // Unités différentes : le calcul de conversion est montré avant validation.
+  const preview = picked ? mergePreview(target, picked, conversions, units) : null;
   if (candidates.length === 0) {
     return (
       <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-on-surface-variant italic">Aucun autre article avec la même unité à fusionner.</p>
+        <p className="text-sm text-on-surface-variant italic">Aucun autre article à fusionner (même unité, ou même ingrédient avec une conversion connue).</p>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
           Fermer
         </button>
@@ -423,6 +433,7 @@ function MergeItemRow({
       <button type="button" onClick={() => onMerge(sourceId)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
         Fusionner
       </button>
+      {preview && <p className="basis-full text-xs text-on-surface-variant italic">{preview}</p>}
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
         Annuler
       </button>
