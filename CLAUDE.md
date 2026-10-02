@@ -514,8 +514,11 @@ par mot). C'est la **seule** règle pour rapprocher deux noms d'ingrédients :
 `resolveIngredientRefId` (rattachement au référentiel — libellé exact
 préféré, clé en repli), `mergeIngredients` (liste totale), le récapitulatif
 de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
-`expandedGroup`) et l'ajout à une liste de courses existante. Ne pas
-réintroduire de `name.toLowerCase()` comme clé de fusion.
+`expandedGroup`) et l'ajout à une liste de courses existante — depuis une
+recette, par saisie à la main (`ShoppingItems.addItem`) et par fusion de deux
+listes (`CuisineContent`), ces deux derniers via `lib/shopping-merge.ts`
+(`findSameItem` : même ingrédient ET même unité, jamais des grammes avec des
+unités). Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.

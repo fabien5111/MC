@@ -36,6 +36,7 @@ import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFul
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { LockedAction } from '@/components/LockedAction';
+import { shoppingKey } from '@/lib/shopping-merge';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -160,7 +161,7 @@ export function CuisineContent({
           .select('id, list_id, name, quantity, unit')
           .in('list_id', [targetId, sourceId]);
         if (fetchErr) return { error: fetchErr };
-        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
+        const key = shoppingKey; // ingrédient (singulier/pluriel/ligature) + unité — JEP-249
         const targetItems = (rows || []).filter((r) => r.list_id === targetId);
         const byKey = new Map(targetItems.map((r) => [key(r.name, r.unit), r]));
         for (const s of (rows || []).filter((r) => r.list_id === sourceId)) {
