@@ -21,7 +21,7 @@ export const AGE_ATTESTATION_VERSION = '2026-10-01';
 export const AGE_ATTESTATION_TEXTE =
   "Je certifie avoir 15 ans ou plus, ou disposer de l'accord de mon représentant légal pour créer ce compte.";
 
-/** Message d'aide affiché si l'on tente de valider sans cocher la case. */
+/** Message si l'envoi est tenté sans la case (bouton désactivé : filet seulement). */
 export const AGE_ATTESTATION_ERREUR = 'Vous devez confirmer cette condition pour continuer.';
 
 /**

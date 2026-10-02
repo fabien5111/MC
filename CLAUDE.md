@@ -332,9 +332,9 @@ saisie « Fabien Chenu »
   Google n'a jamais vu la première). Tracée comme les CGU, dans les
   métadonnées du compte (`age_attestation_version`, `age_attestation_at`),
   revérifiée par `/api/pseudo/choisir`. Le texte est versionné : le modifier
-  impose une nouvelle `AGE_ATTESTATION_VERSION`. Exception assumée au motif
-  « bouton désactivé tant que le formulaire est invalide » : cette case seule
-  ne désactive pas le bouton, pour que la tentative la signale (spec).
+  impose une nouvelle `AGE_ATTESTATION_VERSION`. Traitée exactement comme la
+  case des CGU : bouton désactivé tant qu'elle n'est pas cochée (arbitrage
+  produit — la spec prévoyait un message à la tentative de validation).
 
 ### `/choix-pseudo` — passage obligé
 

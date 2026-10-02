@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { CGU_CHEMIN, metadonneesAcceptationCgu } from '@/lib/cgu';
-import { metadonneesAttestationAge } from '@/lib/attestation-age';
+import { AGE_ATTESTATION_ERREUR, metadonneesAttestationAge } from '@/lib/attestation-age';
 import { AgeAttestationCheckbox } from '@/components/AgeAttestationCheckbox';
 import {
   nettoyerSaisiePseudo,
@@ -63,11 +63,8 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
-  // Attestation d'âge (JEP-34). Volontairement hors de `blocked` : le bouton
-  // reste cliquable pour qu'une tentative sans la case la signale (cf.
-  // `AgeAttestationCheckbox`) ; c'est `submit` qui bloque.
+  // Attestation d'âge (JEP-34) : bloque l'envoi comme les CGU.
   const [age, setAge] = useState(false);
-  const [ageErreur, setAgeErreur] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -131,7 +128,7 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
   // conditions bloquent l'envoi. En connexion, aucun contrôle — les comptes
   // existants peuvent avoir un mot de passe antérieur à ces règles.
   const blocked =
-    isSignup && (!pseudoValidation.ok || pseudoCheck === 'ko' || !strength.valid || password !== confirm || !terms);
+    isSignup && (!pseudoValidation.ok || pseudoCheck === 'ko' || !strength.valid || password !== confirm || !terms || !age);
 
   function toggleMode() {
     setMode(isSignup ? 'signin' : 'signup');
@@ -152,12 +149,10 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
               ? 'Les deux mots de passe ne correspondent pas.'
               : !terms
                 ? "Vous devez accepter les conditions d'utilisation."
-                : 'Le mot de passe ne respecte pas les règles de sécurité.',
+                : !age
+                  ? AGE_ATTESTATION_ERREUR
+                  : 'Le mot de passe ne respecte pas les règles de sécurité.',
       );
-      return;
-    }
-    if (isSignup && !age) {
-      setAgeErreur(true);
       return;
     }
     setBusy(true);
@@ -423,44 +418,48 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
           )}
 
           {isSignup && (
-            <div className="flex items-start gap-3 py-2">
-              <input
-                id="terms"
-                type="checkbox"
-                required
-                checked={terms}
-                onChange={(e) => setTerms(e.target.checked)}
-                aria-invalid={!terms && error === "Vous devez accepter les conditions d'utilisation."}
-                className={`mt-1 w-4 h-4 rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer ${
-                  !terms && error === "Vous devez accepter les conditions d'utilisation." ? 'border-error' : 'border-outline'
-                }`}
-              />
-              <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
-                J&apos;accepte les{' '}
-                {/* Nouvel onglet : quitter la page ferait perdre la saisie du formulaire d'inscription. */}
-                <a
-                  className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
-                  href={CGU_CHEMIN}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  conditions d&apos;utilisation
-                </a>{' '}
-                et la{' '}
-                <a
-                  className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
-                  href="/confidentialite"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  politique de confidentialité
-                </a>
-                .
-              </label>
+            // Les deux cases (CGU, âge) groupées avec un écart resserré : en
+            // frères directs du formulaire, chacune prenait l'espacement d'un
+            // champ entier en plus du sien.
+            <div className="space-y-3 py-2">
+              <div className="flex items-start gap-3">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  required
+                  checked={terms}
+                  onChange={(e) => setTerms(e.target.checked)}
+                  aria-invalid={!terms && error === "Vous devez accepter les conditions d'utilisation."}
+                  className={`mt-1 w-4 h-4 rounded-none accent-primary-container focus:ring-primary-container transition-all cursor-pointer ${
+                    !terms && error === "Vous devez accepter les conditions d'utilisation." ? 'border-error' : 'border-outline'
+                  }`}
+                />
+                <label className="font-body-md text-sm text-on-surface-variant cursor-pointer select-none" htmlFor="terms">
+                  J&apos;accepte les{' '}
+                  {/* Nouvel onglet : quitter la page ferait perdre la saisie du formulaire d'inscription. */}
+                  <a
+                    className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                    href={CGU_CHEMIN}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    conditions d&apos;utilisation
+                  </a>{' '}
+                  et la{' '}
+                  <a
+                    className="text-primary underline underline-offset-4 hover:text-secondary-fixed-dim transition-colors"
+                    href="/confidentialite"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    politique de confidentialité
+                  </a>
+                  .
+                </label>
+              </div>
+              <AgeAttestationCheckbox checked={age} onChange={setAge} />
             </div>
           )}
-
-          {isSignup && <AgeAttestationCheckbox checked={age} onChange={setAge} erreur={ageErreur} />}
 
           {error && (
             <p className="text-sm text-error text-center">
