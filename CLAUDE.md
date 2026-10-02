@@ -545,6 +545,12 @@ rejoindre, et une ligne modifiée n'est jamais relue périmée. **Reste hors
 périmètre** : la liste totale d'une fournée (`mergeIngredientRows`) ne convertit
 pas les unités — sa structure (quantités ajustées / d'origine / textes) est plus
 délicate à toucher. Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
+**Saisie à la main** (`ShoppingItems.addItem`) : l'unité est **obligatoire** à
+l'ajout — sans elle, ni conversion ni fusion (ni, demain, coût). Seul l'ajout
+l'exige : la modification d'une ligne (`EditItemRow`) reste libre, pour ne pas
+bloquer la correction d'une ligne ancienne sans unité. La liste « Fusionner
+avec » affiche le commentaire de chaque ligne (tronqué à 40 caractères), seul
+élément qui distingue deux lignes du même ingrédient.
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.

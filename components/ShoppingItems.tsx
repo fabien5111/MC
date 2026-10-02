@@ -189,6 +189,12 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    // Sans unité, la ligne ne peut ni se convertir ni se fusionner (ni, demain,
+    // se chiffrer) : obligatoire à l'ajout (la modification reste libre).
+    if (!unit) {
+      dialog.alert('Choisissez une unité.');
+      return;
+    }
     name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const supabase = createClient();
 
@@ -442,6 +448,7 @@ function MergeItemRow({
             <option key={c.id} value={c.id}>
               {c.name}
               {c.quantity ? ` — ${c.quantity}${c.unit ? ' ' + c.unit : ''}` : ''}
+              {c.comment?.trim() ? ` — « ${c.comment.trim().length > 40 ? c.comment.trim().slice(0, 40) + '…' : c.comment.trim()} »` : ''}
             </option>
           ))}
         </select>
@@ -495,9 +502,9 @@ function AddItemRow({
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className={LBL}>Unité</span>
-        <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
-          <option value="">— Unité —</option>
+        <span className={LBL}>Unité *</span>
+        <select value={unit} onChange={(e) => setUnit(e.target.value)} required className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
+          <option value="" disabled>— Unité —</option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
               {u.name}
