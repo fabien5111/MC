@@ -1,0 +1,279 @@
+{
+  "ticket": "JEP-72",
+  "recette": {
+    "titre": "Le Cake 100% Chocolat",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake ultra gourmand 100% chocolat composé d'un appareil à cake moelleux, d'un cœur coulant de caramel au chocolat, d'un enrobage chocolat effet velours, d'un glaçage rocher au grué de cacao et d'une namelaka aux deux chocolats pochée sur le dessus.",
+    "rendement": "1 cake de 20 cm (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Maryse",
+      "Fouet",
+      "Tamis",
+      "Moule à cake de 20 cm",
+      "Tube à cake (ou vide-pomme)",
+      "Casserole",
+      "Mixeur plongeant",
+      "Poche à douille",
+      "Pistolet à peinture (ou bain d'enrobage)",
+      "Thermomètre de cuisine",
+      "Plaque à découper"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La Namelaka aux deux chocolats",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66% Caraïbe Valrhona",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait 40% Jivara Valrhona",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 78,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 158,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau froide pendant 10 minutes minimum.",
+          "Placer les deux chocolats hachés dans un cul-de-poule.",
+          "Chauffer le lait dans une casserole jusqu'à un léger frémissement.",
+          "Verser le lait en trois fois sur les chocolats en réalisant une émulsion avec une maryse en faisant de petits cercles au centre.",
+          "Ajouter la gélatine essorée et bien mélanger.",
+          "Verser la crème liquide froide et mixer au mixeur plongeant pour parfaire l'émulsion.",
+          "Filmer au contact dans un récipient à fond large et réserver au réfrigérateur pendant 3 heures minimum."
+        ],
+        "conseils_etape": "Essorer fermement la gélatine si vous utilisez des feuilles. Mixer la préparation garantit une texture parfaitement lisse."
+      },
+      {
+        "nom_etape": "L'Appareil à cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 40,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Œufs",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre muscovado",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 68,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 66% Caraïbe Valrhona (fondu)",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre fondu tiède",
+            "quantite": 45,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger les œufs avec la cassonade et le sucre muscovado immédiatement pour éviter que le sucre ne cuise les œufs.",
+          "Tamiser et ajouter la farine, le cacao en poudre, la levure chimique et le sel, puis mélanger délicatement.",
+          "Ajouter le lait et la crème liquide (froids ou tièdes) et mélanger jusqu'à l'obtention d'une pâte lisse.",
+          "Incorporer le beurre fondu à température ambiante, puis terminer par le chocolat noir fondu.",
+          "Verser l'appareil dans un moule à cake beurré et fariné muni de son tube central (ou le remplir sans dépasser les ¾).",
+          "Enfourner à 160°C pendant 40 minutes.",
+          "Laisser tiédir à la sortie du four, retirer le tube du centre et démouler délicatement, puis placer le cake 1 heure au congélateur."
+        ],
+        "conseils_etape": "Ne remplissez pas trop le moule pour éviter les débordements ou une texture trop compacte à la cuisson."
+      },
+      {
+        "nom_etape": "Le Caramel au chocolat",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 72,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose (pour le mélange lait/crème)",
+            "quantite": 26,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose (pour le sucre)",
+            "quantite": 56,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 134,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 36,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 66% Caraïbe Valrhona",
+            "quantite": 48,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, chauffer le lait, la crème et les 26g de glucose jusqu'à frémissement, puis réserver à couvert.",
+          "Dans une seconde casserole, faire fondre à feu moyen le sucre avec les 56g de glucose jusqu'à l'obtention d'un caramel ambré.",
+          "Décuire le caramel en y versant le mélange chaud de crème et de lait en plusieurs fois tout en remuant.",
+          "Verser le caramel dans un récipient haut et laisser descendre la température sous les 50°C.",
+          "Ajouter le chocolat noir, le beurre doux et la fleur de sel.",
+          "Mixer au mixeur plongeant pour obtenir un caramel extrêmement lisse.",
+          "Mettre en poche à douille et laisser refroidir au réfrigérateur, puis fourrer le centre du cake congelé."
+        ],
+        "conseils_etape": "Si vous n'avez pas de moule à insert tubulaire, creusez délicatement le cake bien durci au congélateur à l'aide d'un vide-pomme."
+      },
+      {
+        "nom_etape": "Enrobage et glaçage rocher",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66% Caraïbe Valrhona (enrobage)",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao (enrobage)",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 66% Caraïbe Valrhona (glaçage rocher)",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin (glaçage rocher)",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué de cacao (glaçage rocher)",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger le chocolat noir fondu avec le beurre de cacao fondu à l'aide d'une maryse pour l'enrobage de base et réserver.",
+          "Dans un autre récipient, mélanger le chocolat noir fondu avec l'huile de pépins de raisin et le grué de cacao pour former le glaçage rocher et réserver."
+        ],
+        "conseils_etape": "Respectez scrupuleusement les températures d'utilisation indiquées lors du bain du cake pour garantir la cristallisation."
+      },
+      {
+        "nom_etape": "Finition et Montage",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Verser l'enrobage à 45°C dans un moule adapté, y tremper le cake bien froid pour l'enrober entièrement, puis égoutter.",
+          "Utiliser le reste d'enrobage dans un pistolet à peinture à 45°C pour floquer le cake et créer l'effet velours.",
+          "Chauffer le glaçage rocher à environ 35°C et tremper le cake jusqu'à l'arête supérieure pour créer le contraste de texture.",
+          "Égoutter l'excédent, nettoyer le dessous et poser sur une planche.",
+          "Sortir la namelaka du réfrigérateur, la placer dans une poche munie d'une douille coupée en biseau (ou une douille Saint-Honoré) et pocher harmonieusement sur le dessus du cake."
+        ],
+        "conseils_etape": "Travaillez rapidement avec un cake bien congelé pour que l'enrobage fige instantanément."
+      }
+    ],
+    "astuces_recette": [
+      "Veillez à utiliser du chocolat de couverture de qualité (type Valrhona Caraïbe) pour assurer la fluidité des glaçages et l'équilibre des amertumes.",
+      "Ne négligez pas les temps de repos au frais pour la namelaka afin qu'elle reprenne la texture idéale de pochage.",
+      "Doublez la quantité de glaçage rocher si vous souhaitez disposer d'une hauteur de trempage plus confortable dans votre récipient."
+    ],
+    "conseils_conservation": "Conservez le cake au réfrigérateur et sortez-le 15 à 20 minutes avant la dégustation pour profiter pleinement de la texture fondante de la namelaka et du crémeux du caramel. Consommez de préférence dans les 48 heures suivant le montage final pour préserver le croustillant du grué de cacao."
+  }
+}

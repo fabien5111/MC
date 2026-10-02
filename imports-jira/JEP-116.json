@@ -1,0 +1,268 @@
+{
+  "ticket": "JEP-116",
+  "recette": {
+    "titre": "Tartelettes fraise et fève de tonka",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une réinterprétation printanière de la tarte aux fraises alliant une pâte sucrée croustillante, une crème d'amande moelleuse garnie de fraises fraîches, un insert confit acidulé et une ganache montée soyeuse parfumée à la tonka, le tout surmonté d'un fin carpaccio de fraises.",
+    "rendement": "6 tartelettes individuelles de 7 cm (ou une tarte de 16 cm) — 6 personnes",
+    "ustensiles": [
+      "6 cercles à tartelette perforés de 7 cm (ou 1 cercle de 16 cm)",
+      "Moule silicone demi-sphères de 3,5 cm",
+      "Douille unie de 12 mm",
+      "Douille unie de 20 mm",
+      "Poches pâtissières",
+      "Mixeur plongeant",
+      "Râpe fine (type Microplane)",
+      "Rouleau à pâtisserie",
+      "Papier cuisson",
+      "Pinceau à pâtisserie",
+      "Couteau d'office bien aiguisé"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée tonka",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (chaude)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (froide)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève de tonka râpée",
+            "quantite": 0.25,
+            "unite": null
+          },
+          {
+            "nom": "Gélatine en poudre (ou 1 feuille)",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau très froide (pour réhydrater la gélatine)",
+            "quantite": 12,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans les 12 g d'eau froide pendant 20 minutes au frais.",
+          "Faire fondre le chocolat blanc au bain-marie ou à basse température.",
+          "Chauffer les 100 g de crème liquide avec le quart de fève de tonka râpée jusqu'à ce que le mélange fume.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc fondu en créant une émulsion au fouet ou à la maryse.",
+          "Ajouter la masse gélatine hydratée et mélanger soigneusement pour la dissoudre totalement.",
+          "Verser les 150 g de crème liquide froide et mixer au mixeur plongeant sans incorporer de bulles d'air pour parfaire l'émulsion.",
+          "Débarrasser dans un plat large, filmer au contact et réserver au réfrigérateur au moins 4 heures (idéalement 12 heures)."
+        ],
+        "conseils_etape": "Utiliser un récipient large permet un refroidissement homogène et rapide de la ganache avant le foisonnement. À réaliser la veille, repos d'une nuit idéalement."
+      },
+      {
+        "nom_etape": "Insert confit de fraises",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 4,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Fraises",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger intimement le sucre et la pectine NH à sec dans un petit récipient.",
+          "Chauffer les fraises et le jus de citron dans une casserole à feu moyen en les écrasant légèrement au fouet pour compoter les fruits.",
+          "Ajouter la première moitié du mélange sucre-pectine dès que la vapeur s'échappe, puis verser la seconde moitié aux premiers bouillons.",
+          "Maintenir une ébullition franche pendant environ 30 secondes pour activer la gélification.",
+          "Mixer la préparation au mixeur plongeant pour obtenir une texture bien lisse.",
+          "Couler dans des empreintes demi-sphères de 3,5 cm et placer au congélateur pendant au moins 3 heures."
+        ],
+        "conseils_etape": "Le mélange préalable de la pectine avec le sucre évite la formation de grumeaux insolubles à la cuisson. À réaliser la veille ou le matin même (minimum 4 heures avant le montage)."
+      },
+      {
+        "nom_etape": "Pâte sucrée tonka",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 150,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (très pommade)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 47,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève de tonka râpée",
+            "quantite": 0.25,
+            "unite": null
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier (à température ambiante)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf (pour la dorure)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide (pour la dorure)",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre très pommade avec le sucre glace au fouet ou à la spatule jusqu'à homogénéité.",
+          "Ajouter la fleur de sel, le quart de fève de tonka râpée et la poudre d'amandes, puis mélanger.",
+          "Incorporer les 30 g d'œuf tempéré et mélanger pour obtenir un appareil crémeux.",
+          "Déposer la farine tamisée en fontaine sur le plan de travail, verser la préparation crémeuse au centre, puis sabler/hacher à la corne pendant 5 minutes sans pétrir pour limiter le développement du réseau glutineux.",
+          "Fraser brièvement la pâte avec la paume de la main pour lisser l'ensemble.",
+          "Étaler la pâte à 3 mm d'épaisseur entre deux feuilles de papier sulfurisé et bloquer 30 minutes au réfrigérateur.",
+          "Détailler des bandes de 2,5 cm de largeur et des disques de fond de tartelette d'un diamètre inférieur de 5 mm à celui des cercles (soit environ 6,5 cm).",
+          "Foncer les cercles perforés préalablement beurrés en plaquant la bande sur le pourtour intérieur, puis en insérant et soudant le disque au fond ; araser l'excédent au couteau de l'intérieur vers l'extérieur.",
+          "Piquer le fond à la fourchette et congeler les fonds foncés pendant au moins 2 heures.",
+          "Cuire à blanc à 160 °C pendant 20 minutes.",
+          "Décercler avec précaution, appliquer une fine pellicule de dorure (jaune mélangé à la crème) au pinceau sur l'intérieur et l'extérieur, puis réenfourner 5 minutes à 160 °C."
+        ],
+        "conseils_etape": "Le passage de deux heures au congélateur fige les matières grasses et garantit des bords nets qui ne s'affaissent pas à la cuisson. À réaliser la veille ou quelques heures avant la cuisson."
+      },
+      {
+        "nom_etape": "Crème d'amande et cuisson finale",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (ou glace)",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Fraises fraîches (taillées en petits dés, prélevées sur les 200 g de décor)",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre pommade avec le sucre semoule.",
+          "Incorporer la poudre d'amandes en mélangeant doucement.",
+          "Ajouter l'œuf battu en trois fois pour éviter que l'émulsion ne tranche.",
+          "Débarrasser dans une poche munie d'une douille de 12 mm et réserver quelques minutes au frais.",
+          "Pocher la crème d'amande aux trois quarts de la hauteur des fonds précuits et dorés.",
+          "Enfoncer quelques petits cubes de fraises fraîches dans la crème.",
+          "Enfourner à 160 °C pendant environ 20 minutes jusqu'à ce que la crème soit dorée et prise. Laisser refroidir totalement sur grille."
+        ],
+        "conseils_etape": "Travailler tous les ingrédients à même température (ambiante) garantit une crème d'amande homogène sans grainage du beurre. À réaliser pendant la première cuisson des fonds de tarte, le jour même."
+      },
+      {
+        "nom_etape": "Montage et finition",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Fraises fraîches (le reste des 200 g de décor)",
+            "quantite": 165,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleurs de romarin",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Foisonner la ganache montée bien froide au batteur jusqu'à consistance de mousse onctueuse et souple (ne pas trop serrer). Mettre en poche avec une douille unie de 20 mm.",
+          "Démouler les demi-sphères de confit de fraises congelées et déposer un dôme au centre de chaque fond garni de crème d'amande froide.",
+          "Pocher une généreuse boule de ganache montée par-dessus en englobant complètement l'insert. Réserver au frais.",
+          "Tailler des tranches de fraises fraîches très fines (type carpaccio) au couteau d'office.",
+          "Plaquer les lamelles de fraises en tuiles régulières sur tout le dôme de ganache, de façon à recouvrir quasiment l'ensemble de la crème.",
+          "Déposer délicatement quelques fleurs de romarin sur le dessus.",
+          "Réserver au réfrigérateur au moins 1 heure avant la dégustation pour permettre la décongélation complète du cœur de confit."
+        ],
+        "conseils_etape": "Ne montez pas la ganache trop ferme ; une texture souple (« mousse à raser ») facilite le lissage et évite qu'elle ne tranche sous le poids des fruits. À réaliser 1 à 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Alternances d'arômes : si la fève de tonka n'est pas disponible, elle se remplace aisément par une gousse de vanille, ou par une infusion d'herbes fraîches (basilic, romarin, thym) dans la crème chaude.",
+      "Finesse du découpage : plus les tranches de fraises sont coupées fines, plus l'adhérence sur le dôme de ganache est aisée et le visuel soigné."
+    ],
+    "conseils_conservation": "Conserver 24 heures au réfrigérateur à l'abri des odeurs : les fraises fraîches taillées rendent du jus avec le temps et détrempent la ganache si elles sont conservées plus longtemps. Servir bien frais, en s'assurant que le confit intérieur soit parfaitement décongelé (environ une heure de repos au frais après montage)."
+  }
+}

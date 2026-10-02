@@ -1,0 +1,389 @@
+{
+  "ticket": "JEP-68",
+  "recette": {
+    "titre": "Bûche Vanille et Caramel façon Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël spectaculaire inspirée par l'univers de Cédric Grolet (« Fleur de Vanille » revisitée en nuage), combinant une ganache montée vanille aérienne, un caramel coulant à la vanille, un praliné vanille intense, un biscuit moelleux imbibé d'huile de vanille et un sablé breton croustillant. Le tout est décoré d'un pochage en forme de nuage.",
+    "rendement": "1 bûche pour 6 à 8 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Mixeur plongeant",
+      "Robot pâtissier (muni du fouet et de la feuille/batteur plat)",
+      "Robot coupe / mixeur",
+      "Fouet manuel",
+      "Pinceau de cuisine",
+      "Spatule / palette",
+      "Moule à bûche et moule à cake (pour le biscuit)",
+      "Tapis en silicone",
+      "Papier sulfurisé",
+      "Poches à douille (avec et sans douille, douille lisse de 16 mm)",
+      "Thermomètre de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La ganache montée vanille",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 255,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 287,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour hydrater la gélatine)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière (1)",
+            "quantite": 322,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière froide (2)",
+            "quantite": 965,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 4,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau bien froide pendant 15 minutes au réfrigérateur.",
+          "Fendre et gratter les 4 gousses de vanille. Dans une casserole, porter à ébullition la crème liquide (1) avec les grains et les gousses de vanille.",
+          "Couvrir la casserole hors du feu et laisser infuser 15 minutes.",
+          "Filtrer la crème chaude pour retirer les gousses et la peau formée, puis la verser en trois fois sur le chocolat blanc préalablement fondu, en réalisant des cercles au centre pour créer une émulsion.",
+          "Ajouter la gélatine réhydratée (bien essorée si feuilles, ou le mélange eau/gélatine) et mixer au mixeur plongeant.",
+          "Ajouter la crème liquide froide (2) dans le mélange et donner un coup de mixeur plongeant pour obtenir une texture homogène. Filmer au contact.",
+          "Réserver au réfrigérateur minimum 4 heures, idéalement une nuit."
+        ],
+        "conseils_etape": "Ne pas négliger le temps d'infusion de la vanille pour maximiser les arômes. Veillez à bien lisser la préparation au mixeur plongeant avant le repos au frais."
+      },
+      {
+        "nom_etape": "Le caramel à la vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose (1)",
+            "quantite": 57,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose (2)",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 37,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fendre la gousse de vanille et récupérer les grains. Dans une première casserole, faire chauffer légèrement le glucose (1) au micro-ondes, puis ajouter le lait, la crème liquide, les grains et les gousses de vanille fendues. Chauffer à feu moyen jusqu'à frémissement, puis couvrir et laisser infuser 15 minutes hors du feu.",
+          "Dans une seconde casserole, faire chauffer le glucose (2) légèrement tiédi, puis ajouter le sucre semoule en plusieurs fois à feu moyen pour réaliser un caramel à sec de couleur légèrement ambrée.",
+          "Décuire le caramel en y versant progressivement la crème vanillée chaude (préalablement filtrée pour ôter les gousses). Laisser bouillir quelques minutes à feu moyen tout en mélangeant.",
+          "Verser le mélange dans un pichet. Lorsque la température descend sous les 70°C, incorporer le beurre et la fleur de sel, puis mixer au mixeur plongeant (ou à la maryse) pour parfaire l'émulsion.",
+          "Verser le caramel dans un récipient à fond large, filmer au contact et réserver 2 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Versez la crème chaude par petites quantités dans le caramel pour éviter les projections et les blocs de sucre trop violents."
+      },
+      {
+        "nom_etape": "Le praliné vanille",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 120,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Amandes blanches (entières ou effilées)",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 68,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille (récupérées des étapes précédentes, sans les grains)",
+            "quantite": 3,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, porter l'eau et le sucre semoule à environ 120°C.",
+          "Ajouter les amandes blanches et les gousses de vanille vides (utilisées lors des étapes précédentes).",
+          "Poursuivre la cuisson à feu doux à moyen en remuant constamment jusqu'à ce que les amandes soient bien caramélisées.",
+          "Étaler le tout sur un tapis en silicone et laisser refroidir complètement.",
+          "Placer les amandes caramélisées refroidies dans le bol d'un robot coupe et mixer longuement jusqu'à l'obtention d'un praliné bien lisse."
+        ],
+        "conseils_etape": "Réutiliser les gousses de vanille déjà grattées dans les préparations précédentes est une excellente astuce anti-gaspillage pour donner du goût au praliné."
+      },
+      {
+        "nom_etape": "L'huile de vanille",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Huile de pépins de raisin (huile neutre)",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille (sans les grains)",
+            "quantite": 3,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Verser l'huile neutre dans un récipient avec les gousses de vanille (éventuellement conservées dans du sucre au préalable).",
+          "Mixer le tout ensemble pour bien diffuser les arômes et laisser infuser pendant plusieurs heures."
+        ],
+        "conseils_etape": "Veillez à utiliser une huile neutre (comme l'huile de pépins de raisin) pour que le parfum de la vanille s'exprime pleinement sans interférence."
+      },
+      {
+        "nom_etape": "Le biscuit vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade (1)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'œuf (1)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 52,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 105,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 52,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'œuf (2)",
+            "quantite": 135,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade (2)",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le beurre doux et y infuser les grains de 2 gousses de vanille. Laisser tiédir à température ambiante.",
+          "Dans le bol du robot muni de la feuille, mélanger à première vitesse la poudre d'amandes, la cassonade (1), le sel, la levure chimique, le sucre semoule et la farine.",
+          "Ajouter le blanc d'œuf (1), le jaune d'œuf, puis la crème liquide et enfin le beurre fondu vanillé refroidi. Mélanger jusqu'à obtenir un appareil homogène.",
+          "Monter à côté les blancs d'œufs (2) en neige ferme en incorporant la cassonade (2) en plusieurs fois pour obtenir une texture de mousse à raser.",
+          "Incorporer délicatement un premier tiers des blancs montés vivement au fouet, puis le reste délicatement à la maryse en soulevant la masse.",
+          "Verser l'appareil à biscuit dans un moule à cake (qui donne une belle épaisseur et une forme adaptée).",
+          "Enfourner à 150°C pendant environ 30 minutes.",
+          "Laisser tiédir, démouler sur une planche à découper, puis tailler une bande de biscuit d'environ 2,5 cm de hauteur.",
+          "À l'aide d'un pinceau, badigeonner généreusement le biscuit avec l'huile de vanille préparée. Réserver."
+        ],
+        "conseils_etape": "Ne craignez pas l'épaisseur initiale du biscuit : cuit de manière épaisse, il conservera un moelleux exceptionnel et s'intègrera parfaitement dans la structure de l'entremets."
+      },
+      {
+        "nom_etape": "Le sablé breton et le sablé reconstitué",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 52,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao (pour le sablé reconstitué)",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille (selon les goûts, pour le sablé reconstitué)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans la cuve du robot muni de la feuille, blanchir le beurre pommade avec le sucre semoule jusqu'à obtenir une texture de crème.",
+          "Ajouter le jaune d'œuf, le sel fin, la levure chimique et la farine. Mélanger juste ce qu'il faut pour homogénéiser.",
+          "Étaler la pâte finement (environ 3 mm d'épaisseur) entre deux feuilles de papier sulfurisé ou de silicone.",
+          "Cuire au four à 160°C pendant 12 minutes, puis laisser refroidir.",
+          "Pour le sablé reconstitué : émietter 125 g du sablé breton cuit, puis le mélanger avec le beurre de cacao fondu et une pointe de poudre de vanille. Réserver."
+        ],
+        "conseils_etape": "Étalez la pâte du sablé breton bien régulièrement entre deux feuilles pour garantir une cuisson homogène."
+      },
+      {
+        "nom_etape": "Montage",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter les 2/3 de la ganache vanille bien froide au robot muni du fouet à vitesse moyenne jusqu'à obtenir une texture de bec d'oiseau.",
+          "Mettre cette ganache dans une poche sans douille, garnir le fond et les parois du moule à bûche, puis lisser les côtés à l'aide d'une palette. Lisser également l'intérieur pour laisser de la place pour les inserts.",
+          "Pocher le caramel à la vanille à l'intérieur de la couche de ganache.",
+          "Déposer par-dessus la bande de biscuit à la vanille (légèrement appuyée), puis badigeonner la deuxième face du biscuit avec l'huile de vanille.",
+          "Ajouter un cordon généreux de praliné vanille et une couche de ganache montée vanille, puis lisser à la palette.",
+          "Terminer en étalant généreusement le sablé breton reconstitué sur le dessus pour former la base fermée de la bûche. Racler les bords.",
+          "Placer la bûche au congélateur pour une nuit complète."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Finitions en nuage",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Le lendemain (ou après démoulage), monter le dernier tiers de ganache restante au bec d'oiseau.",
+          "À l'aide d'une poche munie d'une douille lisse de 16 mm, pocher des boules de ganache sur le dessus de la bûche et les écraser légèrement selon la technique présentée pour créer un effet de nuage.",
+          "Laisser décongeler la bûche 4 heures au réfrigérateur (ou 2 heures à température ambiante) avant de servir."
+        ],
+        "conseils_etape": "Soyez délicat lors du démoulage de la bûche congelée pour ne pas abîmer les formes et le pochage nuage."
+      }
+    ],
+    "astuces_recette": [
+      "Anticipation : cette recette comporte de nombreuses préparations (infusions, cuissons multiples, temps de repos). Il est fortement recommandé de répartir les tâches sur deux jours (J-2 pour les infusions, cuissons de biscuits et inserts ; J-1 pour le montage et la congélation).",
+      "Vanille : la recette fait la part belle à la vanille sous toutes ses formes (gousses, huile, poudre). Si vous manquez de gousses fraîches, l'utilisation de poudre de vanille de bonne qualité en complément est une alternative viable."
+    ],
+    "conseils_conservation": "Conserver la bûche au congélateur jusqu'à 1 mois si elle est bien emballée. Une fois décongelée, conservez-la au réfrigérateur et consommez-la dans les 48 heures. Sortez la bûche du congélateur et laissez-la décongeler 4 heures au réfrigérateur ou 2 heures à température ambiante pour retrouver une texture de crème parfaitement fondante et un biscuit moelleux à souhait."
+  }
+}
