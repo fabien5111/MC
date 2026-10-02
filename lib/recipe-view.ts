@@ -92,13 +92,21 @@ export type MergedIngredient = {
   // (fournées, mise en forme sans cette donnée) n'ont pas à le renseigner.
   groupOrders?: number[];
 };
-export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
+// `byComment` : une ligne par ingrédient ET par commentaire (liste totale
+// affichée, courses) plutôt qu'une seule par ingrédient (total, ajustement par
+// quantité disponible, JSON-LD) — la règle du récapitulatif de l'éditeur.
+export function mergeIngredients(
+  recipe: RecipeFull,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  opts: { byComment?: boolean } = {},
+): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
     (g.ingredients || []).forEach((it) => {
       if (!it.name) return;
       const unit = it.unit || '';
-      const key = ingredientKey(it.name);
+      const key = ingredientKey(it.name) + (opts.byComment ? '|' + (it.comment || '').trim().toLowerCase() : '');
       const url = it.ingredient_refs?.url || it.url || null;
       const allergen = it.ingredient_refs?.allergens?.name || it.allergen || null;
       const groupOrder = g.order_index || 0;
@@ -128,8 +136,13 @@ export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[
       if (!ex.groupOrders!.includes(groupOrder)) ex.groupOrders!.push(groupOrder);
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || (a.comment || '').localeCompare(b.comment || '', 'fr'));
   return merged.map(({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }) => ({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }));
+}
+
+// Liste totale affichée / courses : une ligne par ingrédient et par commentaire.
+export function mergeIngredientLines(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
+  return mergeIngredients(recipe, conversions, units, { byComment: true });
 }
 
 // ── Moules : dimensions par forme + métriques (volume / surface) ──

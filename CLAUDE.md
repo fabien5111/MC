@@ -554,6 +554,22 @@ l'alerte, qui reste le garde-fou) jusqu'au choix d'une unité. La liste « Fusio
 avec » affiche le commentaire de chaque ligne (tronqué à 40 caractères), seul
 élément qui distingue deux lignes du même ingrédient.
 
+**Listes totales : une ligne par commentaire, un total par ingrédient.** Fiche
+recette (« Liste complète des ingrédients »), fournée (« Liste totale ») et
+éditeur / relecture d'import (récapitulatif) suivent la même règle : un même
+ingrédient reste sur une ligne par commentaire (« Jaune d'œuf » / « Jaune
+d'œuf — température ambiante »), suivie d'une ligne « Total — X » dès qu'il en
+a plusieurs. Le total passe par `groupWithTotal` / `subtotalOf`
+(`lib/ingredients-recap.ts`), qui convertit les unités reliées par la table de
+conversions et n'invente jamais un total sans conversion connue. Côté fiche,
+`mergeIngredientLines` (= `mergeIngredients` avec `byComment`) alimente
+l'affichage et les courses ; `mergeIngredients` seul garde un total par
+ingrédient pour l'ajustement par quantité disponible et le JSON-LD. Côté
+fournée, `mergeIngredientRows` ne concatène plus les commentaires (liste totale
+ET courses). Le picto de remplacement par une recette reste sur chaque ligne
+(il couvre toutes les occurrences nom + unité) ; la ligne « Total » n'en porte
+pas, et n'est jamais ajoutée au panier (le total n'existe qu'à l'affichage).
+
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.
   Seuls les mots de plus de 3 lettres perdent leur pluriel (« jus », « riz »).

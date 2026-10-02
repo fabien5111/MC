@@ -8,7 +8,7 @@
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,8 @@ import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
 import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientKey } from '@/lib/ingredient-name';
+import { groupWithTotal } from '@/lib/ingredients-recap';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import {
@@ -629,6 +631,14 @@ function PreparerView({
   // aussi le « déjà pris en compte » pour rester une liste de courses fidèle
   // à ce qu'il reste à acheter.
   const allIngredients = mergeAllBatchIngredients(batch);
+  // Une ligne par ingrédient et par commentaire, un total par ingrédient dès
+  // qu'il a plusieurs lignes (comme le récapitulatif de l'éditeur).
+  const allIngredientGroups = groupWithTotal(
+    allIngredients,
+    (r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, refId: r.ref_id }),
+    conversions,
+    units,
+  );
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -996,7 +1006,9 @@ function PreparerView({
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
           <ul className="grid grid-cols-[max-content_minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
-            {allIngredients.map((r) => {
+            {allIngredientGroups.map((g) => (
+              <Fragment key={ingredientKey(g.name)}>
+            {g.lines.map((r) => {
               const qtyTxt = mergedRowQtyText(r);
               const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
               const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
@@ -1007,7 +1019,7 @@ function PreparerView({
               const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
               return (
                 <li
-                  key={r.name + '|' + r.unit}
+                  key={r.name + '|' + r.unit + '|' + (r.comment || '')}
                   className="border-b border-outline-variant/30 py-2"
                   style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
                 >
@@ -1042,6 +1054,24 @@ function PreparerView({
                 </li>
               );
             })}
+            {g.subtotal && (() => {
+              const conv = ingredientConversionText(conversions, units, g.lines[0].ref_id, g.subtotal.unit, g.subtotal.qty);
+              return (
+                <li
+                  className="border-b border-outline-variant py-2 bg-surface-container-low"
+                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                >
+                  <span className="font-label-md text-label-md text-primary font-bold whitespace-nowrap">
+                    {[g.subtotal.qty, g.subtotal.unit].filter(Boolean).join(' ')}
+                    {conv && <span className="text-on-surface-variant font-body-md font-normal text-[12px]"> ({conv})</span>}
+                  </span>
+                  <span className="font-body-md text-body-md font-semibold break-words">Total — {g.name}</span>
+                  <span />
+                </li>
+              );
+            })()}
+              </Fragment>
+            ))}
           </ul>
         </div>
       )}

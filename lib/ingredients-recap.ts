@@ -91,8 +91,8 @@ function mergeLines(
 // une unité déjà rencontrée quand la table le permet) ; ce qui n'est pas un
 // nombre — « QS », ou une ligne déjà écrite en toutes lettres par la fusion —
 // est repris tel quel. Plusieurs parts restantes s'affichent jointes par « + ».
-function subtotalOf(
-  lines: RecapLine[],
+export function subtotalOf(
+  lines: { qty: string; unit: string }[],
   conversions: ConversionRef[],
   units: UnitRef[],
   refId: number | null,
@@ -156,4 +156,35 @@ export function buildIngredientsRecap(
         ? null
         : subtotalOf(g, conversions, units, resolveIngredientRefId(g[0].name, ingredientRefIds)),
   }));
+}
+
+// Regroupe des lignes DÉJÀ séparées par commentaire (liste totale d'une fiche
+// recette, d'une fournée) par ingrédient (`ingredientKey`), et pose le total
+// d'un groupe d'au moins deux lignes — même présentation que le récapitulatif
+// de l'éditeur, sans repasser par les saisies d'étapes. L'ordre d'entrée est
+// conservé (groupes dans l'ordre de première apparition, lignes dans l'ordre
+// reçu) : le tri est l'affaire de l'appelant.
+export type IngredientTotalGroup<T> = { name: string; lines: T[]; subtotal: { qty: string; unit: string } | null };
+
+export function groupWithTotal<T>(
+  lines: T[],
+  get: (l: T) => { name: string; qty: string; unit: string; refId: number | null },
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): IngredientTotalGroup<T>[] {
+  const groups = new Map<string, T[]>();
+  for (const l of lines) {
+    const key = ingredientKey(get(l).name);
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+  return Array.from(groups.values()).map((g) => {
+    const first = get(g[0]);
+    return {
+      name: first.name,
+      lines: g,
+      subtotal: g.length < 2 ? null : subtotalOf(g.map((l) => get(l)), conversions, units, g.map((l) => get(l).refId).find((r) => r != null) ?? null),
+    };
+  });
 }

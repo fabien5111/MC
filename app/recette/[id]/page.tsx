@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
+import { Fragment } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
 import { isProjectDraft, isProjectRecipe } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
+import { ingredientKey } from '@/lib/ingredient-name';
+import { groupWithTotal } from '@/lib/ingredients-recap';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
@@ -18,7 +21,7 @@ import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
 import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { recipeJsonLd } from '@/lib/recipe-jsonld';
 import { siteUrl } from '@/lib/site-url';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -257,6 +260,17 @@ export default async function RecettePage({ params, searchParams }: Params) {
   const utensils = [...(recipe.recipe_utensils || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const times = effectiveTimes(recipe);
   const merged = mergeIngredients(recipe, conversions, units);
+  // Liste affichée et courses : une ligne par ingrédient ET par commentaire,
+  // un total par ingrédient dès qu'il a plusieurs lignes (comme le
+  // récapitulatif de l'éditeur). `merged` (un total par ingrédient) reste pour
+  // l'ajustement par quantité disponible et le JSON-LD.
+  const ingredientLines = mergeIngredientLines(recipe, conversions, units);
+  const ingredientGroups = groupWithTotal(
+    ingredientLines,
+    (m) => ({ name: m.name, qty: m.qty, unit: m.unit, refId: m.ref_id }),
+    conversions,
+    units,
+  );
   // JSON-LD `Recipe` (JEP-90) : construit depuis les données déjà chargées
   // ci-dessus (`merged`, `comments`), sans requête supplémentaire. `null`
   // pour une recette non publiée/non publique — cf. `recipeJsonLd`.
@@ -684,7 +698,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   et mettait toute la page en défilement horizontal sur
                   mobile. */}
               <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-                {merged.map((m, k) => {
+                {ingredientGroups.map((g) => (
+                  <Fragment key={ingredientKey(g.name)}>
+                {g.lines.map((m, k) => {
                   const stepsFor = (m.groupOrders || [])
                     .map((o) => stepByGroupOrder.get(o))
                     .filter((s): s is { title: string; anchor: string } => !!s);
@@ -726,13 +742,26 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     </li>
                   );
                 })}
+                {g.subtotal && (
+                  <li
+                    className="border-b border-outline-variant py-2 bg-surface-container-low"
+                    style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
+                  >
+                    <span className="font-label-md text-label-md text-primary font-bold">
+                      <Qty quantity={g.subtotal.qty} unit={g.subtotal.unit} refId={g.lines[0].ref_id} />
+                    </span>
+                    <span className="font-body-md text-body-md font-semibold break-words">Total — {g.name}</span>
+                  </li>
+                )}
+                  </Fragment>
+                ))}
               </ul>
 
               <div className="no-print">
                 <ShoppingWidget
                   recipeId={recipe.id}
                   recipeTitle={recipe.title}
-                  ingredients={merged}
+                  ingredients={ingredientLines}
                   lists={shoppingLists}
                   isLoggedIn={!!user}
                   conversions={conversions}
