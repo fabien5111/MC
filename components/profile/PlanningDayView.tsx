@@ -25,6 +25,7 @@ import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
 import { LockedAction } from '@/components/LockedAction';
 import type { BatchListRow } from '@/lib/profile';
+import { trackEvent } from '@/lib/analytics';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -154,6 +155,7 @@ export function PlanningDayView({
       });
       return;
     }
+    trackEvent('terminer_fournee');
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
     if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');

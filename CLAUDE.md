@@ -1480,6 +1480,32 @@ arrivé au § 10, qui affirmait « aucun outil de mesure d'audience » (JEP-128)
 - **Retirer son accord** (« Gérer mes cookies », pied de page et § 10) coupe GA
   dans la page (`ga-disable-<ID>`) et efface les `_ga*` sur chaque niveau de
   domaine — GA les pose sur `.jepatisse.com`.
+- **ID de mesure : `G-NCXHK395QN`** (propriété « Je pâtisse ! », JEP-89). Le nom
+  des cookies `_ga_NCXHK395QN` figure au § 10 : changer d'ID impose de changer
+  le texte. L'ID rédigé à l'origine dans le ticket (`G-DLLDP40QE5`) n'existait
+  pas dans la propriété — GA serait resté muet sans aucune erreur. Il est
+  **inscrit au build** : poser la variable dans le panneau Virtuozzo puis
+  *reconstruire* (un redémarrage ne suffit pas), et le vérifier dans les
+  fichiers construits (`grep -rl <ID> .next/static`), pas par `pm2 env`.
+- **`dev.jepatisse.com` est du trafic interne** : son script d'initialisation
+  pose `traffic_type: 'internal'` (nom d'hôte lu dans le navigateur, le même
+  build servant `dev` et `www`), exclu des rapports par le filtre de données
+  « Trafic interne » de GA4 (à passer de *Test* à *Actif* après vérification —
+  l'exclusion est définitive). `www` (page d'attente) reste mesuré.
+- **Événements d'usage : `trackEvent` (`lib/analytics.ts`)**, typé par une
+  liste fermée (`EvenementsAudience`) — jamais de chaîne libre, jamais de
+  donnée personnelle (l'identifiant de recette est admis). Muet tant que
+  `window.gtag` n'existe pas, donc avant « Accepter ». Émis **après** la
+  réussite de l'écriture, jamais à l'intention : `ajouter_favori` /
+  `retirer_favori` (`FavoriteHeart`, `FavoriteButton`), `creer_fournee` et
+  `ajuster_recette` (`BatchWidget`, au geste normal de la fiche — les essais du
+  mode projet ne sont pas comptés), `terminer_fournee` (`BatchView` ET
+  `PlanningDayView`, deux chemins), `generer_liste_courses` (création d'une
+  liste, pas l'ajout à une liste existante), `importer_recette` (`ImporterForm`).
+  `sign_up` est un lot à part (l'inscription se termine côté serveur). Les
+  paramètres (`mode`, `source`, `recipe_id`) doivent être déclarés comme
+  **dimensions personnalisées** dans GA pour sortir dans les rapports. Les
+  chiffres ne comptent que les visiteurs consentants.
 - **Configuration GA décrite par le § 10, à garder alignée** : cookies 13 mois
   (`cookie_expires`, GA pose 2 ans par défaut), signaux Google et
   personnalisation publicitaire désactivés. La conservation 14 mois se règle

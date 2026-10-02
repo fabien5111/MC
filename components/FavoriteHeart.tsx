@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
 import { intentPath, useResumeIntent } from '@/lib/use-resumable-intent';
+import { trackEvent } from '@/lib/analytics';
 
 export function FavoriteHeart({
   recipeId,
@@ -54,6 +55,7 @@ export function FavoriteHeart({
       { errorLabel: next ? 'Favori non enregistré' : 'Favori non retiré' },
     );
     if (!ok) setFav(!next); // rollback de la mise à jour optimiste
+    else trackEvent(next ? 'ajouter_favori' : 'retirer_favori', { recipe_id: recipeId });
   }
 
   function toggle(e: React.MouseEvent) {

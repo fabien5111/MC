@@ -14,6 +14,10 @@
 // (`ouvrirGestionCookies`) — retirer son consentement doit être aussi simple
 // que l'avoir donné.
 //
+// Le site des testeurs (`GA_HOTE_INTERNE`) marque ses visites `traffic_type:
+// 'internal'` : le filtre de données « Trafic interne » de GA4 les exclut des
+// rapports (JEP-89).
+//
 // Les pages vues des navigations internes sont comptées par GA lui-même
 // (mesure améliorée, « changements d'historique ») : rien à émettre ici.
 import Link from 'next/link';
@@ -23,6 +27,7 @@ import {
   EVENEMENT_CHOIX,
   EVENEMENT_OUVRIR,
   GA_COOKIE_EXPIRES_S,
+  GA_HOTE_INTERNE,
   GA_ID,
   enregistrerConsentement,
   lireConsentement,
@@ -64,7 +69,7 @@ export function CookieConsent() {
         <>
           <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
           <Script id="ga4-init" strategy="afterInteractive">
-            {`window['ga-disable-${GA_ID}']=false;window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}',{cookie_expires:${GA_COOKIE_EXPIRES_S},allow_google_signals:false,allow_ad_personalization_signals:false});`}
+            {`window['ga-disable-${GA_ID}']=false;window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());var c={cookie_expires:${GA_COOKIE_EXPIRES_S},allow_google_signals:false,allow_ad_personalization_signals:false};if(location.hostname==='${GA_HOTE_INTERNE}'){c.traffic_type='internal';}gtag('config','${GA_ID}',c);`}
           </Script>
         </>
       )}

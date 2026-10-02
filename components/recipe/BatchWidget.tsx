@@ -34,6 +34,7 @@ import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
+import { trackEvent } from '@/lib/analytics';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -288,6 +289,16 @@ export function BatchWidget({
     return { factor, label, moldCoefs };
   }
 
+  // Mode d'ajustement réellement appliqué, pour la mesure d'audience (JEP-89) :
+  // `null` quand rien n'a été ajusté (facteur 1 et aucun coefficient de moule).
+  function modeAjustement(res: { factor: number; moldCoefs: unknown }): 'quantite' | 'moule' | 'ingredient' | 'ia' | null {
+    if (res.factor === 1 && !res.moldCoefs) return null;
+    if (recipe.measure_type === 'units') return uMode === 'ing' ? 'ingredient' : uMode === 'ia' ? 'ia' : 'quantite';
+    if (recipe.measure_type === 'mold') return mMode === 'ia' ? 'ia' : 'moule';
+    if (recipe.measure_type === 'dimensions') return 'ia';
+    return null;
+  }
+
   async function validate() {
     if (!writeGuard('Création d’une fournée')) return;
     if (!date) {
@@ -333,6 +344,8 @@ export function BatchWidget({
           setBusy(false);
           return;
         }
+        const modeEdit = modeAjustement(res);
+        if (modeEdit) trackEvent('ajuster_recette', { mode: modeEdit });
       }
       close();
       router.refresh();
@@ -379,6 +392,9 @@ export function BatchWidget({
       setBusy(false);
       return;
     }
+    trackEvent('creer_fournee', { recipe_id: recipe.id });
+    const modeCreation = modeAjustement(res);
+    if (modeCreation) trackEvent('ajuster_recette', { mode: modeCreation });
     close();
     // `busy` reste vrai jusqu'au démontage par la navigation : le spinner doit
     // rester affiché pendant la transition vers la fiche de la fournée.

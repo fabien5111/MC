@@ -38,6 +38,7 @@ import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
 import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
+import { trackEvent } from '@/lib/analytics';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -242,6 +243,7 @@ export function BatchView({
       return false;
     }
     setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
+    trackEvent('terminer_fournee');
     router.refresh();
     return true;
   }

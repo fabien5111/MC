@@ -14,6 +14,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { connexionHref } from '@/lib/nav';
+import { trackEvent } from '@/lib/analytics';
 
 export function ShoppingWidget({
   recipeId,
@@ -141,6 +142,8 @@ export function ShoppingWidget({
         const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
         if (itemsErr) throw itemsErr;
       }
+      // Création seulement : ajouter à une liste existante n'est pas « générer ».
+      if (choice === '__new__') trackEvent('generer_liste_courses');
       // Invalide le rendu serveur avant de naviguer : la liste de destination
       // peut déjà être en cache (articles manquants), et « Listes de courses »
       // du profil doit voir la liste créée.

@@ -16,6 +16,14 @@
 /** Identifiant de mesure GA4 — absent : aucun traceur, donc aucun bandeau. */
 export const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? '';
 
+/**
+ * Site des testeurs : ses visites sont marquées `traffic_type: 'internal'`
+ * (JEP-89), que le filtre de données « Trafic interne » de GA4 exclut des
+ * rapports. Lu dans le navigateur plutôt que par variable d'environnement :
+ * le même build sert `dev` et `www`, seul le nom d'hôte les distingue.
+ */
+export const GA_HOTE_INTERNE = 'dev.jepatisse.com';
+
 const CLE = 'jp-consentement-audience';
 
 /**
