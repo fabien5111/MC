@@ -1,0 +1,266 @@
+{
+  "ticket": "JEP-115",
+  "recette": {
+    "titre": "Tarte framboise 100 % framboise",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une tarte estivale moderne composée d'un fond de pâte sucrée croustillant garni d'une crème d'amandes aux framboises fraîches, d'un gel acidulé à la framboise, d'un insert central de ganache montée à la purée de framboise parfumée au miel de lavande, le tout ceinturé d'une généreuse couronne de framboises fraîches.",
+    "rendement": "Une tarte de 21 cm de diamètre (6 à 8 parts)",
+    "ustensiles": [
+      "Robot pâtissier (feuille et fouet)",
+      "Cercle à tarte perforé de 21 cm (hauteur 2 cm)",
+      "Moule en silicone ellipse ou forme adaptée de 16 cm de diamètre",
+      "Rouleau à pâtisserie avec baguettes/roulettes de guidage de 3 mm",
+      "Mixeur plongeant avec bol haut",
+      "Casserole et cul-de-poule",
+      "Spatule maryse et spatule coudée (palette)",
+      "Couteau d'office bien aiguisé",
+      "Poche à douille munie d'une douille lisse de 9 mm",
+      "Pinceau de pâtisserie",
+      "Papier sulfurisé et film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée à la framboise",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 480,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide (pour hydratation)",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel de lavande (ou autre miel / glucose)",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 67.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG bien froide",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboise",
+            "quantite": 62,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans les 10 g d'eau très froide pendant 15 minutes au réfrigérateur.",
+          "Chauffer les 112 g de crème liquide avec le miel de lavande jusqu'à ce que le mélange soit bien fumant.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc préalablement fondu, en émulsionnant rapidement au fouet en cercles serrés depuis le centre.",
+          "Incorporer la masse gélatine hydratée dans la ganache encore chaude et mélanger jusqu'à dissolution complète.",
+          "Ajouter les 150 g de crème liquide froide puis la purée de framboise, et homogénéiser (mixer brièvement au mixeur plongeant si nécessaire sans incorporer d'air).",
+          "Couler dans un plat large, filmer au contact et placer au réfrigérateur pendant 4 heures minimum.",
+          "Monter la ganache bien froide au robot à l'aide du fouet jusqu'à obtention d'une texture souple au ruban (ne pas trop serrer).",
+          "Couler l'appareil monté dans le moule en silicone de 16 cm et placer au congélateur pendant 4 heures minimum."
+        ],
+        "conseils_etape": "Ne montez pas la crème trop ferme au batteur, elle risquerait de trancher une fois coulée et d'avoir une texture granuleuse après décongélation. À réaliser la veille (ou le matin pour le soir, compter 8 h de repos cumulé)."
+      },
+      {
+        "nom_etape": "Fond de pâte sucrée",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 170,
+        "temps_cuisson_minutes": 27,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux pommade",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 47.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf (pour la dorure)",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière (pour la dorure)",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre pommade avec la fleur de sel au batteur plat (feuille), puis ajouter le sucre glace à vitesse faible.",
+          "Ajouter la poudre d'amandes à vitesse lente, puis l'œuf battu.",
+          "Incorporer la farine en pluie et stopper le pétrissage dès l'agglomération de la pâte pour ne pas développer le réseau de gluten.",
+          "Diviser la pâte en deux pâtons égaux et abaisser chacun entre deux feuilles de papier sulfurisé à 3 mm d'épaisseur.",
+          "Placer les plaques de pâte 30 minutes au congélateur pour faciliter les découpes.",
+          "Détailler des bandes de 2,5 cm de hauteur sur l'une des abaisses, les placer 20 minutes au réfrigérateur, puis foncer les bords du cercle de 21 cm préalablement beurré.",
+          "Araser l'excédent de pâte du bord avec un couteau d'office de l'intérieur vers l'extérieur.",
+          "Détailler un disque de fond d'un centimètre de moins que le diamètre du cercle (environ 20 cm) dans la seconde abaisse, l'insérer au fond et souder les jointures avec l'index fariné.",
+          "Piquer le fond à la fourchette et bloquer le fond de tarte au congélateur pendant 2 heures minimum.",
+          "Enfourner à blanc à 160 °C pendant 25 minutes, décercler délicatement, appliquer la dorure (mélange jaune d'œuf et crème) au pinceau sur toutes les parois, puis réenfourner 2 minutes à 160 °C."
+        ],
+        "conseils_etape": "Travaillez une pâte bien froide ; si le beurre ramollit pendant le fonçage, remettez immédiatement les bandes quelques minutes au grand froid. À réaliser la veille ou quelques heures avant le montage."
+      },
+      {
+        "nom_etape": "Crème d'amandes et pré-cuisson garnie",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (tempéré, sorti 2 h avant)",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf (tempéré, sorti 2 h avant)",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Framboises fraîches",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger à la feuille le beurre tempéré, le sucre et la poudre d'amandes jusqu'à liaison sans émulsionner excessivement.",
+          "Ajouter l'œuf tempéré et mélanger à vitesse réduite jusqu'à formation d'une crème lisse.",
+          "Pocher la crème à mi-hauteur du fond de tarte précuit et doré à l'aide d'une douille de 9 mm.",
+          "Enfoncer légèrement quelques framboises fraîches (10 g) réparties sur la surface de la crème.",
+          "Enfourner à 160 °C pendant 20 minutes, puis laisser refroidir intégralement à température ambiante."
+        ],
+        "conseils_etape": "Les ingrédients de la crème d'amande doivent impérativement être à la même température ambiante pour éviter tout déphasage à la cuisson. À réaliser juste après la pré-cuisson du fond de tarte."
+      },
+      {
+        "nom_etape": "Gel framboise",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Purée de framboise",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Agar-agar",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger intimement le sucre et l'agar-agar dans un bol sec.",
+          "Chauffer la purée de framboise, l'eau et le jus de citron dans une casserole jusqu'à ce que des vapeurs s'échappent.",
+          "Ajouter le mélange sucre/agar-agar en pluie tout en fouettant continuellement.",
+          "Maintenir une ébullition franche pendant 1 minute complète sans cesser de remuer, puis débarrasser dans un plat large.",
+          "Filmer au contact et faire prendre au frais pendant 2 heures.",
+          "Mixer la masse compacte au mixeur plongeant dans un récipient haut et étroit jusqu'à obtenir un gel souple, lisse et brillant.",
+          "Étaler le gel à l'aide d'une palette sur la crème d'amande refroidie jusqu'à ras-bord de la croûte, nettoyer les bords et réserver 1 heure au réfrigérateur."
+        ],
+        "conseils_etape": "L'agar-agar nécessite impérativement une minute de bouillon complet pour déployer son pouvoir gélifiant. À réaliser pendant le refroidissement de la tarte."
+      },
+      {
+        "nom_etape": "Montage et finition",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Framboises fraîches (pour sélection des calibres réguliers)",
+            "quantite": 1000,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Démouler le disque de ganache montée congelé et le déposer immédiatement bien centré sur la surface du gel framboise.",
+          "Laisser tempérer 2 à 3 minutes pour que la surface de la ganache adhère.",
+          "Disposer les plus belles framboises fraîches verticalement tout autour du disque central pour combler l'espace jusqu'au bord de pâte.",
+          "Superposer une deuxième rangée de framboises sur les contours selon le motif floral souhaité.",
+          "Réserver la tarte terminée au moins 1 heure au réfrigérateur avant la découpe afin de permettre la parfaite décongélation à cœur de la ganache montée."
+        ],
+        "conseils_etape": "À réaliser 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Le secret d'une belle découpe réside dans la gestion des températures : un fond congelé avant cuisson évite tout affaissement sans avoir recours à des billes de cuisson.",
+      "Le miel de lavande apporte une note florale très spécifique qui arrondit l'acidité naturelle du fruit sans masquer son goût brut.",
+      "Prévoir 1 kg de framboises permet de trier des fruits de calibre homogène et intacts, indispensables pour obtenir un agencement régulier."
+    ],
+    "conseils_conservation": "Servir bien frais dès la sortie du réfrigérateur pour conserver le croquant du fond de tarte face à l'humidité des fruits et du gel. Se conserve 24 à 48 heures maximum au réfrigérateur à l'abri des odeurs. Ne pas recongeler (la ganache montée ayant déjà subi une congélation)."
+  }
+}

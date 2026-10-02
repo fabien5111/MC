@@ -1,0 +1,216 @@
+{
+  "ticket": "JEP-113",
+  "recette": {
+    "titre": "Croissants bicolores",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Croissants feuilletés maison inspirés du travail de Johan Martin, associant une pâte levée feuilletée classique à une fine abaisse de pâte colorée au cacao/colorant brun pour un développement graphique bicolore en spirale.",
+    "rendement": "Environ 8 croissants",
+    "ustensiles": [
+      "Robot pâtissier muni du crochet pétrin",
+      "Rouleau à pâtisserie",
+      "Règle graduée",
+      "Couteau bien aiguisé ou roulette à pizza",
+      "Pinceau de pâtisserie",
+      "Papier sulfurisé",
+      "Film étirable",
+      "Plaques de cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pétrissage et division de la détrempe",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine T55",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T65",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 7.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure fraîche de boulanger",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau bien froide (température frigo)",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait bien froid (température frigo)",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (coupé en dés)",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Déposer la levure émiettée dans la cuve du robot.",
+          "Recouvrir avec les deux farines (T55 et T65), puis ajouter le sucre, le sel et le miel.",
+          "Commencer à pétrir en première vitesse pendant environ 2 minutes en versant l'eau et le lait bien froids.",
+          "Ajouter les 75 g de beurre en petits dés, passer en deuxième vitesse et pétrir pendant environ 8 minutes jusqu'à obtenir une pâte homogène et souple.",
+          "Peser et prélever 250 g de pâte pour la coloration."
+        ],
+        "conseils_etape": "Utiliser des liquides très froids pour éviter que la détrempe ne dépasse 24 degrés pendant le pétrissage."
+      },
+      {
+        "nom_etape": "Pâte colorée",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pâte prélevée",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant brun hydrosoluble",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Eau bouillante (quelques gouttes)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Placer les 250 g de pâte dans le bol du robot avec le colorant brun dilué avec quelques gouttes d'eau bouillante.",
+          "Pétrir au crochet jusqu'à obtention d'une couleur parfaitement homogène.",
+          "Abaisser la boule colorée entre deux feuilles de papier sulfurisé sur environ 2 cm d'épaisseur.",
+          "Réserver au réfrigérateur pendant une nuit."
+        ],
+        "conseils_etape": "Diluer le colorant dans un minimum d'eau bouillante pour éviter de modifier l'hydratation globale du pâton."
+      },
+      {
+        "nom_etape": "Pointage, dégazage et repos de la détrempe blanche",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 750,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Laisser pointer la pâte blanche restante pendant 30 minutes à température ambiante.",
+          "Dégazer soigneusement le pâton en le rabattant pendant 3 minutes pour chasser l'ensemble des gaz.",
+          "Placer la pâte dans un récipient, recouvrir d'un film alimentaire et réserver au réfrigérateur pendant une nuit."
+        ],
+        "conseils_etape": "Le dégazage complet stabilise le réseau glutineux et évite une sur-fermentation nocturne au froid."
+      },
+      {
+        "nom_etape": "Tourage (tour double et tour simple)",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 70,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre sec (beurre de tourage à 84 % MG)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Étaler la détrempe blanche froide sur un plan légèrement fariné en un rectangle de 30 cm par 20 cm à angles bien droits, puis placer 20 minutes au congélateur.",
+          "Enfermer le beurre sec entre deux feuilles de papier sulfurisé pliées pour former un rectangle de 15 cm par 20 cm, taper au rouleau pour homogénéiser et placer 20 minutes au réfrigérateur.",
+          "Déposer le rectangle de beurre au centre de la détrempe, rabattre la pâte en portefeuille pour sceller hermétiquement les bords.",
+          "Abaisser la pâte en longueur dans l'axe, puis réaliser un tour double (rabattre un quart d'un côté, trois quarts de l'autre, puis replier en deux).",
+          "Tourner le pâton d'un quart de tour, filmer et laisser reposer 5 minutes au congélateur puis 10 minutes au réfrigérateur.",
+          "Abaisser de nouveau sur 8 mm d'épaisseur en longueur, puis effectuer un tour simple (rabattre le tiers supérieur puis le tiers inférieur par-dessus).",
+          "Tourner d'un quart de tour, filmer et réserver 5 minutes au congélateur puis 10 minutes au réfrigérateur."
+        ],
+        "conseils_etape": "Veiller à ce que la détrempe et le beurre soient à la même consistance et fermeté au moment de l'enchâssement pour éviter toute rupture du film de beurre."
+      },
+      {
+        "nom_etape": "Superposition de l'abaisse bicolore et façonnage",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Abaisser la pâte colorée sur 2 mm d'épaisseur en un rectangle d'au moins 30 cm par 20 cm, puis placer 10 minutes au congélateur.",
+          "Abaisser le pâton feuilleté aux mêmes dimensions et placer également 10 minutes au congélateur.",
+          "Superposer l'abaisse colorée sur la pâte feuilletée en brossant tout résidu de farine.",
+          "Abaisser l'ensemble à environ 4 mm d'épaisseur.",
+          "Parer les bordures pour obtenir des arêtes nettes, puis découper des triangles de 35 cm de long avec une base de 8 cm (marquer la base tous les 8 cm, et la ligne opposée décalée de 4 cm).",
+          "Retourner les triangles (face colorée contre le plan de travail), étirer légèrement la pointe, puis rouler sans trop serrer de la base vers la pointe."
+        ],
+        "conseils_etape": "Bien étirer la pointe du triangle avant de rouler pour multiplier le nombre de spires visibles à la coupe."
+      },
+      {
+        "nom_etape": "Pousse, dorure et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 28,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 %",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Disposer les croissants sur des plaques de cuisson munies de papier sulfurisé.",
+          "Laisser pousser pendant 2 heures à l'abri des courants d'air (idéalement dans un four éteint).",
+          "Mélanger les jaunes d'œufs avec la crème liquide pour confectionner la dorure.",
+          "Appliquer délicatement la dorure au pinceau uniquement sur la surface bombée (pâte colorée) sans en déposer sur les feuillets apparents.",
+          "Cuire au four préchauffé à 180°C pendant environ 28 minutes.",
+          "Débarrasser immédiatement les croissants sur une grille dès la sortie du four."
+        ],
+        "conseils_etape": "Ne pas badigeonner de dorure sur le feuilletage visible sur les flancs, cela collerait les couches et bloquerait le développement."
+      }
+    ],
+    "astuces_recette": [
+      "Le secret réside dans la gestion thermique : la pâte ne doit jamais s'échauffer afin de maintenir le beurre bien prisonnier des couches de détrempe.",
+      "L'utilisation d'un beurre de tourage (84 % de matière grasse) est fortement recommandée pour limiter l'eau résiduelle qui ferait fondre ou fuiter le feuilletage au laminage.",
+      "Dépoussiérer méticuleusement l'excédent de farine à chaque pliage et tourage pour garantir une adhérence parfaite des feuillets."
+    ],
+    "conseils_conservation": "Déguster tiède ou complètement refroidi afin d'apprécier le croustillant des couches extérieures et l'alvéolage intérieur bicolore. Les croissants se conservent 24 heures dans un sachet en papier à température ambiante. Il est possible de les congeler cuits, puis de les repasser 3 à 4 minutes à 160°C au four pour retrouver le croustillant d'origine."
+  }
+}

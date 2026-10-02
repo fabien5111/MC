@@ -1,0 +1,375 @@
+{
+  "ticket": "JEP-136",
+  "recette": {
+    "titre": "Le gâteau des abonnés #3 (entremets noisette, Dulcey & chocolat au lait)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=kYJvO3a450Y",
+    "description": "Entremets gourmand composé d'un insert multi-couches (deux disques de financier noisette, croustillant riz soufflé, praliné pur et crémeux chocolat au lait-noisette), enrobé d'une ganache montée chocolat Dulcey et vanille, recouvert d'un glaçage miroir au chocolat au lait.",
+    "rendement": "1 entremets format couronne de 6 à 8 personnes (réalisé avec des cercles de 16 cm et 10 cm pour l'insert)",
+    "ustensiles": [
+      "Casseroles",
+      "Culs-de-poule",
+      "Fouet à main",
+      "Maryses",
+      "Mixeur plongeant",
+      "Thermomètre de cuisson",
+      "Robot pâtissier avec feuille et fouet",
+      "Robot coupe / mixeur à lame",
+      "Tapis en silicone pour cuisson",
+      "Plaques de cuisson",
+      "Emporte-pièces ronds de 16 cm et 10 cm",
+      "Moule à entremets en silicone (forme savarin/couronne)",
+      "Spatule coudée / palette",
+      "Poche à douille",
+      "Chalumeau de cuisine",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée Dulcey & vanille (base)",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 255,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 183,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % MG (chaude)",
+            "quantite": 208,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % MG (froide)",
+            "quantite": 617,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine en poudre dans les 40 g d'eau froide pendant 10 minutes au réfrigérateur.",
+          "Fendre la gousse de vanille en deux et gratter soigneusement les graines.",
+          "Porter les 208 g de crème liquide à ébullition dans une casserole avec les graines et la gousse fendue.",
+          "Couper le feu et laisser infuser pendant au moins 15 minutes, puis retirer la gousse.",
+          "Faire fondre le chocolat Dulcey au bain-marie ou au micro-ondes.",
+          "Réchauffer légèrement la crème infusée et la verser en deux ou trois fois sur le chocolat fondu en créant une émulsion au centre à l'aide d'une maryse.",
+          "Ajouter la masse de gélatine hydratée dans le mélange encore chaud et remuer jusqu'à dissolution complète.",
+          "Incorporer les 617 g de crème liquide froide en une seule fois.",
+          "Mixer la préparation au mixeur plongeant sans incorporer de bulles d'air.",
+          "Débarrasser dans un récipient large, filmer au contact et placer au réfrigérateur pour au moins 4 heures (idéalement une nuit)."
+        ],
+        "conseils_etape": "Conserver la ganache dans un plat large pour accélérer la prise au froid et garantir un foisonnement régulier le lendemain. À réaliser à J-2 (ou la veille du montage) : elle nécessite une nuit de repos au frais (4 heures minimum, idéalement 12 heures)."
+      },
+      {
+        "nom_etape": "Praliné noisette pur",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Étaler les noisettes sur un tapis de cuisson et les torréfier à 150°C pendant 30 minutes, puis laisser refroidir.",
+          "Cuire le sucre à sec dans une casserole jusqu'à l'obtention d'un caramel bien ambré.",
+          "Couler le caramel sur un tapis en silicone et laisser refroidir complètement jusqu'à durcissement.",
+          "Casser le caramel durci en morceaux et le placer dans la cuve du robot coupe avec les noisettes torréfiées froides.",
+          "Mixer par impulsions puis en continu jusqu'à l'obtention d'une pâte de praliné fluide et lisse.",
+          "Ajouter la fleur de sel, donner une dernière impulsion de mixeur et réserver."
+        ],
+        "conseils_etape": "Ne pas mixer un caramel encore tiède pour éviter de faire chauffer excessivement les huiles de la noisette. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Financier noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Beurre",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisette",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 155,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 155,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Cuire le beurre dans une casserole à feu moyen pendant une dizaine de minutes jusqu'à obtenir un beurre noisette odorant, puis laisser tiédir.",
+          "Mélanger dans la cuve du robot muni de la feuille les blancs d'œufs, la fleur de sel, le sucre glace, la poudre de noisettes et la farine.",
+          "Ajouter progressivement l'huile de noisette tout en continuant de mélanger.",
+          "Incorporer le beurre noisette tiédi jusqu'à obtention d'un appareil homogène.",
+          "Étaler la pâte sur un tapis en silicone sur une épaisseur régulière d'environ 1 cm.",
+          "Enfourner à 180°C pendant environ 10 minutes.",
+          "Laisser refroidir à température ambiante, puis découper deux cercles avec l'emporte-pièce de 16 cm et évider leur centre à l'aide de l'emporte-pièce de 10 cm pour former deux anneaux."
+        ],
+        "conseils_etape": "Il est inutile de graisser le tapis silicone, la matière grasse du financier assure un démoulage propre. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Croustillant praliné & riz soufflé",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Riz soufflé",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette (préparé à l'étape précédente)",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser le riz soufflé dans un récipient avec les 60 g de praliné.",
+          "Mélanger délicatement à la spatule pour bien enrober tous les grains de riz sans les briser."
+        ],
+        "conseils_etape": "À utiliser immédiatement dans l'insert pour conserver le croustillant sous l'humidité des autres couches. À réaliser à J-2, juste avant le montage de l'insert."
+      },
+      {
+        "nom_etape": "Crémeux chocolat au lait & noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30 % MG",
+            "quantite": 117,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 117,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 47,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 23,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie et y incorporer la pâte de noisette.",
+          "Fouetter les jaunes d'œufs et le sucre pendant 20 secondes dans un cul-de-poule pour homogénéiser.",
+          "Faire chauffer le lait et la crème liquide dans une casserole jusqu'à frémissement.",
+          "Verser une partie des liquides chauds sur les jaunes sucrés en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire à feu doux en remuant à la maryse jusqu'à atteindre 83°C à 84°C (cuisson façon crème anglaise).",
+          "Verser l'anglaise chaude en trois fois sur le mélange chocolat fondu/pâte de noisette en créant une émulsion au centre à la maryse.",
+          "Passer un coup de mixeur plongeant si nécessaire pour parfaire l'homogénéité sans incorporer de bulles."
+        ],
+        "conseils_etape": "Utiliser immédiatement le crémeux encore tiède et fluide pour recouvrir le montage de l'insert. À réaliser à J-2, au moment de couler l'insert."
+      },
+      {
+        "nom_etape": "Montage et congélation de l'insert",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [],
+        "instructions": [
+          "Placer les emporte-pièces de 16 cm et 10 cm sur une plaque munie de film ou silicone, et y déposer le premier anneau de financier noisette.",
+          "Étaler uniformément le croustillant riz soufflé sur 2 à 3 mm d'épaisseur.",
+          "Déposer le deuxième anneau de financier au-dessus du croustillant.",
+          "Étaler une couche généreuse de praliné noisette pur sur toute la surface du biscuit.",
+          "Couler le crémeux encore tiède par-dessus sur environ 1 cm d'épaisseur.",
+          "Placer la plaque au congélateur jusqu'à prise totale de l'insert.",
+          "Une fois congelé, passer un léger coup de chalumeau sur les parois métalliques extérieure et intérieure des cercles pour démouler l'anneau d'insert, puis remettre au congélateur."
+        ],
+        "conseils_etape": "Ne pas trop chauffer les cercles au chalumeau pour éviter de faire fondre le crémeux en surface. Utilise les 2 anneaux de financier, la totalité du croustillant riz soufflé, le reste du praliné noisette pur et le crémeux chocolat au lait/noisette tiède. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Glaçage miroir au chocolat au lait",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 28,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Nappage neutre",
+            "quantite": 450,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 450,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 570,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 54,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau froide pendant 10 à 15 minutes au réfrigérateur.",
+          "Faire fondre le chocolat au lait au bain-marie.",
+          "Porter la crème liquide à ébullition dans une casserole.",
+          "Verser la crème bouillante en trois fois sur le chocolat fondu en émulsionnant à la maryse pour former un noyau élastique et brillant.",
+          "Incorporer la masse de gélatine hydratée dans le mélange encore chaud et remuer pour la dissoudre complètement.",
+          "Chauffer légèrement le nappage neutre au micro-ondes puis l'ajouter à la ganache.",
+          "Mixer au mixeur plongeant en gardant le pied bien immergé pour éliminer toute bulle d'air, puis laisser descendre en température."
+        ],
+        "conseils_etape": "Si le glaçage est préparé la veille, le filmer au contact, le stocker au frais puis le réchauffer doucement au bain-marie ou micro-ondes sans le fouetter pour l'amener à 28°C. À réaliser à J-1 (ou le matin du glaçage)."
+      },
+      {
+        "nom_etape": "Montage final de l'entremets",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Sortir la ganache Dulcey du réfrigérateur et la monter au batteur à vitesse moyenne jusqu'à atteindre une texture souple dite « en ruban » (légèrement sous le bec d'oiseau).",
+          "Transvaser la ganache foisonnée dans une poche à douille.",
+          "Pocher une quantité généreuse de mousse dans le fond du moule silicone et remonter sur les parois.",
+          "Plaquer la mousse le long des parois à l'aide d'une palette pour chasser l'ensemble des poches d'air.",
+          "Insérer l'anneau congelé à l'envers (la face biscuit financier orientée vers le haut / vers soi).",
+          "Enfoncer délicatement l'insert pour le faire affleurer au niveau de la base du moule.",
+          "Compléter avec un peu de mousse si nécessaire et araser la surface à l'aide d'une palette coudée.",
+          "Placer l'entremets au congélateur pendant au moins une nuit complète."
+        ],
+        "conseils_etape": "Ne pas trop serrer la ganache au fouet ; une texture trop ferme rend le pochage irrégulier et crée des bulles d'air disgracieuses au démoulage. Utilise la ganache Dulcey vanille sortie du réfrigérateur et l'anneau d'insert congelé. À réaliser à J-1."
+      },
+      {
+        "nom_etape": "Démoulage, glaçage & finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 480,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 28,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes entières (pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Poudre d'or alimentaire (pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Démouler l'entremets congelé dès la sortie du congélateur en étirant les parois du moule silicone.",
+          "Poser l'entremets immédiatement sur une grille au-dessus d'un bac de récupération.",
+          "Vérifier que le glaçage est précisément à 28°C.",
+          "Verser le glaçage d'un geste franc et continu sur l'ensemble de l'entremets congelé afin de napper le dessus et les parois en une seule passe.",
+          "Laisser égoutter quelques instants, ébarber le bas avec une spatule, puis transférer l'entremets sur son plat de service.",
+          "Déposer harmonieusement quelques noisettes torréfiées poudrées d'or sur le dessus."
+        ],
+        "conseils_etape": "Travailler sur un entremets sortant directement du grand froid pour provoquer la prise thermique instantanée du glaçage à 28°C. À réaliser le jour J (minimum 8 h avant le service, pour la décongélation au réfrigérateur : 8 heures, ou 3 heures à température ambiante)."
+      }
+    ],
+    "astuces_recette": [
+      "Pour le mixage de la ganache et du glaçage, incliner le récipient et introduire le pied du mixeur de biais pour ne pas emprisonner de bulle d'air, puis mixer à vitesse constante sans mouvements de va-et-vient verticaux.",
+      "La cuisson du caramel à sec doit être maîtrisée : un caramel trop clair manquera de caractère face au chocolat Dulcey, tandis qu'un caramel trop brûlé apportera une amertume excessive au praliné.",
+      "Le montage à l'envers avec un insert parfaitement congelé est indispensable pour obtenir des arêtes nettes et une coupe bien droite."
+    ],
+    "conseils_conservation": "Laisser décongeler l'entremets idéalement 8 heures au réfrigérateur (ou 3 heures à température ambiante pour les découpes rapides). Déguster directement à la sortie du réfrigérateur (environ 4°C à 6°C) pour conserver la tenue de la ganache montée et le croustillant du riz soufflé. Se conserve 48 heures au réfrigérateur sous cloche. Ne jamais recongeler un entremets décongelé."
+  }
+}
