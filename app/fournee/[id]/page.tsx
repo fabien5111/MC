@@ -7,6 +7,7 @@ import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
 import { getMyRecipeReview } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { BatchView } from '@/components/batch/BatchView';
@@ -134,6 +135,9 @@ export default async function FourneePage({ params, searchParams }: Params) {
           droits={droits}
         />
       </main>
+      <div className="no-print">
+        <Footer />
+      </div>
       <MobileNav current="cuisine" />
     </>
   );

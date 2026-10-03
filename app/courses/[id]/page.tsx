@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { getShoppingList } from '@/lib/shopping';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
+import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { ShoppingItems } from '@/components/ShoppingItems';
@@ -54,6 +55,7 @@ export default async function CoursesPage({ params }: Params) {
           />
         )}
       </main>
+      <Footer />
       <MobileNav current="cuisine" />
     </>
   );
