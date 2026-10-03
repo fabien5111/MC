@@ -723,7 +723,7 @@ export function batchUtensilsAsRecipeUtensils(utensils: BatchUtensilRow[]): Reci
 // commentaire fait partie de la clé : deux commentaires différents restent deux
 // lignes, jamais concaténés (le total par ingrédient se pose à l'affichage,
 // `groupWithTotal`).
-export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
+export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null; allergen: string | null };
 
 function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
   const rows: (MergedBatchRow & { key: string })[] = [];
@@ -734,7 +734,7 @@ function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
     const key = ingredientKey(it.name) + '|' + unit.toLowerCase() + '|' + (it.comment || '').trim().toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
-      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: it.comment || null, ref_id: it.ref_id ?? null };
+      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: it.comment || null, ref_id: it.ref_id ?? null, allergen: it.allergen || null };
       rows.push(r);
     }
     if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);

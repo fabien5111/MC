@@ -8,7 +8,7 @@
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,7 @@ import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
 import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
+import { IngredientTotalList } from '@/components/IngredientTotalList';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import {
@@ -1005,74 +1006,62 @@ function PreparerView({
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
           <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
-          <ul className="grid grid-cols-[max-content_minmax(0,1fr)_max-content] gap-x-4 sm:gap-x-10 print:gap-x-10">
-            {allIngredientGroups.map((g) => (
-              <Fragment key={ingredientKey(g.name)}>
-            {g.lines.map((r) => {
-              const qtyTxt = mergedRowQtyText(r);
-              const tip = r.unit ? unitTips[r.unit.toLowerCase().trim()] : undefined;
-              const conv = ingredientConversionText(conversions, units, r.ref_id, r.unit, qtyTxt);
-              // Picto « remplacer par une recette » (JEP-254) : couvre TOUTES
-              // les occurrences réelles derrière cette ligne fusionnée (même
-              // ingrédient utilisé dans plusieurs étapes) — un seul geste
-              // suffit, plus besoin de deviner laquelle remplacer.
-              const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
-              return (
-                <li
-                  key={r.name + '|' + r.unit + '|' + (r.comment || '')}
-                  className="border-b border-outline-variant/30 py-2"
-                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                >
-                  <span className={`font-label-md text-label-md whitespace-nowrap ${r.added ? 'text-green-700' : 'text-primary'}`}>
+          <IngredientTotalList
+            groups={allIngredientGroups.map((g) => {
+              // Quantité + unité (infobulle) + équivalent, comme partout ailleurs.
+              const qtyNode = (qtyTxt: string, unit: string, refId: number | null) => {
+                const tip = unit ? unitTips[unit.toLowerCase().trim()] : undefined;
+                const conv = ingredientConversionText(conversions, units, refId, unit, qtyTxt);
+                return (
+                  <span className="whitespace-nowrap">
                     {qtyTxt}
-                    {qtyTxt && r.unit ? ' ' : ''}
-                    {r.unit ? (tip ? <span className="unit-tip" title={tip}>{r.unit}</span> : r.unit) : null}
-                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
-                  </span>
-                  <span className={`font-body-md text-body-md break-words ${r.added ? 'text-green-700' : ''}`}>
-                    {r.name}
-                    {r.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {r.comment}</span>}
-                  </span>
-                  <span className="no-print flex items-center justify-self-end">
-                    {expandable.length > 0 &&
-                      (droits.remplacementIngredient ? (
-                        <button
-                          type="button"
-                          onClick={() => setExpandingIngredient(expandable)}
-                          title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
-                          className="text-primary hover:opacity-70"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
-                        </button>
-                      ) : (
-                        <LockedAction
-                          label="Remplacer cet ingrédient par une recette"
-                          message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
-                        />
-                      ))}
-                  </span>
-                </li>
-              );
-            })}
-            {g.subtotal && (() => {
-              const conv = ingredientConversionText(conversions, units, g.lines[0].ref_id, g.subtotal.unit, g.subtotal.qty);
-              return (
-                <li
-                  className="border-b border-outline-variant py-2 bg-surface-container-low"
-                  style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                >
-                  <span className="font-label-md text-label-md text-primary font-bold whitespace-nowrap">
-                    {[g.subtotal.qty, g.subtotal.unit].filter(Boolean).join(' ')}
+                    {qtyTxt && unit ? ' ' : ''}
+                    {unit ? (tip ? <span className="unit-tip" title={tip}>{unit}</span> : unit) : null}
                     {conv && <span className="text-on-surface-variant font-body-md font-normal text-[12px]"> ({conv})</span>}
                   </span>
-                  <span className="font-body-md text-body-md font-semibold break-words">Total — {g.name}</span>
-                  <span />
-                </li>
-              );
-            })()}
-              </Fragment>
-            ))}
-          </ul>
+                );
+              };
+              return {
+                key: ingredientKey(g.name),
+                name: g.name,
+                allergen: Array.from(new Set(g.lines.flatMap((r) => (r.allergen ? r.allergen.split(',').map((a) => a.trim()) : [])).filter(Boolean))).join(', ') || null,
+                total: g.subtotal ? qtyNode(g.subtotal.qty, g.subtotal.unit, g.lines[0].ref_id) : null,
+                lines: g.lines.map((r) => {
+                  // Picto « remplacer par une recette » (JEP-254) : couvre TOUTES
+                  // les occurrences réelles derrière cette ligne fusionnée (même
+                  // ingrédient utilisé dans plusieurs étapes) — un seul geste
+                  // suffit, plus besoin de deviner laquelle remplacer. Posé sur
+                  // chaque ligne de détail (il remplace nom + unité, pas un
+                  // commentaire), jamais sur le total, qui peut mêler des unités.
+                  const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
+                  return {
+                    key: r.unit + '|' + (r.comment || ''),
+                    qty: qtyNode(mergedRowQtyText(r), r.unit, r.ref_id),
+                    comment: r.comment,
+                    added: r.added,
+                    action:
+                      expandable.length > 0 ? (
+                        droits.remplacementIngredient ? (
+                          <button
+                            type="button"
+                            onClick={() => setExpandingIngredient(expandable)}
+                            title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
+                            className="text-primary hover:opacity-70"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                          </button>
+                        ) : (
+                          <LockedAction
+                            label="Remplacer cet ingrédient par une recette"
+                            message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                          />
+                        )
+                      ) : null,
+                  };
+                }),
+              };
+            })}
+          />
         </div>
       )}
 

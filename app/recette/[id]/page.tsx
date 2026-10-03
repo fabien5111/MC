@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Fragment } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
@@ -8,6 +7,7 @@ import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
+import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
@@ -697,65 +697,45 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   levure fraîche ») élargissait la grille au-delà du viewport
                   et mettait toute la page en défilement horizontal sur
                   mobile. */}
-              <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
-                {ingredientGroups.map((g) => (
-                  <Fragment key={ingredientKey(g.name)}>
-                {g.lines.map((m, k) => {
-                  const stepsFor = (m.groupOrders || [])
-                    .map((o) => stepByGroupOrder.get(o))
-                    .filter((s): s is { title: string; anchor: string } => !!s);
-                  return (
-                    <li
-                      key={k}
-                      className="border-b border-outline-variant/30 py-2"
-                      style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                    >
-                      <span className="font-label-md text-label-md text-primary">
-                        <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />
-                      </span>
-                      <span className="font-body-md text-body-md break-words">
-                        {m.url ? (
-                          <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                            {m.name}
-                          </a>
-                        ) : (
-                          m.name
-                        )}
-                        {m.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {m.comment}</span>}
-                        {m.allergen && (
-                          <span className="print-fs-9 text-[14px] text-on-surface-variant font-normal italic"> (Allergènes : {m.allergen})</span>
-                        )}
-                        {stepsFor.length > 0 && (
-                          <span className="no-print flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                            {stepsFor.map((s) => (
-                              <a
-                                key={s.anchor}
-                                href={`#${s.anchor}`}
-                                className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary"
-                              >
-                                {s.title}
-                              </a>
-                            ))}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  );
+              <IngredientTotalList
+                groups={ingredientGroups.map((g) => {
+                  // Allergènes de l'ingrédient : ceux de toutes ses lignes, sans doublon.
+                  const allergens = Array.from(new Set(g.lines.flatMap((m) => (m.allergen ? m.allergen.split(',').map((a) => a.trim()) : [])).filter(Boolean)));
+                  const url = g.lines.find((m) => m.url)?.url || null;
+                  return {
+                    key: ingredientKey(g.name),
+                    name: url ? (
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                        {g.name}
+                      </a>
+                    ) : (
+                      g.name
+                    ),
+                    allergen: allergens.join(', ') || null,
+                    total: g.subtotal ? <Qty quantity={g.subtotal.qty} unit={g.subtotal.unit} refId={g.lines[0].ref_id} /> : null,
+                    lines: g.lines.map((m, k) => {
+                      const stepsFor = (m.groupOrders || [])
+                        .map((o) => stepByGroupOrder.get(o))
+                        .filter((st): st is { title: string; anchor: string } => !!st);
+                      return {
+                        key: `${k}-${m.comment || ''}`,
+                        qty: <Qty quantity={m.qty} unit={m.unit} refId={m.ref_id} />,
+                        comment: m.comment,
+                        links:
+                          stepsFor.length > 0 ? (
+                            <span className="no-print inline-flex flex-wrap gap-x-3 gap-y-1">
+                              {stepsFor.map((st) => (
+                                <a key={st.anchor} href={`#${st.anchor}`} className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary">
+                                  {st.title}
+                                </a>
+                              ))}
+                            </span>
+                          ) : null,
+                      };
+                    }),
+                  };
                 })}
-                {g.subtotal && (
-                  <li
-                    className="border-b border-outline-variant py-2 bg-surface-container-low"
-                    style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}
-                  >
-                    <span className="font-label-md text-label-md text-primary font-bold">
-                      <Qty quantity={g.subtotal.qty} unit={g.subtotal.unit} refId={g.lines[0].ref_id} />
-                    </span>
-                    <span className="font-body-md text-body-md font-semibold break-words">Total — {g.name}</span>
-                  </li>
-                )}
-                  </Fragment>
-                ))}
-              </ul>
+              />
 
               <div className="no-print">
                 <ShoppingWidget

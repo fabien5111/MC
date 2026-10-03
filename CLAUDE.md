@@ -566,9 +566,21 @@ conversions et n'invente jamais un total sans conversion connue. Côté fiche,
 l'affichage et les courses ; `mergeIngredients` seul garde un total par
 ingrédient pour l'ajustement par quantité disponible et le JSON-LD. Côté
 fournée, `mergeIngredientRows` ne concatène plus les commentaires (liste totale
-ET courses). Le picto de remplacement par une recette reste sur chaque ligne
-(il couvre toutes les occurrences nom + unité) ; la ligne « Total » n'en porte
-pas, et n'est jamais ajoutée au panier (le total n'existe qu'à l'affichage).
+ET courses). **Une seule présentation** pour les quatre écrans :
+`components/IngredientTotalList.tsx` (rendu pur, sans état — utilisable côté
+serveur comme côté client). Un ingrédient seul tient sur une ligne (quantité,
+nom, allergènes, commentaire, renvois d'étape), **sans total** ; un ingrédient à
+plusieurs lignes s'ouvre sur son **total en gras**, suivi du détail en retrait
+(une ligne par commentaire : quantité, commentaire en italique, renvois
+d'étape). Chaque écran ne branche que ce qui lui est propre : `links` (étapes de
+la fiche, boutons « aller à l'étape » de l'éditeur) et `action` (colonne de
+gauche — picto de remplacement de la fournée, absent ailleurs ; la colonne
+n'existe que si un écran en porte). Le picto de remplacement reste sur chaque
+ligne de détail (il couvre toutes les occurrences nom + unité), jamais sur le
+total, qui peut mêler des unités ; le total n'est jamais ajouté au panier (il
+n'existe qu'à l'affichage). Ne pas recoder une quatrième variante de cette
+liste. Hors périmètre : la fournée n'affiche pas de renvoi d'étape (la fusion
+`mergeIngredientRows` ne conserve pas les étapes d'origine).
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.
