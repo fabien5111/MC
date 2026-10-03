@@ -18,13 +18,23 @@ export type NotificationRow = {
   body: string;
   readAt: string | null;
   createdAt: string;
+  /** Chemin relatif que la cloche ouvre au clic (JEP-278), absent pour les anciennes lignes. */
+  link: string | null;
 };
 
 // `notifications` n'est pas encore dans lib/database.types.ts tant que la
 // migration n'a pas été appliquée puis régénérée (npm run gen:types, cf.
 // CLAUDE.md) — accès non typé en attendant, même motif que `recipe_analysis`
 // dans /api/moderation-recette et `ads` dans PartnersManager.
-type NotificationDbRow = { id: number; kind: string; title: string; body: string; read_at: string | null; created_at: string };
+type NotificationDbRow = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+  link: string | null;
+};
 
 type NotificationsSelect = {
   select: (cols: string) => {
@@ -47,7 +57,7 @@ type NotificationsInsert = {
 export const getRecentNotifications = cache(async (userId: string): Promise<NotificationRow[]> => {
   const supabase = await createClient();
   const { data } = await (supabase.from('notifications' as never) as unknown as NotificationsSelect)
-    .select('id, kind, title, body, read_at, created_at')
+    .select('id, kind, title, body, read_at, created_at, link')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(20);
@@ -58,6 +68,7 @@ export const getRecentNotifications = cache(async (userId: string): Promise<Noti
     body: n.body,
     readAt: n.read_at,
     createdAt: n.created_at,
+    link: n.link ?? null,
   }));
 });
 

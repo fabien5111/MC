@@ -5,6 +5,7 @@
 // avec le reste du site, qui n'a nulle part de canal temps réel (WebSocket).
 // Une nouvelle notification apparaît à la prochaine navigation ou au prochain
 // `router.refresh()`, comme tout le reste de l'interface.
+import Link from 'next/link';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { markNotificationRead } from '@/lib/notification-mark-read';
@@ -16,6 +17,16 @@ function relatif(dateIso: string): string {
   if (jours <= 0) return "Aujourd'hui";
   if (jours === 1) return 'Hier';
   return `Il y a ${jours} jours`;
+}
+
+function Contenu({ n }: { n: NotificationRow }) {
+  return (
+    <>
+      <p className="font-label-md text-[13px]">{n.title}</p>
+      <p className="mt-0.5 whitespace-pre-line text-xs text-on-surface-variant">{n.body}</p>
+      <p className="mt-1 text-[11px] text-on-surface-variant/70">{relatif(n.createdAt)}</p>
+    </>
+  );
 }
 
 export function NotificationBell({ notifications }: { notifications: NotificationRow[] }) {
@@ -63,10 +74,22 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
             ) : (
               <ul className="divide-y divide-outline-variant">
                 {rows.map((n) => (
-                  <li key={n.id} className="px-4 py-3">
-                    <p className="font-label-md text-[13px]">{n.title}</p>
-                    <p className="mt-0.5 text-xs text-on-surface-variant">{n.body}</p>
-                    <p className="mt-1 text-[11px] text-on-surface-variant/70">{relatif(n.createdAt)}</p>
+                  <li key={n.id}>
+                    {n.link ? (
+                      // Chaque entrée ouvre ce qui la concerne (JEP-278) ; les
+                      // anciennes lignes, sans lien, restent un simple texte.
+                      <Link
+                        href={n.link}
+                        onClick={() => setOuvert(false)}
+                        className="block px-4 py-3 transition-colors hover:bg-surface-container-low"
+                      >
+                        <Contenu n={n} />
+                      </Link>
+                    ) : (
+                      <div className="px-4 py-3">
+                        <Contenu n={n} />
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
