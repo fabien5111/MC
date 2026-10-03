@@ -22,8 +22,7 @@
 // comme l'autre suffit, aucun n'est un prérequis de l'autre.
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
-import { sendEmailBestEffort } from '@/lib/email';
+import { notifier } from '@/lib/notifier';
 import { siteUrl } from '@/lib/site-url';
 import { CGV_CHEMIN, CGV_VERSION, DELAI_RETRACTATION_JOURS } from '@/lib/cgv';
 import {
@@ -198,21 +197,22 @@ async function notifierEchecPaiement(objet: unknown): Promise<void> {
   const { titre, corps } = messageEchecPaiement(isoDepuisUnixStripe(facture.next_payment_attempt));
 
   const admin = createAdminClient();
-  await createNotification(admin, userId, 'PAYMENT_FAILED', titre, corps);
 
-  // E-mail best-effort et conditionné à la préférence du membre, comme le
-  // cron d'abonnements : la notification in-app, elle, part toujours — c'est
-  // elle qui conditionne la continuité du service.
-  if (!(await getNotifyEmailPreferenceAdmin(admin, userId))) return;
-
+  // Cloche + e-mail par le moteur (JEP-278). Même doctrine qu'avant : la
+  // cloche part toujours (elle conditionne la continuité du service), l'e-mail
+  // respecte la préférence du membre — c'est `decisionCanaux` qui le tranche.
   const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();
-  if (!profil?.email) return;
-
-  await sendEmailBestEffort({
-    to: profil.email,
-    subject: titre,
-    text: corps,
-    html: `<p>${corps.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`,
+  await notifier(admin, {
+    userId,
+    evenement: 'PAYMENT_FAILED',
+    donnees: { titre: titre, detail: corps, lien: '/reglages' },
+    emailPrecompose: profil?.email
+      ? {
+          sujet: titre,
+          texte: corps,
+          html: `<p>${corps.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`,
+        }
+      : undefined,
   });
 }
 
@@ -235,7 +235,6 @@ async function notifierAbonnementConfirme(
   const planLabel = (await resoudreLibellePlanParPrix(admin, priceId)) ?? 'votre formule';
   const { titre, corps } = messageAbonnementConfirme(planLabel, finPeriodeIso);
 
-  await createNotification(admin, userId, 'SUBSCRIPTION_CONFIRMED', titre, corps);
 
   // **L'e-mail, lui, ne dépend PAS de la préférence de notification** (CGV
   // art. 7) : c'est la confirmation du contrat sur support durable
@@ -245,8 +244,6 @@ async function notifierAbonnementConfirme(
   // confirmation de ce qu'il vient de payer. Best-effort malgré tout : les
   // droits, déjà écrits, ne dépendent pas de son départ.
   const { data: profil } = await admin.from('profiles').select('email').eq('id', userId).maybeSingle();
-  if (!profil?.email) return;
-
   const { sujet, texte } = emailConfirmationSouscription({
     planLabel,
     details: lireDetailsSouscription(objet),
@@ -258,13 +255,21 @@ async function notifierAbonnementConfirme(
     delaiRetractationJours: DELAI_RETRACTATION_JOURS,
   });
 
-  await sendEmailBestEffort({
-    to: profil.email,
-    subject: sujet,
-    text: texte,
-    html: texteVersHtml(texte),
-    // Le droit de rétractation s'exerce « en répondant à cet e-mail » : la
-    // réponse doit donc arriver à une boîte lue, pas à `noreply@`.
-    replyTo: process.env.EMAIL_REPLY_TO || undefined,
+  // Événement VERROUILLÉ du catalogue : cloche et e-mail partent quelles que
+  // soient les préférences (CGV art. 7), par le moteur comme avant.
+  await notifier(admin, {
+    userId,
+    evenement: 'SUBSCRIPTION_CONFIRMED',
+    donnees: { titre, detail: corps, lien: '/reglages' },
+    emailPrecompose: profil?.email
+      ? {
+          sujet,
+          texte,
+          html: texteVersHtml(texte),
+          // Le droit de rétractation s'exerce « en répondant à cet e-mail » : la
+          // réponse doit donc arriver à une boîte lue, pas à `noreply@`.
+          replyTo: process.env.EMAIL_REPLY_TO || undefined,
+        }
+      : undefined,
   });
 }

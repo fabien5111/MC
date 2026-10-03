@@ -5,23 +5,33 @@
 // replié par défaut avec le compte visible dans l'en-tête : ouvrir un bloc
 // pour découvrir qu'il est vide serait plus frustrant qu'un compte à zéro
 // affiché d'emblée.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function SettingsCard({
   icon,
   title,
   count,
+  id,
   children,
 }: {
   icon: string;
   title: string;
   count: number;
+  /** Ancre : un lien `/reglages#<id>` ouvre le bloc et y amène (lien des e-mails de notification). */
+  id?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!id || window.location.hash !== `#${id}`) return;
+    setOpen(true);
+    // Le contenu n'est monté qu'à l'ouverture : attendre le rendu avant de défiler.
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
+  }, [id]);
+
   return (
-    <section className="mt-6 bg-surface-container-lowest border border-outline-variant">
+    <section id={id} className="mt-6 scroll-mt-24 bg-surface-container-lowest border border-outline-variant">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

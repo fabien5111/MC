@@ -32,6 +32,7 @@ import {
 import { creerTicketJira, type ResultatTicketJira } from '@/lib/jira';
 import { commenterReponseJira, enregistrerPhotosReponse, signerPhotoContact } from '@/lib/contact-data';
 import { sendEmailBestEffort } from '@/lib/email';
+import { notifier } from '@/lib/notifier';
 import { siteUrl } from '@/lib/site-url';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -436,6 +437,24 @@ export async function envoyerReponse(messageId: string, authorId: string, corps:
   await enregistrerPhotosReponse(reply.id, photos);
 
   const { delivered, error } = await composerEtEnvoyer(client, message, reply.id, corps);
+
+  // JEP-280 : un membre CONNECTÉ voit aussi la réponse dans sa cloche (jusqu'ici
+  // elle n'existait qu'en e-mail). `sansEmail` : l'e-mail vient d'être envoyé
+  // ci-dessus, avec son propre suivi de délivrance. Le texte de la réponse
+  // n'est pas recopié — la cloche renvoie vers le suivi, où il se lit en entier.
+  if (message.user_id) {
+    await notifier(createAdminClient(), {
+      userId: message.user_id,
+      evenement: 'contact_reponse',
+      donnees: {
+        titre: `Réponse à votre demande ${message.reference}`,
+        detail: `Le support a répondu à votre demande « ${message.subject} ».`,
+        lien: `/reglages/mes-demandes/${message.reference}`,
+      },
+      cleDedoublonnage: `contact_reponse:${reply.id}`,
+      sansEmail: true,
+    });
+  }
 
   await client
     .from('contact_replies')

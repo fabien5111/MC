@@ -185,6 +185,8 @@ app/                    Pages et routes (App Router)
 │   ├── idees/similaires/ GET  — suggestions anti-doublons (titre en cours de saisie)
 │   ├── recipes/          GET  — pagination de l'accueil
 │   ├── recipes/picker/   GET  — recherche de recettes (remplacement d'un ingrédient)
+│   ├── cron/notifications/ GET — outbox, rappels de fournée, récapitulatifs
+│   ├── compte/mot-de-passe/ POST — alerte de sécurité après changement de mot de passe
 │   ├── admin/impersonate/ POST — lien de connexion « en tant que »
 │   └── impersonation/    POST — fin de session / journal d'audit
 ├── auth/callback/      Callback OAuth / confirmation e-mail
@@ -1327,6 +1329,100 @@ Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
   la pagination (`?n=`) vivent dans l'URL, mais via de simples liens
   (`<Link>`), sans le `SearchProvider` (debounce, panneau mobile) construit
   pour la recherche avancée — un tri à deux valeurs ne le justifie pas.
+
+## Notifications (JEP-278, 279, 280)
+
+**Un seul moteur, `notifier()`** (`lib/notifier.ts`, serveur, client service_role).
+Aucun module n'appelle plus lui-même `createNotification` +
+`sendEmailBestEffort` : cron d'abonnements, webhook Stripe, résiliation,
+contact et tous les événements de la communauté passent par lui. Il lit le
+catalogue, les préférences du membre, écrit la cloche (avec anti-rafale), puis
+envoie l'e-mail tout de suite ou le met en file de récapitulatif.
+
+- **Le catalogue est la seule source de vérité** (`lib/notification-events.ts`,
+  pur) : catégories, événements, canaux par défaut, verrouillage, « récap
+  seulement », gabarits, liens. La grille de `/reglages`
+  (`NotificationPreferencesCard`) le lit : un événement ajouté au catalogue
+  apparaît dans les préférences sans toucher à l'écran. `decisionCanaux` est le
+  calcul unique de « où va cet événement ». La clé d'un événement est stockée
+  (`notifications.event`, `notification_outbox.event`) : ne jamais la renommer.
+- **Événements nés d'une écriture du navigateur** (favori, abonné, validation
+  d'une recette ou d'un avis, statut d'une idée, partage, composant de projet) :
+  des **triggers SQL** posent une ligne dans `notification_outbox` via
+  `mc_notif_emit` (SECURITY DEFINER, propriétaire `postgres`, refuse tout appel
+  hors trigger par `pg_trigger_depth()`). `GET /api/cron/notifications` vide
+  l'outbox toutes les 15 min (`cron-notifications.yml`). Le navigateur ne fournit
+  jamais lui-même une notification : rien à falsifier, et une session « en tant
+  que » en lecture seule n'écrit rien, donc ne notifie rien. **Les événements
+  nés d'une écriture serveur** (cron, Stripe, contact) appellent `notifier()`
+  directement ; un appelant serveur qui agit pour une session doit tester
+  `isReadOnlySession()` lui-même.
+- **Jamais d'auto-notification** : `acteurId === userId` écarte l'événement.
+  Les écritures service_role (`auth.uid()` nul) ne notifient pas un partage : le
+  déverrouillage par lien de carnet crée une ligne `book_shares` au nom du
+  propriétaire, ce n'est pas un partage voulu par lui.
+- **Verrouillé par événement, pas par catégorie** : confirmation de souscription
+  et de résiliation (obligation légale, CGV art. 7), réponses du support,
+  alerte de changement de mot de passe partent quelles que soient les
+  préférences. Le reste de « Abonnement » (J-3, J-1, échec de paiement) respecte
+  l'e-mail décoché ; la cloche d'abonnement et de support est toujours affichée.
+- **L'unité réglable est la RUBRIQUE (sous-catégorie), pas la catégorie**
+  (`RUBRIQUES`, `lib/notification-events.ts`) : 5 sous-catégories dans « Mes
+  recettes » (publication ou refus, avis reçus, favoris, projets qui s'en
+  inspirent, mise en avant), 3 dans « Communauté », 3 dans « Fournées », 3 dans
+  « Boîte à idées » ; les autres catégories ne sont pas découpées (rubrique
+  unique, de même clé que la catégorie). Chaque événement du catalogue porte sa
+  `rubrique`. La clé de rubrique (`mes_recettes.favoris`) est stockée telle
+  quelle dans `notification_preferences.category` — **aucune colonne ni
+  migration pour ajouter une rubrique**. **Héritage** : une ligne au niveau de la
+  CATÉGORIE (avant le découpage, ou la reprise de `notify_email = false`) vaut
+  pour toutes ses rubriques tant qu'aucune n'est réglée individuellement, pour
+  qu'un e-mail refusé ne devienne jamais un e-mail reçu à cause du découpage.
+  Les rubriques « récap seulement » (favoris, projets, abonnés, pâtissiers
+  suivis, idées soutenues) démarrent sans e-mail, rythme hebdomadaire.
+- **« Aucun » n'est pas un réglage** : c'est décocher les deux canaux. Les
+  préférences sont des lignes éparses (`notification_preferences`) : seules les
+  divergences avec le défaut du catalogue y sont écrites. `profiles.notify_email`
+  n'est plus lue (colonne morte, comme `followers_count`) ; la migration l'a
+  convertie en « e-mail décoché » sur toutes les catégories désactivables.
+- **Récap seulement** : favoris, nouveaux abonnés, recettes d'un pâtissier suivi,
+  composant de projet, idée réalisée, files de modération — jamais d'e-mail
+  unitaire, un rythme « immédiat » est ramené au quotidien. La cloche reste
+  immédiate. **Une entrée de cloche par événement** (arbitrage du 03/10) :
+  chaque favori, chaque nouvel abonné et chaque recette d'un pâtissier suivi a
+  la sienne, avec le pseudo et un lien, comme sur un réseau social — le seul
+  regroupement qui reste est celui des files de modération (« 3 recettes
+  attendent votre validation »), où une liste d'admins ne veut pas trente
+  lignes. Le mécanisme d'anti-rafale (`groupeParCle` + `gabaritGroupe`, clé
+  `group_key`) reste dans le moteur pour un futur événement qui en aurait besoin.
+  Seul l'e-mail de récapitulatif rassemble les événements, une ligne chacun.
+- **Les favoris sont nominatifs pour l'auteur de la recette** (arbitrage
+  JEP-280) : ils restent absents du profil public, mais l'auteur voit le
+  pseudo. Écrit dans `/confidentialite` ; changer cette règle impose d'y
+  revenir.
+- **Quota Brevo : 300 e-mails par jour** (`email_quota`, réservation atomique
+  par la RPC `email_quota_reserver`, jour compté en `Europe/Zurich`). Les e-mails
+  verrouillés peuvent puiser dans les 40 derniers ; au-delà du plafond souple,
+  un e-mail immédiat bascule dans le prochain récapitulatif au lieu d'être
+  perdu. Un récapitulatif qui dépasse le quota reste en file pour la passe
+  suivante.
+- **Rappels de fournée** (`lib/notification-rappels-data.ts`, passe `quotidien`
+  de 05:30 UTC) : étape à commencer le jour J − n, veille, invitation à donner
+  son avis le lendemain d'une fournée terminée sans avis, recette mise en avant
+  le jour où sa plage commence. **Les dates se calculent en `Europe/Zurich`**
+  (`lib/notification-rappels.ts`) ; l'heure d'envoi, elle, suit l'UTC du cron
+  (7 h 30 l'été, 6 h 30 l'hiver). Chaque rappel porte une clé de dédoublonnage
+  (`notification_dedupe`) : relancer le cron n'en renvoie aucun deux fois,
+  cloche coupée ou non.
+- **Un e-mail déjà composé part à l'identique** (`emailPrecompose`) : les textes
+  d'abonnement, de Stripe et de résiliation existaient avant le moteur. Le flux
+  de contact garde son envoi propre (réservation `deploy_email_status`) et ne
+  passe par le moteur que pour la cloche (`sansEmail`).
+- **Tous les e-mails facultatifs** portent un pied de page vers
+  `/reglages#notifications` (le bloc s'ouvre à l'arrivée) et l'en-tête
+  `List-Unsubscribe`. Pas de désinscription en un clic sans connexion.
+- **Tables du moteur absentes de `lib/database.types.ts`** jusqu'à la
+  régénération : accès non typé, comme `notifications` avant elles.
 
 ## Contact et suivi Jira
 

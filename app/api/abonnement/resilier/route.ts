@@ -27,7 +27,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmailBestEffort } from '@/lib/email';
+import { notifier } from '@/lib/notifier';
+import { formatDate } from '@/lib/format';
 import { siteUrl } from '@/lib/site-url';
 import { cleIdempotence, emailConfirmationResiliation, texteVersHtml } from '@/lib/billing';
 import { appelStripe, getAbonnementResiliable, MissingStripeConfigError, resoudreLibellePlanParPrix } from '@/lib/billing-data';
@@ -48,7 +49,12 @@ function identifiantPrix(sub: SubscriptionStripe): string | null {
   return typeof prix?.id === 'string' && prix.id ? prix.id : null;
 }
 
-async function envoyerConfirmationResiliation(email: string, sub: SubscriptionStripe, finPeriode: string | null): Promise<void> {
+async function envoyerConfirmationResiliation(
+  userId: string,
+  email: string | null,
+  sub: SubscriptionStripe,
+  finPeriode: string | null,
+): Promise<void> {
   try {
     const priceId = identifiantPrix(sub);
     const planLabel = (priceId ? await resoudreLibellePlanParPrix(createAdminClient(), priceId) : null) ?? 'votre formule';
@@ -58,12 +64,22 @@ async function envoyerConfirmationResiliation(email: string, sub: SubscriptionSt
       resilieLeIso: new Date().toISOString(),
       urlSite: siteUrl(),
     });
-    await sendEmailBestEffort({
-      to: email,
-      subject: sujet,
-      text: texte,
-      html: texteVersHtml(texte),
-      replyTo: process.env.EMAIL_REPLY_TO || undefined,
+    // Événement VERROUILLÉ (obligation légale, CGV : confirmation de résiliation
+    // sur support durable) : l'e-mail part quelles que soient les préférences.
+    // JEP-280 : la cloche s'y ajoute, l'e-mail seul existait jusqu'ici.
+    await notifier(createAdminClient(), {
+      userId,
+      evenement: 'SUBSCRIPTION_CANCELLED',
+      donnees: {
+        titre: 'Résiliation enregistrée',
+        detail: finPeriode
+          ? `Votre abonnement ${planLabel} prendra fin le ${formatDate(finPeriode)}. Vous gardez vos droits jusque-là.`
+          : `Votre abonnement ${planLabel} ne sera pas renouvelé.`,
+        lien: '/reglages',
+      },
+      emailPrecompose: email
+        ? { sujet, texte, html: texteVersHtml(texte), replyTo: process.env.EMAIL_REPLY_TO || undefined }
+        : undefined,
     });
   } catch (e) {
     // Libellé du plan introuvable ou autre imprévu : la résiliation est déjà
@@ -149,7 +165,7 @@ export async function POST() {
   const finUnix = resultat.data.current_period_end ?? resultat.data.items?.data?.[0]?.current_period_end ?? null;
   const finPeriode = finUnix ? new Date(finUnix * 1000).toISOString() : abonnement.endsAt;
 
-  if (user.email) await envoyerConfirmationResiliation(user.email, resultat.data, finPeriode);
+  await envoyerConfirmationResiliation(user.id, user.email ?? null, resultat.data, finPeriode);
 
   return NextResponse.json({ finPeriode });
 }

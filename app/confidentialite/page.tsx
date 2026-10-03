@@ -123,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 30 septembre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 3 octobre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -156,8 +156,17 @@ export default function ConfidentialitePage() {
           <SousTitre>Contenus et usage du service</SousTitre>
           <Liste>
             <li>Recettes, photos (couverture, étapes), fournées et leurs notes, listes de courses, favoris.</li>
+            <li>
+              Vos préférences de notification (sur le site, par e-mail, rythme des récapitulatifs), réglables à tout
+              moment depuis les réglages du compte.
+            </li>
             <li>Avis et notes laissés sur les recettes, idées proposées et votes dans la boîte à idées.</li>
             <li>Pâtissiers que vous suivez, partages de votre carnet ou de vos recettes avec d&apos;autres membres.</li>
+            <li>
+              Vos favoris restent absents de votre profil public, mais <strong>l&apos;auteur d&apos;une recette est
+              informé, avec votre pseudo, que vous l&apos;avez mise en favori</strong> (de même que lorsque vous le
+              suivez, partagez un contenu avec lui ou laissez un avis publié).
+            </li>
             <li>Projets de dessert (mode projet), y compris l&apos;intention que vous rédigez en texte libre.</li>
           </Liste>
 
@@ -220,8 +229,12 @@ export default function ConfidentialitePage() {
                 'Exécution du contrat ; obligation légale pour la conservation comptable',
               ],
               [
-                "E-mails liés au service (confirmation d'inscription, réponse à une demande, notifications d'abonnement)",
+                "E-mails liés au service (confirmation d'inscription, réponse à une demande, notifications d'abonnement, alertes de sécurité)",
                 'Exécution du contrat',
+              ],
+              [
+                'Notifications facultatives sur le site et par e-mail (avis, favoris, abonnés, rappels de fournée, boîte à idées), réglables par catégorie',
+                'Intérêt légitime (informer les membres de ce qui les concerne) ; vous les désactivez dans vos réglages',
               ],
               [
                 'Traitement des demandes de contact et suivi des signalements techniques',

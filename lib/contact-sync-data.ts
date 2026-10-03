@@ -25,7 +25,7 @@ import {
   type DecisionSynchro,
   type StatutJira,
 } from '@/lib/contact';
-import { createNotification } from '@/lib/notifications-data';
+import { notifier } from '@/lib/notifier';
 import { sendEmailBestEffort } from '@/lib/email';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -149,7 +149,15 @@ async function notifierDeploiement(
   // Notification in-app, indépendante du canal e-mail — cf. docstring.
   if (message.user_id && message.type === 'bug' && message.deploy_notify) {
     const { title, body } = composeNotificationDeploiement(message.subject);
-    await createNotification(createAdminClient(), message.user_id, 'contact_deploye', title, body);
+    // Cloche par le moteur (JEP-278) ; l'e-mail, lui, reste porté plus haut par
+    // la réservation `deploy_email_status` (idempotence propre à ce flux) —
+    // d'où `sansEmail`, pour ne pas l'envoyer deux fois.
+    await notifier(createAdminClient(), {
+      userId: message.user_id,
+      evenement: 'contact_deploye',
+      donnees: { titre: title, detail: body, lien: `/reglages/mes-demandes/${message.reference}` },
+      sansEmail: true,
+    });
   }
 }
 

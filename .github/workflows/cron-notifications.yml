@@ -1,0 +1,70 @@
+name: Cron — notifications (outbox, rappels, récapitulatifs)
+
+# Moteur de notifications (JEP-278, docs : section « Notifications » de
+# CLAUDE.md). Deux horaires, une seule route (`/api/cron/notifications`) :
+#
+#   - toutes les 15 minutes : `passe=outbox` — fait entrer dans le moteur les
+#     événements posés par les triggers SQL (favori, abonné, validation…).
+#     L'horaire est INDICATIF : GitHub retarde régulièrement les tâches
+#     planifiées de dix minutes à une heure. Une cloche qui se met à jour avec
+#     un peu de retard est assumée ; l'outbox ne perd rien, elle se vide à la
+#     passe suivante.
+#   - 05:30 UTC : `passe=quotidien` — rappels de fournée, récapitulatifs
+#     quotidiens, et hebdomadaires le lundi. L'heure est en UTC et GitHub ne
+#     gère pas l'heure d'été : le rappel part à 7 h 30 l'été, 6 h 30 l'hiver
+#     (Europe/Zurich). Les DATES, elles, sont calculées en Europe/Zurich côté
+#     route — un jour J ne bascule jamais d'un jour.
+#
+# Le dépôt est public : les minutes Actions sont illimitées, la cadence de
+# 15 minutes ne coûte rien.
+#
+# Même autorisation que les autres crons : `CRON_SECRET` côté GitHub, identique
+# à celui du nœud applicatif (cf. cron-abonnements.yml, différence n° 1).
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    inputs:
+      passe:
+        description: 'Passe à jouer à la main'
+        type: choice
+        options: [outbox, quotidien]
+        default: outbox
+
+jobs:
+  notifications:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://www.jepatisse.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      # Le déclencheur décide de la passe : l'horaire quotidien, ou le choix manuel.
+      PASSE: ${{ github.event_name == 'workflow_dispatch' && inputs.passe || (github.event.schedule == '30 5 * * *' && 'quotidien' || 'outbox') }}
+    steps:
+      - name: Vérifier que le secret est posé
+        run: |
+          set -euo pipefail
+          [ -n "$CRON_SECRET" ] || {
+            echo "::error::Le secret CRON_SECRET est absent côté GitHub."
+            exit 1
+          }
+
+      - name: Appeler /api/cron/notifications
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o reponse.json -w '%{http_code}' \
+            --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron/notifications?passe=$PASSE")
+          echo "HTTP $code (passe : $PASSE)"
+          cat reponse.json
+          echo
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::La route a répondu $code."
+            exit 1
+          fi
+          if [ "$(jq -r '.ok // false' reponse.json)" != "true" ]; then
+            echo "::error::Réponse 2xx mais « ok » absent ou faux."
+            exit 1
+          fi
+          echo "Outbox : $(jq -r '"\(.outbox.traites) traité(s), \(.outbox.echecs) échec(s)"' reponse.json)"

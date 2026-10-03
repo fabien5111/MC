@@ -41,10 +41,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGrid, getRightsForVersion } from '@/lib/entitlements-data';
-import { claimNotification, createNotification, getNotifyEmailPreferenceAdmin } from '@/lib/notifications-data';
+import { claimNotification } from '@/lib/notifications-data';
+import { notifier } from '@/lib/notifier';
 import { lostFeatureLabels, reducedFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
-import { sendEmailBestEffort } from '@/lib/email';
 import { purgerImportsExpires } from '@/lib/imports-retention-data';
 
 export const maxDuration = 60;
@@ -100,13 +100,19 @@ async function envoyer(
     reducedFeatures: reduced,
   });
 
-  await createNotification(admin, ligne.user_id, type, content.title, content.body);
-
-  // Notifications in-app d'expiration toujours affichées (spec §10) : la
-  // préférence ne conditionne QUE l'e-mail, jamais leur écrite ci-dessus.
-  if (profil?.email && (await getNotifyEmailPreferenceAdmin(admin, ligne.user_id))) {
-    await sendEmailBestEffort({ to: profil.email, subject: content.emailSubject, html: content.emailHtml, text: content.emailText });
-  }
+  // Cloche + e-mail passent par le moteur unique (JEP-278) : préférences du
+  // membre, quota, récapitulatif. Le texte est celui d'origine, composé
+  // ci-dessus — il part à l'identique. La cloche d'expiration reste affichée
+  // quoi qu'il arrive (catégorie « abonnement », site verrouillé) ; seul l'e-mail
+  // dépend de la préférence.
+  await notifier(admin, {
+    userId: ligne.user_id,
+    evenement: type,
+    donnees: { titre: content.title, detail: content.body, lien: '/plans' },
+    emailPrecompose: profil?.email
+      ? { sujet: content.emailSubject, html: content.emailHtml, texte: content.emailText }
+      : undefined,
+  });
 }
 
 export async function GET(req: Request) {

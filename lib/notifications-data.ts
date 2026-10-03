@@ -1,15 +1,14 @@
-// Notifications in-app — lecture (session courante) et écriture (serveur
-// uniquement, via un client à privilèges).
+// Notifications in-app — lectures (session courante) et réservation des
+// envois d'abonnement.
 //
-// Séparé de `lib/entitlements-data.ts` : ce module n'a rien à voir avec les
-// droits d'abonnement, seulement avec leur mise en avant. Les créations
-// viennent exclusivement du cron d'expiration (`app/api/cron/abonnements`),
-// jamais du navigateur — d'où l'absence de policy RLS d'insertion pour un
-// membre ordinaire (cf. migration).
+// **Les écritures ne sont plus ici** : toute notification passe par le moteur
+// unique `notifier()` (`lib/notifier.ts`, JEP-278). Jamais du navigateur — d'où
+// l'absence de policy RLS d'insertion pour un membre ordinaire (cf. migration).
 import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
+import { RYTHME_DEPUIS_BASE, type Categorie, type PreferencesMembre } from '@/lib/notification-events';
 
 export type NotificationRow = {
   id: number;
@@ -18,13 +17,23 @@ export type NotificationRow = {
   body: string;
   readAt: string | null;
   createdAt: string;
+  /** Chemin relatif que la cloche ouvre au clic (JEP-278), absent pour les anciennes lignes. */
+  link: string | null;
 };
 
 // `notifications` n'est pas encore dans lib/database.types.ts tant que la
 // migration n'a pas été appliquée puis régénérée (npm run gen:types, cf.
 // CLAUDE.md) — accès non typé en attendant, même motif que `recipe_analysis`
 // dans /api/moderation-recette et `ads` dans PartnersManager.
-type NotificationDbRow = { id: number; kind: string; title: string; body: string; read_at: string | null; created_at: string };
+type NotificationDbRow = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+  link: string | null;
+};
 
 type NotificationsSelect = {
   select: (cols: string) => {
@@ -36,9 +45,6 @@ type NotificationsSelect = {
     };
   };
 };
-type NotificationsInsert = {
-  insert: (values: unknown) => PromiseLike<{ error: { message: string } | null }>;
-};
 
 /**
  * Les vingt plus récentes, pour la cloche de l'en-tête — mémoïsé par
@@ -47,7 +53,7 @@ type NotificationsInsert = {
 export const getRecentNotifications = cache(async (userId: string): Promise<NotificationRow[]> => {
   const supabase = await createClient();
   const { data } = await (supabase.from('notifications' as never) as unknown as NotificationsSelect)
-    .select('id, kind, title, body, read_at, created_at')
+    .select('id, kind, title, body, read_at, created_at, link')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(20);
@@ -58,45 +64,40 @@ export const getRecentNotifications = cache(async (userId: string): Promise<Noti
     body: n.body,
     readAt: n.read_at,
     createdAt: n.created_at,
+    link: n.link ?? null,
   }));
 });
 
 /**
- * Préférence e-mail du membre courant, lue à part de `getProfile()` — elle
- * ne sert qu'à `/reglages`, un écran rare ; l'ajouter à la liste énumérée de
- * `lib/auth.ts` la ferait relire à chaque rendu de page pour rien.
+ * Préférences de notification du membre courant (JEP-279) : les lignes
+ * éparses de `notification_preferences` — seules les divergences par rapport
+ * aux valeurs par défaut du catalogue y sont stockées. Lue à part de
+ * `getProfile()` : elle ne sert qu'à `/reglages`, un écran rare.
  *
- * Réservée aux appelants qui ont une session (le membre lit sa PROPRE
- * préférence) : le client de session s'appuie sur la RLS. Un appelant SANS
- * session (cron, webhook) doit utiliser `getNotifyEmailPreferenceAdmin`
- * ci-dessous — cf. son commentaire, l'erreur constatée le 21/09 (JEP-29).
+ * Client de SESSION (le membre lit sa propre ligne, RLS). Le moteur, lui, lit
+ * avec le client service_role (`lirePreferences`, `lib/notifier.ts`) : un
+ * appelant sans session passerait en rôle `anon` et la RLS lui renverrait
+ * zéro ligne — défaut déjà constaté sur l'ancienne préférence (JEP-29).
  */
-export const getNotifyEmailPreference = cache(async (userId: string): Promise<boolean> => {
+export const getNotificationPreferences = cache(async (userId: string): Promise<PreferencesMembre> => {
   const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('notify_email' as never).eq('id', userId).maybeSingle();
-  return (data as { notify_email?: boolean } | null)?.notify_email ?? true;
+  const { data } = await (supabase.from('notification_preferences' as never) as unknown as PrefsSelect)
+    .select('category, in_app, email, rhythm')
+    .eq('user_id', userId);
+  const prefs: PreferencesMembre = {};
+  for (const l of data ?? []) {
+    prefs[l.category] = { site: l.in_app, email: l.email, rythme: RYTHME_DEPUIS_BASE[l.rhythm] ?? 'immediat' };
+  }
+  return prefs;
 });
 
-/**
- * Même préférence, mais pour un appelant SANS session — le cron
- * d'abonnements et le webhook Stripe, qui agissent pour un membre qu'ils
- * n'authentifient jamais eux-mêmes. Avec le client de SESSION, cette lecture
- * passait en rôle `anon` (aucun cookie à décoder), la RLS la bloquait, et la
- * fonction retombait systématiquement sur son filet `?? true` — un membre
- * qui décochait « Recevoir les notifications par e-mail » continuait de
- * recevoir l'e-mail, sans qu'aucune erreur ne le signale. Découvert en
- * testant l'essai gratuit à J-3 (`docs/test-stripe-jep29.md`) : la case
- * était en réalité cochée sur ce compte, donc sans rapport avec l'e-mail
- * manquant ce jour-là, mais le défaut était bien réel et touchait aussi la
- * notification d'échec de paiement du webhook Stripe.
- *
- * Prend le client déjà construit par l'appelant plutôt que d'en recréer un —
- * même motif que `claimNotification` ci-dessous.
- */
-export async function getNotifyEmailPreferenceAdmin(admin: SupabaseClient<Database>, userId: string): Promise<boolean> {
-  const { data } = await admin.from('profiles').select('notify_email' as never).eq('id', userId).maybeSingle();
-  return (data as { notify_email?: boolean } | null)?.notify_email ?? true;
-}
+type PrefsSelect = {
+  select: (cols: string) => {
+    eq: (col: string, value: string) => PromiseLike<{
+      data: { category: Categorie; in_app: boolean; email: boolean; rhythm: string }[] | null;
+    }>;
+  };
+};
 
 type NotificationsSentUpsert = {
   upsert: (
@@ -132,26 +133,4 @@ export async function claimNotification(
     return false;
   }
   return (data?.length ?? 0) > 0;
-}
-
-/**
- * Crée une notification in-app. Appelée avec un client à privilèges
- * (`createAdminClient()`, cf. le cron) : la RLS n'ouvre l'insertion à aucun
- * rôle authentifié, une notification ne s'auto-écrit jamais depuis le
- * navigateur.
- */
-export async function createNotification(
-  admin: SupabaseClient<Database>,
-  userId: string,
-  kind: string,
-  title: string,
-  body: string,
-): Promise<void> {
-  const { error } = await (admin.from('notifications' as never) as unknown as NotificationsInsert).insert({
-    user_id: userId,
-    kind,
-    title,
-    body,
-  });
-  if (error) console.error(`notifications: création échouée (${kind}, ${userId}) :`, error.message);
 }
