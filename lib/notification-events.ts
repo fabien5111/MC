@@ -25,8 +25,6 @@ export type Categorie = (typeof CATEGORIES)[number];
 
 export type CategorieInfo = {
   libelle: string;
-  /** Une phrase sous le titre dans la grille de préférences : ce que couvre la catégorie. */
-  description: string;
   /** Réservée aux admins et gestionnaires : absente de la grille d'un membre. */
   backOffice?: boolean;
   /** Canal « site » non désactivable (abonnement, support : la continuité du service en dépend). */
@@ -35,77 +33,220 @@ export type CategorieInfo = {
   emailVerrouille?: boolean;
   /** Raison affichée, en grisé, dans la grille de préférences (JEP-279). */
   noteVerrouille?: string;
+};
+
+export const CATEGORIE_INFO: Record<Categorie, CategorieInfo> = {
+  mes_recettes: { libelle: 'Mes recettes' },
+  communaute: { libelle: 'Communauté' },
+  mes_avis: { libelle: 'Mes avis' },
+  fournees: { libelle: 'Fournées (rappels)' },
+  idees: { libelle: 'Boîte à idées' },
+  abonnement: {
+    libelle: 'Abonnement',
+    siteVerrouille: true,
+    noteVerrouille:
+      'Les confirmations de souscription et de résiliation sont obligatoires (obligation légale) : elles partent toujours. Les alertes affichées sur le site restent visibles.',
+  },
+  support: {
+    libelle: 'Support et compte',
+    siteVerrouille: true,
+    emailVerrouille: true,
+    noteVerrouille: 'Ces messages sont toujours envoyés, sur le site comme par e-mail : ils ne peuvent pas être désactivés.',
+  },
+  moderation: { libelle: 'Modération (back-office)', backOffice: true },
+};
+
+/**
+ * Une RUBRIQUE est la plus petite unité réglable par un membre (sous-catégorie
+ * de la grille). Sa clé est celle stockée dans `notification_preferences.category`
+ * : `mes_recettes.favoris` pour une sous-catégorie, ou le nom de la catégorie
+ * elle-même quand celle-ci n'est pas découpée (`mes_avis`). Jamais de colonne ou
+ * de migration à ajouter pour une rubrique de plus.
+ *
+ * **Héritage** : une ligne enregistrée au niveau de la CATÉGORIE (avant le
+ * découpage, ou par la reprise de `notify_email = false`) vaut pour toutes ses
+ * rubriques tant que le membre n'en a pas réglé une individuellement — un
+ * e-mail refusé ne devient jamais un e-mail reçu à cause du découpage.
+ */
+export type Rubrique = {
+  cle: string;
+  categorie: Categorie;
+  /** Titre de la sous-catégorie ; `null` quand la catégorie n'est pas découpée. */
+  libelle: string | null;
+  /** Une phrase : ce que couvre la rubrique. */
+  description: string;
   /** Valeurs proposées à un membre qui n'a rien réglé — volontairement sobres. */
   defaut: { site: boolean; email: boolean; rythme: Rythme };
   /** Rythmes que le membre peut choisir pour l'e-mail (« immédiat » absent = récapitulatif seulement). */
   rythmesPermis: Rythme[];
 };
 
-export const CATEGORIE_INFO: Record<Categorie, CategorieInfo> = {
-  mes_recettes: {
-    libelle: 'Mes recettes',
-    description:
-      'Publication ou refus de vos recettes, avis reçus, favoris, projets qui s’en inspirent et mise en avant sur l’accueil.',
-    defaut: { site: true, email: true, rythme: 'immediat' },
-    rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
+const TOUS: Rythme[] = ['immediat', 'quotidien', 'hebdo'];
+const RECAP: Rythme[] = ['quotidien', 'hebdo'];
+const IMMEDIAT = { site: true, email: true, rythme: 'immediat' as Rythme };
+const RECAP_SOBRE = { site: true, email: false, rythme: 'hebdo' as Rythme };
+
+export const RUBRIQUES: Rubrique[] = [
+  // ── Mes recettes : 5 ─────────────────────────────────────────────────
+  {
+    cle: 'mes_recettes.publication',
+    categorie: 'mes_recettes',
+    libelle: 'Publication ou refus',
+    description: 'Votre recette est publiée, ou refusée avec le motif.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
   },
-  communaute: {
-    libelle: 'Communauté',
-    description:
-      'Nouveaux abonnés, recettes publiées par les pâtissiers que vous suivez, carnets et recettes partagés avec vous.',
-    defaut: { site: true, email: false, rythme: 'hebdo' },
-    rythmesPermis: ['quotidien', 'hebdo'],
+  {
+    cle: 'mes_recettes.avis',
+    categorie: 'mes_recettes',
+    libelle: 'Avis reçus',
+    description: 'Un avis est publié sur l’une de vos recettes.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
   },
-  mes_avis: {
-    libelle: 'Mes avis',
-    description:
-      'Publication ou refus des avis que vous avez laissés sur des recettes.',
-    defaut: { site: true, email: true, rythme: 'immediat' },
-    rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
+  {
+    cle: 'mes_recettes.favoris',
+    categorie: 'mes_recettes',
+    libelle: 'Favoris',
+    description: 'Un membre met l’une de vos recettes en favori. Regroupé : jamais un e-mail par favori.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: RECAP,
   },
-  fournees: {
-    libelle: 'Fournées (rappels)',
-    description:
-      'Étapes à commencer aujourd’hui, rappel la veille du jour J, invitation à donner votre avis après une fournée.',
-    defaut: { site: true, email: true, rythme: 'immediat' },
-    rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
+  {
+    cle: 'mes_recettes.projets',
+    categorie: 'mes_recettes',
+    libelle: 'Projets qui s’en inspirent',
+    description: 'L’une de vos recettes sert de composant dans le projet d’un membre.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: RECAP,
   },
-  idees: {
-    libelle: 'Boîte à idées',
-    description:
-      'Évolution du statut de vos idées, fusion avec une autre idée, idées que vous avez soutenues et qui sont réalisées.',
-    defaut: { site: true, email: false, rythme: 'hebdo' },
-    rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
+  {
+    cle: 'mes_recettes.mise_en_avant',
+    categorie: 'mes_recettes',
+    libelle: 'Mise en avant sur l’accueil',
+    description: 'L’une de vos recettes devient la recette mise en avant sur la page d’accueil.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
   },
-  abonnement: {
-    libelle: 'Abonnement',
+  // ── Communauté : 3 ───────────────────────────────────────────────────
+  {
+    cle: 'communaute.abonnes',
+    categorie: 'communaute',
+    libelle: 'Nouveaux abonnés',
+    description: 'Un membre commence à vous suivre.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: RECAP,
+  },
+  {
+    cle: 'communaute.suivis',
+    categorie: 'communaute',
+    libelle: 'Pâtissiers que vous suivez',
+    description: 'Un pâtissier que vous suivez publie une recette.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: RECAP,
+  },
+  {
+    cle: 'communaute.partages',
+    categorie: 'communaute',
+    libelle: 'Carnets et recettes partagés',
+    description: 'Un membre partage son carnet ou une recette avec vous.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: TOUS,
+  },
+  // ── Mes avis : non découpée ──────────────────────────────────────────
+  {
+    cle: 'mes_avis',
+    categorie: 'mes_avis',
+    libelle: null,
+    description: 'Publication ou refus des avis que vous avez laissés sur des recettes.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
+  },
+  // ── Fournées : 3 ─────────────────────────────────────────────────────
+  {
+    cle: 'fournees.etapes',
+    categorie: 'fournees',
+    libelle: 'Étapes à commencer aujourd’hui',
+    description: 'Le matin d’une étape de fournée à lancer, selon son jour (J − n).',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
+  },
+  {
+    cle: 'fournees.veille',
+    categorie: 'fournees',
+    libelle: 'Rappel la veille du jour J',
+    description: 'Votre fournée est prévue le lendemain.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
+  },
+  {
+    cle: 'fournees.avis',
+    categorie: 'fournees',
+    libelle: 'Invitation à donner votre avis',
+    description: 'Le lendemain d’une fournée terminée, si vous n’avez pas encore noté la recette.',
+    defaut: IMMEDIAT,
+    rythmesPermis: TOUS,
+  },
+  // ── Boîte à idées : 3 ────────────────────────────────────────────────
+  {
+    cle: 'idees.statut',
+    categorie: 'idees',
+    libelle: 'Évolution du statut de vos idées',
+    description: 'L’une de vos idées passe à l’étude, en développement, terminée ou refusée (avec la note de l’équipe).',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: TOUS,
+  },
+  {
+    cle: 'idees.fusion',
+    categorie: 'idees',
+    libelle: 'Fusion avec une autre idée',
+    description: 'L’une de vos idées est réunie avec une idée proche.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: TOUS,
+  },
+  {
+    cle: 'idees.soutenues',
+    categorie: 'idees',
+    libelle: 'Idées que vous avez soutenues',
+    description: 'Une idée pour laquelle vous avez voté est réalisée.',
+    defaut: RECAP_SOBRE,
+    rythmesPermis: RECAP,
+  },
+  // ── Non découpées ────────────────────────────────────────────────────
+  {
+    cle: 'abonnement',
+    categorie: 'abonnement',
+    libelle: null,
     description:
       'Fin d’essai et échéances qui approchent, expiration, échec de paiement, confirmation de souscription et de résiliation.',
-    siteVerrouille: true,
-    noteVerrouille:
-      'Les confirmations de souscription et de résiliation sont obligatoires (obligation légale) : elles partent toujours. Les alertes affichées sur le site restent visibles.',
-    defaut: { site: true, email: true, rythme: 'immediat' },
+    defaut: IMMEDIAT,
     rythmesPermis: ['immediat'],
   },
-  support: {
-    libelle: 'Support et compte',
-    description:
-      'Réponses à vos demandes de contact et alertes de sécurité de votre compte.',
-    siteVerrouille: true,
-    emailVerrouille: true,
-    noteVerrouille: 'Ces messages sont toujours envoyés, sur le site comme par e-mail : ils ne peuvent pas être désactivés.',
-    defaut: { site: true, email: true, rythme: 'immediat' },
+  {
+    cle: 'support',
+    categorie: 'support',
+    libelle: null,
+    description: 'Réponses à vos demandes de contact et alertes de sécurité de votre compte.',
+    defaut: IMMEDIAT,
     rythmesPermis: ['immediat'],
   },
-  moderation: {
-    libelle: 'Modération (back-office)',
-    description:
-      'Recettes et avis en attente de validation, regroupés dans un récapitulatif.',
-    backOffice: true,
+  {
+    cle: 'moderation',
+    categorie: 'moderation',
+    libelle: null,
+    description: 'Recettes et avis en attente de validation, regroupés dans un récapitulatif.',
     defaut: { site: true, email: true, rythme: 'quotidien' },
-    rythmesPermis: ['quotidien', 'hebdo'],
+    rythmesPermis: RECAP,
   },
-};
+];
+
+export function rubriquesDeCategorie(categorie: Categorie): Rubrique[] {
+  return RUBRIQUES.filter((r) => r.categorie === categorie);
+}
+
+export function rubriqueInfo(cle: string): Rubrique | null {
+  return RUBRIQUES.find((r) => r.cle === cle) ?? null;
+}
 
 /** Priorité d'envoi quand le quota de la journée est serré (plus petit = plus tôt). */
 export type PrioriteEnvoi = 0 | 1 | 2;
@@ -133,6 +274,8 @@ export type GabaritNotification = { titre: string; corps: string };
 
 export type DefinitionEvenement = {
   categorie: Categorie;
+  /** Clé de la rubrique (sous-catégorie) qui règle cet événement — cf. `RUBRIQUES`. */
+  rubrique: string;
   /** Impossible à désactiver, sur aucun canal : légal, sécurité, support. */
   verrouille?: boolean;
   /**
@@ -202,6 +345,7 @@ export const EVENEMENTS = {
   // ── Mes recettes (auteur) ──────────────────────────────────────────────
   recette_publiee: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.publication',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
@@ -211,6 +355,7 @@ export const EVENEMENTS = {
   },
   recette_refusee: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.publication',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
@@ -220,6 +365,7 @@ export const EVENEMENTS = {
   },
   avis_recu: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.avis',
     lien: (d) => `/recette/${d.recetteId}#sec-commentaires`,
     priorite: 1,
     gabarit: (d) => ({
@@ -229,6 +375,7 @@ export const EVENEMENTS = {
   },
   recette_favori: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.favoris',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
@@ -244,6 +391,7 @@ export const EVENEMENTS = {
   },
   recette_composant: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.projets',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
@@ -254,6 +402,7 @@ export const EVENEMENTS = {
   },
   recette_mise_en_avant: {
     categorie: 'mes_recettes',
+    rubrique: 'mes_recettes.mise_en_avant',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     gabarit: (d) => ({
@@ -265,6 +414,7 @@ export const EVENEMENTS = {
   // ── Mes avis ───────────────────────────────────────────────────────────
   avis_publie: {
     categorie: 'mes_avis',
+    rubrique: 'mes_avis',
     lien: (d) => `/recette/${d.recetteId}#sec-commentaires`,
     priorite: 1,
     gabarit: (d) => ({
@@ -274,6 +424,7 @@ export const EVENEMENTS = {
   },
   avis_refuse: {
     categorie: 'mes_avis',
+    rubrique: 'mes_avis',
     lien: (d) => d.batchId ? `/fournee/${d.batchId}` : `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
@@ -285,6 +436,7 @@ export const EVENEMENTS = {
   // ── Communauté ─────────────────────────────────────────────────────────
   nouvel_abonne: {
     categorie: 'communaute',
+    rubrique: 'communaute.abonnes',
     lien: (d) => d.acteurHandle ? `/u/${d.acteurHandle}` : '/profil',
     priorite: 2,
     recapSeulement: true,
@@ -300,6 +452,7 @@ export const EVENEMENTS = {
   },
   recette_suivi: {
     categorie: 'communaute',
+    rubrique: 'communaute.suivis',
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
@@ -315,6 +468,7 @@ export const EVENEMENTS = {
   },
   partage_recu: {
     categorie: 'communaute',
+    rubrique: 'communaute.partages',
     lien: (d) => d.recetteId ? `/recette/${d.recetteId}` : '/carnet?scope=shared',
     priorite: 1,
     gabarit: (d) => ({
@@ -326,6 +480,7 @@ export const EVENEMENTS = {
   // ── Fournées ───────────────────────────────────────────────────────────
   rappel_etape: {
     categorie: 'fournees',
+    rubrique: 'fournees.etapes',
     lien: (d) => `/fournee/${d.batchId}`,
     priorite: 1,
     gabarit: (d) => ({
@@ -335,6 +490,7 @@ export const EVENEMENTS = {
   },
   rappel_veille: {
     categorie: 'fournees',
+    rubrique: 'fournees.veille',
     lien: (d) => `/fournee/${d.batchId}`,
     priorite: 2,
     gabarit: (d) => ({
@@ -344,6 +500,7 @@ export const EVENEMENTS = {
   },
   invitation_avis: {
     categorie: 'fournees',
+    rubrique: 'fournees.avis',
     lien: (d) => `/fournee/${d.batchId}`,
     priorite: 2,
     gabarit: (d) => ({
@@ -355,6 +512,7 @@ export const EVENEMENTS = {
   // ── Boîte à idées ──────────────────────────────────────────────────────
   idee_statut: {
     categorie: 'idees',
+    rubrique: 'idees.statut',
     lien: (d) => '/idees',
     priorite: 1,
     gabarit: (d) => ({
@@ -364,6 +522,7 @@ export const EVENEMENTS = {
   },
   idee_fusionnee: {
     categorie: 'idees',
+    rubrique: 'idees.fusion',
     lien: (d) => '/idees',
     priorite: 2,
     gabarit: (d) => ({
@@ -373,6 +532,7 @@ export const EVENEMENTS = {
   },
   idee_realisee: {
     categorie: 'idees',
+    rubrique: 'idees.soutenues',
     lien: (d) => '/idees',
     priorite: 2,
     recapSeulement: true,
@@ -385,6 +545,7 @@ export const EVENEMENTS = {
   // ── Modération (back-office) ───────────────────────────────────────────
   moderation_recette: {
     categorie: 'moderation',
+    rubrique: 'moderation',
     lien: (d) => '/admin/recettes',
     priorite: 1,
     recapSeulement: true,
@@ -400,6 +561,7 @@ export const EVENEMENTS = {
   },
   moderation_avis: {
     categorie: 'moderation',
+    rubrique: 'moderation',
     lien: (d) => '/admin/commentaires',
     priorite: 1,
     recapSeulement: true,
@@ -425,6 +587,7 @@ export type NomEvenement = keyof typeof EVENEMENTS;
 function precompose(categorie: Categorie, opts: { verrouille?: boolean } = {}): DefinitionEvenement {
   return {
     categorie,
+    rubrique: categorie,
     verrouille: opts.verrouille,
     priorite: opts.verrouille ? PRIORITE_VERROUILLE : 1,
     gabarit: (d) => ({ titre: t(d.titre, ''), corps: t(d.detail, '') }),
@@ -442,6 +605,13 @@ export function evenementsDeCategorie(categorie: Categorie): { nom: NomEvenement
     .map(([nom, def]) => ({ nom, def }));
 }
 
+/** Les événements réglés par une rubrique. */
+export function evenementsDeRubrique(cle: string): { nom: NomEvenement; def: DefinitionEvenement }[] {
+  return (Object.entries(EVENEMENTS) as [NomEvenement, DefinitionEvenement][])
+    .filter(([, def]) => def.rubrique === cle)
+    .map(([nom, def]) => ({ nom, def }));
+}
+
 // ── Préférences ──────────────────────────────────────────────────────────
 
 /** Rythme tel que stocké dans `notification_preferences.rhythm`. */
@@ -451,19 +621,29 @@ export const LIBELLE_RYTHME: Record<Rythme, string> = { immediat: 'Immédiat', q
 
 export type PreferenceCategorie = { site: boolean; email: boolean; rythme: Rythme };
 
-/** Lignes éparses de `notification_preferences` : seules les divergences sont stockées. */
-export type PreferencesMembre = Partial<Record<Categorie, PreferenceCategorie>>;
+/**
+ * Lignes éparses de `notification_preferences`, indexées par clé de RUBRIQUE
+ * (`mes_recettes.favoris`) ou, pour une ligne plus ancienne, de CATÉGORIE
+ * (`mes_recettes`) : seules les divergences avec le défaut y sont stockées.
+ */
+export type PreferencesMembre = Partial<Record<string, PreferenceCategorie>>;
 
-/** Préférence effective : la ligne du membre, à défaut la valeur par défaut du catalogue. */
-export function preferenceEffective(prefs: PreferencesMembre, categorie: Categorie): PreferenceCategorie {
-  const info = CATEGORIE_INFO[categorie];
-  const choisie = prefs[categorie];
-  const base = choisie ?? info.defaut;
+/**
+ * Préférence effective d'une rubrique, par ordre de priorité :
+ * 1. sa propre ligne ; 2. la ligne de sa catégorie (héritage, cf. `Rubrique`) ;
+ * 3. le défaut du catalogue. Les verrous de la catégorie s'appliquent par-dessus.
+ */
+export function preferenceEffective(prefs: PreferencesMembre, cleRubrique: string): PreferenceCategorie {
+  // Une clé de catégorie (ligne ancienne d'une file) se lit comme sa première rubrique.
+  const r = rubriqueInfo(cleRubrique) ?? RUBRIQUES.find((x) => x.categorie === cleRubrique);
+  if (!r) throw new Error(`rubrique inconnue « ${cleRubrique} »`);
+  const info = CATEGORIE_INFO[r.categorie];
+  const base = prefs[r.cle] ?? prefs[r.categorie] ?? r.defaut;
   return {
     // Le site est verrouillé pour l'abonnement et le support.
     site: info.siteVerrouille ? true : base.site,
     email: info.emailVerrouille ? true : base.email,
-    rythme: info.rythmesPermis.includes(base.rythme) ? base.rythme : info.rythmesPermis[0],
+    rythme: r.rythmesPermis.includes(base.rythme) ? base.rythme : r.rythmesPermis[0],
   };
 }
 
@@ -479,7 +659,7 @@ export type CanalDecision =
  */
 export function decisionCanaux(def: DefinitionEvenement, prefs: PreferencesMembre): CanalDecision {
   if (def.verrouille) return { site: true, email: 'immediat' };
-  const p = preferenceEffective(prefs, def.categorie);
+  const p = preferenceEffective(prefs, def.rubrique);
   if (!p.email) return { site: p.site, email: 'aucun' };
   if (def.recapSeulement && p.rythme === 'immediat') return { site: p.site, email: 'quotidien' };
   return { site: p.site, email: p.rythme };

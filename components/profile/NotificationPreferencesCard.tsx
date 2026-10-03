@@ -28,9 +28,11 @@ import {
   LIBELLE_RYTHME,
   RYTHME_VERS_BASE,
   preferenceEffective,
+  rubriquesDeCategorie,
   type Categorie,
   type PreferenceCategorie,
   type PreferencesMembre,
+  type Rubrique,
   type Rythme,
 } from '@/lib/notification-events';
 
@@ -49,10 +51,10 @@ export function NotificationPreferencesCard({
 
   const categories = CATEGORIES.filter((c) => backOffice || !CATEGORIE_INFO[c].backOffice);
 
-  async function changer(categorie: Categorie, modif: Partial<PreferenceCategorie>) {
+  async function changer(rubrique: Rubrique, modif: Partial<PreferenceCategorie>) {
     const avant = prefs;
-    const suivante: PreferenceCategorie = { ...preferenceEffective(prefs, categorie), ...modif };
-    setPrefs({ ...prefs, [categorie]: suivante });
+    const suivante: PreferenceCategorie = { ...preferenceEffective(prefs, rubrique.cle), ...modif };
+    setPrefs({ ...prefs, [rubrique.cle]: suivante });
     const ok = await mutate(
       () =>
         createClient()
@@ -60,7 +62,8 @@ export function NotificationPreferencesCard({
           .upsert(
             {
               user_id: userId,
-              category: categorie,
+              // La colonne `category` porte la clé de la RUBRIQUE (sous-catégorie).
+              category: rubrique.cle,
               in_app: suivante.site,
               email: suivante.email,
               rhythm: RYTHME_VERS_BASE[suivante.rythme],
@@ -81,36 +84,77 @@ export function NotificationPreferencesCard({
       </p>
       <ul className="divide-y divide-outline-variant">
         {categories.map((c) => (
-          <Ligne key={c} categorie={c} pref={preferenceEffective(prefs, c)} onChange={(m) => changer(c, m)} />
+          <BlocCategorie key={c} categorie={c} prefs={prefs} onChange={changer} />
         ))}
       </ul>
     </SettingsCard>
   );
 }
 
-function Ligne({
+function BlocCategorie({
   categorie,
-  pref,
+  prefs,
   onChange,
 }: {
   categorie: Categorie;
-  pref: PreferenceCategorie;
-  onChange: (m: Partial<PreferenceCategorie>) => void;
+  prefs: PreferencesMembre;
+  onChange: (r: Rubrique, m: Partial<PreferenceCategorie>) => void;
 }) {
   const info = CATEGORIE_INFO[categorie];
-  const choixRythme = info.rythmesPermis;
-  const idRythme = `rythme-${categorie}`;
+  const rubriques = rubriquesDeCategorie(categorie);
 
   return (
-    <li className="py-4">
-      <p className="font-label-md text-[14px] text-on-surface">{info.libelle}</p>
-      <p className="mt-0.5 text-xs text-on-surface-variant">{info.description}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
+    <li className="py-5">
+      <p className="font-label-md text-[15px] font-semibold text-on-surface">{info.libelle}</p>
+      <ul className="mt-3 grid gap-5">
+        {rubriques.map((r) => (
+          <LigneRubrique
+            key={r.cle}
+            rubrique={r}
+            pref={preferenceEffective(prefs, r.cle)}
+            siteVerrouille={!!info.siteVerrouille}
+            emailVerrouille={!!info.emailVerrouille}
+            onChange={(m) => onChange(r, m)}
+          />
+        ))}
+      </ul>
+      {info.noteVerrouille && (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-on-surface-variant">
+          <span className="material-symbols-outlined text-[16px]" aria-hidden>
+            lock
+          </span>
+          {info.noteVerrouille}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function LigneRubrique({
+  rubrique,
+  pref,
+  siteVerrouille,
+  emailVerrouille,
+  onChange,
+}: {
+  rubrique: Rubrique;
+  pref: PreferenceCategorie;
+  siteVerrouille: boolean;
+  emailVerrouille: boolean;
+  onChange: (m: Partial<PreferenceCategorie>) => void;
+}) {
+  const idRythme = `rythme-${rubrique.cle}`;
+
+  return (
+    <li className="min-w-0">
+      {rubrique.libelle && <p className="text-[13px] font-medium text-on-surface">{rubrique.libelle}</p>}
+      <p className="mt-0.5 text-xs text-on-surface-variant">{rubrique.description}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input
             type="checkbox"
             checked={pref.site}
-            disabled={!!info.siteVerrouille}
+            disabled={siteVerrouille}
             onChange={(e) => onChange({ site: e.target.checked })}
             className="h-5 w-5 accent-primary disabled:opacity-60"
           />
@@ -120,13 +164,13 @@ function Ligne({
           <input
             type="checkbox"
             checked={pref.email}
-            disabled={!!info.emailVerrouille}
+            disabled={emailVerrouille}
             onChange={(e) => onChange({ email: e.target.checked })}
             className="h-5 w-5 accent-primary disabled:opacity-60"
           />
           Par e-mail
         </label>
-        {pref.email && choixRythme.length > 1 && (
+        {pref.email && rubrique.rythmesPermis.length > 1 && (
           <span className="flex items-center gap-2 text-sm text-on-surface">
             <label htmlFor={idRythme} className="text-on-surface-variant">
               Rythme
@@ -137,7 +181,7 @@ function Ligne({
               onChange={(e) => onChange({ rythme: e.target.value as Rythme })}
               className="rounded border border-outline-variant bg-surface-bright px-2 py-1 text-sm"
             >
-              {choixRythme.map((r) => (
+              {rubrique.rythmesPermis.map((r) => (
                 <option key={r} value={r}>
                   {LIBELLE_RYTHME[r]}
                 </option>
@@ -146,14 +190,6 @@ function Ligne({
           </span>
         )}
       </div>
-      {info.noteVerrouille && (
-        <p className="mt-2 flex items-start gap-1.5 text-xs text-on-surface-variant">
-          <span className="material-symbols-outlined text-[16px]" aria-hidden>
-            lock
-          </span>
-          {info.noteVerrouille}
-        </p>
-      )}
     </li>
   );
 }

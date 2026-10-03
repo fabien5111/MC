@@ -1366,6 +1366,20 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   alerte de changement de mot de passe partent quelles que soient les
   préférences. Le reste de « Abonnement » (J-3, J-1, échec de paiement) respecte
   l'e-mail décoché ; la cloche d'abonnement et de support est toujours affichée.
+- **L'unité réglable est la RUBRIQUE (sous-catégorie), pas la catégorie**
+  (`RUBRIQUES`, `lib/notification-events.ts`) : 5 sous-catégories dans « Mes
+  recettes » (publication ou refus, avis reçus, favoris, projets qui s'en
+  inspirent, mise en avant), 3 dans « Communauté », 3 dans « Fournées », 3 dans
+  « Boîte à idées » ; les autres catégories ne sont pas découpées (rubrique
+  unique, de même clé que la catégorie). Chaque événement du catalogue porte sa
+  `rubrique`. La clé de rubrique (`mes_recettes.favoris`) est stockée telle
+  quelle dans `notification_preferences.category` — **aucune colonne ni
+  migration pour ajouter une rubrique**. **Héritage** : une ligne au niveau de la
+  CATÉGORIE (avant le découpage, ou la reprise de `notify_email = false`) vaut
+  pour toutes ses rubriques tant qu'aucune n'est réglée individuellement, pour
+  qu'un e-mail refusé ne devienne jamais un e-mail reçu à cause du découpage.
+  Les rubriques « récap seulement » (favoris, projets, abonnés, pâtissiers
+  suivis, idées soutenues) démarrent sans e-mail, rythme hebdomadaire.
 - **« Aucun » n'est pas un réglage** : c'est décocher les deux canaux. Les
   préférences sont des lignes éparses (`notification_preferences`) : seules les
   divergences avec le défaut du catalogue y sont écrites. `profiles.notify_email`

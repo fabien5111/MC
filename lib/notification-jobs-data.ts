@@ -13,7 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 import { CHEMIN_PREFERENCES, composerRecapitulatif, enTetesDesinscription, type LigneRecap } from '@/lib/notification-email';
-import { definitionEvenement, type Categorie, type DonneesEvenement } from '@/lib/notification-events';
+import { definitionEvenement, preferenceEffective, type Categorie, type DonneesEvenement } from '@/lib/notification-events';
 import { lirePreferences, notifier, reserverQuota } from '@/lib/notifier';
 
 type Db = SupabaseClient;
@@ -100,6 +100,7 @@ type LigneFile = {
   id: number;
   user_id: string;
   category: Categorie;
+  event: string;
   title: string;
   body: string;
   link: string | null;
@@ -123,7 +124,7 @@ export async function envoyerRecapitulatifs(
   const rythmes = opts.hebdo ? ['daily', 'weekly'] : ['daily'];
   const { data, error } = await db
     .from('email_digest_queue')
-    .select('id, user_id, category, title, body, link, rhythm')
+    .select('id, user_id, category, event, title, body, link, rhythm')
     .is('sent_at', null)
     .in('rhythm', rythmes)
     .order('id', { ascending: true })
@@ -145,8 +146,11 @@ export async function envoyerRecapitulatifs(
   for (const [userId, lignes] of parMembre) {
     const ids = lignes.map((l) => l.id);
     const prefs = await lirePreferences(db, userId);
-    // Garde « e-mail refusé ne part jamais » : on revérifie au moment d'envoyer.
-    const retenues = lignes.filter((l) => prefs[l.category]?.email !== false);
+    // Garde « e-mail refusé ne part jamais » : on revérifie au moment d'envoyer,
+    // rubrique par rubrique (la ligne de la file ne porte que la catégorie, la
+    // rubrique se déduit de l'événement). Une ligne dont l'événement a quitté
+    // le catalogue retombe sur la préférence de sa catégorie.
+    const retenues = lignes.filter((l) => preferenceEffective(prefs, definitionEvenement(l.event)?.rubrique ?? l.category).email);
     if (retenues.length === 0) {
       await db.from('email_digest_queue').update({ sent_at: maintenant() }).in('id', ids);
       ecartes += lignes.length;
