@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { envoyerRecapitulatifs, viderOutbox } from '@/lib/notification-jobs-data';
+import { genererRappels } from '@/lib/notification-rappels-data';
 
 export const maxDuration = 60;
 
@@ -31,7 +32,10 @@ export async function GET(req: Request) {
   const outbox = await viderOutbox(admin);
   if (passe !== 'quotidien') return NextResponse.json({ ok: true, passe, outbox });
 
+  // Les rappels d'abord : ils peuvent eux-mêmes alimenter la file des
+  // récapitulatifs, qui part juste après.
+  const rappels = await genererRappels(admin, maintenant);
   // Lundi (UTC) : la file hebdomadaire part avec la quotidienne.
   const recap = await envoyerRecapitulatifs(admin, { hebdo: maintenant.getUTCDay() === 1 });
-  return NextResponse.json({ ok: true, passe, outbox, recap });
+  return NextResponse.json({ ok: true, passe, outbox, rappels, recap });
 }

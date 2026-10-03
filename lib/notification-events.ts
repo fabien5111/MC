@@ -1,3 +1,5 @@
+import { IDEA_STATUSES, isIdeaStatus } from '@/lib/ideas';
+
 // Catalogue des événements notifiés (JEP-278) — module PUR, utilisable côté
 // serveur (moteur `notifier`) comme côté client (grille de préférences de
 // /reglages). Aucune lecture de base, aucun import `next/headers`.
@@ -139,6 +141,12 @@ export type DefinitionEvenement = {
   lien?: (d: DonneesEvenement) => string | null;
 };
 
+/** Libellé affiché d'un statut d'idée (« En développement »…), à défaut le texte tel quel. */
+function libelleStatutIdee(statut: unknown): string {
+  const brut = typeof statut === 'string' ? statut : '';
+  return isIdeaStatus(brut) ? IDEA_STATUSES[brut].label : brut || 'un nouveau statut';
+}
+
 const t = (v: string | null | undefined, repli: string): string => (v && v.trim() ? v.trim() : repli);
 
 /** « Alice », « Alice et Bob », « Alice, Bob et 3 autres ». */
@@ -177,6 +185,7 @@ export const EVENEMENTS = {
   // ── Mes recettes (auteur) ──────────────────────────────────────────────
   recette_publiee: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Votre recette est publiée',
@@ -185,6 +194,7 @@ export const EVENEMENTS = {
   },
   recette_refusee: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Votre recette n’a pas été publiée',
@@ -193,6 +203,7 @@ export const EVENEMENTS = {
   },
   avis_recu: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}#sec-commentaires`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Nouvel avis sur votre recette',
@@ -201,6 +212,7 @@ export const EVENEMENTS = {
   },
   recette_favori: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
     groupeParCle: 'recetteId',
@@ -215,6 +227,7 @@ export const EVENEMENTS = {
   },
   recette_composant: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
     gabarit: (d) => ({
@@ -224,6 +237,7 @@ export const EVENEMENTS = {
   },
   recette_mise_en_avant: {
     categorie: 'mes_recettes',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     gabarit: (d) => ({
       titre: 'Votre recette est mise en avant',
@@ -234,6 +248,7 @@ export const EVENEMENTS = {
   // ── Mes avis ───────────────────────────────────────────────────────────
   avis_publie: {
     categorie: 'mes_avis',
+    lien: (d) => `/recette/${d.recetteId}#sec-commentaires`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Votre avis est publié',
@@ -242,6 +257,7 @@ export const EVENEMENTS = {
   },
   avis_refuse: {
     categorie: 'mes_avis',
+    lien: (d) => d.batchId ? `/fournee/${d.batchId}` : `/recette/${d.recetteId}`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Votre avis n’a pas été publié',
@@ -252,6 +268,7 @@ export const EVENEMENTS = {
   // ── Communauté ─────────────────────────────────────────────────────────
   nouvel_abonne: {
     categorie: 'communaute',
+    lien: (d) => d.acteurHandle ? `/u/${d.acteurHandle}` : '/profil',
     priorite: 2,
     recapSeulement: true,
     groupeParCle: 'cible',
@@ -266,6 +283,7 @@ export const EVENEMENTS = {
   },
   recette_suivi: {
     categorie: 'communaute',
+    lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
     groupeParCle: 'auteurId',
@@ -280,6 +298,7 @@ export const EVENEMENTS = {
   },
   partage_recu: {
     categorie: 'communaute',
+    lien: (d) => d.recetteId ? `/recette/${d.recetteId}` : '/carnet?scope=shared',
     priorite: 1,
     gabarit: (d) => ({
       titre: 'On partage avec vous',
@@ -290,6 +309,7 @@ export const EVENEMENTS = {
   // ── Fournées ───────────────────────────────────────────────────────────
   rappel_etape: {
     categorie: 'fournees',
+    lien: (d) => `/fournee/${d.batchId}`,
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Une étape à commencer aujourd’hui',
@@ -298,6 +318,7 @@ export const EVENEMENTS = {
   },
   rappel_veille: {
     categorie: 'fournees',
+    lien: (d) => `/fournee/${d.batchId}`,
     priorite: 2,
     gabarit: (d) => ({
       titre: 'C’est demain !',
@@ -306,6 +327,7 @@ export const EVENEMENTS = {
   },
   invitation_avis: {
     categorie: 'fournees',
+    lien: (d) => `/fournee/${d.batchId}`,
     priorite: 2,
     gabarit: (d) => ({
       titre: 'Comment était votre fournée ?',
@@ -316,14 +338,16 @@ export const EVENEMENTS = {
   // ── Boîte à idées ──────────────────────────────────────────────────────
   idee_statut: {
     categorie: 'idees',
+    lien: (d) => '/idees',
     priorite: 1,
     gabarit: (d) => ({
       titre: 'Votre idée évolue',
-      corps: `Votre idée « ${t(d.titre, 'votre idée')} » est passée à : ${t(d.detail, 'un nouveau statut')}.${d.note ? `\n${String(d.note)}` : ''}`,
+      corps: `Votre idée « ${t(d.titre, 'votre idée')} » est passée à : ${libelleStatutIdee(d.detail)}.${d.note ? `\nNote de l’équipe : ${String(d.note)}` : ''}`,
     }),
   },
   idee_fusionnee: {
     categorie: 'idees',
+    lien: (d) => '/idees',
     priorite: 2,
     gabarit: (d) => ({
       titre: 'Votre idée a été fusionnée',
@@ -332,6 +356,7 @@ export const EVENEMENTS = {
   },
   idee_realisee: {
     categorie: 'idees',
+    lien: (d) => '/idees',
     priorite: 2,
     recapSeulement: true,
     gabarit: (d) => ({
@@ -343,6 +368,7 @@ export const EVENEMENTS = {
   // ── Modération (back-office) ───────────────────────────────────────────
   moderation_recette: {
     categorie: 'moderation',
+    lien: (d) => '/admin/recettes',
     priorite: 1,
     recapSeulement: true,
     groupeParCle: 'file',
@@ -357,6 +383,7 @@ export const EVENEMENTS = {
   },
   moderation_avis: {
     categorie: 'moderation',
+    lien: (d) => '/admin/commentaires',
     priorite: 1,
     recapSeulement: true,
     groupeParCle: 'file',

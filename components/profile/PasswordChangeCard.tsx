@@ -56,6 +56,9 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
       { errorLabel: 'Mot de passe', refresh: false },
     );
     if (ok) {
+      // Alerte de sécurité (JEP-280) : le serveur prévient le membre, cloche et
+      // e-mail. Best-effort et sans attente : le mot de passe est déjà changé.
+      fetch('/api/compte/mot-de-passe', { method: 'POST' }).catch(() => undefined);
       setCurrent('');
       setPassword('');
       setConfirm('');

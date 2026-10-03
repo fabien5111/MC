@@ -53,14 +53,17 @@ export async function viderOutbox(admin: unknown): Promise<{ traites: number; ec
 
   let traites = 0;
   let echecs = 0;
-  const noms = new Map<string, string | null>();
-  const nomDe = async (id: string | null): Promise<string | null> => {
-    if (!id) return null;
+  const noms = new Map<string, { nom: string | null; handle: string | null }>();
+  const acteurDe = async (id: string | null): Promise<{ nom: string | null; handle: string | null }> => {
+    if (!id) return { nom: null, handle: null };
     if (!noms.has(id)) {
-      const { data } = await db.from('profiles').select('full_name').eq('id', id).maybeSingle();
-      noms.set(id, (data?.full_name as string | null) ?? null);
+      const { data } = await db.from('profiles').select('full_name, username').eq('id', id).maybeSingle();
+      noms.set(id, {
+        nom: (data?.full_name as string | null) ?? null,
+        handle: (data?.username as string | null) ?? null,
+      });
     }
-    return noms.get(id) ?? null;
+    return noms.get(id)!;
   };
   let equipe: string[] | null = null;
 
@@ -68,7 +71,8 @@ export async function viderOutbox(admin: unknown): Promise<{ traites: number; ec
     try {
       const def = definitionEvenement(ligne.event);
       if (!def) throw new Error(`événement inconnu « ${ligne.event} »`);
-      const donnees: DonneesEvenement = { ...(ligne.data ?? {}), acteur: await nomDe(ligne.actor_id) };
+      const acteur = await acteurDe(ligne.actor_id);
+      const donnees: DonneesEvenement = { ...(ligne.data ?? {}), acteur: acteur.nom, acteurHandle: acteur.handle };
 
       let destinataires: string[];
       if (ligne.recipient_id) destinataires = [ligne.recipient_id];
