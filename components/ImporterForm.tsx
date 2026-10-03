@@ -29,6 +29,7 @@ import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
 import { resizePhotoForAi } from '@/lib/images';
+import { trackEvent } from '@/lib/analytics';
 import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
 import { useDialog } from '@/components/Dialog';
 import { LockedHint } from '@/components/LockedAction';
@@ -183,6 +184,7 @@ export function ImporterForm({
         photos: nbPhotos,
       });
       clear();
+      trackEvent('importer_recette', { source: payload.source ?? 'texte' });
       router.refresh(); // met à jour « Mes imports » + quota (rendus serveur)
     } catch (e) {
       setError((e as Error).message);

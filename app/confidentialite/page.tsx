@@ -529,7 +529,7 @@ export default function ConfidentialitePage() {
             entetes={['Élément', 'Rôle', 'Durée']}
             lignes={[
               [
-                'Google Analytics 4 (cookies _ga et _ga_DLLDP40QE5)',
+                'Google Analytics 4 (cookies _ga et _ga_NCXHK395QN)',
                 'Statistiques de fréquentation et d’utilisation, pour améliorer le site',
                 'Cookies : 13 mois au plus. Données dans Google Analytics : 14 mois au plus',
               ],
