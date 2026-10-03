@@ -1636,10 +1636,29 @@ arrivé au § 10, qui affirmait « aucun outil de mesure d'audience » (JEP-128)
   mode projet ne sont pas comptés), `terminer_fournee` (`BatchView` ET
   `PlanningDayView`, deux chemins), `generer_liste_courses` (création d'une
   liste, pas l'ajout à une liste existante), `importer_recette` (`ImporterForm`).
-  `sign_up` est un lot à part (l'inscription se termine côté serveur). Les
-  paramètres (`mode`, `source`, `recipe_id`) doivent être déclarés comme
+  Les paramètres (`mode`, `source`, `method`, `recipe_id`) doivent être déclarés comme
   **dimensions personnalisées** dans GA pour sortir dans les rapports. Les
   chiffres ne comptent que les visiteurs consentants.
+- **`sign_up` : l'inscription est terminée quand le pseudo du compte est
+  enregistré pour la PREMIÈRE fois** (`lib/inscription.ts`, JEP-89) — pas à la
+  création du compte (un compte e-mail non confirmé n'est pas un inscrit), pas
+  à un changement de pseudo ultérieur. Deux chemins mènent à cet instant, et le
+  navigateur ne les voit pas pareil :
+  - `/api/pseudo/choisir` (Google, et e-mail dont le pseudo n'a pu être écrit)
+    répond `inscription: 'google' | 'email' | null` — `null` si le membre avait
+    déjà un pseudo (lu **avant** l'écriture), la route servant aussi à en
+    changer ; `PseudoChooser` envoie l'événement ;
+  - `/auth/callback` écrit le pseudo d'une inscription par e-mail côté serveur
+    puis **redirige** : il pose `?inscription=email` sur la destination
+    (`avecMarqueInscription`), que `components/InscriptionTracker.tsx` (layout
+    racine) lit, **retire de l'adresse avant toute attente**, puis envoie par
+    `trackEventQuandPret` — GA n'est pas encore chargé à l'arrivée, `trackEvent`
+    seul perdrait l'événement. Le marqueur ne porte aucune donnée personnelle.
+  Méthode d'après `app_metadata.provider` (`email` ou `google`, tout autre
+  fournisseur : pas d'événement). **Limite connue** : pas de seuil d'ancienneté
+  du compte (le jeton de session n'en porte pas la date) — un compte plus
+  ancien sans pseudo compterait comme une inscription ; sans objet tant que le
+  site n'est ouvert qu'aux testeurs.
 - **Configuration GA décrite par le § 10, à garder alignée** : cookies 13 mois
   (`cookie_expires`, GA pose 2 ans par défaut), signaux Google et
   personnalisation publicitaire désactivés. La conservation 14 mois se règle

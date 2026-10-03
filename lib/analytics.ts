@@ -11,7 +11,8 @@
 // dire tant que le visiteur n'a pas accepté (le script n'est chargé qu'après
 // « Accepter », cf. components/CookieConsent.tsx) : aucun appel ne part avant
 // le choix, et aucune file d'attente ne rejoue après coup un événement émis
-// pendant le refus. Un refus survenu dans la même page pose le drapeau
+// pendant le refus (seule exception bornée : `trackEventQuandPret`, plus bas,
+// qui laisse à GA le temps de se charger après une redirection). Un refus survenu dans la même page pose le drapeau
 // `ga-disable-<ID>`, que GA respecte — on le relit ici plutôt que de pousser
 // dans une `dataLayer` qui serait ignorée.
 //
@@ -29,23 +30,62 @@ export type EvenementsAudience = {
   terminer_fournee: null;
   generer_liste_courses: null;
   importer_recette: { source: 'texte' | 'photo' | 'pdf' };
+  /** Compte dont l'inscription vient de se terminer (cf. lib/inscription.ts). */
+  sign_up: { method: 'email' | 'google' };
 };
 
 export type NomEvenementAudience = keyof EvenementsAudience;
 
 type Gtag = (commande: 'event', nom: string, params?: Record<string, unknown>) => void;
 
-export function trackEvent<N extends NomEvenementAudience>(
-  nom: N,
-  ...params: EvenementsAudience[N] extends null ? [] : [EvenementsAudience[N]]
-): void {
-  if (typeof window === 'undefined') return;
+type ParamsDe<N extends NomEvenementAudience> = EvenementsAudience[N] extends null ? [] : [EvenementsAudience[N]];
+
+/**
+ * - `envoye` : l'appel est parti ;
+ * - `absent` : GA n'est pas (encore) chargé, un nouvel essai peut réussir ;
+ * - `refuse` : plus rien ne partira dans cette page (pas de navigateur, ou
+ *   accord retiré).
+ */
+type Envoi = 'envoye' | 'absent' | 'refuse';
+
+function envoyer(nom: string, params?: Record<string, unknown>): Envoi {
+  if (typeof window === 'undefined') return 'refuse';
   const w = window as unknown as Record<string, unknown>;
-  if (typeof w.gtag !== 'function') return;
-  if (GA_ID && w[`ga-disable-${GA_ID}`] === true) return;
+  if (GA_ID && w[`ga-disable-${GA_ID}`] === true) return 'refuse';
+  if (typeof w.gtag !== 'function') return 'absent';
   try {
-    (w.gtag as Gtag)('event', nom, params[0] as Record<string, unknown> | undefined);
+    (w.gtag as Gtag)('event', nom, params);
   } catch {
     // La mesure ne doit jamais faire échouer le geste de l'utilisateur.
   }
+  return 'envoye';
+}
+
+export function trackEvent<N extends NomEvenementAudience>(nom: N, ...params: ParamsDe<N>): void {
+  envoyer(nom, params[0] as Record<string, unknown> | undefined);
+}
+
+/** Durée pendant laquelle `trackEventQuandPret` attend que GA se charge. */
+export const DELAI_ATTENTE_GA_MS = 10_000;
+const PAS_ATTENTE_GA_MS = 250;
+
+/**
+ * Comme `trackEvent`, mais patiente jusqu'à `DELAI_ATTENTE_GA_MS` que GA soit
+ * chargé. Réservé au cas où l'événement est émis dès l'arrivée sur une page,
+ * avant que le script de GA (chargé après l'hydratation, et seulement si le
+ * visiteur a accepté) ait eu le temps de s'exécuter : c'est ce qui sépare
+ * l'inscription par e-mail, qui revient d'une redirection, d'un favori, émis
+ * longtemps après le chargement.
+ *
+ * Ne ressuscite rien : un refus (`ga-disable`) arrête l'attente, et sans accord
+ * donné dans le délai l'événement est simplement perdu.
+ */
+export function trackEventQuandPret<N extends NomEvenementAudience>(nom: N, ...params: ParamsDe<N>): void {
+  const debut = Date.now();
+  const essayer = () => {
+    if (envoyer(nom, params[0] as Record<string, unknown> | undefined) !== 'absent') return;
+    if (Date.now() - debut >= DELAI_ATTENTE_GA_MS) return;
+    setTimeout(essayer, PAS_ATTENTE_GA_MS);
+  };
+  essayer();
 }

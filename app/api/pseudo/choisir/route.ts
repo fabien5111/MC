@@ -9,7 +9,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, accountProvider } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { enregistrerPseudo, verifierPseudoComplet } from '@/lib/pseudo-data';
+import { aChoisiSonPseudo, enregistrerPseudo, verifierPseudoComplet } from '@/lib/pseudo-data';
+import { methodeInscription } from '@/lib/inscription';
 import { PSEUDO_MAX_LENGTH } from '@/lib/pseudo';
 import { cguVersionValide } from '@/lib/cgu';
 import { attestationAgeVersionValide } from '@/lib/attestation-age';
@@ -57,14 +58,21 @@ export async function POST(req: Request) {
   const acceptation = await enregistrerAcceptationsInscription(user.id);
   if (!acceptation.ok) return NextResponse.json({ ok: false, message: acceptation.message });
 
-  const ecriture = await enregistrerPseudo(
-    user.id,
-    validation.pseudo,
-    validation.slug,
-    user.email ?? null,
-    accountProvider(user),
-  );
+  // Lu AVANT l'écriture : après, tout compte « a un pseudo ». Cette route sert
+  // aussi à un membre qui en a déjà un (rien ne l'en empêche côté serveur) :
+  // changer de pseudo n'est pas s'inscrire, et ne doit pas compter comme tel.
+  const premiereFois = !(await aChoisiSonPseudo(user.id));
+  const provider = accountProvider(user);
+
+  const ecriture = await enregistrerPseudo(user.id, validation.pseudo, validation.slug, user.email ?? null, provider);
   if (!ecriture.ok) return NextResponse.json({ ok: false, message: ecriture.message });
 
-  return NextResponse.json({ ok: true, pseudo: validation.pseudo, slug: validation.slug });
+  // `inscription` : la méthode, quand c'est l'inscription qui se termine — le
+  // navigateur en fait l'événement `sign_up` (JEP-89, lib/inscription.ts).
+  return NextResponse.json({
+    ok: true,
+    pseudo: validation.pseudo,
+    slug: validation.slug,
+    inscription: premiereFois ? methodeInscription(provider) : null,
+  });
 }

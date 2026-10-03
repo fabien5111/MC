@@ -20,6 +20,8 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { CGU_CHEMIN, CGU_VERSION } from '@/lib/cgu';
 import { AGE_ATTESTATION_ERREUR, AGE_ATTESTATION_VERSION } from '@/lib/attestation-age';
 import { AgeAttestationCheckbox } from '@/components/AgeAttestationCheckbox';
+import { trackEvent } from '@/lib/analytics';
+import { estMethodeInscription } from '@/lib/inscription';
 import {
   nettoyerSaisiePseudo,
   normaliserCassePseudo,
@@ -122,12 +124,16 @@ export function PseudoChooser({ next, suggestion }: { next: string; suggestion: 
           ageAttestationVersion: AGE_ATTESTATION_VERSION,
         }),
       });
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string; inscription?: unknown } | null;
       if (!data?.ok) {
         setError(data?.message || "Le pseudo n'a pas pu être enregistré. Réessayez.");
         setBusy(false);
         return;
       }
+      // Le serveur dit si c'est l'inscription qui se termine (premier pseudo du
+      // compte, pas un changement) : la navigation qui suit est interne, GA
+      // reste chargé et l'événement part (JEP-89, lib/inscription.ts).
+      if (estMethodeInscription(data.inscription)) trackEvent('sign_up', { method: data.inscription });
       // Pas de `setBusy(false)` : on quitte la page, autant garder le voile
       // jusqu'à la navigation (même parti pris que `LoginForm`).
       router.replace(next);
