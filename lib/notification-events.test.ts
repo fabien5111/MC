@@ -15,6 +15,7 @@ import {
   decisionCanaux,
   definitionEvenement,
   evenementsDeCategorie,
+  lienNotification,
   listeActeurs,
   preferenceEffective,
   type DefinitionEvenement,
@@ -115,6 +116,13 @@ describe('regroupement anti-rafale', () => {
   it('calcule la clé à partir de la donnée désignée', () => {
     expect(cleDeGroupe('recette_favori', def('recette_favori'), { recetteId: 12 })).toBe('recette_favori:12');
     expect(cleDeGroupe('recette_publiee', def('recette_publiee'), {})).toBeNull();
+  });
+  it('chaque nouvel abonné a sa propre entrée, avec son profil', () => {
+    expect(cleDeGroupe('nouvel_abonne', def('nouvel_abonne'), { cible: 'u1' })).toBeNull();
+    expect(def('nouvel_abonne').gabaritGroupe).toBeUndefined();
+    const g = composerNotification(def('nouvel_abonne'), { acteur: 'Alice', acteurHandle: 'alice', nombre: 1 });
+    expect(g.corps).toBe('Alice vous suit désormais.');
+    expect(lienNotification(def('nouvel_abonne'), { acteurHandle: 'alice' })).toBe('/u/alice');
   });
   it('liste les acteurs', () => {
     expect(listeActeurs(['Alice'], 1)).toBe('Alice');

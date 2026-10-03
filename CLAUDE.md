@@ -1390,6 +1390,9 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   unitaire, un rythme « immédiat » est ramené au quotidien. La cloche reste
   immédiate. L'anti-rafale regroupe les événements identiques non lus
   (`group_key`) : « Alice, Bob et 3 autres ont mis votre recette en favori ».
+  **Les nouveaux abonnés ne sont PAS regroupés** (arbitrage du 03/10) : une
+  entrée par abonné dans la cloche, chacune vers son profil, comme sur un réseau
+  social ; seul l'e-mail de récapitulatif les rassemble.
 - **Les favoris sont nominatifs pour l'auteur de la recette** (arbitrage
   JEP-280) : ils restent absents du profil public, mais l'auteur voit le
   pseudo. Écrit dans `/confidentialite` ; changer cette règle impose d'y

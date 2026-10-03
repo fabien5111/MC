@@ -440,14 +440,11 @@ export const EVENEMENTS = {
     lien: (d) => d.acteurHandle ? `/u/${d.acteurHandle}` : '/profil',
     priorite: 2,
     recapSeulement: true,
-    groupeParCle: 'cible',
+    // Volontairement PAS regroupé (arbitrage du 03/10) : une entrée par abonné,
+    // chacune ouvrant le profil de la personne, comme sur un réseau social.
     gabarit: (d) => ({
       titre: 'Un nouvel abonné',
       corps: `${t(d.acteur, 'Un membre')} vous suit désormais.`,
-    }),
-    gabaritGroupe: (d) => ({
-      titre: 'Nouveaux abonnés',
-      corps: `${listeActeurs(d.acteurs ?? [], d.nombre ?? 2)} vous suivent désormais.`,
     }),
   },
   recette_suivi: {
