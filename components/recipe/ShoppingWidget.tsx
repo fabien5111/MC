@@ -175,6 +175,11 @@ export function ShoppingWidget({
         <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
       </summary>
       <div className="p-4 pt-0 flex flex-col gap-4">
+        {isLoggedIn && (
+          <p className="text-sm text-on-surface-variant italic -mt-2">
+            Vous pourrez modifier et fusionner des ingrédients après création de la liste.
+          </p>
+        )}
         {!isLoggedIn ? (
           <p className="text-sm text-on-surface-variant">
             {/* Lien statique, à part du `router.push(connexionHref(...))` de
