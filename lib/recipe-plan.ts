@@ -723,7 +723,7 @@ export function batchUtensilsAsRecipeUtensils(utensils: BatchUtensilRow[]): Reci
 // commentaire fait partie de la clé : deux commentaires différents restent deux
 // lignes, jamais concaténés (le total par ingrédient se pose à l'affichage,
 // `groupWithTotal`).
-export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null; allergen: string | null };
+export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null; allergen: string | null; stepIds: number[] };
 
 function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
   const rows: (MergedBatchRow & { key: string })[] = [];
@@ -734,13 +734,15 @@ function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
     const key = ingredientKey(it.name) + '|' + unit.toLowerCase() + '|' + (it.comment || '').trim().toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
-      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: it.comment || null, ref_id: it.ref_id ?? null, allergen: it.allergen || null };
+      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: it.comment || null, ref_id: it.ref_id ?? null, allergen: it.allergen || null, stepIds: [] };
       rows.push(r);
     }
     if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);
     if (it.base_quantity != null) r.orig = round2((r.orig || 0) + it.base_quantity);
     else if (it.quantity_text) r.origTxt.push(it.quantity_text);
     if (it.added) r.added = true;
+    // Étapes d'origine de la ligne (renvois de la liste totale).
+    if (it.batch_step_id != null && !r.stepIds.includes(it.batch_step_id)) r.stepIds.push(it.batch_step_id);
   });
   rows.sort((a, b) => a.name.localeCompare(b.name, 'fr') || (a.comment || '').localeCompare(b.comment || '', 'fr'));
   return rows.map(({ key: _key, ...r }) => r);

@@ -1039,6 +1039,22 @@ function PreparerView({
                     qty: qtyNode(mergedRowQtyText(r), r.unit, r.ref_id),
                     comment: r.comment,
                     added: r.added,
+                    // Renvois vers les étapes qui utilisent cette ligne (ancre
+                    // `#etape-<id>` du déroulé, juste en dessous).
+                    links:
+                      r.stepIds.length > 0 ? (
+                        <span className="no-print inline-flex flex-wrap gap-x-3 gap-y-1">
+                          {r.stepIds.map((sid) => {
+                            const si = sortedSteps.findIndex((st) => st.id === sid);
+                            if (si === -1) return null;
+                            return (
+                              <a key={sid} href={`#etape-${sid}`} className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary">
+                                {sortedSteps[si].title || `Étape ${si + 1}`}
+                              </a>
+                            );
+                          })}
+                        </span>
+                      ) : null,
                     action:
                       expandable.length > 0 ? (
                         droits.remplacementIngredient ? (

@@ -579,8 +579,8 @@ n'existe que si un écran en porte). Le picto de remplacement reste sur chaque
 ligne de détail (il couvre toutes les occurrences nom + unité), jamais sur le
 total, qui peut mêler des unités ; le total n'est jamais ajouté au panier (il
 n'existe qu'à l'affichage). Ne pas recoder une quatrième variante de cette
-liste. Hors périmètre : la fournée n'affiche pas de renvoi d'étape (la fusion
-`mergeIngredientRows` ne conserve pas les étapes d'origine).
+liste. La fournée renvoie elle aussi vers les étapes (`MergedBatchRow.stepIds`,
+ancre `#etape-<id>` du déroulé Préparer).
 
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.

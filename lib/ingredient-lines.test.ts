@@ -82,6 +82,17 @@ describe('mergeAllBatchIngredients — fournée', () => {
     ]);
   });
 
+  it('garde les étapes d’origine de chaque ligne, sans doublon', () => {
+    const b = {
+      batch_ingredients: [
+        { ...(batch as unknown as { batch_ingredients: object[] }).batch_ingredients[0], batch_step_id: 7 },
+        { ...(batch as unknown as { batch_ingredients: object[] }).batch_ingredients[2], batch_step_id: 7 },
+        { ...(batch as unknown as { batch_ingredients: object[] }).batch_ingredients[2], batch_step_id: 9 },
+      ],
+    } as unknown as BatchFull;
+    expect(mergeAllBatchIngredients(b)[0].stepIds).toEqual([7, 9]);
+  });
+
   it('le total de l’ingrédient se calcule par groupWithTotal', () => {
     const g = groupWithTotal(mergeAllBatchIngredients(batch), (r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, refId: r.ref_id }), [], []);
     expect(g).toHaveLength(1);
