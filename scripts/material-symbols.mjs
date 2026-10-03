@@ -94,8 +94,12 @@ export function collectMaterialSymbolIcons() {
       }
 
       // Passe 2 — champ de configuration `icon: 'xxx'` (objet littéral),
-      // rendu ailleurs via `{variable.icon}`.
-      for (const m of content.matchAll(/\bicon\s*:\s*['"]([a-z][a-z0-9_]*)['"]/g)) {
+      // rendu ailleurs via `{variable.icon}`, OU attribut de composant
+      // `icon="xxx"` / `icon={'xxx'}` (ex. `<SettingsCard icon="receipt_long">`).
+      // Sans la forme attribut, les icônes des blocs de /reglages n'entraient
+      // pas dans le sous-ensemble et s'affichaient en toutes lettres
+      // (« RECEIPT_LONG ») — constaté le 03/10/2026 sur l'aperçu de la #313.
+      for (const m of content.matchAll(/\bicon\s*(?::|=\s*\{?)\s*['"]([a-z][a-z0-9_]*)['"]/g)) {
         icons.add(m[1]);
       }
     }
