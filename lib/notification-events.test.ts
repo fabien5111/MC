@@ -114,12 +114,24 @@ describe('decisionCanaux', () => {
 
 describe('regroupement anti-rafale', () => {
   it('calcule la clé à partir de la donnée désignée', () => {
-    expect(cleDeGroupe('recette_favori', def('recette_favori'), { recetteId: 12 })).toBe('recette_favori:12');
+    expect(cleDeGroupe('moderation_recette', def('moderation_recette'), { file: 'recettes' })).toBe('moderation_recette:recettes');
     expect(cleDeGroupe('recette_publiee', def('recette_publiee'), {})).toBeNull();
+  });
+  it('abonnés, favoris et recettes de pâtissiers suivis : une entrée par événement, jamais regroupée', () => {
+    for (const nom of ['nouvel_abonne', 'recette_favori', 'recette_suivi'] as const) {
+      expect(cleDeGroupe(nom, def(nom), { cible: 'u1', recetteId: 12, auteurId: 'u2' }), nom).toBeNull();
+      expect(def(nom).gabaritGroupe, nom).toBeUndefined();
+    }
+  });
+  it('seules les files de modération sont encore regroupées', () => {
+    const regroupes = (Object.entries(EVENEMENTS) as [string, DefinitionEvenement][])
+      .filter(([, d]) => d.groupeParCle)
+      .map(([nom]) => nom)
+      .sort();
+    expect(regroupes).toEqual(['moderation_avis', 'moderation_recette']);
   });
   it('chaque nouvel abonné a sa propre entrée, avec son profil', () => {
     expect(cleDeGroupe('nouvel_abonne', def('nouvel_abonne'), { cible: 'u1' })).toBeNull();
-    expect(def('nouvel_abonne').gabaritGroupe).toBeUndefined();
     const g = composerNotification(def('nouvel_abonne'), { acteur: 'Alice', acteurHandle: 'alice', nombre: 1 });
     expect(g.corps).toBe('Alice vous suit désormais.');
     expect(lienNotification(def('nouvel_abonne'), { acteurHandle: 'alice' })).toBe('/u/alice');
@@ -131,10 +143,12 @@ describe('regroupement anti-rafale', () => {
     expect(listeActeurs([], 4)).toBe('4 membres');
   });
   it('bascule sur le gabarit groupé au-delà d’une occurrence', () => {
-    const seul = composerNotification(def('recette_favori'), { acteur: 'Alice', titre: 'Tarte' });
-    expect(seul.corps).toContain('Alice a mis « Tarte »');
-    const groupe = composerNotification(def('recette_favori'), { acteurs: ['Alice', 'Bob'], nombre: 5, titre: 'Tarte' });
-    expect(groupe.corps).toContain('Alice, Bob et 3 autres ont mis « Tarte »');
+    const seul = composerNotification(def('moderation_recette'), { titre: 'Tarte', nombre: 1 });
+    expect(seul.corps).toContain('« Tarte » attend');
+    const groupe = composerNotification(def('moderation_recette'), { nombre: 5 });
+    expect(groupe.corps).toBe('5 recettes attendent votre validation.');
+    // Un favori garde son texte individuel, même avec un compteur.
+    expect(composerNotification(def('recette_favori'), { acteur: 'Alice', titre: 'Tarte', nombre: 5 }).corps).toContain('Alice a mis « Tarte »');
   });
 });
 

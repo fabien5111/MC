@@ -108,7 +108,7 @@ export const RUBRIQUES: Rubrique[] = [
     cle: 'mes_recettes.favoris',
     categorie: 'mes_recettes',
     libelle: 'Favoris',
-    description: 'Un membre met l’une de vos recettes en favori. Regroupé : jamais un e-mail par favori.',
+    description: 'Un membre met l’une de vos recettes en favori. Par e-mail, vous ne les recevez que dans le récapitulatif.',
     defaut: RECAP_SOBRE,
     rythmesPermis: RECAP,
   },
@@ -379,14 +379,11 @@ export const EVENEMENTS = {
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
-    groupeParCle: 'recetteId',
+    // Pas de regroupement dans la cloche (arbitrage du 03/10) : une entrée par
+    // favori, avec le pseudo de la personne.
     gabarit: (d) => ({
       titre: 'Votre recette a été mise en favori',
       corps: `${t(d.acteur, 'Un membre')} a mis « ${t(d.titre, 'votre recette')} » en favori.`,
-    }),
-    gabaritGroupe: (d) => ({
-      titre: 'Votre recette a été mise en favori',
-      corps: `${listeActeurs(d.acteurs ?? [], d.nombre ?? 2)} ont mis « ${t(d.titre, 'votre recette')} » en favori.`,
     }),
   },
   recette_composant: {
@@ -453,14 +450,11 @@ export const EVENEMENTS = {
     lien: (d) => `/recette/${d.recetteId}`,
     priorite: 2,
     recapSeulement: true,
-    groupeParCle: 'auteurId',
+    // Pas de regroupement dans la cloche (arbitrage du 03/10) : une entrée par
+    // recette publiée, chacune vers sa fiche.
     gabarit: (d) => ({
       titre: 'Nouvelle recette d’un pâtissier suivi',
       corps: `${t(d.acteur, 'Un pâtissier que vous suivez')} a publié « ${t(d.titre, 'une recette')} ».`,
-    }),
-    gabaritGroupe: (d) => ({
-      titre: 'Nouvelles recettes d’un pâtissier suivi',
-      corps: `${t(d.acteur, 'Un pâtissier que vous suivez')} a publié ${d.nombre ?? 2} recettes.`,
     }),
   },
   partage_recu: {

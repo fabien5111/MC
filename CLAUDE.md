@@ -1388,11 +1388,14 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
 - **Récap seulement** : favoris, nouveaux abonnés, recettes d'un pâtissier suivi,
   composant de projet, idée réalisée, files de modération — jamais d'e-mail
   unitaire, un rythme « immédiat » est ramené au quotidien. La cloche reste
-  immédiate. L'anti-rafale regroupe les événements identiques non lus
-  (`group_key`) : « Alice, Bob et 3 autres ont mis votre recette en favori ».
-  **Les nouveaux abonnés ne sont PAS regroupés** (arbitrage du 03/10) : une
-  entrée par abonné dans la cloche, chacune vers son profil, comme sur un réseau
-  social ; seul l'e-mail de récapitulatif les rassemble.
+  immédiate. **Une entrée de cloche par événement** (arbitrage du 03/10) :
+  chaque favori, chaque nouvel abonné et chaque recette d'un pâtissier suivi a
+  la sienne, avec le pseudo et un lien, comme sur un réseau social — le seul
+  regroupement qui reste est celui des files de modération (« 3 recettes
+  attendent votre validation »), où une liste d'admins ne veut pas trente
+  lignes. Le mécanisme d'anti-rafale (`groupeParCle` + `gabaritGroupe`, clé
+  `group_key`) reste dans le moteur pour un futur événement qui en aurait besoin.
+  Seul l'e-mail de récapitulatif rassemble les événements, une ligne chacun.
 - **Les favoris sont nominatifs pour l'auteur de la recette** (arbitrage
   JEP-280) : ils restent absents du profil public, mais l'auteur voit le
   pseudo. Écrit dans `/confidentialite` ; changer cette règle impose d'y
