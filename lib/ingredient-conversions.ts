@@ -6,6 +6,7 @@
 // l'écran, aussi bien côté serveur que dans les Client Components qui
 // affichent des listes d'ingrédients (exécution, courses, éditeurs…).
 import { fmtNum } from '@/lib/recipe-plan';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 export type ConversionRef = {
   ingredient_ref_id: number;
@@ -18,12 +19,18 @@ export type UnitRef = { id: number; name: string };
 export type IngredientRefOption = { id: number; name: string };
 
 // Rapproche un nom d'ingrédient saisi à la main (liste de courses, éditeur de
-// recette) de la table de référence par correspondance exacte de libellé
-// (insensible à la casse) — pour retrouver un `ref_id` là où l'ingrédient n'en
-// porte pas déjà un.
+// recette) de la table de référence — pour retrouver un `ref_id` là où
+// l'ingrédient n'en porte pas déjà un. Comparaison par `ingredientKey`
+// (JEP-249) : « jaunes d'oeufs » se rattache à « Jaune d'œuf ». Le libellé
+// exact (casse près) est préféré quand le référentiel porte encore deux
+// entrées de même clé, le temps qu'un admin les fusionne.
 export function resolveIngredientRefId(name: string, refs: IngredientRefOption[]): number | null {
-  const key = name.trim().toLowerCase();
-  return refs.find((r) => r.name.trim().toLowerCase() === key)?.id ?? null;
+  const exact = name.trim().toLowerCase();
+  const hit = refs.find((r) => r.name.trim().toLowerCase() === exact);
+  if (hit) return hit.id;
+  const key = ingredientKey(name);
+  if (!key) return null;
+  return refs.find((r) => ingredientKey(r.name) === key)?.id ?? null;
 }
 
 const normUnit = (s: string): string =>
@@ -169,9 +176,11 @@ export function estimateWeightGrams(
   units: UnitRef[],
   // Masse volumique par nom d'ingrédient (lib/recipes.ts
   // `getIngredientDensities`), pour les lignes sans `ref_id` propre.
+  // Rapprochée par `ingredientKey` (JEP-249) : « crèmes liquides » trouve la
+  // masse volumique de « Crème liquide ».
   densities?: { name: string; density_g_per_ml: number }[],
 ): WeightEstimate {
-  const densityByName = new Map((densities ?? []).map((d) => [normUnit(d.name), d.density_g_per_ml]));
+  const densityByName = new Map((densities ?? []).map((d) => [ingredientKey(d.name), d.density_g_per_ml]));
   let grams = 0;
   const unconverted: WeightEstimate['unconverted'] = [];
   for (const it of ingredients) {
@@ -194,7 +203,7 @@ export function estimateWeightGrams(
       continue;
     }
     const mlPerUnit = VOLUME_TO_ML[key];
-    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(normUnit(it.name));
+    const density = it.ingredient_refs?.density_g_per_ml ?? densityByName.get(ingredientKey(it.name));
     if (mlPerUnit != null && density != null && density > 0) {
       grams += it.quantity * mlPerUnit * density;
       continue;

@@ -17,6 +17,7 @@
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
 import type { BatchEntry, BatchListRow } from '@/lib/profile';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 // Taille de page des fournées terminées (« En cuisine ») : `getBatches` de
 // `lib/profile.ts` (server-only, importe next/headers) et le bouton
@@ -477,8 +478,9 @@ export function batchIngredientExpanded(ing: Pick<BatchIngredientRow, 'expanded_
 export function expandableGroup(batch: Pick<BatchFull, 'batch_ingredients'>, name: string, unit: string | null): BatchIngredientRow[] {
   const key = (s: string) => s.toLowerCase();
   const u = key(unit || '');
+  const n = ingredientKey(name);
   return batch.batch_ingredients.filter(
-    (it) => it.name && !it.removed && it.expanded_into_recipe_id == null && key(it.name) === key(name) && key(it.unit || '') === u,
+    (it) => it.name && !it.removed && it.expanded_into_recipe_id == null && ingredientKey(it.name) === n && key(it.unit || '') === u,
   );
 }
 
@@ -493,8 +495,9 @@ export function expandedGroup(batch: Pick<BatchFull, 'batch_ingredients'>, row: 
   if (subRecipeId == null) return [row];
   const key = (s: string) => s.toLowerCase();
   const u = key(row.unit || '');
+  const n = ingredientKey(row.name);
   return batch.batch_ingredients.filter(
-    (it) => it.expanded_into_recipe_id === subRecipeId && key(it.name) === key(row.name) && key(it.unit || '') === u,
+    (it) => it.expanded_into_recipe_id === subRecipeId && ingredientKey(it.name) === n && key(it.unit || '') === u,
   );
 }
 
@@ -716,26 +719,32 @@ export function batchUtensilsAsRecipeUtensils(utensils: BatchUtensilRow[]): Reci
 }
 
 // ── Liste fusionnée (courses, détail imprimable) : ingrédients identiques
-// (nom + unité) additionnés, lignes supprimées exclues.
-export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null };
+// (nom + unité + commentaire) additionnés, lignes supprimées exclues. Le
+// commentaire fait partie de la clé : deux commentaires différents restent deux
+// lignes, jamais concaténés (le total par ingrédient se pose à l'affichage,
+// `groupWithTotal`).
+export type MergedBatchRow = { name: string; unit: string; adj: number | null; orig: number | null; origTxt: string[]; added: boolean; comment: string | null; ref_id: number | null; allergen: string | null; stepIds: number[] };
 
 function mergeIngredientRows(items: BatchIngredientRow[]): MergedBatchRow[] {
   const rows: (MergedBatchRow & { key: string })[] = [];
   items.forEach((it) => {
     const unit = it.unit || '';
-    const key = it.name.toLowerCase() + '|' + unit.toLowerCase();
+    // Le commentaire fait partie de l'identité d'une ligne (comme dans le
+    // récapitulatif de l'éditeur et dans les courses saisies à la main).
+    const key = ingredientKey(it.name) + '|' + unit.toLowerCase() + '|' + (it.comment || '').trim().toLowerCase();
     let r = rows.find((x) => x.key === key);
     if (!r) {
-      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: null, ref_id: it.ref_id ?? null };
+      r = { key, name: it.name, unit, adj: null, orig: null, origTxt: [], added: false, comment: it.comment || null, ref_id: it.ref_id ?? null, allergen: it.allergen || null, stepIds: [] };
       rows.push(r);
     }
     if (it.quantity != null) r.adj = round2((r.adj || 0) + it.quantity);
     if (it.base_quantity != null) r.orig = round2((r.orig || 0) + it.base_quantity);
     else if (it.quantity_text) r.origTxt.push(it.quantity_text);
     if (it.added) r.added = true;
-    if (it.comment && it.comment !== r.comment) r.comment = r.comment ? r.comment + ' ; ' + it.comment : it.comment;
+    // Étapes d'origine de la ligne (renvois de la liste totale).
+    if (it.batch_step_id != null && !r.stepIds.includes(it.batch_step_id)) r.stepIds.push(it.batch_step_id);
   });
-  rows.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  rows.sort((a, b) => a.name.localeCompare(b.name, 'fr') || (a.comment || '').localeCompare(b.comment || '', 'fr'));
   return rows.map(({ key: _key, ...r }) => r);
 }
 

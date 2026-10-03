@@ -14,6 +14,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import { ingredientConversionText, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { connexionHref } from '@/lib/nav';
+import { findMergeTarget } from '@/lib/shopping-merge';
 
 export function ShoppingWidget({
   recipeId,
@@ -101,43 +102,42 @@ export function ShoppingWidget({
         listId = Number(choice);
       }
 
-      // Liste existante : fusionne la quantité des articles dont le libellé
-      // ET l'unité sont identiques à un article déjà présent — une unité
-      // différente reste une ligne à part (pas de fusion).
-      let toInsert = items;
+      // Chaque article rejoint, s'il y en a une, la ligne du MÊME ingrédient
+      // (singulier/pluriel/ligature compris) déjà dans la liste : même unité,
+      // ou autre unité reliée par une conversion — la quantité est alors
+      // convertie dans l'unité de la ligne existante (JEP-249, comme le
+      // récapitulatif d'une fiche recette). Le commentaire doit être identique :
+      // une ligne commentée reste à part. Sans correspondance, nouvelle ligne.
+      // `pool` porte les lignes déjà en base ET celles qu'on s'apprête à créer :
+      // deux articles convertibles entre eux (100 g et 5 unité(s) du même jaune,
+      // côté fournée) se regroupent donc aussi, et une ligne modifiée n'est
+      // jamais relue périmée par l'article suivant.
+      type Ligne = { id: number; name: string; quantity: string | null; unit: string | null; ref_id: number | null; comment: string | null; isNew: boolean; dirty: boolean };
+      const pool: Ligne[] = [];
       if (choice !== '__new__') {
         const { data: existing, error: existingErr } = await supabase
           .from('shopping_list_items')
-          .select('id, name, quantity, unit, comment')
+          .select('id, name, quantity, unit, comment, ref_id')
           .eq('list_id', listId);
         if (existingErr) throw existingErr;
-        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
-        const byKey = new Map((existing || []).map((e) => [key(e.name, e.unit), e]));
-        toInsert = [];
-        for (const m of items) {
-          const match = byKey.get(key(m.name, m.unit));
-          if (!match) {
-            toInsert.push(m);
-            continue;
-          }
-          const a = parseFloat(String(match.quantity || '').replace(',', '.'));
-          const b = parseFloat(String(m.qty || '').replace(',', '.'));
-          const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [match.quantity, m.qty].filter(Boolean).join(' + ');
-          const newComment = m.comment && m.comment !== match.comment ? [match.comment, m.comment].filter(Boolean).join(' ; ') : match.comment;
-          const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty, comment: newComment }).eq('id', match.id);
-          if (updErr) throw updErr;
+        for (const e of existing || []) pool.push({ ...e, isNew: false, dirty: false });
+      }
+      for (const m of items) {
+        const incoming = { name: m.name, unit: m.unit || null, quantity: m.qty || null, ref_id: m.ref_id, comment: m.comment || null };
+        const hit = findMergeTarget(pool, incoming, conversions, units);
+        if (hit) {
+          hit.item.quantity = hit.quantity;
+          hit.item.dirty = true;
+        } else {
+          pool.push({ id: -(pool.length + 1), name: m.name, quantity: incoming.quantity, unit: incoming.unit, ref_id: m.ref_id, comment: m.comment || null, isNew: true, dirty: true });
         }
       }
-
-      if (toInsert.length) {
-        const rows = toInsert.map((m) => ({
-          list_id: listId,
-          name: m.name,
-          quantity: String(m.qty || '') || null,
-          unit: m.unit || null,
-          comment: m.comment || null,
-          ref_id: m.ref_id,
-        }));
+      for (const l of pool.filter((x) => !x.isNew && x.dirty)) {
+        const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: l.quantity }).eq('id', l.id);
+        if (updErr) throw updErr;
+      }
+      const rows = pool.filter((x) => x.isNew).map((l) => ({ list_id: listId, name: l.name, quantity: l.quantity, unit: l.unit, comment: l.comment, ref_id: l.ref_id }));
+      if (rows.length) {
         const { error: itemsErr } = await supabase.from('shopping_list_items').insert(rows);
         if (itemsErr) throw itemsErr;
       }
@@ -175,6 +175,11 @@ export function ShoppingWidget({
         <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
       </summary>
       <div className="p-4 pt-0 flex flex-col gap-4">
+        {isLoggedIn && (
+          <p className="text-sm text-on-surface-variant italic -mt-2">
+            Vous pourrez modifier et fusionner des ingrédients après création de la liste.
+          </p>
+        )}
         {!isLoggedIn ? (
           <p className="text-sm text-on-surface-variant">
             {/* Lien statique, à part du `router.push(connexionHref(...))` de

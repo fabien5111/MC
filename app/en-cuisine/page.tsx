@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
-import { getBatches, getActiveBatches, getShoppingLists } from '@/lib/profile';
+import { getBatches, getActiveBatches, getShoppingLists, getUnits } from '@/lib/profile';
+import { getIngredientConversions } from '@/lib/recipes';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { Header } from '@/components/Header';
@@ -30,12 +31,14 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements] = await Promise.all([
+  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units] = await Promise.all([
     getBatches(user.id, 'actives'),
     getBatches(user.id, 'terminees'),
     getActiveBatches(user.id),
     getShoppingLists(user.id),
     getEntitlements(user.id),
+    getIngredientConversions(),
+    getUnits(),
   ]);
   // Droits d'abonnement (§4) : calculés une fois ici, jamais recalculés plus
   // bas dans l'arbre de composants.
@@ -62,6 +65,8 @@ export default async function EnCuisinePage() {
           activeBatches={activeBatches}
           shoppingLists={shoppingLists}
           droits={droits}
+          conversions={conversions}
+          units={units}
         />
       </main>
       <Footer />

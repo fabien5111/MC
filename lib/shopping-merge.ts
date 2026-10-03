@@ -1,0 +1,176 @@
+// Regroupement d'un article dans une liste de courses (JEP-249) — fonctions
+// pures, partagées par la saisie manuelle (ShoppingItems) et la fusion de deux
+// listes (CuisineContent). Un article rejoint une ligne existante quand son
+// nom désigne le MÊME ingrédient (`ingredientKey` : « jaune d'œuf » = « Jaunes
+// d'oeufs ») ET que son unité est identique — additionner des grammes et des
+// unités n'aurait pas de sens, une unité différente reste donc une ligne à part.
+import { ingredientKey } from '@/lib/ingredient-name';
+import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+
+type Ligne = { name: string | null; unit: string | null };
+
+const unitKey = (u: string | null | undefined) => (u || '').trim().toLowerCase();
+
+// Clé de regroupement d'un article : ingrédient + unité.
+export function shoppingKey(name: string | null | undefined, unit: string | null | undefined): string {
+  return ingredientKey(name) + '|' + unitKey(unit);
+}
+
+// Somme de deux quantités saisies en texte : numériques → additionnées (virgule
+// ou point décimal), sinon réunies par « + » plutôt que de perdre l'une d'elles.
+export function sumQuantities(a: string | null, b: string | null): string | null {
+  const x = parseFloat(String(a || '').replace(',', '.'));
+  const y = parseFloat(String(b || '').replace(',', '.'));
+  if (!isNaN(x) && !isNaN(y)) return String(+(x + y).toFixed(2));
+  return [a, b].filter(Boolean).join(' + ') || null;
+}
+
+// ── Commentaire d'une fusion MANUELLE ───────────────────────────────────────
+// Les fusions automatiques ne regroupent jamais deux commentaires différents
+// (`findMergeTarget`). Au picto de fusion, c'est l'utilisateur qui tranche :
+// aucun choix s'il n'y a rien à arbitrer (pas de commentaire, ou le même) ; le
+// garder ou l'effacer s'il n'y en a qu'un ; le sien, celui de l'autre ligne,
+// les deux réunis par « ; » ou aucun s'il y en a deux. Le premier choix est le
+// choix par défaut : rien ne se perd sans qu'on l'ait demandé.
+export type CommentChoice = {
+  key: 'keep' | 'both' | 'target' | 'source' | 'none';
+  label: string;
+  value: string | null;
+};
+
+const cleanComment = (c: string | null | undefined): string | null => (c ?? '').trim() || null;
+
+export function commentChoices(targetComment: string | null, sourceComment: string | null): CommentChoice[] {
+  const t = cleanComment(targetComment);
+  const s = cleanComment(sourceComment);
+  if (!t && !s) return [];
+  if (t && s && commentKey(t) === commentKey(s)) return [];
+  if (!t || !s) {
+    return [
+      { key: 'keep', label: 'Garder le commentaire', value: (t || s) as string },
+      { key: 'none', label: 'Aucun commentaire', value: null },
+    ];
+  }
+  return [
+    { key: 'both', label: 'Réunir les deux', value: `${t} ; ${s}` },
+    { key: 'target', label: 'Celui de cette ligne', value: t },
+    { key: 'source', label: 'Celui de l’autre ligne', value: s },
+    { key: 'none', label: 'Aucun commentaire', value: null },
+  ];
+}
+
+// Commentaire de la ligne fusionnée. `key` hors des choix de cette paire (ou
+// absent) : choix par défaut. Rien à choisir : le commentaire existant.
+export function mergedComment(targetComment: string | null, sourceComment: string | null, key?: CommentChoice['key']): string | null {
+  const choices = commentChoices(targetComment, sourceComment);
+  if (choices.length === 0) return cleanComment(targetComment) ?? cleanComment(sourceComment);
+  return (choices.find((c) => c.key === key) ?? choices[0]).value;
+}
+
+// ── Fusion manuelle de deux lignes (picto « fusionner ») ─────────────────────
+// Deux lignes se fusionnent quand elles sont dans la MÊME unité (comportement
+// d'origine, au choix de l'utilisateur), ou quand c'est le MÊME ingrédient dans
+// des unités que la table de conversions relie — « 5 unité(s) » de jaune d'œuf
+// et « 100 g » du même jaune (1 jaune = 20 g). La ligne cliquée garde son
+// unité, l'autre y est convertie. Jamais d'automatisme : c'est un geste explicite,
+// et une conversion est une équivalence moyenne, montrée avant validation.
+type LigneFusion = { name: string | null; unit: string | null; quantity: string | null; ref_id: number | null };
+
+const parseNum = (q: string | null | undefined): number | null => {
+  const n = parseFloat(String(q ?? '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+};
+const fmt = (n: number) => String(+n.toFixed(2));
+
+// Quantité de `source` exprimée dans l'unité de `target` — `null` si ce n'est
+// pas le même ingrédient, si une quantité n'est pas un nombre, ou si aucune
+// conversion ne relie les deux unités.
+function convertedQuantity(target: LigneFusion, source: LigneFusion, conversions: ConversionRef[], units: UnitRef[]): number | null {
+  if (!target.unit || !source.unit) return null;
+  const sameRef = target.ref_id != null && target.ref_id === source.ref_id;
+  if (!sameRef && ingredientKey(target.name) !== ingredientKey(source.name)) return null;
+  const b = parseNum(source.quantity);
+  if (b == null || parseNum(target.quantity) == null) return null;
+  return convertQty(conversions, units, target.ref_id ?? source.ref_id, source.unit, b, target.unit);
+}
+
+// Lignes proposées à la fusion avec `target`.
+export function mergeCandidates<T extends LigneFusion & { id: number }>(
+  items: T[],
+  target: T,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): T[] {
+  return items.filter(
+    (o) =>
+      o.id !== target.id &&
+      (unitKey(o.unit) === unitKey(target.unit) || convertedQuantity(target, o, conversions, units) != null),
+  );
+}
+
+// Résultat de la fusion de `source` dans `target`. `converted` est la quantité
+// de `source` dans l'unité de `target` quand les unités diffèrent (sert à
+// l'aperçu), `null` sinon.
+export function mergeResult(
+  target: LigneFusion,
+  source: LigneFusion,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): { quantity: string | null; converted: number | null } {
+  if (unitKey(target.unit) !== unitKey(source.unit)) {
+    const converted = convertedQuantity(target, source, conversions, units);
+    const a = parseNum(target.quantity);
+    if (converted != null && a != null) return { quantity: fmt(a + converted), converted };
+  }
+  return { quantity: sumQuantities(target.quantity, source.quantity), converted: null };
+}
+
+// Ligne d'aperçu pour l'utilisateur, ou `null` quand les unités sont les mêmes.
+export function mergePreview(
+  target: LigneFusion,
+  source: LigneFusion,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): string | null {
+  const { quantity, converted } = mergeResult(target, source, conversions, units);
+  if (converted == null) return null;
+  return `${target.quantity} ${target.unit} + ${source.quantity} ${source.unit} (≈ ${fmt(converted)} ${target.unit}) = ${quantity} ${target.unit}`;
+}
+
+// ── Fusion AUTOMATIQUE à l'ajout d'un article (JEP-249) ──────────────────────
+// Même règle que le récapitulatif d'une fiche recette (`mergeIngredients`) :
+// la ligne déjà dans la liste garde son unité, la quantité entrante y est
+// convertie puis additionnée. Priorité à une ligne de MÊME unité (rien à
+// convertir), puis à une ligne dont l'unité est reliée par une conversion. Sans
+// l'une ni l'autre — autre ingrédient, pas de conversion connue, ligne non
+// rattachée au référentiel, quantité non numérique — `undefined` : nouvelle ligne.
+//
+// **Le commentaire fait partie de l'identité d'une ligne** : « Jaune d'œuf —
+// température ambiante » est une ligne voulue à part, la réunir à une autre en
+// absorbant son commentaire en effacerait la distinction. Deux lignes ne se
+// regroupent donc automatiquement que si leurs commentaires sont identiques
+// (casse et espaces ignorés ; un commentaire absent vaut « vide ») — comme le
+// récapitulatif d'une fiche recette, qui regroupe par ingrédient ET commentaire.
+// Seul le picto de fusion manuelle, geste explicite, réunit des commentaires
+// différents, en choisissant le commentaire à garder (`commentChoices`).
+const commentKey = (c: string | null | undefined) => (c ?? '').trim().toLowerCase();
+
+export function findMergeTarget<T extends LigneFusion & { id: number; comment?: string | null }>(
+  items: T[],
+  incoming: LigneFusion & { comment?: string | null },
+  conversions: ConversionRef[],
+  units: UnitRef[],
+): { item: T; quantity: string | null } | undefined {
+  const candidates = items.filter((i) => commentKey(i.comment) === commentKey(incoming.comment));
+  const sameKey = shoppingKey(incoming.name, incoming.unit);
+  if (!sameKey.startsWith('|')) {
+    const same = candidates.find((i) => shoppingKey(i.name, i.unit) === sameKey);
+    if (same) return { item: same, quantity: sumQuantities(same.quantity, incoming.quantity) };
+  }
+  for (const item of candidates) {
+    if (convertedQuantity(item, incoming, conversions, units) != null) {
+      return { item, quantity: mergeResult(item, incoming, conversions, units).quantity };
+    }
+  }
+  return undefined;
+}

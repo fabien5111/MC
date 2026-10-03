@@ -98,6 +98,28 @@ le service managé.
   fonction (`CREATE FUNCTION`) ou une requête de lecture/écriture de
   données, elles, passent bien par pgweb : la limite ne porte que sur le
   DDL des tables.
+- **Une fonction `SECURITY DEFINER` doit appartenir à `postgres`, jamais à
+  `pgweb_admin`** — elle s'exécute avec les droits de son propriétaire.
+  Découvert le 01/10/2026 (JEP-249), deux pièges en chaîne : `postgres`
+  n'est **pas superutilisateur** sur cette base, donc
+  `alter function … owner to postgres` sur une fonction créée dans pgweb
+  échoue (« must be owner of function »), et un `CREATE` de plusieurs
+  milliers de caractères collé dans le Web SSH est **tronqué** par le
+  terminal (la commande reste ouverte sur une invite `>`). Mode opératoire :
+  1. **pgweb** — créer la fonction sous un nom de modèle
+     (`<nom>_modele`), lisible sur plusieurs lignes, puis
+     `revoke all … from public, anon, authenticated` sur ce modèle ;
+  2. **Web SSH 216075**, une ligne courte — `postgres` la recopie sous le
+     vrai nom, et en devient propriétaire :
+     `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "do \$\$ begin execute replace(pg_get_functiondef('public.<nom>_modele(<types>)'::regprocedure), '<nom>_modele', '<nom>'); end \$\$; grant execute on function public.<nom>(<types>) to authenticated;"`
+     (le corps ne doit pas contenir son propre nom, sinon `replace` le
+     réécrit aussi ; `\$` obligatoire, sans quoi le shell efface `$$`) ;
+  3. **pgweb** — `drop function public.<nom>_modele(<types>)`, puis
+     contrôler `pg_get_userbyid(proowner)` dans `pg_proc`.
+  Remplacer une fonction existante appartenant déjà à `postgres` suit le même
+  chemin (pgweb ne peut pas la remplacer : « must be owner »). Une fonction
+  sans privilège (`SECURITY INVOKER`, calcul pur comme `mc_ingredient_key`)
+  peut rester à `pgweb_admin`.
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
   `next/font/google` (`app/fonts.ts`), auto-hébergées depuis
   `/_next/static` — jamais un `<link>` vers `fonts.googleapis.com`, qui
@@ -491,6 +513,108 @@ n'existe pas encore. Ne pas réintroduire de `toLowerCase().includes` ni
 d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
 La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
 (`suggest_ingredients`) l'étaient déjà.
+
+## Noms d'ingrédients : singulier, pluriel, « oeuf » (JEP-249)
+
+**Le texte saisi reste affiché tel quel ; c'est la comparaison qui confond
+les variantes.** `ingredientKey` (`lib/ingredient-name.ts`, pur) ramène
+« Jaunes d'oeufs », « jaune d’œuf », « JAUNE D'OEUF » à la même clé (casse,
+accents, ligatures œ/æ, apostrophes, mots vides, pluriel en -s et en -ux mot
+par mot). C'est la **seule** règle pour rapprocher deux noms d'ingrédients :
+`resolveIngredientRefId` (rattachement au référentiel — libellé exact
+préféré, clé en repli), `mergeIngredients` (liste totale), le récapitulatif
+de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
+`expandedGroup`) et l'ajout à une liste de courses existante.
+
+**Courses : fusion automatique avec conversion, comme la fiche recette.** Tout
+article qui entre dans une liste — ajout depuis une recette ou une fournée
+(`ShoppingWidget`), saisie à la main (`ShoppingItems.addItem`), fusion de deux
+listes (`CuisineContent.mergeShoppingLists`) — passe par `findMergeTarget`
+(`lib/shopping-merge.ts`) : il rejoint la ligne du MÊME ingrédient (clé
+`ingredientKey`) de même unité, à défaut une ligne dont l'unité est reliée par
+la table de conversions (`convertQty`) ; la quantité entrante est alors convertie
+dans l'unité de la ligne existante, qui la garde (« Jaune d'œuf 200 g » + « 5
+unité(s) » = 300 g). Sans correspondance — autre ingrédient, ligne non rattachée
+au référentiel (`ref_id`), conversion inconnue, quantité non numérique, **commentaire
+différent** — c'est une nouvelle ligne : on n'additionne jamais sans conversion
+connue, et le commentaire fait partie de l'identité d'une ligne (« Jaune d'œuf —
+température ambiante » est voulue à part ; la réunir en absorbant son commentaire
+en effacerait la distinction). Comparaison insensible à la casse et aux espaces,
+un commentaire absent valant « vide » — comme le récapitulatif d'une fiche recette,
+qui regroupe par ingrédient ET commentaire. Seul le picto de fusion manuelle, geste
+explicite, tranche entre des commentaires différents : sans rien à arbitrer (aucun,
+ou le même) pas de choix ; un seul commentaire, le garder ou l'effacer ; deux, le
+sien, celui de l'autre ligne, les deux réunis par « ; » (choix par défaut, rien ne
+se perd sans l'avoir demandé) ou aucun (`commentChoices` / `mergedComment`). Le même
+calcul sert au **picto de fusion manuelle** (`mergeCandidates` / `mergeResult` /
+`mergePreview`), qui montre « 5 unité(s) + 100 g (≈ 5 unité(s)) = 10 unité(s) »
+avant validation, et pour les lignes déjà en doublon avant ce correctif.
+`ShoppingWidget` et la fusion de listes tiennent un `pool` (lignes en base +
+lignes à créer) : un article rattaché y entre pour que le suivant puisse le
+rejoindre, et une ligne modifiée n'est jamais relue périmée. **Reste hors
+périmètre** : la liste totale d'une fournée (`mergeIngredientRows`) ne convertit
+pas les unités — sa structure (quantités ajustées / d'origine / textes) est plus
+délicate à toucher. Ne pas réintroduire de `name.toLowerCase()` comme clé de fusion.
+**Saisie à la main** (`ShoppingItems.addItem`) : l'unité est **obligatoire** à
+l'ajout — sans elle, ni conversion ni fusion (ni, demain, coût). Seul l'ajout
+l'exige : la modification d'une ligne (`EditItemRow`) reste libre, pour ne pas
+bloquer la correction d'une ligne ancienne sans unité. Au clic sur « Ajouter »
+sans unité, la liste déroulante des unités est cerclée de rouge (en plus de
+l'alerte, qui reste le garde-fou) jusqu'au choix d'une unité. La liste « Fusionner
+avec » affiche le commentaire de chaque ligne (tronqué à 40 caractères), seul
+élément qui distingue deux lignes du même ingrédient.
+
+**Listes totales : une ligne par commentaire, un total par ingrédient.** Fiche
+recette (« Liste complète des ingrédients »), fournée (« Liste totale ») et
+éditeur / relecture d'import (récapitulatif) suivent la même règle : un même
+ingrédient reste sur une ligne par commentaire (« Jaune d'œuf » / « Jaune
+d'œuf — température ambiante »), suivie d'une ligne « Total — X » dès qu'il en
+a plusieurs. Le total passe par `groupWithTotal` / `subtotalOf`
+(`lib/ingredients-recap.ts`), qui convertit les unités reliées par la table de
+conversions et n'invente jamais un total sans conversion connue. Côté fiche,
+`mergeIngredientLines` (= `mergeIngredients` avec `byComment`) alimente
+l'affichage et les courses ; `mergeIngredients` seul garde un total par
+ingrédient pour l'ajustement par quantité disponible et le JSON-LD. Côté
+fournée, `mergeIngredientRows` ne concatène plus les commentaires (liste totale
+ET courses). **Une seule présentation** pour les quatre écrans :
+`components/IngredientTotalList.tsx` (rendu pur, sans état — utilisable côté
+serveur comme côté client). Un ingrédient seul tient sur une ligne (quantité,
+nom, allergènes, commentaire, renvois d'étape), **sans total** ; un ingrédient à
+plusieurs lignes s'ouvre sur son **total en gras**, suivi du détail en retrait
+(une ligne par commentaire : quantité, commentaire en italique, renvois
+d'étape). Chaque écran ne branche que ce qui lui est propre : `links` (étapes de
+la fiche, boutons « aller à l'étape » de l'éditeur) et `action` (colonne de
+gauche — picto de remplacement de la fournée, absent ailleurs ; la colonne
+n'existe que si un écran en porte). Le picto de remplacement reste sur chaque
+ligne de détail (il couvre toutes les occurrences nom + unité), jamais sur le
+total, qui peut mêler des unités ; le total n'est jamais ajouté au panier (il
+n'existe qu'à l'affichage). Ne pas recoder une quatrième variante de cette
+liste. La fournée renvoie elle aussi vers les étapes (`MergedBatchRow.stepIds`,
+ancre `#etape-<id>` du déroulé Préparer).
+
+- **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
+  « noix » — sans conséquence, les deux côtés passent par la même fonction.
+  Seuls les mots de plus de 3 lettres perdent leur pluriel (« jus », « riz »).
+- **Jamais stockée** : la règle peut s'affiner sans migration. Son jumeau SQL
+  `public.mc_ingredient_key` (rattrapage des `ref_id`) doit rester aligné.
+- **« oeuf » → « œuf » à l'écriture** (`fixOeufLigature`) sur tous les chemins
+  qui écrivent un nom d'ingrédient : `CreerForm`, relecture d'import, courses,
+  composants de projet.
+- **Un ingrédient, une seule entrée au référentiel** — préalable aux coûts et
+  aux stocks, qui se rattacheront à `ingredient_refs.id`, jamais au texte.
+  Admin → Éléments inconnus liste les **doublons du référentiel** (même clé)
+  et les fusionne par la RPC `admin_merge_ingredient_refs` (SECURITY
+  DEFINER, propriétaire `postgres`) : toutes les clés étrangères vers
+  `ingredient_refs` sont réécrites (découvertes dans `pg_constraint`, pas
+  énumérées — une table ajoutée plus tard est couverte d'office), les
+  conversions en double écartées, les attributs vides de l'entrée gardée
+  complétés, puis les autres supprimées. Jamais automatique : la clé est une
+  approximation, un admin tranche. Le même écran masque des « inconnus » les
+  noms dont la clé correspond déjà à une référence (la RPC
+  `admin_unknown_ingredients` compare encore les libellés exacts) ; la RPC
+  `admin_volume_ingredients_missing_density`, elle, rapproche par `ref_id`
+  puis par `mc_ingredient_key`, et la masse volumique de repli de
+  `estimateWeightGrams` par `ingredientKey`.
 
 ## Fournées (batches)
 

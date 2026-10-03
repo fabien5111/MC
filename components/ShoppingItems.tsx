@@ -12,6 +12,8 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import type { ShoppingItem } from '@/lib/shopping';
 import type { Unit } from '@/lib/profile';
+import { fixOeufLigature } from '@/lib/text';
+import { commentChoices, findMergeTarget, mergedComment, mergeCandidates, mergePreview, mergeResult, type CommentChoice } from '@/lib/shopping-merge';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
@@ -21,8 +23,6 @@ const REFRESH_DELAY = 2000;
 // retombe jamais à `isPending = false` (cas limite non prévu), on ne laisse
 // pas l'utilisateur bloqué sur la page — on navigue quand même.
 const LEAVE_SAFETY_DELAY = 3000;
-
-const sameUnit = (a: string | null, b: string | null) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
 
 export function ShoppingItems({
   listId,
@@ -135,6 +135,7 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const ref_id = resolveIngredientRefId(name, ingredientRefs);
     const ok = await mutate(
       () =>
@@ -154,16 +155,18 @@ export function ShoppingItems({
 
   // Fusion manuelle de deux lignes (picto à côté du crayon) : la quantité de
   // l'article choisi s'ajoute à celle de l'article courant, qui est ensuite
-  // supprimé. Restreint aux articles de même unité — additionner des
-  // quantités d'unités différentes n'aurait pas de sens.
-  async function mergeItems(targetId: number, sourceId: number) {
+  // supprimé. Même unité, ou même ingrédient dans une autre unité que la table
+  // de conversions relie (JEP-249) : la quantité de l'article choisi est alors
+  // convertie dans l'unité de l'article courant — jamais d'addition sans
+  // conversion connue (cf. `mergeCandidates`).
+  // Le commentaire de la ligne fusionnée est celui que l'utilisateur a choisi
+  // (`commentChoices`) ; réunis par défaut, rien ne se perd sans l'avoir demandé.
+  async function mergeItems(targetId: number, sourceId: number, commentKey?: CommentChoice['key']) {
     const target = items.find((i) => i.id === targetId);
     const source = items.find((i) => i.id === sourceId);
     if (!target || !source) return;
-    const a = parseFloat(String(target.quantity || '').replace(',', '.'));
-    const b = parseFloat(String(source.quantity || '').replace(',', '.'));
-    const newQty = !isNaN(a) && !isNaN(b) ? String(+(a + b).toFixed(2)) : [target.quantity, source.quantity].filter(Boolean).join(' + ');
-    const newComment = source.comment && source.comment !== target.comment ? [target.comment, source.comment].filter(Boolean).join(' ; ') : target.comment;
+    const newQty = mergeResult(target, source, conversions, units).quantity;
+    const newComment = mergedComment(target.comment, source.comment, commentKey);
     const ok = await mutate(
       async () => {
         const supabase = createClient();
@@ -186,7 +189,36 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    // Sans unité, la ligne ne peut ni se convertir ni se fusionner (ni, demain,
+    // se chiffrer) : obligatoire à l'ajout (la modification reste libre).
+    if (!unit) {
+      dialog.alert('Choisissez une unité.');
+      return;
+    }
+    name = fixOeufLigature(name); // « oeufs » → « œufs » (JEP-249)
     const supabase = createClient();
+
+    // Même ingrédient (singulier/pluriel/ligature compris) déjà dans la liste :
+    // la quantité s'y ajoute plutôt que d'ouvrir une seconde ligne, après
+    // conversion si l'unité diffère mais qu'une conversion les relie — comme le
+    // récapitulatif d'une fiche recette (JEP-249).
+    const refId = resolveIngredientRefId(name, ingredientRefs);
+    // Le commentaire doit être identique : une ligne commentée reste à part.
+    const hit = findMergeTarget(items, { name, unit: unit || null, quantity: quantity.trim() || null, ref_id: refId, comment: comment.trim() || null }, conversions, units);
+    if (hit) {
+      const existing = hit.item;
+      const newQty = hit.quantity;
+      const { error: updErr } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', existing.id);
+      if (updErr) {
+        dialog.alert('Erreur : ' + updErr.message);
+        return;
+      }
+      setItems((prev) => prev.map((i) => (i.id === existing.id ? { ...i, quantity: newQty } : i)));
+      setAdding(false);
+      scheduleRefresh();
+      return;
+    }
+
     const { data, error } = await supabase
       .from('shopping_list_items')
       .insert({
@@ -196,7 +228,7 @@ export function ShoppingItems({
         unit: unit || null,
         comment: comment.trim() || null,
         checked: false,
-        ref_id: resolveIngredientRefId(name, ingredientRefs),
+        ref_id: refId,
       })
       .select()
       .single();
@@ -288,8 +320,11 @@ export function ShoppingItems({
                 {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u, c) => applyEdit(i.id, n, q, u, c)} onCancel={() => setEditingId(null)} />}
                 {mergingId === i.id && (
                   <MergeItemRow
-                    candidates={items.filter((o) => o.id !== i.id && sameUnit(o.unit, i.unit))}
-                    onMerge={(sourceId) => mergeItems(i.id, sourceId)}
+                    target={i}
+                    candidates={mergeCandidates(items, i, conversions, units)}
+                    conversions={conversions}
+                    units={units}
+                    onMerge={(sourceId, commentKey) => mergeItems(i.id, sourceId, commentKey)}
                     onCancel={() => setMergingId(null)}
                   />
                 )}
@@ -362,19 +397,34 @@ function EditItemRow({
 }
 
 function MergeItemRow({
+  target,
   candidates,
+  conversions,
+  units,
   onMerge,
   onCancel,
 }: {
+  target: ShoppingItem;
   candidates: ShoppingItem[];
-  onMerge: (sourceId: number) => void;
+  conversions: ConversionRef[];
+  units: Unit[];
+  onMerge: (sourceId: number, commentKey?: CommentChoice['key']) => void;
   onCancel: () => void;
 }) {
   const [sourceId, setSourceId] = useState(candidates[0]?.id ?? -1);
+  const [commentKey, setCommentKey] = useState<CommentChoice['key'] | undefined>(undefined);
+  const picked = candidates.find((c) => c.id === sourceId);
+  // Commentaires différents : à l'utilisateur de choisir celui qu'on garde. Le
+  // premier choix est le défaut ; une sélection qui ne s'applique plus à l'autre
+  // article choisi retombe dessus.
+  const choices = picked ? commentChoices(target.comment, picked.comment) : [];
+  const chosenKey = choices.find((c) => c.key === commentKey)?.key ?? choices[0]?.key;
+  // Unités différentes : le calcul de conversion est montré avant validation.
+  const preview = picked ? mergePreview(target, picked, conversions, units) : null;
   if (candidates.length === 0) {
     return (
       <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-on-surface-variant italic">Aucun autre article avec la même unité à fusionner.</p>
+        <p className="text-sm text-on-surface-variant italic">Aucun autre article à fusionner (même unité, ou même ingrédient avec une conversion connue).</p>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
           Fermer
         </button>
@@ -385,18 +435,42 @@ function MergeItemRow({
     <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1">
         <span className={LBL}>Fusionner avec</span>
-        <select value={sourceId} onChange={(e) => setSourceId(Number(e.target.value))} className={`${FIELD} bg-white`} style={{ width: '16rem' }}>
+        <select
+          value={sourceId}
+          onChange={(e) => {
+            setSourceId(Number(e.target.value));
+            setCommentKey(undefined);
+          }}
+          className={`${FIELD} bg-white`}
+          style={{ width: '16rem' }}
+        >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
               {c.quantity ? ` — ${c.quantity}${c.unit ? ' ' + c.unit : ''}` : ''}
+              {c.comment?.trim() ? ` — « ${c.comment.trim().length > 40 ? c.comment.trim().slice(0, 40) + '…' : c.comment.trim()} »` : ''}
             </option>
           ))}
         </select>
       </label>
-      <button type="button" onClick={() => onMerge(sourceId)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+      <button type="button" onClick={() => onMerge(sourceId, chosenKey)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
         Fusionner
       </button>
+      {preview && <p className="basis-full text-xs text-on-surface-variant italic">{preview}</p>}
+      {choices.length > 0 && (
+        <fieldset className="basis-full flex flex-col gap-1.5">
+          <legend className={LBL}>Commentaire de la ligne fusionnée</legend>
+          {choices.map((c) => (
+            <label key={c.key} className="flex items-start gap-2 text-sm text-on-surface cursor-pointer">
+              <input type="radio" name={`commentaire-fusion-${target.id}`} checked={chosenKey === c.key} onChange={() => setCommentKey(c.key)} className="mt-1" />
+              <span>
+                {c.label}
+                {c.value && <span className="text-on-surface-variant italic"> — « {c.value} »</span>}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
         Annuler
       </button>
@@ -417,6 +491,9 @@ function AddItemRow({
   const [qty, setQty] = useState('');
   const [unit, setUnit] = useState('');
   const [comment, setComment] = useState('');
+  // Posé au clic sur « Ajouter » sans unité : le champ fautif est cerclé de
+  // rouge, jusqu'à ce qu'une unité soit choisie.
+  const [unitMissing, setUnitMissing] = useState(false);
   return (
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
@@ -428,9 +505,19 @@ function AddItemRow({
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className={LBL}>Unité</span>
-        <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
-          <option value="">— Unité —</option>
+        <span className={LBL}>Unité *</span>
+        <select
+          value={unit}
+          onChange={(e) => {
+            setUnit(e.target.value);
+            if (e.target.value) setUnitMissing(false);
+          }}
+          required
+          aria-invalid={unitMissing}
+          className={`${FIELD} bg-white ${unitMissing ? '!border-red-600 ring-1 ring-red-600' : ''}`}
+          style={{ width: '8rem' }}
+        >
+          <option value="" disabled>— Unité —</option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
               {u.name}
@@ -442,7 +529,10 @@ function AddItemRow({
         <span className={LBL}>Commentaire</span>
         <input value={comment} onChange={(e) => setComment(e.target.value)} className={FIELD} style={{ width: '13rem' }} />
       </label>
-      <button type="button" onClick={() => onAdd(name, qty, unit, comment)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
+      <button type="button" onClick={() => {
+          setUnitMissing(!unit);
+          onAdd(name, qty, unit, comment);
+        }} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
         <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter
       </button>
       <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">

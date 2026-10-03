@@ -3,6 +3,7 @@
 // Client Components (ex. RecipeCard rendu dans une grille avec pagination).
 import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
 import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -62,7 +63,9 @@ export function yieldInfo(rec: RecipeFull): { label: string; value: string } | n
   return null;
 }
 
-// Fusion des ingrédients identiques (nom) pour la liste complète. `ref_id`
+// Fusion des ingrédients identiques (nom, au sens de `ingredientKey` :
+// « Jaune d'œuf » et « jaunes d'oeufs » fusionnent — JEP-249) pour la liste
+// complète. `ref_id`
 // (rapprochement conversions d'ingrédients) est celui du premier ingrédient
 // fusionné : deux lignes de même nom référencent en pratique toujours le même
 // ingrédient du référentiel.
@@ -89,13 +92,21 @@ export type MergedIngredient = {
   // (fournées, mise en forme sans cette donnée) n'ont pas à le renseigner.
   groupOrders?: number[];
 };
-export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
+// `byComment` : une ligne par ingrédient ET par commentaire (liste totale
+// affichée, courses) plutôt qu'une seule par ingrédient (total, ajustement par
+// quantité disponible, JSON-LD) — la règle du récapitulatif de l'éditeur.
+export function mergeIngredients(
+  recipe: RecipeFull,
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  opts: { byComment?: boolean } = {},
+): MergedIngredient[] {
   const merged: (MergedIngredient & { key: string })[] = [];
   (recipe.ingredient_groups || []).forEach((g) =>
     (g.ingredients || []).forEach((it) => {
       if (!it.name) return;
       const unit = it.unit || '';
-      const key = it.name.toLowerCase();
+      const key = ingredientKey(it.name) + (opts.byComment ? '|' + (it.comment || '').trim().toLowerCase() : '');
       const url = it.ingredient_refs?.url || it.url || null;
       const allergen = it.ingredient_refs?.allergens?.name || it.allergen || null;
       const groupOrder = g.order_index || 0;
@@ -125,8 +136,13 @@ export function mergeIngredients(recipe: RecipeFull, conversions: ConversionRef[
       if (!ex.groupOrders!.includes(groupOrder)) ex.groupOrders!.push(groupOrder);
     }),
   );
-  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  merged.sort((a, b) => a.name.localeCompare(b.name, 'fr') || (a.comment || '').localeCompare(b.comment || '', 'fr'));
   return merged.map(({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }) => ({ name, qty, unit, comment, ref_id, url, allergen, groupOrders }));
+}
+
+// Liste totale affichée / courses : une ligne par ingrédient et par commentaire.
+export function mergeIngredientLines(recipe: RecipeFull, conversions: ConversionRef[], units: UnitRef[]): MergedIngredient[] {
+  return mergeIngredients(recipe, conversions, units, { byComment: true });
 }
 
 // ── Moules : dimensions par forme + métriques (volume / surface) ──
