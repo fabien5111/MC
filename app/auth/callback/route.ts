@@ -25,6 +25,7 @@ import { redirigerVers } from '@/lib/redirection';
 import { aChoisiSonPseudo, enregistrerPseudo, pseudoDisponible } from '@/lib/pseudo-data';
 import { validerPseudo } from '@/lib/pseudo';
 import { syncProfileEmail } from '@/lib/auth';
+import { avecMarqueInscription, methodeInscription } from '@/lib/inscription';
 
 function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
@@ -67,7 +68,11 @@ async function destinationApresConnexion(next: string): Promise<string> {
       user.email ?? null,
       user.app_metadata?.provider ?? null,
     );
-    if (ecriture.ok) return next;
+    // Pseudo écrit pour la première fois : l'inscription est terminée. Le
+    // navigateur n'a aucun moyen de le savoir (on lui répond par une
+    // redirection), d'où le marqueur d'URL que `InscriptionTracker` mesure puis
+    // retire (JEP-89, cf. lib/inscription.ts).
+    if (ecriture.ok) return avecMarqueInscription(next, methodeInscription(user.app_metadata?.provider));
   }
 
   return `/choix-pseudo?next=${encodeURIComponent(next)}`;
