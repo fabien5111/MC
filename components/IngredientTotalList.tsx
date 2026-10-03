@@ -45,7 +45,7 @@ export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[]
   // La colonne des pictos n'existe que si un écran en porte : sans elle, les
   // quantités resteraient décalées d'une colonne vide.
   const cols = hasActions ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]' : 'grid-cols-[max-content_minmax(0,1fr)]';
-  const actionCell = (node?: ReactNode) => (hasActions ? <span className="no-print flex items-center justify-self-start">{node}</span> : null);
+  const actionCell = (node?: ReactNode) => (hasActions ? <span className="no-print flex items-center self-center justify-self-start">{node}</span> : null);
 
   return (
     <ul className={`grid ${cols} gap-x-4 sm:gap-x-10 print:gap-x-10`}>
