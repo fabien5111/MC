@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { requireUser, getProfile, isAdmin, getUserIdentities, accountProvider } from '@/lib/auth';
+import { requireUser, getProfile, isAdmin, isManager, getUserIdentities, accountProvider } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -10,12 +10,12 @@ import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
 import { FollowingCard } from '@/components/profile/FollowingCard';
 import { BookSharesCard } from '@/components/profile/BookSharesCard';
 import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
-import { NotificationsPreferenceCard } from '@/components/profile/NotificationsPreferenceCard';
+import { NotificationPreferencesCard } from '@/components/profile/NotificationPreferencesCard';
 import { UsageCard } from '@/components/profile/UsageCard';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
-import { getNotifyEmailPreference } from '@/lib/notifications-data';
+import { getNotificationPreferences } from '@/lib/notifications-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
 import { getAbonnementStripeCourant, getChangementProgramme, getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
@@ -64,6 +64,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   }
 
   const admin = await isAdmin(user.id);
+  const manager = await isManager(user.id);
   // Un compte lié à Google n'a pas forcément de mot de passe — présent
   // uniquement si une identité e-mail existe (inscription directe, ou compte
   // Google ayant ensuite lié un mot de passe).
@@ -73,13 +74,13 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notifyEmail, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
       getBookSharesGiven(user.id),
       getRecipeSharesGiven(user.id),
-      getNotifyEmailPreference(user.id),
+      getNotificationPreferences(user.id),
       getUsageReport(user.id),
       getGrid(),
       getCurrentPlan(user.id),
@@ -146,7 +147,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
         <RecipeSharesCard ownerId={user.id} given={recipeSharesGiven} />
-        <NotificationsPreferenceCard userId={user.id} notifyEmail={notifyEmail} />
+        <NotificationPreferencesCard userId={user.id} preferences={notificationPrefs} backOffice={manager} />
         <MesDemandesCard demandes={mesDemandes} />
       </main>
       <Footer />
