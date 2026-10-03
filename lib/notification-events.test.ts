@@ -112,3 +112,9 @@ describe('catégories verrouillées', () => {
     expect(preferenceEffective(prefs, 'abonnement')).toEqual({ site: true, email: false, rythme: 'immediat' });
   });
 });
+
+describe('grille de préférences', () => {
+  it('chaque catégorie explique ce qu’elle couvre', () => {
+    for (const c of CATEGORIES) expect(CATEGORIE_INFO[c].description.trim().length, c).toBeGreaterThan(20);
+  });
+});

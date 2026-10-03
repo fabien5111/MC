@@ -104,6 +104,7 @@ function Ligne({
   return (
     <li className="py-4">
       <p className="font-label-md text-[14px] text-on-surface">{info.libelle}</p>
+      <p className="mt-0.5 text-xs text-on-surface-variant">{info.description}</p>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input

@@ -25,6 +25,8 @@ export type Categorie = (typeof CATEGORIES)[number];
 
 export type CategorieInfo = {
   libelle: string;
+  /** Une phrase sous le titre dans la grille de préférences : ce que couvre la catégorie. */
+  description: string;
   /** Réservée aux admins et gestionnaires : absente de la grille d'un membre. */
   backOffice?: boolean;
   /** Canal « site » non désactivable (abonnement, support : la continuité du service en dépend). */
@@ -42,31 +44,43 @@ export type CategorieInfo = {
 export const CATEGORIE_INFO: Record<Categorie, CategorieInfo> = {
   mes_recettes: {
     libelle: 'Mes recettes',
+    description:
+      'Publication ou refus de vos recettes, avis reçus, favoris, projets qui s’en inspirent et mise en avant sur l’accueil.',
     defaut: { site: true, email: true, rythme: 'immediat' },
     rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
   },
   communaute: {
     libelle: 'Communauté',
+    description:
+      'Nouveaux abonnés, recettes publiées par les pâtissiers que vous suivez, carnets et recettes partagés avec vous.',
     defaut: { site: true, email: false, rythme: 'hebdo' },
     rythmesPermis: ['quotidien', 'hebdo'],
   },
   mes_avis: {
     libelle: 'Mes avis',
+    description:
+      'Publication ou refus des avis que vous avez laissés sur des recettes.',
     defaut: { site: true, email: true, rythme: 'immediat' },
     rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
   },
   fournees: {
     libelle: 'Fournées (rappels)',
+    description:
+      'Étapes à commencer aujourd’hui, rappel la veille du jour J, invitation à donner votre avis après une fournée.',
     defaut: { site: true, email: true, rythme: 'immediat' },
     rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
   },
   idees: {
     libelle: 'Boîte à idées',
+    description:
+      'Évolution du statut de vos idées, fusion avec une autre idée, idées que vous avez soutenues et qui sont réalisées.',
     defaut: { site: true, email: false, rythme: 'hebdo' },
     rythmesPermis: ['immediat', 'quotidien', 'hebdo'],
   },
   abonnement: {
     libelle: 'Abonnement',
+    description:
+      'Fin d’essai et échéances qui approchent, expiration, échec de paiement, confirmation de souscription et de résiliation.',
     siteVerrouille: true,
     noteVerrouille:
       'Les confirmations de souscription et de résiliation sont obligatoires (obligation légale) : elles partent toujours. Les alertes affichées sur le site restent visibles.',
@@ -75,15 +89,18 @@ export const CATEGORIE_INFO: Record<Categorie, CategorieInfo> = {
   },
   support: {
     libelle: 'Support et compte',
+    description:
+      'Réponses à vos demandes de contact et alertes de sécurité de votre compte.',
     siteVerrouille: true,
     emailVerrouille: true,
-    noteVerrouille:
-      'Réponses du support et alertes de sécurité du compte (changement d’adresse ou de mot de passe) : toujours envoyées.',
+    noteVerrouille: 'Ces messages sont toujours envoyés, sur le site comme par e-mail : ils ne peuvent pas être désactivés.',
     defaut: { site: true, email: true, rythme: 'immediat' },
     rythmesPermis: ['immediat'],
   },
   moderation: {
     libelle: 'Modération (back-office)',
+    description:
+      'Recettes et avis en attente de validation, regroupés dans un récapitulatif.',
     backOffice: true,
     defaut: { site: true, email: true, rythme: 'quotidien' },
     rythmesPermis: ['quotidien', 'hebdo'],
