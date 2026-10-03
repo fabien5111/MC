@@ -20,6 +20,7 @@ import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
+import { fixOeufLigature } from '@/lib/text';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
 import { IngredientsRecapList } from '@/components/IngredientsRecapList';
@@ -1064,7 +1065,8 @@ export function RelectureEditor({
 
         const lines = (sp.ingredients || [])
           .map((g: any, k: number) => ({
-            name: g.nom,
+            // « oeufs » → « œufs » (JEP-249), comme à la saisie (CreerForm).
+            name: fixOeufLigature(g.nom),
             quantity: g.quantite != null ? String(g.quantite) : null,
             unit: g.unite || null,
             comment: g.note || null,

@@ -35,7 +35,9 @@ import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingList
 import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { LockedAction } from '@/components/LockedAction';
+import { findMergeTarget } from '@/lib/shopping-merge';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -45,6 +47,8 @@ export function CuisineContent({
   activeBatches,
   shoppingLists,
   droits,
+  conversions,
+  units,
 }: {
   planning: BatchListRow[];
   // Fournées closes (terminées ou abandonnées) — écran dédié plutôt qu'un
@@ -56,6 +60,10 @@ export function CuisineContent({
   // Droits d'abonnement (§4) : fusion de listes de courses, réordonnancement
   // des étapes dans le planning du jour.
   droits: { fusionListes: boolean; reordonnancement: boolean };
+  // Référentiels de conversion (JEP-249) : la fusion de deux listes convertit
+  // les unités d'un même ingrédient, comme le récapitulatif d'une fiche recette.
+  conversions: ConversionRef[];
+  units: UnitRef[];
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -147,38 +155,37 @@ export function CuisineContent({
     if (ok) setShoppingList((prev) => prev.filter((l) => l.id !== id));
   }
 
-  // Fusion de deux listes entières : les articles de même libellé et même
-  // unité voient leurs quantités additionnées (comme dans une liste, voir
-  // ShoppingItems), les autres articles sont simplement rattachés à la liste
-  // cible — puis la liste source, vidée, est supprimée.
+  // Fusion de deux listes entières : un article de la liste source rejoint la
+  // ligne du MÊME ingrédient de la liste cible (singulier/pluriel/ligature
+  // compris) — même unité, ou autre unité reliée par une conversion, auquel
+  // cas sa quantité est convertie dans l'unité de la ligne cible (JEP-249,
+  // comme le récapitulatif d'une fiche recette). Les autres articles sont
+  // simplement rattachés à la liste cible — puis la liste source, vidée, est
+  // supprimée. Le commentaire doit être identique : une ligne commentée reste à
+  // part (rattachée à la liste cible, avec son commentaire). `pool` suit les lignes cibles au fil de la fusion : un article
+  // rattaché y entre aussi, pour que le suivant puisse le rejoindre.
   async function mergeShoppingLists(targetId: number, sourceId: number, targetName: string, sourceName: string) {
     const ok = await mutate(
       async () => {
         const supabase = createClient();
         const { data: rows, error: fetchErr } = await supabase
           .from('shopping_list_items')
-          .select('id, list_id, name, quantity, unit')
+          .select('id, list_id, name, quantity, unit, comment, ref_id')
           .in('list_id', [targetId, sourceId]);
         if (fetchErr) return { error: fetchErr };
-        const key = (n: string, u: string | null) => n.trim().toLowerCase() + '|' + (u || '').trim().toLowerCase();
-        const targetItems = (rows || []).filter((r) => r.list_id === targetId);
-        const byKey = new Map(targetItems.map((r) => [key(r.name, r.unit), r]));
+        const pool = (rows || []).filter((r) => r.list_id === targetId);
         for (const s of (rows || []).filter((r) => r.list_id === sourceId)) {
-          const match = byKey.get(key(s.name, s.unit));
-          if (match) {
-            const a = parseFloat(String(match.quantity || '').replace(',', '.'));
-            const b = parseFloat(String(s.quantity || '').replace(',', '.'));
-            const newQty =
-              !isNaN(a) && !isNaN(b)
-                ? String(+(a + b).toFixed(2))
-                : [match.quantity, s.quantity].filter(Boolean).join(' + ');
-            const { error } = await supabase.from('shopping_list_items').update({ quantity: newQty }).eq('id', match.id);
+          const hit = findMergeTarget(pool, s, conversions, units);
+          if (hit) {
+            hit.item.quantity = hit.quantity;
+            const { error } = await supabase.from('shopping_list_items').update({ quantity: hit.item.quantity }).eq('id', hit.item.id);
             if (error) return { error };
             const { error: delErr } = await supabase.from('shopping_list_items').delete().eq('id', s.id);
             if (delErr) return { error: delErr };
           } else {
             const { error } = await supabase.from('shopping_list_items').update({ list_id: targetId }).eq('id', s.id);
             if (error) return { error };
+            pool.push({ ...s, list_id: targetId });
           }
         }
         return supabase.from('shopping_lists').delete().eq('id', sourceId);
