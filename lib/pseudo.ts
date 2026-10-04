@@ -34,7 +34,7 @@ export const PSEUDO_SLUG_MAX_LENGTH = 30;
 // part dans les journaux serveur.
 export const PSEUDO_REFUS = 'Pseudo non autorisé';
 
-// Délai minimal entre deux changements de pseudo (JEP-254). Un pseudo est
+// Délai minimal entre deux changements de pseudo. Un pseudo est
 // affiché à côté de chaque recette et fait l'adresse du profil public : le
 // laisser changer sans limite permettrait d'usurper un nom en le faisant
 // tourner, et casserait les liens partagés à répétition. La toute première

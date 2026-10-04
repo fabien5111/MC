@@ -353,7 +353,7 @@ saisie « Fabien Chenu »
   la refuserait ensuite) pour un pseudo qu'il suffisait de changer.
 
 - **Changer de pseudo : `/reglages` → « Modifier le profil », un seul champ**
-  (JEP-254). L'adresse du profil public n'est plus un champ libre : elle est
+  (04/10/2026, sans ticket Jira). L'adresse du profil public n'est plus un champ libre : elle est
   **dérivée du pseudo** (`pseudoSlug`), affichée en lecture seule sous le champ,
   de sorte que `full_name` et `username` ne divergent plus. L'enregistrement
   passe par `POST /api/pseudo/choisir` (mêmes contrôles qu'à l'inscription :
@@ -369,7 +369,7 @@ saisie « Fabien Chenu »
     **avant** la vérification complète, pour qu'un refus ne coûte pas un appel
     IA ; un pseudo inchangé ne coûte ni vérification ni délai.
   - **L'ancienne adresse `/u/<ancien-slug>` cesse de fonctionner** (arbitrage
-    JEP-254 : pas d'historique des slugs). L'éditeur le dit avant l'envoi.
+    du 04/10/2026 : pas d'historique des slugs). L'éditeur le dit avant l'envoi.
   - **`pseudo_changed_at` est lue à part** (`dernierChangementPseudo`,
     `lib/pseudo-data.ts`), jamais via `PROFILE_COLUMNS` : l'y ajouter avant la
     migration ferait échouer la lecture du profil sur tout le site (profil
