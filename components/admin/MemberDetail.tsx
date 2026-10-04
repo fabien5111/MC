@@ -259,8 +259,8 @@ export function MemberDetail({
             }))}
           />
           <RecentList
-            label="Derniers commentaires"
-            empty="Aucun commentaire."
+            label="Derniers avis"
+            empty="Aucun avis."
             items={recent.comments.map((c) => ({
               key: c.id,
               href: c.recipe_id ? `/recette/${c.recipe_id}` : undefined,

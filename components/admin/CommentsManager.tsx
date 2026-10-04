@@ -1,6 +1,6 @@
 'use client';
 
-// Modération des avis (Admin → Commentaires) — cf. CLAUDE.md « Avis sur une
+// Modération des avis (Admin → Avis) — cf. CLAUDE.md « Avis sur une
 // recette ». Écran dédié, comme `RecipesManager` pour les recettes : trois
 // files (à valider / refusés / publiés) plutôt qu'une seule liste, parce
 // qu'un refus doit rester consultable après coup — c'est lui qui a été
@@ -120,7 +120,7 @@ export function CommentsManager({ comments }: { comments: AdminComment[] }) {
               <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Recette</th>
               <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Membre</th>
               <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Note</th>
-              <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Commentaire</th>
+              <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Avis</th>
               <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Score IA</th>
               <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
             </tr>
