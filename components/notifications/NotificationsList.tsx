@@ -9,14 +9,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { markNotificationsRead } from '@/lib/notification-mark-read';
-import { nouvellesAConsulter } from '@/lib/notifications-view';
+import {
+  nouvellesAConsulter,
+  recupererNouvelles,
+  stockageSession,
+} from '@/lib/notifications-view';
 import type { NotificationRow } from '@/lib/notifications-data';
 import { NotificationEntree } from './NotificationEntree';
 
-export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
+export function NotificationsList({ userId, rows }: { userId: string; rows: NotificationRow[] }) {
   const router = useRouter();
   const [gras, setGras] = useState<Set<number>>(() => new Set());
   const vus = useRef<Set<number>>(new Set());
+
+  // Ce que la cloche vient de montrer en gras : lu en base comme « lu », donc
+  // invisible au calcul ci-dessous. Lu une seule fois, à l'arrivée sur la page.
+  useEffect(() => {
+    const deLaCloche = recupererNouvelles(stockageSession(), userId);
+    if (deLaCloche.length > 0) setGras((prev) => new Set([...prev, ...deLaCloche]));
+  }, [userId]);
 
   useEffect(() => {
     const ids = nouvellesAConsulter(rows, vus.current);

@@ -1370,7 +1370,11 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   n'est dans aucun `not.in`). **Gras = non consultée** : ouvrir la cloche ou la
   page marque les affichées lues (`read_at`, aucune colonne en plus) mais le gras
   est tenu en état local pendant la visite, jamais déduit de `read_at` — sinon il
-  s'éteindrait dès la resynchronisation. Logique pure : `lib/notifications-view.ts`.
+  s'éteindrait dès la resynchronisation. **Cloche → page** : la cloche a déjà marqué ses
+  entrées lues quand la page s'ouvre, qui ne peut donc plus les reconnaître ; elle en laisse
+  la liste dans le `sessionStorage` (par membre, `memoriserNouvelles`), que la page lit une
+  fois (`recupererNouvelles`) — best-effort, sans stockage la page n'a que ses propres non
+  lues. Logique pure : `lib/notifications-view.ts`.
 - **Jamais d'auto-notification** : `acteurId === userId` écarte l'événement.
   Les écritures service_role (`auth.uid()` nul) ne notifient pas un partage : le
   déverrouillage par lien de carnet crée une ligne `book_shares` au nom du

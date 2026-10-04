@@ -15,11 +15,14 @@ import { createClient } from '@/lib/supabase/client';
 import { markNotificationsRead } from '@/lib/notification-mark-read';
 import { NotificationEntree } from '@/components/notifications/NotificationEntree';
 import type { NotificationRow } from '@/lib/notifications-data';
+import { memoriserNouvelles, stockageSession } from '@/lib/notifications-view';
 
 export function NotificationBell({
+  userId,
   notifications,
   nonLuesTotal,
 }: {
+  userId: string;
   notifications: NotificationRow[];
   nonLuesTotal: number;
 }) {
@@ -38,6 +41,8 @@ export function NotificationBell({
     const aMarquer = rows.filter((n) => !n.readAt).map((n) => n.id);
     setNouvelles(new Set(aMarquer));
     if (aMarquer.length === 0) return;
+    // La page /notifications reprendra ce gras (elles seront lues en base).
+    memoriserNouvelles(stockageSession(), userId, aMarquer);
     // Marquage optimiste, sans spinner ni resynchronisation serveur : une
     // notification lue n'a pas besoin d'un rendu serveur à jour pour
     // paraître lue, le compteur local suffit (même motif que `VoteButton`).
