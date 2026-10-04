@@ -33,6 +33,7 @@ const PROTECTED_PREFIXES = [
   '/importer',
   '/relecture',
   '/idees/nouvelle',
+  '/notifications',
   '/projets',
 ];
 

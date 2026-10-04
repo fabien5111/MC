@@ -19,3 +19,21 @@ export async function markNotificationRead(
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId);
 }
+
+type NotificationsUpdateMany = {
+  update: (values: unknown) => { in: (col: string, values: number[]) => PromiseLike<{ error: { message: string } | null }> };
+};
+
+/**
+ * Marque plusieurs notifications comme lues en UNE écriture (la cloche et la
+ * page en marquent plusieurs d'un coup). Même RLS : seules les siennes.
+ */
+export async function markNotificationsRead(
+  client: SupabaseClient<Database>,
+  ids: number[],
+): Promise<{ error: { message: string } | null }> {
+  if (ids.length === 0) return { error: null };
+  return (client.from('notifications' as never) as unknown as NotificationsUpdateMany)
+    .update({ read_at: new Date().toISOString() })
+    .in('id', ids);
+}
