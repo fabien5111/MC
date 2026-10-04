@@ -1,7 +1,7 @@
 // Tests des dates de rappel (JEP-280) : un rappel qui part un jour trop tôt ou
 // trop tard est pire que pas de rappel.
 import { describe, expect, it } from 'vitest';
-import { ajouterJours, dateZurich, etapesACommencer, jourDEtape } from '@/lib/notification-rappels';
+import { ajouterJours, dateZurich, etapesACommencer, jourDEtape, quotidienARattraper } from '@/lib/notification-rappels';
 
 describe('dateZurich', () => {
   it('donne le jour civil suisse, pas le jour UTC', () => {
@@ -40,5 +40,17 @@ describe('jourDEtape / etapesACommencer', () => {
     expect(etapesACommencer(etapes, '2026-10-10', '2026-10-08')).toEqual(['Pâte']);
     expect(etapesACommencer(etapes, '2026-10-10', '2026-10-10')).toEqual(['Montage']);
     expect(etapesACommencer(etapes, '2026-10-10', '2026-10-09')).toEqual([]);
+  });
+});
+
+describe('quotidienARattraper', () => {
+  it('attend le créneau de 05:30 UTC', () => {
+    expect(quotidienARattraper(new Date('2026-10-04T05:29:59Z'))).toBeNull();
+    expect(quotidienARattraper(new Date('2026-10-04T00:15:00Z'))).toBeNull();
+  });
+  it('rend le jour de Zurich une fois le créneau passé', () => {
+    expect(quotidienARattraper(new Date('2026-10-04T05:30:00Z'))).toBe('2026-10-04');
+    expect(quotidienARattraper(new Date('2026-10-04T23:59:00Z'))).toBe('2026-10-05'); // 01:59 à Zurich
+    expect(quotidienARattraper(new Date('2026-12-04T05:30:00Z'))).toBe('2026-12-04'); // heure d'hiver
   });
 });

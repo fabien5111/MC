@@ -191,3 +191,41 @@ export async function envoyerRecapitulatifs(
   }
   return { envoyes, ecartes, reportes };
 }
+
+const CLE_QUOTIDIEN = 'notifications_quotidien_du';
+
+/**
+ * Réserve la passe quotidienne d'un jour (AAAA-MM-JJ de Zurich) : vrai pour
+ * UN seul appelant, faux pour les autres. Doctrine « réserver plutôt que
+ * constater » : deux passes `outbox` simultanées ne la jouent pas deux fois.
+ * Le marqueur vit dans `site_settings` (clé/valeur, écrite par le service_role
+ * uniquement) — pas de migration, et la valeur n'est qu'une date.
+ */
+export async function reserverQuotidien(admin: unknown, jour: string): Promise<boolean> {
+  const db = vers(admin);
+  const { error } = await db.from('site_settings').insert({ key: CLE_QUOTIDIEN, value: jour });
+  if (!error) return true;
+  if (error.code !== '23505') {
+    // Illisible : on ne bloque pas la passe quotidienne, ses rappels sont dédoublonnés.
+    console.error('notifications/quotidien: réservation impossible :', error.message);
+    return false;
+  }
+  // La ligne existe : on ne la prend que si elle porte un autre jour. Le `neq`
+  // fait l'arbitrage côté base — un seul des appelants simultanés la modifie.
+  const { data, error: errMaj } = await db
+    .from('site_settings')
+    .update({ value: jour, updated_at: new Date().toISOString() })
+    .eq('key', CLE_QUOTIDIEN)
+    .neq('value', jour)
+    .select('key');
+  if (errMaj) {
+    console.error('notifications/quotidien: réservation impossible :', errMaj.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
+/** Rend la réservation (la passe a échoué avant d'avoir pu rien faire d'utile) : la suivante réessaiera. */
+export async function libererQuotidien(admin: unknown): Promise<void> {
+  await vers(admin).from('site_settings').update({ value: '' }).eq('key', CLE_QUOTIDIEN);
+}

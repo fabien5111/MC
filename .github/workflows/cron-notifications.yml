@@ -10,7 +10,10 @@ name: Cron — notifications (outbox, rappels, récapitulatifs)
 #     un peu de retard est assumée ; l'outbox ne perd rien, elle se vide à la
 #     passe suivante.
 #   - 05:30 UTC : `passe=quotidien` — rappels de fournée, récapitulatifs
-#     quotidiens, et hebdomadaires le lundi. L'heure est en UTC et GitHub ne
+#     quotidiens, et hebdomadaires le lundi. Si GitHub saute ce créneau (le
+#     04/10/2026, il n'a jamais eu lieu), la première passe `outbox` qui suit
+#     le rattrape : la route réserve le jour (site_settings) et ne le joue
+#     qu'une fois. L'heure est en UTC et GitHub ne
 #     gère pas l'heure d'été : le rappel part à 7 h 30 l'été, 6 h 30 l'hiver
 #     (Europe/Zurich). Les DATES, elles, sont calculées en Europe/Zurich côté
 #     route — un jour J ne bascule jamais d'un jour.
