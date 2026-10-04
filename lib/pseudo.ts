@@ -34,6 +34,13 @@ export const PSEUDO_SLUG_MAX_LENGTH = 30;
 // part dans les journaux serveur.
 export const PSEUDO_REFUS = 'Pseudo non autorisé';
 
+// Délai minimal entre deux changements de pseudo. Un pseudo est
+// affiché à côté de chaque recette et fait l'adresse du profil public : le
+// laisser changer sans limite permettrait d'usurper un nom en le faisant
+// tourner, et casserait les liens partagés à répétition. La toute première
+// saisie (inscription, `/choix-pseudo`) n'entre pas dans le décompte.
+export const PSEUDO_DELAI_CHANGEMENT_JOURS = 60;
+
 // Lettres (accents compris), chiffres, espace, tiret, apostrophe et point.
 // Tout le reste est retiré à la frappe plutôt que rejeté à l'envoi : une
 // erreur de format est plus frustrante qu'une correction silencieuse (même
@@ -214,4 +221,19 @@ export function variantePseudo(base: string, rang: number): string {
   const suffixe = ` ${rang}`;
   const place = PSEUDO_MAX_LENGTH - suffixe.length;
   return `${base.slice(0, place).trim()}${suffixe}`;
+}
+
+// Date à partir de laquelle le membre peut de nouveau changer de pseudo, ou
+// `null` s'il le peut dès maintenant (jamais changé, ou délai écoulé).
+// `dernierChangement` : `profiles.pseudo_changed_at`, `null` tant que le membre
+// n'a pas changé de pseudo depuis son choix initial.
+export function prochainChangementPseudo(
+  dernierChangement: string | null | undefined,
+  maintenant: Date = new Date(),
+): Date | null {
+  if (!dernierChangement) return null;
+  const debut = new Date(dernierChangement);
+  if (Number.isNaN(debut.getTime())) return null;
+  const echeance = new Date(debut.getTime() + PSEUDO_DELAI_CHANGEMENT_JOURS * 86_400_000);
+  return echeance.getTime() > maintenant.getTime() ? echeance : null;
 }

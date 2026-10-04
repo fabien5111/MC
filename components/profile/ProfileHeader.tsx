@@ -14,6 +14,16 @@ import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { PROFILE_LINKS, activeLinks, normalizeUrl, type ProfileLinkField } from '@/lib/profile-links';
 import type { Profile } from '@/lib/auth';
+import { formatDate } from '@/lib/format';
+import {
+  nettoyerSaisiePseudo,
+  normaliserCassePseudo,
+  PSEUDO_DELAI_CHANGEMENT_JOURS,
+  PSEUDO_MAX_LENGTH,
+  PSEUDO_MIN_LENGTH,
+  pseudoSlug,
+  validerPseudo,
+} from '@/lib/pseudo';
 
 type LinkValues = Partial<Record<ProfileLinkField, string>>;
 
@@ -24,6 +34,7 @@ export function ProfileHeader({
   fallbackAvatar,
   isAdmin,
   followCounts,
+  prochainChangementPseudo,
 }: {
   userId: string;
   profile: Profile | null;
@@ -34,6 +45,10 @@ export function ProfileHeader({
   // — `profiles.followers_count` / `following_count` ne sont jamais écrites,
   // les lire ici affichait toujours 0.
   followCounts: { followers: number; following: number };
+  // Date (ISO) avant laquelle le pseudo ne peut plus changer d'adresse, `null`
+  // si le membre peut changer dès maintenant — calculée par le serveur
+  // (lib/pseudo.ts `prochainChangementPseudo`), jamais ici.
+  prochainChangementPseudo: string | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -220,7 +235,9 @@ export function ProfileHeader({
         <ProfileEditor
           userId={userId}
           initialBio={bio}
+          initialPseudo={profile?.full_name ?? ''}
           initialUsername={username}
+          prochainChangement={prochainChangementPseudo}
           initialLinks={links}
           onClose={() => setEditorOpen(false)}
           onSaved={(newBio, newUsername, newLinks) => {
@@ -266,60 +283,144 @@ function ShareProfileButton() {
   );
 }
 
-// Nom d'utilisateur : minuscules, chiffres et tirets, 3 à 30 caractères — la
-// forme la plus permissive qui reste sûre dans une URL sans encodage
-// (`/u/[handle]`). Normalisé à la frappe plutôt que rejeté à l'enregistrement :
-// une erreur de format est plus frustrante qu'une correction silencieuse.
-function normalizeUsername(v: string): string {
-  return v
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // marques diacritiques isolées par NFD (accents)
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30);
-}
+// Le pseudo est UNE seule saisie qui alimente deux colonnes : `full_name` (le
+// nom affiché, casse et accents gardés) et `username` (l'adresse du profil
+// public `/u/…`, dérivée du pseudo par `pseudoSlug`). L'adresse n'est donc plus
+// un champ libre : elle suit le pseudo, et les deux ne peuvent plus diverger.
+//
+// L'enregistrement passe par `/api/pseudo/choisir`, qui revalide tout (format,
+// unicité, contrôle IA, délai entre deux changements) et écrit avec la clé
+// service_role : le navigateur n'écrit jamais `full_name` / `username` lui-même
+// (cf. CLAUDE.md « Pseudo »). Seuls la bio et les liens partent encore en
+// écriture directe.
+const PSEUDO_CHECK_DEBOUNCE_MS = 300;
 
 function ProfileEditor({
   userId,
   initialBio,
+  initialPseudo,
   initialUsername,
+  prochainChangement,
   initialLinks,
   onClose,
   onSaved,
 }: {
   userId: string;
   initialBio: string;
+  initialPseudo: string;
   initialUsername: string;
+  prochainChangement: string | null;
   initialLinks: LinkValues;
   onClose: () => void;
   onSaved: (bio: string, username: string, links: LinkValues) => void;
 }) {
   const dialog = useDialog();
   const [bio, setBio] = useState(initialBio);
-  const [username, setUsername] = useState(initialUsername);
+  const [pseudo, setPseudo] = useState(initialPseudo);
   const [links, setLinks] = useState<LinkValues>(initialLinks);
   const [busy, setBusy] = useState(false);
   const IN = 'border border-outline-variant rounded px-3 py-2 font-body-md text-sm';
   const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
 
+  const validation = validerPseudo(pseudo);
+  const slug = validation.ok ? validation.slug : pseudoSlug(pseudo);
+  const pseudoChange = validation.ok && validation.pseudo !== initialPseudo;
+  // Le délai ne porte que sur l'adresse : rectifier la casse ou les accents
+  // (même slug) reste libre, comme côté serveur.
+  const adresseChange = validation.ok && validation.slug !== initialUsername;
+  const echeance = prochainChangement && new Date(prochainChangement).getTime() > Date.now() ? prochainChangement : null;
+  const verrouille = !!echeance && adresseChange;
+
+  // Disponibilité en direct (unicité seule, sans IA) — motif `PseudoChooser` :
+  // un confort d'affichage, la vérification qui fait foi est celle de la route.
+  const [pseudoCheck, setPseudoCheck] = useState<'idle' | 'checking' | 'ok' | 'ko'>('idle');
+  const [pseudoCheckMessage, setPseudoCheckMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!validation.ok || !pseudoChange) {
+      setPseudoCheck('idle');
+      setPseudoCheckMessage(null);
+      return;
+    }
+    setPseudoCheck('checking');
+    const controller = new AbortController();
+    const candidat = validation.pseudo;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/pseudo/verifier', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pseudo: candidat, verifierIA: false }),
+          signal: controller.signal,
+        });
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+        if (data?.ok) {
+          setPseudoCheck('ok');
+          setPseudoCheckMessage(null);
+        } else {
+          setPseudoCheck('ko');
+          setPseudoCheckMessage(data?.message || `Le pseudo « ${candidat} » est déjà pris.`);
+        }
+      } catch {
+        // Requête annulée (nouvelle frappe) ou réseau indisponible : la
+        // vérification à l'envoi tranchera.
+        setPseudoCheck('idle');
+      }
+    }, PSEUDO_CHECK_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `validation.pseudo` dérive de `pseudo`.
+  }, [validation.ok, validation.ok ? validation.pseudo : null, pseudoChange]);
+
   async function save() {
-    const cleanUsername = username.trim() || null;
-    // Le pseudo choisi à l'inscription porte l'adresse du profil public ET
-    // sert de marque « ce compte a un pseudo » (cf. `requireUser`,
-    // lib/auth.ts). Le vider renverrait le membre sur `/choix-pseudo` à la
+    // Le pseudo marque aussi « ce compte a un pseudo » (cf. `requireUser`,
+    // lib/auth.ts) : le vider renverrait le membre sur `/choix-pseudo` à la
     // page privée suivante, sans qu'il comprenne pourquoi.
-    if (!cleanUsername) {
-      dialog.alert("L'adresse du profil ne peut pas être vide.");
+    if (!validation.ok) {
+      dialog.alert(validation.message);
+      return;
+    }
+    if (verrouille) {
+      dialog.alert(
+        `Vous avez déjà changé de pseudo récemment : un nouveau changement est possible à partir du ${formatDate(echeance)}.`,
+      );
+      return;
+    }
+    if (pseudoCheck === 'ko') {
+      dialog.alert(pseudoCheckMessage || 'Ce pseudo est déjà pris.');
       return;
     }
     setBusy(true);
+
+    // Le pseudo d'abord : un refus (pris, non autorisé, délai) interrompt tout,
+    // sans que la bio ou les liens aient été enregistrés à moitié.
+    let nouvelleAdresse = initialUsername;
+    if (pseudoChange || adresseChange) {
+      let data: { ok?: boolean; message?: string; slug?: string } | null = null;
+      try {
+        const res = await fetch('/api/pseudo/choisir', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pseudo: validation.pseudo }),
+        });
+        data = await res.json().catch(() => null);
+      } catch {
+        data = null;
+      }
+      if (!data?.ok) {
+        dialog.alert(data?.message || "Le pseudo n'a pas pu être enregistré. Réessayez.");
+        setBusy(false);
+        return;
+      }
+      nouvelleAdresse = data.slug || validation.slug;
+    }
+
     const clean = (f: ProfileLinkField) => (links[f] || '').trim() || null;
     const payload = {
       id: userId,
       bio: bio.trim() || null,
-      username: cleanUsername,
       website_url: clean('website_url'),
       instagram_url: clean('instagram_url'),
       facebook_url: clean('facebook_url'),
@@ -330,17 +431,11 @@ function ProfileEditor({
     const supabase = createClient();
     const { error } = await supabase.from('profiles').upsert(payload);
     if (error) {
-      // Contrainte d'unicité sur `username` (cf. SQL fourni séparément) :
-      // message clair plutôt que le texte brut de Postgres.
-      dialog.alert(
-        error.code === '23505'
-          ? `L'adresse « ${cleanUsername} » est déjà prise.`
-          : 'Erreur lors de l’enregistrement : ' + error.message,
-      );
+      dialog.alert('Erreur lors de l’enregistrement : ' + error.message);
       setBusy(false);
       return;
     }
-    onSaved(bio.trim(), cleanUsername, links);
+    onSaved(bio.trim(), nouvelleAdresse, links);
   }
 
   return (
@@ -350,20 +445,52 @@ function ProfileEditor({
         <h3 className="font-headline-md text-primary mb-6">Modifier le profil</h3>
         <div className="flex flex-col gap-5">
           <label className="flex flex-col gap-1">
-            <span className={LBL}>Adresse du profil public</span>
-            <div className="flex items-center gap-1">
-              <span className="text-on-surface-variant text-sm">jepatisse.com/u/</span>
-              <input
-                type="text"
-                className={`${IN} flex-1`}
-                placeholder="votre-pseudo"
-                value={username}
-                onChange={(e) => setUsername(normalizeUsername(e.target.value))}
-              />
-            </div>
-            <span className="font-body-md text-xs text-on-surface-variant">
-              Dérivée de votre pseudo à l&apos;inscription ; modifiable, mais elle ne peut pas rester vide.
+            <span className={LBL}>Pseudo</span>
+            <input
+              type="text"
+              className={IN}
+              placeholder="MaryseGourmande"
+              autoComplete="nickname"
+              maxLength={PSEUDO_MAX_LENGTH}
+              value={pseudo}
+              onChange={(e) => setPseudo(nettoyerSaisiePseudo(e.target.value))}
+              onBlur={() => setPseudo((v) => normaliserCassePseudo(v.trim()))}
+            />
+            <span className="flex items-baseline justify-between gap-3 font-body-md text-xs text-on-surface-variant">
+              <span>
+                De {PSEUDO_MIN_LENGTH} à {PSEUDO_MAX_LENGTH} caractères. Il fait aussi l&apos;adresse de votre profil
+                public.
+              </span>
+              <span className={pseudo.length >= PSEUDO_MAX_LENGTH ? 'text-error shrink-0' : 'shrink-0'}>
+                {pseudo.length}/{PSEUDO_MAX_LENGTH}
+              </span>
             </span>
+            {slug.length >= PSEUDO_MIN_LENGTH && (
+              <span className="font-body-md text-xs text-on-surface-variant">
+                Adresse de votre profil : <span className="text-secondary">jepatisse.com/u/{slug}</span>
+              </span>
+            )}
+            {pseudo.length > 0 && !validation.ok && (
+              <span className="font-body-md text-xs text-error">{validation.message}</span>
+            )}
+            {validation.ok && pseudoCheck === 'checking' && (
+              <span className="font-body-md text-xs text-on-surface-variant">Vérification du pseudo…</span>
+            )}
+            {validation.ok && pseudoCheck === 'ko' && (
+              <span className="font-body-md text-xs text-error">{pseudoCheckMessage}</span>
+            )}
+            {verrouille && (
+              <span className="font-body-md text-xs text-error">
+                Vous avez déjà changé de pseudo récemment : un nouveau changement est possible à partir du{' '}
+                {formatDate(echeance)}.
+              </span>
+            )}
+            {!verrouille && adresseChange && (
+              <span className="font-body-md text-xs text-on-surface-variant">
+                Attention : l&apos;ancienne adresse de votre profil cessera de fonctionner, et vous ne pourrez plus
+                changer de pseudo pendant {PSEUDO_DELAI_CHANGEMENT_JOURS} jours.
+              </span>
+            )}
           </label>
           <label className="flex flex-col gap-1">
             <span className={LBL}>Bio</span>

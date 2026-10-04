@@ -352,6 +352,36 @@ saisie « Fabien Chenu »
   qu'après la création du compte évite de brûler une adresse e-mail (Supabase
   la refuserait ensuite) pour un pseudo qu'il suffisait de changer.
 
+- **Changer de pseudo : `/reglages` → « Modifier le profil », un seul champ**
+  (04/10/2026, sans ticket Jira). L'adresse du profil public n'est plus un champ libre : elle est
+  **dérivée du pseudo** (`pseudoSlug`), affichée en lecture seule sous le champ,
+  de sorte que `full_name` et `username` ne divergent plus. L'enregistrement
+  passe par `POST /api/pseudo/choisir` (mêmes contrôles qu'à l'inscription :
+  format, unicité, IA) — `ProfileEditor` n'écrit plus jamais `username` lui-même ;
+  seules la bio et les liens partent encore en écriture directe. La route sert
+  donc deux gestes : le **premier choix** (CGU + attestation d'âge exigées,
+  décompte de l'inscription) et le **changement** d'un membre déjà inscrit (ni
+  l'un ni l'autre).
+  - **Un changement d'adresse par 60 jours** (`PSEUDO_DELAI_CHANGEMENT_JOURS`,
+    `profiles.pseudo_changed_at`). La première saisie ne compte pas. Le délai
+    ne porte que sur l'**adresse** (le slug) : rectifier la casse ou les accents
+    d'un pseudo sans changer son slug reste libre, aucun lien ne casse. Contrôlé
+    **avant** la vérification complète, pour qu'un refus ne coûte pas un appel
+    IA ; un pseudo inchangé ne coûte ni vérification ni délai.
+  - **L'ancienne adresse `/u/<ancien-slug>` cesse de fonctionner** (arbitrage
+    du 04/10/2026 : pas d'historique des slugs). L'éditeur le dit avant l'envoi.
+  - **`pseudo_changed_at` est lue à part** (`dernierChangementPseudo`,
+    `lib/pseudo-data.ts`), jamais via `PROFILE_COLUMNS` : l'y ajouter avant la
+    migration ferait échouer la lecture du profil sur tout le site (profil
+    `null`, membres renvoyés sur `/choix-pseudo`). Colonne absente → le délai
+    est simplement inactif, rien ne casse.
+  - **Garde-fou en base** : le trigger `profiles_guard_pseudo` refuse à un
+    membre (`authenticated` / `anon`, hors admin) toute écriture de `username`,
+    `pseudo_changed_at` ou — sur un `UPDATE` — `full_name`. Sans lui, le délai
+    se contournait depuis la console du navigateur (la RLS laisse un membre
+    écrire sa propre ligne). Posé par `psql` en tant que `postgres` (DDL sur
+    `profiles`, hors de portée de pgweb) ; la fonction, elle, peut rester à
+    `pgweb_admin` (aucun privilège).
 - **Attestation d'âge** (JEP-34, `lib/attestation-age.ts`) : case
   « 15 ans ou plus, ou accord du représentant légal » juste au-dessus du
   bouton, sur l'inscription par e-mail **et** sur `/choix-pseudo` (un compte
@@ -373,8 +403,8 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
 - **La marque « a un pseudo » est `profiles.username`**, pas `full_name` : le
   slug n'est écrit que par les chemins qui ont validé le pseudo, alors que
   `full_name` se remplit tout seul. Conséquence directe : **vider l'adresse du
-  profil depuis `/reglages` renverrait le membre ici** — `ProfileEditor` refuse
-  donc un champ vide.
+  profil depuis `/reglages` renverrait le membre ici** — `ProfileEditor` exige
+  un pseudo valide (le champ n'est plus l'adresse mais le pseudo lui-même).
 - **La garde vit dans `requireUser()`** (`lib/auth.ts`), pas dans le
   middleware : toutes les pages privées y passent, `getProfile` est mémoïsé par
   requête, et la poser dans le middleware coûterait une requête base sur
