@@ -26,7 +26,7 @@ name: Régénérer les types de la base
 # Le 03/10/2026, une régénération lancée sur `main` avec un rôle qui ne voyait
 # pas toutes les tables y a committé un fichier amputé : 84 erreurs de types,
 # déploiements bloqués jusqu'à l'annulation. Le résultat part donc sur une
-# branche dédiée, passe `npm run typecheck`, et arrive en pull request : un
+# branche dédiée et arrive en pull request (typecheck indiqué dedans) : un
 # fichier incomplet se voit dans le diff (tables retirées) avant la fusion.
 on:
   workflow_dispatch:
@@ -87,17 +87,30 @@ jobs:
             git diff --stat -- lib/database.types.ts
           fi
 
-      # Un fichier qui ne compile pas n'est même pas proposé.
+      # Le typecheck ne bloque PAS la pull request : c'est dans la PR qu'on
+      # adapte le code aux nouveaux types. Exemple réel (04/10/2026) : le
+      # garde-fou de lib/auth.ts casse volontairement la compilation quand
+      # `profiles` gagne une colonne, pour forcer la décision « chargée à
+      # chaque page ou non ». Bloquer ici rendait le fichier généré invisible,
+      # donc la correction impossible. `main` reste protégé : rien n'y entre
+      # sans fusion, et le déploiement refait le typecheck.
       - name: Vérifier que le code compile avec les nouveaux types
+        id: typecheck
         if: steps.diff.outputs.change == 'true'
         run: |
           cp .env.local.example .env.local
-          npm run typecheck
+          if npm run typecheck > typecheck.log 2>&1; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat typecheck.log
 
       - name: Proposer les types dans une pull request
         if: steps.diff.outputs.change == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TYPECHECK_OK: ${{ steps.typecheck.outputs.ok }}
         run: |
           BRANCHE="types/regeneration-$(date -u +%Y%m%d-%H%M%S)"
           git config user.name "github-actions[bot]"
@@ -106,14 +119,38 @@ jobs:
           git add lib/database.types.ts
           git commit -m "Types : régénération authentique depuis la base (gen types)"
           git push origin "$BRANCHE"
-          CORPS="Régénération de \`lib/database.types.ts\` depuis la base live (workflow « Régénérer les types de la base », exécution ${{ github.run_id }}).
 
-          \`npm run typecheck\` passe avec ces types. À relire avant de fusionner : une table **retirée** du fichier signale un rôle \`gen_types\` qui ne la voit pas (privilège REFERENCES manquant), pas une table supprimée."
+          {
+            echo "Régénération de \`lib/database.types.ts\` depuis la base live (workflow « Régénérer les types de la base », exécution ${{ github.run_id }})."
+            echo
+            if [ "$TYPECHECK_OK" = "true" ]; then
+              echo "✅ \`npm run typecheck\` passe avec ces types."
+            else
+              echo "❌ \`npm run typecheck\` échoue avec ces types — le code est à adapter **dans cette PR** avant de fusionner :"
+              echo
+              echo '```'
+              grep -E 'error TS' typecheck.log | head -40
+              echo '```'
+            fi
+            echo
+            echo "À relire avant de fusionner : une table **retirée** du fichier signale un rôle \`gen_types\` qui ne la voit pas (privilège REFERENCES manquant, cf. DEPLOY.md), pas une table supprimée."
+          } > corps.md
+          TITRE="Types : régénération depuis la base"
+          [ "$TYPECHECK_OK" = "true" ] || TITRE="$TITRE (code à adapter)"
           # Créer une PR depuis Actions exige le réglage « Allow GitHub Actions
           # to create and approve pull requests » (Settings > Actions >
           # General). Sans lui, la branche est poussée et le lien de création
           # est donné : rien n'est perdu.
           if ! gh pr create --base main --head "$BRANCHE" \
-               --title "Types : régénération depuis la base" --body "$CORPS"; then
+               --title "$TITRE" \
+               --body-file corps.md; then
             echo "::warning::Pull request non créée automatiquement. La créer depuis : ${{ github.server_url }}/${{ github.repository }}/compare/main...$BRANCHE"
           fi
+
+      # Le travail finit en rouge si le code ne compile pas : la PR existe,
+      # mais l'onglet Actions ne doit pas laisser croire que tout est prêt.
+      - name: Signaler un typecheck en échec
+        if: steps.typecheck.outputs.ok == 'false'
+        run: |
+          echo "::error::Les nouveaux types cassent la compilation — pull request ouverte, code à adapter avant fusion."
+          exit 1
