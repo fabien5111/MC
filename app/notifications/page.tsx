@@ -67,7 +67,8 @@ export default async function NotificationsPage({
           </div>
         )}
 
-        <NotificationsList key={portee} rows={rows} />
+        {/* Sans `key` : changer de filtre garde le gras repris de la cloche. */}
+        <NotificationsList userId={user.id} rows={rows} />
 
         {hasMore && (
           <div className="mt-10 text-center">

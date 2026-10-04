@@ -5,6 +5,8 @@ import {
   estNotificationAdmin,
   filtreMembre,
   lirePortee,
+  memoriserNouvelles,
+  recupererNouvelles,
   nouvellesAConsulter,
   relatif,
   tailleAffichee,
@@ -63,5 +65,34 @@ describe('relatif', () => {
     expect(relatif('2026-10-04T08:00:00Z', maintenant)).toBe("Aujourd'hui");
     expect(relatif('2026-10-03T08:00:00Z', maintenant)).toBe('Hier');
     expect(relatif('2026-10-01T08:00:00Z', maintenant)).toBe('Il y a 3 jours');
+  });
+});
+
+describe('passage de la cloche à la page', () => {
+  const faux = () => {
+    const m = new Map<string, string>();
+    return {
+      getItem: (k: string) => m.get(k) ?? null,
+      setItem: (k: string, v: string) => void m.set(k, v),
+      removeItem: (k: string) => void m.delete(k),
+    };
+  };
+  it('cumule sans doublon puis se vide à la lecture', () => {
+    const s = faux();
+    memoriserNouvelles(s, 'u1', [1, 2]);
+    memoriserNouvelles(s, 'u1', [2, 3]);
+    expect(recupererNouvelles(s, 'u1').sort()).toEqual([1, 2, 3]);
+    expect(recupererNouvelles(s, 'u1')).toEqual([]);
+  });
+  it('est propre à chaque membre', () => {
+    const s = faux();
+    memoriserNouvelles(s, 'u1', [1]);
+    expect(recupererNouvelles(s, 'u2')).toEqual([]);
+  });
+  it('tolère un stockage absent, vide ou corrompu', () => {
+    expect(recupererNouvelles(null, 'u1')).toEqual([]);
+    const s = faux();
+    s.setItem('mc_notif_nouvelles:u1', 'pas du json');
+    expect(recupererNouvelles(s, 'u1')).toEqual([]);
   });
 });

@@ -70,6 +70,61 @@ export function nouvellesAConsulter(lignes: AvecLecture[], dejaVus: ReadonlySet<
   return lignes.filter((n) => !n.readAt && !dejaVus.has(n.id)).map((n) => n.id);
 }
 
+// ── Passage de la cloche à la page ──────────────────────────────────────
+//
+// Ouvrir la cloche marque ses entrées lues en base : la page /notifications,
+// qui s'ouvre ensuite, ne peut plus les reconnaître comme nouvelles par
+// `read_at`. La cloche laisse donc la liste de ce qu'elle a montré en gras dans
+// le `sessionStorage` (par membre : une session « en tant que » ne doit pas
+// hériter de celle de l'administrateur), que la page lit une seule fois.
+// Best-effort : stockage indisponible → la page se comporte comme sans.
+type Stockage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+const cleNouvelles = (userId: string) => `mc_notif_nouvelles:${userId}`;
+
+function lireIds(brut: string | null): number[] {
+  try {
+    const v: unknown = JSON.parse(brut ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is number => Number.isInteger(x)) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Ajoute `ids` à ce que la cloche a montré en gras (cumul, sans doublon). */
+export function memoriserNouvelles(stockage: Stockage | null, userId: string, ids: number[]): void {
+  if (!stockage || ids.length === 0) return;
+  try {
+    const cle = cleNouvelles(userId);
+    const cumul = new Set([...lireIds(stockage.getItem(cle)), ...ids]);
+    stockage.setItem(cle, JSON.stringify([...cumul]));
+  } catch {
+    /* stockage plein ou refusé : sans conséquence */
+  }
+}
+
+/** Lit puis efface ce que la cloche a laissé : la page l'utilise une fois. */
+export function recupererNouvelles(stockage: Stockage | null, userId: string): number[] {
+  if (!stockage) return [];
+  try {
+    const cle = cleNouvelles(userId);
+    const ids = lireIds(stockage.getItem(cle));
+    stockage.removeItem(cle);
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
+/** `sessionStorage` si le navigateur l'autorise (l'accès seul peut lever). */
+export function stockageSession(): Stockage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 // ── Dates ────────────────────────────────────────────────────────────────
 export function relatif(dateIso: string, maintenant: number = Date.now()): string {
   const jours = Math.floor((maintenant - new Date(dateIso).getTime()) / 86_400_000);

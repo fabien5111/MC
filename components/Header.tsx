@@ -109,7 +109,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
               share
             </ShareSiteButton>
           </span>
-          {user && <NotificationBell notifications={notifications} nonLuesTotal={nonLuesTotal} />}
+          {user && <NotificationBell userId={user.id} notifications={notifications} nonLuesTotal={nonLuesTotal} />}
           {user ? (
             <AccountMenuButton
               className="hidden lg:block"
