@@ -932,7 +932,7 @@ d'en créer une nouvelle.
   même `status`, `ai_score` ou `batch_id`.
 - **Score IA indicatif, jamais bloquant** (`lib/ai/comment-moderation.ts`,
   modèle `COMMENT_MODERATION_MODEL`) : 0 à 100, probabilité que le texte soit
-  injurieux ou inapproprié — affiché à l'admin (Admin → Commentaires) pour
+  injurieux ou inapproprié — affiché à l'admin (Admin → Avis) pour
   prioriser sa file, jamais utilisé pour publier ou refuser automatiquement :
   **tout** avis commenté passe devant un modérateur humain. Best-effort,
   comme la modération des pseudos : clé absente, panne ou réponse illisible →
