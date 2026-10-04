@@ -21,7 +21,7 @@ export default async function PlansPublicPage() {
     getPlanRows(),
     getTrialDays(),
     user ? getCurrentPlan(user.id) : null,
-    user ? hasConsumedTrial(user.id) : false,
+    user ? hasConsumedTrial(user.id, user.email) : false,
     user ? getPendingRequest(user.id) : null,
   ]);
   // Un abonnement Stripe se modifie en ligne (montée immédiate au prorata,

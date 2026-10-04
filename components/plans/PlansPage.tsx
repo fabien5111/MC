@@ -598,7 +598,11 @@ function BoutonPlan({
   const clsSecondaire = `${cls} border border-outline-variant text-primary hover:bg-surface-container`;
   const clsPrincipal = `${cls} bg-primary text-on-primary hover:shadow-lg`;
 
-  if (estCourant) {
+  // Pendant un essai, la formule essayée est bien la formule courante, mais
+  // « Votre plan actuel » (inactif) y fermait la seule porte vers
+  // l'abonnement payant à cette même formule (JEP-264) : elle est traitée
+  // plus bas, avec les autres formules d'un membre en essai.
+  if (estCourant && !essaiActif) {
     return (
       <button type="button" disabled className={`${cls} bg-surface-container text-on-surface-variant`}>
         Votre plan actuel
@@ -617,9 +621,28 @@ function BoutonPlan({
         </Link>
       );
     }
+    // Mêmes boutons qu'un membre qui n'a pas encore utilisé son essai
+    // (JEP-263) — l'un n'excluait pas l'autre. Liens vers la connexion :
+    // essai comme souscription exigent un compte, rien n'est lancé sans
+    // session. Un visiteur dont l'adresse a déjà servi à un essai verra
+    // « Essayer gratuitement » tant qu'il n'est pas connecté : inévitable.
+    if (plan.trialAllowed) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
+            Essayer gratuitement
+          </Link>
+          {aUnTarif && (
+            <Link href="/connexion?next=/plans" className={`block text-center ${clsSecondaire}`}>
+              S&apos;abonner
+            </Link>
+          )}
+        </div>
+      );
+    }
     return (
       <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
-        {plan.trialAllowed ? 'Essayer' : "S'abonner"}
+        S&apos;abonner
       </Link>
     );
   }
@@ -636,11 +659,20 @@ function BoutonPlan({
         </Link>
       );
     }
-    if (!aUnTarif) return null;
+    // Formule essayée : « S'abonner » transforme l'essai en abonnement payant
+    // à cette même formule (JEP-264), avec une mention pour la reconnaître —
+    // c'est elle qui tenait lieu de « Votre plan actuel ».
+    const mention = estCourant && (
+      <p className="text-center text-xs font-semibold text-on-surface-variant">Essai en cours</p>
+    );
+    if (!aUnTarif) return mention || null;
     return (
-      <button type="button" onClick={onAbonner} className={clsPrincipal}>
-        S&apos;abonner
-      </button>
+      <div className="flex flex-col gap-2">
+        {mention}
+        <button type="button" onClick={onAbonner} className={clsPrincipal}>
+          S&apos;abonner
+        </button>
+      </div>
     );
   }
   if (inferieur) {
