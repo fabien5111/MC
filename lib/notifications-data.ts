@@ -9,6 +9,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { RYTHME_DEPUIS_BASE, type Categorie, type PreferencesMembre } from '@/lib/notification-events';
+import {
+  CATEGORIES_ADMIN,
+  NOTIFICATIONS_CLOCHE,
+  filtreMembre,
+  type Portee,
+} from '@/lib/notifications-view';
 
 export type NotificationRow = {
   id: number;
@@ -19,13 +25,13 @@ export type NotificationRow = {
   createdAt: string;
   /** Chemin relatif que la cloche ouvre au clic (JEP-278), absent pour les anciennes lignes. */
   link: string | null;
+  /** Catégorie du catalogue ; absente des lignes antérieures au moteur (elles concernent le membre). */
+  category: string | null;
 };
 
-// `notifications` n'est pas encore dans lib/database.types.ts tant que la
-// migration n'a pas été appliquée puis régénérée (npm run gen:types, cf.
-// CLAUDE.md) — accès non typé en attendant, même motif que `recipe_analysis`
-// dans /api/moderation-recette et `ads` dans PartnersManager.
-type NotificationDbRow = {
+const COLONNES = 'id, kind, title, body, read_at, created_at, link, category';
+
+type LigneNotification = {
   id: number;
   kind: string;
   title: string;
@@ -33,40 +39,70 @@ type NotificationDbRow = {
   read_at: string | null;
   created_at: string;
   link: string | null;
+  category: string | null;
 };
 
-type NotificationsSelect = {
-  select: (cols: string) => {
-    eq: (col: string, value: string) => {
-      order: (
-        col: string,
-        opts: { ascending: boolean },
-      ) => { limit: (n: number) => PromiseLike<{ data: NotificationDbRow[] | null }> };
-    };
-  };
-};
+const versLigne = (n: LigneNotification): NotificationRow => ({
+  id: n.id,
+  kind: n.kind,
+  title: n.title,
+  body: n.body,
+  readAt: n.read_at,
+  createdAt: n.created_at,
+  link: n.link ?? null,
+  category: n.category ?? null,
+});
 
 /**
- * Les vingt plus récentes, pour la cloche de l'en-tête — mémoïsé par
- * requête : la cloche et une éventuelle page dédiée partagent une lecture.
+ * Les plus récentes, pour la cloche de l'en-tête (cinq : le reste est sur
+ * /notifications) — mémoïsé par requête : la cloche et une éventuelle page
+ * dédiée partagent une lecture.
  */
-export const getRecentNotifications = cache(async (userId: string): Promise<NotificationRow[]> => {
+export const getRecentNotifications = cache(
+  async (userId: string, limite: number = NOTIFICATIONS_CLOCHE): Promise<NotificationRow[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('notifications')
+      .select(COLONNES)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limite);
+    return (data ?? []).map(versLigne);
+  },
+);
+
+/**
+ * Nombre TOTAL de notifications non lues — la pastille de la cloche. Compté en
+ * base plutôt que sur les lignes chargées : la cloche n'en montre plus que
+ * cinq, une pastille bâtie dessus mentirait dès la sixième.
+ */
+export const countUnreadNotifications = cache(async (userId: string): Promise<number> => {
   const supabase = await createClient();
-  const { data } = await (supabase.from('notifications' as never) as unknown as NotificationsSelect)
-    .select('id, kind, title, body, read_at, created_at, link')
+  const { count } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(20);
-  return (data ?? []).map((n) => ({
-    id: n.id,
-    kind: n.kind,
-    title: n.title,
-    body: n.body,
-    readAt: n.read_at,
-    createdAt: n.created_at,
-    link: n.link ?? null,
-  }));
+    .is('read_at', null);
+  return count ?? 0;
 });
+
+/**
+ * Page /notifications : `limite` entrées de la portée demandée, les plus
+ * récentes d'abord. On lit une ligne de plus que demandé pour savoir s'il en
+ * reste, sans second comptage.
+ */
+export async function listNotifications(
+  userId: string,
+  opts: { portee: Portee; limite: number },
+): Promise<{ rows: NotificationRow[]; hasMore: boolean }> {
+  const supabase = await createClient();
+  let q = supabase.from('notifications').select(COLONNES).eq('user_id', userId);
+  if (opts.portee === 'admin') q = q.in('category', CATEGORIES_ADMIN);
+  else if (opts.portee === 'membre') q = q.or(filtreMembre());
+  const { data } = await q.order('created_at', { ascending: false }).limit(opts.limite + 1);
+  const lignes = (data ?? []).map(versLigne);
+  return { rows: lignes.slice(0, opts.limite), hasMore: lignes.length > opts.limite };
+}
 
 /**
  * Préférences de notification du membre courant (JEP-279) : les lignes

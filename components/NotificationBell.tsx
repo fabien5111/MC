@@ -5,47 +5,48 @@
 // avec le reste du site, qui n'a nulle part de canal temps réel (WebSocket).
 // Une nouvelle notification apparaît à la prochaine navigation ou au prochain
 // `router.refresh()`, comme tout le reste de l'interface.
+//
+// La cloche ne montre que les cinq plus récentes ; le reste est sur
+// /notifications. La pastille, elle, compte TOUTES les non lues (calculées en
+// base par l'en-tête) — pas seulement les cinq affichées.
 import Link from 'next/link';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { markNotificationRead } from '@/lib/notification-mark-read';
+import { markNotificationsRead } from '@/lib/notification-mark-read';
+import { NotificationEntree } from '@/components/notifications/NotificationEntree';
 import type { NotificationRow } from '@/lib/notifications-data';
 
-function relatif(dateIso: string): string {
-  const ms = Date.now() - new Date(dateIso).getTime();
-  const jours = Math.floor(ms / 86_400_000);
-  if (jours <= 0) return "Aujourd'hui";
-  if (jours === 1) return 'Hier';
-  return `Il y a ${jours} jours`;
-}
-
-function Contenu({ n }: { n: NotificationRow }) {
-  return (
-    <>
-      <p className="font-label-md text-[13px]">{n.title}</p>
-      <p className="mt-0.5 whitespace-pre-line text-xs text-on-surface-variant">{n.body}</p>
-      <p className="mt-1 text-[11px] text-on-surface-variant/70">{relatif(n.createdAt)}</p>
-    </>
-  );
-}
-
-export function NotificationBell({ notifications }: { notifications: NotificationRow[] }) {
+export function NotificationBell({
+  notifications,
+  nonLuesTotal,
+}: {
+  notifications: NotificationRow[];
+  nonLuesTotal: number;
+}) {
   const [rows, setRows] = useState(notifications);
+  const [nonLues, setNonLues] = useState(nonLuesTotal);
+  // Notifications vues à l'ouverture : elles restent EN GRAS pendant que la
+  // liste est ouverte, même si on les marque lues aussitôt après. À la
+  // réouverture, elles ne sont plus nouvelles.
+  const [nouvelles, setNouvelles] = useState<ReadonlySet<number>>(new Set());
   const [ouvert, setOuvert] = useState(false);
-  const nonLues = rows.filter((n) => !n.readAt).length;
 
   async function ouvrir() {
     const etaitFerme = !ouvert;
     setOuvert((v) => !v);
     if (!etaitFerme) return;
+    const aMarquer = rows.filter((n) => !n.readAt).map((n) => n.id);
+    setNouvelles(new Set(aMarquer));
+    if (aMarquer.length === 0) return;
     // Marquage optimiste, sans spinner ni resynchronisation serveur : une
     // notification lue n'a pas besoin d'un rendu serveur à jour pour
     // paraître lue, le compteur local suffit (même motif que `VoteButton`).
-    const nonLuesIds = rows.filter((n) => !n.readAt).map((n) => n.id);
-    if (nonLuesIds.length === 0) return;
-    setRows((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })));
-    const supabase = createClient();
-    await Promise.all(nonLuesIds.map((id) => markNotificationRead(supabase, id)));
+    // Seules les notifications AFFICHÉES sont marquées : une plus ancienne,
+    // jamais vue, reste non lue (et dans la pastille).
+    const maintenant = new Date().toISOString();
+    setRows((prev) => prev.map((n) => (aMarquer.includes(n.id) ? { ...n, readAt: maintenant } : n)));
+    setNonLues((v) => Math.max(0, v - aMarquer.length));
+    await markNotificationsRead(createClient(), aMarquer);
   }
 
   return (
@@ -83,17 +84,30 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
                         onClick={() => setOuvert(false)}
                         className="block px-4 py-3 transition-colors hover:bg-surface-container-low"
                       >
-                        <Contenu n={n} />
+                        <NotificationEntree n={n} nouvelle={nouvelles.has(n.id)} />
                       </Link>
                     ) : (
                       <div className="px-4 py-3">
-                        <Contenu n={n} />
+                        <NotificationEntree n={n} nouvelle={nouvelles.has(n.id)} />
                       </div>
                     )}
                   </li>
                 ))}
               </ul>
             )}
+            <Link
+              href="/notifications"
+              onClick={() => setOuvert(false)}
+              className="block border-t border-outline-variant px-4 py-3 text-center text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container-low"
+            >
+              Voir toutes les notifications
+              {nonLues > 0 && (
+                <span className="font-normal text-on-surface-variant">
+                  {' '}
+                  · {nonLues} non lue{nonLues > 1 ? 's' : ''}
+                </span>
+              )}
+            </Link>
           </div>
         </>
       )}

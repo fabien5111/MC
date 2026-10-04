@@ -166,6 +166,7 @@ app/                    Pages et routes (App Router)
 ├── recherche/          Recherche avancée (facettes + résultats)
 ├── idees/              Boîte à idées (liste + tri + votes)
 ├── idees/nouvelle/     Proposer une idée (formulaire + prévention des doublons)
+├── notifications/      Toutes les notifications (filtre Membre / Administrateur)
 ├── projets/nouveau/    Mode projet — étape 1 d'un projet pas encore créé
 │                       (choix IA / manuel ; aucune écriture)
 ├── projets/[id]/       Mode projet — parcours guidé (intention → format →
@@ -277,7 +278,7 @@ middleware.ts           Auth : protège les routes privées (runtime Node)
   **OAuth Google** (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/reglages`,
   `/choix-pseudo`, `/creer`, `/admin`, `/execution`, `/courses`, `/importer`,
-  `/relecture`, `/idees/nouvelle` → redirection vers `/connexion?next=…` si non
+  `/relecture`, `/idees/nouvelle`, `/notifications` → redirection vers `/connexion?next=…` si non
   connecté. Tolérant aux pannes : une erreur Supabase transitoire ne bloque pas
   le site, le contrôle fin restant assuré dans chaque page (`requireUser`,
   `requireAdmin`).
@@ -1358,6 +1359,18 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   nés d'une écriture serveur** (cron, Stripe, contact) appellent `notifier()`
   directement ; un appelant serveur qui agit pour une session doit tester
   `isReadOnlySession()` lui-même.
+- **Cloche et page `/notifications`** : la cloche montre les 5 dernières
+  (`NOTIFICATIONS_CLOCHE`) et un lien « Voir toutes » ; son badge compte **toutes**
+  les non lues (`countUnreadNotifications`), pas seulement les 5 affichées. La
+  page (20 par lot, `?n=`) filtre par `?portee=` (`toutes` / `membre` / `admin`),
+  **réservé aux admin et gestionnaires** (`lirePortee`) : une notification est
+  « d'administration » si sa catégorie est `backOffice` dans le catalogue
+  (`CATEGORIES_ADMIN`, déduite, jamais listée à la main) ; une ligne sans
+  catégorie concerne le membre (`filtreMembre`, `is.null` indispensable : NULL
+  n'est dans aucun `not.in`). **Gras = non consultée** : ouvrir la cloche ou la
+  page marque les affichées lues (`read_at`, aucune colonne en plus) mais le gras
+  est tenu en état local pendant la visite, jamais déduit de `read_at` — sinon il
+  s'éteindrait dès la resynchronisation. Logique pure : `lib/notifications-view.ts`.
 - **Jamais d'auto-notification** : `acteurId === userId` écarte l'événement.
   Les écritures service_role (`auth.uid()` nul) ne notifient pas un partage : le
   déverrouillage par lien de carnet crée une ligne `book_shares` au nom du
