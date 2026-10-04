@@ -72,3 +72,22 @@ export type IdeaSummary = Omit<SimilarIdea, 'rank'>;
 // "une description courte" du spec, pas un roman.
 export const IDEA_TITLE_MAX = 60;
 export const IDEA_DESCRIPTION_MAX = 300;
+
+/**
+ * Joint, à chaque idée fusionnée, le titre de l'idée dans laquelle elle l'a
+ * été — à partir de la LISTE elle-même (la modération charge toutes les idées,
+ * fusionnées comprises, la cible s'y trouve donc), plutôt que par une jointure
+ * « idée vers idée » demandée à PostgREST : le 04/10/2026, celle-ci répondait
+ * « Could not find a relationship between 'ideas' and 'ideas' in the schema
+ * cache » alors que la clé étrangère existait, et la page d'administration
+ * affichait « aucune idée ». Une cible introuvable (supprimée) donne `null`.
+ */
+export function joindreIdeeFusionnee<T extends { id: string; title: string; merged_into_id: string | null }>(
+  lignes: T[],
+): (T & { merged_into: { title: string } | null })[] {
+  const titres = new Map(lignes.map((l) => [l.id, l.title]));
+  return lignes.map((l) => {
+    const cible = l.merged_into_id ? titres.get(l.merged_into_id) : undefined;
+    return { ...l, merged_into: cible === undefined ? null : { title: cible } };
+  });
+}

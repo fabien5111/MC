@@ -9,6 +9,7 @@ import {
 import type { Database } from '@/lib/database.types';
 import { getMembersSubscriptionSummaries } from '@/lib/subscriptions-admin';
 import { normalizeReviewPhotos, type ReviewPhoto } from '@/lib/reviews';
+import { joindreIdeeFusionnee } from '@/lib/ideas';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 export type Mold = Database['public']['Tables']['molds']['Row'] & {
@@ -477,17 +478,17 @@ export async function getAdminIdeas(): Promise<AdminIdeaRow[]> {
     .from('ideas')
     .select(
       'id, title, description, status, admin_note, created_at, author_id, merged_into_id, ' +
-        'profiles!ideas_author_id_fkey(full_name), merged_into:ideas!ideas_merged_into_id_fkey(title), idea_votes(count)',
+        'profiles!ideas_author_id_fkey(full_name), idea_votes(count)',
     )
     .order('created_at', { ascending: false });
-  if (error) {
-    console.error('getAdminIdeas:', error.message);
-    return [];
-  }
-  return ((data ?? []) as unknown as (AdminIdeaRow & { idea_votes: { count: number }[] })[]).map((row) => ({
-    ...row,
-    votes_count: row.idea_votes?.[0]?.count ?? 0,
-  }));
+  // Une panne se voit : renvoyer une liste vide la faisait passer pour « aucune
+  // idée » (04/10/2026). L'erreur est consignée par Next avec sa référence.
+  if (error) throw new Error(`getAdminIdeas : ${error.message}`);
+  const lignes = ((data ?? []) as unknown as (Omit<AdminIdeaRow, 'merged_into' | 'votes_count'> & {
+    idea_votes: { count: number }[];
+  })[]).map((row) => ({ ...row, votes_count: row.idea_votes?.[0]?.count ?? 0 }));
+  // Le titre de l'idée cible vient de la liste elle-même (cf. `joindreIdeeFusionnee`).
+  return joindreIdeeFusionnee(lignes) as AdminIdeaRow[];
 }
 
 // ── Membres / allowlist (fusion profils + invitations) ───────
