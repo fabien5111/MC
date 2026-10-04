@@ -48,9 +48,11 @@ le service managé.
 - **Langue** : code commenté en français, UI en français ; les messages de
   commit sont en français.
 - **Types de la base** : ne jamais éditer `lib/database.types.ts` à la main —
-  le régénérer (`npm run gen:types` ou workflow GitHub Actions). La génération
-  passe par une chaîne de connexion PostgreSQL (`GEN_TYPES_DB_URL`) et un
-  Endpoint temporaire, plus par une référence de projet Supabase.
+  le régénérer par le workflow manuel « Régénérer les types de la base »,
+  qui ouvre une pull request (jamais d'écriture directe sur `main`). Il joint
+  la base par un tunnel SSH à travers le nœud applicatif (216658) et le
+  réseau interne — **aucun Endpoint à ouvrir** (rôle `gen_types`, privilège
+  `REFERENCES` seul ; `DEPLOY.md` § « Régénérer les types de la base »).
 - **Images** : déposées sur le **stockage objet Swift** par le navigateur, via
   une URL signée mintée par `/api/stockage/televersement` — les octets ne
   transitent jamais par l'application. Compression côté client via
@@ -79,10 +81,9 @@ le service managé.
   derrière une authentification HTTP Basic dont lui seul a les identifiants,
   et c'est lui qui exécute. Écrire le SQL en supposant qu'il sera lu et joué
   par un humain : commenté, idempotent quand c'est possible, jamais une
-  suite de gestes à enchaîner à l'aveugle. Le port 5432 reste fermé ; pour un
-  outil **extérieur** (le runner GitHub Actions de `npm run gen:types`), il
-  faut toujours un Endpoint temporaire sur le nœud PostgreSQL (216075),
-  § 7.9 du dossier de migration.
+  suite de gestes à enchaîner à l'aveugle. Le port 5432 reste fermé ; un
+  outil **extérieur** (runner GitHub Actions) passe par le nœud applicatif en
+  SSH (`scripts/tunnel-bdd.mjs`), jamais par un Endpoint.
 - **pgweb ne peut PAS modifier la structure d'une table** (`ALTER TABLE`,
   qu'il s'agisse d'ajouter une colonne ou une contrainte). Découvert le
   25/09/2026 (JEP-254) : `pgweb_admin` a `LOGIN BYPASSRLS` et rien de plus
@@ -1821,9 +1822,9 @@ principales :
   `lib/images.ts`. Deux conteneurs, `jp-photos` (public) et `jp-contact`
   (privé, données personnelles), cloisonnés par des clés de signature
   distinctes.
-- Régénération des types : `npm run gen:types` (chaîne de connexion
-  `GEN_TYPES_DB_URL` + Endpoint temporaire sur le nœud PostgreSQL) ou workflow
-  GitHub Actions manuel (`.github/workflows/gen-types.yml`), dont l'en-tête
+- Régénération des types : workflow GitHub Actions manuel
+  (`.github/workflows/gen-types.yml`, tunnel SSH par le nœud applicatif,
+  résultat en pull request), dont l'en-tête
   décrit le mode opératoire.
 
 ## Routes IA (API Anthropic)

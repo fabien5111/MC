@@ -507,9 +507,9 @@ une authentification HTTP Basic dont lui seul a les identifiants.
 
 - **Le port 5432 reste fermé.** pgweb tourne *dans* l'environnement et joint
   PostgreSQL par le réseau interne ; rien n'est exposé de plus qu'un chemin
-  HTTP derrière l'équilibreur. L'Endpoint temporaire du § `gen:types` garde
-  donc sa raison d'être — c'est la voie des outils *extérieurs* (runner
-  GitHub Actions), pas celle du navigateur.
+  HTTP derrière l'équilibreur. Les outils *extérieurs* (runner GitHub
+  Actions) passent, eux, par le nœud applicatif — cf. « Régénérer les types
+  de la base » ci-dessous ; plus aucun Endpoint n'est nécessaire.
 - **Rôle dédié `pgweb_admin`**, `LOGIN BYPASSRLS` et rien de plus. Pas
   superutilisateur : `postgres` ne l'est pas lui-même sur cette instance et ne
   peut donc pas le transmettre (§ 2.6 du dossier de migration). `BYPASSRLS`
@@ -564,6 +564,75 @@ echo "pgweb:$(openssl passwd -apr1 'NOUVEAU')" > /etc/nginx/conf.d/pgweb.htpassw
   plutôt que de continuer sur une base à moitié migrée. Tout le reste
   (fonctions, lectures, écritures de données) continue de passer par pgweb
   normalement — la limite ne touche que le DDL des tables.
+
+## Régénérer les types de la base
+
+Workflow manuel **« Régénérer les types de la base »**
+(`.github/workflows/gen-types.yml`) : Actions → *Run workflow*. Il génère
+`lib/database.types.ts`, vérifie `npm run typecheck`, puis ouvre une **pull
+request** — jamais d'écriture directe sur `main` (incident du 03/10/2026 :
+fichier amputé committé sur `main`, 84 erreurs de types).
+
+**Plus d'Endpoint à ouvrir ni à refermer** (depuis le 04/10/2026). Le runner
+entre en SSH sur le nœud applicatif **216658** — mêmes secrets `DEPLOY_SSH_*`
+que le déploiement — et le nœud relaie vers PostgreSQL par le réseau interne
+(`10.101.32.133:5432`), cf. `scripts/tunnel-bdd.mjs`. Le port 5432 reste fermé
+sur Internet.
+
+**Rôle `gen_types`** : connexion, plus le privilège `REFERENCES` sur chaque
+table et vue de `public`. C'est ce qui suffit à la génération pour *voir* une
+table ; il ne permet de lire aucune donnée (`select` refusé). Une table qu'il
+ne voit pas disparaît du fichier généré : c'est ce que montre la pull request,
+d'où la relecture avant fusion.
+
+### Mise en place (une seule fois)
+
+1. **Où : Web SSH du nœud 216075** (PostgreSQL). Tirer un mot de passe — la
+   sortie est une ligne seule, à copier telle quelle :
+   `openssl rand -hex 24`
+2. **Où : Web SSH du nœud 216075.** Créer le rôle et lui donner ce mot de
+   passe (`\password` le demande deux fois, rien n'entre dans l'historique du
+   shell) :
+   `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "do \$\$ begin if not exists (select from pg_roles where rolname = 'gen_types') then create role gen_types login; end if; end \$\$;" -c "\password gen_types"`
+3. **Où : Web SSH du nœud 216075.** `REFERENCES` sur les tables appartenant à
+   `postgres`, et sur celles qu'il créera :
+   `psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "do \$\$ declare t record; begin for t in select c.oid::regclass as nom from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r','p','v','m','f') and pg_get_userbyid(c.relowner) = current_user loop execute format('grant references on %s to gen_types', t.nom); end loop; end \$\$;" -c "alter default privileges in schema public grant references on tables to gen_types"`
+4. **Où : pgweb.** Même chose pour les tables appartenant à `pgweb_admin`
+   (seul leur propriétaire peut les accorder) :
+   ```sql
+   do $$
+   declare t record;
+   begin
+     for t in
+       select c.oid::regclass as nom
+         from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public'
+          and c.relkind in ('r','p','v','m','f')
+          and pg_get_userbyid(c.relowner) = current_user
+     loop
+       execute format('grant references on %s to gen_types', t.nom);
+     end loop;
+   end $$;
+   alter default privileges in schema public grant references on tables to gen_types;
+   ```
+5. **Où : pgweb.** Contrôle — doit ne renvoyer **aucune ligne** (sinon, la
+   colonne `proprietaire` dit quel rôle doit encore accorder) :
+   ```sql
+   select c.relname, pg_get_userbyid(c.relowner) as proprietaire
+     from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r','p','v','m','f')
+      and not has_table_privilege('gen_types', c.oid, 'REFERENCES');
+   ```
+6. **Où : GitHub → Settings → Secrets and variables → Actions.** Secret
+   `GEN_TYPES_DB_URL` (adresse **interne**, mot de passe de l'étape 1) :
+   `postgresql://gen_types:<mot de passe>@10.101.32.133:5432/postgres?sslmode=disable`
+7. **Où : GitHub → Settings → Actions → General** (facultatif). Cocher
+   *Allow GitHub Actions to create and approve pull requests* — sans quoi le
+   workflow pousse la branche et donne seulement le lien pour créer la PR.
+
+Une table créée plus tard par un autre rôle que `postgres` ou `pgweb_admin`
+échapperait aux privilèges par défaut : rejouer l'étape 4 (ou 3) avec ce
+rôle, puis le contrôle 5.
 
 ## Certificats
 
