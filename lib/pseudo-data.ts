@@ -160,11 +160,24 @@ export async function enregistrerPseudo(
   slug: string,
   email: string | null,
   provider: string | null,
+  // `true` quand c'est un CHANGEMENT de pseudo (pas le premier choix) : la date
+  // est alors posée pour faire courir le délai de `PSEUDO_DELAI_CHANGEMENT_JOURS`.
+  marquerChangement = false,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const supabase = await clientLecture();
-  const { error } = await supabase
+  const ligne = { id: userId, full_name: pseudo, username: slug, email, provider };
+  // `pseudo_changed_at` n'est pas dans `lib/database.types.ts` tant que les
+  // types n'ont pas été régénérés après la migration : accès non typé.
+  let { error } = await supabase
     .from('profiles')
-    .upsert({ id: userId, full_name: pseudo, username: slug, email, provider });
+    .upsert((marquerChangement ? { ...ligne, pseudo_changed_at: new Date().toISOString() } : ligne) as typeof ligne);
+  if (error && marquerChangement && /pseudo_changed_at/.test(error.message)) {
+    // Colonne pas encore créée : on enregistre le pseudo sans le délai plutôt
+    // que de bloquer le membre (le délai ne court qu'une fois la migration
+    // jouée).
+    console.warn('[pseudo] colonne profiles.pseudo_changed_at absente : délai de changement non posé.');
+    ({ error } = await supabase.from('profiles').upsert(ligne));
+  }
   if (error) {
     // 23505 : l'index unique a tranché une course entre deux inscriptions
     // simultanées, que la vérification préalable ne peut pas voir.
@@ -173,6 +186,24 @@ export async function enregistrerPseudo(
     return { ok: false, message: "Erreur lors de l'enregistrement du pseudo." };
   }
   return { ok: true };
+}
+
+// Date du dernier changement de pseudo (`profiles.pseudo_changed_at`), `null`
+// si jamais changé — ou si la colonne n'existe pas encore (migration pas
+// jouée) : le délai est alors simplement inactif. Lue ici et non dans
+// `getProfile` : l'ajouter à `PROFILE_COLUMNS` avant la migration ferait
+// échouer la lecture du profil sur TOUT le site (profil `null`, donc membres
+// renvoyés sur `/choix-pseudo`).
+export async function dernierChangementPseudo(userId: string): Promise<string | null> {
+  const supabase = await clientLecture();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('pseudo_changed_at')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) return null;
+  const valeur = (data as { pseudo_changed_at?: string | null } | null)?.pseudo_changed_at;
+  return valeur ?? null;
 }
 
 // Le membre a-t-il un pseudo validé ? La marque est `profiles.username` : le

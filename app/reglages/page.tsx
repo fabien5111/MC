@@ -19,6 +19,8 @@ import { getNotificationPreferences } from '@/lib/notifications-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
 import { getAbonnementStripeCourant, getChangementProgramme, getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
+import { dernierChangementPseudo } from '@/lib/pseudo-data';
+import { prochainChangementPseudo } from '@/lib/pseudo';
 
 export const metadata: Metadata = { title: 'Réglages du compte | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -62,6 +64,10 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
     });
     profile = await getProfile(user.id);
   }
+
+  // Délai entre deux changements de pseudo (lib/pseudo.ts) : calculé ici, côté
+  // serveur, pour que l'éditeur grise le message sans deviner une date.
+  const echeancePseudo = prochainChangementPseudo(await dernierChangementPseudo(user.id));
 
   const admin = await isAdmin(user.id);
   const manager = await isManager(user.id);
@@ -133,6 +139,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           fallbackAvatar={fallbackAvatar}
           isAdmin={admin}
           followCounts={followCounts}
+          prochainChangementPseudo={echeancePseudo?.toISOString() ?? null}
         />
         <UsageCard
           usage={usage}
