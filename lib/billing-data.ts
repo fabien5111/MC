@@ -208,9 +208,24 @@ export type ChangementProgramme = { planLabel: string; effectiveAt: string };
  *
  * Confort d'affichage seulement, jamais une source de vérité pour les
  * droits : `null` s'il n'y a rien de programmé OU en cas de panne Stripe.
+ *
+ * **Clé Stripe absente = panne Stripe**, pas une erreur à remonter (04/10/2026) :
+ * `appelStripe` lève `MissingStripeConfigError` pour que les routes de PAIEMENT
+ * ne se dégradent jamais en silence, mais ici ce n'est qu'une ligne d'information
+ * facultative — la laisser lever faisait tomber `/reglages` en entier pour tout
+ * membre ayant un abonnement Stripe actif dès que la variable manquait.
  */
 export async function getChangementProgramme(subscriptionId: string): Promise<ChangementProgramme | null> {
-  const abo = await appelStripe<{ schedule?: unknown }>(`/subscriptions/${subscriptionId}`);
+  let abo: ReponseStripe<{ schedule?: unknown }>;
+  try {
+    abo = await appelStripe<{ schedule?: unknown }>(`/subscriptions/${subscriptionId}`);
+  } catch (e) {
+    if (e instanceof MissingStripeConfigError) {
+      console.warn(`getChangementProgramme: ${e.message} — changement programmé non affiché.`);
+      return null;
+    }
+    throw e;
+  }
   if (!abo.ok) return null;
   const echeancierId = identifiantEcheancier(abo.data.schedule);
   if (!echeancierId) return null;
