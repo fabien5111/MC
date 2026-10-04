@@ -1407,6 +1407,15 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   un e-mail immédiat bascule dans le prochain récapitulatif au lieu d'être
   perdu. Un récapitulatif qui dépasse le quota reste en file pour la passe
   suivante.
+- **La passe quotidienne se rattrape** (04/10/2026) : GitHub retarde ou saute
+  des tâches planifiées — le jour du lancement, trois passes `outbox` seulement
+  avaient tourné en douze heures et le créneau de 05:30 UTC jamais. Toute passe
+  `outbox` postérieure à 05:30 UTC joue donc aussi la quotidienne du jour
+  (`quotidienARattraper`), **une seule fois** : le jour de Zurich est réservé
+  atomiquement dans `site_settings` (`notifications_quotidien_du`,
+  `reserverQuotidien`) ; la réservation est rendue si la passe échoue. Un
+  `?passe=quotidien` explicite rejoue toujours (rappels et récapitulatifs sont
+  dédoublonnés). Aucune migration.
 - **Rappels de fournée** (`lib/notification-rappels-data.ts`, passe `quotidien`
   de 05:30 UTC) : étape à commencer le jour J − n, veille, invitation à donner
   son avis le lendemain d'une fournée terminée sans avis, recette mise en avant

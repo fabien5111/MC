@@ -34,3 +34,19 @@ export type EtapeRappel = { title: string; day_offset: number | null; done: bool
 export function etapesACommencer(etapes: EtapeRappel[], plannedDate: string, aujourdhui: string): string[] {
   return etapes.filter((e) => !e.done && jourDEtape(plannedDate, e.day_offset) === aujourdhui).map((e) => e.title);
 }
+
+/** Heure UTC (minutes depuis minuit) du créneau quotidien : 05:30, cf. cron-notifications.yml. */
+const MINUTE_QUOTIDIEN_UTC = 5 * 60 + 30;
+
+/**
+ * Jour à rattraper par la passe quotidienne, ou `null` si son heure n'est pas
+ * encore venue. GitHub retarde souvent les tâches planifiées, voire en saute :
+ * le 04/10/2026, trois passes `outbox` seulement avaient tourné en douze heures
+ * et la passe de 05:30 UTC jamais. N'importe quelle passe `outbox` passée ce
+ * créneau peut donc jouer la quotidienne du jour, une fois (cf.
+ * `reserverQuotidien`). Avant 05:30 UTC, on ne devance pas l'horaire normal.
+ */
+export function quotidienARattraper(maintenant: Date): string | null {
+  const minutes = maintenant.getUTCHours() * 60 + maintenant.getUTCMinutes();
+  return minutes >= MINUTE_QUOTIDIEN_UTC ? dateZurich(maintenant) : null;
+}
