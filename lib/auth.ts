@@ -157,7 +157,19 @@ const PROFILE_COLUMN_LIST = [
 // Conséquence voulue : ajouter une colonne à `profiles` puis régénérer les
 // types (`npm run gen:types`) casse la compilation ici tant qu'on n'a pas
 // tranché si elle a sa place dans une ligne lue à chaque rendu de page.
-type ColonnesProfilManquantes = Exclude<keyof Profile, (typeof PROFILE_COLUMN_LIST)[number]>;
+//
+// Colonnes volontairement NON chargées — chacune avec sa raison :
+// - `full_name_norm` : colonne générée (pseudo sans casse ni accents) qui ne
+//   sert qu'à la recherche par nom, côté base (`withNormColumn`). Aucun écran
+//   ne l'affiche ; la lire à chaque page ne paierait que du transfert.
+const PROFILE_COLONNES_NON_CHARGEES = [
+  'full_name_norm',
+] as const satisfies readonly (keyof Profile)[];
+
+type ColonnesProfilManquantes = Exclude<
+  keyof Profile,
+  (typeof PROFILE_COLUMN_LIST)[number] | (typeof PROFILE_COLONNES_NON_CHARGEES)[number]
+>;
 
 const PROFILE_COLUMNS: [ColonnesProfilManquantes] extends [never] ? string : never =
   PROFILE_COLUMN_LIST.join(', ');

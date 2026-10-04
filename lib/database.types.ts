@@ -385,7 +385,7 @@ export type Database = {
           author_id: string | null
           author_name: string | null
           category: string | null
-          content: Json
+          content: NonNullable<Json>
           cover_image_url: string | null
           created_at: string
           excerpt: string | null
@@ -402,7 +402,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           category?: string | null
-          content?: Json
+          content?: NonNullable<Json>
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
@@ -419,7 +419,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           category?: string | null
-          content?: Json
+          content?: NonNullable<Json>
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
@@ -1076,7 +1076,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: number
-          photo_urls: Json
+          photo_urls: NonNullable<Json>
           rating: number | null
           recipe_id: string | null
           rejection_reason: string | null
@@ -1090,7 +1090,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: number
-          photo_urls?: Json
+          photo_urls?: NonNullable<Json>
           rating?: number | null
           recipe_id?: string | null
           rejection_reason?: string | null
@@ -1104,7 +1104,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: number
-          photo_urls?: Json
+          photo_urls?: NonNullable<Json>
           rating?: number | null
           recipe_id?: string | null
           rejection_reason?: string | null
@@ -1410,6 +1410,60 @@ export type Database = {
           name?: string
           status?: string | null
           tooltip?: string | null
+        }
+        Relationships: []
+      }
+      email_digest_queue: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          event: string
+          id: number
+          link: string | null
+          rhythm: string
+          sent_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string
+          event: string
+          id?: number
+          link?: string | null
+          rhythm: string
+          sent_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          event?: string
+          id?: number
+          link?: string | null
+          rhythm?: string
+          sent_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_quota: {
+        Row: {
+          day: string
+          sent: number
+        }
+        Insert: {
+          day: string
+          sent?: number
+        }
+        Update: {
+          day?: string
+          sent?: number
         }
         Relationships: []
       }
@@ -1938,7 +1992,7 @@ export type Database = {
           author_id?: string | null
           created_at?: string
           description?: string | null
-          fts?: unknown
+          fts?: never
           id?: string
           merged_into_id?: string | null
           status?: string
@@ -1949,7 +2003,7 @@ export type Database = {
           author_id?: string | null
           created_at?: string
           description?: string | null
-          fts?: unknown
+          fts?: never
           id?: string
           merged_into_id?: string | null
           status?: string
@@ -2077,7 +2131,7 @@ export type Database = {
           input_tokens: number | null
           model: string | null
           output_tokens: number | null
-          recette: Json
+          recette: NonNullable<Json>
           recipe_id: string | null
           source_type: string
           source_url: string | null
@@ -2094,7 +2148,7 @@ export type Database = {
           input_tokens?: number | null
           model?: string | null
           output_tokens?: number | null
-          recette: Json
+          recette: NonNullable<Json>
           recipe_id?: string | null
           source_type: string
           source_url?: string | null
@@ -2111,7 +2165,7 @@ export type Database = {
           input_tokens?: number | null
           model?: string | null
           output_tokens?: number | null
-          recette?: Json
+          recette?: NonNullable<Json>
           recipe_id?: string | null
           source_type?: string
           source_url?: string | null
@@ -2379,30 +2433,134 @@ export type Database = {
           },
         ]
       }
+      notification_dedupe: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_outbox: {
+        Row: {
+          actor_id: string | null
+          attempts: number
+          created_at: string
+          data: NonNullable<Json>
+          error: string | null
+          event: string
+          id: number
+          processed_at: string | null
+          recipient_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          attempts?: number
+          created_at?: string
+          data?: NonNullable<Json>
+          error?: string | null
+          event: string
+          id?: number
+          processed_at?: string | null
+          recipient_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          attempts?: number
+          created_at?: string
+          data?: NonNullable<Json>
+          error?: string | null
+          event?: string
+          id?: number
+          processed_at?: string | null
+          recipient_id?: string | null
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          category: string
+          email: boolean
+          in_app: boolean
+          rhythm: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          email: boolean
+          in_app: boolean
+          rhythm: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          email?: boolean
+          in_app?: boolean
+          rhythm?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
+          category: string | null
+          count: number
           created_at: string
+          data: NonNullable<Json>
+          event: string | null
+          group_key: string | null
           id: number
           kind: string
+          link: string | null
           read_at: string | null
           title: string
           user_id: string
         }
         Insert: {
           body: string
+          category?: string | null
+          count?: number
           created_at?: string
+          data?: NonNullable<Json>
+          event?: string | null
+          group_key?: string | null
           id?: never
           kind: string
+          link?: string | null
           read_at?: string | null
           title: string
           user_id: string
         }
         Update: {
           body?: string
+          category?: string | null
+          count?: number
           created_at?: string
+          data?: NonNullable<Json>
+          event?: string | null
+          group_key?: string | null
           id?: never
           kind?: string
+          link?: string | null
           read_at?: string | null
           title?: string
           user_id?: string
@@ -2608,6 +2766,7 @@ export type Database = {
           followers_count: number | null
           following_count: number | null
           full_name: string | null
+          full_name_norm: string | null
           id: string
           impersonation_access: string
           instagram: string | null
@@ -2638,6 +2797,7 @@ export type Database = {
           followers_count?: number | null
           following_count?: number | null
           full_name?: string | null
+          full_name_norm?: never
           id: string
           impersonation_access?: string
           instagram?: string | null
@@ -2668,6 +2828,7 @@ export type Database = {
           followers_count?: number | null
           following_count?: number | null
           full_name?: string | null
+          full_name_norm?: never
           id?: string
           impersonation_access?: string
           instagram?: string | null
@@ -2811,6 +2972,7 @@ export type Database = {
           role: string | null
           scale_factor: number | null
           scale_reason: string | null
+          scaling_mode: string | null
           source_author_id: string | null
           source_author_name: string | null
           source_kind: string
@@ -2830,6 +2992,7 @@ export type Database = {
           role?: string | null
           scale_factor?: number | null
           scale_reason?: string | null
+          scaling_mode?: string | null
           source_author_id?: string | null
           source_author_name?: string | null
           source_kind?: string
@@ -2849,6 +3012,7 @@ export type Database = {
           role?: string | null
           scale_factor?: number | null
           scale_reason?: string | null
+          scaling_mode?: string | null
           source_author_id?: string | null
           source_author_name?: string | null
           source_kind?: string
@@ -3325,6 +3489,7 @@ export type Database = {
           status: string | null
           tips: string | null
           title: string
+          title_norm: string | null
           total_time: number | null
           type_id: number | null
           updated_at: string | null
@@ -3342,9 +3507,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_id?: number | null
-          fts?: unknown
+          fts?: never
           global_tips?: string | null
-          has_hero_image?: boolean
+          has_hero_image?: never
           hero_card_url?: string | null
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
@@ -3369,6 +3534,7 @@ export type Database = {
           status?: string | null
           tips?: string | null
           title: string
+          title_norm?: never
           total_time?: number | null
           type_id?: number | null
           updated_at?: string | null
@@ -3386,9 +3552,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_id?: number | null
-          fts?: unknown
+          fts?: never
           global_tips?: string | null
-          has_hero_image?: boolean
+          has_hero_image?: never
           hero_card_url?: string | null
           hero_image_ai_retouched?: boolean
           hero_image_original_url?: string | null
@@ -3413,6 +3579,7 @@ export type Database = {
           status?: string | null
           tips?: string | null
           title?: string
+          title_norm?: never
           total_time?: number | null
           type_id?: number | null
           updated_at?: string | null
@@ -4040,7 +4207,7 @@ export type Database = {
         Returns: number
       }
       admin_list_ignored_refs: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           created_at: string
           created_by_name: string
@@ -4057,9 +4224,13 @@ export type Database = {
           ip_address: string
         }[]
       }
+      admin_merge_ingredient_refs: {
+        Args: { p_drop: number[]; p_keep: number }
+        Returns: undefined
+      }
       admin_unignore_ref: { Args: { p_id: number }; Returns: undefined }
       admin_unknown_ingredients: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           author_id: string
           author_name: string
@@ -4074,7 +4245,7 @@ export type Database = {
         }[]
       }
       admin_unknown_utensils: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           author_id: string
           author_name: string
@@ -4087,7 +4258,7 @@ export type Database = {
         }[]
       }
       admin_volume_ingredients_missing_density: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           author_id: string
           author_name: string
@@ -4104,11 +4275,12 @@ export type Database = {
         Args: { p_recipe_id: string }
         Returns: boolean
       }
-      can_write_articles: { Args: never; Returns: boolean }
-      contact_purge: { Args: never; Returns: undefined }
+      can_write_articles: { Args: Record<PropertyKey, never>; Returns: boolean }
+      contact_purge: { Args: Record<PropertyKey, never>; Returns: undefined }
       duplicate_recipe: { Args: { p_recipe_id: string }; Returns: string }
+      email_quota_reserver: { Args: { p_plafond: number }; Returns: boolean }
       gone_article_slugs: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           slug: string
         }[]
@@ -4123,9 +4295,12 @@ export type Database = {
           votes_count: number
         }[]
       }
-      is_admin_user: { Args: never; Returns: boolean }
-      is_read_only_session: { Args: never; Returns: boolean }
-      is_site_admin: { Args: never; Returns: boolean }
+      is_admin_user: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_read_only_session: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_site_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       list_ideas: {
         Args: {
           count_only?: boolean
@@ -4165,7 +4340,7 @@ export type Database = {
         Returns: number
       }
       mc_admin_reset_trial: {
-        Args: { p_reason: string; p_user_id: string }
+        Args: { p_email_hash?: string; p_reason: string; p_user_id: string }
         Returns: undefined
       }
       mc_anchor_date: {
@@ -4186,7 +4361,10 @@ export type Database = {
         }
         Returns: number
       }
-      mc_cancel_own_subscription: { Args: never; Returns: string }
+      mc_cancel_own_subscription: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       mc_check_quota: {
         Args: { p_key: string; p_user_id: string }
         Returns: Json
@@ -4210,7 +4388,18 @@ export type Database = {
         Args: { p_error?: string; p_id: string; p_status: string }
         Returns: undefined
       }
+      mc_ingredient_key: { Args: { p: string }; Returns: string }
       mc_norm: { Args: { txt: string }; Returns: string }
+      mc_norm_imm: { Args: { txt: string }; Returns: string }
+      mc_notif_emit: {
+        Args: {
+          p_actor: string
+          p_data: Json
+          p_event: string
+          p_recipient: string
+        }
+        Returns: undefined
+      }
       mc_period_bounds: {
         Args: { p_anchor: number; p_at: string }
         Returns: Record<string, unknown>
@@ -4238,10 +4427,6 @@ export type Database = {
       }
       mc_refund: { Args: { p_key: string; p_n?: number }; Returns: undefined }
       mc_renewal_anchor: { Args: { p_user_id: string }; Returns: number }
-      mc_simulate_subscribe: {
-        Args: { p_plan_code: string; p_promo_code: string }
-        Returns: number
-      }
       mc_start_trial: {
         Args: { p_email_hash: string; p_plan_code: string }
         Returns: number
@@ -4346,12 +4531,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4375,11 +4560,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4400,11 +4585,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4425,11 +4610,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4442,11 +4627,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4465,4 +4650,3 @@ export const Constants = {
     },
   },
 } as const
-
