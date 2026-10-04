@@ -37,21 +37,20 @@ Auth/RLS via la session (cookies).
 `lib/database.types.ts` est la source de vérité pour les types de la base — à
 régénérer, jamais à éditer à la main.
 
-La base n'est plus un projet Supabase managé : la génération passe désormais
-par une **chaîne de connexion PostgreSQL**, et non plus par une référence de
-projet. Comme le port 5432 n'est pas exposé en production, il faut ouvrir un
-**Endpoint temporaire** sur le nœud PostgreSQL le temps de l'opération, puis
-le refermer.
+La base n'est plus un projet Supabase managé : la génération passe par une
+**chaîne de connexion PostgreSQL**. Le port 5432 n'étant pas exposé, le
+workflow GitHub Actions « Régénérer les types de la base »
+(`.github/workflows/gen-types.yml`, lancement manuel) passe par le nœud
+applicatif en SSH et ouvre une pull request avec le résultat — aucun Endpoint
+à ouvrir. Mise en place et rôle `gen_types` : `DEPLOY.md` § « Régénérer les
+types de la base ».
 
 ```bash
-export GEN_TYPES_DB_URL=postgresql://postgres:<mdp>@<hôte>:<port>/postgres
+# Contre une base joignable directement (locale, par exemple) :
+export GEN_TYPES_DB_URL=postgresql://<user>:<mdp>@<hôte>:<port>/postgres
 npm run gen:types                          # écrase lib/database.types.ts
 npm run typecheck                          # repérer les écarts éventuels
 ```
-
-Un workflow GitHub Actions (`.github/workflows/gen-types.yml`, lancement
-manuel) fait la même chose et committe le résultat sur la branche choisie ;
-son en-tête décrit le mode opératoire complet, Endpoint compris.
 
 ## Variables d'environnement
 

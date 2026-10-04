@@ -1,81 +1,119 @@
 name: Régénérer les types de la base
 
 # Lancement manuel depuis l'onglet « Actions » (bouton « Run workflow »).
-# Régénère lib/database.types.ts depuis la base live et le committe sur la
-# branche cible.
+# Régénère lib/database.types.ts depuis la base live et le propose dans une
+# pull request. Aucun geste hors de GitHub.
 #
 # ─────────────────────────────────────────────────────────────────────────
-# MODE OPÉRATOIRE — trois gestes, dont deux hors de GitHub
+# COMMENT LE RUNNER JOINT LA BASE — sans Endpoint
 # ─────────────────────────────────────────────────────────────────────────
-# La base n'est plus hébergée par Supabase mais par Infomaniak (Virtuozzo
-# Cloud), et **le port 5432 n'y est pas exposé** (§ 7.9 du dossier de
-# migration). Ce workflow ne peut donc pas joindre la base en permanence, et
-# c'est voulu : aucun accès direct ne subsiste entre deux régénérations.
+# Le port 5432 n'est pas exposé sur Internet (§ 7.9 du dossier de migration).
+# Jusqu'au 04/10/2026, il fallait donc ouvrir un Endpoint temporaire sur le
+# nœud PostgreSQL avant chaque régénération, puis le refermer. Désormais, le
+# runner passe par l'accès SSH du nœud applicatif (216658) — le même que
+# `deploiement-app.yml`, mêmes secrets DEPLOY_SSH_* — et le nœud relaie vers
+# la base par le réseau interne d'Infomaniak (scripts/tunnel-bdd.mjs).
 #
-#   1. Console Infomaniak → environnement `jepatisse` → nœud PostgreSQL →
-#      ajouter un **Endpoint** sur le port 5432. Noter l'hôte et le port
-#      publics qu'il rend.
-#   2. Settings > Secrets and variables > Actions → poser (ou mettre à jour)
-#      GEN_TYPES_DB_URL :
-#        postgresql://postgres:<mot de passe>@<hôte>:<port>/postgres
-#   3. Lancer ce workflow, puis **REFERMER l'Endpoint**. Cette dernière étape
-#      n'est pas une politesse : l'Endpoint laisse la base joignable depuis
-#      tout l'Internet tant qu'il existe.
+# Secret GEN_TYPES_DB_URL : adresse INTERNE de la base, rôle `gen_types`
+#   postgresql://gen_types:<mot de passe>@10.101.32.133:5432/postgres?sslmode=disable
+# `gen_types` ne porte que le privilège REFERENCES sur les tables : il voit
+# leur structure (ce dont la génération a besoin), jamais leurs données.
+# Création du rôle : DEPLOY.md § « Régénérer les types de la base ».
 #
-# Le secret garde une valeur périmée entre deux usages (l'Endpoint change de
-# port à chaque ouverture) — c'est sans danger, le workflow échoue alors à la
-# connexion sans rien écrire.
+# ─────────────────────────────────────────────────────────────────────────
+# JAMAIS D'ÉCRITURE DIRECTE SUR `main`
+# ─────────────────────────────────────────────────────────────────────────
+# Le 03/10/2026, une régénération lancée sur `main` avec un rôle qui ne voyait
+# pas toutes les tables y a committé un fichier amputé : 84 erreurs de types,
+# déploiements bloqués jusqu'à l'annulation. Le résultat part donc sur une
+# branche dédiée, passe `npm run typecheck`, et arrive en pull request : un
+# fichier incomplet se voit dans le diff (tables retirées) avant la fusion.
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: Branche où écrire lib/database.types.ts
-        required: true
-        default: main
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: gen-types
+  cancel-in-progress: false
 
 jobs:
   gen-types:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Récupérer la branche cible
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.branch }}
+          ref: main
 
-      - name: Installer Node
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Préparer la connexion SSH au nœud applicatif
+        uses: ./.github/actions/preparer-connexion-ssh
+        with:
+          cle: ${{ secrets.DEPLOY_SSH_KEY }}
+          hote: ${{ secrets.DEPLOY_SSH_HOST }}
+          utilisateur: ${{ secrets.DEPLOY_SSH_USER }}
+          port: ${{ vars.DEPLOY_SSH_PORT || '3022' }}
+          hotes-connus: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          alias: noeud-app
+          prefixe-secret: DEPLOY_SSH
 
       # Passe par scripts/gen-types.mjs (npm run gen:types) et non par une
-      # redirection directe : le shell tronquerait lib/database.types.ts avant
-      # même de lancer la CLI, si bien qu'une connexion refusée ferait
-      # COMMITTER le message d'erreur JSON à la place des types. Le script
-      # n'écrit la cible qu'une fois la génération réellement aboutie, et sort
-      # en échec sinon.
-      # Aucun `npm ci` nécessaire : il ne tire que des modules natifs de Node.
+      # redirection directe : le script n'écrit la cible qu'une fois la
+      # génération réellement aboutie, et sort en échec sinon. C'est lui qui
+      # ouvre le tunnel (GEN_TYPES_SSH) et le referme.
       - name: Générer les types depuis la base
         env:
           GEN_TYPES_DB_URL: ${{ secrets.GEN_TYPES_DB_URL }}
+          GEN_TYPES_SSH: noeud-app
         run: npm run gen:types
 
-      - name: Committer si le fichier a changé
+      - name: Y a-t-il un changement ?
+        id: diff
         run: |
           if git diff --quiet -- lib/database.types.ts; then
-            echo "Types déjà à jour — rien à committer."
-            exit 0
+            echo "change=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Types déjà à jour — rien à proposer."
+          else
+            echo "change=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- lib/database.types.ts
           fi
+
+      # Un fichier qui ne compile pas n'est même pas proposé.
+      - name: Vérifier que le code compile avec les nouveaux types
+        if: steps.diff.outputs.change == 'true'
+        run: |
+          cp .env.local.example .env.local
+          npm run typecheck
+
+      - name: Proposer les types dans une pull request
+        if: steps.diff.outputs.change == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCHE="types/regeneration-$(date -u +%Y%m%d-%H%M%S)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCHE"
           git add lib/database.types.ts
           git commit -m "Types : régénération authentique depuis la base (gen types)"
-          git push origin HEAD:${{ inputs.branch }}
+          git push origin "$BRANCHE"
+          CORPS="Régénération de \`lib/database.types.ts\` depuis la base live (workflow « Régénérer les types de la base », exécution ${{ github.run_id }}).
 
-      - name: Rappeler de refermer l'Endpoint
-        if: always()
-        run: |
-          echo "N'OUBLIEZ PAS de refermer l'Endpoint 5432 du nœud PostgreSQL."
-          echo "Tant qu'il existe, la base est joignable depuis tout l'Internet."
+          \`npm run typecheck\` passe avec ces types. À relire avant de fusionner : une table **retirée** du fichier signale un rôle \`gen_types\` qui ne la voit pas (privilège REFERENCES manquant), pas une table supprimée."
+          # Créer une PR depuis Actions exige le réglage « Allow GitHub Actions
+          # to create and approve pull requests » (Settings > Actions >
+          # General). Sans lui, la branche est poussée et le lien de création
+          # est donné : rien n'est perdu.
+          if ! gh pr create --base main --head "$BRANCHE" \
+               --title "Types : régénération depuis la base" --body "$CORPS"; then
+            echo "::warning::Pull request non créée automatiquement. La créer depuis : ${{ github.server_url }}/${{ github.repository }}/compare/main...$BRANCHE"
+          fi

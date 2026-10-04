@@ -15,18 +15,18 @@
 // `Database` dont tout le code dépend — elle change simplement de source.
 //
 // **Le port 5432 n'est pas exposé en production** (§ 7.9 du dossier de
-// migration), et il n'a pas à l'être pour une opération aussi rare qu'une
-// régénération de types. La procédure est donc délibérément manuelle :
-// ouvrir un Endpoint temporaire sur le nœud PostgreSQL, poser la chaîne
-// obtenue dans `GEN_TYPES_DB_URL`, régénérer, refermer l'Endpoint. C'est le
-// même mode opératoire que les migrations C1 et C3, et la friction est
-// voulue : elle garantit qu'aucun accès direct à la base ne subsiste entre
-// deux usages.
-import { spawnSync } from 'node:child_process';
+// migration), et il n'a pas à l'être. Avec `GEN_TYPES_SSH` (alias SSH du nœud
+// applicatif, posé par le workflow), la connexion passe par un tunnel à
+// travers ce nœud, qui joint la base par le réseau interne d'Infomaniak
+// (`scripts/tunnel-bdd.mjs`) : `GEN_TYPES_DB_URL` désigne alors l'adresse
+// INTERNE de la base, et aucun Endpoint n'est à ouvrir. Sans `GEN_TYPES_SSH`,
+// la chaîne est utilisée telle quelle (base locale, ou Endpoint de secours).
+import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ouvrirTunnel } from './tunnel-bdd.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cible = join(racine, 'lib', 'database.types.ts');
@@ -34,45 +34,72 @@ const cible = join(racine, 'lib', 'database.types.ts');
 const dbUrl = process.env.GEN_TYPES_DB_URL;
 if (!dbUrl) {
   console.error('[types] GEN_TYPES_DB_URL est absent — rien n’a été régénéré.');
-  console.error('[types] Ouvrir un Endpoint temporaire sur le nœud PostgreSQL,');
-  console.error('[types] puis exporter la chaîne de connexion qu’il rend :');
-  console.error('[types]   GEN_TYPES_DB_URL=postgresql://<user>:<mdp>@<hôte>:<port>/postgres');
+  console.error('[types] Attendu : GEN_TYPES_DB_URL=postgresql://<user>:<mdp>@<hôte>:<port>/postgres');
+  console.error('[types] (adresse interne de la base + GEN_TYPES_SSH=<alias> pour passer par le nœud applicatif).');
   process.exit(1);
+}
+
+// Lance la CLI sans bloquer la boucle d'événements : le tunnel, servi par ce
+// même processus, doit pouvoir relayer pendant qu'elle tourne.
+function lancer(commande, args) {
+  return new Promise((resoudre) => {
+    const enfant = spawn(commande, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    enfant.stdout.on('data', (m) => (stdout += m));
+    enfant.stderr.on('data', (m) => (stderr += m));
+    enfant.on('error', (error) => resoudre({ error, stdout, stderr, status: null }));
+    enfant.on('close', (status) => resoudre({ stdout, stderr, status }));
+  });
+}
+
+let url = dbUrl;
+let tunnel = null;
+const alias = process.env.GEN_TYPES_SSH;
+if (alias) {
+  const adresse = new URL(dbUrl);
+  tunnel = await ouvrirTunnel({ alias, hote: adresse.hostname, port: adresse.port || '5432' });
+  adresse.hostname = '127.0.0.1';
+  adresse.port = String(tunnel.port);
+  url = adresse.toString();
+  console.log(`[types] tunnel par « ${alias} » vers la base (port local ${tunnel.port}).`);
 }
 
 const tmp = mkdtempSync(join(tmpdir(), 'mc-types-'));
 try {
-  const res = spawnSync(
-    'npx',
-    ['--yes', 'supabase@latest', 'gen', 'types', 'typescript', '--db-url', dbUrl, '--schema', 'public'],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-  );
+  const res = await lancer('npx', [
+    '--yes', 'supabase@latest', 'gen', 'types', 'typescript', '--db-url', url, '--schema', 'public',
+  ]);
 
   if (res.error) {
     console.error('[types] échec du lancement de la CLI Supabase :', res.error.message);
-    process.exit(1);
-  }
-  if (res.status !== 0) {
+    process.exitCode = 1;
+  } else if (res.status !== 0) {
     console.error(`[types] la CLI Supabase a échoué (code ${res.status}) :`);
     console.error((res.stderr || res.stdout || '').trim());
     console.error('[types] lib/database.types.ts est laissé INCHANGÉ.');
-    process.exit(1);
+    process.exitCode = 1;
+  } else {
+    ecrire(res.stdout ?? '');
   }
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+  if (tunnel) await tunnel.fermer();
+}
 
-  const sortie = res.stdout ?? '';
+function ecrire(sortie) {
   // Une erreur peut ressortir en JSON sur la sortie standard AVEC un code de
   // retour 0 — le contenu ne peut donc pas être cru sur parole.
   if (!sortie.includes('export type Database')) {
     console.error('[types] sortie inattendue (types absents) :');
     console.error(sortie.slice(0, 500).trim());
     console.error('[types] lib/database.types.ts est laissé INCHANGÉ.');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const provisoire = join(tmp, 'database.types.ts');
   writeFileSync(provisoire, sortie);
   writeFileSync(cible, readFileSync(provisoire));
   console.log(`[types] lib/database.types.ts régénéré (${sortie.split('\n').length} lignes).`);
-} finally {
-  rmSync(tmp, { recursive: true, force: true });
 }
