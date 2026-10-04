@@ -21,7 +21,7 @@
 // (`scripts/tunnel-bdd.mjs`) : `GEN_TYPES_DB_URL` désigne alors l'adresse
 // INTERNE de la base, et aucun Endpoint n'est à ouvrir. Sans `GEN_TYPES_SSH`,
 // la chaîne est utilisée telle quelle (base locale, ou Endpoint de secours).
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -100,6 +100,17 @@ function ecrire(sortie) {
 
   const provisoire = join(tmp, 'database.types.ts');
   writeFileSync(provisoire, sortie);
-  writeFileSync(cible, readFileSync(provisoire));
-  console.log(`[types] lib/database.types.ts régénéré (${sortie.split('\n').length} lignes).`);
+  // La CLI récente rend un fichier non mis en forme (une ligne par table) :
+  // sans cette passe, chaque régénération réécrit les 4 000 lignes du fichier
+  // et le diff de la pull request devient illisible — or c'est lui qui dit
+  // si une table a disparu. `--no-semi` reproduit la forme historique.
+  const forme = spawnSync('npx', ['--yes', 'prettier@3', '--no-semi', '--write', provisoire], {
+    encoding: 'utf8',
+  });
+  if (forme.status !== 0) {
+    console.error('[types] mise en forme impossible (fichier écrit tel quel) :', (forme.stderr || '').trim());
+  }
+  const contenu = readFileSync(provisoire, 'utf8');
+  writeFileSync(cible, contenu);
+  console.log(`[types] lib/database.types.ts régénéré (${contenu.split('\n').length} lignes).`);
 }
