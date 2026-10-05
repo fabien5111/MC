@@ -38,13 +38,13 @@ function numify(v: unknown): number | null {
 }
 
 type StepRow = { id: number; order_index: number | null; component_id: number | null };
-type GroupRow = { id: number; order_index: number | null };
+type GroupRow = { id: number; order_index: number | null; scaling_mode: string | null };
 
 // Étapes du projet et groupes d'ingrédients, appariés par `order_index`.
 async function readLayout(supabase: Supabase, recipeId: string) {
   const [stepsRes, groupsRes] = await Promise.all([
     supabase.from('recipe_steps').select('id, order_index, component_id').eq('recipe_id', recipeId),
-    supabase.from('ingredient_groups').select('id, order_index').eq('recipe_id', recipeId),
+    supabase.from('ingredient_groups').select('id, order_index, scaling_mode').eq('recipe_id', recipeId),
   ]);
   if (stepsRes.error) throw stepsRes.error;
   if (groupsRes.error) throw groupsRes.error;
@@ -97,7 +97,9 @@ export async function readComponentDraft(
 
   const { data: stepDetails, error: stepErr } = await supabase
     .from('recipe_steps')
-    .select('id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset')
+    .select(
+      'id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, step_photos(url, original_url, order_index, ai_retouched)',
+    )
     .in('id', mine.map((s) => s.id));
   if (stepErr) throw stepErr;
 
@@ -107,7 +109,7 @@ export async function readComponentDraft(
     groupIds.length > 0
       ? await supabase
           .from('ingredients')
-          .select('group_id, name, quantity, unit, comment, allergen, ref_id, order_index')
+          .select('*')
           .in('group_id', groupIds)
       : { data: [], error: null };
   if (ingErr) throw ingErr;
@@ -124,7 +126,10 @@ export async function readComponentDraft(
     cook_temp: number | null;
     tips: string | null;
     day_offset: number | null;
+    step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[] | null;
   };
+  // `*` et non une liste : `base_quantity` est absente des types générés
+  // (cf. lib/projects-data.ts), une liste explicite ne compilerait pas.
   type IngRow = {
     group_id: number | null;
     name: string;
@@ -134,6 +139,7 @@ export async function readComponentDraft(
     allergen: string | null;
     ref_id: number | null;
     order_index: number | null;
+    base_quantity?: number | null;
   };
   const details = new Map(((stepDetails ?? []) as unknown as StepDetail[]).map((d) => [d.id, d]));
   const ingByGroup = new Map<number, IngRow[]>();
@@ -157,11 +163,14 @@ export async function readComponentDraft(
             comment: it.comment,
             allergen: it.allergen,
             ref_id: it.ref_id,
+            base_quantity: it.base_quantity ?? null,
           }))
       : [];
     return {
       title: d?.title ?? null,
-      scaling_mode: null,
+      // Relu sur le groupe d'ingrédients : sans lui, enregistrer une
+      // préparation modifiée effaçait le mode venu de la recette source.
+      scaling_mode: groupe?.scaling_mode ?? null,
       description: d?.description ?? null,
       sous_etapes: d?.sous_etapes ?? null,
       prep_time: d?.prep_time ?? null,
@@ -171,6 +180,9 @@ export async function readComponentDraft(
       tips: d?.tips ?? null,
       day_offset: d?.day_offset ?? null,
       ingredients: ingredients.length ? ingredients : [{ name: '', quantity: '', unit: null, comment: null, allergen: null, ref_id: null }],
+      photos: [...(d?.step_photos ?? [])]
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((p) => ({ url: p.url, original_url: p.original_url, ai_retouched: p.ai_retouched })),
     };
   });
 }
@@ -220,6 +232,22 @@ export async function writeComponentContent(
       .single();
     if (stepErr || !stepRow) throw stepErr ?? new Error('Étape refusée');
 
+    // Photos : déjà déposées sur le stockage par l'écran appelant — ce module
+    // sert aussi côté serveur, il n'a pas à téléverser quoi que ce soit.
+    const photos = (st.photos ?? []).filter((p) => p.url);
+    if (photos.length) {
+      const { error: photoErr } = await supabase.from('step_photos').insert(
+        photos.map((p, pi) => ({
+          step_id: (stepRow as { id: number }).id,
+          url: p.url,
+          original_url: p.original_url,
+          order_index: pi,
+          ai_retouched: p.ai_retouched,
+        })) as never,
+      );
+      if (photoErr) throw photoErr;
+    }
+
     const lignes = st.ingredients.filter((it) => (it.name || '').trim());
     if (!lignes.length) continue;
 
@@ -249,7 +277,7 @@ export async function writeComponentContent(
         // ajustement ultérieur. Sans elle, changer deux fois le coefficient
         // multiplierait deux fois — la dérive silencieuse que
         // `batch_ingredients.base_quantity` évite déjà côté fournée.
-        base_quantity: numify(it.quantity),
+        base_quantity: it.base_quantity !== undefined ? it.base_quantity : numify(it.quantity),
         unit: it.unit,
         comment: it.comment,
         allergen: it.allergen,
@@ -490,5 +518,20 @@ export async function writeAssemblyStep(
     title: 'Assemblage',
     description: `Dans l’ordre, du bas vers le haut :\n${description}`,
   } as never);
+  if (error) throw error;
+}
+
+// Validation d'un projet (§8) : section d'assemblage final, puis passage à
+// `ready`. Partagée par le parcours en onglets et par la v2 — les blocages
+// (`projectValidationBlockers`) sont vérifiés par l'appelant, à l'affichage
+// comme avant l'appel. `status` ne bouge pas : la validation rend le projet
+// utilisable comme une recette (§8.2), elle ne la publie pas.
+export async function validateProject(
+  supabase: Supabase,
+  recipeId: string,
+  components: { name: string; role: string | null }[],
+) {
+  await writeAssemblyStep(supabase, recipeId, components);
+  const { error } = await supabase.from('recipes').update({ project_stage: 'ready' } as never).eq('id', recipeId);
   if (error) throw error;
 }

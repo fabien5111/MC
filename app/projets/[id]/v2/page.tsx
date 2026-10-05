@@ -4,10 +4,18 @@ import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
-import { getEntitlements } from '@/lib/entitlements-data';
+import { checkQuota, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
+import {
+  getDifficulties,
+  getIngredientRefsList,
+  getRecipeTypes,
+  getTags,
+  getUtensilRefNames,
+} from '@/lib/data/reference';
+import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -42,16 +50,28 @@ export default async function ProjetV2Page({ params }: Params) {
   const droits = await getEntitlements(user.id);
   if (!canAccess(droits, 'mode_projet')) redirect(`/projets/${id}`);
 
-  const [moldTypes, units, conversions, recipe, trials] = await Promise.all([
-    getMoldTypes(),
-    getUnits(),
-    getIngredientConversions(),
-    // La recette du projet telle que la fiche la lit : étapes, groupes
-    // d'ingrédients, ustensiles, tags, temps… — c'est elle que la v2 montre
-    // se construire.
-    getRecipeFull(id, 'lecture'),
-    getProjectTrials(id),
-  ]);
+  const supabase = await createClient();
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, types, tags, difficulties, utensilNames, ids] =
+    await Promise.all([
+      getMoldTypes(),
+      getUnits(),
+      getIngredientConversions(),
+      // Portée `edition` : la v2 modifie la photo d'en-tête, dont l'original
+      // n'est lu que dans cette portée (comme /creer).
+      getRecipeFull(id, 'edition'),
+      getProjectTrials(id),
+      getIngredientRefsList(),
+      getRecipeTypes(),
+      getTags(),
+      getDifficulties(),
+      getUtensilRefNames(),
+      // `type_id` et `difficulty_id` ne sont pas portés par `RecipeFull`
+      // (seules les jointures le sont) : lus à part pour pré-remplir.
+      supabase.from('recipes').select('type_id, difficulty_id').eq('id', id).maybeSingle(),
+    ]);
+  const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
+  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
+  const ligne = (ids.data ?? null) as { type_id: number | null; difficulty_id: number | null } | null;
 
   return (
     <>
@@ -61,9 +81,19 @@ export default async function ProjetV2Page({ params }: Params) {
           project={project}
           recipe={recipe}
           moldTypes={moldTypes}
-          conversions={conversions}
+          units={units.map((u) => u.name)}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
-          trialCount={trials.length}
+          conversions={conversions}
+          ingredientRefs={ingredientRefs}
+          trials={trials}
+          peutGenererIA={peutGenererIA}
+          quotaProjetIA={quotaProjetIA}
+          types={types.map((t) => ({ id: t.id, name: t.name }))}
+          tags={tags.map((t) => ({ id: t.id, name: t.name }))}
+          difficulties={difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level }))}
+          utensilNames={utensilNames}
+          typeId={ligne?.type_id ?? null}
+          difficultyId={ligne?.difficulty_id ?? null}
         />
       </main>
       <Footer />

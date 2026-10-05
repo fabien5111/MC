@@ -1300,13 +1300,36 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   bloc « Format » de la v2 ne réécrit pas le titre (il se modifie dans « Le
   dessert »). La description se saisit pour tous les formats en v2 ; la v1 ne
   l'efface donc plus hors format libre.
-- **Avancement par lots** : lot 1 (en place) — intention, dessert (titre,
-  description) et format modifiables, le reste en lecture avec renvoi vers la
-  v1. À venir : structure et résolution sur place, édition des étapes par
-  composant (sans passer par l'enregistrement global de `CreerForm`, qui
-  effacerait les `component_id`), blocs de recette extraits de `CreerForm`
-  (photo, type, catégories, ustensiles, difficulté, temps, conseils, source),
-  quantités, essais et validation.
+- **Tout le parcours tient sur la page** (lots 1 à 5) : intention et
+  proposition de l'IA (`/api/projet/structure` — le format proposé est
+  enregistré s'il est complet, les préparations seulement si le projet n'en a
+  aucune), dessert (photo, nom, description, type, catégories), format,
+  structure et résolution, étapes par préparation, quantités
+  (`QuantitiesStep`, réutilisé tel quel), liste complète des ingrédients,
+  ustensiles / difficulté / temps, conseils et source, essais
+  (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`,
+  partagé avec la v1).
+- **Composants : un seul code pour les deux versions** —
+  `useProjectComponents` (ajout, renommage, rôle, ajustement, suppression,
+  réordonnancement, ouverture de la résolution) et `ProjectStructureList`.
+  « Modifier cette préparation » (v2) rouvre `ComponentResolver` en édition
+  **quelle que soit la source**, avec `initialSource` : le crédit d'une copie
+  est conservé à l'enregistrement (§9), au lieu d'être effacé.
+- **Le brouillon d'un composant transporte tout ce qu'une étape porte** :
+  jour, temps, température, astuce (`StepDetails`), allergènes en texte libre,
+  photos d'étape (`ComponentStepDraft.photos`, déposées sur Swift par
+  `ComponentResolver` avant l'écriture — `projects-write` ne téléverse rien,
+  il sert aussi côté serveur). `readComponentDraft` relit désormais aussi le
+  `scaling_mode` du groupe et la `base_quantity` de chaque ligne : avant,
+  modifier une préparation effaçait son mode d'ajustement et faisait de la
+  quantité ajustée la nouvelle référence. Une quantité retouchée dans la
+  fenêtre efface la base (la ligne sort du recalcul, comme à l'étape
+  « Quantités »).
+- **Éléments de recette écrits section par section**
+  (`components/projets/v2/RecipeDetailEditors.tsx`), mêmes colonnes et tables
+  que `CreerForm`, jamais par son enregistrement global (qui effacerait les
+  `component_id`). Photo d'en-tête : vignettes recalculées seulement pour un
+  dépôt frais. `type_id` n'est pas modifiable dans `/creer` ; la v2 l'écrit.
 
 ## Boîte à idées
 

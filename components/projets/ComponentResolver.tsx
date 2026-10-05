@@ -30,6 +30,8 @@ import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, t
 import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { StepDetails } from '@/components/projets/StepDetails';
+import { televerserImage } from '@/lib/storage-client';
 
 // Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
 // proposition de l'IA arrive avec des descriptions de plusieurs lignes, qu'un
@@ -93,6 +95,7 @@ export function ComponentResolver({
   initialMode,
   initialDraft,
   initialDraftKind,
+  initialSource,
   onClose,
   onDone,
   onReset,
@@ -124,6 +127,11 @@ export function ComponentResolver({
   initialMode?: 'sources' | 'edit' | 'contexte-ia';
   initialDraft?: ComponentStepDraft[];
   initialDraftKind?: ComponentSourceKind;
+  // Crédit à conserver quand on MODIFIE un composant déjà copié d'une
+  // recette (mode projet v2, « Modifier cette préparation ») : sans lui,
+  // l'enregistrement en édition effacerait la source — et avec elle le
+  // crédit d'auteur, que §9 interdit de perdre en retouchant une copie.
+  initialSource?: { recipeId: string | null; authorId: string | null; title: string | null; authorName: string | null };
   onClose: () => void;
   onDone: () => void;
   // « Réinitialiser » (JEP-254) : le contenu déjà enregistré est effacé et le
@@ -249,7 +257,25 @@ export function ComponentResolver({
       async () => {
         const supabase = createClient();
         try {
-          await writeComponentContent(supabase, projectId, component.id, componentIndex, prets);
+          // Photos d'étape : une data-URL fraîche est déposée sur le stockage
+          // ici, côté navigateur ; une URL déjà déposée revient telle quelle.
+          const avecPhotos = await Promise.all(
+            prets.map(async (st) =>
+              st.photos?.length
+                ? {
+                    ...st,
+                    photos: await Promise.all(
+                      st.photos.map(async (ph) => ({
+                        ...ph,
+                        url: await televerserImage('recette', ph.url),
+                        original_url: await televerserImage('recette', ph.original_url),
+                      })),
+                    ),
+                  }
+                : st,
+            ),
+          );
+          await writeComponentContent(supabase, projectId, component.id, componentIndex, avecPhotos);
           await resequenceProjectSteps(supabase, projectId, componentIds);
         } catch (e) {
           return { error: { message: (e as Error).message } };
@@ -604,6 +630,7 @@ export function ComponentResolver({
                     placeholder="Hydrater la gélatine&#10;Fondre le praliné&#10;Chauffer la crème…"
                     className={`${champ} mb-3 resize-none overflow-hidden`}
                   />
+                  <StepDetails step={st} onChange={(patch) => majEtape(i, patch)} />
                   <ul className="space-y-2">
                     {st.ingredients.map((it, j) => (
                       <li key={j} className="space-y-2">
@@ -620,7 +647,15 @@ export function ComponentResolver({
                           />
                           <input
                             value={it.quantity ?? ''}
-                            onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
+                            // Quantité retouchée à la main : la ligne sort du
+                            // recalcul global (base effacée), comme à l'étape
+                            // « Quantités ». Une ligne neuve n'a pas de base à effacer.
+                            onChange={(e) =>
+                              majIngredient(i, j, {
+                                quantity: e.target.value,
+                                ...(it.base_quantity !== undefined ? { base_quantity: null } : {}),
+                              })
+                            }
                             placeholder="Qté"
                             inputMode="decimal"
                             className={`${champBase} w-16 shrink-0`}
@@ -651,12 +686,23 @@ export function ComponentResolver({
                             <span className="material-symbols-outlined text-[18px] text-error">delete</span>
                           </button>
                         </div>
-                        <input
-                          value={it.comment ?? ''}
-                          onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
-                          placeholder="Commentaire (optionnel)"
-                          className={`${champ} w-full`}
-                        />
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            value={it.comment ?? ''}
+                            onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
+                            placeholder="Commentaire (optionnel)"
+                            className={`${champBase} min-w-0 flex-[2]`}
+                          />
+                          {/* Allergènes en texte libre, comme dans l'éditeur de
+                              recette : ceux du référentiel s'ajoutent d'eux-mêmes
+                              à l'affichage quand l'ingrédient y est rattaché. */}
+                          <input
+                            value={it.allergen ?? ''}
+                            onChange={(e) => majIngredient(i, j, { allergen: e.target.value || null })}
+                            placeholder="Allergènes (optionnel)"
+                            className={`${champBase} min-w-0 flex-1`}
+                          />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -776,7 +822,7 @@ export function ComponentResolver({
                         return { ...s, sous_etapes: sous.length ? sous : null };
                       }),
                     draftKind,
-                    { recipeId: null, authorId: null, title: null, authorName: null },
+                    initialSource ?? { recipeId: null, authorId: null, title: null, authorName: null },
                   )
                 }
                 className={btnPrimary}

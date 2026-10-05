@@ -112,9 +112,12 @@ export function QuantitiesStep({
   project,
   targetForme,
   formatLabel,
+  hideTitle = false,
 }: {
   project: ProjectFull;
   targetForme: string | null;
+  // La v2 du mode projet porte déjà le titre dans le cadre de son bloc.
+  hideTitle?: boolean;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -350,7 +353,7 @@ export function QuantitiesStep({
   return (
     <section className="space-y-5">
       <LoadingOverlay visible={busy || travail} label={travail ? 'Calcul des quantités…' : undefined} />
-      <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>
+      {!hideTitle && <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>}
       <p className="text-sm text-on-surface-variant">
         Ces quantités sont un <strong>point de départ</strong>, pas un résultat définitif : vous les affinerez au fil de
         vos essais.

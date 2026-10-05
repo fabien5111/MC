@@ -1,57 +1,74 @@
 'use client';
 
 // Mode projet v2 — la page verticale (admins seulement, à côté du parcours
-// actuel pour comparer). Le projet s'y lit comme la recette qu'il deviendra :
-// les blocs de la recette dans l'ordre de l'éditeur, entre lesquels
-// s'intercalent les blocs « Atelier projet » (fond plus clair). Les blocs pas
-// encore atteints restent visibles, grisés (`projectV2BlockStates`).
+// en onglets pour comparer). Le projet s'y lit comme la recette qu'il
+// deviendra : les blocs de la recette dans l'ordre de l'éditeur, entre
+// lesquels s'intercalent les blocs « Atelier projet » (fond plus clair). Les
+// blocs pas encore atteints restent visibles, grisés (`projectV2BlockStates`).
 //
 // Même doctrine que la v1 : chaque geste écrit en base puis resynchronise
-// (`useMutation`), aucun miroir local de la liste des composants. Deux écarts
+// (`useMutation`), aucun miroir local de la liste des composants. Écarts
 // voulus :
 // - la v2 n'écrit JAMAIS `recipe_projects.wizard_step` — l'étape du parcours
-//   actuel lui appartient, ouvrir un projet ici ne doit pas l'y déplacer ;
-// - la description du dessert se saisit pour tous les formats (la v1 ne la
-//   demande qu'en format libre, et ne l'efface plus ailleurs).
-//
-// Premier lot : l'intention, le dessert (titre + description) et le format
-// sont modifiables ; le reste affiche ce que porte déjà la base, avec un
-// renvoi vers le parcours actuel pour agir.
-import { useState } from 'react';
+//   en onglets lui appartient, ouvrir un projet ici ne doit pas l'y déplacer ;
+// - la description du dessert se saisit pour tous les formats ;
+// - les éléments de recette (photo, type, catégories, ustensiles…) s'écrivent
+//   section par section, jamais par l'enregistrement global de `CreerForm`
+//   (cf. RecipeDetailEditors).
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
+import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { ProjectFormatFields, type MoldTypeOption } from '@/components/projets/ProjectFormatFields';
+import { ProjectStructureList } from '@/components/projets/ProjectStructureList';
+import { QuantitiesStep } from '@/components/projets/ProjectQuantities';
+import { ProjectTrials } from '@/components/projets/ProjectTrials';
+import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
 import {
-  COMPONENT_SCALING_MODES,
+  ConseilsEditor,
+  HeroEditor,
+  OrganisationEditor,
+  TypeTagsEditor,
+  type DifficultyOption,
+  type RefOption,
+} from '@/components/projets/v2/RecipeDetailEditors';
+import {
   COMPONENT_SOURCE_LABELS,
+  MAX_COMPONENTS,
   PROJECT_V2_ATELIER,
   buildProjectFormatUpdate,
   deduceProjectFormat,
+  projectTargetForme,
   projectV2BlockStates,
   projectValidationBlockers,
   type ComponentSourceKind,
   type ProjectFormat,
   type ProjectV2Block as BlockKey,
 } from '@/lib/projects';
-import { INTENT_MAX } from '@/lib/ai/project-structure';
-import { dayLabel, effectiveTimes, mergeIngredientLines, planningDays } from '@/lib/recipe-view';
+import { validateProject } from '@/lib/projects-write';
+import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
+import { dayLabel, mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
-import type { ProjectFull } from '@/lib/projects-data';
-import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
+import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
+import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
 
 const btnPrimary =
   'rounded-pill bg-primary px-6 py-3 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
-const lienV1 = 'text-sm text-secondary underline underline-offset-2 hover:text-primary';
+const btnGhost =
+  'rounded-pill border border-outline-variant px-5 py-2.5 font-label-md text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
 const champ =
   'w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 font-body-md text-[15px] outline-none focus:border-primary';
 const etiquette = 'mb-1 block font-label-md text-label-md text-outline';
+const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text-secondary';
 
 // Ordre et libellés des blocs. `apercu` est ce que l'on voit d'un bloc encore
 // verrouillé : la recette à venir se lit dès l'ouverture du projet.
@@ -68,68 +85,54 @@ const BLOCS: Record<BlockKey, { titre: string; apercu: string }> = {
   validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.' },
 };
 
-function fmtMin(n: number | null): string | null {
-  if (!n) return null;
-  const h = Math.floor(n / 60);
-  const m = n % 60;
-  return h ? `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}` : `${m} min`;
-}
-
-function fmtFacteur(n: number): string {
-  return n.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
-}
-
 export function ProjectV2({
   project,
   recipe,
   moldTypes,
-  conversions,
+  units,
   unitRefs,
-  trialCount,
+  conversions,
+  ingredientRefs,
+  trials,
+  peutGenererIA,
+  quotaProjetIA,
+  types,
+  tags,
+  difficulties,
+  utensilNames,
+  typeId,
+  difficultyId,
 }: {
   project: ProjectFull;
   // `null` si la recette du projet n'a pas pu être lue : les blocs de recette
   // affichent alors un message plutôt que de planter la page.
   recipe: RecipeFull | null;
   moldTypes: MoldTypeOption[];
-  conversions: ConversionRef[];
+  units: string[];
   unitRefs: UnitRef[];
-  trialCount: number;
+  conversions: ConversionRef[];
+  ingredientRefs: IngredientRefOption[];
+  trials: ProjectTrial[];
+  peutGenererIA: boolean;
+  quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
+  types: RefOption[];
+  tags: RefOption[];
+  difficulties: DifficultyOption[];
+  utensilNames: string[];
+  typeId: number | null;
+  difficultyId: number | null;
 }) {
+  const router = useRouter();
   const dialog = useDialog();
-  const { mutate, busy } = useMutation();
+  const { mutate, busy, refresh } = useMutation();
   const states = projectV2BlockStates(project);
   const v1 = `/projets/${project.id}`;
 
-  // ── Intention ─────────────────────────────────────────────────────────
-  const [intent, setIntent] = useState(project.intent ?? '');
-  async function saveIntent() {
-    await mutate(
-      () =>
-        createClient()
-          .from('recipe_projects')
-          .update({ intent: intent.trim().slice(0, INTENT_MAX) || null } as never)
-          .eq('recipe_id', project.id),
-      { errorLabel: "Enregistrement de l'intention" },
-    );
-  }
+  const composants = useProjectComponents(project, mutate, dialog);
+  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, fermerResolution } =
+    composants;
 
-  // ── Le dessert : titre + description ──────────────────────────────────
-  const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
-  const [description, setDescription] = useState(project.description ?? '');
-  async function saveIdentite() {
-    await mutate(
-      () =>
-        createClient()
-          .from('recipes')
-          .update({ title: title.trim().slice(0, 120) || 'Nouveau projet', description: description.trim() || null } as never)
-          .eq('id', project.id),
-      { errorLabel: 'Enregistrement du dessert' },
-    );
-  }
-
-  // ── Format ────────────────────────────────────────────────────────────
-  // Relu depuis la recette, exactement comme l'étape 2 du parcours actuel.
+  // ── Format (relu depuis la recette, comme l'étape 2 du parcours) ──────
   const dimsBase = (
     project.mold_dims && typeof project.mold_dims === 'object' && !Array.isArray(project.mold_dims)
       ? (project.mold_dims as Record<string, number>)
@@ -146,10 +149,16 @@ export function ProjectV2({
   const [moldTypeId, setMoldTypeId] = useState(project.mold_type_id ? String(project.mold_type_id) : '');
   const [servings, setServings] = useState(project.servings ? String(project.servings) : '');
   const [count, setCount] = useState(project.measure_type === 'mold' ? String(nbBase) : '1');
+  // Format visé tel qu'il est ENREGISTRÉ (et non tel qu'affiché) : c'est lui
+  // qui sert au calcul des quantités et à la description passée à l'IA.
+  const formeCible = projectTargetForme({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase });
+  const formatLabel =
+    [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
+    (project.servings ? `${project.servings} parts` : 'format libre');
 
   async function saveFormat() {
-    // Le titre passé est celui DÉJÀ enregistré : il se modifie dans le bloc
-    // « Le dessert », le format ne doit pas l'écraser avec une saisie en cours.
+    // Le titre passé est celui DÉJÀ enregistré : il se modifie dans « Le
+    // dessert », le format ne doit pas l'écraser avec une saisie en cours.
     const built = buildProjectFormatUpdate({ format, title: project.title, servings, count, dims, moldTypeId });
     if ('error' in built) {
       dialog.alert(built.error);
@@ -160,8 +169,149 @@ export function ProjectV2({
     });
   }
 
+  // ── Intention, et proposition de l'IA ─────────────────────────────────
+  const [intent, setIntent] = useState(project.intent ?? '');
+  const [thinking, setThinking] = useState(false);
+  const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
+  const iaMessage = peutGenererIA
+    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
+
+  async function saveIntent() {
+    await mutate(
+      () =>
+        createClient()
+          .from('recipe_projects')
+          .update({ intent: intent.trim().slice(0, INTENT_MAX) || null } as never)
+          .eq('recipe_id', project.id),
+      { errorLabel: "Enregistrement de l'intention" },
+    );
+  }
+
+  // Une seule proposition pour le format ET les préparations (même route que
+  // le parcours en onglets). Ici tout est visible sur la même page : le
+  // format proposé est enregistré d'emblée s'il est complet, et les
+  // préparations ne sont écrites que si le projet n'en a encore aucune —
+  // jamais par-dessus une structure déjà composée.
+  async function proposerIA() {
+    const texte = intent.trim().slice(0, INTENT_MAX);
+    if (!texte) {
+      dialog.alert('Décrivez d’abord ce que vous voulez réaliser.');
+      return;
+    }
+    setThinking(true);
+    let data: (ProposedStructure & { erreur?: string }) | null = null;
+    try {
+      const r = await fetch('/api/projet/structure', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ intent: texte }),
+      });
+      data = r.ok ? ((await r.json()) as ProposedStructure & { erreur?: string }) : null;
+    } catch {
+      data = null;
+    } finally {
+      setThinking(false);
+    }
+    if (data?.erreur) await dialog.alert(data.erreur);
+    if (!data || (!data.format && !data.components?.length)) {
+      await mutate(
+        () => createClient().from('recipe_projects').update({ intent: texte } as never).eq('recipe_id', project.id),
+        { errorLabel: "Enregistrement de l'intention" },
+      );
+      if (!data?.erreur) dialog.alert('Aucune proposition n’a pu être établie. Vous pouvez composer le projet à la main.');
+      return;
+    }
+
+    // Champs du format pré-remplis avec la proposition, puis enregistrés
+    // s'ils suffisent (nombre de parts connu).
+    const f = data.format ?? format;
+    const d = Object.keys(data.dims || {}).length
+      ? Object.fromEntries(Object.entries(data.dims).map(([k, v]) => [k, String(v)]))
+      : dims;
+    const s = data.servings ? String(data.servings) : servings;
+    const n = data.count ? String(data.count) : count;
+    const moule = f !== format ? '' : moldTypeId;
+    setFormat(f);
+    setDims(d);
+    setServings(s);
+    setCount(n);
+    setMoldTypeId(moule);
+    const titre = project.title === 'Nouveau projet' && data.title ? data.title : project.title;
+    const built = buildProjectFormatUpdate({ format: f, title: titre, servings: s, count: n, dims: d, moldTypeId: moule });
+    const proposees = !project.components.length ? (data.components ?? []).slice(0, MAX_COMPONENTS) : [];
+
+    await mutate(
+      async () => {
+        const supabase = createClient();
+        const { error } = await supabase.from('recipe_projects').update({ intent: texte } as never).eq('recipe_id', project.id);
+        if (error) return { error };
+        if ('payload' in built) {
+          const { error: fErr } = await supabase.from('recipes').update(built.payload as never).eq('id', project.id);
+          if (fErr) return { error: fErr };
+        }
+        if (!proposees.length) return { error: null };
+        return supabase.from('recipe_project_components').insert(
+          proposees.map((c, i) => ({
+            recipe_id: project.id,
+            position: i + 1,
+            name: c.name,
+            role: c.role || null,
+            source_kind: 'manual',
+            resolved: false,
+          })) as never,
+        );
+      },
+      { errorLabel: 'Enregistrement de la proposition' },
+    );
+    if ('error' in built) dialog.alert(`Proposition reportée dans le format : ${built.error}`);
+  }
+
+  // ── Le dessert : titre + description ──────────────────────────────────
+  const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
+  const [description, setDescription] = useState(project.description ?? '');
+  async function saveIdentite() {
+    await mutate(
+      () =>
+        createClient()
+          .from('recipes')
+          .update({ title: title.trim().slice(0, 120) || 'Nouveau projet', description: description.trim() || null } as never)
+          .eq('id', project.id),
+      { errorLabel: 'Enregistrement du dessert' },
+    );
+  }
+
+  // ── Validation (§8) ───────────────────────────────────────────────────
+  const blockers = projectValidationBlockers({ measure_type: project.measure_type, components: project.components });
+  async function valider() {
+    if (blockers.length) {
+      dialog.alert(`Le projet ne peut pas encore être validé :\n\n${blockers.join('\n')}`);
+      return;
+    }
+    const ok = await mutate(
+      async () => {
+        try {
+          await validateProject(
+            createClient(),
+            project.id,
+            ordered.map((c) => ({ name: c.name, role: c.role })),
+          );
+        } catch (e) {
+          return { error: { message: (e as Error).message } };
+        }
+        return { error: null };
+      },
+      {
+        confirm:
+          'Valider le projet ? Il devient une recette de votre carnet (non publiée), sans perdre ses fournées d’essai. Vous pourrez le repasser en brouillon tant qu’il n’est pas publié.',
+        errorLabel: 'Validation du projet',
+        refresh: false,
+      },
+    );
+    if (ok) router.push(`/recette/${project.id}`);
+  }
+
   // ── Lectures pour les blocs de recette ────────────────────────────────
-  const ordered = [...project.components].sort((a, b) => a.position - b.position);
   const steps = [...(recipe?.recipe_steps ?? [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   // Appariement étape ↔ groupe d'ingrédients par `order_index`, comme partout
   // ailleurs dans le mode projet (cf. lib/projects-write.ts).
@@ -169,7 +319,6 @@ export function ProjectV2({
   // `component_id` est lu par `recipe_steps(*)` mais absent de `RecipeStepView`.
   const componentOf = (s: RecipeStepView) => (s as RecipeStepView & { component_id?: number | null }).component_id ?? null;
   const assemblage = steps.filter((s) => componentOf(s) == null);
-
   const ingredientGroups = recipe
     ? groupWithTotal(
         mergeIngredientLines(recipe, conversions, unitRefs),
@@ -178,17 +327,28 @@ export function ProjectV2({
         unitRefs,
       )
     : [];
-  const times = recipe ? effectiveTimes(recipe) : null;
   const days = planningDays(steps);
-  const blockers = projectValidationBlockers({ measure_type: project.measure_type, components: project.components });
+
+  function boutonRecette(c: ProjectComponent) {
+    return (
+      <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
+        {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
+      </button>
+    );
+  }
 
   function etape(s: RecipeStepView, i: number) {
-    const groupe = groupByOrder.get(s.order_index ?? -1);
-    const ingredients = groupe?.ingredients ?? [];
+    const ingredients = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
+    const temps = [
+      s.prep_time ? `prép. ${s.prep_time} min` : null,
+      s.cook_time ? `cuisson ${s.cook_time} min${s.cook_temp ? ` à ${s.cook_temp} °C` : ''}` : null,
+      s.wait_time ? `repos ${s.wait_time} min` : null,
+    ].filter(Boolean);
     return (
       <li key={s.id} className="border-t border-outline-variant/40 pt-4 first:border-t-0 first:pt-0">
         <p className="font-label-md text-[11px] uppercase tracking-widest text-outline">
           {dayLabel(s.day_offset)} · Étape {i + 1}
+          {temps.length > 0 && <span className="normal-case tracking-normal"> · {temps.join(' · ')}</span>}
         </p>
         <h4 className="font-body-md text-[16px] font-semibold text-on-surface">{s.title || 'Sans titre'}</h4>
         {s.description && <p className="mt-1 whitespace-pre-line text-[14px] text-on-surface-variant">{s.description}</p>}
@@ -214,6 +374,7 @@ export function ProjectV2({
             })}
           </ul>
         )}
+        {s.tips && <p className="mt-2 text-[13px] italic text-secondary">Astuce : {s.tips}</p>}
         {!!s.step_photos?.length && (
           <div className="mt-3 flex flex-wrap gap-2">
             {s.step_photos.map((p, k) => (
@@ -226,7 +387,7 @@ export function ProjectV2({
     );
   }
 
-  const bloc = (key: BlockKey, children: React.ReactNode) => (
+  const bloc = (key: BlockKey, children: ReactNode) => (
     <ProjectV2Block
       key={key}
       id={`bloc-${key}`}
@@ -243,7 +404,10 @@ export function ProjectV2({
 
   return (
     <>
-      <LoadingOverlay visible={busy} />
+      <LoadingOverlay
+        visible={busy || thinking || consultBusy}
+        label={thinking ? 'Composition du projet…' : undefined}
+      />
 
       <header className="mb-8">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
@@ -253,7 +417,7 @@ export function ProjectV2({
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link href={v1} className={lienV1}>
+          <Link href={v1} className="text-sm text-secondary underline underline-offset-2 hover:text-primary">
             Revenir à la version actuelle
           </Link>
           <span className="flex items-center gap-2 text-[12px] text-on-surface-variant">
@@ -276,76 +440,69 @@ export function ProjectV2({
               placeholder="Une tarte au praliné pour huit, avec un croustillant et une crème légère…"
               className={champ}
             />
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={saveIntent}
                 disabled={busy || intent.trim() === (project.intent ?? '').trim()}
-                className={btnPrimary}
+                className={btnGhost}
               >
                 Enregistrer
               </button>
-              <Link href={v1} className={lienV1}>
-                Demander une proposition à l’IA (version actuelle)
-              </Link>
+              {!peutGenererIA ? (
+                <LockedAction label="Proposer format et préparations (IA)" message={iaMessage} className={btnGhost}>
+                  Proposer format et préparations (IA)
+                </LockedAction>
+              ) : (
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <button type="button" onClick={() => void proposerIA()} disabled={busy || iaEpuise} className={btnPrimary}>
+                    Proposer format et préparations (IA)
+                  </button>
+                </LockedHint>
+              )}
             </div>
+            {project.components.length > 0 && (
+              <p className="text-[12px] text-on-surface-variant">
+                Le projet a déjà des préparations : une proposition de l’IA ne mettra à jour que le format.
+              </p>
+            )}
           </div>,
         )}
 
         {bloc(
           'identite',
-          <div className="space-y-5">
-            {recipe?.hero_image_url && (
-              // eslint-disable-next-line @next/next/no-img-element -- stockage Swift, cross-origin
-              <img src={recipe.hero_image_url} alt="" className="max-h-72 w-full rounded-xl object-cover" />
+          <div className="space-y-6">
+            {recipe && <HeroEditor recipe={recipe} mutate={mutate} busy={busy} />}
+            <div className="space-y-4">
+              <div>
+                <label className={etiquette}>NOM DU DESSERT</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value.slice(0, 120))}
+                  placeholder="Tarte aux fruits rouges"
+                  className={champ}
+                />
+              </div>
+              <div>
+                <label className={etiquette}>DESCRIPTION</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                  rows={3}
+                  placeholder="Ce qui rend ce dessert unique, l’occasion, le goût recherché…"
+                  className={champ}
+                />
+              </div>
+              {((title.trim() || 'Nouveau projet') !== project.title ||
+                description.trim() !== (project.description ?? '').trim()) && (
+                <button type="button" onClick={saveIdentite} disabled={busy} className={btnPrimary}>
+                  Enregistrer le nom et la description
+                </button>
+              )}
+            </div>
+            {recipe && (
+              <TypeTagsEditor recipe={recipe} typeId={typeId} types={types} tags={tags} mutate={mutate} busy={busy} />
             )}
-            <div>
-              <label className={etiquette}>NOM DU DESSERT</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value.slice(0, 120))}
-                placeholder="Tarte aux fruits rouges"
-                className={champ}
-              />
-            </div>
-            <div>
-              <label className={etiquette}>DESCRIPTION</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-                rows={3}
-                placeholder="Ce qui rend ce dessert unique, l’occasion, le goût recherché…"
-                className={champ}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={saveIdentite}
-              disabled={
-                busy ||
-                ((title.trim() || 'Nouveau projet') === project.title &&
-                  description.trim() === (project.description ?? '').trim())
-              }
-              className={btnPrimary}
-            >
-              Enregistrer
-            </button>
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 border-t border-outline-variant/40 pt-4 text-sm">
-              <dt className="text-outline">Type</dt>
-              <dd>{recipe?.recipe_types?.name ?? '—'}</dd>
-              <dt className="text-outline">Catégories</dt>
-              <dd>
-                {recipe?.recipe_tags
-                  .map((t) => t.tags?.name)
-                  .filter(Boolean)
-                  .join(', ') || '—'}
-              </dd>
-              <dt className="text-outline">Photo</dt>
-              <dd>{recipe?.hero_image_url ? 'Oui' : '—'}</dd>
-            </dl>
-            <p className="text-[12px] italic text-on-surface-variant">
-              Photo, type et catégories : bientôt modifiables ici.
-            </p>
           </div>,
         )}
 
@@ -375,28 +532,30 @@ export function ProjectV2({
         {bloc(
           'structure',
           <div className="space-y-3">
-            {ordered.length ? (
-              <ol className="space-y-2">
-                {ordered.map((c, i) => (
-                  <li key={c.id} className="flex flex-wrap items-baseline gap-x-3 rounded-lg bg-surface px-4 py-2.5">
-                    <span className="font-label-md text-outline">{i + 1}.</span>
-                    <span className="font-semibold text-on-surface">{c.name}</span>
-                    {c.role && <span className="text-[13px] text-on-surface-variant">{c.role}</span>}
-                    <span className={`ml-auto text-[12px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
-                      {c.resolved
-                        ? (COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? 'Résolu') +
-                          (c.source_title ? ` · ${c.source_title}` : '')
-                        : 'À résoudre'}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-sm text-on-surface-variant">Aucune préparation pour l’instant.</p>
-            )}
-            <Link href={v1} className={lienV1}>
-              Modifier la structure et résoudre les préparations (version actuelle)
-            </Link>
+            <p className="text-sm text-on-surface-variant">
+              Du bas vers le haut de l’assemblage. Le rôle et l’ajustement (volume ou surface) décident du calcul des
+              quantités.
+            </p>
+            <ProjectStructureList
+              components={composants}
+              extra={(c) => (
+                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
+                  <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
+                    {c.resolved
+                      ? [
+                          COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind,
+                          c.source_title,
+                          c.source_author_name,
+                          c.stepCount ? `${c.stepCount} étape${c.stepCount > 1 ? 's' : ''}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : 'À résoudre'}
+                  </span>
+                  {boutonRecette(c)}
+                </div>
+              )}
+            />
           </div>,
         )}
 
@@ -408,7 +567,10 @@ export function ProjectV2({
                 const own = steps.filter((s) => componentOf(s) === c.id);
                 return (
                   <div key={c.id}>
-                    <h3 className="mb-3 font-label-md text-[13px] uppercase tracking-widest text-secondary">{c.name}</h3>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className={`${sousTitre} mb-0`}>{c.name}</h3>
+                      {boutonRecette(c)}
+                    </div>
                     {own.length ? (
                       <ol className="space-y-4">{own.map((s) => etape(s, steps.indexOf(s)))}</ol>
                     ) : (
@@ -419,7 +581,7 @@ export function ProjectV2({
               })}
               {assemblage.length > 0 && (
                 <div>
-                  <h3 className="mb-3 font-label-md text-[13px] uppercase tracking-widest text-secondary">Assemblage</h3>
+                  <h3 className={sousTitre}>Assemblage</h3>
                   <ol className="space-y-4">{assemblage.map((s) => etape(s, steps.indexOf(s)))}</ol>
                 </div>
               )}
@@ -429,32 +591,7 @@ export function ProjectV2({
           ),
         )}
 
-        {bloc(
-          'quantites',
-          <div className="space-y-3">
-            <ul className="space-y-2">
-              {ordered
-                .filter((c) => c.resolved)
-                .map((c) => (
-                  <li key={c.id} className="rounded-lg bg-surface px-4 py-2.5 text-sm">
-                    <span className="font-semibold text-on-surface">{c.name}</span>{' '}
-                    <span className="text-on-surface-variant">
-                      — {COMPONENT_SCALING_MODES.find((m) => m.value === (c.scalingMode ?? ''))?.label ?? 'Selon la recette'}
-                    </span>
-                    <span className="block text-on-surface-variant">
-                      {c.scaleFactor != null && c.scaleFactor !== 1
-                        ? `Coefficient ×${fmtFacteur(c.scaleFactor)}${c.manuallyAdjusted ? ' (saisi à la main)' : ''}`
-                        : 'Quantités d’origine, pas encore ajustées'}
-                      {c.scaleReason && <span className="italic"> — {c.scaleReason}</span>}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-            <Link href={v1} className={lienV1}>
-              Ajuster les quantités (version actuelle)
-            </Link>
-          </div>,
-        )}
+        {bloc('quantites', <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} hideTitle />)}
 
         {bloc(
           'ingredients',
@@ -487,40 +624,18 @@ export function ProjectV2({
         {bloc(
           'organisation',
           recipe ? (
-            <div className="space-y-5 text-sm">
-              <div>
-                <h3 className="mb-1 font-label-md text-[12px] uppercase tracking-widest text-outline">Ustensiles</h3>
-                <p>{recipe.recipe_utensils.map((u) => u.name).join(', ') || '—'}</p>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-2">
-                <p>
-                  <span className="text-outline">Difficulté : </span>
-                  {recipe.difficulties?.name ?? '—'}
-                </p>
-                {times && (
-                  <>
-                    <p>
-                      <span className="text-outline">Préparation : </span>
-                      {fmtMin(times.prep) ?? '—'}
-                    </p>
-                    <p>
-                      <span className="text-outline">Cuisson : </span>
-                      {fmtMin(times.cook) ?? '—'}
-                    </p>
-                    <p>
-                      <span className="text-outline">Repos : </span>
-                      {fmtMin(times.wait) ?? '—'}
-                    </p>
-                    <p>
-                      <span className="text-outline">Total : </span>
-                      {fmtMin(times.total) ?? '—'}
-                    </p>
-                  </>
-                )}
-              </div>
+            <div className="space-y-6">
+              <OrganisationEditor
+                recipe={recipe}
+                difficultyId={difficultyId}
+                difficulties={difficulties}
+                utensilNames={utensilNames}
+                mutate={mutate}
+                busy={busy}
+              />
               {days.length > 1 && (
-                <div>
-                  <h3 className="mb-1 font-label-md text-[12px] uppercase tracking-widest text-outline">Planning</h3>
+                <div className="text-sm">
+                  <h3 className={sousTitre}>Planning</h3>
                   <ul className="space-y-1">
                     {days.map((d) => (
                       <li key={d.offset}>
@@ -529,43 +644,22 @@ export function ProjectV2({
                       </li>
                     ))}
                   </ul>
+                  <p className="mt-1 text-[12px] text-on-surface-variant">
+                    Le jour de chaque étape se règle dans « Modifier cette préparation ».
+                  </p>
                 </div>
               )}
-              <p className="text-[12px] italic text-on-surface-variant">Bientôt modifiables ici.</p>
             </div>
           ) : (
             sansRecette
           ),
         )}
 
-        {bloc(
-          'conseils',
-          recipe ? (
-            <div className="space-y-4 text-sm">
-              <div>
-                <h3 className="mb-1 font-label-md text-[12px] uppercase tracking-widest text-outline">Conseils</h3>
-                <p className="whitespace-pre-line">{recipe.tips || '—'}</p>
-              </div>
-              <div>
-                <h3 className="mb-1 font-label-md text-[12px] uppercase tracking-widest text-outline">
-                  Conseils de service
-                </h3>
-                <p className="whitespace-pre-line">{recipe.serving_advice || '—'}</p>
-              </div>
-              <div>
-                <h3 className="mb-1 font-label-md text-[12px] uppercase tracking-widest text-outline">Source</h3>
-                <p>{[recipe.source, recipe.source_url, recipe.video_url].filter(Boolean).join(' · ') || '—'}</p>
-              </div>
-              <p className="text-[12px] italic text-on-surface-variant">Bientôt modifiables ici.</p>
-            </div>
-          ) : (
-            sansRecette
-          ),
-        )}
+        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} /> : sansRecette)}
 
         {bloc(
           'validation',
-          <div className="space-y-3 text-sm">
+          <div className="space-y-5 text-sm">
             {blockers.length ? (
               <ul className="list-disc space-y-1 pl-5 text-secondary">
                 {blockers.map((b) => (
@@ -575,17 +669,52 @@ export function ProjectV2({
             ) : (
               <p className="text-green-700">Le projet peut être validé.</p>
             )}
-            <p className="text-on-surface-variant">
-              {trialCount
-                ? `${trialCount} fournée${trialCount > 1 ? 's' : ''} d’essai.`
-                : 'Aucune fournée d’essai pour l’instant (facultatif).'}
-            </p>
-            <Link href={v1} className={lienV1}>
-              Lancer un essai ou valider le projet (version actuelle)
-            </Link>
+            {recipe && (
+              <ProjectTrials recipe={recipe} trials={trials} unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)} />
+            )}
+            <div className="border-t border-outline-variant pt-5">
+              <button type="button" onClick={() => void valider()} disabled={busy || blockers.length > 0} className={btnPrimary}>
+                Valider le projet
+              </button>
+              <p className="mt-3 text-[12px] text-on-surface-variant">
+                La validation ne copie ni ne migre rien : le projet devient une recette ordinaire du carnet, sans perdre
+                ses fournées d’essai.
+              </p>
+            </div>
           </div>,
         )}
       </div>
+
+      {resolving && (
+        <ComponentResolver
+          projectId={project.id}
+          projectTitle={project.title}
+          servings={project.servings}
+          formatLabel={formatLabel}
+          component={resolving}
+          componentIndex={ordered.findIndex((c) => c.id === resolving.id)}
+          componentIds={ordered.map((c) => c.id)}
+          units={units}
+          ingredientRefs={ingredientRefs}
+          peutGenererIA={peutGenererIA}
+          quotaProjetIA={quotaProjetIA}
+          initialMode={resolvingInit?.mode}
+          initialDraft={resolvingInit?.draft}
+          initialDraftKind={resolvingInit?.kind}
+          initialSource={resolvingInit?.source}
+          onClose={fermerResolution}
+          // La modale n'emporte pas sa propre resynchronisation : elle écrit,
+          // ce parent-ci rafraîchit (il reste monté), puis elle se ferme.
+          onDone={() => {
+            refresh();
+            fermerResolution();
+          }}
+          onReset={() => {
+            refresh();
+            setResolvingInit(null);
+          }}
+        />
+      )}
     </>
   );
 }

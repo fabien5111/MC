@@ -333,7 +333,19 @@ export type ComponentIngredientDraft = {
   comment: string | null;
   allergen: string | null;
   ref_id: number | null;
+  // Quantité d'origine (`ingredients.base_quantity`) quand la ligne est relue
+  // depuis la base : la réécriture d'un composant la conserve, sans quoi
+  // modifier une préparation déjà ajustée ferait de la quantité ajustée la
+  // nouvelle référence (un second ajustement multiplierait deux fois).
+  // `undefined` = ligne neuve (copie, IA, saisie) : base = quantité saisie.
+  // `null` = ligne modifiée à la main : elle sort du recalcul global.
+  base_quantity?: number | null;
 };
+
+// Photo d'une étape, telle que la porte le brouillon. `url` est l'URL du
+// stockage, ou une data-URL fraîche tant que l'écran ne l'a pas déposée
+// (le dépôt se fait côté navigateur, avant l'écriture — cf. ComponentResolver).
+export type ComponentStepPhoto = { url: string; original_url: string | null; ai_retouched: boolean };
 
 export type ComponentStepDraft = {
   title: string | null;
@@ -352,6 +364,10 @@ export type ComponentStepDraft = {
   tips: string | null;
   day_offset: number | null;
   ingredients: ComponentIngredientDraft[];
+  // Photos de l'étape. Absentes des copies et des propositions de l'IA ;
+  // relues par `readComponentDraft` pour qu'une modification du composant
+  // ne les efface pas (ses étapes sont supprimées puis réécrites).
+  photos?: ComponentStepPhoto[];
 };
 
 // Recette source telle que la lit le sélecteur, réduite à ce que la copie
