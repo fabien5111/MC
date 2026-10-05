@@ -31,6 +31,7 @@ import { QuantitiesStep } from '@/components/projets/ProjectQuantities';
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
+import { RecipeToc, stepAnchorId, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 import {
   ConseilsEditor,
   HeroEditor,
@@ -72,18 +73,33 @@ const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text
 
 // Ordre et libellés des blocs. `apercu` est ce que l'on voit d'un bloc encore
 // verrouillé : la recette à venir se lit dès l'ouverture du projet.
-const BLOCS: Record<BlockKey, { titre: string; apercu: string }> = {
-  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.' },
-  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description, type et catégories.' },
-  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.' },
-  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.' },
-  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients.' },
-  quantites: { titre: 'Ajustement des quantités', apercu: 'Les quantités ramenées au format visé.' },
-  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.' },
-  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.' },
-  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.' },
-  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.' },
+// `icone` et `court` servent au sommaire (rail de gauche, `RecipeToc`) : les
+// icônes de la recette reprennent celles de la fiche et de l'éditeur, les
+// blocs « Atelier projet » partagent le même picto de chantier.
+const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icone: string }> = {
+  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icone: 'construction' },
+  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description, type et catégories.', court: 'Le dessert', icone: 'edit_note' },
+  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.', court: 'Format', icone: 'straighten' },
+  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
+  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients.', court: 'Étapes', icone: 'format_list_numbered' },
+  quantites: { titre: 'Ajustement des quantités', apercu: 'Les quantités ramenées au format visé.', court: 'Quantités', icone: 'construction' },
+  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icone: 'egg_alt' },
+  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icone: 'blender' },
+  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icone: 'lightbulb' },
+  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icone: 'construction' },
 };
+const ORDRE_BLOCS: BlockKey[] = [
+  'intention',
+  'identite',
+  'format',
+  'structure',
+  'etapes',
+  'quantites',
+  'ingredients',
+  'organisation',
+  'conseils',
+  'validation',
+];
 
 export function ProjectV2({
   project,
@@ -345,7 +361,11 @@ export function ProjectV2({
       s.wait_time ? `repos ${s.wait_time} min` : null,
     ].filter(Boolean);
     return (
-      <li key={s.id} className="border-t border-outline-variant/40 pt-4 first:border-t-0 first:pt-0">
+      <li
+        key={s.id}
+        id={stepAnchorId(i)}
+        className="scroll-mt-28 border-t border-outline-variant/40 pt-4 first:border-t-0 first:pt-0"
+      >
         <p className="font-label-md text-[11px] uppercase tracking-widest text-outline">
           {dayLabel(s.day_offset)} · Étape {i + 1}
           {temps.length > 0 && <span className="normal-case tracking-normal"> · {temps.join(' · ')}</span>}
@@ -400,6 +420,30 @@ export function ProjectV2({
     </ProjectV2Block>
   );
 
+  // ── Sommaire (rail de gauche, comme sur la fiche recette) ─────────────
+  // Tous les blocs y figurent, verrouillés compris : ils sont visibles dans la
+  // page. Les étapes s'intercalent après « Étapes » (entrées de niveau 2),
+  // seulement quand le bloc est ouvert — sinon leurs ancres n'existent pas.
+  const avantEtapes = ORDRE_BLOCS.indexOf('etapes') + 1;
+  const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icone, level: 1 as const });
+  const tocSections: TocSections = {
+    before: ORDRE_BLOCS.slice(0, avantEtapes).map(entree),
+    after: ORDRE_BLOCS.slice(avantEtapes).map(entree),
+  };
+  const tocSteps =
+    states.etapes.unlocked && recipe ? steps.map((st, i) => ({ key: String(st.id), title: st.title || `Étape ${i + 1}` })) : [];
+  const tocActions: TocAction[] = [
+    { id: 'v1', icon: 'arrow_back', label: 'Revenir à la version actuelle', variant: 'outline', onClick: () => router.push(v1) },
+    {
+      id: 'valider',
+      icon: 'task_alt',
+      label: blockers.length ? 'Valider le projet (des préparations restent à résoudre)' : 'Valider le projet',
+      variant: 'filled',
+      onClick: () => void valider(),
+      disabled: busy || blockers.length > 0,
+    },
+  ];
+
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
 
   return (
@@ -408,6 +452,8 @@ export function ProjectV2({
         visible={busy || thinking || consultBusy}
         label={thinking ? 'Composition du projet…' : undefined}
       />
+
+      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} mobile="drawer" mobileInset="nav" />
 
       <header className="mb-8">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
