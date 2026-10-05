@@ -123,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 3 octobre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 5 octobre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -157,8 +157,13 @@ export default function ConfidentialitePage() {
           <Liste>
             <li>Recettes, photos (couverture, étapes), fournées et leurs notes, listes de courses, favoris.</li>
             <li>
-              Vos préférences de notification (sur le site, par e-mail, rythme des récapitulatifs), réglables à tout
-              moment depuis les réglages du compte.
+              Vos préférences de notification (sur le site, par e-mail, sur le téléphone, rythme des récapitulatifs),
+              réglables à tout moment depuis les réglages du compte.
+            </li>
+            <li>
+              Si vous activez les notifications sur un appareil : l&apos;adresse technique d&apos;abonnement fournie
+              par votre navigateur, ses clés de chiffrement et le type de navigateur. Elles sont supprimées quand vous
+              désactivez l&apos;appareil, quand le navigateur les abandonne, ou avec votre compte.
             </li>
             <li>Avis et notes laissés sur les recettes, idées proposées et votes dans la boîte à idées.</li>
             <li>Pâtissiers que vous suivez, partages de votre carnet ou de vos recettes avec d&apos;autres membres.</li>
@@ -233,7 +238,7 @@ export default function ConfidentialitePage() {
                 'Exécution du contrat',
               ],
               [
-                'Notifications facultatives sur le site et par e-mail (avis, favoris, abonnés, rappels de fournée, boîte à idées), réglables par catégorie',
+                'Notifications facultatives sur le site, par e-mail et sur le téléphone (avis, favoris, abonnés, rappels de fournée, boîte à idées), réglables par catégorie',
                 'Intérêt légitime (informer les membres de ce qui les concerne) ; vous les désactivez dans vos réglages',
               ],
               [
@@ -367,6 +372,12 @@ export default function ConfidentialitePage() {
             </li>
             <li>
               <Fort>Brevo (Sendinblue SAS)</Fort> (France) — envoi des e-mails.
+            </li>
+            <li>
+              Notifications sur le téléphone, <Fort>uniquement si vous les avez activées</Fort> : elles transitent
+              par le service de notification de l&apos;éditeur de votre navigateur (Google, Apple, Mozilla ou
+              Microsoft selon le cas), qui les achemine jusqu&apos;à votre appareil. Leur contenu (titre et texte de
+              la notification) est chiffré de bout en bout : ce service ne peut pas le lire.
             </li>
             <li>
               <Fort>Atlassian (Jira)</Fort> — suivi des signalements techniques. Le ticket ne contient ni votre e-mail, ni votre nom, ni votre adresse IP : seulement un

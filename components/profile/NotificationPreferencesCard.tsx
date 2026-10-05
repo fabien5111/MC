@@ -1,7 +1,7 @@
 'use client';
 
 // Centre de préférences de réception (JEP-279) : une grille catégorie × canal
-// (site, e-mail) + rythme de l'e-mail. Remplace l'ancienne case unique
+// (site, e-mail, téléphone) + rythme de l'e-mail. Remplace l'ancienne case unique
 // « notifications d'abonnement par e-mail ».
 //
 // **Construite en lisant le catalogue** (`lib/notification-events.ts`) : un
@@ -9,7 +9,13 @@
 // catégories verrouillées (abonnement, support) s'affichent grisées AVEC leur
 // raison — une case grisée sans explication se lit comme une panne.
 //
-// « Aucun » n'est pas un réglage à part : c'est décocher les deux canaux.
+// « Aucun » n'est pas un réglage à part : c'est décocher les canaux.
+//
+// Canal « Sur le téléphone » (Web Push) : la case règle QUOI part, le bloc
+// `PushDeviceSection` en tête règle OÙ (quels appareils). Elle n'est jamais
+// verrouillée, même pour l'abonnement et le support — l'obligation porte sur
+// l'e-mail. `push` n'est écrite que quand elle change : avant la migration qui
+// crée la colonne, cocher « Sur le site » doit continuer de fonctionner.
 //
 // Écriture directe du navigateur vers `notification_preferences` (RLS : le
 // membre n'écrit que ses propres lignes). Le moteur relit la table à CHAQUE
@@ -22,12 +28,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { SettingsCard } from '@/components/profile/SettingsCard';
+import { PushDeviceSection } from '@/components/profile/PushDeviceSection';
 import {
   CATEGORIES,
   CATEGORIE_INFO,
   LIBELLE_RYTHME,
   RYTHME_VERS_BASE,
   preferenceEffective,
+  pushEffectif,
   rubriquesDeCategorie,
   type Categorie,
   type PreferenceCategorie,
@@ -40,11 +48,17 @@ export function NotificationPreferencesCard({
   userId,
   preferences,
   backOffice,
+  clePushPublique,
+  appareilsPush,
 }: {
   userId: string;
   preferences: PreferencesMembre;
   /** Admin ou gestionnaire : la catégorie « Modération » apparaît. */
   backOffice: boolean;
+  /** Clé publique VAPID ; `null` = notifications sur l'appareil indisponibles (colonne masquée). */
+  clePushPublique: string | null;
+  /** Nombre d'appareils activés du membre (`null` si illisible). */
+  appareilsPush: number | null;
 }) {
   const { mutate, busy } = useMutation();
   const [prefs, setPrefs] = useState<PreferencesMembre>(preferences);
@@ -53,7 +67,11 @@ export function NotificationPreferencesCard({
 
   async function changer(rubrique: Rubrique, modif: Partial<PreferenceCategorie>) {
     const avant = prefs;
-    const suivante: PreferenceCategorie = { ...preferenceEffective(prefs, rubrique.cle), ...modif };
+    const suivante: PreferenceCategorie = {
+      ...preferenceEffective(prefs, rubrique.cle),
+      push: pushEffectif(prefs, rubrique.cle),
+      ...modif,
+    };
     setPrefs({ ...prefs, [rubrique.cle]: suivante });
     const ok = await mutate(
       () =>
@@ -67,6 +85,7 @@ export function NotificationPreferencesCard({
               in_app: suivante.site,
               email: suivante.email,
               rhythm: RYTHME_VERS_BASE[suivante.rythme],
+              ...('push' in modif ? { push: suivante.push } : {}),
             } as never,
             { onConflict: 'user_id,category' },
           ),
@@ -79,12 +98,14 @@ export function NotificationPreferencesCard({
     <SettingsCard icon="notifications" title="Notifications" count={0} id="notifications">
       <LoadingOverlay visible={busy} label="Mise à jour…" />
       <p className="mb-6 text-sm text-on-surface-variant">
-        Choisissez, pour chaque type d’information, si vous la recevez sur le site, par e-mail, ou pas du tout — et à
-        quel rythme. Décochez les deux pour ne rien recevoir. Le réglage vaut dès le prochain événement.
+        Choisissez, pour chaque type d’information, si vous la recevez sur le site, par e-mail
+        {clePushPublique ? ', sur votre téléphone' : ''}, ou pas du tout — et à quel rythme. Décochez tout pour ne rien
+        recevoir. Le réglage vaut dès le prochain événement.
       </p>
+      <PushDeviceSection clePublique={clePushPublique} appareils={appareilsPush} />
       <ul className="divide-y divide-outline-variant">
         {categories.map((c) => (
-          <BlocCategorie key={c} categorie={c} prefs={prefs} onChange={changer} />
+          <BlocCategorie key={c} categorie={c} prefs={prefs} avecPush={!!clePushPublique} onChange={changer} />
         ))}
       </ul>
     </SettingsCard>
@@ -94,10 +115,12 @@ export function NotificationPreferencesCard({
 function BlocCategorie({
   categorie,
   prefs,
+  avecPush,
   onChange,
 }: {
   categorie: Categorie;
   prefs: PreferencesMembre;
+  avecPush: boolean;
   onChange: (r: Rubrique, m: Partial<PreferenceCategorie>) => void;
 }) {
   const info = CATEGORIE_INFO[categorie];
@@ -112,6 +135,7 @@ function BlocCategorie({
             key={r.cle}
             rubrique={r}
             pref={preferenceEffective(prefs, r.cle)}
+            push={avecPush ? pushEffectif(prefs, r.cle) : null}
             siteVerrouille={!!info.siteVerrouille}
             emailVerrouille={!!info.emailVerrouille}
             onChange={(m) => onChange(r, m)}
@@ -133,12 +157,15 @@ function BlocCategorie({
 function LigneRubrique({
   rubrique,
   pref,
+  push,
   siteVerrouille,
   emailVerrouille,
   onChange,
 }: {
   rubrique: Rubrique;
   pref: PreferenceCategorie;
+  /** Case « Sur le téléphone » ; `null` = canal indisponible, case absente. */
+  push: boolean | null;
   siteVerrouille: boolean;
   emailVerrouille: boolean;
   onChange: (m: Partial<PreferenceCategorie>) => void;
@@ -170,6 +197,17 @@ function LigneRubrique({
           />
           Par e-mail
         </label>
+        {push !== null && (
+          <label className="flex items-center gap-2 text-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={push}
+              onChange={(e) => onChange({ push: e.target.checked })}
+              className="h-5 w-5 accent-primary"
+            />
+            Sur le téléphone
+          </label>
+        )}
         {pref.email && rubrique.rythmesPermis.length > 1 && (
           <span className="flex items-center gap-2 text-sm text-on-surface">
             <label htmlFor={idRythme} className="text-on-surface-variant">

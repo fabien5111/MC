@@ -188,6 +188,8 @@ app/                    Pages et routes (App Router)
 │   ├── recipes/          GET  — pagination de l'accueil
 │   ├── recipes/picker/   GET  — recherche de recettes (remplacement d'un ingrédient)
 │   ├── cron/notifications/ GET — outbox, rappels de fournée, récapitulatifs
+│   ├── push/abonnement/  POST/DELETE — appareil abonné aux notifications (Web Push)
+│   ├── push/test/        POST — notification d'essai vers ses propres appareils
 │   ├── compte/mot-de-passe/ POST — alerte de sécurité après changement de mot de passe
 │   ├── admin/impersonate/ POST — lien de connexion « en tant que »
 │   └── impersonation/    POST — fin de session / journal d'audit
@@ -1480,6 +1482,48 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   `List-Unsubscribe`. Pas de désinscription en un clic sans connexion.
 - **Tables du moteur absentes de `lib/database.types.ts`** jusqu'à la
   régénération : accès non typé, comme `notifications` avant elles.
+- **Troisième canal : « Sur le téléphone » (Web Push standard, 05/10/2026).**
+  Pas de Firebase ni d'application native : le serveur signe (clés VAPID,
+  bibliothèque `web-push`) et dépose chez le service de push du navigateur, qui
+  relaie jusqu'à l'appareil, charge chiffrée de bout en bout. Deux réglages
+  indépendants : la case « Sur le téléphone » de la grille dit **quoi** part
+  (`notification_preferences.push`, rubrique par rubrique), le bloc
+  `PushDeviceSection` en tête du même écran dit **où** (`push_subscriptions`, une
+  ligne par navigateur). Sans appareil activé, rien ne part, quoi que dise la
+  grille.
+  - **`pushEffectif` (`lib/notification-events.ts`) décide, `decisionCanaux` n'est
+    pas touchée** : actif par défaut pour les rubriques « immédiates », jamais
+    pour le récapitulatif ni la modération ; une valeur `null` vaut le défaut de
+    la rubrique, **jamais** une ligne de catégorie (toutes antérieures au canal).
+    **Aucun verrou** : un événement verrouillé (légal, support) respecte la case
+    — l'obligation porte sur l'e-mail. D'où une lecture des préférences même
+    pour un événement verrouillé dans `notifier()`.
+  - **Liste blanche des services de push (`lib/push.ts`), impérative** :
+    l'adresse d'abonnement vient du navigateur, et le serveur y envoie des
+    requêtes — sans contrôle, c'est une SSRF vers le réseau interne. Vérifiée à
+    l'enregistrement ET à l'envoi. Une nouvelle famille de navigateurs dont le
+    service n'y figure pas échoue à l'activation (« abonnement non reconnu ») :
+    c'est la liste à compléter, jamais le contrôle à desserrer.
+  - **Une seule porte d'écriture** : `POST/DELETE /api/push/abonnement` (clé
+    service_role, refusée en lecture seule). `push_subscriptions` n'a qu'une
+    policy de lecture `user_id = auth.uid()`. Un même navigateur suit le membre
+    **connecté** (upsert par `endpoint`) ; au plus `APPAREILS_PUSH_MAX` appareils
+    par membre ; un 404/410 du service supprime l'appareil.
+  - **iOS : seulement l'application installée sur l'écran d'accueil** (iOS ≥
+    16.4) — dans Safari, `PushManager` n'existe pas. Le bloc l'explique au lieu de
+    dire « non pris en charge ». Tout push doit afficher une notification (le
+    service worker le garantit) : Safari retire l'autorisation sinon.
+  - **Délais** : les événements nés d'une écriture navigateur passent par
+    l'outbox, vidée toutes les 15 min — leur push arrive avec ce retard. **Le push
+    ne sert pas de minuteur** : ni ponctuel, ni garanti.
+  - **Avant la migration, rien ne casse** : les lectures de préférences
+    retombent sans `push` si la colonne manque, la grille n'écrit `push` que
+    quand la case change, `/reglages` masque le canal tant que les clés VAPID
+    sont absentes. **Changer les clés VAPID coupe tous les appareils** (chacun
+    devra réactiver).
+  - `POST /api/push/test` envoie une notification d'essai aux seuls appareils
+    du membre (20 s entre deux essais) : le moyen de vérifier un téléphone de
+    bout en bout.
 
 ## Contact et suivi Jira
 
@@ -1746,6 +1790,10 @@ navigateur précis.
   Safari iOS, qui n'a jamais émis cet événement.
 - **Rejet temporaire, pas définitif** (`localStorage`, 30 jours) : fermer la
   bannière une fois ne dit pas qu'on ne veut jamais installer l'application.
+- **Le worker porte aussi les notifications sur le téléphone** (`push`,
+  `notificationclick`, `pushsubscriptionchange`) — cf. « Notifications ».
+  Engager l'interrupteur d'arrêt désinscrit le worker, donc **coupe tous les
+  abonnements push** des navigateurs qui reçoivent le remplaçant.
 - **Visible aux visiteurs comme aux membres** : installer l'application n'est
   pas une action de compte, la bannière est montée dans le layout racine, hors
   de toute condition de session.
@@ -1859,6 +1907,7 @@ principales :
 | Recettes | `recipes`, `recipe_steps`, `step_photos`, `ingredient_groups`, `ingredients`, `recipe_utensils`, `recipe_tags`, `tags`, `difficulties` |
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
+| Notifications | `notifications`, `notification_preferences` (+ `push`), `notification_outbox`, `email_digest_queue`, `push_subscriptions` — voir « Notifications » ci-dessus |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
 | Projets | `recipe_projects`, `recipe_project_components` (+ `scaling_mode`, `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |
 | Planification | `planning`, `plan_steps`, `plan_substeps`, `plan_ingredients`, `plan_utensils`, `executions`, `execution_steps`, `execution_substeps`, `execution_ingredients`, `execution_utensils` — voir « Recettes planifiées » ci-dessous |
@@ -1973,6 +2022,8 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
 | `CARNET_PARTAGE_SECRET` | Signe les liens de partage de carnet (`lib/book-link.ts`, JEP-21) — optionnelle : absente, dérivée de `SUPABASE_SERVICE_ROLE_KEY`. La changer invalide tous les liens déjà distribués | Serveur uniquement |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Clés de signature Web Push (notifications sur le téléphone). La publique est transmise au navigateur par le rendu serveur — pas de `NEXT_PUBLIC_`, donc un redémarrage suffit, sans reconstruction. Absentes : canal masqué, rien ne casse. **Les changer coupe tous les appareils abonnés** | Serveur uniquement |
+| `VAPID_SUBJECT` | Contact déclaré aux services de push (`mailto:…`, optionnel, défaut `mailto:noreply@jepatisse.com`) | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.

@@ -23,6 +23,8 @@
 // agit pour le compte d'une session doit tester `isReadOnlySession()` lui-même.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
+import { envoyerPush } from '@/lib/push-data';
+import { composerMessagePush } from '@/lib/push';
 import { siteUrl } from '@/lib/site-url';
 import {
   CHEMIN_PREFERENCES,
@@ -35,6 +37,7 @@ import {
   decisionCanaux,
   definitionEvenement,
   lienNotification,
+  pushEffectif,
   RYTHME_DEPUIS_BASE,
   RYTHME_VERS_BASE,
   type Categorie,
@@ -55,6 +58,8 @@ export type ResultatNotifier = {
   /** Notification écrite dans la cloche (ou regroupée dans une existante). */
   cloche: 'ecrite' | 'regroupee' | 'aucune';
   email: 'envoye' | 'file' | 'aucun' | 'echec';
+  /** Nombre d'appareils atteints par la notification push (0 si aucun ou canal coupé). */
+  push?: number;
   /** Pourquoi rien n'est parti, le cas échéant. */
   raison?: 'inconnu' | 'auto' | 'doublon';
 };
@@ -80,17 +85,24 @@ export type ParamsNotifier = {
   sansEmail?: boolean;
 };
 
-type LignePrefs = { category: Categorie; in_app: boolean; email: boolean; rhythm: string };
-
+type LignePrefs = { category: Categorie; in_app: boolean; email: boolean; rhythm: string; push?: boolean | null };
 
 export async function lirePreferences(admin: unknown, userId: string): Promise<PreferencesMembre> {
-  const { data } = await vers(admin)
-    .from('notification_preferences')
-    .select('category, in_app, email, rhythm')
-    .eq('user_id', userId);
+  const table = () => vers(admin).from('notification_preferences');
+  // `push` lue si la colonne existe ; sinon on relit sans elle plutôt que de
+  // perdre TOUTES les préférences (un e-mail refusé repartirait).
+  const avecPush = await table().select('category, in_app, email, rhythm, push').eq('user_id', userId);
+  const lignes = avecPush.error
+    ? (await table().select('category, in_app, email, rhythm').eq('user_id', userId)).data
+    : avecPush.data;
   const prefs: PreferencesMembre = {};
-  for (const l of (data ?? []) as LignePrefs[]) {
-    prefs[l.category] = { site: l.in_app, email: l.email, rythme: RYTHME_DEPUIS_BASE[l.rhythm] ?? 'immediat' };
+  for (const l of (lignes ?? []) as LignePrefs[]) {
+    prefs[l.category] = {
+      site: l.in_app,
+      email: l.email,
+      rythme: RYTHME_DEPUIS_BASE[l.rhythm] ?? 'immediat',
+      push: l.push ?? null,
+    };
   }
   return prefs;
 }
@@ -193,9 +205,12 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
   }
 
   const donnees = p.donnees ?? {};
-  const prefs = def.verrouille ? {} : await lirePreferences(db, p.userId);
+  // Lues même pour un événement verrouillé : son e-mail et sa cloche ignorent
+  // les préférences, mais pas le canal « sur l'appareil » (cf. `pushEffectif`).
+  const prefs = await lirePreferences(db, p.userId);
   const canaux = decisionCanaux(def, prefs);
-  if (!canaux.site && canaux.email === 'aucun') return { cloche: 'aucune', email: 'aucun' };
+  const avecPush = pushEffectif(prefs, def.rubrique);
+  if (!canaux.site && canaux.email === 'aucun' && !avecPush) return { cloche: 'aucune', email: 'aucun' };
 
   const lien = lienNotification(def, donnees);
   const groupe = cleDeGroupe(p.evenement, def, donnees);
@@ -207,9 +222,25 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
     cloche = r === 'erreur' ? 'aucune' : r;
   }
 
-  if (canaux.email === 'aucun' || p.sansEmail) return { cloche, email: 'aucun' };
+  // Push : indépendant de la cloche (on peut vouloir l'un sans l'autre), et
+  // sans effet tant que le membre n'a activé aucun appareil.
+  const push = avecPush ? await envoyerPush(db, p.userId, composerMessagePush(g.titre, g.corps, lien)) : 0;
+  const resultat = await envoyerEmail(db, p, def, canaux.email, g, lien, cloche);
+  return { ...resultat, push };
+}
 
-  if (canaux.email !== 'immediat') {
+async function envoyerEmail(
+  db: Db,
+  p: ParamsNotifier,
+  def: NonNullable<ReturnType<typeof definitionEvenement>>,
+  canalEmail: ReturnType<typeof decisionCanaux>['email'],
+  g: { titre: string; corps: string },
+  lien: string | null,
+  cloche: ResultatNotifier['cloche'],
+): Promise<ResultatNotifier> {
+  if (canalEmail === 'aucun' || p.sansEmail) return { cloche, email: 'aucun' };
+
+  if (canalEmail !== 'immediat') {
     await db.from('email_digest_queue').insert({
       user_id: p.userId,
       category: def.categorie,
@@ -217,7 +248,7 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
       title: g.titre,
       body: g.corps,
       link: lien,
-      rhythm: RYTHME_VERS_BASE[canaux.email],
+      rhythm: RYTHME_VERS_BASE[canalEmail],
     });
     return { cloche, email: 'file' };
   }
