@@ -660,7 +660,7 @@ function BoutonPlan({
     // forfait », seul endroit qui connaît déjà l'abonnement en détail.
     if (plan.isDefault) {
       return (
-        <Link href="/reglages" className={`block text-center ${clsSecondaire}`}>
+        <Link href="/reglages" className={`block whitespace-nowrap px-2 text-center ${clsSecondaire}`}>
           Annuler mon essai
         </Link>
       );
@@ -671,9 +671,9 @@ function BoutonPlan({
     // bouton : au-dessus, elle décalait la colonne et désalignait les boutons
     // des autres formules.
     const reste =
-      joursRestants === null ? '' : joursRestants === 0 ? ' (dernier jour)' : ` (${joursRestants} jour${joursRestants > 1 ? 's' : ''} restant${joursRestants > 1 ? 's' : ''})`;
+      joursRestants === null ? '' : joursRestants === 0 ? '(dernier jour)' : `(${joursRestants} jour${joursRestants > 1 ? 's' : ''} restant${joursRestants > 1 ? 's' : ''})`;
     const mention = estCourant && (
-      <p className="text-center text-xs font-semibold text-on-surface-variant">Essai en cours{reste}</p>
+      <p className="text-center text-xs font-semibold text-on-surface-variant">Essai en cours{reste && <span className="block">{reste}</span>}</p>
     );
     if (!aUnTarif) return mention || null;
     return (
