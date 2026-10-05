@@ -1276,6 +1276,38 @@ essais et la validation arrivent par lots successifs.
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
 
+## Mode projet v2 (essai, admins seulement)
+
+Seconde présentation du mode projet, **à côté** du parcours guidé en onglets
+(`/projets/[id]`), pour comparer les deux : `/projets/[id]/v2`
+(`components/projets/v2/ProjectV2.tsx`). Le projet s'y lit comme la recette
+qu'il deviendra — une seule colonne, les blocs de la recette dans l'ordre de
+l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
+(intention, structure, quantités, validation) sur un fond plus clair.
+
+- **Mêmes données, aucune migration** : les deux versions lisent et écrivent
+  les mêmes colonnes ; un projet s'ouvre indifféremment dans l'une ou l'autre.
+  Lien « Essayer la nouvelle version » sur la v1, « Revenir à la version
+  actuelle » sur la v2. Un non-admin qui suit le lien retombe sur la v1.
+- **La v2 n'écrit jamais `recipe_projects.wizard_step`** : l'étape du parcours
+  en onglets reste la propriété de la v1. L'état d'un bloc (ouvert / grisé avec
+  ce qui le débloque) se déduit de la base par `projectV2BlockStates`
+  (`lib/projects.ts`), jamais de cette colonne.
+- **Un bloc pas encore atteint reste visible, grisé** — arbitrage produit : on
+  voit d'emblée toute la recette à venir.
+- **Format : un seul contrôle pour les deux écrans** — `ProjectFormatFields`
+  (champs) et `buildProjectFormatUpdate` (contrôle + colonnes à écrire). Le
+  bloc « Format » de la v2 ne réécrit pas le titre (il se modifie dans « Le
+  dessert »). La description se saisit pour tous les formats en v2 ; la v1 ne
+  l'efface donc plus hors format libre.
+- **Avancement par lots** : lot 1 (en place) — intention, dessert (titre,
+  description) et format modifiables, le reste en lecture avec renvoi vers la
+  v1. À venir : structure et résolution sur place, édition des étapes par
+  composant (sans passer par l'enregistrement global de `CreerForm`, qui
+  effacerait les `component_id`), blocs de recette extraits de `CreerForm`
+  (photo, type, catégories, ustensiles, difficulté, temps, conseils, source),
+  quantités, essais et validation.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`

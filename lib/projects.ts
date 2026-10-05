@@ -545,3 +545,99 @@ export function projectValidationBlockers(project: {
   }
   return blockers;
 }
+
+// ── Format visé : validation de la saisie ─────────────────────────────────
+//
+// Contrôle et mise en forme partagés par l'étape 2 du parcours actuel et par
+// le bloc « Format » de la v2 : les deux écrans doivent refuser et écrire
+// exactement la même chose, sans quoi un projet ouvert dans l'un se lirait
+// de travers dans l'autre. Rend soit un message à afficher, soit les colonnes
+// de `recipes` à écrire (`projectFormatPayload`).
+export function buildProjectFormatUpdate(input: {
+  format: ProjectFormat;
+  title: string;
+  servings: string;
+  count: string;
+  dims: Record<string, string>;
+  moldTypeId: string;
+}): { error: string } | { payload: Record<string, unknown> } {
+  const parts = parseInt(input.servings, 10);
+  if (!(parts > 0)) return { error: 'Indiquez le nombre de parts visé.' };
+  const nb = parseInt(input.count, 10);
+  const countLabel = PROJECT_FORMATS[input.format].countLabel;
+  if (countLabel && !(nb > 0)) return { error: `Indiquez le nombre à réaliser (${countLabel.toLowerCase()}).` };
+  const parsedDims: Record<string, number> = {};
+  for (const d of PROJECT_FORMATS[input.format].dims) {
+    const v = parseFloat((input.dims[d.key] ?? '').replace(',', '.'));
+    if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
+  }
+  return {
+    payload: projectFormatPayload({
+      format: input.format,
+      title: input.title,
+      servings: parts,
+      dims: parsedDims,
+      count: nb > 0 ? nb : 1,
+      moldTypeId: input.format !== 'free' && input.moldTypeId ? Number(input.moldTypeId) : null,
+    }),
+  };
+}
+
+// ── Mode projet v2 : blocs de la page verticale ───────────────────────────
+//
+// La v2 (`/projets/[id]/v2`, admins seulement le temps de la comparaison)
+// présente le projet comme la recette qu'il deviendra : une seule colonne,
+// où les blocs propres au projet (« Atelier projet ») s'intercalent entre
+// ceux de la recette. Un bloc pas encore atteint reste VISIBLE mais grisé,
+// avec ce qui le débloque — on voit d'emblée toute la recette à venir.
+//
+// L'état se déduit de ce que porte la base, jamais de `wizard_step` : cette
+// colonne reste la propriété du parcours actuel, que la v2 n'écrit pas (un
+// projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
+export const PROJECT_V2_BLOCKS = [
+  'intention',
+  'identite',
+  'format',
+  'structure',
+  'etapes',
+  'quantites',
+  'ingredients',
+  'organisation',
+  'conseils',
+  'validation',
+] as const;
+export type ProjectV2Block = (typeof PROJECT_V2_BLOCKS)[number];
+
+// Blocs « Atelier projet » : fond plus clair, et ils disparaissent une fois
+// le projet validé — il ne reste alors que la recette.
+export const PROJECT_V2_ATELIER: ReadonlySet<ProjectV2Block> = new Set(['intention', 'structure', 'quantites', 'validation']);
+
+export type ProjectV2BlockState = { unlocked: boolean; lockedReason: string | null };
+
+export function projectV2BlockStates(project: {
+  measure_type: string | null;
+  servings: number | null;
+  components: { resolved: boolean }[];
+}): Record<ProjectV2Block, ProjectV2BlockState> {
+  const formatPose = !!project.measure_type && (project.servings ?? 0) > 0;
+  const unResolu = project.components.some((c) => c.resolved);
+  const tousResolus = project.components.length > 0 && project.components.every((c) => c.resolved);
+  const etat = (unlocked: boolean, reason: string): ProjectV2BlockState => ({
+    unlocked,
+    lockedReason: unlocked ? null : reason,
+  });
+  const apresFormat = 'Disponible une fois le format choisi.';
+  const apresRecette = 'Disponible dès qu’une préparation a sa recette.';
+  return {
+    intention: etat(true, ''),
+    identite: etat(true, ''),
+    format: etat(true, ''),
+    structure: etat(formatPose, apresFormat),
+    etapes: etat(unResolu, apresRecette),
+    quantites: etat(unResolu, apresRecette),
+    ingredients: etat(unResolu, apresRecette),
+    organisation: etat(unResolu, apresRecette),
+    conseils: etat(unResolu, apresRecette),
+    validation: etat(tousResolus, 'Disponible quand toutes les préparations ont leur recette.'),
+  };
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { requireUser } from '@/lib/auth';
+import Link from 'next/link';
+import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
@@ -65,7 +66,7 @@ export default async function ProjetPage({ params, searchParams }: Params) {
     );
   }
 
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs] = await Promise.all([
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, admin] = await Promise.all([
     getMoldTypes(),
     getUnits(),
     // Table de conversions : sert au récapitulatif (étape 6), qui consolide
@@ -79,6 +80,9 @@ export default async function ProjetPage({ params, searchParams }: Params) {
     // Aide à la saisie des ingrédients d'un composant saisi à la main
     // (JEP-254, point 9) — le même référentiel que l'éditeur de recette.
     getIngredientRefsList(),
+    // Mode projet v2 (page verticale) : en essai, réservé aux admins — seuls
+    // eux voient le lien pour comparer les deux versions sur le même projet.
+    isAdmin(user.id),
   ]);
   // Droit + quota des générations IA du mode projet (`mode_projet_ia_mensuel`,
   // §/api/projet/structure, /api/projet/composant) — lecture d'affichage
@@ -97,6 +101,16 @@ export default async function ProjetPage({ params, searchParams }: Params) {
         <h1 className="mb-8 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
+        {admin && (
+          <p className="-mt-5 mb-6">
+            <Link
+              href={`/projets/${id}/v2`}
+              className="text-sm text-secondary underline underline-offset-2 hover:text-primary"
+            >
+              Essayer la nouvelle version (vue recette)
+            </Link>
+          </p>
+        )}
         <ProjectWizard
           project={project}
           moldTypes={moldTypes}

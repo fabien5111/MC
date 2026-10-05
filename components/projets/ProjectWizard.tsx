@@ -25,6 +25,7 @@ import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { QuantitiesStep, RecapStep } from '@/components/projets/ProjectQuantities';
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { ProjectIntentStep, type ProjectStartMode } from '@/components/projets/ProjectIntentStep';
+import { ProjectFormatFields } from '@/components/projets/ProjectFormatFields';
 import {
   clearComponentContent,
   readComponentDraft,
@@ -37,13 +38,11 @@ import {
   COMPONENT_SCALING_MODES,
   COMPONENT_SOURCE_LABELS,
   MAX_COMPONENTS,
-  PROJECT_FORMATS,
-  PROJECT_FORMAT_KEYS,
   WIZARD_LABELS,
   WIZARD_STEPS,
   deduceProjectFormat,
   nextComponentPosition,
-  projectFormatPayload,
+  buildProjectFormatUpdate,
   projectTargetForme,
   projectValidationBlockers,
   type ComponentSourceKind,
@@ -170,11 +169,6 @@ export function ProjectWizard({
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
 
-  const moldsForFormat = moldTypes.filter((m) => {
-    const forme = PROJECT_FORMATS[format].forme;
-    return !forme || m.forme === forme;
-  });
-
   const goStep = useCallback(
     async (next: WizardStep) => {
       setStep(next);
@@ -245,34 +239,18 @@ export function ProjectWizard({
 
   // ── Étape 2 → 3 : format visé, écrit sur la recette ─────────────────────
   async function submitFormat() {
-    const parts = parseInt(servings, 10);
-    if (!(parts > 0)) {
-      dialog.alert('Indiquez le nombre de parts visé.');
+    const built = buildProjectFormatUpdate({ format, title, servings, count, dims, moldTypeId });
+    if ('error' in built) {
+      dialog.alert(built.error);
       return;
     }
-    const nb = parseInt(count, 10);
-    if (PROJECT_FORMATS[format].countLabel && !(nb > 0)) {
-      dialog.alert(`Indiquez le nombre à réaliser (${PROJECT_FORMATS[format].countLabel?.toLowerCase()}).`);
-      return;
-    }
-    const parsedDims: Record<string, number> = {};
-    for (const d of PROJECT_FORMATS[format].dims) {
-      const v = parseFloat((dims[d.key] ?? '').replace(',', '.'));
-      if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
-    }
-
     const payload = {
-      ...projectFormatPayload({
-        format,
-        title,
-        servings: parts,
-        dims: parsedDims,
-        count: nb > 0 ? nb : 1,
-        moldTypeId: format !== 'free' && moldTypeId ? Number(moldTypeId) : null,
-      }),
-      // Seul le format libre porte cette description : les autres formats
-      // se décrivent déjà par leurs dimensions.
-      description: format === 'free' ? description.trim() || null : null,
+      ...built.payload,
+      // Seul le format libre saisit cette description ici : les autres
+      // formats se décrivent déjà par leurs dimensions. Elle n'est pas
+      // effacée pour autant hors format libre — la v2 la saisit pour tous
+      // les formats (bloc « Le dessert »), et l'écraser ici la perdrait.
+      ...(format === 'free' ? { description: description.trim() || null } : {}),
     };
 
     const ok = await mutate(() => createClient().from('recipes').update(payload as never).eq('id', project.id), {
@@ -656,89 +634,19 @@ export function ProjectWizard({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {PROJECT_FORMAT_KEYS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => {
-                  setFormat(f);
-                  // Le moule choisi dans le référentiel ne vaut que pour sa
-                  // forme : changer de format le remet « à préciser ».
-                  if (f !== format) setMoldTypeId('');
-                }}
-                className={`rounded-xl border p-4 text-left transition-colors ${
-                  format === f ? 'border-primary bg-primary/5' : 'border-outline-variant hover:border-primary'
-                }`}
-              >
-                <span className="block font-label-md text-[13px] font-semibold text-on-surface">
-                  {PROJECT_FORMATS[f].label}
-                </span>
-                <span className="block text-[12px] text-on-surface-variant">{PROJECT_FORMATS[f].hint}</span>
-              </button>
-            ))}
-          </div>
-
-          {(PROJECT_FORMATS[format].dims.length > 0 || PROJECT_FORMATS[format].countLabel) && (
-            <div className="flex flex-wrap gap-4">
-              {PROJECT_FORMATS[format].dims.map((d) => (
-                <div key={d.key}>
-                  <label className="mb-1 block font-label-md text-label-md text-outline">{d.label.toUpperCase()} (CM)</label>
-                  <input
-                    value={dims[d.key] ?? ''}
-                    onChange={(e) => setDims((prev) => ({ ...prev, [d.key]: e.target.value }))}
-                    inputMode="decimal"
-                    className="w-32 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
-                  />
-                </div>
-              ))}
-              {PROJECT_FORMATS[format].countLabel && (
-                <div>
-                  <label className="mb-1 block font-label-md text-label-md text-outline">
-                    {PROJECT_FORMATS[format].countLabel?.toUpperCase()}
-                  </label>
-                  <input
-                    value={count}
-                    onChange={(e) => setCount(e.target.value)}
-                    inputMode="numeric"
-                    className="w-32 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {format !== 'free' && (
-            <div>
-              <label className="mb-1 block font-label-md text-label-md text-outline">MOULE (RÉFÉRENTIEL)</label>
-              <select
-                value={moldTypeId}
-                onChange={(e) => setMoldTypeId(e.target.value)}
-                className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
-              >
-                <option value="">— À préciser —</option>
-                {moldsForFormat.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-[12px] text-on-surface-variant">
-                Le moule sert au calcul des quantités : deux cercles de diamètres différents ne demandent pas la même
-                recette.
-              </p>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block font-label-md text-label-md text-outline">NOMBRE DE PARTS</label>
-            <input
-              value={servings}
-              onChange={(e) => setServings(e.target.value)}
-              inputMode="numeric"
-              className="w-32 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
-            />
-          </div>
+          <ProjectFormatFields
+            moldTypes={moldTypes}
+            format={format}
+            setFormat={setFormat}
+            dims={dims}
+            setDims={setDims}
+            count={count}
+            setCount={setCount}
+            moldTypeId={moldTypeId}
+            setMoldTypeId={setMoldTypeId}
+            servings={servings}
+            setServings={setServings}
+          />
 
           {/* Format libre seulement : aucune dimension ni moule où
               s'accrocher, la description est le seul repère sur ce que le
