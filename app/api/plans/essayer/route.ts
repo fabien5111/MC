@@ -9,10 +9,15 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { hashTrialEmail } from '@/lib/trial';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (!user.email) return NextResponse.json({ erreur: 'Adresse e-mail introuvable sur ce compte.' }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));

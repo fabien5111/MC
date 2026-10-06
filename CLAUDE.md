@@ -444,6 +444,54 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
 - Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
   restent fermées au gestionnaire.
 
+### Suspension et désactivation d'un membre (JEP-272, lot 1)
+
+Admin → Membres → fiche → bloc « Modération » (`MemberModerationPanel`) :
+suspendre (motif obligatoire, date de fin facultative), désactiver, lever.
+Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
+`getVerifiedUser`), jamais par le navigateur.
+
+- **`profiles.status` fait foi** (arbitrage du 06/10/2026) : `suspended` ou
+  `disabled` bloquent, jamais `allowlist.status`, qui ne sert plus qu'aux
+  invitations en attente. La fiche n'écrit plus le statut d'un membre inscrit
+  (ni dans `profiles`, ni dans `allowlist`) : seul le bloc « Modération » le
+  change. Motif et date de fin : `suspended_until`, `suspension_reason`,
+  `disabled_reason`.
+- **Ces colonnes sont lues à part** (`lib/moderation-data.ts`), jamais via
+  `PROFILE_COLUMNS` — même doctrine que `pseudo_changed_at`. La garde ne coûte
+  rien à un compte actif : `status` est déjà dans le profil lu à chaque page,
+  seul un compte marqué paie la lecture de son motif.
+- **Levée automatique calculée à la lecture** (`etatModeration`,
+  `lib/moderation.ts`, et son jumeau SQL `public.is_blocked_user()`, à garder
+  alignés) : une suspension échue vaut « actif », aucun cron ne réécrit la
+  ligne. Le bannissement GoTrue (`ban_duration`, arrondi à l'heure au-dessus)
+  expire de lui-même.
+- **Quatre verrous** : bannissement GoTrue (plus de connexion, e-mail comme
+  Google, ni de renouvellement de jeton) ; `requireUser()` → `/compte-suspendu`
+  (motif, date de fin, lien vers `/contact`) ; RLS — policies `blocked_user_*`
+  (`RESTRICTIVE`, `authenticated`) posées sur **toutes** les tables RLS du
+  schéma `public`, motif des `impersonation_ro_*` ; garde des routes API
+  (`refusSiCompteBloque`, `lib/moderation-route.ts`), parce que la clé
+  service_role et les appels IA échappent à la RLS. **Toute nouvelle route qui
+  agit pour un membre doit l'appeler.** Restent ouverts : `/api/contact` (le
+  recours), la résiliation et le portail d'abonnement, l'alerte de mot de
+  passe. **Une nouvelle table RLS n'hérite pas des policies** : rejouer le bloc
+  `blocked_user_*` de la migration après l'avoir créée.
+- **Sessions non supprimées** : `auth.sessions` n'est pas exposé par
+  PostgREST, et le bannissement suffit (GoTrue refuse le `refresh_token` d'un
+  compte banni). Une session ouverte meurt à l'expiration de son jeton ; entre
+  les deux, pages privées et écritures sont déjà refusées.
+- **Garde-fous** (`validerDemandeModeration`) : ni soi-même, ni un admin (un
+  gestionnaire, oui). Un seul état bloquant, le plus fort l'emporte : pas de
+  suspension sur un compte désactivé ; désactiver remplace une suspension.
+- **Notifications coupées** pour un compte bloqué (`notifier`, récapitulatifs),
+  cloche comprise, sauf les événements verrouillés (obligations légales).
+- **Journal** : `member_moderation_events` (lecture admin par RLS, écriture
+  service_role seule), affiché dans la fiche. Écrit avant le bannissement,
+  pour qu'un échec GoTrue n'efface pas la trace d'une décision déjà effective.
+- Lots 2 (abonnement, e-mail au membre, masquage du contenu public) et 3
+  (restrictions partielles, RGPD) : à venir.
+
 ### Connexion « en tant que » (impersonation)
 
 - **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`

@@ -25,7 +25,9 @@ export default async function ConnexionPage({
         ? "Lien de connexion « en tant que » invalide."
         : error === 'auth'
           ? 'La connexion a échoué. Merci de réessayer.'
-          : null;
+          : error === 'compte_bloque'
+            ? 'Ce compte est suspendu ou désactivé. Pour en savoir plus, écrivez-nous depuis la page Contact.'
+            : null;
 
   // Déjà connecté : inutile de rester sur la page de connexion.
   if (await getCurrentUser()) redirect(dest);

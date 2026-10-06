@@ -11,6 +11,7 @@
 //     rassemble ce que `notifier` a mis en file.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
+import { membreBloque } from '@/lib/moderation-lecture';
 import { siteUrl } from '@/lib/site-url';
 import { CHEMIN_PREFERENCES, composerRecapitulatif, enTetesDesinscription, type LigneRecap } from '@/lib/notification-email';
 import { definitionEvenement, preferenceEffective, type Categorie, type DonneesEvenement } from '@/lib/notification-events';
@@ -150,7 +151,14 @@ export async function envoyerRecapitulatifs(
     // rubrique par rubrique (la ligne de la file ne porte que la catégorie, la
     // rubrique se déduit de l'événement). Une ligne dont l'événement a quitté
     // le catalogue retombe sur la préférence de sa catégorie.
-    const retenues = lignes.filter((l) => preferenceEffective(prefs, definitionEvenement(l.event)?.rubrique ?? l.category).email);
+    // Compte suspendu ou désactivé depuis la mise en file (JEP-272) : seuls
+    // les événements verrouillés partent encore (cf. `notifier`).
+    const bloque = await membreBloque(db, userId);
+    const retenues = lignes.filter(
+      (l) =>
+        (!bloque || !!definitionEvenement(l.event)?.verrouille) &&
+        preferenceEffective(prefs, definitionEvenement(l.event)?.rubrique ?? l.category).email,
+    );
     if (retenues.length === 0) {
       await db.from('email_digest_queue').update({ sent_at: maintenant() }).in('id', ids);
       ecartes += lignes.length;

@@ -18,6 +18,8 @@ import { useDialog } from '@/components/Dialog';
 import { withImpersonationSchema, type ImpersonationMode } from '@/lib/impersonation-types';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
 import { MemberSubscriptionPanel } from '@/components/admin/MemberSubscriptionPanel';
+import { MemberModerationPanel } from '@/components/admin/MemberModerationPanel';
+import type { EvenementModeration } from '@/lib/moderation-data';
 
 const FIELD = 'border border-outline-variant rounded px-3 py-2 bg-white text-sm w-full focus:outline-none focus:border-primary';
 const LABEL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
@@ -55,11 +57,13 @@ export function MemberDetail({
   stats,
   recent,
   visitSessions,
+  journalModeration,
 }: {
   member: Member;
   stats: { followers: number; following: number; batches: number };
   recent: { recipes: MemberRecentRecipe[]; batches: MemberRecentBatch[]; comments: MemberRecentComment[] };
   visitSessions: VisitSessionRow[];
+  journalModeration: EvenementModeration[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -82,14 +86,22 @@ export function MemberDetail({
   async function save() {
     await mutate(async () => {
       const supabase = createClient();
-      const fields = { status, role, is_demo: isDemo, notes: notes.trim() || null };
+      const fields = { role, is_demo: isDemo, notes: notes.trim() || null };
       // Les deux lignes sont mises à jour quand elles existent toutes les
       // deux — cf. `EditPanel` d'origine, même doctrine reprise telle quelle :
       // la fiche affiche en priorité le rôle de l'allowlist alors que les
       // droits réels se lisent dans `profiles.role`.
+      //
+      // Le STATUT, lui, n'est plus écrit ici pour un membre inscrit (JEP-272) :
+      // `profiles.status` fait foi et ne change que par le bloc « Modération »
+      // (route serveur, qui pose aussi le bannissement GoTrue). Seule une
+      // invitation en attente garde son statut éditable.
       let error: { message: string } | null = null;
       if (member.allowlistId) {
-        ({ error } = await supabase.from('allowlist').update(fields).eq('id', member.allowlistId));
+        ({ error } = await supabase
+          .from('allowlist')
+          .update(member.profileId ? fields : { ...fields, status })
+          .eq('id', member.allowlistId));
       }
       if (!error && member.profileId) {
         ({ error } = await withImpersonationSchema(supabase)
@@ -274,13 +286,15 @@ export function MemberDetail({
 
       {/* Identité / statut */}
       <CollapsibleSection title="Identité et statut">
-        <Row label="Statut">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}>
-            <option value="active">Actif</option>
-            <option value="pending">Invité</option>
-            <option value="disabled">Désactivé</option>
-          </select>
-        </Row>
+        {!member.profileId && (
+          <Row label="Statut">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}>
+              <option value="active">Actif</option>
+              <option value="pending">Invité</option>
+              <option value="disabled">Désactivé</option>
+            </select>
+          </Row>
+        )}
         <Row label="Rôle">
           <select value={role} onChange={(e) => setRole(e.target.value)} className={FIELD}>
             <option value="member">Membre</option>
@@ -329,6 +343,24 @@ export function MemberDetail({
           {savingBusy ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </CollapsibleSection>
+
+      {/* Modération (JEP-272) */}
+      {member.profileId && (
+        <CollapsibleSection
+          title="Modération"
+          subtitle={
+            member.moderation.etat === 'suspendu' ? 'suspendu' : member.moderation.etat === 'desactive' ? 'désactivé' : undefined
+          }
+        >
+          <MemberModerationPanel
+            memberId={member.profileId}
+            memberName={member.fullName || member.email}
+            memberRole={member.role}
+            etat={member.moderation}
+            journal={journalModeration}
+          />
+        </CollapsibleSection>
+      )}
 
       {/* Impersonation */}
       {member.profileId && (

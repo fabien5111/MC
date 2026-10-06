@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin';
 import { getFollowCounts } from '@/lib/follows';
 import { MemberDetail } from '@/components/admin/MemberDetail';
+import { getJournalModeration } from '@/lib/moderation-data';
 
 export const metadata: Metadata = { title: 'Fiche membre | Admin — Je pâtisse !' };
 
@@ -21,13 +22,14 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   const member = await getMemberById(id);
   if (!member) notFound();
 
-  const [followCounts, batchCount, recentRecipes, recentBatches, recentComments, visitSessions] = await Promise.all([
+  const [followCounts, batchCount, recentRecipes, recentBatches, recentComments, visitSessions, journalModeration] = await Promise.all([
     member.profileId ? getFollowCounts(member.profileId) : Promise.resolve({ followers: 0, following: 0 }),
     member.profileId ? getBatchCount(member.profileId) : Promise.resolve(0),
     member.profileId ? getMemberRecentRecipes(member.profileId) : Promise.resolve([]),
     member.profileId ? getMemberRecentBatches(member.profileId) : Promise.resolve([]),
     member.profileId ? getMemberRecentComments(member.profileId) : Promise.resolve([]),
     member.profileId ? getMemberVisitSessions(member.profileId) : Promise.resolve([]),
+    member.profileId ? getJournalModeration(member.profileId) : Promise.resolve([]),
   ]);
 
   return (
@@ -46,6 +48,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
         stats={{ followers: followCounts.followers, following: followCounts.following, batches: batchCount }}
         recent={{ recipes: recentRecipes, batches: recentBatches, comments: recentComments }}
         visitSessions={visitSessions}
+        journalModeration={journalModeration}
       />
     </>
   );
