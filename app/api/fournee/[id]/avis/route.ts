@@ -10,12 +10,17 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { getBatch } from '@/lib/profile';
 import { submitOrUpdateReview } from '@/lib/reviews-data';
 import type { ReviewPhoto } from '@/lib/reviews';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) return NextResponse.json({ erreur: 'Session de consultation.' }, { status: 403 });
 
   const { id } = await params;

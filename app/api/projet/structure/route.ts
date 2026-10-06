@@ -14,6 +14,7 @@ import { MAX_COMPONENTS } from '@/lib/projects';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { messageQuota } from '@/lib/quota-route';
 import { consumeQuota, refundQuota } from '@/lib/entitlements-data';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
 
@@ -23,6 +24,10 @@ export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) {
     return NextResponse.json({ erreur: 'Session de consultation (lecture seule).' }, { status: 403 });
   }

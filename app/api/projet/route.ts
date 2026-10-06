@@ -23,6 +23,7 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { INTENT_MAX, normaliseStructure, type ProposedStructure } from '@/lib/ai/project-structure';
 import { MAX_COMPONENTS, projectFormatPayload } from '@/lib/projects';
 import { verifierAcces } from '@/lib/quota-route';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 // La proposition revient du navigateur : c'est une donnée à revalider, pas
 // une promesse. On la repasse dans la normalisation de la réponse de l'IA
@@ -46,6 +47,10 @@ function propositionRevalidee(p: unknown): ProposedStructure | null {
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   // Même garde que /creer, /importer et /relecture : une session « en tant
   // que » en lecture seule n'écrit pas.
   if (await isReadOnlySession()) {

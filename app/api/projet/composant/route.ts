@@ -16,6 +16,7 @@ import { buildComponentContenu, draftToText, normaliseComponentRecipe } from '@/
 import type { ComponentStepDraft } from '@/lib/projects';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 60;
 
@@ -30,6 +31,10 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) {
     return NextResponse.json({ erreur: 'Session de consultation (lecture seule).' }, { status: 403 });
   }

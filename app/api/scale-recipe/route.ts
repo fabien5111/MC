@@ -7,6 +7,7 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefus, reserverQuota } from '@/lib/quota-route';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
 
@@ -25,6 +26,10 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
 
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   // Facturée comme /api/import-url et /api/transcribe-photo : interdite
   // pendant une impersonation en lecture seule.
   if (await isReadOnlySession()) {

@@ -49,6 +49,7 @@ import {
   resoudrePrixStripe,
   MissingStripeConfigError,
 } from '@/lib/billing-data';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
 
@@ -57,6 +58,10 @@ type Programmation = { ok: true } | { ok: false; message: string };
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) {
     return NextResponse.json({ erreur: 'Session de consultation (lecture seule) : action impossible.' }, { status: 403 });
   }

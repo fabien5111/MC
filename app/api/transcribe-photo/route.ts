@@ -17,6 +17,7 @@ import { verifierAcces } from '@/lib/quota-route';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/claude';
 import { transcrireUne } from '@/lib/ai/transcribe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 60;
 
@@ -44,6 +45,10 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
 
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   // Première passe d'un import, facturée : interdite pendant une impersonation
   // en lecture seule, comme /api/import-url qu'elle alimente.
   if (await isReadOnlySession()) {
