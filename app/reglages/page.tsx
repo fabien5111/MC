@@ -90,7 +90,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getUsageReport(user.id),
       getGrid(),
       getCurrentPlan(user.id),
-      hasConsumedTrial(user.id),
+      hasConsumedTrial(user.id, user.email),
       getMesDemandes(user.id),
       getAbonnementStripeCourant(user.id),
     ]);

@@ -35,6 +35,7 @@ export function PlansPage({
   connecte,
   currentPlanCode,
   currentPlanEndsAt,
+  currentPlanDaysLeft,
   essaiActif,
   trialConsumed,
   trialDays,
@@ -50,6 +51,8 @@ export function PlansPage({
   // programmée (« vous gardez votre formule jusqu'au [date] »), sans quoi le
   // membre confirmait un changement sans savoir quand il prend effet.
   currentPlanEndsAt: string | null;
+  // Jours restants de l'essai en cours (même calcul que « Mon forfait »).
+  currentPlanDaysLeft: number | null;
   // Changement de formule déjà programmé (échéancier Stripe), lu par la page
   // serveur — jamais recalculé ici. Le bouton d'action reste actif même
   // quand il est renseigné : reprogrammer une descente ou monter en gamme
@@ -478,6 +481,7 @@ export function PlansPage({
                       estCourant={p.code === currentPlanCode}
                       inferieur={currentIndex >= 0 && p.orderIndex < plans[currentIndex].orderIndex}
                       essaiActif={essaiActif}
+                      joursRestants={currentPlanDaysLeft}
                       trialConsumed={trialConsumed}
                       // Sans tarif configuré pour cette formule, « S'abonner »
                       // n'a rien à proposer — jamais affiché dans ce cas
@@ -569,6 +573,7 @@ function BoutonPlan({
   estCourant,
   inferieur,
   essaiActif,
+  joursRestants,
   trialConsumed,
   aUnTarif,
   onEssayer,
@@ -584,6 +589,7 @@ function BoutonPlan({
   // n'a pas de sens ici — la formule par défaut propose d'annuler l'essai,
   // les autres de souscrire directement (§ conversation du 01/09).
   essaiActif: boolean;
+  joursRestants: number | null;
   trialConsumed: boolean;
   // Un tarif est configuré pour cette formule (périodicité affichée) —
   // sans lui, « S'abonner » n'a rien à proposer et ne s'affiche jamais.
@@ -598,7 +604,11 @@ function BoutonPlan({
   const clsSecondaire = `${cls} border border-outline-variant text-primary hover:bg-surface-container`;
   const clsPrincipal = `${cls} bg-primary text-on-primary hover:shadow-lg`;
 
-  if (estCourant) {
+  // Pendant un essai, la formule essayée est bien la formule courante, mais
+  // « Votre plan actuel » (inactif) y fermait la seule porte vers
+  // l'abonnement payant à cette même formule (JEP-264) : elle est traitée
+  // plus bas, avec les autres formules d'un membre en essai.
+  if (estCourant && !essaiActif) {
     return (
       <button type="button" disabled className={`${cls} bg-surface-container text-on-surface-variant`}>
         Votre plan actuel
@@ -617,9 +627,28 @@ function BoutonPlan({
         </Link>
       );
     }
+    // Mêmes boutons qu'un membre qui n'a pas encore utilisé son essai
+    // (JEP-263) — l'un n'excluait pas l'autre. Liens vers la connexion :
+    // essai comme souscription exigent un compte, rien n'est lancé sans
+    // session. Un visiteur dont l'adresse a déjà servi à un essai verra
+    // « Essayer gratuitement » tant qu'il n'est pas connecté : inévitable.
+    if (plan.trialAllowed) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
+            Essayer gratuitement
+          </Link>
+          {aUnTarif && (
+            <Link href="/connexion?next=/plans" className={`block text-center ${clsSecondaire}`}>
+              S&apos;abonner
+            </Link>
+          )}
+        </div>
+      );
+    }
     return (
       <Link href="/connexion?next=/plans" className={`block text-center ${clsPrincipal}`}>
-        {plan.trialAllowed ? 'Essayer' : "S'abonner"}
+        S&apos;abonner
       </Link>
     );
   }
@@ -631,16 +660,29 @@ function BoutonPlan({
     // forfait », seul endroit qui connaît déjà l'abonnement en détail.
     if (plan.isDefault) {
       return (
-        <Link href="/reglages" className={`block text-center ${clsSecondaire}`}>
+        <Link href="/reglages" className={`block whitespace-nowrap px-2 text-center ${clsSecondaire}`}>
           Annuler mon essai
         </Link>
       );
     }
-    if (!aUnTarif) return null;
+    // Formule essayée : « S'abonner » transforme l'essai en abonnement payant
+    // à cette même formule (JEP-264), avec une mention pour la reconnaître —
+    // c'est elle qui tenait lieu de « Votre plan actuel ». Placée SOUS le
+    // bouton : au-dessus, elle décalait la colonne et désalignait les boutons
+    // des autres formules.
+    const reste =
+      joursRestants === null ? '' : joursRestants === 0 ? '(dernier jour)' : `(${joursRestants} jour${joursRestants > 1 ? 's' : ''} restant${joursRestants > 1 ? 's' : ''})`;
+    const mention = estCourant && (
+      <p className="text-center text-xs font-semibold text-on-surface-variant">Essai en cours{reste && <span className="block">{reste}</span>}</p>
+    );
+    if (!aUnTarif) return mention || null;
     return (
-      <button type="button" onClick={onAbonner} className={clsPrincipal}>
-        S&apos;abonner
-      </button>
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={onAbonner} className={clsPrincipal}>
+          S&apos;abonner
+        </button>
+        {mention}
+      </div>
     );
   }
   if (inferieur) {

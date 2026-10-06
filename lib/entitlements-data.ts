@@ -17,6 +17,8 @@
 //   dans docs/note-regression-cache.md.
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { hashTrialEmail } from '@/lib/trial';
 import {
   getCurrentPlanFeatures,
   getCurrentPlanVersions,
@@ -284,11 +286,39 @@ export const getCurrentPlan = cache(async (userId: string): Promise<CurrentPlan 
 
 // ── Page publique des plans ─────────────────────────────────
 
-/** Essai déjà consommé par ce membre — tous plans confondus (§7.2). */
-export const hasConsumedTrial = cache(async (userId: string): Promise<boolean> => {
+/**
+ * Essai déjà consommé par ce membre — tous plans confondus (§7.2).
+ *
+ * Même règle que `mc_start_trial` (§1.4 de docs/abonnements.md) : l'essai est
+ * consommé si une ligne `trials` porte ce `user_id` OU l'empreinte de cette
+ * adresse. L'empreinte survit à la suppression du compte (`user_id` passe à
+ * `null`, la ligne reste) : sans ce second test, un compte recréé avec la
+ * même adresse se voyait proposer « Essayer gratuitement », puis refuser au
+ * clic (JEP-265). Même correctif que `getMemberSubscriptionOverview` (JEP-29).
+ *
+ * La lecture par empreinte passe par la clé service_role : une ligne
+ * orpheline (`user_id` nul) est invisible au membre sous la policy
+ * `trials_lecture`. Seul un booléen en sort, jamais la ligne. Sel ou clé
+ * service absents : repli sur le seul test par `user_id`, plutôt que de faire
+ * échouer `/plans` ou `/reglages` pour un problème de configuration.
+ */
+export const hasConsumedTrial = cache(async (userId: string, email: string | null): Promise<boolean> => {
   const supabase = await createClient();
   const { data } = await supabase.from('trials').select('id').eq('user_id', userId).maybeSingle();
-  return !!data;
+  if (data) return true;
+  if (!email) return false;
+  try {
+    const { data: parEmail } = await createAdminClient()
+      .from('trials')
+      .select('id')
+      .eq('email_hash', hashTrialEmail(email))
+      .limit(1)
+      .maybeSingle();
+    return !!parEmail;
+  } catch (e) {
+    console.error('hasConsumedTrial: lecture par empreinte impossible:', (e as Error).message);
+    return false;
+  }
 });
 
 export type PendingRequest = { id: number; planCode: string; createdAt: string };
