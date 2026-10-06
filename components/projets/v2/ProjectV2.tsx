@@ -58,6 +58,8 @@ import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { dayLabel, mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
+import { ingredientConversionText } from '@/lib/ingredient-conversions';
+import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
@@ -349,57 +351,27 @@ export function ProjectV2({
     );
   }
 
-  function etape(s: RecipeStepView, i: number) {
-    const ingredients = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
-    const temps = [
-      s.prep_time ? `prép. ${s.prep_time} min` : null,
-      s.cook_time ? `cuisson ${s.cook_time} min${s.cook_temp ? ` à ${s.cook_temp} °C` : ''}` : null,
-      s.wait_time ? `repos ${s.wait_time} min` : null,
-    ].filter(Boolean);
+  // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
+  // : pas de filet sous la dernière étape d'un groupe.
+  function etape(s: RecipeStepView, i: number, dernier: boolean) {
     return (
-      <li
+      <RecipeStep
         key={s.id}
-        id={stepAnchorId(i)}
-        className="scroll-mt-28 border-t border-outline-variant/40 pt-4 first:border-t-0 first:pt-0"
-      >
-        <p className="font-label-md text-[11px] uppercase tracking-widest text-outline">
-          {dayLabel(s.day_offset)} · Étape {i + 1}
-          {temps.length > 0 && <span className="normal-case tracking-normal"> · {temps.join(' · ')}</span>}
-        </p>
-        <h4 className="font-body-md text-[16px] font-semibold text-on-surface">{s.title || 'Sans titre'}</h4>
-        {s.description && <p className="mt-1 whitespace-pre-line text-[14px] text-on-surface-variant">{s.description}</p>}
-        {!!s.sous_etapes?.length && (
-          <ul className="mt-2 list-disc space-y-0.5 pl-5 text-[14px] text-on-surface-variant">
-            {s.sous_etapes.map((se, k) => (
-              <li key={k}>{se}</li>
-            ))}
-          </ul>
-        )}
-        {ingredients.length > 0 && (
-          <ul className="mt-3 space-y-0.5 text-[14px]">
-            {ingredients.map((it) => {
-              const allergene = it.ingredient_refs?.allergens?.name || it.allergen;
-              return (
-                <li key={it.id}>
-                  <span className="font-label-md text-primary">{[it.quantity, it.unit].filter(Boolean).join(' ')}</span>{' '}
-                  {it.name}
-                  {allergene && <span className="italic text-on-surface-variant"> (Allergènes : {allergene})</span>}
-                  {it.comment && <span className="italic text-on-surface-variant"> — {it.comment}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {s.tips && <p className="mt-2 text-[13px] italic text-secondary">Astuce : {s.tips}</p>}
-        {!!s.step_photos?.length && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {s.step_photos.map((p, k) => (
-              // eslint-disable-next-line @next/next/no-img-element -- stockage Swift, cross-origin
-              <img key={k} src={p.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
-            ))}
-          </div>
-        )}
-      </li>
+        step={s}
+        index={i}
+        anchorId={stepAnchorId(i)}
+        ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}
+        qty={(it) => {
+          const conv = ingredientConversionText(conversions, unitRefs, it.ref_id, it.unit, it.quantity);
+          return (
+            <>
+              <span className="whitespace-nowrap">{[it.quantity, it.unit].filter(Boolean).join(' ')}</span>
+              {conv && <span className="font-body-md text-[12px] text-on-surface-variant"> ({conv})</span>}
+            </>
+          );
+        }}
+        last={dernier}
+      />
     );
   }
 
@@ -614,7 +586,7 @@ export function ProjectV2({
                       {boutonRecette(c)}
                     </div>
                     {own.length ? (
-                      <ol className="space-y-4">{own.map((s) => etape(s, steps.indexOf(s)))}</ol>
+                      <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>
                     )}
@@ -624,7 +596,7 @@ export function ProjectV2({
               {assemblage.length > 0 && (
                 <div>
                   <h3 className={sousTitre}>Assemblage</h3>
-                  <ol className="space-y-4">{assemblage.map((s) => etape(s, steps.indexOf(s)))}</ol>
+                  <div className="space-y-10">{assemblage.map((s, k) => etape(s, steps.indexOf(s), k === assemblage.length - 1))}</div>
                 </div>
               )}
             </div>
