@@ -122,9 +122,14 @@ le service managé.
   sans privilège (`SECURITY INVOKER`, calcul pur comme `mc_ingredient_key`)
   peut rester à `pgweb_admin`.
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
-  `next/font/google` (`app/fonts.ts`), auto-hébergées depuis
-  `/_next/static` — jamais un `<link>` vers `fonts.googleapis.com`, qui
-  bloquait le premier affichage (audit PageSpeed du 28/09/2026). Material
+  `next/font/local` (`app/fonts.ts`), fichiers `.woff2` versionnés dans
+  `app/fonts/` (sous-ensemble `latin` des polices variables de Google Fonts),
+  auto-hébergées depuis `/_next/static` — jamais un `<link>` vers
+  `fonts.googleapis.com`, qui bloquait le premier affichage (audit PageSpeed
+  du 28/09/2026). **Jamais `next/font/google`** (JEP-299) : il téléchargeait
+  les polices chez Google à chaque build, et Google renvoie parfois des
+  adresses sans extension que Next 15.5 ne sait pas lire — build en échec sur
+  le nœud (04/10) puis sur un runner GitHub (06/10). Material
   Symbols reste chargée depuis Google (police à ligatures, non gérable par
   `next/font`), mais réduite au poids (`wght@300`, seule valeur utilisée) et
   aux icônes réellement affichées par le code — sous-ensemble recalculé à
