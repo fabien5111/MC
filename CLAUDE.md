@@ -1314,6 +1314,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   ustensiles / difficulté / temps, conseils et source, essais
   (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`,
   partagé avec la v1).
+- **Étapes : la présentation de la fiche recette, pas une variante.** Le bloc « Étapes » rend chaque étape par `components/recipe/RecipeStep.tsx`, le même composant que `app/recette/[id]` (titre numéroté, pastilles de temps, ingrédients de l'étape, photos, sous-étapes, conseils) ; ne pas recoder une seconde présentation. L'édition d'une préparation (`ComponentResolver`) utilise `StepEditorCard`, calquée sur l'éditeur `/creer`.
 - **Composants : un seul code pour les deux versions** —
   `useProjectComponents` (ajout, renommage, rôle, ajustement, suppression,
   réordonnancement, ouverture de la résolution) et `ProjectStructureList`.
@@ -1321,7 +1322,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   **quelle que soit la source**, avec `initialSource` : le crédit d'une copie
   est conservé à l'enregistrement (§9), au lieu d'être effacé.
 - **Le brouillon d'un composant transporte tout ce qu'une étape porte** :
-  jour, temps, température, astuce (`StepDetails`), allergènes en texte libre,
+  jour, temps, température, astuce (`StepEditorCard`, calquée sur l’éditeur `/creer`), allergènes en texte libre,
   photos d'étape (`ComponentStepDraft.photos`, déposées sur Swift par
   `ComponentResolver` avant l'écriture — `projects-write` ne téléverse rien,
   il sert aussi côté serveur). `readComponentDraft` relit désormais aussi le

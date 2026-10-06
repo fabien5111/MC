@@ -30,7 +30,7 @@ import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, t
 import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
-import { StepDetails } from '@/components/projets/StepDetails';
+import { StepEditorCard } from '@/components/projets/StepEditorCard';
 import { televerserImage } from '@/lib/storage-client';
 
 // Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
@@ -446,7 +446,7 @@ export function ComponentResolver({
       <LoadingOverlay visible={busy || chargement} />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-8 w-full max-w-[720px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl"
+        className="my-8 w-full max-w-[960px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
@@ -586,148 +586,38 @@ export function ComponentResolver({
                 : 'Saisissez les étapes de cette préparation.'}
             </p>
 
-            <div className="max-h-[50vh] space-y-4 overflow-y-auto pr-1">
+            <div className="space-y-12">
               {draft.map((st, i) => (
-                <div key={i} className="rounded-xl border border-outline-variant p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <input
-                      value={st.title ?? ''}
-                      onChange={(e) => majEtape(i, { title: e.target.value })}
-                      placeholder={`Étape ${i + 1}`}
-                      className={champ}
-                    />
-                    <button
-                      type="button"
-                      title="Retirer l’étape"
-                      onClick={() => setDraft((prev) => prev.filter((_, k) => k !== i))}
-                      className="p-1"
-                    >
-                      <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-                    </button>
-                  </div>
-                  <textarea
-                    ref={autoGrow}
-                    value={st.description ?? ''}
-                    onChange={(e) => {
-                      majEtape(i, { description: e.target.value });
-                      autoGrow(e.target);
-                    }}
-                    rows={2}
-                    placeholder="Le geste, en une ou deux phrases"
-                    className={`${champ} mb-3 resize-none overflow-hidden`}
-                  />
-                  <label className="mb-1 block text-[11px] font-semibold uppercase text-on-surface-variant">
-                    Sous-étapes (une par ligne)
-                  </label>
-                  <textarea
-                    ref={autoGrow}
-                    value={(st.sous_etapes ?? []).join('\n')}
-                    onChange={(e) => {
-                      majEtape(i, { sous_etapes: e.target.value.split('\n') });
-                      autoGrow(e.target);
-                    }}
-                    rows={3}
-                    placeholder="Hydrater la gélatine&#10;Fondre le praliné&#10;Chauffer la crème…"
-                    className={`${champ} mb-3 resize-none overflow-hidden`}
-                  />
-                  <StepDetails step={st} onChange={(patch) => majEtape(i, patch)} />
-                  <ul className="space-y-2">
-                    {st.ingredients.map((it, j) => (
-                      <li key={j} className="space-y-2">
-                        <div className="flex flex-nowrap items-center gap-2">
-                          <input
-                            value={it.name}
-                            // Nom saisi ≠ ingrédient rattaché : le rattachement
-                            // est refait à l'enregistrement.
-                            onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
-                            list={ingredientRefs.length ? datalistId : undefined}
-                            autoComplete="off"
-                            placeholder="Ingrédient"
-                            className={`${champBase} min-w-0 flex-1`}
-                          />
-                          <input
-                            value={it.quantity ?? ''}
-                            // Quantité retouchée à la main : la ligne sort du
-                            // recalcul global (base effacée), comme à l'étape
-                            // « Quantités ». Une ligne neuve n'a pas de base à effacer.
-                            onChange={(e) =>
-                              majIngredient(i, j, {
-                                quantity: e.target.value,
-                                ...(it.base_quantity !== undefined ? { base_quantity: null } : {}),
-                              })
+                <StepEditorCard
+                  key={i}
+                  step={st}
+                  index={i}
+                  units={units}
+                  datalistId={ingredientRefs.length ? datalistId : undefined}
+                  onChange={(patch) => majEtape(i, patch)}
+                  onIngredientChange={(j, patch) => majIngredient(i, j, patch)}
+                  onIngredientAdd={() =>
+                    setDraft((prev) =>
+                      prev.map((s, k) =>
+                        k === i
+                          ? {
+                              ...s,
+                              ingredients: [
+                                ...s.ingredients,
+                                { name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null },
+                              ],
                             }
-                            placeholder="Qté"
-                            inputMode="decimal"
-                            className={`${champBase} w-16 shrink-0`}
-                          />
-                          <select
-                            value={it.unit ?? ''}
-                            onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                            className={`${champBase} w-fit shrink-0`}
-                          >
-                            <option value="">—</option>
-                            {units.map((u) => (
-                              <option key={u} value={u}>
-                                {u}
-                              </option>
-                            ))}
-                            {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
-                          </select>
-                          <button
-                            type="button"
-                            title="Retirer l’ingrédient"
-                            onClick={() =>
-                              setDraft((prev) =>
-                                prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
-                              )
-                            }
-                            className="shrink-0 p-1"
-                          >
-                            <span className="material-symbols-outlined text-[18px] text-error">delete</span>
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <input
-                            value={it.comment ?? ''}
-                            onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
-                            placeholder="Commentaire (optionnel)"
-                            className={`${champBase} min-w-0 flex-[2]`}
-                          />
-                          {/* Allergènes en texte libre, comme dans l'éditeur de
-                              recette : ceux du référentiel s'ajoutent d'eux-mêmes
-                              à l'affichage quand l'ingrédient y est rattaché. */}
-                          <input
-                            value={it.allergen ?? ''}
-                            onChange={(e) => majIngredient(i, j, { allergen: e.target.value || null })}
-                            placeholder="Allergènes (optionnel)"
-                            className={`${champBase} min-w-0 flex-1`}
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraft((prev) =>
-                        prev.map((s, k) =>
-                          k === i
-                            ? {
-                                ...s,
-                                ingredients: [
-                                  ...s.ingredients,
-                                  { name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null },
-                                ],
-                              }
-                            : s,
-                        ),
-                      )
-                    }
-                    className="mt-2 text-[12.5px] font-semibold text-primary"
-                  >
-                    + Ingrédient
-                  </button>
-                </div>
+                          : s,
+                      ),
+                    )
+                  }
+                  onIngredientDelete={(j) =>
+                    setDraft((prev) =>
+                      prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
+                    )
+                  }
+                  onDelete={() => setDraft((prev) => prev.filter((_, k) => k !== i))}
+                />
               ))}
             </div>
 
