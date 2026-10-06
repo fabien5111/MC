@@ -9,8 +9,13 @@
 // `component_id` du projet (cf. CLAUDE.md « Dissolution assumée »). Chaque
 // éditeur a son propre bouton « Enregistrer » : la saisie en cours n'est
 // écrite qu'au geste, puis le parent resynchronise (`mutate`).
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useDialog } from '@/components/Dialog';
+import { revalidateReference } from '@/lib/revalidate-reference';
+import { normLoose } from '@/lib/search-params';
+import { capitalizeSentences, slugify } from '@/lib/text';
 import type { useMutation } from '@/lib/use-mutation';
 import { ImageSlot } from '@/components/ImageSlot';
 import { resizeDataUrlToThumb } from '@/lib/images';
@@ -121,92 +126,197 @@ export function HeroEditor({ recipe, mutate, busy }: { recipe: RecipeFull; mutat
   );
 }
 
-// ── Type et catégories ──────────────────────────────────────────────────
-export function TypeTagsEditor({
+// ── Catégories (tags) ───────────────────────────────────────────────────
+// Même principe que l'éditeur de recette (`CreerForm`) : les tags choisis
+// sont des pastilles pleines qu'un clic retire, « + Ajouter un tag » ouvre une
+// liste avec recherche (sans accents ni casse) et cases à cocher, et un tag
+// absent du référentiel se crée à la volée — la v2 étant réservée aux admins,
+// ce champ est toujours proposé (dans l'éditeur, il l'est aux seuls admins).
+// Différence voulue : la liaison recette ↔ tags ne s'écrit qu'au bouton
+// « Enregistrer », section par section ; le tag créé, lui, entre au
+// référentiel tout de suite, comme dans l'éditeur.
+//
+// Pas de « type de recette » : `recipes.type_id` n'est saisi nulle part ailleurs
+// sur le site (78 recettes sur 78 sans type au relevé du 06/10/2026).
+export function TagsEditor({
   recipe,
-  typeId,
-  types,
   tags,
   mutate,
   busy,
 }: {
   recipe: RecipeFull;
-  // `type_id` n'est pas porté par `RecipeFull` (seule la jointure l'est) :
-  // la page le lit à part.
-  typeId: number | null;
-  types: RefOption[];
   tags: RefOption[];
   mutate: Mutate;
   busy: boolean;
 }) {
-  const initiaux = recipe.recipe_tags.map((t) => t.tags?.id).filter((id): id is number => id != null);
-  const [type, setType] = useState(typeId ? String(typeId) : '');
-  const [choisis, setChoisis] = useState<Set<number>>(new Set(initiaux));
-  const modifie =
-    type !== (typeId ? String(typeId) : '') ||
-    choisis.size !== initiaux.length ||
-    initiaux.some((id) => !choisis.has(id));
+  const router = useRouter();
+  const dialog = useDialog();
+  const initiaux = new Map(
+    recipe.recipe_tags.flatMap((t) => (t.tags ? [[t.tags.id, t.tags.name] as [number, string]] : [])),
+  );
+  const [selected, setSelected] = useState<Map<number, string>>(new Map(initiaux));
+  const [extraTags, setExtraTags] = useState<RefOption[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [newTagName, setNewTagName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Repli de la liste au clic en dehors, comme dans l'éditeur.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [pickerOpen]);
+
+  // Dédoublonné par id : un tag créé puis relu depuis le serveur ne doit pas
+  // produire deux entrées de même clé React.
+  const allTags = useMemo(() => [...new Map([...tags, ...extraTags].map((t) => [t.id, t])).values()], [tags, extraTags]);
+  const remaining = useMemo(() => allTags.filter((t) => !selected.has(t.id)), [allTags, selected]);
+  const filtered = useMemo(() => {
+    const q = normLoose(search.trim());
+    return q ? remaining.filter((t) => normLoose(t.name).includes(q)) : remaining;
+  }, [remaining, search]);
+
+  const modifie = selected.size !== initiaux.size || [...initiaux.keys()].some((id) => !selected.has(id));
+
+  async function addTag(name: string) {
+    const clean = capitalizeSentences(name.trim());
+    if (!clean) return;
+    const existing = allTags.find((t) => t.name.trim().toLowerCase() === clean.toLowerCase());
+    if (existing) {
+      setSelected((prev) => new Map(prev).set(existing.id, existing.name));
+      setNewTagName('');
+      setPickerOpen(false);
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await createClient()
+      .from('tags')
+      .insert({ name: clean, slug: slugify(clean), status: 'published' })
+      .select('id, name, slug')
+      .single();
+    setCreating(false);
+    if (error || !data) return void dialog.alert('Erreur : ' + (error?.message ?? 'insertion impossible'));
+    setExtraTags((p) => [...p, { id: data.id, name: data.name }]);
+    setSelected((prev) => new Map(prev).set(data.id, data.name));
+    setNewTagName('');
+    setPickerOpen(false);
+    // Référentiel mis en cache : invalidé avant la resynchronisation.
+    void revalidateReference('tags');
+    router.refresh();
+  }
 
   async function enregistrer() {
     await mutate(
       async () => {
         const supabase = createClient();
-        const { error } = await majRecette(recipe.id, { type_id: type ? Number(type) : null });
-        if (error) return { error };
         // Même geste que l'éditeur : liaisons supprimées puis réinsérées.
         const { error: delErr } = await supabase.from('recipe_tags').delete().eq('recipe_id', recipe.id);
         if (delErr) return { error: delErr };
-        if (!choisis.size) return { error: null };
-        return supabase.from('recipe_tags').insert([...choisis].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
+        if (!selected.size) return { error: null };
+        return supabase.from('recipe_tags').insert([...selected.keys()].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
       },
-      { errorLabel: 'Enregistrement du type et des catégories' },
+      { errorLabel: 'Enregistrement des catégories' },
     );
   }
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className={etiquette}>TYPE DE RECETTE</label>
-        <select value={type} onChange={(e) => setType(e.target.value)} className={`${champ} sm:w-auto`}>
-          <option value="">— À préciser —</option>
-          {types.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className={etiquette}>CATÉGORIES</label>
-        <div className="flex flex-wrap gap-2">
-          {tags.map((t) => {
-            const actif = choisis.has(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={actif}
-                onClick={() =>
-                  setChoisis((prev) => {
-                    const n = new Set(prev);
-                    if (actif) n.delete(t.id);
-                    else n.add(t.id);
-                    return n;
-                  })
-                }
-                className={`rounded-pill border px-3 py-1.5 text-[13px] transition-colors ${
-                  actif ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant hover:border-primary'
-                }`}
-              >
-                {t.name}
-              </button>
-            );
-          })}
+      <label className={etiquette}>CATÉGORIES ET TAGS</label>
+      <div className="flex flex-wrap items-center gap-2">
+        {[...selected].map(([id, name]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setSelected((prev) => new Map([...prev].filter(([tid]) => tid !== id)))}
+            title="Retirer ce tag"
+            className="flex items-center gap-1.5 rounded-full bg-primary-container px-4 py-1.5 font-label-md text-label-md text-white transition-opacity hover:opacity-80"
+          >
+            {name}
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        ))}
+        <div className="relative" ref={pickerRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setPickerOpen((v) => !v);
+              setSearch('');
+            }}
+            className="rounded-full border border-outline-variant px-4 py-1.5 font-label-md text-label-md text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+          >
+            + Ajouter un tag
+          </button>
+          {pickerOpen && (
+            <div className="absolute left-0 z-20 mt-2 flex max-h-64 min-w-[220px] flex-col overflow-hidden rounded-xl border border-outline-variant bg-white shadow-lg">
+              <div className="shrink-0 px-2 pb-2 pt-2">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher un tag…"
+                  autoFocus
+                  className="w-full rounded-lg border border-outline-variant px-3 py-1.5 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+                {filtered.length ? (
+                  filtered.map((t) => (
+                    <label
+                      key={t.id}
+                      className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-label-md text-label-md text-on-surface transition-colors hover:bg-surface-container"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        onChange={(e) => {
+                          if (!e.target.checked) return;
+                          setSelected((prev) => new Map(prev).set(t.id, t.name));
+                        }}
+                        className="accent-primary"
+                      />
+                      {t.name}
+                    </label>
+                  ))
+                ) : (
+                  <p className="px-4 py-2 text-sm italic text-on-surface-variant">Aucun autre tag disponible</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={newTagName}
+          onChange={(e) => setNewTagName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void addTag(newTagName);
+            }
+          }}
+          placeholder="Nouveau tag (hors référentiel)"
+          className={`${champ} min-w-[200px] flex-1`}
+        />
+        <button
+          type="button"
+          disabled={!newTagName.trim() || creating}
+          onClick={() => void addTag(newTagName)}
+          title="Créer ce tag dans le référentiel et l'ajouter à la recette"
+          className="rounded-full border border-primary px-4 py-1.5 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-on-primary disabled:pointer-events-none disabled:opacity-40"
+        >
+          Créer le tag
+        </button>
       </div>
       {modifie && (
         <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
-          Enregistrer le type et les catégories
+          Enregistrer les catégories
         </button>
       )}
     </div>

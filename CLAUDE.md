@@ -1334,7 +1334,14 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   (`components/projets/v2/RecipeDetailEditors.tsx`), mêmes colonnes et tables
   que `CreerForm`, jamais par son enregistrement global (qui effacerait les
   `component_id`). Photo d'en-tête : vignettes recalculées seulement pour un
-  dépôt frais. `type_id` n'est pas modifiable dans `/creer` ; la v2 l'écrit.
+  dépôt frais. **Catégories** : même principe que `/creer` (pastilles pleines
+  retirables, « + Ajouter un tag » avec recherche sans accents, création d'un
+  tag à la volée), mais la liaison `recipe_tags` ne s'écrit qu'au bouton
+  « Enregistrer ». **Pas de « type de recette »** : `recipes.type_id` n'est
+  saisi dans aucun écran du site (78 recettes sur 78 sans type au relevé du
+  06/10/2026) ; son filtre de recherche et son affichage sur les cartes
+  restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
+  d'abord à `/creer` et à la relecture d'import.
 
 ## Boîte à idées
 

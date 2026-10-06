@@ -12,7 +12,7 @@
 // - la v2 n'écrit JAMAIS `recipe_projects.wizard_step` — l'étape du parcours
 //   en onglets lui appartient, ouvrir un projet ici ne doit pas l'y déplacer ;
 // - la description du dessert se saisit pour tous les formats ;
-// - les éléments de recette (photo, type, catégories, ustensiles…) s'écrivent
+// - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
 import { useState, type ReactNode } from 'react';
@@ -36,7 +36,7 @@ import {
   ConseilsEditor,
   HeroEditor,
   OrganisationEditor,
-  TypeTagsEditor,
+  TagsEditor,
   type DifficultyOption,
   type RefOption,
 } from '@/components/projets/v2/RecipeDetailEditors';
@@ -78,7 +78,7 @@ const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text
 // blocs « Atelier projet » partagent le même picto de chantier.
 const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icone: string }> = {
   intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icone: 'construction' },
-  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description, type et catégories.', court: 'Le dessert', icone: 'edit_note' },
+  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icone: 'edit_note' },
   format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.', court: 'Format', icone: 'straighten' },
   structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
   etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients.', court: 'Étapes', icone: 'format_list_numbered' },
@@ -112,11 +112,9 @@ export function ProjectV2({
   trials,
   peutGenererIA,
   quotaProjetIA,
-  types,
   tags,
   difficulties,
   utensilNames,
-  typeId,
   difficultyId,
 }: {
   project: ProjectFull;
@@ -131,11 +129,9 @@ export function ProjectV2({
   trials: ProjectTrial[];
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
-  types: RefOption[];
   tags: RefOption[];
   difficulties: DifficultyOption[];
   utensilNames: string[];
-  typeId: number | null;
   difficultyId: number | null;
 }) {
   const router = useRouter();
@@ -547,7 +543,7 @@ export function ProjectV2({
               )}
             </div>
             {recipe && (
-              <TypeTagsEditor recipe={recipe} typeId={typeId} types={types} tags={tags} mutate={mutate} busy={busy} />
+              <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} />
             )}
           </div>,
         )}

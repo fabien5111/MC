@@ -25,3 +25,16 @@ export function fixOeufLigature(s: string | null | undefined): string {
     return base;
   });
 }
+
+// Slug d'un libellé de référentiel (tag…) : minuscules, sans accents, tirets.
+// Même règle que le `slugify` local (non exporté) de `CreerForm` et de
+// `RelectureEditor` : la v2 du mode projet crée aussi des tags. Les deux copies
+// locales restent en place, hors périmètre.
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}

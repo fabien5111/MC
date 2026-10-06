@@ -8,13 +8,7 @@ import { checkQuota, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
-import {
-  getDifficulties,
-  getIngredientRefsList,
-  getRecipeTypes,
-  getTags,
-  getUtensilRefNames,
-} from '@/lib/data/reference';
+import { getDifficulties, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -51,7 +45,7 @@ export default async function ProjetV2Page({ params }: Params) {
   if (!canAccess(droits, 'mode_projet')) redirect(`/projets/${id}`);
 
   const supabase = await createClient();
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, types, tags, difficulties, utensilNames, ids] =
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids] =
     await Promise.all([
       getMoldTypes(),
       getUnits(),
@@ -61,17 +55,16 @@ export default async function ProjetV2Page({ params }: Params) {
       getRecipeFull(id, 'edition'),
       getProjectTrials(id),
       getIngredientRefsList(),
-      getRecipeTypes(),
       getTags(),
       getDifficulties(),
       getUtensilRefNames(),
-      // `type_id` et `difficulty_id` ne sont pas portés par `RecipeFull`
-      // (seules les jointures le sont) : lus à part pour pré-remplir.
-      supabase.from('recipes').select('type_id, difficulty_id').eq('id', id).maybeSingle(),
+      // `difficulty_id` n'est pas porté par `RecipeFull` (seule la jointure
+      // l'est) : lu à part pour pré-remplir.
+      supabase.from('recipes').select('difficulty_id').eq('id', id).maybeSingle(),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
-  const ligne = (ids.data ?? null) as { type_id: number | null; difficulty_id: number | null } | null;
+  const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
 
   return (
     <>
@@ -88,11 +81,9 @@ export default async function ProjetV2Page({ params }: Params) {
           trials={trials}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
-          types={types.map((t) => ({ id: t.id, name: t.name }))}
           tags={tags.map((t) => ({ id: t.id, name: t.name }))}
           difficulties={difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level }))}
           utensilNames={utensilNames}
-          typeId={ligne?.type_id ?? null}
           difficultyId={ligne?.difficulty_id ?? null}
         />
       </main>
