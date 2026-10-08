@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TEASERS } from './teasers.mjs';
 import { TUTOS } from './tutos.mjs';
 
 /** Débit de la voix off : ~135 mots/min, une marge sous les 150 annoncés à la synthèse. */
@@ -66,6 +67,20 @@ export const dureeTotale = (tuto) => tuto.sequences.reduce((t, s) => t + s.duree
 
 export const titreTicket = (tuto) => `Tuto vidéo ${tuto.num} — ${tuto.titre}`;
 
+/** Consignes de synthèse vocale communes à toutes les vidéos (tutos et teasers). */
+function consignesVoix(prefixeFichier) {
+  return [
+    '### Consignes communes',
+    "- Voix : français de France, accent neutre, ton chaleureux et encourageant. Vouvoiement, comme l'interface du site.",
+    "- Débit : environ 150 mots par minute ; ne jamais dépasser le nombre de mots maximum d'un segment.",
+    "- Pauses : notées [pause 1 s] ; à convertir dans la syntaxe de l'outil retenu (balise SSML <break time=\"1s\"/>, points de suspension, etc.) — ou à supprimer et laisser au montage si l'outil n'en gère pas.",
+    "- Prononciation : le texte est écrit comme il se dit (« J moins un », « cent soixante-dix degrés »). Le nom du site se lit « Je pâtisse », sans marquer le point d'exclamation. Aucune abréviation, aucun symbole.",
+    "- Les guillemets « » signalent un exemple cité : léger changement d'intonation, pas de pause.",
+    `- Livrables : un fichier audio par segment, WAV 48 kHz, nommé ${prefixeFichier}-seg1.wav, ${prefixeFichier}-seg2.wav… pour caler chaque segment au montage.`,
+    '- Garder la même voix et les mêmes réglages (vitesse, stabilité, style) pour toute la série : reprendre ceux notés en commentaire du premier tuto produit.',
+  ];
+}
+
 export function description(tuto) {
   const total = dureeTotale(tuto);
   const nn = String(tuto.num).padStart(2, '0');
@@ -97,14 +112,7 @@ export function description(tuto) {
 
   L.push(
     '## Voix off — texte pour la synthèse vocale',
-    '### Consignes communes',
-    "- Voix : français de France, accent neutre, ton chaleureux et encourageant. Vouvoiement, comme l'interface du site.",
-    "- Débit : environ 150 mots par minute ; ne jamais dépasser le nombre de mots maximum d'un segment.",
-    "- Pauses : notées [pause 1 s] ; à convertir dans la syntaxe de l'outil retenu (balise SSML <break time=\"1s\"/>, points de suspension, etc.) — ou à supprimer et laisser au montage si l'outil n'en gère pas.",
-    "- Prononciation : le texte est écrit comme il se dit (« J moins un », « cent soixante-dix degrés »). Le nom du site se lit « Je pâtisse », sans marquer le point d'exclamation. Aucune abréviation, aucun symbole.",
-    "- Les guillemets « » signalent un exemple cité : léger changement d'intonation, pas de pause.",
-    `- Livrables : un fichier audio par segment, WAV 48 kHz, nommé tuto-${nn}-seg1.wav, tuto-${nn}-seg2.wav… pour caler chaque segment au montage.`,
-    '- Garder la même voix et les mêmes réglages (vitesse, stabilité, style) pour toute la série : reprendre ceux notés en commentaire du premier tuto produit.',
+    ...consignesVoix(`tuto-${nn}`),
     '',
     '### Script intégral (à coller segment par segment)',
   );
@@ -135,6 +143,138 @@ export function description(tuto) {
   return `${L.join('\n')}\n`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Teasers (15 s, 9:16, lecture sans le son)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Découpage fixe d'un teaser : accroche, démonstration, carton final (en secondes). */
+export const TEMPS_TEASER = { accroche: 2, demo: 10, carton: 3 };
+
+/** Voix du carton final, commune à tous les teasers : la promesse de l'accueil visiteur (`GuestIntro`). */
+export const VOIX_CARTON = "Je pâtisse : vos recettes s'adaptent enfin.";
+
+export const titreTeaser = (t) => `Teaser ${t.num} — ${t.titre}`;
+
+/** Segments de voix off d'un teaser, dans l'ordre : (durée, texte). */
+export const segmentsTeaser = (t) => [
+  { duree: TEMPS_TEASER.accroche, voix: t.accroche.voix },
+  { duree: TEMPS_TEASER.demo, voix: t.demo.voix },
+  { duree: TEMPS_TEASER.carton, voix: VOIX_CARTON },
+];
+
+export function descriptionTeaser(t) {
+  const { accroche: a, demo: d, carton: c } = TEMPS_TEASER;
+  const total = a + d + c;
+  const L = [];
+
+  L.push('## Compte à utiliser', COMPTES[t.compte]);
+  L.push("Tournage sur https://dev.jepatisse.com (www affiche encore la page d'attente).", '');
+
+  const plan = t.plan === 'payant' ? 'Fonction des formules payantes : le carton final le précise.' : 'Fonction du plan gratuit.';
+  L.push(
+    '## Objectif de la vidéo',
+    `Vidéo courte pour des prospects : donner envie de venir tester Je pâtisse ! en montrant UNE fonctionnalité différenciante. ${plan}`,
+    `Argument : ${t.argument}`,
+    `Durée : ${total} s maximum. Format vertical 9:16. Teaser n° ${t.num} sur 7.`,
+    '',
+  );
+
+  L.push('## Prérequis avant tournage', ...t.prerequis.map((p) => `- ${p}`));
+  L.push(
+    t.mobile
+      ? "- Capture sur téléphone (enregistrement d'écran natif), mode portrait, notifications coupées."
+      : "- Capture d'écran du site en vue téléphone (largeur 390 px, ou téléphone réel), pour un rendu vertical lisible ; notifications coupées.",
+    '',
+  );
+
+  L.push(
+    '## Découpage',
+    `### 1. Accroche (0:00 – 0:0${a})`,
+    `1. Texte plein écran, gros caractères : « ${t.accroche.ecran} »`,
+    '2. En fond, un plan appétissant de la pâtisserie concernée (ou l\'écran flouté).',
+    '- Voix off : segment 1',
+    '',
+    `### 2. Démonstration (0:0${a} – 0:${a + d})`,
+    ...t.demo.gestes.map((g, j) => `${j + 1}. ${g}`),
+    `- Textes à l'écran, dans l'ordre : ${t.demo.ecran.map((e) => `« ${e} »`).join(' · ')}`,
+    '- Voix off : segment 2',
+    '',
+    `### 3. Carton final (0:${a + d} – 0:${total})`,
+    '1. Logo Je pâtisse ! et la promesse « Vos recettes s\'adaptent enfin à votre cuisine ».',
+    '2. Adresse : jepatisse.com, et l\'appel à l\'action (voir ci-dessous).',
+    ...(t.plan === 'payant' ? ['3. Mention « Formule payante ».'] : []),
+    '- Voix off : segment 3',
+    '',
+  );
+
+  L.push(
+    "## Appel à l'action",
+    '- « Testez gratuitement — jepatisse.com » : UNIQUEMENT si www.jepatisse.com est ouvert au public au moment de la diffusion.',
+    "- Sinon : « Bientôt disponible — jepatisse.com ». Ne jamais diffuser « Testez gratuitement » tant que www affiche la page d'attente : le prospect ne pourrait pas s'inscrire.",
+    '- Prévoir les deux versions du carton final au montage ; le choix se fait à la diffusion.',
+    '',
+  );
+
+  L.push('## Voix off — facultative (texte pour la synthèse vocale)', ...consignesVoix(`teaser-${t.num}`));
+  L.push('- Le teaser doit se comprendre SANS le son : la voix off double les textes à l\'écran, elle ne les remplace jamais.', '');
+  L.push('### Script intégral (à coller segment par segment)');
+  segmentsTeaser(t).forEach((s, i) => {
+    L.push(`Segment ${i + 1} — ${s.duree} s — ${motsMax(s.duree)} mots max`, s.voix, '');
+  });
+
+  L.push(
+    '## Consignes de montage',
+    '- Format 1080 × 1920 (9:16), 30 images/s.',
+    "- Recadrer et zoomer sur la zone de l'action : un écran entier est illisible sur un téléphone.",
+    "- Textes à l'écran en gros caractères, polices du site (Playfair Display pour les titres, Work Sans pour le texte) : l'accroche reste à l'écran ses 2 secondes, chaque texte de la démonstration au moins 3 secondes.",
+    '- Aucune saisie au clavier visible, aucun temps de chargement : coupes franches, accélérés.',
+    '- Musique libre de droits, rythmée, mixée sous la voix off.',
+    '- Sous-titres incrustés si la voix off est utilisée.',
+    '',
+  );
+
+  L.push(
+    "## Points d'attention",
+    "- Ne pas filmer la barre d'adresse ni aucune donnée personnelle (pseudo réel, e-mail).",
+    "- Ne pas affirmer que la fonctionnalité est « unique » ou absente de la concurrence sans l'avoir vérifié.",
+    ...(t.attention ?? []).map((x) => `- ${x}`),
+    '',
+  );
+
+  L.push(
+    "## Critères d'acceptation",
+    `- Vidéo de ${total} s maximum, 9:16, compréhensible sans le son.`,
+    "- Accroche lisible dans les 2 premières secondes ; une seule fonctionnalité montrée.",
+    '- Carton final livré en deux versions (« Testez gratuitement » / « Bientôt disponible »).',
+    "- Aucun identifiant du compte de démonstration visible à l'écran.",
+  );
+  return `${L.join('\n')}\n`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Ligne de commande
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Toutes les vidéos de la série, sous une forme commune à l'écriture et à Jira. */
+export function videos() {
+  return [
+    ...TUTOS.map((t) => ({
+      fichier: `tuto-${String(t.num).padStart(2, '0')}.md`,
+      cle: t.cle,
+      titre: titreTicket(t),
+      duree: dureeTotale(t),
+      texte: description(t),
+    })),
+    ...TEASERS.map((t) => ({
+      fichier: `teaser-${t.num}.md`,
+      cle: t.cle,
+      titre: titreTeaser(t),
+      duree: TEMPS_TEASER.accroche + TEMPS_TEASER.demo + TEMPS_TEASER.carton,
+      texte: descriptionTeaser(t),
+    })),
+  ];
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const jira = args.includes('--jira');
@@ -146,13 +286,15 @@ function main(argv) {
   fs.mkdirSync(dossier, { recursive: true });
   const script = fileURLToPath(new URL('../jira.mjs', import.meta.url));
 
-  for (const tuto of TUTOS) {
-    const fichier = path.join(dossier, `tuto-${String(tuto.num).padStart(2, '0')}.md`);
-    fs.writeFileSync(fichier, description(tuto));
-    console.log(`${tuto.cle.padEnd(8)} ${dureeLisible(dureeTotale(tuto)).padStart(9)}  ${titreTicket(tuto)}`);
-    if (jira) execFileSync('node', [script, 'modifier', tuto.cle, fichier, '--titre', titreTicket(tuto)], { stdio: 'inherit' });
+  const liste = videos();
+  for (const v of liste) {
+    const fichier = path.join(dossier, v.fichier);
+    fs.writeFileSync(fichier, v.texte);
+    console.log(`${(v.cle ?? '(à créer)').padEnd(10)} ${dureeLisible(v.duree).padStart(9)}  ${v.titre}`);
+    // Une vidéo sans clé n'a pas encore de ticket : `--jira` ne crée jamais rien.
+    if (jira && v.cle) execFileSync('node', [script, 'modifier', v.cle, fichier, '--titre', v.titre], { stdio: 'inherit' });
   }
-  console.log(`\n${TUTOS.length} description(s) écrite(s) dans ${dossier}${jira ? ', tickets mis à jour' : ''}.`);
+  console.log(`\n${liste.length} description(s) écrite(s) dans ${dossier}${jira ? ', tickets existants mis à jour' : ''}.`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main(process.argv);

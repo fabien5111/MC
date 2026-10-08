@@ -2,7 +2,8 @@
 // rendent une correction sûre avant `generer.mjs --jira`, qui réécrit les
 // tickets sans relecture humaine entre les deux.
 import { describe, expect, it } from 'vitest';
-import { compterMots, description, dureeLisible, motsMax } from './generer.mjs';
+import { compterMots, dureeLisible, motsMax, segmentsTeaser, TEMPS_TEASER, videos } from './generer.mjs';
+import { TEASERS } from './teasers.mjs';
 import { TUTOS } from './tutos.mjs';
 
 describe('tutos vidéo', () => {
@@ -31,7 +32,9 @@ describe('tutos vidéo', () => {
   });
 
   it('aucun identifiant réel du compte de démonstration dans un ticket', () => {
-    const tout = TUTOS.map(description).join('\n');
+    const tout = videos()
+      .map((v) => v.texte)
+      .join('\n');
     expect(tout).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     for (const variable of ['DEMO_EMAIL', 'DEMO_PASSWORD']) {
       const valeur = process.env[variable];
@@ -57,5 +60,36 @@ describe('tutos vidéo', () => {
     expect(dureeLisible(45)).toBe('45 s');
     expect(dureeLisible(60)).toBe('1 min');
     expect(dureeLisible(65)).toBe('1 min 05');
+  });
+});
+
+describe('teasers', () => {
+  it('tiennent en 15 secondes', () => {
+    expect(TEMPS_TEASER.accroche + TEMPS_TEASER.demo + TEMPS_TEASER.carton).toBeLessThanOrEqual(15);
+  });
+
+  it('chaque segment de voix off tient dans sa durée', () => {
+    const depassements = TEASERS.flatMap((t) =>
+      segmentsTeaser(t)
+        .map((s, i) => ({ seg: `teaser ${t.num} segment ${i + 1}`, mots: compterMots(s.voix), max: motsMax(s.duree) }))
+        .filter((x) => x.mots > x.max),
+    );
+    expect(depassements).toEqual([]);
+  });
+
+  it('une seule fonctionnalité, une démonstration complète', () => {
+    expect(new Set(TEASERS.map((t) => t.num)).size).toBe(TEASERS.length);
+    for (const t of TEASERS) {
+      expect(t.demo.gestes.length).toBeGreaterThan(0);
+      expect(t.demo.ecran.length).toBeGreaterThan(0);
+      if (t.plan === 'payant') expect(t.compte).toBe('payant');
+    }
+  });
+
+  it('clés Jira uniques entre tutos et teasers', () => {
+    const cles = videos()
+      .map((v) => v.cle)
+      .filter(Boolean);
+    expect(new Set(cles).size).toBe(cles.length);
   });
 });
