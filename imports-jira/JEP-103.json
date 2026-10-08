@@ -1,0 +1,117 @@
+{
+  "ticket": "JEP-103",
+  "recette": {
+    "titre": "Cœur coulant au chocolat de Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=kYI1f4WwVBo",
+    "description": "Un gâteau au chocolat individuel à la croûte fine et croustillante, renfermant un cœur intensément coulant et crémeux, issu du livre \"Opéra\" de Cédric Grolet.",
+    "rendement": "6 à 8 fondants individuels (6 à 8 personnes)",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Fouet",
+      "Tamis",
+      "Poche à douille",
+      "Cercles individuels en inox (7 cm de diamètre)",
+      "Papier sulfurisé (pour chemiser les cercles)",
+      "Plaque de cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Réalisation de l'appareil à gâteau",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir (fondu)",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre (fondu)",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers (battus)",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser le chocolat noir fondu et le beurre fondu dans un cul-de-poule.",
+          "Mélanger tranquillement au fouet jusqu'à obtenir une texture homogène.",
+          "Ajouter les œufs battus et fouetter à nouveau pour bien émulsionner la préparation.",
+          "Incorporer le sucre cassonade.",
+          "Tamiser ensemble la farine et le cacao en poudre au-dessus du mélange pour éviter tout grumeau.",
+          "Mélanger délicatement au fouet jusqu'à ce que la pâte se détende.",
+          "Verser le lait pour assouplir et finaliser l'appareil."
+        ],
+        "conseils_etape": "Ne pas mélanger trop vivement pour éviter d'incorporer de l'air. Veiller à ce que le chocolat et le beurre soient tièdes et non brûlants lors de l'ajout des œufs."
+      },
+      {
+        "nom_etape": "Pochage et blocage au froid",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Chemiser de papier cuisson l'intérieur de cercles en inox de 7 cm de diamètre posés sur une plaque.",
+          "Remplir une poche à douille avec l'appareil au chocolat.",
+          "Pocher la préparation dans les cercles jusqu'aux 3/4 de la hauteur.",
+          "Placer la plaque au congélateur pendant 30 minutes."
+        ],
+        "conseils_etape": "L'utilisation de cercles en inox est impérative pour une bonne conduction thermique. Le passage au grand froid est l'élément clé qui permet d'obtenir un cœur liquide tout en cuisant l'extérieur."
+      },
+      {
+        "nom_etape": "Cuisson et démoulage",
+        "page": null,
+        "temps_preparation_minutes": 2,
+        "temps_attente_minutes": 1,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 200,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Enfourner les gâteaux encore congelés dans un four préchauffé à 200 °C pendant environ 12 minutes.",
+          "Sortir immédiatement les gâteaux du four dès la fin du temps pour stopper la cuisson.",
+          "Déposer chaque gâteau sur l'assiette de service ou le plan de travail.",
+          "Retirer le cercle en inox.",
+          "Laisser reposer environ 1 minute, puis retirer la bande de papier sulfurisé."
+        ],
+        "conseils_etape": "Surveiller attentivement la cuisson : une minute de trop transformera le cœur coulant en gâteau moelleux."
+      }
+    ],
+    "astuces_recette": [
+      "La gestion thermique est cruciale : la combinaison entre la pâte congelée et la chaleur vive du four à 200 °C crée le choc thermique garantissant le contraste entre la coque cuite et le cœur brut.",
+      "La puissance et la convection des fours variant d'un modèle à l'autre, étalonner le temps précis de cuisson (entre 10 et 13 minutes) sur un premier gâteau test."
+    ],
+    "conseils_conservation": "À déguster immédiatement après démoulage, encore chaud. Les gâteaux crus pochés dans leurs cercles peuvent être stockés au congélateur plusieurs semaines dans une boîte hermétique. Enfourner directement sans décongélation préalable en ajustant la cuisson si nécessaire. Une fois cuits, ces gâteaux ne se conservent pas sans perdre leur texture coulante."
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "ticket": "JEP-92",
+  "recette": {
+    "titre": "Entremets pomme et noix de pécan",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=sI91pGz25L0",
+    "description": "Un entremets individuel associant la fraîcheur fruitée d'une ganache montée pomme-vanille, le fondant d'un insert de pommes caramélisées façon tatin, le croquant d'un croustillant riz soufflé-pécan Dulcey et l'intensité d'un praliné pécan coulant sous un glaçage miroir blond.",
+    "rendement": "4 entremets individuels (4 personnes)",
+    "ustensiles": [
+      "Moule en silicone individuel (type Silikomart Stone)",
+      "Moule à demi-sphères pour insert",
+      "Emporte-pièce rond de 7 cm de diamètre",
+      "Douille unie lisse de 20 mm et poches pâtissières",
+      "Mixeur plongeant",
+      "Robot pâtissier muni du fouet (ou batteur électrique)",
+      "Robot coupe ou mixeur à lame pour praliné",
+      "Maryse et spatule coudée / palette",
+      "Casseroles, poêle et cul-de-poule",
+      "Cuillère à pomme parisienne",
+      "Chalumeau de cuisine",
+      "Grille de glaçage avec plaque de récupération",
+      "Thermomètre de cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Insert aux pommes caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pommes",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Sucre roux",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 25,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Éplucher les pommes et les détailler en petits dés réguliers.",
+          "Faire fondre le beurre dans une poêle sur feu doux à moyen, puis ajouter les dés de pommes pour démarrer la cuisson.",
+          "Ajouter le sucre roux, mélanger pour bien enrober les fruits et laisser caraméliser doucement jusqu'à ce que les pommes soient tendres et dorées.",
+          "Répartir les pommes caramélisées dans les empreintes demi-sphères en tassant légèrement.",
+          "Placer au congélateur jusqu'à prise complète."
+        ],
+        "conseils_etape": "Utiliser une pomme qui tient bien à la cuisson (type Reine des Reinettes, Boskoop ou Golden) afin d'éviter d'obtenir une compote lisse."
+      },
+      {
+        "nom_etape": "Base de la ganache montée pomme et vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (à chauffer)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (froide)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de pommes",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Manzana",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau froide au réfrigérateur pendant 15 minutes.",
+          "Fendre et gratter la gousse de vanille, puis la placer dans une casserole avec les 80 g de crème liquide.",
+          "Porter à légère ébullition sur feu moyen, couper le feu, couvrir et laisser infuser pendant 10 à 15 minutes.",
+          "Faire fondre le chocolat blanc au bain-marie ou au micro-ondes à faible puissance.",
+          "Retirer la gousse de vanille, réchauffer brièvement la crème infusée et la verser en deux ou trois fois sur le chocolat blanc fondu en créant une émulsion à la maryse par petits cercles au centre.",
+          "Ajouter la gélatine hydratée dans la ganache encore chaude et mélanger soigneusement jusqu'à dissolution complète.",
+          "Incorporer d'un coup la crème liquide froide, le jus de pomme et la manzana, puis homogénéiser (facultatif : passer un coup de mixeur plongeant sans incorporer d'air).",
+          "Verser la préparation dans un plat large, filmer au contact et réserver au réfrigérateur au moins 4 heures (idéalement une nuit)."
+        ],
+        "conseils_etape": "Veiller à ce que la gélatine soit parfaitement dissoute avant d'ajouter les liquides froids, sous peine de former des grumeaux gélifiés."
+      },
+      {
+        "nom_etape": "Croustillant pécan et Dulcey",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noix de pécan",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Riz soufflé",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (1 pincée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Enfourner les noix de pécan à 150°C pendant 25 à 30 minutes pour les torréfier, puis les laisser totalement refroidir.",
+          "Hacher grossièrement les noix de pécan refroidies au couteau pour conserver de la mâche.",
+          "Faire fondre le chocolat dulcey à feu doux ou au micro-ondes.",
+          "Ajouter le riz soufflé, les noix de pécan hachées et la fleur de sel au chocolat fondu, puis mélanger à la spatule pour bien enrober.",
+          "Tasser le mélange à l'intérieur de l'emporte-pièce de 7 cm posé sur une feuille de papier cuisson pour former 4 disques fins et réguliers.",
+          "Réserver au réfrigérateur pour figer les socles."
+        ],
+        "conseils_etape": "Ne jamais incorporer des fruits secs encore tièdes dans le chocolat, cela ramollirait le riz soufflé et déstabiliserait le tempérage du chocolat."
+      },
+      {
+        "nom_etape": "Praliné pécan",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noix de pécan",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (1 pincée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Torréfier les noix de pécan au four à 150°C pendant 25 à 30 minutes, puis laisser refroidir.",
+          "Réaliser un caramel à sec dans une casserole en versant le sucre progressivement jusqu'à obtention d'une couleur ambrée soutenue.",
+          "Couler immédiatement le caramel sur un tapis en silicone (ou papier sulfurisé) et le laisser refroidir complètement jusqu'à ce qu'il devienne cassant.",
+          "Casser le caramel en morceaux et le placer avec les noix de pécan torréfiées dans le bol d'un robot hachoir/cutter.",
+          "Mixer par pulsations puis en continu jusqu'à extraction de l'huile des fruits et obtention d'une pâte fluide et crémeuse.",
+          "Ajouter la pincée de fleur de sel et mixer quelques secondes supplémentaires pour homogénéiser. Réserver à température ambiante dans un récipient hermétique."
+        ],
+        "conseils_etape": "Faire des pauses régulières lors du mixage pour éviter que le moteur du robot ne chauffe et ne cuise le praliné."
+      },
+      {
+        "nom_etape": "Glaçage miroir Dulcey",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 33,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré sucré",
+            "quantite": 41,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau froide au réfrigérateur pendant 15 minutes.",
+          "Dans une casserole, porter l'eau, le sucre et le sirop de glucose à ébullition jusqu'à atteindre précisément 103°C.",
+          "Dans un pichet haut et étroit, déposer le chocolat dulcey préalablement fondu et le lait concentré sucré.",
+          "Verser le sirop bouillant sur le mélange dulcey/lait concentré et mixer au mixeur plongeant en maintenant le pied bien immergé au fond pour ne pas créer de bulles.",
+          "Laisser redescendre légèrement en température, ajouter la gélatine essorée/fondue et mixer à nouveau longuement pour lisser.",
+          "Réserver filmé au contact et laisser refroidir jusqu'à la température d'utilisation (environ 28°C)."
+        ],
+        "conseils_etape": "Tapoter le récipient sur le plan de travail et passer le glaçage au tamis fin pour éliminer toutes les microbulles d'air résiduelles."
+      },
+      {
+        "nom_etape": "Montage pour congélation",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 360,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Verser les trois quarts de la ganache pomme bien froide dans la cuve du robot et fouetter à vitesse moyenne en augmentant progressivement jusqu'à consistance au ruban (texture souple, pas trop ferme). Conserver le reste de crème non montée au réfrigérateur pour le décor final.",
+          "Remplir les empreintes du moule silicone à mi-hauteur avec la ganache montée.",
+          "Démouler les inserts de pommes caramélisées congelés à l'aide d'une petite cuillère.",
+          "Enfoncer délicatement un insert au centre de chaque empreinte.",
+          "Compléter avec le reste de ganache montée pour recouvrir l'insert et combler les bords.",
+          "Lisser la surface à ras du moule avec une palette coudée.",
+          "Bloquer au congélateur pendant au moins 6 heures pour obtenir une congélation totale à cœur."
+        ],
+        "conseils_etape": "Ne pas trop serrer la ganache lors du foisonnement (s'arrêter au ruban) afin d'éviter qu'elle ne tranche ou ne devienne grasse et difficile à pocher nettement."
+      },
+      {
+        "nom_etape": "Finition, glaçage et dressage",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Contrôler la température du glaçage miroir dulcey (elle doit se situer autour de 28°C).",
+          "Démouler les petits entremets congelés et les disposer sans attendre sur une grille posée sur un plat creux.",
+          "Napper uniformément chaque gâteau avec le glaçage miroir en un seul geste continu.",
+          "Laisser égoutter quelques instants, essuyer la base avec une spatule, puis déposer chaque entremets sur un socle de croustillant pécan-riz soufflé.",
+          "Monter le restant de ganache pomme réservé jusqu'à obtention d'un bec d'oiseau net, puis remplir une poche munie d'une douille lisse de 20 mm.",
+          "Pocher une grosse goutte ou boule généreuse au centre du dessus de chaque entremets.",
+          "Chauffer le dos d'une cuillère à pomme parisienne à la flamme d'un chalumeau et appuyer au centre de la boule de ganache pour créer un creux bien net.",
+          "Remplir la cavité obtenue avec du praliné pécan jusqu'à ce qu'il commence subtilement à s'écouler sur la ganache."
+        ],
+        "conseils_etape": "À réaliser 3 à 4 heures avant le service. Chauffer la cuillère à pomme parisienne juste ce qu'il faut : si elle est trop chaude, la crème va fondre et couler le long du gâteau."
+      }
+    ],
+    "astuces_recette": [
+      "Planification optimale (J-2 / J-1) : préparer la base liquide de la ganache, l'insert aux pommes, le croustillant et le praliné la veille ou l'avant-veille. Monter les entremets la veille au soir pour assurer un blocage complet au grand froid.",
+      "Maîtrise du glaçage à 28°C : le chocolat dulcey contient du lait caramélisé qui fige plus rapidement que les glaçages au chocolat noir ; vérifier la consistance et ne pas glacer sous 26°C au risque de créer des épaisseurs disgracieuses.",
+      "Température des inserts : les inserts aux pommes caramélisées doivent être manipulés rapidement dès la sortie du grand froid pour ne pas se ramollir lors du montage."
+    ],
+    "conseils_conservation": "Placer les entremets glacés et montés au réfrigérateur pendant au moins 3 heures avant dégustation (ou 1 heure à température ambiante pour une dégustation rapide). Déguster directement à la sortie du réfrigérateur ou après 5 minutes de tempérage afin d'apprécier le contraste entre la ganache aérée, le croquant du biscuit et le coulant du praliné. Se conserve 48 heures maximum au réfrigérateur à +4°C dans une boîte hermétique pour préserver le croustillant de l'humidité."
+  }
+}

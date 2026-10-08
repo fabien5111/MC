@@ -1,0 +1,194 @@
+{
+  "ticket": "JEP-70",
+  "recette": {
+    "titre": "Kinder Bueno revisité en version pâtisserie individuelle",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Entremets individuels revisitant le célèbre snack industriel sous forme de pâtisserie fine, combinant un croustillant façon gaufrette, une ganache montée 100% noisette avec un cœur de praliné pur, le tout enrobé d'une coque de chocolat au lait craquante et floqué.",
+    "rendement": "6 pièces individuelles (6 entremets Bueno)",
+    "ustensiles": [],
+    "etapes": [
+      {
+        "nom_etape": "Préparation et infusion du lait aux noisettes",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 280,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 124,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide",
+            "quantite": 13,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes au four à 150°C pendant 30 minutes jusqu'à ce que la peau se retire facilement.",
+          "Hydrater la gélatine en poudre dans l'eau froide et laisser reposer 20 minutes au réfrigérateur.",
+          "Faire chauffer le lait entier dans une casserole jusqu'à frémissement, puis retirer du feu.",
+          "Verser les noisettes torréfiées et le lait bouillonnant dans un pichet, puis mixer pour obtenir un lait aux noisettes homogène.",
+          "Laisser infuser à température ambiante pendant minimum 20 minutes, puis retirer le film alimentaire."
+        ],
+        "conseils_etape": "S'assurer que les noisettes sont bien torréfiées pour un goût intense en noisette."
+      },
+      {
+        "nom_etape": "Confection et émulsion de la ganache montée",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 52,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 216,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réchauffer légèrement le lait aux noisettes infusé pour qu'il soit bien fumant, sans nécessiter d'ébullition.",
+          "Verser dans un pichet la pâte de noisette, le chocolat blanc partiellement fondu et la gélatine hydratée.",
+          "Verser le lait aux noisettes fumant par-dessus et mixer au mixeur plongeant pour émulsionner.",
+          "Ajouter la crème liquide froide et continuer de mixer jusqu'à obtenir une texture parfaitement homogène.",
+          "Verser l'appareil dans un récipient large, filmer au contact et placer au réfrigérateur pendant minimum 4 heures."
+        ],
+        "conseils_etape": "Veiller à bien filmer au contact pour accélérer le refroidissement et éviter la formation d'une pellicule."
+      },
+      {
+        "nom_etape": "Croustillant",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Feuilletine",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Émietter la feuilletine dans un récipient.",
+          "Ajouter le chocolat au lait préalablement fondu et le praliné noisette, puis mélanger.",
+          "Placer le mélange entre deux feuilles de papier sulfurisé et l'étaler au rouleau sur environ 2 mm d'épaisseur.",
+          "Retirer une partie du papier sulfurisé et détailler les bases à l'aide de l'emporte-pièce adapté.",
+          "Laisser reposer 1 heure au congélateur."
+        ],
+        "conseils_etape": "Travailler rapidement le croustillant entre les feuilles de papier sulfurisé pour garder une épaisseur régulière de 2 mm."
+      },
+      {
+        "nom_etape": "Montage des entremets",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Placer la ganache montée bien froide dans le bol du robot avec le praliné, commencer à vitesse moyenne puis augmenter progressivement jusqu'à obtenir une texture souple en ruban.",
+          "Garnir les moules à mi-hauteur avec la ganache montée en veillant à bien remplir les bords pour un extérieur lisse.",
+          "Disposer des demi-noisettes torréfiées sur toute la longueur au centre.",
+          "Ajouter un cœur de praliné pur et l'enfermer en recouvrant de mousse de part et d'autre pour le centrer.",
+          "Placer les moules au congélateur pendant minimum 4 heures jusqu'à congélation complète."
+        ],
+        "conseils_etape": "Refroidir préalablement le bol du robot pour optimiser la montée de la ganache."
+      },
+      {
+        "nom_etape": "Enrobage, flocage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait (pour l'enrobage/flocage)",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette (pour la base)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait (pour les traits caractéristiques)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes (pour la décoration finale)",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger le chocolat au lait et le beurre de cacao fondus pour l'enrobage et le flocage, et amener le mélange entre 40°C et 45°C.",
+          "Démouler les entremets congelés à l'aide de petits pics en bois plantés aux extrémités.",
+          "Plonger les entremets d'un coup sec dans l'enrobage à environ 40°C pour former la coque.",
+          "Verser l'appareil d'enrobage dans le pistolet à peinture et floquer les entremets de manière homogène.",
+          "Poser une fine couche de ganache montée ou de praliné sur la base du croustillant congelé et y coller l'entremet.",
+          "Dessiner les cinq groupes de trois filets de chocolat au lait sur le dessus à l'aide d'une poche ou d'un cornet pour imiter le design du Kinder Bueno.",
+          "Disposer les morceaux de noisettes torréfiées sur les zones de fixation pour parfaire la décoration."
+        ],
+        "conseils_etape": "Maintenir la température du mélange d'enrobage entre 40°C et 45°C pour garantir une épaisseur de coque parfaite et éviter les défauts de flocage."
+      }
+    ],
+    "astuces_recette": [
+      "La préparation en amont nécessite de bien respecter les temps de repos au frais et au congélateur pour assurer la tenue des textures (ganache souple et coque craquante).",
+      "Il est possible de congeler l'appareil à ganache dans une boîte hermétique pour une utilisation ultérieure si les quantités sont trop importantes."
+    ],
+    "conseils_conservation": "Déguster à température fraîche mais non glacée pour apprécier pleinement le contraste entre la coque craquante, la ganache fondante et le croustillant gaufrette. Conserver au réfrigérateur dans une boîte hermétique si consommés rapidement, ou maintenir surgelés si préparés en avance (décongélation progressive au réfrigérateur avant service)."
+  }
+}

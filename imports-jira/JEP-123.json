@@ -1,0 +1,205 @@
+{
+  "ticket": "JEP-123",
+  "recette": {
+    "titre": "Éclairs caramel beurre salé de Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Éclairs gourmands composés d'une pâte à choux croustillante et légère, garnis d'une onctueuse crème au caramel au beurre salé montée au mascarpone, et recouverts d'un glaçage fondant au caramel.",
+    "rendement": "Environ 8 à 10 éclairs de 12 cm de long (pour 8 à 10 personnes)",
+    "ustensiles": [
+      "Casseroles",
+      "Robot pâtissier muni de la feuille (ou spatule/cul-de-poule)",
+      "Maryse",
+      "Fouet",
+      "Récipient large à fond plat",
+      "Poches à douille",
+      "Douille petits fours (cannelée) de 14 mm",
+      "Plaque de cuisson et papier sulfurisé ou tapis de cuisson",
+      "Règle ou gabarit (repère de 12 cm)",
+      "Film alimentaire",
+      "Bol adapté au micro-ondes"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte à choux",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 140,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre le lait, le beurre, le sel et le sucre dans une casserole.",
+          "Faire chauffer sur feu moyen jusqu'à atteindre l'ébullition.",
+          "Retirer du feu dès l'ébullition et verser la farine en une seule fois.",
+          "Mélanger hors du feu pour amalgamer le tout, puis remettre sur feu moyen pour dessécher la panade.",
+          "Remuer vivement jusqu'à ce que la pâte se décolle des parois et forme une fine pellicule au fond de la casserole.",
+          "Transvaser la panade dans la cuve du robot muni de la feuille et faire tourner pour évacuer la vapeur.",
+          "Incorporer les œufs préalablement battus petit à petit : attendre que la pâte se reforme et devienne homogène avant chaque nouvel ajout.",
+          "Arrêter lorsque la pâte forme un ruban souple (la trace du doigt se referme doucement).",
+          "Mettre la pâte en poche avec une douille petits fours de 14 mm et pocher des boudins réguliers de 12 cm de long sur une plaque de cuisson.",
+          "Enfourner à 180 °C pour environ 30 minutes sans ouvrir le four pendant la cuisson.",
+          "Dès la sortie du four, débarrasser immédiatement les éclairs sur une grille pour stopper la cuisson."
+        ],
+        "conseils_etape": "Ne pas laisser bouillir le mélange lait/beurre trop longtemps au début pour éviter l'évaporation du liquide. Bien battre les œufs en amont pour doser avec précision leur incorporation. Chaleur statique recommandée. À réaliser le jour de la dégustation (ou quelques heures avant le montage)."
+      },
+      {
+        "nom_etape": "Crème au caramel beurre salé",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 1,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Mascarpone",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la feuille de gélatine dans un bol d'eau très froide pendant 10 minutes.",
+          "Porter la crème liquide à ébullition dans une petite casserole et réserver au chaud.",
+          "Réaliser un caramel à sec avec le sucre semoule jusqu'à l'obtention d'une belle teinte ambrée/brune.",
+          "Décuire en versant la crème chaude en plusieurs fois, tout en remuant vivement pour éviter les projections.",
+          "Ajouter le beurre et la fleur de sel, puis laisser fondre en mélangeant.",
+          "Laisser bouillir à petits bouillons pendant 8 minutes.",
+          "Hors du feu, incorporer la gélatine essorée et mélanger soigneusement.",
+          "Verser la préparation dans un plat large, filmer au contact et placer 1 heure au réfrigérateur.",
+          "Détendre très légèrement le mascarpone à température ambiante à l'aide d'une maryse.",
+          "Incorporer le caramel refroidi (qui doit impérativement être à la même température que le mascarpone) au mascarpone jusqu'à consistance lisse.",
+          "Réserver la crème obtenue 1 heure au réfrigérateur avant de garnir."
+        ],
+        "conseils_etape": "L'équilibre des températures entre le mascarpone et la base caramel est primordial : un écart thermique ferait trancher la matière grasse du mascarpone. À réaliser le matin de la dégustation ou quelques heures avant le garnissage."
+      },
+      {
+        "nom_etape": "Glaçage au caramel",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 22,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre demi-sel (ou fleur de sel)",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Fondant blanc pâtissier",
+            "quantite": 155,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire chauffer la crème liquide et la maintenir chaude.",
+          "Cuire le sucre dans une casserole jusqu'à l'obtention d'un caramel d'une belle couleur brune.",
+          "Ajouter le glucose et poursuivre la cuisson quelques instants.",
+          "Décuire hors du feu en versant la crème chaude petit à petit tout en fouettant.",
+          "Ajouter le beurre demi-sel et laisser cuire à petite ébullition quelques minutes afin de faire réduire et épaissir légèrement le coulis.",
+          "Filmer au contact et laisser tiédir au réfrigérateur.",
+          "Faire assouplir très doucement le fondant blanc au micro-ondes (autour de 30-35 °C maximum).",
+          "Incorporer le caramel réduit et tiédi au fondant fondu et homogénéiser à la spatule."
+        ],
+        "conseils_etape": "Ne pas surchauffer le fondant au micro-ondes (ne jamais dépasser 37 °C), sous peine de perdre sa brillance au séchage. À réaliser juste avant le montage final."
+      },
+      {
+        "nom_etape": "Montage et finition",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Percer 2 à 3 petits trous réguliers sous chaque éclair refroidi à l'aide d'une petite douille ou de la pointe d'un couteau.",
+          "Remplir une poche à douille de crème caramel et garnir généreusement chaque éclair jusqu'à ce qu'il soit bien lourd.",
+          "Tremper le dessus de l'éclair dans le glaçage caramel tempéré.",
+          "Lisser et retirer l'excédent de glaçage net avec le doigt le long des bords.",
+          "Laisser figer à température ambiante ou au frais avant dégustation."
+        ],
+        "conseils_etape": "Travailler d'un geste net et continu lors du trempage pour obtenir un glaçage lisse et sans démarcation. À réaliser 1 à 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Régularité du pochage : utiliser une douille cannelée type « petits fours » aide la pâte à choux à lever de manière droite et limite les déchirures à la cuisson.",
+      "Cuisson maîtrisée : ne jamais ouvrir la porte du four pendant les 25 premières minutes de cuisson de la pâte à choux pour éviter qu'elle ne retombe."
+    ],
+    "conseils_conservation": "À consommer idéalement le jour même, après un repos de 30 minutes à 1 heure au frais pour que le chou s'imprègne délicatement de la crème tout en restant croustillant. Conserver au réfrigérateur dans une boîte non hermétique (pour préserver le croustillant) pendant 24 à 48 heures maximum."
+  }
+}

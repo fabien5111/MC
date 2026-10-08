@@ -1,0 +1,390 @@
+{
+  "ticket": "JEP-64",
+  "recette": {
+    "titre": "Bûche Maison en pain d'épice de Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël spectaculaire en forme de chalet, associant la gourmandise du pain d'épice, un praliné noisette croquant, un caramel aux épices, un biscuit shortbread et un insert de confit de yuzu pour apporter une touche d'acidité rafraîchissante, le tout paré d'un flocage effet velours et d'une ganache montée à la cannelle façon neige.",
+    "rendement": "1 bûche pour 8 à 10 personnes",
+    "ustensiles": [
+      "Plaque de cuisson et tapis siliconé",
+      "Casseroles",
+      "Robot coupe / mixeur plongeant",
+      "Cadre de 20 x 10 cm",
+      "Papier guitare et rouleau à pâtisserie",
+      "Boîtes hermétiques",
+      "Moule bûche maison (Silikomart)",
+      "Moule insert (Cake Pierre Hermé)",
+      "Moule insert yuzu (moule à cake perforé)",
+      "Thermomètre de cuisson",
+      "Batteur électrique ou robot pâtissier",
+      "Pistolet à peinture et tamis (pour le flocage)",
+      "Poche à douille et douille lisse de 6 mm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes sur une plaque de cuisson pendant 30 minutes dans un four préchauffé à 150°C.",
+          "Réaliser un caramel à sec en faisant fondre le sucre doucement dans une casserole, puis le verser sur un tapis siliconé pour le laisser durcir.",
+          "Mixer le caramel bien froid et les noisettes refroidies dans un robot coupe jusqu'à obtention d'une pâte de praliné.",
+          "Ajouter la fleur de sel à la main dans le praliné récupéré pour conserver des éclats et réserver."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Ganache montée cannelle",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau pour la gélatine",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (à chauffer)",
+            "quantite": 104,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en poudre et bâtons de cannelle",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (froide)",
+            "quantite": 187,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans son eau pendant 10 à 15 minutes au réfrigérateur.",
+          "Chauffer la première pesée de crème liquide avec la cannelle en poudre et le bâton, porter à ébullition, puis laisser infuser à couvert pendant 15 minutes.",
+          "Retirer le bâton de cannelle, porter à nouveau à ébullition et verser sur le chocolat blanc préalablement fondu en émulsionnant, puis incorporer la gélatine essorée.",
+          "Ajouter la crème liquide froide, filmer au contact et placer au réfrigérateur au moins 4 heures."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Biscuit pain d'épice",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 40,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 215,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes d'1 orange",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Farine",
+            "quantite": 235,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "4 épices",
+            "quantite": 2,
+            "unite": "c. à c."
+          },
+          {
+            "nom": "Bicarbonate de sodium",
+            "quantite": 1,
+            "unite": "c. à c."
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 1,
+            "unite": "c. à c."
+          },
+          {
+            "nom": "Sel fin (1 pincée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger le beurre doux, le lait entier et le miel dans un cul de poule jusqu'à obtention d'un mélange homogène.",
+          "Ajouter la cassonade, les 4 épices, le bicarbonate, la levure chimique et le sel fin.",
+          "Incorporer progressivement la farine pour obtenir une pâte lisse sans grumeaux, puis ajouter les zestes d'orange.",
+          "Verser dans un cadre de 20 x 10 cm préalablement beurré (jusqu'aux 3/4 de la hauteur) et cuire 40 minutes à 160°C.",
+          "Démouler le biscuit après cuisson."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Biscuit shortbread",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre demi-sel",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Travailler le beurre pommade avec le sucre glace dans un cul de poule pour obtenir une texture de crème homogène.",
+          "Ajouter la poudre de noisette et la farine, puis lisser la pâte.",
+          "Étaler la pâte entre deux feuilles de papier guitare sur environ 2 mm d'épaisseur.",
+          "Placer sur une plaque avec un tapis silicone, enlever le papier guitare supérieur, découper aux dimensions de l'insert et cuire 20 minutes à 150°C."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Caramel épices et Montage de l'insert",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 6,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre (pour le caramel)",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "4 épices",
+            "quantite": 1.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser un caramel à sec avec le sucre dans une casserole à feu doux à moyen jusqu'à une couleur ambrée.",
+          "Ajouter le beurre en une fois, puis verser la crème liquide tiédie et les épices en baissant le feu, et cuire 6 minutes à ébullition.",
+          "Réserver dans un récipient avec la fleur de sel, filmer et placer 2 à 4 heures au frais.",
+          "Découper le biscuit pain d'épice sur 1,5 cm d'épaisseur et l'emporte-piécer aux dimensions de l'insert.",
+          "Dans le fond du moule à insert, disposer une couche de praliné, ajouter le biscuit pain d'épice en l'enfonçant légèrement, recouvrir de praliné, puis terminer par le biscuit shortbread.",
+          "Placer le tout au congélateur jusqu'à congélation complète."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Confit yuzu",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 1.5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Jus de yuzu",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 57,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la pectine NH avec le sucre semoule pour éviter les grumeaux.",
+          "Verser le jus de yuzu dans une casserole et, lorsqu'il commence à fumer, ajouter le mélange sucre-pectine en pluie tout en fouettant.",
+          "Porter à ébullition pendant 1 minute 30.",
+          "Verser dans une boîte hermétique (ou filmer au contact) et placer 2 heures au réfrigérateur.",
+          "Détendre le confit gélifié, le couler sur environ 8 mm d'épaisseur dans un moule à insert tapissé d'un film alimentaire, et surgeler."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Mousse biscuit pain d'épice et Montage final",
+        "page": null,
+        "temps_preparation_minutes": 45,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau pour la gélatine",
+            "quantite": 36,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (67 g + 42 g supplémentaires)",
+            "quantite": 108,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (pour la chantilly)",
+            "quantite": 345,
+            "unite": "g"
+          },
+          {
+            "nom": "Biscuit pain d'épice (réalisé à l'étape 3)",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans son eau froide pendant 10 à 15 minutes.",
+          "Faire infuser le biscuit pain d'épice brisé dans le lait et la crème liquide portés à ébullition pendant 10 minutes à couvert, puis mixer au mixeur plongeant pour obtenir une pâte de pain d'épice. Compléter avec de la crème si nécessaire pour atteindre la pesée requise et porter à frémissement.",
+          "Blanchir les jaunes d'œufs avec le sucre, verser le mélange chaud dessus, remettre le tout dans la casserole et cuire à la nappe à 83°C.",
+          "Hors du feu, incorporer la gélatine essorée et laisser tiédir.",
+          "Monter les 345 g de crème liquide en chantilly ferme (bec d'oiseau) et l'incorporer délicatement à la crème anglaise au pain d'épice refroidie.",
+          "Verser la mousse immédiatement dans le moule bûche maison, insérer le confit de yuzu, rajouter un peu de mousse, puis pocher le caramel refroidi et détendu.",
+          "Enfoncer l'insert principal (shortbread/praliné/pain d'épice), compléter si besoin avec de la mousse pour arriver à hauteur, et placer au congélateur pour toute une nuit."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Flocage velours et finitions",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 50,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre ensemble le chocolat noir et le beurre de cacao au bain-marie jusqu'à l'obtention d'un mélange parfaitement lisse et liquide.",
+          "Filtrer le mélange à travers un tamis pour éliminer les impuretés et le verser dans le pistolet à peinture à environ 50°C.",
+          "Démouler la bûche congelée et la pulvériser avec le flocage à 50°C à l'aide du pistolet à peinture.",
+          "Monter la ganache cannelle réservée au frais jusqu'à obtention d'un beau bec d'oiseau, la placer dans une poche munie d'une douille lisse de 6 mm et pocher les boules de neige sur le toit.",
+          "Laisser décongeler 6 heures au réfrigérateur, puis sortir 20 minutes avant la dégustation."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Si vous souhaitez reproduire exactement la coque rigide de Cédric Grolet, chemisez d'abord votre moule avec du chocolat fondu avant de couler la mousse (attention toutefois aux rainures du moule qui peuvent retenir le chocolat).",
+      "Respectez impérativement les temps de repos et de congélation entre chaque élément pour assurer une tenue parfaite lors du démoulage et du flocage.",
+      "Veillez à ce que le pistolet à peinture et le flocage soient bien à température (environ 50°C) et tamisés pour éviter les grumeaux et obtenir un effet velours homogène."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur après la période de décongélation de 6 heures. Sortir la bûche du réfrigérateur 20 minutes avant de la déguster pour profiter pleinement des textures et des saveurs du pain d'épice et du praliné."
+  }
+}

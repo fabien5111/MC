@@ -1,0 +1,161 @@
+{
+  "ticket": "JEP-108",
+  "recette": {
+    "titre": "Cookies à la cacahuète de la finale du Meilleur Pâtissier",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Cookies crousti-moelleux au beurre de cacahuète, surmontés d'éclats de cacahuètes caramélisées et d'un praliné cacahuète onctueux.",
+    "rendement": "Environ 8 à 10 cookies individuels (selon le calibrage des boules)",
+    "ustensiles": [
+      "Cul-de-poule (ou bol de robot muni de la feuille)",
+      "Spatule ou maryse",
+      "Petite fourchette ou fouet (pour battre l'œuf)",
+      "Balance de précision",
+      "Poêle",
+      "Plaque de cuisson",
+      "Toile de cuisson silicone (Silpat) ou papier sulfurisé",
+      "Mixeur / robot cutter (pour le praliné)",
+      "Poche à douille ou cuillère"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné cacahuète",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Cacahuètes déjà grillées et salées",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Déposer les cacahuètes grillées et salées avec le sucre glace dans la cuve d'un mixeur.",
+          "Mixer par impulsions régulières jusqu'à obtention d'une texture liquide, lisse et onctueuse.",
+          "Réserver à température ambiante dans un récipient hermétique ou une poche à douille."
+        ],
+        "conseils_etape": "Peut être réalisé la veille. Ne pas ajouter de sel, les cacahuètes en contiennent déjà suffisamment."
+      },
+      {
+        "nom_etape": "Appareil à cookies et façonnage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux pommade",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de cacahuètes",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier (battu)",
+            "quantite": 47,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 185,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de soude",
+            "quantite": 4,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer à la spatule (ou à la feuille du robot) le beurre pommade avec la pâte de cacahuète, la cassonade, le sucre semoule et le sel jusqu'à texture homogène.",
+          "Incorporer l'œuf préalablement battu et mélanger pour lier l'appareil.",
+          "Tamiser ensemble la farine et le bicarbonate de soude, puis les incorporer en deux fois sans corser la pâte.",
+          "Bouler des portions de pâte de taille égale à la main.",
+          "Déposer les boules sur une assiette ou un plateau et placer au congélateur pendant environ 15 minutes."
+        ],
+        "conseils_etape": "Le beurre doit être impérativement bien pommade pour faciliter l'émulsion sans chauffer la pâte."
+      },
+      {
+        "nom_etape": "Cacahuètes caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Cacahuètes déjà grillées et salées",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer une poêle à feu vif et verser simultanément les cacahuètes et le sucre glace.",
+          "Remuer en continu pour bien enrober les fruits secs et laisser le sucre fondre jusqu'à caramélisation dorée.",
+          "Débarrasser immédiatement sur une plaque ou une assiette et laisser refroidir."
+        ],
+        "conseils_etape": "À réaliser pendant les 15 minutes de repos des boules de pâte au congélateur. Surveiller attentivement la poêle car le sucre glace caramélise très rapidement et peut brûler."
+      },
+      {
+        "nom_etape": "Cuisson et finition",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Préchauffer le four à 165 °C.",
+          "Disposer les boules de cookies refroidies sur une plaque recouverte d'un tapis silicone ou de papier cuisson en les espaçant bien.",
+          "Aplatir légèrement le sommet de chaque boule avec la paume de la main.",
+          "Répartir les cacahuètes caramélisées sur le dessus en les enfonçant délicatement.",
+          "Enfourner pendant 12 minutes à 165 °C.",
+          "Laisser tiédir à la sortie du four, puis pocher ou déposer une généreuse pointe de praliné cacahuète sur le dessus de chaque cookie."
+        ],
+        "conseils_etape": "Les cookies doivent sortir encore légèrement mous au centre ; ils raffermiront en refroidissant."
+      }
+    ],
+    "astuces_recette": [
+      "L'utilisation du robot avec l'accessoire feuille limite l'effort mécanique et évite de trop chauffer la pâte avec les mains.",
+      "Le passage au congélateur avant cuisson est crucial pour éviter que les cookies ne s'étalent excessivement et ne deviennent trop plats.",
+      "L'équilibre sucré-salé repose sur des cacahuètes déjà grillées et salées du commerce."
+    ],
+    "conseils_conservation": "Déguster tiède ou à température ambiante, quand le biscuit est croquant sur les bords, fondant à cœur et que le praliné reste coulant. Conserver jusqu'à 3 jours dans une boîte métallique hermétique non exposée à la chaleur. Le praliné peut être conservé plusieurs semaines en bocal fermé à température ambiante."
+  }
+}

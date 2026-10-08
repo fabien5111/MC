@@ -1,0 +1,380 @@
+{
+  "ticket": "JEP-41",
+  "recette": {
+    "titre": "Entremets Façon Bounty",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Entremets individuel associant une pâte sucrée cacao croquante, un insert coco moelleux, un double disque de chocolat au lait, une mousse légère au chocolat au lait, un glaçage miroir noir et une ganache montée coco.",
+    "rendement": "6 entremets individuels",
+    "ustensiles": [
+      "Emporte-pièce 5cm",
+      "Emporte-pièce 8cm",
+      "Moule Stone Silikomart",
+      "Douille lisse 20mm",
+      "Tapis en silicone (ou papier sulfurisé / Silpain)",
+      "Papier guitare",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Maryse",
+      "Corne",
+      "Fouet",
+      "Cul-de-poule",
+      "Casseroles",
+      "Grille de glaçage",
+      "Poches à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le coeur coco (Insert)",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Coco râpée",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'oeuf",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de coco",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la coco râpée, le blanc d'oeuf, le sucre semoule et la purée de coco à la maryse.",
+          "Etaler la pâte obtenue sur un tapis en silicone ou papier sulfurisé sur 1 cm d'épaisseur.",
+          "Tasser légèrement la préparation.",
+          "Cuire au four jusqu'à légère coloration.",
+          "Sortir de la plaque et laisser refroidir.",
+          "Détailler des cercles avec l'emporte-pièce de 5 cm.",
+          "Réserver."
+        ],
+        "conseils_etape": "Si vous souhaitez éviter le tempérage de l'étape suivante, vous pouvez tremper directement ces inserts refroidis dans du chocolat fondu."
+      },
+      {
+        "nom_etape": "Disques de chocolat (Tempérage)",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Mycryo",
+            "quantite": 0.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait entre 40 et 45°C.",
+          "Mélanger pour faire redescendre la température entre 33 et 34°C.",
+          "Ajouter le mycryo et mélanger jusqu'à incorporation totale.",
+          "Attendre que le mélange passe sous les 30°C.",
+          "Etaler le chocolat sur une feuille de papier guitare sur environ 2 mm d'épaisseur à l'aide d'une palette.",
+          "Attendre que le chocolat devienne mat et pâteux.",
+          "Emporte-piécer des cercles de 5 cm.",
+          "Placer 10 minutes au réfrigérateur avant de récupérer les disques."
+        ],
+        "conseils_etape": "Surveillez bien la texture du chocolat sur le papier guitare, il doit être juste mat pour être détaillé sans casser."
+      },
+      {
+        "nom_etape": "Mousse chocolat au lait et montage",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 63,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine feuille",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% froide",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 16,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 83,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 83,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine avec l'eau bien froide pendant 20 minutes au réfrigérateur.",
+          "Dans un cul-de-poule, mélanger vivement le jaune d'oeuf et le sucre semoule pendant environ 20 secondes.",
+          "Dans une casserole, faire chauffer le lait entier et les 83g de crème liquide jusqu'au frémissement.",
+          "Verser la moitié du liquide chaud sur le mélange jaune et sucre en fouettant vivement pour éviter les grumeaux.",
+          "Remettre l'ensemble dans la casserole et cuire à feu doux jusqu'à 83-84°C pour obtenir une cuisson à la nappe.",
+          "Verser ce mélange en 2 ou 3 fois sur le chocolat fondu en émulsionnant en petits cercles au centre.",
+          "Ajouter la gélatine hydratée dans le mélange bien chaud (idéalement sous 70°C) et mélanger.",
+          "Réserver le mélange.",
+          "Monter les 150g de crème liquide froide en chantilly dans un cul-de-poule bien froid.",
+          "Lorsque le mélange au chocolat atteint 45°C, incorporer un premier tiers de crème fouettée au fouet.",
+          "Incorporer délicatement le reste de crème fouettée à la maryse en plusieurs fois.",
+          "Verser la moitié de la mousse dans les moules Stone.",
+          "Déposer un premier disque de chocolat, l'insert coco, puis un deuxième disque de chocolat.",
+          "Recouvrir de mousse jusqu'à hauteur.",
+          "Placer au congélateur pendant 4 heures minimum."
+        ],
+        "conseils_etape": "Gardez un maximum d'air lors de l'incorporation finale à la maryse pour garantir la légèreté de la bavaroise."
+      },
+      {
+        "nom_etape": "Ganache montée coco",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Purée de coco",
+            "quantite": 17,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% chaude",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% froide",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de coco",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Etaler la poudre de coco sur un tapis en silicone et torréfier 10 minutes à 160°C jusqu'à belle coloration.",
+          "Hydrater la gélatine en poudre avec l'eau froide pendant 20 minutes au réfrigérateur.",
+          "Faire chauffer assez fort les 35g de crème liquide avec la coco torréfiée et la purée de coco.",
+          "Au frémissement, stopper la cuisson, recouvrir la casserole et laisser infuser.",
+          "Placer le chocolat blanc fondu et la gélatine hydratée dans un pichet.",
+          "Verser la crème infusée bien chaude sur le chocolat.",
+          "Mixer au mixeur plongeant.",
+          "Ajouter les 50g de crème liquide froide et mixer une dernière fois.",
+          "Filmer au contact dans un récipient large et réserver au réfrigérateur au minimum 4 heures."
+        ],
+        "conseils_etape": "Le filmage au contact empêche la formation d'une pellicule en surface qui créerait des grumeaux lors du foisonnement."
+      },
+      {
+        "nom_etape": "Glaçage miroir",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Glucose",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (hydratation de la gélatine)",
+            "quantite": 36,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans son eau froide pendant 15 à 20 minutes.",
+          "Dans une casserole, faire chauffer les 50g d'eau, le sucre semoule et le glucose jusqu'à 103°C.",
+          "Mettre le chocolat noir fondu et le lait concentré non sucré dans un pichet.",
+          "Verser le sirop à 103°C sur le contenu du pichet.",
+          "Mixer au mixeur plongeant en appliquant la technique sans bulle (garder le pied immergé).",
+          "Lorsque la température descend sous 70°C, ajouter la gélatine essorée et hydratée.",
+          "Mixer à nouveau pendant 1 à 2 minutes jusqu'à suppression de la majorité des bulles.",
+          "Filmer au contact et laisser reposer plusieurs heures."
+        ],
+        "conseils_etape": "Les quelques bulles restantes remonteront et disparaîtront naturellement pendant le temps de repos."
+      },
+      {
+        "nom_etape": "Pâte sucrée cacao",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 23,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao poudre",
+            "quantite": 13,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger au fouet le beurre très mou avec le sucre glace et la fleur de sel jusqu'à obtenir une crème.",
+          "Ajouter la poudre d'amande et l'oeuf (à température ambiante), puis mélanger.",
+          "Sur le plan de travail, faire un tas creusé en puits avec la farine et le cacao en poudre.",
+          "Placer le mélange crémeux au centre du puits.",
+          "Couper la pâte de haut en bas à l'aide d'une corne ou d'une maryse jusqu'à homogénéité.",
+          "Fraiser la pâte avec la paume de la main pour éliminer les grumeaux sans trop la travailler.",
+          "Placer la boule de pâte entre deux feuilles de papier sulfurisé et l'étaler sur 3 mm d'épaisseur.",
+          "Emporte-piécer des cercles de 8 cm de diamètre.",
+          "Placer la plaque au congélateur 10 à 20 minutes.",
+          "Retirer le papier sulfurisé, récupérer les disques et les placer sur un tapis type Silpain ou papier sulfurisé.",
+          "Cuire 20 à 25 minutes."
+        ],
+        "conseils_etape": "L'étalage entre deux feuilles évite d'ajouter de la farine superflue qui modifierait la texture de la pâte cuite."
+      },
+      {
+        "nom_etape": "Finitions et décoration",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Coco râpée (pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Récupérer la ganache bien froide et la fouetter jusqu'à obtenir un bec d'oiseau.",
+          "Pocher une boule généreuse par entremets avec la douille lisse de 20 mm.",
+          "Recouvrir entièrement chaque boule de coco râpée non torréfiée.",
+          "Placer au congélateur jusqu'à durcissement complet.",
+          "Réchauffer légèrement le glaçage miroir et le remixer si besoin.",
+          "Démouler les entremets congelés et les déposer sur une grille de glaçage.",
+          "Glacer généreusement.",
+          "Récupérer les entremets et créer un collier de coco râpée à leur base en la tapotant dans le creux de la main.",
+          "Déposer l'entremets glacé sur le disque de pâte sucrée cuite.",
+          "Déposer la boule de ganache décorative sur le dessus.",
+          "Laisser le tout revenir à température."
+        ],
+        "conseils_etape": "N'hésitez pas à prendre l'entremets par la base dans votre main pour déposer proprement le collier de coco."
+      }
+    ],
+    "astuces_recette": [
+      "Si la recette vous paraît trop longue, vous pouvez la simplifier en omettant le glaçage miroir ou la décoration supérieure, ce qui retirera un peu de goût coco mais rendra la réalisation plus accessible."
+    ],
+    "conseils_conservation": "Laissez les entremets revenir à température au moins 30 minutes (idéalement en décongélation douce au réfrigérateur pendant quelques heures) avant de déguster. Conservez dans une boîte hermétique au frais et consommez dans les 48 heures."
+  }
+}

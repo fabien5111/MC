@@ -1,0 +1,348 @@
+{
+  "ticket": "JEP-69",
+  "recette": {
+    "titre": "Bûche de Noël Vanille, Cacahuète et Caramel",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava (d'après Jardin Sucré)",
+    "video_url": null,
+    "description": "Une bûche gourmande et hautement technique inspirée de la pâtisserie Jardin Sucré, associant la rondeur de la vanille, la gourmandise du caramel au beurre salé, le croquant d'un praliné cacahuète, la texture d'un biscuit madeleine et la finesse d'une pâte sucrée, le tout enrobé d'une ganache montée et d'un flocage velours chocolat blanc.",
+    "rendement": "1 bûche pour 8 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Bols et culs de poule",
+      "Papier sulfurisé et tapis en silicone",
+      "Robot pâtissier (avec feuille et fouet)",
+      "Robot coupe / mixeur",
+      "Mixeur plongeant",
+      "Maryse",
+      "Réglettes à pâtisser (2 mm)",
+      "Moule à insert à bûche",
+      "Moule à bûche principal",
+      "Moule à cake",
+      "Couteaux",
+      "Petite palette",
+      "Pistolet à peinture (pour le flocage)",
+      "Bain-marie",
+      "Tamis"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée vanille",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30% (froide)",
+            "quantite": 505,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (à chauffer)",
+            "quantite": 505,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 3,
+            "unite": null
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau pour la gélatine",
+            "quantite": 54,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 262,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau bien froide pendant 10 à 15 minutes au réfrigérateur.",
+          "Verser la première pesée de crème liquide (505 g) dans une casserole avec les gousses de vanille fendues et grattées.",
+          "Porter à ébullition, puis éteindre le feu, couvrir et laisser infuser pendant 15 minutes.",
+          "Porter de nouveau à ébullition, puis filtrer la crème chaude à travers un tamis en deux ou trois fois sur le chocolat blanc préalablement fondu.",
+          "Réaliser une émulsion en effectuant de petits cercles au centre du cul de poule avec une maryse.",
+          "Ajouter la gélatine bien hydratée et mixer au mixeur plongeant.",
+          "Ajouter la seconde pesée de crème liquide froide (505 g) et mixer à nouveau pour obtenir un mélange homogène.",
+          "Verser dans un récipient à fond large, filmer au contact et placer au réfrigérateur pour cristalliser."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Praliné cacahuètes",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Cacahuètes grillées et salées",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 125,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Disposer les cacahuètes sur une plaque et les torréfier 10 à 15 minutes à 150 °C pour accentuer leur goût.",
+          "Réaliser un caramel à sec dans une casserole avec le sucre semoule jusqu'à l'obtention d'une couleur ambrée, sans remuer tant que le sucre ne fond pas.",
+          "Verser le caramel sur un tapis en silicone ou une feuille de papier sulfurisé et laisser refroidir.",
+          "Placer le caramel figé et les cacahuètes torréfiées refroidies dans le bol d'un robot coupe.",
+          "Mixer jusqu'à l'obtention d'une pâte de praliné bien lisse.",
+          "Garnir le moule à insert de praliné jusqu'à environ la moitié de la hauteur et placer au congélateur."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Pâte sucrée",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 31.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.3,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 83,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille (selon goût)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger le beurre doux dans le bol du robot jusqu'à l'obtention d'une texture pommade.",
+          "Ajouter le sucre glace et mélanger pour crémer.",
+          "Incorporer la poudre d'amande, la poudre de vanille et la fleur de sel à l'aide de la feuille du robot.",
+          "Ajouter l'œuf en raclant les bords si nécessaire, puis incorporer la farine en arrêtant le robot dès que le mélange est homogène.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé à l'aide de réglettes sur une épaisseur de 2 mm.",
+          "Retirer une feuille et découper un rectangle de 22 cm de long sur 6 cm de large à l'aide d'une règle.",
+          "Placer au congélateur pendant 30 minutes.",
+          "Enfourner pour 25 minutes à 160 °C et réserver."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Caramel beurre salé vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Gratter les grains de la gousse de vanille.",
+          "Faire chauffer la crème liquide avec la gousse fendue et grattée jusqu'à ébullition, puis couvrir et laisser infuser 10 à 15 minutes hors du feu.",
+          "Réaliser un caramel à sec dans une casserole avec le sucre jusqu'à l'obtention d'une couleur ambrée.",
+          "Décuire le caramel en ajoutant le beurre doux en une fois, puis verser la crème chaude infusée (sans les gousses) préalablement réchauffée et filtrée, en baissant le feu.",
+          "Laisser cuire à ébullition pendant 5 minutes.",
+          "Retirer du feu, ajouter la fleur de sel et verser dans un récipient à fond large.",
+          "Filmer au contact ou couvrir et laisser reposer 1 à 2 heures au réfrigérateur.",
+          "Pocher le caramel sur environ 1 à 1,5 cm d'épaisseur par-dessus le praliné congelé dans l'insert.",
+          "Disposer la pâte sucrée sur le dessus et replacer l'ensemble au congélateur pendant 2 heures minimum."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Biscuit madeleine",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 175,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Œufs",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 97,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 93,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux fondu",
+            "quantite": 97,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile neutre",
+            "quantite": 18,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fouetter les œufs et le sucre dans un récipient jusqu'à l'obtention d'un mélange homogène.",
+          "Ajouter le miel, puis incorporer une partie de la farine tamisée en alternant avec le lait pour éviter les grumeaux.",
+          "Terminer d'incorporer la farine restante, la levure chimique et l'huile neutre.",
+          "Ajouter le beurre fondu refroidi à température ambiante.",
+          "Verser l'appareil à madeleine dans un moule à cake.",
+          "Enfourner pour 25 minutes à 175 °C.",
+          "Démouler après refroidissement et tailler aux dimensions requises pour le montage (23,5 cm de long, 8 cm de large, 1,5 cm de hauteur)."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Montage",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Démouler l'insert (réchauffer légèrement le caramel si nécessaire).",
+          "Monter la moitié de la ganache montée cristallisée au batteur avec un fouet jusqu'à l'obtention d'une texture ruban.",
+          "Mettre la ganache dans une poche et en pocher une couche au fond du moule à bûche principal.",
+          "Déposer l'insert bien congelé au centre, puis recouvrir de ganache montée en lissant les rebords avec une petite palette.",
+          "Poser le biscuit madeleine par-dessus en pressant légèrement, puis lisser à nouveau à hauteur avec la palette.",
+          "Placer la bûche au congélateur pour une nuit complète."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Démoulage et enrobage partiel",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Démouler la bûche congelée.",
+          "Détendre légèrement le reste de ganache montée pour qu'elle devienne un peu plus fluide qu'un bec d'oiseau et la placer dans un moule à cake.",
+          "Planter deux couteaux sous la bûche et la tremper généreusement à la verticale dans la ganache du moule à cake pour l'enrober.",
+          "Retirer délicatement les couteaux et replacer la bûche au congélateur pendant la préparation du flocage."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Flocage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 360,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 52,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat blanc et le beurre de cacao au bain-marie jusqu'à obtenir un mélange homogène.",
+          "Passer le mélange à travers un tamis pour éliminer les éventuels morceaux résiduels.",
+          "Verser le flocage dans le récipient du pistolet à peinture lorsqu'il atteint 52 °C.",
+          "Floquer la bûche directement sortie du congélateur.",
+          "Laisser décongeler au réfrigérateur pendant 6 heures (ou à température ambiante pendant 2 heures) avant la découpe."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Anticiper le planning : cette recette nécessite de multiples étapes de congélation et s'étale idéalement sur deux jours avant la dégustation.",
+      "Ajuster les proportions en fonction de la taille de votre moule si nécessaire, les quantités indiquées correspondant à un grand format de bûche."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur après décongélation complète. Pour faciliter la découpe de la pâte sucrée et éviter d'écraser la bûche, il est conseillé de couper les parts individuellement et de les placer à plat dans les assiettes. Respecter le temps de retour en température pour que l'insert praliné et le caramel aient une texture fondante idéale."
+  }
+}

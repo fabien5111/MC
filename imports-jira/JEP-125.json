@@ -1,0 +1,266 @@
+{
+  "ticket": "JEP-125",
+  "recette": {
+    "titre": "Éclairs citron-noisette façon tarte citron meringuée",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=kYv9Z5T9V1A",
+    "description": "Revisite graphique de la tarte citron meringuée sous forme d'éclairs pochés en quinconce (forme zig-zag/éclair), garnis d'une crème au citron onctueuse émulsionnée au beurre, d'un insert coulant praliné noisette-amande, glacés au fondant jaune et surmontés de petites meringues françaises croustillantes et d'éclats de noisettes.",
+    "rendement": "Environ 8 à 10 éclairs individuels",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Casseroles",
+      "Spatule / maryse",
+      "Fouet",
+      "Robot pâtissier muni de la feuille (K) et du fouet",
+      "Rouleau à pâtisserie",
+      "Papier sulfurisé",
+      "Mixeur plongeant",
+      "Thermomètre de cuisson / sonde",
+      "Poches pâtissières",
+      "Douille petits fours (environ 14 mm)",
+      "Couteau d'office / découpe-pâte",
+      "Plaques de cuisson",
+      "Cornet à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Craquelin jaune",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 5,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant liposoluble jaune",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Verser dans un cul-de-poule la farine, le sucre cassonade, le beurre et une pointe de colorant liposoluble jaune.",
+          "Mélanger à la main jusqu'à ce que le beurre ramollisse et forme une pâte homogène en boule.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé sur une épaisseur de 2 mm.",
+          "Réserver à plat au congélateur pendant au moins 5 minutes pour raffermir la pâte."
+        ],
+        "conseils_etape": "Utiliser un colorant liposoluble pour une parfaite incorporation dans la matière grasse du beurre sans déphaser la texture. À réaliser le jour même ou la veille (se conserve très bien au congélateur)."
+      },
+      {
+        "nom_etape": "Pâte à choux",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Trimoline (sucre inverti ou miel d'acacia neutre)",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant hydrosoluble jaune",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mettre dans une casserole le lait, l'eau, le beurre coupé en morceaux, la trimoline et la pincée de sel, puis chauffer à feu doux pour bien faire fondre le beurre avant ébullition.",
+          "Porter le liquide à franche ébullition.",
+          "Retirer du feu et verser la totalité de la farine en une seule fois.",
+          "Mélanger vivement à la spatule hors du feu jusqu'à obtention d'une pâte homogène (la panade).",
+          "Remettre la casserole sur feu moyen et dessécher la pâte 1 à 2 minutes jusqu'à ce qu'elle se détache des parois et laisse une fine pellicule au fond.",
+          "Verser la panade dans la cuve du robot munie de la feuille, faire tourner pour faire tiédir la pâte, puis incorporer les œufs battus en 3 ou 4 fois en attendant l'absorption complète entre chaque ajout.",
+          "Ajouter une pointe de colorant hydrosoluble jaune en fin de mélange afin d'harmoniser la teinte avec le craquelin (la pâte doit former un ruban ou une vague souple).",
+          "Pocher la pâte à l'aide d'une douille petits fours de 14 mm sur une plaque, en réalisant un tracé en quinconce / zig-zag régulier pour donner la forme d'un éclair.",
+          "Détailler des bandes de craquelin congelé d'environ 5 cm de largeur et les déposer délicatement sur chaque éclair poché.",
+          "Enfourner à 180 °C pendant 15 minutes, puis baisser la température à 160 °C pendant 10 minutes supplémentaires sans ouvrir le four."
+        ],
+        "conseils_etape": "Faire fondre le beurre avant que l'eau et le lait ne bouillent pour éviter l'évaporation des liquides, ce qui fausserait l'équilibre sec/liquide de la pâte. Ne pas ouvrir la porte du four pendant la cuisson pour éviter que les choux ne retombent. À réaliser le jour même de la dégustation."
+      },
+      {
+        "nom_etape": "Crème citron",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Citron jaune (zeste)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Œufs entiers battus",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux froid",
+            "quantite": 225,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre le jus de citron, les zestes râpés, le sucre semoule et les œufs battus dans une casserole.",
+          "Cuire l'ensemble à feu moyen en remuant constamment au fouet jusqu'à atteindre 83 °C - 84 °C.",
+          "Retirer immédiatement de la source de chaleur dès l'épaississement et laisser redescendre la température sous 70 °C.",
+          "Ajouter le beurre doux bien froid coupé en dés dans la crème tiédie.",
+          "Émulsionner la préparation au mixeur plongeant jusqu'à ce que la crème soit parfaitement lisse, brillante et exempte de morceaux de beurre.",
+          "Verser la crème dans un plat large, filmer au contact et placer au réfrigérateur pendant au moins 2 heures."
+        ],
+        "conseils_etape": "Ne jamais dépasser 84 °C pendant la cuisson pour éviter la coagulation brutale des œufs en omelette. L'émulsion finale au mixeur plongeant assure la tenue et l'onctuosité de la texture. À réaliser le jour même ou la veille (idéalement, pour une prise parfaite)."
+      },
+      {
+        "nom_etape": "Meringues françaises",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 60,
+        "temperature_cuisson_celsius": 80,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 125,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser les blancs d'œufs dans la cuve du batteur muni du fouet et commencer à monter à petite vitesse.",
+          "Dès que les blancs deviennent bien mousseux, ajouter la moitié du sucre semoule et augmenter modérément la vitesse.",
+          "Quand le fouet commence à tracer des vagues régulières, verser le restant de sucre semoule et battre à vitesse plus soutenue.",
+          "Arrêter le batteur lorsque la meringue est brillante, ferme et présente un bec d'oiseau net.",
+          "Transférer dans une poche munie d'une petite douille unie et pocher de multiples petites pointes/boules de meringue sur une plaque sulfurisée.",
+          "Enfourner à 80 °C pendant 1 heure jusqu'à ce que les meringues soient sèches et croustillantes."
+        ],
+        "conseils_etape": "Une cuisson douce à 80 °C permet de sécher les meringues sans les colorer afin de conserver une blancheur éclatante. À réaliser le jour même ou quelques jours à l'avance (stockées en boîte hermétique)."
+      },
+      {
+        "nom_etape": "Glaçage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 37,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Fondant blanc pâtissier",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant hydrosoluble jaune",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Praliné noisette amande",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Éclats de noisettes torréfiées",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire tiédir doucement le fondant pâtissier au bain-marie ou à feu très doux sans dépasser 37 °C.",
+          "Ajouter le colorant hydrosoluble jaune et mélanger jusqu'à l'obtention d'une couleur uniforme (ajuster avec quelques gouttes d'eau ou de sirop si le fondant est trop épais).",
+          "Réserver à température d'utilisation (autour de 32-35 °C)."
+        ],
+        "conseils_etape": "Un fondant chauffé au-delà de 37 °C deviendra terne, cassant et perdra tout son brillant au séchage. À réaliser juste avant le montage final."
+      },
+      {
+        "nom_etape": "Montage et dressage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Percer trois petits trous réguliers sous chaque coque d'éclair cuite et refroidie.",
+          "Remplir les éclairs de crème au citron bien froide à l'aide d'une poche à douille.",
+          "Injecter un cordon de praliné noisette-amande à l'intérieur des éclairs par les mêmes ouvertures à l'aide d'un cornet.",
+          "Tremper délicatement la face supérieure des éclairs dans le fondant jaune tempéré, puis lisser les bordures au doigt propre pour retirer l'excédent.",
+          "Déposer harmonieusement sur le glaçage encore frais plusieurs petites pointes de meringues croustillantes et quelques éclats de noisettes torréfiées."
+        ],
+        "conseils_etape": "À réaliser le jour de la dégustation, quelques heures au maximum avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Gestion des colorants : préférer un colorant liposoluble pour le craquelin (riche en matière grasse) et un colorant hydrosoluble pour la pâte à choux et le fondant.",
+      "Régularité du pochage : pour accentuer le motif d'éclair stylisé, pocher des boules bien jointives en quinconce avec la douille petits fours inclinée à 45°.",
+      "Insert praliné : veiller à ce que le praliné soit à température ambiante pour qu'il s'injecte facilement au cornet sans déchirer la pâte à choux."
+    ],
+    "conseils_conservation": "Servir frais mais sorti du réfrigérateur 5 à 10 minutes avant consommation pour que le praliné retrouve son onctuosité. Conserver au réfrigérateur et consommer dans les 24 heures. Au-delà, l'humidité de la crème au citron ramollit la coque de chou et fait fondre la meringue croustillante."
+  }
+}
