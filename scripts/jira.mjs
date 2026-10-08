@@ -1,7 +1,7 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Sept verbes : `lire`, `chercher`, `commenter`, `creer`, et trois verbes de
+// Huit verbes : `lire`, `chercher`, `commenter`, `creer`, `modifier`, et trois verbes de
 // transition étroitement bornés, `demarrer`, `envoyer-en-test` et
 // `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
@@ -272,6 +272,20 @@ async function creer(options, description) {
   console.log(`${cree.key} créé — ${url}`);
 }
 
+/**
+ * Remplace la description d'un ticket existant (et, si fourni, son titre),
+ * avec le même markdown restreint que `creer`. Ne touche ni au statut ni aux
+ * autres champs : corriger une spec rédigée ne doit rien faire avancer.
+ */
+async function modifier(cle, titre, description) {
+  const config = lireConfig();
+  if (!description.trim()) echouer('Description vide : rien à écrire.');
+  const champs = { description: markdownLegerVersAdf(description) };
+  if (titre?.trim()) champs.summary = titre.trim();
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}`, 'PUT', { fields: champs });
+  console.log(`${cle} modifié — ${config.baseUrl}/browse/${cle}`);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Transitions bornées (`demarrer`, `envoyer-en-test`)
 // ─────────────────────────────────────────────────────────────────────────
@@ -378,6 +392,8 @@ const USAGE = `Usage :
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
   node scripts/jira.mjs creer --titre "<résumé>" <fichier|-> [--projet JEP] [--type Tâche] [--priorite Medium] [--label L]...
                                                       (description en markdown restreint : ##, ###, -, 1.)
+  node scripts/jira.mjs modifier <CLE> <fichier|-> [--titre "<résumé>"]
+                                                      (remplace la description, même format que creer)
 
 Variables requises : JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN.
 
@@ -479,6 +495,20 @@ async function main(argv) {
     if (!source) echouer(`Fichier de description manquant (ou "-" pour l'entrée standard).\n\n${USAGE}`);
     const { readFile } = await import('node:fs/promises');
     await creer(options, source === '-' ? await lireEntreeStandard() : await readFile(source, 'utf8'));
+    return;
+  }
+
+  if (verbe === 'modifier') {
+    let titre = null;
+    const positionnels = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '--titre') titre = args[++i];
+      else positionnels.push(args[i]);
+    }
+    const [cle, source] = positionnels;
+    if (!cle || !source) echouer(`Clé de ticket ou fichier de description manquant.\n\n${USAGE}`);
+    const { readFile } = await import('node:fs/promises');
+    await modifier(cle, titre, source === '-' ? await lireEntreeStandard() : await readFile(source, 'utf8'));
     return;
   }
 
