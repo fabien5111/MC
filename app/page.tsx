@@ -15,7 +15,7 @@ import { GuestCta } from '@/components/home/GuestCta';
 import { ArticleCard } from '@/components/blog/ArticleCard';
 import { getRecipes, withAllergenNames, getAllergensWithPicto } from '@/lib/recipes';
 import { getActiveAds } from '@/lib/ads';
-import { getActiveFeaturedRecipe } from '@/lib/featured';
+import { getActiveFeaturedRecipe, getHeroImageUrl } from '@/lib/featured';
 import { getActiveBatches } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
 import { getPublishedArticles, getArticleCategories } from '@/lib/blog';
@@ -126,6 +126,14 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
   // la section ne disparaît jamais de l'accueil.
   const defaultPhoto = banners.recipe_default_photo || null;
   const featured = activeFeatured ?? recipes[0] ?? null;
+  // Pleine définition, comme sur la fiche recette (JEP-255) : le bloc est bien
+  // plus large qu'une carte. Repli sur la photo de carte si elle manque.
+  const featuredPhoto = activeFeatured
+    ? activeFeatured.hero_image_url
+    : featured
+      ? await getHeroImageUrl(featured.id)
+      : null;
+  const featuredSrc = featuredPhoto || featured?.hero_card_url || defaultPhoto;
   const featuredTimes = featured ? effectiveTimes(featured) : null;
   const featuredIsOwner = !!featured && !!user && featured.author_id === user.id;
   // Planifier se décale d'un cran (right-[4.25rem] → right-28) quand Éditer
@@ -187,12 +195,12 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative h-[400px] md:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
-                    {featured.hero_card_url || defaultPhoto ? (
-                      // `hero_card_url` (~480 px) — cf. lib/recipes.ts CARD_SELECT,
-                      // qui ne sélectionne plus la pleine définition.
+                    {featuredSrc ? (
+                      // Pleine définition (`hero_image_url`), pas `hero_card_url`
+                      // (~480 px) qui paraissait floue à cette taille — JEP-255.
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                       <img
-                        src={featured.hero_card_url || defaultPhoto!}
+                        src={featuredSrc}
                         alt={featured.title}
                         className="w-full h-full object-cover"
                       />
